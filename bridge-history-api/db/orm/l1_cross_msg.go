@@ -32,6 +32,41 @@ func (l *L1CrossMsg) GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error) 
 	return result, err
 }
 
+// GetLatestL1ProcessedHeight returns the latest processed height of layer1 cross messages
+func (l *L1CrossMsg) GetLatestL1ProcessedHeight() (uint64, error) {
+	result := &CrossMsg{}
+	err := l.db.Model(&CrossMsg{}).Where("msg_type = ?", Layer1Msg).
+		Order("id DESC").
+		Limit(1).
+		Select("height").
+		First(&result).
+		Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
+	}
+	return result.Height, err
+}
+
+// GetL1EarliestNoBlockTimestampHeight returns the earliest layer1 cross message height which has no block timestamp
+func (l *L1CrossMsg) GetL1EarliestNoBlockTimestampHeight() (uint64, error) {
+	result := &CrossMsg{}
+	err := l.db.Model(&CrossMsg{}).
+		Where("block_timestamp IS NULL AND msg_type = ?", Layer1Msg).
+		Order("height ASC").
+		Limit(1).
+		Select("height").
+		First(&result).
+		Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
+	}
+	return result.Height, err
+}
+
 // BatchInsertL1CrossMsg batch insert layer1 cross messages into db
 func (l *L1CrossMsg) BatchInsertL1CrossMsg(ctx context.Context, messages []*CrossMsg, dbTx ...*gorm.DB) error {
 	if len(messages) == 0 {
@@ -67,21 +102,12 @@ func (l *L1CrossMsg) UpdateL1CrossMsgHash(ctx context.Context, l1Hash, msgHash c
 
 }
 
-// GetLatestL1ProcessedHeight returns the latest processed height of layer1 cross messages
-func (l *L1CrossMsg) GetLatestL1ProcessedHeight() (uint64, error) {
-	result := &CrossMsg{}
-	err := l.db.Model(&CrossMsg{}).Where("msg_type = ?", Layer1Msg).
-		Order("id DESC").
-		Limit(1).
-		Select("height").
-		First(&result).
-		Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return 0, nil
-		}
-	}
-	return result.Height, err
+// UpdateL1BlockTimestamp update layer1 block timestamp
+func (l *L1CrossMsg) UpdateL1BlockTimestamp(height uint64, timestamp time.Time) error {
+	err := l.db.Model(&CrossMsg{}).
+		Where("height = ? AND msg_type = ?", height, Layer1Msg).
+		Update("block_timestamp", timestamp).Error
+	return err
 }
 
 // DeleteL1CrossMsgAfterHeight soft delete layer1 cross messages after given height
@@ -93,30 +119,4 @@ func (l *L1CrossMsg) DeleteL1CrossMsgAfterHeight(ctx context.Context, height uin
 	db.WithContext(ctx)
 	result := db.Delete(&CrossMsg{}, "height > ? AND msg_type = ?", height, Layer1Msg)
 	return result.Error
-}
-
-// UpdateL1BlockTimestamp update layer1 block timestamp
-func (l *L1CrossMsg) UpdateL1BlockTimestamp(height uint64, timestamp time.Time) error {
-	err := l.db.Model(&CrossMsg{}).
-		Where("height = ? AND msg_type = ?", height, Layer1Msg).
-		Update("block_timestamp", timestamp).Error
-	return err
-}
-
-// GetL1EarliestNoBlockTimestampHeight returns the earliest layer1 cross message height which has no block timestamp
-func (l *L1CrossMsg) GetL1EarliestNoBlockTimestampHeight() (uint64, error) {
-	result := &CrossMsg{}
-	err := l.db.Model(&CrossMsg{}).
-		Where("block_timestamp IS NULL AND msg_type = ?", Layer1Msg).
-		Order("height ASC").
-		Limit(1).
-		Select("height").
-		First(&result).
-		Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return 0, nil
-		}
-	}
-	return result.Height, err
 }

@@ -199,7 +199,7 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 		for i, msg := range msgs {
 			proofHex := common.Bytes2Hex(proofs[i])
 			log.Debug("updateMsgProof", "msgHash", msg.MsgHash, "batchIndex", batchIndex, "proof", proofHex)
-			if err := m.l2SentMsgOrm.UpdateL2MessageProofIn(m.ctx, msg.MsgHash, proofHex, batchIndex, tx); err != nil {
+			if err := m.l2SentMsgOrm.UpdateL2MessageProof(m.ctx, msg.MsgHash, proofHex, batchIndex, tx); err != nil {
 				return err
 			}
 		}

@@ -33,29 +33,6 @@ func (*RollupBatch) TableName() string {
 	return "rollup_batch"
 }
 
-// BatchInsertRollupBatchDBTx batch insert rollup batch into db and return the transaction
-func (r *RollupBatch) BatchInsertRollupBatch(ctx context.Context, batches []*RollupBatch, dbTx ...*gorm.DB) error {
-	if len(batches) == 0 {
-		return nil
-	}
-	db := r.db
-	if len(dbTx) > 0 && dbTx[0] != nil {
-		db = dbTx[0]
-	}
-	err := db.Model(&RollupBatch{}).Create(&batches).Error
-
-	if err != nil {
-		batchIndexes := make([]uint64, 0, len(batches))
-		heights := make([]uint64, 0, len(batches))
-		for _, batch := range batches {
-			batchIndexes = append(batchIndexes, batch.BatchIndex)
-			heights = append(heights, batch.CommitHeight)
-		}
-		log.Error("failed to insert rollup batch", "batchIndexes", batchIndexes, "heights", heights, "err", err)
-	}
-	return err
-}
-
 // GetLatestRollupBatch return the latest rollup batch in db
 func (r *RollupBatch) GetLatestRollupBatch() (*RollupBatch, error) {
 	result := &RollupBatch{}
@@ -77,4 +54,27 @@ func (r *RollupBatch) GetRollupBatchByIndex(index uint64) (*RollupBatch, error) 
 		return nil, err
 	}
 	return result, nil
+}
+
+// BatchInsertRollupBatchDBTx batch insert rollup batch into db and return the transaction
+func (r *RollupBatch) BatchInsertRollupBatch(ctx context.Context, batches []*RollupBatch, dbTx ...*gorm.DB) error {
+	if len(batches) == 0 {
+		return nil
+	}
+	db := r.db
+	if len(dbTx) > 0 && dbTx[0] != nil {
+		db = dbTx[0]
+	}
+	err := db.Model(&RollupBatch{}).Create(&batches).Error
+
+	if err != nil {
+		batchIndexes := make([]uint64, 0, len(batches))
+		heights := make([]uint64, 0, len(batches))
+		for _, batch := range batches {
+			batchIndexes = append(batchIndexes, batch.BatchIndex)
+			heights = append(heights, batch.CommitHeight)
+		}
+		log.Error("failed to insert rollup batch", "batchIndexes", batchIndexes, "heights", heights, "err", err)
+	}
+	return err
 }

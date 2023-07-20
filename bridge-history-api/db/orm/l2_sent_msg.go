@@ -49,29 +49,6 @@ func (l *L2SentMsg) GetL2SentMsgByHash(msgHash string) (*L2SentMsg, error) {
 	return result, err
 }
 
-// BatchInsertL2SentMsg batch insert l2 sent msg
-func (l *L2SentMsg) BatchInsertL2SentMsg(ctx context.Context, messages []*L2SentMsg, dbTx ...*gorm.DB) error {
-	if len(messages) == 0 {
-		return nil
-	}
-	db := l.db
-	if len(dbTx) > 0 && dbTx[0] != nil {
-		db = dbTx[0]
-	}
-	db.WithContext(ctx)
-	err := db.Model(&L2SentMsg{}).Create(&messages).Error
-	if err != nil {
-		l2hashes := make([]string, 0, len(messages))
-		heights := make([]uint64, 0, len(messages))
-		for _, msg := range messages {
-			l2hashes = append(l2hashes, msg.TxHash)
-			heights = append(heights, msg.Height)
-		}
-		log.Error("failed to insert l2 sent messages", "l2hashes", l2hashes, "heights", heights, "err", err)
-	}
-	return err
-}
-
 // GetLatestSentMsgHeightOnL2 get latest sent msg height on l2
 func (l *L2SentMsg) GetLatestSentMsgHeightOnL2() (uint64, error) {
 	result := &L2SentMsg{}
@@ -89,20 +66,20 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2() (uint64, error) {
 	return result.Height, err
 }
 
-// UpdateL2MessageProofIn update l2 message proof in db tx
-func (l *L2SentMsg) UpdateL2MessageProofIn(ctx context.Context, msgHash string, proof string, batchIndex uint64, dbTx ...*gorm.DB) error {
-	db := l.db
-	if len(dbTx) > 0 && dbTx[0] != nil {
-		db = dbTx[0]
-	}
-	db.WithContext(ctx)
-	err := db.Model(&L2SentMsg{}).
-		Where("msg_hash = ?", msgHash).
-		Updates(map[string]interface{}{
-			"msg_proof":   proof,
-			"batch_index": batchIndex,
-		}).Error
-	return err
+// GetClaimableL2SentMsgByAddressWithOffset get claimable l2 sent msg by address with offset
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(address string, offset int, limit int) ([]*L2SentMsg, error) {
+	var results []*L2SentMsg
+	err := l.db.Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
+		Scan(&results).Error
+	return results, err
+}
+
+// GetClaimableL2SentMsgByAddressTotalNum get claimable l2 sent msg by address total num
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error) {
+	var count uint64
+	err := l.db.Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).
+		Scan(&count).Error
+	return count, err
 }
 
 // GetLatestL2SentMsgBatchIndex get latest l2 sent msg batch index
@@ -154,6 +131,45 @@ func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMs
 	return result, err
 }
 
+// BatchInsertL2SentMsg batch insert l2 sent msg
+func (l *L2SentMsg) BatchInsertL2SentMsg(ctx context.Context, messages []*L2SentMsg, dbTx ...*gorm.DB) error {
+	if len(messages) == 0 {
+		return nil
+	}
+	db := l.db
+	if len(dbTx) > 0 && dbTx[0] != nil {
+		db = dbTx[0]
+	}
+	db.WithContext(ctx)
+	err := db.Model(&L2SentMsg{}).Create(&messages).Error
+	if err != nil {
+		l2hashes := make([]string, 0, len(messages))
+		heights := make([]uint64, 0, len(messages))
+		for _, msg := range messages {
+			l2hashes = append(l2hashes, msg.TxHash)
+			heights = append(heights, msg.Height)
+		}
+		log.Error("failed to insert l2 sent messages", "l2hashes", l2hashes, "heights", heights, "err", err)
+	}
+	return err
+}
+
+// UpdateL2MessageProof update l2 message proof in db tx
+func (l *L2SentMsg) UpdateL2MessageProof(ctx context.Context, msgHash string, proof string, batchIndex uint64, dbTx ...*gorm.DB) error {
+	db := l.db
+	if len(dbTx) > 0 && dbTx[0] != nil {
+		db = dbTx[0]
+	}
+	db.WithContext(ctx)
+	err := db.Model(&L2SentMsg{}).
+		Where("msg_hash = ?", msgHash).
+		Updates(map[string]interface{}{
+			"msg_proof":   proof,
+			"batch_index": batchIndex,
+		}).Error
+	return err
+}
+
 // DeleteL2SentMsgAfterHeight delete l2 sent msg after height
 func (l *L2SentMsg) DeleteL2SentMsgAfterHeight(ctx context.Context, height uint64, dbTx ...*gorm.DB) error {
 	db := l.db
@@ -166,20 +182,4 @@ func (l *L2SentMsg) DeleteL2SentMsgAfterHeight(ctx context.Context, height uint6
 			"deleted_at": gorm.Expr("current_timestamp"),
 		}).Error
 	return err
-}
-
-// GetClaimableL2SentMsgByAddressWithOffset get claimable l2 sent msg by address with offset
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(address string, offset int, limit int) ([]*L2SentMsg, error) {
-	var results []*L2SentMsg
-	err := l.db.Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
-		Scan(&results).Error
-	return results, err
-}
-
-// GetClaimableL2SentMsgByAddressTotalNum get claimable l2 sent msg by address total num
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error) {
-	var count uint64
-	err := l.db.Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).
-		Scan(&count).Error
-	return count, err
 }

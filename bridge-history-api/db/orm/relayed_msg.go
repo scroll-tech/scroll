@@ -32,31 +32,6 @@ func (*RelayedMsg) TableName() string {
 	return "relayed_msg"
 }
 
-// BatchInsertRelayedMsgDBTx batch insert relayed msg into db and return the transaction
-func (r *RelayedMsg) BatchInsertRelayedMsg(ctx context.Context, messages []*RelayedMsg, dbTx ...*gorm.DB) error {
-	if len(messages) == 0 {
-		return nil
-	}
-	db := r.db
-	if len(dbTx) > 0 && dbTx[0] != nil {
-		db = dbTx[0]
-	}
-	db.WithContext(ctx)
-	err := db.Model(&RelayedMsg{}).Create(&messages).Error
-	if err != nil {
-		l2hashes := make([]string, 0, len(messages))
-		l1hashes := make([]string, 0, len(messages))
-		heights := make([]uint64, 0, len(messages))
-		for _, msg := range messages {
-			l2hashes = append(l2hashes, msg.Layer2Hash)
-			l1hashes = append(l1hashes, msg.Layer1Hash)
-			heights = append(heights, msg.Height)
-		}
-		log.Error("failed to insert l2 sent messages", "l2hashes", l2hashes, "l1hashes", l1hashes, "heights", heights, "err", err)
-	}
-	return err
-}
-
 // GetRelayedMsgByHash get relayed msg by hash
 func (r *RelayedMsg) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
 	result := &RelayedMsg{}
@@ -101,6 +76,31 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL2() (uint64, error) {
 		}
 	}
 	return result.Height, nil
+}
+
+// BatchInsertRelayedMsgDBTx batch insert relayed msg into db and return the transaction
+func (r *RelayedMsg) BatchInsertRelayedMsg(ctx context.Context, messages []*RelayedMsg, dbTx ...*gorm.DB) error {
+	if len(messages) == 0 {
+		return nil
+	}
+	db := r.db
+	if len(dbTx) > 0 && dbTx[0] != nil {
+		db = dbTx[0]
+	}
+	db.WithContext(ctx)
+	err := db.Model(&RelayedMsg{}).Create(&messages).Error
+	if err != nil {
+		l2hashes := make([]string, 0, len(messages))
+		l1hashes := make([]string, 0, len(messages))
+		heights := make([]uint64, 0, len(messages))
+		for _, msg := range messages {
+			l2hashes = append(l2hashes, msg.Layer2Hash)
+			l1hashes = append(l1hashes, msg.Layer1Hash)
+			heights = append(heights, msg.Height)
+		}
+		log.Error("failed to insert l2 sent messages", "l2hashes", l2hashes, "l1hashes", l1hashes, "heights", heights, "err", err)
+	}
+	return err
 }
 
 // DeleteL1RelayedHashAfterHeight delete l1 relayed hash after height
