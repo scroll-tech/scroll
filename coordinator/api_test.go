@@ -15,14 +15,13 @@ import (
 
 	"scroll-tech/common/types/message"
 
-	"scroll-tech/coordinator/config"
+	"scroll-tech/coordinator/internal/config"
 )
 
 func geneAuthMsg(t *testing.T) *message.AuthMsg {
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:      "roller_test1",
-			Timestamp: uint32(time.Now().Unix()),
+			Name: "roller_test1",
 		},
 	}
 	privKey, err := crypto.GenerateKey()
@@ -36,15 +35,14 @@ var rollerManager *Manager
 func init() {
 	rmConfig := config.RollerManagerConfig{}
 	rmConfig.Verifier = &config.VerifierConfig{MockMode: true}
-	rollerManager, _ = New(context.Background(), &rmConfig, nil, nil)
+	rollerManager, _ = New(context.Background(), &rmConfig, nil)
 }
 
 func TestManager_RequestToken(t *testing.T) {
 	convey.Convey("auth msg verify failure", t, func() {
 		tmpAuthMsg := &message.AuthMsg{
 			Identity: &message.Identity{
-				Name:      "roller_test_request_token",
-				Timestamp: uint32(time.Now().Unix()),
+				Name: "roller_test_request_token",
 			},
 		}
 		token, err := rollerManager.RequestToken(tmpAuthMsg)
@@ -90,8 +88,7 @@ func TestManager_Register(t *testing.T) {
 	convey.Convey("auth msg verify failure", t, func() {
 		tmpAuthMsg := &message.AuthMsg{
 			Identity: &message.Identity{
-				Name:      "roller_test_register",
-				Timestamp: uint32(time.Now().Unix()),
+				Name: "roller_test_register",
 			},
 		}
 		subscription, err := rollerManager.Register(context.Background(), tmpAuthMsg)

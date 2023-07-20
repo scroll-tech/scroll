@@ -20,7 +20,7 @@ type rollerNode struct {
 	// Roller name
 	Name string
 	// Roller type
-	Type message.ProveType
+	Type message.ProofType
 	// Roller public key
 	PublicKey string
 	// Roller version
@@ -34,7 +34,7 @@ type rollerNode struct {
 	// Time of message creation
 	registerTime time.Time
 
-	*rollerMetrics
+	metrics *rollerMetrics
 }
 
 func (r *rollerNode) sendTask(msg *message.TaskMsg) bool {
@@ -53,8 +53,8 @@ func (m *Manager) reloadRollerAssignedTasks(pubkey string) *cmap.ConcurrentMap {
 	defer m.mu.RUnlock()
 	taskIDs := cmap.New()
 	for id, sess := range m.sessions {
-		for _, sessionInfo := range sess.sessionInfos {
-			if sessionInfo.RollerPublicKey == pubkey && sessionInfo.ProvingStatus == int16(types.RollerAssigned) {
+		for _, proverTask := range sess.proverTasks {
+			if proverTask.ProverPublicKey == pubkey && proverTask.ProvingStatus == int16(types.RollerAssigned) {
 				taskIDs.Set(id, struct{}{})
 			}
 		}
@@ -74,20 +74,20 @@ func (m *Manager) register(pubkey string, identity *message.Identity) (<-chan *m
 			rollerProofsLastFinishedTimestampGauge: geth_metrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/finished/timestamp/%s", pubkey), metrics.ScrollRegistry),
 		}
 		node = &rollerNode{
-			Name:          identity.Name,
-			Type:          identity.RollerType,
-			Version:       identity.Version,
-			PublicKey:     pubkey,
-			TaskIDs:       *taskIDs,
-			taskChan:      make(chan *message.TaskMsg, 4),
-			rollerMetrics: rMs,
+			Name:      identity.Name,
+			Type:      identity.RollerType,
+			Version:   identity.Version,
+			PublicKey: pubkey,
+			TaskIDs:   *taskIDs,
+			taskChan:  make(chan *message.TaskMsg, 4),
+			metrics:   rMs,
 		}
 		m.rollerPool.Set(pubkey, node)
 	}
 	roller := node.(*rollerNode)
 	// avoid reconnection too frequently.
 	if time.Since(roller.registerTime) < 60 {
-		log.Warn("roller reconnect too frequently", "roller_name", identity.Name, "roller_type", identity.RollerType, "public key", pubkey)
+		log.Warn("roller reconnect too frequently", "prover_name", identity.Name, "roller_type", identity.RollerType, "public key", pubkey)
 		return nil, fmt.Errorf("roller reconnect too frequently")
 	}
 	// update register time and status
@@ -116,7 +116,7 @@ func (m *Manager) freeTaskIDForRoller(pk string, id string) {
 }
 
 // GetNumberOfIdleRollers return the count of idle rollers.
-func (m *Manager) GetNumberOfIdleRollers(rollerType message.ProveType) (count int) {
+func (m *Manager) GetNumberOfIdleRollers(rollerType message.ProofType) (count int) {
 	for _, pk := range m.rollerPool.Keys() {
 		if val, ok := m.rollerPool.Get(pk); ok {
 			r := val.(*rollerNode)
@@ -128,7 +128,7 @@ func (m *Manager) GetNumberOfIdleRollers(rollerType message.ProveType) (count in
 	return count
 }
 
-func (m *Manager) selectRoller(rollerType message.ProveType) *rollerNode {
+func (m *Manager) selectRoller(rollerType message.ProofType) *rollerNode {
 	pubkeys := m.rollerPool.Keys()
 	for len(pubkeys) > 0 {
 		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubkeys))))
