@@ -167,6 +167,9 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 			return fmt.Errorf("failed to GetHeaderNyNumber: %v. number: %v", err2, number)
 		}
 		block, err2 := w.GetBlockByHash(ctx, header.Hash())
+		if block.RowConsumption == nil {
+			return fmt.Errorf("fetched Block doesn't contain RowConsumption. number: %v", number)
+		}
 		if err2 != nil {
 			return fmt.Errorf("failed to GetBlockByNumber: %v. number: %v", err2, number)
 		}
@@ -178,11 +181,16 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
 		}
 
+		var rowConsumption uint64 = 0
+		for _, subCircuit := range *block.RowConsumption {
+			rowConsumption += subCircuit.Rows
+		}
+
 		blocks = append(blocks, &types.WrappedBlock{
 			Header:           block.Header(),
 			Transactions:     txsToTxsData(block.Transactions()),
 			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
-			RowConsumption:   block.RowConsumption.Rows,
+			RowConsumption:   rowConsumption,
 		})
 	}
 

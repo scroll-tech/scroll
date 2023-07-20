@@ -81,6 +81,8 @@ github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20230714150959-d80070bd87da h1:/jFge3StTJRWfrBJkz6qD6HXNIFc92skIfwmTAkddjw=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20230714150959-d80070bd87da/go.mod h1:45PZqlQCqV0dU4o4+SE8LoJLEvXkK5j45ligvbih9QY=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20230719161034-a677ee3ccf91 h1://eJTYTZTQsxKuoKcy1UmVEq91hqdrhz64JesXonapg=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20230719161034-a677ee3ccf91/go.mod h1:45PZqlQCqV0dU4o4+SE8LoJLEvXkK5j45ligvbih9QY=
 github.com/scroll-tech/zktrie v0.5.3 h1:jjzQchGU6XPL5s1C5bwwivSadefSRuYASE9OL7UKAdE=
 github.com/scroll-tech/zktrie v0.5.3/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
