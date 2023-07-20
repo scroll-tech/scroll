@@ -167,12 +167,14 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 			return fmt.Errorf("failed to GetHeaderNyNumber: %v. number: %v", err2, number)
 		}
 		block, err2 := w.GetBlockByHash(ctx, header.Hash())
-		if block.RowConsumption == nil {
-			return fmt.Errorf("fetched Block doesn't contain RowConsumption. number: %v", number)
-		}
 		if err2 != nil {
 			return fmt.Errorf("failed to GetBlockByNumber: %v. number: %v", err2, number)
 		}
+		// Commented this check because for now l2geth doesn't store RowConsumption info for blocks
+		// Should be uncommented after this functionality added
+		// if block.RowConsumption == nil {
+		// 	return fmt.Errorf("fetched Block doesn't contain RowConsumption. number: %v", number)
+		// }
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
 
