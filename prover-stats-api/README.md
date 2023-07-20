@@ -6,7 +6,7 @@
 
 ```
 cd ./prover-stats-api
-go build -o prover-stats ./cmd/
+make build
 ./prover-stats --config=./conf/config.json
 ```
 
