@@ -1,4 +1,4 @@
-package message_proof
+package messageproof
 
 import (
 	"math/big"

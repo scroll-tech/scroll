@@ -2,7 +2,23 @@
 
 pragma solidity ^0.8.0;
 
+// solhint-disable no-inline-assembly
+
 library WithdrawTrieVerifier {
+    /// @dev Verify the merkle proof given root, leaf node and proof.
+    ///
+    /// Vulnerability:
+    ///   The initially provided message hash can be hashed with the first hash of the proof,
+    ///   thereby giving an intermediate node of the trie. This can then be used with a shortened
+    ///   proof to pass the verification, which may lead to replayability.
+    ///
+    ///   However, it is designed to verify the withdraw trie in `L2MessageQueue`. The `_hash` given
+    ///   in the parameter is always a leaf node. So we assume the length of proof is correct and
+    ///   cannot be shortened.
+    /// @param _root The expected root node hash of the withdraw trie.
+    /// @param _hash The leaf node hash of the withdraw trie.
+    /// @param _nonce The index of the leaf node from left to right, starting from 0.
+    /// @param _proof The concatenated merkle proof verified the leaf node.
     function verifyMerkleProof(
         bytes32 _root,
         bytes32 _hash,
