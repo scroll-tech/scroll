@@ -35,7 +35,11 @@ contract ScrollStandardERC20Factory is Ownable, IScrollStandardERC20Factory {
     function deployL2Token(address _gateway, address _l1Token) external onlyOwner returns (address) {
         bytes32 _salt = _getSalt(_gateway, _l1Token);
 
-        return Clones.cloneDeterministic(implementation, _salt);
+        address _l2Token = Clones.cloneDeterministic(implementation, _salt);
+
+        emit DeployToken(_l1Token, _l2Token);
+
+        return _l2Token;
     }
 
     function _getSalt(address _gateway, address _l1Token) internal pure returns (bytes32) {

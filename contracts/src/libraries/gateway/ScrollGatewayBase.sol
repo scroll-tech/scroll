@@ -32,6 +32,9 @@ abstract contract ScrollGatewayBase is IScrollGateway {
     /// @dev The status of for non-reentrant check.
     uint256 private _status;
 
+    /// @dev The storage slots for future usage.
+    uint256[46] private __gap;
+
     /**********************
      * Function Modifiers *
      **********************/

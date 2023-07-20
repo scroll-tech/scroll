@@ -127,7 +127,7 @@ function transferOwnership(address newOwner) external nonpayable
 event DeployToken(address indexed _l1Token, address indexed _l2Token)
 ```
 
-
+Emitted when a l2 token is deployed.
 
 
 

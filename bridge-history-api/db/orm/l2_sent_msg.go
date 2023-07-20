@@ -9,6 +9,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// L2SentMsg defines the struct for l2_sent_msg table record
 type L2SentMsg struct {
 	ID             uint64     `json:"id" db:"id"`
 	OriginalSender string     `json:"original_sender" db:"original_sender"`
@@ -89,8 +90,8 @@ func (l *l2SentMsgOrm) GetLatestSentMsgHeightOnL2() (int64, error) {
 	return 0, nil
 }
 
-func (l *l2SentMsgOrm) UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error {
-	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update l2_sent_msg set msg_proof = ?, batch_index = ? where msg_hash = ? AND deleted_at IS NULL;"), proof, batch_index, msgHash); err != nil {
+func (l *l2SentMsgOrm) UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batchIndex uint64) error {
+	if _, err := dbTx.ExecContext(ctx, l.db.Rebind("update l2_sent_msg set msg_proof = ?, batch_index = ? where msg_hash = ? AND deleted_at IS NULL;"), proof, batchIndex, msgHash); err != nil {
 		return err
 	}
 	return nil
@@ -117,6 +118,11 @@ func (l *l2SentMsgOrm) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight u
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Error("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &L2SentMsg{}
 		if err = rows.StructScan(msg); err != nil {
@@ -158,6 +164,11 @@ func (l *l2SentMsgOrm) GetClaimableL2SentMsgByAddressWithOffset(address string, 
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Error("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &L2SentMsg{}
 		if err = rows.StructScan(msg); err != nil {

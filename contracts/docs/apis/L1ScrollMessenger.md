@@ -225,7 +225,7 @@ function prevReplayIndex(uint256) external view returns (uint256)
 
 Mapping from queue index to previous replay queue index.
 
-*If a message `x` was replayed 3 times with index `q1`, `q2` and `q3`, the value of `prevReplayIndex` and `replayStates` will be `replayStates[hash(x)].lastIndex = q3`, `replayStates[hash(x)].times = 3`, `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1` and `prevReplayIndex[q1] = x`.*
+*If a message `x` was replayed 3 times with index `q1`, `q2` and `q3`, the value of `prevReplayIndex` and `replayStates` will be `replayStates[hash(x)].lastIndex = q3`, `replayStates[hash(x)].times = 3`, `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1`, `prevReplayIndex[q1] = x` and `prevReplayIndex[x]=nil`.The index `x` that `prevReplayIndex[x]=nil` is used as the termination of the list. Usually we use `0` to represent `nil`, but we cannot distinguish it with the first message with index zero. So a nonzero offset `1` is added to the value of `prevReplayIndex[x]` to avoid such situation.*
 
 #### Parameters
 
