@@ -10,7 +10,7 @@ require (
 	github.com/mattn/go-isatty v0.0.19
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230607142419-983d63024433
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230719161034-a677ee3ccf91
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
 	gorm.io/driver/postgres v1.5.0
@@ -47,7 +47,7 @@ require (
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
-	github.com/holiman/uint256 v1.2.2 // indirect
+	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.15 // indirect
 	github.com/influxdata/influxdb v1.8.3 // indirect

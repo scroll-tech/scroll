@@ -6,7 +6,7 @@ require (
 	github.com/agiledragon/gomonkey/v2 v2.9.0
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230607142419-983d63024433
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230719161034-a677ee3ccf91
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
@@ -26,7 +26,7 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/holiman/uint256 v1.2.2 // indirect
+	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.15 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
