@@ -181,6 +181,22 @@ The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 |---|---|---|
 | _0 | address | undefined |
 
+### onDropMessage
+
+```solidity
+function onDropMessage(bytes _message) external payable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _message | bytes | undefined |
+
 ### onERC1155BatchReceived
 
 ```solidity
@@ -380,6 +396,25 @@ Emitted when the ERC1155 NFT is batch deposited to gateway in layer 1.
 | _tokenIds  | uint256[] | undefined |
 | _amounts  | uint256[] | undefined |
 
+### BatchRefundERC1155
+
+```solidity
+event BatchRefundERC1155(address indexed token, address indexed recipient, uint256[] tokenIds, uint256[] amounts)
+```
+
+Emitted when some ERC1155 token is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenIds  | uint256[] | undefined |
+| amounts  | uint256[] | undefined |
+
 ### DepositERC1155
 
 ```solidity
@@ -475,6 +510,25 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 |---|---|---|
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
+
+### RefundERC1155
+
+```solidity
+event RefundERC1155(address indexed token, address indexed recipient, uint256 tokenId, uint256 amount)
+```
+
+Emitted when some ERC1155 token is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenId  | uint256 | undefined |
+| amount  | uint256 | undefined |
 
 ### UpdateTokenMapping
 

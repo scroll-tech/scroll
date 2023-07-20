@@ -149,9 +149,11 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 			baseFee = block.BaseFee.Uint64()
 		}
 		blocks = append(blocks, orm.L1Block{
-			Number:  uint64(height),
-			Hash:    block.Hash().String(),
-			BaseFee: baseFee,
+			Number:          uint64(height),
+			Hash:            block.Hash().String(),
+			BaseFee:         baseFee,
+			GasOracleStatus: int16(types.GasOraclePending),
+			BlockStatus:     int16(types.L1BlockPending),
 		})
 	}
 

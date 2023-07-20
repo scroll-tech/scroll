@@ -9,6 +9,10 @@ import {IL1MessageQueue} from "./IL1MessageQueue.sol";
 
 import {AddressAliasHelper} from "../../libraries/common/AddressAliasHelper.sol";
 
+// solhint-disable no-empty-blocks
+// solhint-disable no-inline-assembly
+// solhint-disable reason-string
+
 /// @title L1MessageQueue
 /// @notice This contract will hold all L1 to L2 messages.
 /// Each appended message is assigned with a unique and increasing `uint256` index.
@@ -56,6 +60,15 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
 
     /// @notice The max gas limit of L1 transactions.
     uint256 public maxGasLimit;
+
+    /**********************
+     * Function Modifiers *
+     **********************/
+
+    modifier onlyMessenger() {
+        require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
+        _;
+    }
 
     /***************
      * Constructor *
@@ -248,9 +261,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         address _target,
         uint256 _gasLimit,
         bytes calldata _data
-    ) external override {
-        require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
-
+    ) external override onlyMessenger {
         // validate gas limit
         _validateGasLimit(_gasLimit, _data);
 
@@ -300,6 +311,16 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         }
 
         emit DequeueTransaction(_startIndex, _count, _skippedBitmap);
+    }
+
+    /// @inheritdoc IL1MessageQueue
+    function dropCrossDomainMessage(uint256 _index) external onlyMessenger {
+        require(_index < pendingQueueIndex, "cannot drop pending message");
+        require(messageQueue[_index] != bytes32(0), "message already dropped or executed");
+
+        messageQueue[_index] = bytes32(0);
+
+        emit DropTransaction(_index);
     }
 
     /************************

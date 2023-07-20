@@ -33,12 +33,12 @@ type Batch struct {
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
 	// proof
-	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status"`
+	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
 	ProvingStatus     int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
 	Proof             []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt          *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	ProofTimeSec      int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	ProofTimeSec      int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 
 	// rollup
 	RollupStatus   int16      `json:"rollup_status" gorm:"column:rollup_status;default:1"`
@@ -263,6 +263,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),
 		RollupStatus:      int16(types.RollupPending),
+		OracleStatus:      int16(types.GasOraclePending),
 	}
 
 	db := o.db
@@ -277,25 +278,6 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 	return &newBatch, nil
-}
-
-// UpdateSkippedBatches updates the skipped batches in the database.
-func (o *Batch) UpdateSkippedBatches(ctx context.Context) (uint64, error) {
-	provingStatusList := []interface{}{
-		int(types.ProvingTaskSkipped),
-		int(types.ProvingTaskFailed),
-	}
-
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("rollup_status", int(types.RollupCommitted))
-	db = db.Where("proving_status IN (?)", provingStatusList)
-
-	result := db.Update("rollup_status", int(types.RollupFinalizationSkipped))
-	if result.Error != nil {
-		return 0, fmt.Errorf("Batch.UpdateSkippedBatches error: %w", result.Error)
-	}
-	return uint64(result.RowsAffected), nil
 }
 
 // UpdateL2GasOracleStatusAndOracleTxHash updates the L2 gas oracle status and transaction hash for a batch.

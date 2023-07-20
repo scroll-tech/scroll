@@ -1,4 +1,4 @@
-package cross_msg
+package crossmsg
 
 import (
 	"context"
@@ -18,7 +18,8 @@ import (
 	"bridge-history-api/utils"
 )
 
-type CrossMsgFetcher struct {
+// MsgFetcher fetches cross message events from blockchain and saves them to database
+type MsgFetcher struct {
 	ctx           context.Context
 	config        *config.LayerConfig
 	db            db.OrmFactory
@@ -32,8 +33,9 @@ type CrossMsgFetcher struct {
 	reorgEndCh    chan struct{}
 }
 
-func NewCrossMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*CrossMsgFetcher, error) {
-	crossMsgFetcher := &CrossMsgFetcher{
+// NewMsgFetcher creates a new MsgFetcher instance
+func NewMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*MsgFetcher, error) {
+	msgFetcher := &MsgFetcher{
 		ctx:           ctx,
 		config:        config,
 		db:            db,
@@ -45,11 +47,12 @@ func NewCrossMsgFetcher(ctx context.Context, config *config.LayerConfig, db db.O
 		reorgStartCh:  make(chan struct{}),
 		reorgEndCh:    make(chan struct{}),
 	}
-	return crossMsgFetcher, nil
+	return msgFetcher, nil
 }
 
-func (c *CrossMsgFetcher) Start() {
-	log.Info("CrossMsgFetcher Start")
+// Start the MsgFetcher
+func (c *MsgFetcher) Start() {
+	log.Info("MsgFetcher Start")
 	// fetch missing events from finalized blocks, we don't handle reorgs here
 	c.forwardFetchAndSaveMissingEvents(c.config.Confirmation)
 
@@ -94,12 +97,13 @@ func (c *CrossMsgFetcher) Start() {
 	}()
 }
 
-func (c *CrossMsgFetcher) Stop() {
-	log.Info("CrossMsgFetcher Stop")
+// Stop the MsgFetcher and log the info
+func (c *MsgFetcher) Stop() {
+	log.Info("MsgFetcher Stop")
 }
 
 // forwardFetchAndSaveMissingEvents will fetch all events from the latest processed height to the latest block number.
-func (c *CrossMsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) {
+func (c *MsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) {
 	// if we fetch to the latest block, shall not exceed cachedHeaders
 	var number uint64
 	var err error
@@ -124,7 +128,7 @@ func (c *CrossMsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) 
 	if processedHeight <= 0 || processedHeight < int64(c.config.StartHeight) {
 		processedHeight = int64(c.config.StartHeight)
 	} else {
-		processedHeight += 1
+		processedHeight++
 	}
 	for from := processedHeight; from <= int64(number); from += fetchLimit {
 		to := from + fetchLimit - 1
@@ -139,7 +143,7 @@ func (c *CrossMsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) 
 	}
 }
 
-func (c *CrossMsgFetcher) fetchMissingLatestHeaders() {
+func (c *MsgFetcher) fetchMissingLatestHeaders() {
 	var start int64
 	number, err := c.client.BlockNumber(c.ctx)
 	if err != nil {
@@ -159,7 +163,7 @@ func (c *CrossMsgFetcher) fetchMissingLatestHeaders() {
 			close(c.reorgEndCh)
 			return
 		default:
-			header, err := c.client.HeaderByNumber(c.ctx, big.NewInt(int64(i)))
+			header, err := c.client.HeaderByNumber(c.ctx, big.NewInt(i))
 			if err != nil {
 				log.Error("failed to get latest header", "err", err)
 				return
@@ -181,9 +185,9 @@ func (c *CrossMsgFetcher) fetchMissingLatestHeaders() {
 			c.mu.Lock()
 			index, ok, validHeaders := BackwardFindReorgBlock(c.ctx, c.cachedHeaders, c.client, header)
 			if !ok {
-				log.Error("Reorg happended too earlier than cached headers", "reorg height", header.Number)
-				num, err := utils.GetSafeBlockNumber(c.ctx, c.client, c.config.Confirmation)
-				if err != nil {
+				log.Error("Reorg happened too earlier than cached headers", "reorg height", header.Number)
+				num, getSafeErr := utils.GetSafeBlockNumber(c.ctx, c.client, c.config.Confirmation)
+				if getSafeErr != nil {
 					log.Crit("Can not get safe number during reorg, quit the process", "err", err)
 				}
 				// clear all our saved data, because no data is safe now
