@@ -22,7 +22,6 @@ import (
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 var (
@@ -30,7 +29,6 @@ var (
 	bridgeL2BatchesCommittedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesFinalizedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommittedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
-	bridgeL2BatchesSkippedTotalCounter            = gethMetrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
 )
 
 // Layer2Relayer is responsible for
@@ -171,8 +169,8 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	chunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{{
+	chunk := &types.Chunk{
+		Blocks: []*types.WrappedBlock{{
 			Header:           genesis,
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
@@ -191,7 +189,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		}
 
 		var batch *orm.Batch
-		batch, err = r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*bridgeTypes.Chunk{chunk}, dbTX)
+		batch, err = r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk}, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
@@ -319,7 +317,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 	for _, batch := range pendingBatches {
 		// get current header and parent header.
-		currentBatchHeader, err := bridgeTypes.DecodeBatchHeader(batch.BatchHeader)
+		currentBatchHeader, err := types.DecodeBatchHeader(batch.BatchHeader)
 		if err != nil {
 			log.Error("Failed to decode batch header", "index", batch.Index, "error", err)
 			return
@@ -346,7 +344,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
-			var wrappedBlocks []*bridgeTypes.WrappedBlock
+			var wrappedBlocks []*types.WrappedBlock
 			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				log.Error("Failed to fetch wrapped blocks",
@@ -354,7 +352,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 					"end number", c.EndBlockNumber, "error", err)
 				return
 			}
-			chunk := &bridgeTypes.Chunk{
+			chunk := &types.Chunk{
 				Blocks: wrappedBlocks,
 			}
 			var chunkBytes []byte
@@ -395,15 +393,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessCommittedBatches() {
-	// set skipped batches in a single db operation
-	if count, err := r.batchOrm.UpdateSkippedBatches(r.ctx); err != nil {
-		log.Error("UpdateSkippedBatches failed", "err", err)
-		// continue anyway
-	} else if count > 0 {
-		bridgeL2BatchesSkippedTotalCounter.Inc(int64(count))
-		log.Info("Skipping batches", "count", count)
-	}
-
 	// retrieves the earliest batch whose rollup status is 'committed'
 	fields := map[string]interface{}{
 		"rollup_status": types.RollupCommitted,
@@ -431,11 +420,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		// It's an intermediate state. The roller manager received the proof but has not verified
 		// the proof yet. We don't roll up the proof until it's verified.
 		return
-	case types.ProvingTaskFailed, types.ProvingTaskSkipped:
-		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
-		if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
-			log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
-		}
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
 		success := false
@@ -455,8 +439,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		defer func() {
 			// TODO: need to revisit this and have a more fine-grained error handling
 			if !success {
-				log.Info("Failed to upload the proof, change rollup status to FinalizationSkipped", "hash", hash)
-				if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
+				log.Info("Failed to upload the proof, change rollup status to RollupFinalizeFailed", "hash", hash)
+				if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizeFailed); err != nil {
 					log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
 				}
 			}

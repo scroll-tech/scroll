@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -67,6 +68,8 @@ func TestMonitorMetrics(t *testing.T) {
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	svrPort := strconv.FormatInt(port.Int64()+52000, 10)
 	coordinatorApp.RunApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
+
+	time.Sleep(time.Second)
 
 	// Get coordinator monitor metrics.
 	resp, err := http.Get("http://localhost:" + svrPort)

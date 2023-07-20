@@ -8,9 +8,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 // ChunkProposer proposes chunks based on available unchunked blocks.
@@ -58,9 +59,8 @@ func (p *ChunkProposer) TryProposeChunk() {
 	}
 }
 
-func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
+func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	if chunk == nil {
-		log.Warn("proposed chunk is nil, cannot update in DB")
 		return nil
 	}
 
@@ -78,14 +78,13 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *bridgeTypes.Chunk) error {
 	return err
 }
 
-func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
+func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks(p.ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(blocks) == 0 {
-		log.Warn("no un-chunked blocks")
 		return nil, nil
 	}
 
@@ -166,5 +165,5 @@ func (p *ChunkProposer) proposeChunk() (*bridgeTypes.Chunk, error) {
 		)
 		return nil, nil
 	}
-	return &bridgeTypes.Chunk{Blocks: blocks}, nil
+	return &types.Chunk{Blocks: blocks}, nil
 }
