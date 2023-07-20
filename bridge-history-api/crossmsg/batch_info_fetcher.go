@@ -94,8 +94,8 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 	} else {
 		startHeight = latestBatch.CommitHeight + 1
 	}
-	for from := startHeight; number >= from; from += uint64(fetchLimit) {
-		to := from + uint64(fetchLimit) - 1
+	for from := startHeight; number >= from; from += fetchLimit {
+		to := from + fetchLimit - 1
 		// number - confirmation can never less than 0 since the for loop condition
 		// but watch out the overflow
 		if to > number {

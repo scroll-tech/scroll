@@ -56,7 +56,7 @@ func (r *RollupBatch) GetRollupBatchByIndex(index uint64) (*RollupBatch, error) 
 	return result, nil
 }
 
-// BatchInsertRollupBatchDBTx batch insert rollup batch into db and return the transaction
+// BatchInsertRollupBatch batch insert rollup batch into db and return the transaction
 func (r *RollupBatch) BatchInsertRollupBatch(ctx context.Context, batches []*RollupBatch, dbTx ...*gorm.DB) error {
 	if len(batches) == 0 {
 		return nil

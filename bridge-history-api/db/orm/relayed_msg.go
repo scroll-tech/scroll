@@ -78,7 +78,7 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL2() (uint64, error) {
 	return result.Height, nil
 }
 
-// BatchInsertRelayedMsgDBTx batch insert relayed msg into db and return the transaction
+// BatchInsertRelayedMsg batch insert relayed msg into db and return the transaction
 func (r *RelayedMsg) BatchInsertRelayedMsg(ctx context.Context, messages []*RelayedMsg, dbTx ...*gorm.DB) error {
 	if len(messages) == 0 {
 		return nil
