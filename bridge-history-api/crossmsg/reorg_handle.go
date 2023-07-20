@@ -1,17 +1,17 @@
 package crossmsg
 
 import (
+	"bridge-history-api/db/orm"
 	"context"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
-
-	"bridge-history-api/db"
+	"gorm.io/gorm"
 )
 
 // ReorgHandling handles reorg function type
-type ReorgHandling func(ctx context.Context, reorgHeight int64, db *db.OrmFactory) error
+type ReorgHandling func(ctx context.Context, reorgHeight uint64, db *gorm.DB) error
 
 func reverseArray(arr []*types.Header) []*types.Header {
 	for i := 0; i < len(arr)/2; i++ {
@@ -60,64 +60,48 @@ func BackwardFindReorgBlock(ctx context.Context, headers []*types.Header, client
 }
 
 // L1ReorgHandling handles l1 reorg
-func L1ReorgHandling(ctx context.Context, reorgHeight int64, l1db *db.OrmFactory) error {
-	dbTx := l1db.Db.Begin()
-	var err error
-	dbTx, err = l1db.DeleteL1CrossMsgAfterHeightDBTx(dbTx, reorgHeight)
+func L1ReorgHandling(ctx context.Context, reorgHeight uint64, db *gorm.DB) error {
+	l1CrossMsgOrm := orm.NewL1CrossMsg(db)
+	relayedOrm := orm.NewRelayedMsg(db)
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := l1CrossMsgOrm.DeleteL1CrossMsgAfterHeight(ctx, reorgHeight, tx); err != nil {
+			log.Error("delete l1 cross msg from height", "height", reorgHeight, "err", err)
+			return err
+		}
+		if err := relayedOrm.DeleteL1RelayedHashAfterHeight(ctx, reorgHeight, tx); err != nil {
+			log.Error("delete l1 relayed msg from height", "height", reorgHeight, "err", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Crit("delete l1 cross msg from height", "height", reorgHeight, "err", err)
+		log.Crit("l1 reorg handling failed", "err", err)
 	}
-	dbTx, err = l1db.DeleteL1RelayedHashAfterHeightDBTx(dbTx, reorgHeight)
-	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Crit("delete l1 relayed hash from height", "height", reorgHeight, "err", err)
-	}
-	if err = dbTx.Commit().Error; err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Error("commit tx failed", "err", err)
-		return err
-	}
-	return nil
+	return err
 }
 
 // L2ReorgHandling handles l2 reorg
-func L2ReorgHandling(ctx context.Context, reorgHeight int64, l2db *db.OrmFactory) error {
-	dbTx := l2db.Db.Begin()
-	var err error
-	dbTx, err = l2db.DeleteL2CrossMsgFromHeightDBTx(dbTx, reorgHeight)
+func L2ReorgHandling(ctx context.Context, reorgHeight uint64, db *gorm.DB) error {
+	l2CrossMsgOrm := orm.NewL2CrossMsg(db)
+	relayedOrm := orm.NewRelayedMsg(db)
+	l2SentMsgOrm := orm.NewL2SentMsg(db)
+	err := db.Transaction(func(tx *gorm.DB) error {
+		if err := l2CrossMsgOrm.DeleteL2CrossMsgFromHeight(ctx, reorgHeight, tx); err != nil {
+			log.Error("delete l2 cross msg from height", "height", reorgHeight, "err", err)
+			return err
+		}
+		if err := relayedOrm.DeleteL2RelayedHashAfterHeight(ctx, reorgHeight, tx); err != nil {
+			log.Error("delete l2 relayed msg from height", "height", reorgHeight, "err", err)
+			return err
+		}
+		if err := l2SentMsgOrm.DeleteL2SentMsgAfterHeight(ctx, reorgHeight, tx); err != nil {
+			log.Error("delete l2 sent msg from height", "height", reorgHeight, "err", err)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Crit("delete l2 cross msg from height", "height", reorgHeight, "err", err)
+		log.Crit("l2 reorg handling failed", "err", err)
 	}
-	dbTx, err = l2db.DeleteL2RelayedHashAfterHeightDBTx(dbTx, reorgHeight)
-	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Crit("delete l2 relayed hash from height", "height", reorgHeight, "err", err)
-	}
-	dbTx, err = l2db.DeleteL2SentMsgAfterHeightDBTx(dbTx, reorgHeight)
-	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Crit("delete l2 sent msg from height", "height", reorgHeight, "err", err)
-	}
-	if err = dbTx.Commit().Error; err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Error("commit tx failed", "err", err)
-		return err
-	}
-	return nil
+	return err
 }

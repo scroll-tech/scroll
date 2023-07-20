@@ -6,8 +6,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"gorm.io/gorm"
 
-	"bridge-history-api/db"
+	database "bridge-history-api/db"
 	"bridge-history-api/db/orm"
 )
 
@@ -54,24 +55,26 @@ type HistoryService interface {
 }
 
 // NewHistoryService returns a service backed with a "db"
-func NewHistoryService(db *db.OrmFactory) HistoryService {
+func NewHistoryService(db *gorm.DB) HistoryService {
 	service := &historyBackend{db: db, prefix: "Scroll-Bridge-History-Server"}
 	return service
 }
 
 type historyBackend struct {
 	prefix string
-	db     *db.OrmFactory
+	db     *gorm.DB
 }
 
 // GetCrossTxClaimInfo get UserClaimInfos by address
-func GetCrossTxClaimInfo(msgHash string, db *db.OrmFactory) *UserClaimInfo {
-	l2sentMsg, err := db.GetL2SentMsgByHash(msgHash)
+func GetCrossTxClaimInfo(msgHash string, db *gorm.DB) *UserClaimInfo {
+	l2SentMsgOrm := orm.NewL2SentMsg(db)
+	rollupOrm := orm.NewRollupBatch(db)
+	l2sentMsg, err := l2SentMsgOrm.GetL2SentMsgByHash(msgHash)
 	if err != nil {
 		log.Debug("GetCrossTxClaimInfo failed", "error", err)
 		return &UserClaimInfo{}
 	}
-	batch, err := db.GetRollupBatchByIndex(l2sentMsg.BatchIndex)
+	batch, err := rollupOrm.GetRollupBatchByIndex(l2sentMsg.BatchIndex)
 	if err != nil {
 		log.Debug("GetCrossTxClaimInfo failed", "error", err)
 		return &UserClaimInfo{}
@@ -89,8 +92,9 @@ func GetCrossTxClaimInfo(msgHash string, db *db.OrmFactory) *UserClaimInfo {
 
 }
 
-func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db *db.OrmFactory) {
-	relayed, err := db.GetRelayedMsgByHash(msgHash)
+func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db *gorm.DB) {
+	relayed := orm.NewRelayedMsg(db)
+	relayed, err := relayed.GetRelayedMsgByHash(msgHash)
 	if err != nil {
 		log.Debug("updateCrossTxHash failed", "error", err)
 		return
@@ -114,11 +118,13 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db *db.OrmFactory)
 // GetClaimableTxsByAddress get all claimable txs under given address
 func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
-	total, err := h.db.GetClaimableL2SentMsgByAddressTotalNum(address.Hex())
+	l2SentMsgOrm := orm.NewL2SentMsg(h.db)
+	l2CrossMsgOrm := orm.NewL2CrossMsg(h.db)
+	total, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressTotalNum(address.Hex())
 	if err != nil || total == 0 {
 		return txHistories, 0, err
 	}
-	results, err := h.db.GetClaimableL2SentMsgByAddressWithOffset(address.Hex(), offset, limit)
+	results, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(address.Hex(), offset, limit)
 	if err != nil || len(results) == 0 {
 		return txHistories, 0, err
 	}
@@ -126,7 +132,7 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 	for _, result := range results {
 		msgHashList = append(msgHashList, result.MsgHash)
 	}
-	crossMsgs, err := h.db.GetL2CrossMsgByMsgHashList(msgHashList)
+	crossMsgs, err := l2CrossMsgOrm.GetL2CrossMsgByMsgHashList(msgHashList)
 	// crossMsgs can be empty, because they can be emitted by user directly call contract
 	if err != nil {
 		return txHistories, 0, err
@@ -157,11 +163,12 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 // GetTxsByAddress get all txs under given address
 func (h *historyBackend) GetTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
-	total, err := h.db.GetTotalCrossMsgCountByAddress(address.String())
+	utilOrm := database.NewUtilDBOrm(h.db)
+	total, err := utilOrm.GetTotalCrossMsgCountByAddress(address.String())
 	if err != nil || total == 0 {
 		return txHistories, 0, err
 	}
-	result, err := h.db.GetCrossMsgsByAddressWithOffset(address.String(), offset, limit)
+	result, err := utilOrm.GetCrossMsgsByAddressWithOffset(address.String(), offset, limit)
 
 	if err != nil {
 		return nil, 0, err
@@ -189,8 +196,10 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int, lim
 // GetTxsByHashes get tx infos under given tx hashes
 func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error) {
 	txHistories := make([]*TxHistoryInfo, 0)
+	l1CrossMsgOrm := orm.NewL1CrossMsg(h.db)
+	l2CrossMsgOrm := orm.NewL2CrossMsg(h.db)
 	for _, hash := range hashes {
-		l1result, err := h.db.GetL1CrossMsgByHash(common.HexToHash(hash))
+		l1result, err := l1CrossMsgOrm.GetL1CrossMsgByHash(common.HexToHash(hash))
 		if err != nil {
 			return nil, err
 		}
@@ -211,7 +220,7 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 			txHistories = append(txHistories, txHistory)
 			continue
 		}
-		l2result, err := h.db.GetL2CrossMsgByHash(common.HexToHash(hash))
+		l2result, err := l2CrossMsgOrm.GetL2CrossMsgByHash(common.HexToHash(hash))
 		if err != nil {
 			return nil, err
 		}

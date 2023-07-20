@@ -7,9 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	"gorm.io/gorm"
 
 	"bridge-history-api/crossmsg/messageproof"
-	"bridge-history-api/db"
+	"bridge-history-api/db/orm"
 	"bridge-history-api/utils"
 )
 
@@ -21,12 +22,13 @@ type BatchInfoFetcher struct {
 	confirmation         uint64
 	blockTimeInSec       int
 	client               *ethclient.Client
-	db                   *db.OrmFactory
+	db                   *gorm.DB
+	rollupOrm            *orm.RollupBatch
 	msgProofUpdater      *messageproof.MsgProofUpdater
 }
 
 // NewBatchInfoFetcher creates a new BatchInfoFetcher instance
-func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db *db.OrmFactory, msgProofUpdater *messageproof.MsgProofUpdater) *BatchInfoFetcher {
+func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db *gorm.DB, msgProofUpdater *messageproof.MsgProofUpdater) *BatchInfoFetcher {
 	return &BatchInfoFetcher{
 		ctx:                  ctx,
 		scrollChainAddr:      scrollChainAddr,
@@ -80,7 +82,7 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 		log.Error("Can not get latest block number: ", "err", err)
 		return err
 	}
-	latestBatch, err := b.db.GetLatestRollupBatch()
+	latestBatch, err := b.rollupOrm.GetLatestRollupBatch()
 	if err != nil {
 		log.Error("Can not get latest BatchInfo: ", "err", err)
 		return err

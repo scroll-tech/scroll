@@ -12,9 +12,9 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/modern-go/reflect2"
+	"gorm.io/gorm"
 
 	"bridge-history-api/config"
-	"bridge-history-api/db"
 	"bridge-history-api/utils"
 )
 
@@ -22,7 +22,7 @@ import (
 type MsgFetcher struct {
 	ctx           context.Context
 	config        *config.LayerConfig
-	db            *db.OrmFactory
+	db            *gorm.DB
 	client        *ethclient.Client
 	worker        *FetchEventWorker
 	reorgHandling ReorgHandling
@@ -34,7 +34,7 @@ type MsgFetcher struct {
 }
 
 // NewMsgFetcher creates a new MsgFetcher instance
-func NewMsgFetcher(ctx context.Context, config *config.LayerConfig, db *db.OrmFactory, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*MsgFetcher, error) {
+func NewMsgFetcher(ctx context.Context, config *config.LayerConfig, db *gorm.DB, client *ethclient.Client, worker *FetchEventWorker, addressList []common.Address, reorg ReorgHandling) (*MsgFetcher, error) {
 	msgFetcher := &MsgFetcher{
 		ctx:           ctx,
 		config:        config,
@@ -125,17 +125,18 @@ func (c *MsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) {
 		log.Error(fmt.Sprintf("%s: can not get latest processed block height", c.worker.Name))
 	}
 	log.Info(fmt.Sprintf("%s: ", c.worker.Name), "height", processedHeight)
-	if processedHeight <= 0 || processedHeight < int64(c.config.StartHeight) {
-		processedHeight = int64(c.config.StartHeight)
+	if processedHeight <= 0 || processedHeight < c.config.StartHeight {
+		processedHeight = c.config.StartHeight
 	} else {
 		processedHeight++
 	}
-	for from := processedHeight; from <= int64(number); from += fetchLimit {
+	for from := processedHeight; from <= number; from += fetchLimit {
 		to := from + fetchLimit - 1
-		if to > int64(number) {
-			to = int64(number)
+		if to > number {
+			to = number
 		}
-		err := c.worker.F(c.ctx, c.client, c.db, from, to, c.addressList)
+		// watch for overflow here, tho its unlikely to happen
+		err := c.worker.F(c.ctx, c.client, c.db, int64(from), int64(to), c.addressList)
 		if err != nil {
 			log.Error(fmt.Sprintf("%s: failed!", c.worker.Name), "err", err)
 			break
@@ -191,7 +192,7 @@ func (c *MsgFetcher) fetchMissingLatestHeaders() {
 					log.Crit("Can not get safe number during reorg, quit the process", "err", err)
 				}
 				// clear all our saved data, because no data is safe now
-				err = c.reorgHandling(c.ctx, int64(num), c.db)
+				err = c.reorgHandling(c.ctx, num, c.db)
 				// if handling success then we can update the cachedHeaders
 				if err == nil {
 					c.cachedHeaders = c.cachedHeaders[:0]
@@ -200,7 +201,7 @@ func (c *MsgFetcher) fetchMissingLatestHeaders() {
 				c.reorgEndCh <- struct{}{}
 				return
 			}
-			err = c.reorgHandling(c.ctx, c.cachedHeaders[index].Number.Int64(), c.db)
+			err = c.reorgHandling(c.ctx, c.cachedHeaders[index].Number.Uint64(), c.db)
 			// if handling success then we can update the cachedHeaders
 			if err == nil {
 				c.cachedHeaders = c.cachedHeaders[:index+1]

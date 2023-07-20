@@ -8,23 +8,24 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	"gorm.io/gorm"
 
 	backendabi "bridge-history-api/abi"
-	"bridge-history-api/db"
+	"bridge-history-api/db/orm"
 	"bridge-history-api/utils"
 )
 
 // Todo : read from config
 var (
 	// the number of blocks fetch per round
-	fetchLimit = int64(3000)
+	fetchLimit = uint64(3000)
 )
 
 // FetchAndSave is a function type that fetches events from blockchain and saves them to database
-type FetchAndSave func(ctx context.Context, client *ethclient.Client, database *db.OrmFactory, from int64, to int64, addressList []common.Address) error
+type FetchAndSave func(ctx context.Context, client *ethclient.Client, database *gorm.DB, from int64, to int64, addressList []common.Address) error
 
 // GetLatestProcessed is a function type that gets the latest processed block height from database
-type GetLatestProcessed func(db *db.OrmFactory) (int64, error)
+type GetLatestProcessed func(db *gorm.DB) (uint64, error)
 
 // FetchEventWorker defines worker with fetch and save function, processed number getter, and name
 type FetchEventWorker struct {
@@ -34,13 +35,15 @@ type FetchEventWorker struct {
 }
 
 // GetLatestL1ProcessedHeight get L1 the latest processed height
-func GetLatestL1ProcessedHeight(db *db.OrmFactory) (int64, error) {
-	crossHeight, err := db.GetLatestL1ProcessedHeight()
+func GetLatestL1ProcessedHeight(db *gorm.DB) (uint64, error) {
+	l1CrossMsgOrm := orm.NewL1CrossMsg(db)
+	relayedOrm := orm.NewRelayedMsg(db)
+	crossHeight, err := l1CrossMsgOrm.GetLatestL1ProcessedHeight()
 	if err != nil {
 		log.Error("failed to get L1 cross message processed height: ", "err", err)
 		return 0, err
 	}
-	relayedHeight, err := db.GetLatestRelayedHeightOnL1()
+	relayedHeight, err := relayedOrm.GetLatestRelayedHeightOnL1()
 	if err != nil {
 		log.Error("failed to get L1 relayed message processed height: ", "err", err)
 		return 0, err
@@ -52,18 +55,21 @@ func GetLatestL1ProcessedHeight(db *db.OrmFactory) (int64, error) {
 }
 
 // GetLatestL2ProcessedHeight get L2 latest processed height
-func GetLatestL2ProcessedHeight(db *db.OrmFactory) (int64, error) {
-	crossHeight, err := db.GetLatestL2ProcessedHeight()
+func GetLatestL2ProcessedHeight(db *gorm.DB) (uint64, error) {
+	l2CrossMsgOrm := orm.NewL2CrossMsg(db)
+	relayedOrm := orm.NewRelayedMsg(db)
+	l2SentMsgOrm := orm.NewL2SentMsg(db)
+	crossHeight, err := l2CrossMsgOrm.GetLatestL2ProcessedHeight()
 	if err != nil {
 		log.Error("failed to get L2 cross message processed height", "err", err)
 		return 0, err
 	}
-	relayedHeight, err := db.GetLatestRelayedHeightOnL2()
+	relayedHeight, err := relayedOrm.GetLatestRelayedHeightOnL2()
 	if err != nil {
 		log.Error("failed to get L2 relayed message processed height", "err", err)
 		return 0, err
 	}
-	l2SentHeight, err := db.GetLatestSentMsgHeightOnL2()
+	l2SentHeight, err := l2SentMsgOrm.GetLatestSentMsgHeightOnL2()
 	if err != nil {
 		log.Error("failed to get L2 sent message processed height", "err", err)
 		return 0, err
@@ -79,7 +85,9 @@ func GetLatestL2ProcessedHeight(db *db.OrmFactory) (int64, error) {
 }
 
 // L1FetchAndSaveEvents fetch and save events on L1
-func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, database *db.OrmFactory, from int64, to int64, addrList []common.Address) error {
+func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, db *gorm.DB, from int64, to int64, addrList []common.Address) error {
+	l1CrossMsgOrm := orm.NewL1CrossMsg(db)
+	relayedOrm := orm.NewRelayedMsg(db)
 	query := geth.FilterQuery{
 		FromBlock: big.NewInt(from), // inclusive
 		ToBlock:   big.NewInt(to),   // inclusive
@@ -105,40 +113,28 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		log.Error("l1FetchAndSaveEvents: Failed to parse cross msg event logs", "err", err)
 		return err
 	}
-	dbTx := database.Db.Begin()
-	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
-		return err
-	}
-	dbTx, err = database.BatchInsertL1CrossMsgDBTx(dbTx, depositL1CrossMsgs)
-	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if txErr := l1CrossMsgOrm.BatchInsertL1CrossMsg(ctx, depositL1CrossMsgs); txErr != nil {
+			log.Error("l1FetchAndSaveEvents: Failed to insert cross msg event logs", "err", txErr)
+			return err
 		}
-		log.Crit("l1FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
-	}
-
-	dbTx, err = database.BatchInsertRelayedMsgDBTx(dbTx, relayedMsg)
+		if txErr := relayedOrm.BatchInsertRelayedMsg(ctx, relayedMsg); txErr != nil {
+			log.Error("l1FetchAndSaveEvents: Failed to insert relayed msg event logs", "err", txErr)
+			return err
+		}
+		return nil
+	})
 	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Crit("l1FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
+		log.Crit("l2FetchAndSaveEvents: Failed to finish transaction", "err", err)
 	}
-	if err = dbTx.Commit().Error; err != nil {
-		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Error("l1FetchAndSaveEvents: Failed to commit db transaction", "err", err)
-		return err
-	}
-
 	return nil
 }
 
 // L2FetchAndSaveEvents fetche and save events on L2
-func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, database *db.OrmFactory, from int64, to int64, addrList []common.Address) error {
+func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, db *gorm.DB, from int64, to int64, addrList []common.Address) error {
+	l2CrossMsgOrm := orm.NewL2CrossMsg(db)
+	relayedOrm := orm.NewRelayedMsg(db)
+	l2SentMsgOrm := orm.NewL2SentMsg(db)
 	query := geth.FilterQuery{
 		FromBlock: big.NewInt(from), // inclusive
 		ToBlock:   big.NewInt(to),   // inclusive
@@ -165,49 +161,32 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, databas
 		return err
 	}
 
-	dbTx := database.Db.Begin()
-	if err != nil {
-		log.Error("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
-		return err
-	}
-	dbTx, err = database.BatchInsertL2CrossMsgDBTx(dbTx, depositL2CrossMsgs)
-	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if txErr := l2CrossMsgOrm.BatchInsertL2CrossMsg(ctx, depositL2CrossMsgs); txErr != nil {
+			log.Error("l2FetchAndSaveEvents: Failed to insert cross msg event logs", "err", txErr)
+			return txErr
 		}
-		log.Crit("l2FetchAndSaveEvents: Failed to insert cross msg event logs", "err", err)
-	}
 
-	dbTx, err = database.BatchInsertRelayedMsgDBTx(dbTx, relayedMsg)
+		if txErr := relayedOrm.BatchInsertRelayedMsg(ctx, relayedMsg); txErr != nil {
+			log.Error("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", txErr)
+			return txErr
+		}
+
+		if txErr := l2SentMsgOrm.BatchInsertL2SentMsg(ctx, l2SentMsgs); txErr != nil {
+			log.Error("l2FetchAndSaveEvents: Failed to insert l2 sent message", "err", txErr)
+			return txErr
+		}
+		return nil
+	})
 	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Crit("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", err)
+		log.Crit("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
 	}
-
-	dbTx, err = database.BatchInsertL2SentMsgDBTx(dbTx, l2SentMsgs)
-	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Crit("l2FetchAndSaveEvents: Failed to insert l2 sent message", "err", err)
-	}
-
-	if err = dbTx.Commit().Error; err != nil {
-		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Error("l2FetchAndSaveEvents: Failed to commit db transaction", "err", err)
-		return err
-	}
-
 	return nil
 }
 
 // FetchAndSaveBatchIndex fetche and save batch index
-func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, database *db.OrmFactory, from int64, to int64, scrollChainAddr common.Address) error {
+func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, db *gorm.DB, from int64, to int64, scrollChainAddr common.Address) error {
+	rollupBatchOrm := orm.NewRollupBatch(db)
 	query := geth.FilterQuery{
 		FromBlock: big.NewInt(from), // inclusive
 		ToBlock:   big.NewInt(to),   // inclusive
@@ -226,25 +205,15 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, datab
 		log.Error("FetchAndSaveBatchIndex: Failed to parse batch commit msg event logs", "err", err)
 		return err
 	}
-	dbTx := database.Db.Begin()
-	if err != nil {
-		log.Error("FetchAndSaveBatchIndex: Failed to begin db transaction", "err", err)
-		return err
-	}
-	dbTx, err = database.BatchInsertRollupBatchDBTx(dbTx, rollupBatches)
-	if err != nil {
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if txErr := rollupBatchOrm.BatchInsertRollupBatch(ctx, rollupBatches); txErr != nil {
+			log.Error("FetchAndSaveBatchIndex: Failed to insert batch commit msg event logs", "err", txErr)
+			return txErr
 		}
-		log.Crit("FetchAndSaveBatchIndex: Failed to insert batch commit msg event logs", "err", err)
-	}
-	if err = dbTx.Commit().Error; err != nil {
-		// if we can not insert into DB, there must something wrong, need a on-call member handle the dababase manually
-		if rollBackErr := dbTx.Rollback(); rollBackErr != nil {
-			log.Error("dbTx Rollback failed", "err", rollBackErr)
-		}
-		log.Error("FetchAndSaveBatchIndex: Failed to commit db transaction", "err", err)
-		return err
+		return nil
+	})
+	if err != nil {
+		log.Crit("FetchAndSaveBatchIndex: Failed to begin db transaction", "err", err)
 	}
 	return nil
 }

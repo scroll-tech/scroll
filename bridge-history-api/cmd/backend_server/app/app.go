@@ -3,16 +3,17 @@ package app
 import (
 	"fmt"
 	"os"
+	"scroll-tech/common/database"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/iris-contrib/middleware/cors"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
 	"github.com/urfave/cli/v2"
+	"gorm.io/gorm"
 
 	"bridge-history-api/config"
 	"bridge-history-api/controller"
-	"bridge-history-api/db"
 	"bridge-history-api/service"
 	cutils "bridge-history-api/utils"
 )
@@ -21,7 +22,7 @@ var (
 	app *cli.App
 )
 
-var database *db.OrmFactory
+var db *gorm.DB
 
 func pong(ctx iris.Context) {
 	_, err := ctx.WriteString("pong")
@@ -33,7 +34,7 @@ func pong(ctx iris.Context) {
 func setupQueryByAddressHandler(backendApp *mvc.Application) {
 	// Register Dependencies.
 	backendApp.Register(
-		database,
+		db,
 		service.NewHistoryService,
 	)
 
@@ -44,7 +45,7 @@ func setupQueryByAddressHandler(backendApp *mvc.Application) {
 func setupQueryClaimableHandler(backendApp *mvc.Application) {
 	// Register Dependencies.
 	backendApp.Register(
-		database,
+		db,
 		service.NewHistoryService,
 	)
 
@@ -54,7 +55,7 @@ func setupQueryClaimableHandler(backendApp *mvc.Application) {
 
 func setupQueryByHashHandler(backendApp *mvc.Application) {
 	backendApp.Register(
-		database,
+		db,
 		service.NewHistoryService,
 	)
 	backendApp.Handle(new(controller.QueryHashController))
@@ -86,13 +87,16 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	database, err = db.NewOrmFactory(cfg.DB)
-	if err != nil {
-		log.Crit("can not connect to database", "err", err)
+	dbCfg := &database.Config{
+		DriverName: cfg.DB.DriverName,
+		DSN:        cfg.DB.DSN,
+		MaxOpenNum: cfg.DB.MaxOpenNum,
+		MaxIdleNum: cfg.DB.MaxIdleNum,
 	}
+	db, err := database.InitDB(dbCfg)
 	defer func() {
-		if err = database.Close(); err != nil {
-			log.Error("failed to close database", "err", err)
+		if deferErr := database.CloseDB(db); deferErr != nil {
+			log.Error("failed to close db", "err", err)
 		}
 	}()
 	bridgeApp := iris.New()

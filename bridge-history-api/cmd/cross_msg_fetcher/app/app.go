@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"scroll-tech/common/database"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -14,7 +15,7 @@ import (
 	"bridge-history-api/config"
 	"bridge-history-api/crossmsg"
 	"bridge-history-api/crossmsg/messageproof"
-	"bridge-history-api/db"
+	"bridge-history-api/db/orm"
 	cutils "bridge-history-api/utils"
 )
 
@@ -55,9 +56,15 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
-	db, err := db.NewOrmFactory(cfg.DB)
+	dbCfg := &database.Config{
+		DriverName: cfg.DB.DriverName,
+		DSN:        cfg.DB.DSN,
+		MaxOpenNum: cfg.DB.MaxOpenNum,
+		MaxIdleNum: cfg.DB.MaxIdleNum,
+	}
+	db, err := database.InitDB(dbCfg)
 	defer func() {
-		if deferErr := db.Close(); deferErr != nil {
+		if deferErr := database.CloseDB(db); deferErr != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
@@ -105,12 +112,15 @@ func action(ctx *cli.Context) error {
 	go l2crossMsgFetcher.Start()
 	defer l2crossMsgFetcher.Stop()
 
+	l1CrossMsgOrm := orm.NewL1CrossMsg(db)
+	l2CrossMsgOrm := orm.NewL2CrossMsg(db)
+
 	// BlockTimestamp fetcher for l1 and l2
-	l1BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db.UpdateL1BlockTimestamp, db.GetL1EarliestNoBlockTimestampHeight)
+	l1BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, l1CrossMsgOrm.UpdateL1BlockTimestamp, l1CrossMsgOrm.GetL1EarliestNoBlockTimestampHeight)
 	go l1BlockTimeFetcher.Start()
 	defer l1BlockTimeFetcher.Stop()
 
-	l2BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, db.UpdateL2BlockTimestamp, db.GetL2EarliestNoBlockTimestampHeight)
+	l2BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, l2CrossMsgOrm.UpdateL2BlockTimestamp, l2CrossMsgOrm.GetL2EarliestNoBlockTimestampHeight)
 	go l2BlockTimeFetcher.Start()
 	defer l2BlockTimeFetcher.Stop()
 
