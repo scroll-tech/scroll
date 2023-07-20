@@ -24,26 +24,40 @@ var (
 var database db.OrmFactory
 
 func pong(ctx iris.Context) {
-	ctx.WriteString("pong")
+	_, err := ctx.WriteString("pong")
+	if err != nil {
+		log.Error("failed to write pong", "err", err)
+	}
 }
 
-func setupQueryByAddressHandler(backend_app *mvc.Application) {
+func setupQueryByAddressHandler(backendApp *mvc.Application) {
 	// Register Dependencies.
-	backend_app.Register(
+	backendApp.Register(
 		database,
 		service.NewHistoryService,
 	)
 
 	// Register Controllers.
-	backend_app.Handle(new(controller.QueryAddressController))
+	backendApp.Handle(new(controller.QueryAddressController))
 }
 
-func setupQueryByHashHandler(backend_app *mvc.Application) {
-	backend_app.Register(
+func setupQueryClaimableHandler(backendApp *mvc.Application) {
+	// Register Dependencies.
+	backendApp.Register(
 		database,
 		service.NewHistoryService,
 	)
-	backend_app.Handle(new(controller.QueryHashController))
+
+	// Register Controllers.
+	backendApp.Handle(new(controller.QueryClaimableController))
+}
+
+func setupQueryByHashHandler(backendApp *mvc.Application) {
+	backendApp.Register(
+		database,
+		service.NewHistoryService,
+	)
+	backendApp.Handle(new(controller.QueryHashController))
 }
 
 func init() {
@@ -76,13 +90,18 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("can not connect to database", "err", err)
 	}
-	defer database.Close()
+	defer func() {
+		if err = database.Close(); err != nil {
+			log.Error("failed to close database", "err", err)
+		}
+	}()
 	bridgeApp := iris.New()
 	bridgeApp.UseRouter(corsOptions)
 	bridgeApp.Get("/ping", pong).Describe("healthcheck")
 
 	mvc.Configure(bridgeApp.Party("/api/txs"), setupQueryByAddressHandler)
 	mvc.Configure(bridgeApp.Party("/api/txsbyhashes"), setupQueryByHashHandler)
+	mvc.Configure(bridgeApp.Party("/api/claimable"), setupQueryClaimableHandler)
 
 	// TODO: make debug mode configurable
 	err = bridgeApp.Listen(cfg.Server.HostPort, iris.WithLogLevel("debug"))

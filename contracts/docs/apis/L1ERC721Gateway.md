@@ -175,6 +175,22 @@ The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 |---|---|---|
 | _0 | address | undefined |
 
+### onDropMessage
+
+```solidity
+function onDropMessage(bytes _message) external payable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _message | bytes | undefined |
+
 ### onERC721Received
 
 ```solidity
@@ -324,6 +340,24 @@ Emitted when the ERC721 NFT is batch deposited to gateway in layer 1.
 | _to  | address | undefined |
 | _tokenIds  | uint256[] | undefined |
 
+### BatchRefundERC721
+
+```solidity
+event BatchRefundERC721(address indexed token, address indexed recipient, uint256[] tokenIds)
+```
+
+Emitted when a batch of ERC721 tokens are refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenIds  | uint256[] | undefined |
+
 ### DepositERC721
 
 ```solidity
@@ -400,6 +434,24 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 |---|---|---|
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
+
+### RefundERC721
+
+```solidity
+event RefundERC721(address indexed token, address indexed recipient, uint256 tokenId)
+```
+
+Emitted when some ERC721 token is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenId  | uint256 | undefined |
 
 ### UpdateTokenMapping
 

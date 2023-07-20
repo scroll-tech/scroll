@@ -672,6 +672,7 @@ func (m *Manager) StartChunkProofGenerationSession(task *orm.Chunk, prevSession 
 			TaskType:        int16(message.ProofTypeChunk),
 			ProverName:      roller.Name,
 			ProvingStatus:   int16(types.RollerAssigned),
+			FailureType:     int16(types.RollerFailureTypeUndefined),
 			CreatedAt:       time.Now(), // Used in proverTasks, should be explicitly assigned here.
 		}
 		// Store prover task info.
@@ -771,6 +772,7 @@ func (m *Manager) StartBatchProofGenerationSession(task *orm.Batch, prevSession 
 			TaskType:        int16(message.ProofTypeBatch),
 			ProverName:      roller.Name,
 			ProvingStatus:   int16(types.RollerAssigned),
+			FailureType:     int16(types.RollerFailureTypeUndefined),
 			CreatedAt:       time.Now(), // Used in proverTasks, should be explicitly assigned here.
 		}
 		// Store session info.

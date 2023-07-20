@@ -99,7 +99,7 @@ func TestL2BlockOrm(t *testing.T) {
 
 	height, err := l2BlockOrm.GetL2BlocksLatestHeight(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, int64(3), height)
+	assert.Equal(t, uint64(3), height)
 
 	blocks, err := l2BlockOrm.GetUnchunkedBlocks(context.Background())
 	assert.NoError(t, err)
@@ -202,32 +202,11 @@ func TestBatchOrm(t *testing.T) {
 	assert.Equal(t, types.RollupPending, rollupStatus[0])
 	assert.Equal(t, types.RollupPending, rollupStatus[1])
 
-	err = batchOrm.UpdateProvingStatus(context.Background(), batchHash1, types.ProvingTaskSkipped)
-	assert.NoError(t, err)
-	err = batchOrm.UpdateRollupStatus(context.Background(), batchHash1, types.RollupCommitted)
-	assert.NoError(t, err)
-	err = batchOrm.UpdateProvingStatus(context.Background(), batchHash2, types.ProvingTaskFailed)
-	assert.NoError(t, err)
-	err = batchOrm.UpdateRollupStatus(context.Background(), batchHash2, types.RollupCommitted)
-	assert.NoError(t, err)
-
-	count, err = batchOrm.UpdateSkippedBatches(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(2), count)
-
-	count, err = batchOrm.UpdateSkippedBatches(context.Background())
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(0), count)
-
-	batch, err := batchOrm.GetBatchByIndex(context.Background(), 1)
-	assert.NoError(t, err)
-	assert.Equal(t, types.RollupFinalizationSkipped, types.RollupStatus(batch.RollupStatus))
-
 	err = batchOrm.UpdateProvingStatus(context.Background(), batchHash2, types.ProvingTaskVerified)
 	assert.NoError(t, err)
 
 	dbProof, err := batchOrm.GetVerifiedProofByHash(context.Background(), batchHash1)
-	assert.Error(t, err, gorm.ErrRecordNotFound)
+	assert.Error(t, err)
 	assert.Nil(t, dbProof)
 
 	err = batchOrm.UpdateProvingStatus(context.Background(), batchHash2, types.ProvingTaskVerified)

@@ -80,35 +80,40 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         return Clones.predictDeterministicAddress(l2TokenImplementation, _salt, l2TokenFactory);
     }
 
-    /*****************************
-     * Public Mutating Functions *
-     *****************************/
+    /**********************
+     * Internal Functions *
+     **********************/
 
-    /// @inheritdoc IL1ERC20Gateway
-    function finalizeWithdrawERC20(
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeFinalizeWithdrawERC20(
         address _l1Token,
         address _l2Token,
-        address _from,
-        address _to,
-        uint256 _amount,
-        bytes calldata _data
-    ) external payable override onlyCallByCounterpart nonReentrant {
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) internal virtual override {
         require(msg.value == 0, "nonzero msg.value");
         require(_l2Token != address(0), "token address cannot be 0");
         require(getL2ERC20Address(_l1Token) == _l2Token, "l2 token mismatch");
 
-        // @note can possible trigger reentrant call to messenger,
-        // but it seems not a big problem.
-        IERC20(_l1Token).safeTransfer(_to, _amount);
-
-        _doCallback(_to, _data);
-
-        emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
+        // update `tokenMapping` on first withdraw
+        address _storedL2Token = tokenMapping[_l1Token];
+        if (_storedL2Token == address(0)) {
+            tokenMapping[_l1Token] = _l2Token;
+        } else {
+            require(_storedL2Token == _l2Token, "l2 token mismatch");
+        }
     }
 
-    /**********************
-     * Internal Functions *
-     **********************/
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeDropMessage(
+        address,
+        address,
+        uint256
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+    }
 
     /// @inheritdoc L1ERC20Gateway
     function _deposit(
@@ -126,17 +131,20 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
 
         // 2. Generate message passed to L2StandardERC20Gateway.
         address _l2Token = tokenMapping[_token];
-        bytes memory _l2Data = _data;
+        bytes memory _l2Data;
         if (_l2Token == address(0)) {
-            // It is a new token, compute and store mapping in storage.
+            // @note we won't update `tokenMapping` here but update the `tokenMapping` on
+            // first successful withdraw. This will prevent user to set arbitrary token
+            // metadata by setting a very small `_gasLimit` on the first tx.
             _l2Token = getL2ERC20Address(_token);
-            tokenMapping[_token] = _l2Token;
 
             // passing symbol/name/decimal in order to deploy in L2.
             string memory _symbol = IERC20Metadata(_token).symbol();
             string memory _name = IERC20Metadata(_token).name();
             uint8 _decimals = IERC20Metadata(_token).decimals();
-            _l2Data = abi.encode(_data, abi.encode(_symbol, _name, _decimals));
+            _l2Data = abi.encode(true, abi.encode(_data, abi.encode(_symbol, _name, _decimals)));
+        } else {
+            _l2Data = abi.encode(false, _data);
         }
         bytes memory _message = abi.encodeWithSelector(
             IL2ERC20Gateway.finalizeDepositERC20.selector,
@@ -149,7 +157,7 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _from);
 
         emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);
     }

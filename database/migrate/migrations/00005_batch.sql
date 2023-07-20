@@ -15,7 +15,7 @@ create table batch
     batch_header            BYTEA           NOT NULL,
 
 -- proof
-    chunk_proofs_status     SMALLINT        NOT NULL,
+    chunk_proofs_status     SMALLINT        NOT NULL DEFAULT 1,
     proving_status          SMALLINT        NOT NULL DEFAULT 1,
     proof                   BYTEA           DEFAULT NULL,
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
@@ -46,10 +46,13 @@ create unique index batch_hash_uindex
 on batch (hash);
 
 comment
-on column batch.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';
+on column batch.chunk_proofs_status is 'undefined, pending, ready';
 
 comment
-on column batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, finalization_skipped, commit_failed, finalize_failed';
+on column batch.proving_status is 'undefined, unassigned, assigned, proved, verified, failed';
+
+comment
+on column batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, commit_failed, finalize_failed';
 
 -- +goose StatementEnd
 

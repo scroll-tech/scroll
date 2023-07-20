@@ -10,6 +10,7 @@ import {IL2ERC1155Gateway} from "../../L2/gateways/IL2ERC1155Gateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ERC1155Gateway} from "./IL1ERC1155Gateway.sol";
 
+import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallback.sol";
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1ERC1155Gateway
@@ -19,7 +20,13 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 /// NFT will be transfer to the recipient directly.
 ///
 /// This will be changed if we have more specific scenarios.
-contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL1ERC1155Gateway {
+contract L1ERC1155Gateway is
+    OwnableUpgradeable,
+    ERC1155HolderUpgradeable,
+    ScrollGatewayBase,
+    IL1ERC1155Gateway,
+    IMessageDropCallback
+{
     /**********
      * Events *
      **********/
@@ -131,6 +138,31 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         emit FinalizeBatchWithdrawERC1155(_l1Token, _l2Token, _from, _to, _tokenIds, _amounts);
     }
 
+    /// @inheritdoc IMessageDropCallback
+    function onDropMessage(bytes calldata _message) external payable virtual onlyInDropContext nonReentrant {
+        require(msg.value == 0, "nonzero msg.value");
+
+        if (bytes4(_message[0:4]) == IL2ERC1155Gateway.finalizeDepositERC1155.selector) {
+            (address _token, , address _sender, , uint256 _tokenId, uint256 _amount) = abi.decode(
+                _message[4:],
+                (address, address, address, address, uint256, uint256)
+            );
+            IERC1155Upgradeable(_token).safeTransferFrom(address(this), _sender, _tokenId, _amount, "");
+
+            emit RefundERC1155(_token, _sender, _tokenId, _amount);
+        } else if (bytes4(_message[0:4]) == IL2ERC1155Gateway.finalizeBatchDepositERC1155.selector) {
+            (address _token, , address _sender, , uint256[] memory _tokenIds, uint256[] memory _amounts) = abi.decode(
+                _message[4:],
+                (address, address, address, address, uint256[], uint256[])
+            );
+            IERC1155Upgradeable(_token).safeBatchTransferFrom(address(this), _sender, _tokenIds, _amounts, "");
+
+            emit BatchRefundERC1155(_token, _sender, _tokenIds, _amounts);
+        } else {
+            revert("invalid selector");
+        }
+    }
+
     /************************
      * Restricted Functions *
      ************************/
@@ -183,7 +215,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
 
         emit DepositERC1155(_token, _l2Token, msg.sender, _to, _tokenId, _amount);
     }
@@ -226,7 +258,7 @@ contract L1ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
 
         emit BatchDepositERC1155(_token, _l2Token, msg.sender, _to, _tokenIds, _amounts);
     }

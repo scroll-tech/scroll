@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"scroll-tech/common/types"
@@ -33,15 +34,15 @@ type Chunk struct {
 	Proof            []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	ProofTimeSec     int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	ProofTimeSec     int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 
 	// batch
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
 
 	// metadata
 	TotalL2TxGas              uint64         `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
-	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
-	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
+	TotalL2TxNum              uint32         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
+	TotalL1CommitCalldataSize uint32         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
 	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`
 	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt                 time.Time      `json:"updated_at" gorm:"column:updated_at"`
@@ -68,14 +69,15 @@ func (o *Chunk) GetUnassignedChunks(ctx context.Context, limit int) ([]*Chunk, e
 		return nil, nil
 	}
 
-	var chunks []*Chunk
 	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
 	db = db.Order("index ASC")
 	db = db.Limit(limit)
 
+	var chunks []*Chunk
 	if err := db.Find(&chunks).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Chunk.GetUnassignedChunks error: %w", err)
 	}
 	return chunks, nil
 }
@@ -84,22 +86,22 @@ func (o *Chunk) GetUnassignedChunks(ctx context.Context, limit int) ([]*Chunk, e
 // It returns a slice of decoded proofs (message.AggProof) obtained from the database.
 // The returned proofs are sorted in ascending order by their associated chunk index.
 func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*message.AggProof, error) {
-	var chunks []*Chunk
 	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
 	db = db.Where("batch_hash", batchHash)
 	db = db.Order("index ASC")
 
+	var chunks []*Chunk
 	if err := db.Find(&chunks).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Chunk.GetProofsByBatchHash error: %w, batch hash: %v", err, batchHash)
 	}
 
 	var proofs []*message.AggProof
 	for _, chunk := range chunks {
 		var proof message.AggProof
 		if err := json.Unmarshal(chunk.Proof, &proof); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash error: %w, batch hash: %v, chunk hash: %v", err, batchHash, chunk.Hash)
 		}
-
 		proofs = append(proofs, &proof)
 	}
 
@@ -108,85 +110,82 @@ func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*
 
 // GetLatestChunk retrieves the latest chunk from the database.
 func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Order("index desc")
+
 	var latestChunk Chunk
-	err := o.db.WithContext(ctx).
-		Order("index desc").
-		First(&latestChunk).Error
-	if err != nil {
-		return nil, err
+	if err := db.First(&latestChunk).Error; err != nil {
+		return nil, fmt.Errorf("Chunk.GetLatestChunk error: %w", err)
 	}
 	return &latestChunk, nil
 }
 
 // GetProvingStatusByHash retrieves the proving status of a chunk given its hash.
 func (o *Chunk) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
-	var chunk Chunk
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Select("proving_status")
 	db = db.Where("hash = ?", hash)
+
+	var chunk Chunk
 	if err := db.Find(&chunk).Error; err != nil {
-		return types.ProvingStatusUndefined, err
+		return types.ProvingStatusUndefined, fmt.Errorf("Chunk.GetProvingStatusByHash error: %w, chunk hash: %v", err, hash)
 	}
 	return types.ProvingStatus(chunk.ProvingStatus), nil
 }
 
 // GetAssignedChunks retrieves all chunks whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProved.
 func (o *Chunk) GetAssignedChunks(ctx context.Context) ([]*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)})
+
 	var chunks []*Chunk
-
-	err := o.db.WithContext(ctx).Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)}).
-		Find(&chunks).Error
-	if err != nil {
-		return nil, err
+	if err := db.Find(&chunks).Error; err != nil {
+		return nil, fmt.Errorf("Chunk.GetAssignedChunks error: %w", err)
 	}
-
 	return chunks, nil
 }
 
 // CheckIfBatchChunkProofsAreReady checks if all proofs for all chunks of a given batchHash are collected.
 func (o *Chunk) CheckIfBatchChunkProofsAreReady(ctx context.Context, batchHash string) (bool, error) {
-	var count int64
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("batch_hash = ? AND proving_status != ?", batchHash, types.ProvingTaskVerified)
-	err := db.Count(&count).Error
-	if err != nil {
-		return false, err
-	}
 
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return false, fmt.Errorf("Chunk.CheckIfBatchChunkProofsAreReady error: %w, batch hash: %v", err, batchHash)
+	}
 	return count == 0, nil
 }
 
 // GetChunkBatchHash retrieves the batchHash of a given chunk.
 func (o *Chunk) GetChunkBatchHash(ctx context.Context, chunkHash string) (string, error) {
-	var chunk Chunk
 	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
 	db = db.Where("hash = ?", chunkHash)
 	db = db.Select("batch_hash")
-	if err := db.First(&chunk).Error; err != nil {
-		return "", err
-	}
 
+	var chunk Chunk
+	if err := db.First(&chunk).Error; err != nil {
+		return "", fmt.Errorf("Chunk.GetChunkBatchHash error: %w, chunk hash: %v", err, chunkHash)
+	}
 	return chunk.BatchHash, nil
 }
 
 // InsertChunk inserts a new chunk into the database.
 // for unit test
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
-	}
-
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
 	}
 
 	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
 	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, err
 	}
@@ -225,8 +224,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		EndBlockNumber:               chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
 		EndBlockHash:                 chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
 		TotalL2TxGas:                 totalL2TxGas,
-		TotalL2TxNum:                 totalL2TxNum,
-		TotalL1CommitCalldataSize:    totalL1CommitCalldataSize,
+		TotalL2TxNum:                 uint32(totalL2TxNum),
+		TotalL1CommitCalldataSize:    uint32(totalL1CommitCalldataSize),
 		TotalL1CommitGas:             totalL1CommitGas,
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
@@ -234,7 +233,10 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 
-	if err := db.WithContext(ctx).Create(&newChunk).Error; err != nil {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+
+	if err := db.Create(&newChunk).Error; err != nil {
 		log.Error("failed to insert chunk", "hash", hash, "err", err)
 		return nil, err
 	}
@@ -243,12 +245,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 }
 
 // UpdateProvingStatus updates the proving status of a chunk.
-func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-
+func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus) error {
 	updateFields := make(map[string]interface{})
 	updateFields["proving_status"] = int(status)
 
@@ -261,10 +258,14 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["proved_at"] = time.Now()
 	}
 
-	db = db.WithContext(ctx)
+	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash", hash)
-	return db.Updates(updateFields).Error
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Chunk.UpdateProvingStatus error: %w, chunk hash: %v, status: %v", err, hash, status.String())
+	}
+	return nil
 }
 
 // UpdateProofByHash updates the chunk proof by hash.
@@ -277,24 +278,27 @@ func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	updateFields := make(map[string]interface{})
 	updateFields["proof"] = proofBytes
 	updateFields["proof_time_sec"] = proofTimeSec
+
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash", hash)
-	return db.Updates(updateFields).Error
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Chunk.UpdateProofByHash error: %w, chunk hash: %v", err, hash)
+	}
+	return nil
 }
 
 // UpdateBatchHashInRange updates the batch_hash for chunks within the specified range (inclusive).
 // The range is closed, i.e., it includes both start and end indices.
 // for unit test
-func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-	db = db.Model(&Chunk{}).Where("index >= ? AND index <= ?", startIndex, endIndex)
+func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, endIndex uint64, batchHash string) error {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("index >= ? AND index <= ?", startIndex, endIndex)
 
 	if err := db.Update("batch_hash", batchHash).Error; err != nil {
-		return err
+		return fmt.Errorf("Chunk.UpdateBatchHashInRange error: %w, start index: %v, end index: %v, batch hash: %v", err, startIndex, endIndex, batchHash)
 	}
 	return nil
 }

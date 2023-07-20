@@ -3,7 +3,6 @@ package message
 import (
 	"encoding/hex"
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -16,10 +15,9 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 	authMsg := &AuthMsg{
 		Identity: &Identity{
-			Name:      "testName",
-			Timestamp: uint32(time.Now().Unix()),
-			Version:   "testVersion",
-			Token:     "testToken",
+			Name:    "testName",
+			Version: "testVersion",
+			Token:   "testToken",
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(privkey))
@@ -50,14 +48,13 @@ func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
 		Name:       "testName",
 		RollerType: ProofTypeChunk,
-		Timestamp:  uint32(1622428800),
 		Version:    "testVersion",
 		Token:      "testToken",
 	}
 	hash, err := identity.Hash()
 	assert.NoError(t, err)
 
-	expectedHash := "b3f152958dc881446fc131a250526139d909710c6b91b4d3281ceded28ce2e32"
+	expectedHash := "c0411a19531fb8c6133b2bae91f361c14e65f2d318aef72b83519e6061cad001"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
@@ -109,15 +106,15 @@ func TestProofDetailHash(t *testing.T) {
 	}
 	hash, err := proofDetail.Hash()
 	assert.NoError(t, err)
-	expectedHash := "fdfaae752d6fd72a7fdd2ad034ef504d3acda9e691a799323cfa6e371684ba2b"
+	expectedHash := "8ad894c2047166a98b1a389b716b06b01dc1bd29e950e2687ffbcb3c328edda5"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
 func TestProveTypeString(t *testing.T) {
-	proofTypeChunk := ProofType(0)
+	proofTypeChunk := ProofType(1)
 	assert.Equal(t, "proof type chunk", proofTypeChunk.String())
 
-	proofTypeBatch := ProofType(1)
+	proofTypeBatch := ProofType(2)
 	assert.Equal(t, "proof type batch", proofTypeBatch.String())
 
 	illegalProof := ProofType(3)

@@ -81,9 +81,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         ScrollMessengerBase._initialize(_counterpart, _feeVault);
 
         maxFailedExecutionTimes = 3;
-
-        // initialize to a nonzero value
-        xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
     }
 
     /*************************
@@ -104,16 +101,16 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         require(_expectedStateRoot != bytes32(0), "Block is not imported");
 
         bytes32 _storageKey;
-        // `mapping(bytes32 => bool) public isL1MessageSent` is the 155-th slot of contract `L1ScrollMessenger`.
+        // `mapping(bytes32 => bool) public isL1MessageSent` is the 201-th slot of contract `L1ScrollMessenger`.
         // + 1 from `Initializable`
-        // + 50 from `OwnableUpgradeable`
         // + 50 from `ContextUpgradeable`
-        // + 4 from `ScrollMessengerBase`
         // + 50 from `PausableUpgradeable`
+        // + 50 from `OwnableUpgradeable`
+        // + 50 from `ScrollMessengerBase`
         // + 1-st in `L1ScrollMessenger`
         assembly {
             mstore(0x00, _msgHash)
-            mstore(0x20, 155)
+            mstore(0x20, 201)
             _storageKey := keccak256(0x00, 0x40)
         }
 
@@ -141,16 +138,16 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         require(_expectedStateRoot != bytes32(0), "Block not imported");
 
         bytes32 _storageKey;
-        // `mapping(bytes32 => bool) public isL2MessageExecuted` is the 156-th slot of contract `L1ScrollMessenger`.
+        // `mapping(bytes32 => bool) public isL2MessageExecuted` is the 202-th slot of contract `L1ScrollMessenger`.
         // + 1 from `Initializable`
-        // + 50 from `OwnableUpgradeable`
         // + 50 from `ContextUpgradeable`
-        // + 4 from `ScrollMessengerBase`
         // + 50 from `PausableUpgradeable`
+        // + 50 from `OwnableUpgradeable`
+        // + 50 from `ScrollMessengerBase`
         // + 2-nd in `L1ScrollMessenger`
         assembly {
             mstore(0x00, _msgHash)
-            mstore(0x20, 156)
+            mstore(0x20, 202)
             _storageKey := keccak256(0x00, 0x40)
         }
 
@@ -214,10 +211,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         uint256 _nonce,
         bytes memory _message,
         L1MessageProof calldata _proof
-    ) external override whenNotPaused {
-        // anti reentrance
-        require(xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER, "Already in execution");
-
+    ) external override notInExecution whenNotPaused {
         // check message status
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
         require(!isL1MessageExecuted[_xDomainCalldataHash], "Message successfully executed");

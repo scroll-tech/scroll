@@ -38,8 +38,10 @@ func (r ProofType) String() string {
 }
 
 const (
+	// ProofTypeUndefined is an unknown proof type
+	ProofTypeUndefined ProofType = iota
 	// ProofTypeChunk is default roller, it only generates zk proof from traces.
-	ProofTypeChunk ProofType = iota
+	ProofTypeChunk
 	// ProofTypeBatch generates zk proof from other zk proofs and aggregate them into one proof.
 	ProofTypeBatch
 )
@@ -60,8 +62,6 @@ type Identity struct {
 	Name string `json:"name"`
 	// Roller RollerType
 	RollerType ProofType `json:"roller_type,omitempty"`
-	// Unverified Unix timestamp of message creation
-	Timestamp uint32 `json:"timestamp"`
 	// Version is common.Version+ZkVersion. Use the following to check the latest ZkVersion version.
 	// curl -sL https://api.github.com/repos/scroll-tech/scroll-prover/commits | jq -r ".[0].sha"
 	Version string `json:"version"`
