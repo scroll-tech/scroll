@@ -11,7 +11,7 @@ create table chunk
     end_block_number                  BIGINT          NOT NULL,
     end_block_hash                    VARCHAR         NOT NULL,
     total_l1_messages_popped_before   BIGINT          NOT NULL,
-    total_l1_messages_popped_in_chunk BIGINT          NOT NULL,
+    total_l1_messages_popped_in_chunk INTEGER         NOT NULL,
     start_block_time                  BIGINT          NOT NULL,
 
 -- proof
@@ -35,7 +35,7 @@ create table chunk
 );
 
 comment
-on column chunk.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';
+on column chunk.proving_status is 'undefined, unassigned, assigned, proved, verified, failed';
 
 create unique index chunk_index_uindex
 on chunk (index);

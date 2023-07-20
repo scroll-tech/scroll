@@ -7,6 +7,8 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {ScrollConstants} from "./constants/ScrollConstants.sol";
 import {IScrollMessenger} from "./IScrollMessenger.sol";
 
+// solhint-disable var-name-mixedcase
+
 abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /**********
      * Events *
@@ -42,6 +44,9 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /// @dev The status of for non-reentrant check.
     uint256 private _lock_status;
 
+    /// @dev The storage slots for future usage.
+    uint256[46] private __gap;
+
     /**********************
      * Function Modifiers *
      **********************/
@@ -58,6 +63,14 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
         // By storing the original value once again, a refund is triggered (see
         // https://eips.ethereum.org/EIPS/eip-2200)
         _lock_status = _NOT_ENTERED;
+    }
+
+    modifier notInExecution() {
+        require(
+            xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER,
+            "Message is already in execution"
+        );
+        _;
     }
 
     /***************

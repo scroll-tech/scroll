@@ -1,4 +1,4 @@
-package message_proof
+package messageproof
 
 import (
 	"context"
@@ -14,12 +14,14 @@ import (
 	"bridge-history-api/db/orm"
 )
 
+// MsgProofUpdater is used to update message proof in db
 type MsgProofUpdater struct {
 	ctx          context.Context
 	db           db.OrmFactory
 	withdrawTrie *WithdrawTrie
 }
 
+// NewMsgProofUpdater new MsgProofUpdater instance
 func NewMsgProofUpdater(ctx context.Context, confirmations uint64, startBlock uint64, db db.OrmFactory) *MsgProofUpdater {
 	return &MsgProofUpdater{
 		ctx:          ctx,
@@ -28,6 +30,7 @@ func NewMsgProofUpdater(ctx context.Context, confirmations uint64, startBlock ui
 	}
 }
 
+// Start the MsgProofUpdater
 func (m *MsgProofUpdater) Start() {
 	log.Info("MsgProofUpdater Start")
 	m.initialize(m.ctx)
@@ -83,6 +86,7 @@ func (m *MsgProofUpdater) Start() {
 
 }
 
+// Stop the MsgProofUpdater
 func (m *MsgProofUpdater) Stop() {
 	log.Info("MsgProofUpdater Stop")
 }
@@ -112,7 +116,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		return fmt.Errorf("failed to get first l2 message: %v", err)
 	}
 	// no l2 message
-	// 	TO DO: check if we realy dont have l2 sent message with nonce 0
+	// 	TO DO: check if we really dont have l2 sent message with nonce 0
 	if firstMsg == nil {
 		log.Info("No first l2sentmsg in db")
 		return nil
@@ -183,7 +187,7 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 	if len(msgs) == 0 {
 		return nil
 	}
-	// this should not happend, but double checked
+	// this should not happen, but double check
 	if len(msgs) != len(proofs) {
 		return fmt.Errorf("illegal state: len(msgs) != len(proofs)")
 	}
