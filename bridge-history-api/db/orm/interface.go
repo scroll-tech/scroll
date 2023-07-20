@@ -8,7 +8,10 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// AssetType can be ETH/ERC20/ERC1155/ERC721
 type AssetType int
+
+// MsgType can be layer1/layer2 msg
 type MsgType int
 
 func (a AssetType) String() string {
@@ -26,15 +29,22 @@ func (a AssetType) String() string {
 }
 
 const (
+	// ETH = 0
 	ETH AssetType = iota
+	// ERC20 = 1
 	ERC20
+	// ERC721 = 2
 	ERC721
+	// ERC1155 = 3
 	ERC1155
 )
 
 const (
+	// UnknownMsg = 0
 	UnknownMsg MsgType = iota
+	// Layer1Msg = 1
 	Layer1Msg
+	// Layer2Msg = 2
 	Layer2Msg
 )
 
@@ -89,15 +99,17 @@ type L2CrossMsgOrm interface {
 	GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error)
 }
 
+// RelayedMsgOrm provides operations on relayed_msg table
 type RelayedMsgOrm interface {
 	BatchInsertRelayedMsgDBTx(dbTx *sqlx.Tx, messages []*RelayedMsg) error
-	GetRelayedMsgByHash(msg_hash string) (*RelayedMsg, error)
+	GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error)
 	GetLatestRelayedHeightOnL1() (int64, error)
 	GetLatestRelayedHeightOnL2() (int64, error)
 	DeleteL1RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 	DeleteL2RelayedHashAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 
+// L2SentMsgOrm provides operations on l2_sent_msg table
 type L2SentMsgOrm interface {
 	BatchInsertL2SentMsgDBTx(dbTx *sqlx.Tx, messages []*L2SentMsg) error
 	GetL2SentMsgByHash(l2Hash string) (*L2SentMsg, error)
@@ -105,13 +117,14 @@ type L2SentMsgOrm interface {
 	GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error)
 	GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMsg, error)
 	GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error)
-	UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batch_index uint64) error
+	UpdateL2MessageProofInDBTx(ctx context.Context, dbTx *sqlx.Tx, msgHash string, proof string, batchIndex uint64) error
 	GetLatestL2SentMsgBatchIndex() (int64, error)
 	GetClaimableL2SentMsgByAddressWithOffset(address string, offset int64, limit int64) ([]*L2SentMsg, error)
 	GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error)
 	DeleteL2SentMsgAfterHeightDBTx(dbTx *sqlx.Tx, height int64) error
 }
 
+// RollupBatchOrm provides operations on rollup_batch table
 type RollupBatchOrm interface {
 	GetLatestRollupBatch() (*RollupBatch, error)
 	GetRollupBatchByIndex(index uint64) (*RollupBatch, error)

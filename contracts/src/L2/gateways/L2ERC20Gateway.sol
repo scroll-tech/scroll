@@ -7,6 +7,13 @@ import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
 // solhint-disable no-empty-blocks
 
 abstract contract L2ERC20Gateway is IL2ERC20Gateway {
+    /*************
+     * Variables *
+     *************/
+
+    /// @dev The storage slots for future usage.
+    uint256[50] private __gap;
+
     /*****************************
      * Public Mutating Functions *
      *****************************/

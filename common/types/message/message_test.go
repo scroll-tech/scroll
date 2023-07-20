@@ -3,7 +3,6 @@ package message
 import (
 	"encoding/hex"
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -16,10 +15,9 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 	authMsg := &AuthMsg{
 		Identity: &Identity{
-			Name:      "testName",
-			Timestamp: uint32(time.Now().Unix()),
-			Version:   "testVersion",
-			Token:     "testToken",
+			Name:    "testName",
+			Version: "testVersion",
+			Token:   "testToken",
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(privkey))
@@ -50,14 +48,13 @@ func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
 		Name:       "testName",
 		RollerType: ProofTypeChunk,
-		Timestamp:  uint32(1622428800),
 		Version:    "testVersion",
 		Token:      "testToken",
 	}
 	hash, err := identity.Hash()
 	assert.NoError(t, err)
 
-	expectedHash := "063a3620db7f71e5ae99dd622222e1e893247344727fb2a2b022524d06f35aaf"
+	expectedHash := "c0411a19531fb8c6133b2bae91f361c14e65f2d318aef72b83519e6061cad001"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 

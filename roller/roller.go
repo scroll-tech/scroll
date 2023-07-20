@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-	"math"
 	"sort"
 	"sync/atomic"
 	"time"
@@ -121,17 +120,10 @@ func (r *Roller) Start() {
 
 // Register registers Roller to the coordinator through Websocket.
 func (r *Roller) Register() error {
-	timestamp := time.Now().Unix()
-
-	if timestamp < 0 || timestamp > math.MaxUint32 {
-		panic("Expected current time to be between the years 1970 and 2106")
-	}
-
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:       r.cfg.RollerName,
 			RollerType: r.Type(),
-			Timestamp:  uint32(timestamp),
 			Version:    version.Version,
 		},
 	}
