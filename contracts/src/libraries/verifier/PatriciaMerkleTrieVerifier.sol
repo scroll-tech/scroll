@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 library PatriciaMerkleTrieVerifier {
     /// @notice Internal function to validates a proof from eth_getProof.

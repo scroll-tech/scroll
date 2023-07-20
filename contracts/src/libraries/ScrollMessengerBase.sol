@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -87,8 +87,8 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
         feeVault = _feeVault;
     }
 
-    // allow others to send ether to messenger
-    receive() external payable {}
+    // make sure only owner can send ether to messenger to avoid possible user fund loss.
+    receive() external payable onlyOwner {}
 
     /************************
      * Restricted Functions *
