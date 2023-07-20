@@ -35,7 +35,7 @@ create table chunk
 );
 
 comment
-on column chunk.proving_status is 'undefined, unassigned, skipped, assigned, proved, verified, failed';
+on column chunk.proving_status is 'undefined, unassigned, assigned, proved, verified, failed';
 
 create unique index chunk_index_uindex
 on chunk (index);

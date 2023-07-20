@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
 
@@ -82,6 +83,11 @@ func (o *ormFactory) GetCrossMsgsByAddressWithOffset(sender string, offset int64
 	if err != nil || rows == nil {
 		return nil, err
 	}
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Error("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &orm.CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {

@@ -98,7 +98,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### transferOwnership
@@ -127,7 +127,7 @@ function transferOwnership(address newOwner) external nonpayable
 event DeployToken(address indexed _l1Token, address indexed _l2Token)
 ```
 
-
+Emitted when a l2 token is deployed.
 
 
 
