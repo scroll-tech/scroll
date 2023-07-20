@@ -60,6 +60,14 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
         _lock_status = _NOT_ENTERED;
     }
 
+    modifier notInExecution() {
+        require(
+            xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER,
+            "Message is already in execution"
+        );
+        _;
+    }
+
     /***************
      * Constructor *
      ***************/

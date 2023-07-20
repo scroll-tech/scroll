@@ -37,7 +37,14 @@ func (l *l1CrossMsgOrm) GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, erro
 func (l *l1CrossMsgOrm) GetL1CrossMsgsByAddress(sender common.Address) ([]*CrossMsg, error) {
 	var results []*CrossMsg
 	rows, err := l.db.Queryx(`SELECT * FROM cross_message WHERE sender = $1 AND msg_type = 1 AND deleted_at IS NULL;`, sender.String(), Layer1Msg)
-
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err = rows.Close(); err != nil {
+			log.Error("failed to close rows", "err", err)
+		}
+	}()
 	for rows.Next() {
 		msg := &CrossMsg{}
 		if err = rows.StructScan(msg); err != nil {

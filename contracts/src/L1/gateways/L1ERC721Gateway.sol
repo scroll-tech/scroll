@@ -10,6 +10,7 @@ import {IL2ERC721Gateway} from "../../L2/gateways/IL2ERC721Gateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ERC721Gateway} from "./IL1ERC721Gateway.sol";
 
+import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallback.sol";
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1ERC721Gateway
@@ -19,7 +20,13 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 /// NFT will be transfer to the recipient directly.
 ///
 /// This will be changed if we have more specific scenarios.
-contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC721Gateway {
+contract L1ERC721Gateway is
+    OwnableUpgradeable,
+    ERC721HolderUpgradeable,
+    ScrollGatewayBase,
+    IL1ERC721Gateway,
+    IMessageDropCallback
+{
     /**********
      * Events *
      **********/
@@ -126,6 +133,32 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         emit FinalizeBatchWithdrawERC721(_l1Token, _l2Token, _from, _to, _tokenIds);
     }
 
+    /// @inheritdoc IMessageDropCallback
+    function onDropMessage(bytes calldata _message) external payable virtual onlyInDropContext nonReentrant {
+        require(msg.value == 0, "nonzero msg.value");
+
+        if (bytes4(_message[0:4]) == IL2ERC721Gateway.finalizeDepositERC721.selector) {
+            (address _token, , address _receiver, , uint256 _tokenId) = abi.decode(
+                _message[4:],
+                (address, address, address, address, uint256)
+            );
+            IERC721Upgradeable(_token).safeTransferFrom(address(this), _receiver, _tokenId);
+
+            emit RefundERC721(_token, _receiver, _tokenId);
+        } else if (bytes4(_message[0:4]) == IL2ERC721Gateway.finalizeBatchDepositERC721.selector) {
+            (address _token, , address _receiver, , uint256[] memory _tokenIds) = abi.decode(
+                _message[4:],
+                (address, address, address, address, uint256[])
+            );
+            for (uint256 i = 0; i < _tokenIds.length; i++) {
+                IERC721Upgradeable(_token).safeTransferFrom(address(this), _receiver, _tokenIds[i]);
+            }
+            emit BatchRefundERC721(_token, _receiver, _tokenIds);
+        } else {
+            revert("invalid selector");
+        }
+    }
+
     /************************
      * Restricted Functions *
      ************************/
@@ -173,7 +206,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
 
         emit DepositERC721(_token, _l2Token, msg.sender, _to, _tokenId);
     }
@@ -210,7 +243,7 @@ contract L1ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
 
         emit BatchDepositERC721(_token, _l2Token, msg.sender, _to, _tokenIds);
     }
