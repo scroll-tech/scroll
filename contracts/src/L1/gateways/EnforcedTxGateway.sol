@@ -4,12 +4,15 @@ pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ECDSAUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import {IL1MessageQueue} from "../rollup/IL1MessageQueue.sol";
 
-contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable {
+// solhint-disable reason-string
+
+contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable, EIP712Upgradeable {
     /**********
      * Events *
      **********/
@@ -18,6 +21,16 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
     /// @param _oldFeeVault The address of old fee vault contract.
     /// @param _newFeeVault The address of new fee vault contract.
     event UpdateFeeVault(address _oldFeeVault, address _newFeeVault);
+
+    /*************
+     * Constants *
+     *************/
+
+    // solhint-disable-next-line var-name-mixedcase
+    bytes32 private constant _ENFORCED_TX_TYPEHASH =
+        keccak256(
+            "EnforcedTransaction(address sender,address target,uint256 value,uint256 gasLimit,bytes data,uint256 nonce,uint256 deadline)"
+        );
 
     /*************
      * Variables *
@@ -29,6 +42,11 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
     /// @notice The address of fee vault contract.
     address public feeVault;
 
+    /// @notice Mapping from EOA address to current nonce.
+    /// @dev Every successful call to `sendTransaction` with signature increases `_sender`'s nonce by one.
+    /// This prevents a signature from being used multiple times.
+    mapping(address => uint256) public nonces;
+
     /***************
      * Constructor *
      ***************/
@@ -37,9 +55,20 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
         OwnableUpgradeable.__Ownable_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
         PausableUpgradeable.__Pausable_init();
+        EIP712Upgradeable.__EIP712_init("EnforcedTxGateway", "1");
 
         messageQueue = _queue;
         feeVault = _feeVault;
+    }
+
+    /*************************
+     * Public View Functions *
+     *************************/
+
+    /// @notice return the domain separator for the typed transaction
+    // solhint-disable-next-line func-name-mixedcase
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+        return _domainSeparatorV4();
     }
 
     /*****************************
@@ -58,6 +87,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
         uint256 _gasLimit,
         bytes calldata _data
     ) external payable whenNotPaused {
+        // solhint-disable-next-line avoid-tx-origin
         require(msg.sender == tx.origin, "Only EOA senders are allowed to send enforced transaction");
 
         _sendTransaction(msg.sender, _target, _value, _gasLimit, _data, msg.sender);
@@ -70,6 +100,7 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
     /// @param _value The value passed
     /// @param _gasLimit The maximum gas should be used for this transaction in L2.
     /// @param _data The calldata passed to target contract.
+    /// @param _deadline The deadline of the signature.
     /// @param _signature The signature for the transaction.
     /// @param _refundAddress The address to refund exceeded fee.
     function sendTransaction(
@@ -78,22 +109,23 @@ contract EnforcedTxGateway is OwnableUpgradeable, ReentrancyGuardUpgradeable, Pa
         uint256 _value,
         uint256 _gasLimit,
         bytes calldata _data,
+        uint256 _deadline,
         bytes memory _signature,
         address _refundAddress
     ) external payable whenNotPaused {
-        address _messageQueue = messageQueue;
-        uint256 _queueIndex = IL1MessageQueue(messageQueue).nextCrossDomainMessageIndex();
-        bytes32 _txHash = IL1MessageQueue(_messageQueue).computeTransactionHash(
-            _sender,
-            _queueIndex,
-            _value,
-            _target,
-            _gasLimit,
-            _data
-        );
+        // solhint-disable-next-line not-rely-on-time
+        require(block.timestamp <= _deadline, "signature expired");
 
-        bytes32 _signHash = ECDSAUpgradeable.toEthSignedMessageHash(_txHash);
-        address _signer = ECDSAUpgradeable.recover(_signHash, _signature);
+        uint256 _nonce = nonces[_sender];
+        bytes32 _structHash = keccak256(
+            abi.encode(_ENFORCED_TX_TYPEHASH, _sender, _target, _value, _gasLimit, keccak256(_data), _nonce, _deadline)
+        );
+        unchecked {
+            nonces[_sender] = _nonce + 1;
+        }
+
+        bytes32 _hash = _hashTypedDataV4(_structHash);
+        address _signer = ECDSAUpgradeable.recover(_hash, _signature);
 
         // no need to check `_signer != address(0)`, since it is checked in `recover`.
         require(_signer == _sender, "Incorrect signature");
