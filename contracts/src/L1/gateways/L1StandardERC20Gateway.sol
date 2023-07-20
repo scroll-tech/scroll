@@ -44,6 +44,10 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initialize the storage of L1StandardERC20Gateway.
     /// @param _counterpart The address of L2StandardERC20Gateway in L2.
     /// @param _router The address of L1GatewayRouter.

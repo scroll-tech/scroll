@@ -43,6 +43,8 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
      ***************/
 
     constructor(address _l1USDC, address _l2USDC) {
+        _disableInitializers();
+
         l1USDC = _l1USDC;
         l2USDC = _l2USDC;
     }

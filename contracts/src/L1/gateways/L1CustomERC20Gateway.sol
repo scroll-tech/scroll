@@ -41,6 +41,10 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initialize the storage of L1CustomERC20Gateway.
     /// @param _counterpart The address of L2CustomERC20Gateway in L2.
     /// @param _router The address of L1GatewayRouter.

@@ -82,6 +82,10 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initialize the storage of L1ScrollMessenger.
     /// @param _counterpart The address of L2ScrollMessenger contract in L2.
     /// @param _feeVault The address of fee vault, which will be used to collect relayer fee.

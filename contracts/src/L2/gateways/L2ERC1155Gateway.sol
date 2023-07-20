@@ -40,6 +40,9 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(address _counterpart, address _messenger) external initializer {
         OwnableUpgradeable.__Ownable_init();

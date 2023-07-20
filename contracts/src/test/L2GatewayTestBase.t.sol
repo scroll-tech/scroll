@@ -4,6 +4,8 @@ pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {IL1BlockContainer, L1BlockContainer} from "../L2/predeploys/L1BlockContainer.sol";
 import {IL1GasPriceOracle, L1GasPriceOracle} from "../L2/predeploys/L1GasPriceOracle.sol";
 import {L2MessageQueue} from "../L2/predeploys/L2MessageQueue.sol";
@@ -51,7 +53,16 @@ abstract contract L2GatewayTestBase is DSTestPlus {
         l1BlockContainer = new L1BlockContainer(address(this));
         l2MessageQueue = new L2MessageQueue(address(this));
         l1GasOracle = new L1GasPriceOracle(address(this));
-        l2Messenger = new L2ScrollMessenger(address(l1BlockContainer), address(l1GasOracle), address(l2MessageQueue));
+        l2Messenger = L2ScrollMessenger(
+            payable(
+                new ERC1967Proxy(
+                    address(
+                        new L2ScrollMessenger(address(l1BlockContainer), address(l1GasOracle), address(l2MessageQueue))
+                    ),
+                    new bytes(0)
+                )
+            )
+        );
 
         // Initialize L2 contracts
         l2Messenger.initialize(address(l1Messenger), feeVault);

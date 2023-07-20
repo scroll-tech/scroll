@@ -17,19 +17,36 @@ describe("EnforcedTxGateway.spec", async () => {
   let oracle: L2GasPriceOracle;
   let queue: L1MessageQueue;
 
+  const deployProxy = async (name: string, admin: string): Promise<string> => {
+    const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
+    const Factory = await ethers.getContractFactory(name, deployer);
+    const impl = await Factory.deploy();
+    await impl.deployed();
+    const proxy = await TransparentUpgradeableProxy.deploy(impl.address, admin, "0x");
+    await proxy.deployed();
+    return proxy.address;
+  };
+
   beforeEach(async () => {
     [deployer, feeVault, signer] = await ethers.getSigners();
 
-    const L1MessageQueue = await ethers.getContractFactory("L1MessageQueue", deployer);
-    queue = await L1MessageQueue.deploy();
-    await queue.deployed();
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin", deployer);
+    const admin = await ProxyAdmin.deploy();
+    await admin.deployed();
 
-    const L2GasPriceOracle = await ethers.getContractFactory("L2GasPriceOracle", deployer);
-    oracle = await L2GasPriceOracle.deploy();
+    queue = await ethers.getContractAt("L1MessageQueue", await deployProxy("L1MessageQueue", admin.address), deployer);
 
-    const EnforcedTxGateway = await ethers.getContractFactory("EnforcedTxGateway", deployer);
-    gateway = await EnforcedTxGateway.deploy();
-    await gateway.deployed();
+    oracle = await ethers.getContractAt(
+      "L2GasPriceOracle",
+      await deployProxy("L2GasPriceOracle", admin.address),
+      deployer
+    );
+
+    gateway = await ethers.getContractAt(
+      "EnforcedTxGateway",
+      await deployProxy("EnforcedTxGateway", admin.address),
+      deployer
+    );
 
     const MockCaller = await ethers.getContractFactory("MockCaller", deployer);
     caller = await MockCaller.deploy();

@@ -4,6 +4,8 @@ pragma solidity =0.8.16;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {IL1ERC20Gateway, L1CustomERC20Gateway} from "../L1/gateways/L1CustomERC20Gateway.sol";
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
@@ -50,8 +52,8 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         l2Token = new MockERC20("Mock L2", "ML2", 18);
 
         // Deploy L1 contracts
-        gateway = new L1CustomERC20Gateway();
-        router = new L1GatewayRouter();
+        gateway = _deployGateway();
+        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
 
         // Deploy L2 contracts
         counterpartGateway = new L2CustomERC20Gateway();
@@ -128,7 +130,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
     function testDropMessageMocking() public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1CustomERC20Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only messenger can call, revert
@@ -216,7 +218,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         gateway.finalizeWithdrawERC20(address(l1Token), address(l2Token), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1CustomERC20Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
@@ -654,5 +656,9 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
         }
+    }
+
+    function _deployGateway() internal returns (L1CustomERC20Gateway) {
+        return L1CustomERC20Gateway(address(new ERC1967Proxy(address(new L1CustomERC20Gateway()), new bytes(0))));
     }
 }

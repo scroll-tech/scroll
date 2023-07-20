@@ -40,6 +40,9 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(address _counterpart, address _messenger) external initializer {
         OwnableUpgradeable.__Ownable_init();

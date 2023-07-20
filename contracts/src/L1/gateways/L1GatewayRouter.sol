@@ -55,6 +55,10 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initialize the storage of L1GatewayRouter.
     /// @param _ethGateway The address of L1ETHGateway contract.
     /// @param _defaultERC20Gateway The address of default ERC20 Gateway contract.

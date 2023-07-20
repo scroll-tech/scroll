@@ -47,6 +47,10 @@ contract L1ERC721Gateway is
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initialize the storage of L1ERC721Gateway.
     /// @param _counterpart The address of L2ERC721Gateway in L2.
     /// @param _messenger The address of L1ScrollMessenger.

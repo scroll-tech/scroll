@@ -4,6 +4,8 @@ pragma solidity =0.8.16;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {IL1ERC20Gateway, L1CustomERC20Gateway} from "../L1/gateways/L1CustomERC20Gateway.sol";
 import {IL2ERC20Gateway, L2CustomERC20Gateway} from "../L2/gateways/L2CustomERC20Gateway.sol";
 import {L2GatewayRouter} from "../L2/gateways/L2GatewayRouter.sol";
@@ -48,8 +50,8 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         l2Token = new MockERC20("Mock L2", "ML2", 18);
 
         // Deploy L2 contracts
-        gateway = new L2CustomERC20Gateway();
-        router = new L2GatewayRouter();
+        gateway = _deployGateway();
+        router = L2GatewayRouter(address(new ERC1967Proxy(address(new L2GatewayRouter()), new bytes(0))));
 
         // Deploy L1 contracts
         counterpartGateway = new L1CustomERC20Gateway();
@@ -135,7 +137,7 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         gateway.finalizeDepositERC20(address(l1Token), address(l2Token), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L2CustomERC20Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
@@ -538,5 +540,9 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
         }
+    }
+
+    function _deployGateway() internal returns (L2CustomERC20Gateway) {
+        return L2CustomERC20Gateway(address(new ERC1967Proxy(address(new L2CustomERC20Gateway()), new bytes(0))));
     }
 }

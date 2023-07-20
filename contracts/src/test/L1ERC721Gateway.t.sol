@@ -5,6 +5,8 @@ pragma solidity =0.8.16;
 import {MockERC721} from "solmate/test/utils/mocks/MockERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {IL1ERC721Gateway, L1ERC721Gateway} from "../L1/gateways/L1ERC721Gateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
 import {IL2ERC721Gateway, L2ERC721Gateway} from "../L2/gateways/L2ERC721Gateway.sol";
@@ -66,7 +68,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         l2Token = new MockERC721("Mock L2", "ML1");
 
         // Deploy L1 contracts
-        gateway = new L1ERC721Gateway();
+        gateway = _deployGateway();
 
         // Deploy L2 contracts
         counterpartGateway = new L2ERC721Gateway();
@@ -151,7 +153,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
 
     function testDropMessageMocking() public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1ERC721Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only messenger can call, revert
@@ -270,7 +272,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         gateway.finalizeWithdrawERC721(address(l1Token), address(l2Token), sender, recipient, tokenId);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1ERC721Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only call by counterpart
@@ -440,7 +442,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         gateway.finalizeBatchWithdrawERC721(address(l1Token), address(l2Token), sender, recipient, _tokenIds);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1ERC721Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only call by counterpart
@@ -614,7 +616,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1ERC721Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
         l1Token.setApprovalForAll(address(gateway), true);
 
@@ -932,5 +934,9 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         assertEq(tokenCount + gatewayBalance, l1Token.balanceOf(address(gateway)));
         assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
         assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+    }
+
+    function _deployGateway() internal returns (L1ERC721Gateway) {
+        return L1ERC721Gateway(address(new ERC1967Proxy(address(new L1ERC721Gateway()), new bytes(0))));
     }
 }

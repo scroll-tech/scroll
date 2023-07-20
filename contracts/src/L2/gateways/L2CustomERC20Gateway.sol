@@ -37,6 +37,9 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(
         address _counterpart,

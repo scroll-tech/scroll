@@ -6,6 +6,8 @@ import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {MockERC1155} from "solmate/test/utils/mocks/MockERC1155.sol";
 import {ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {L1ERC1155Gateway} from "../L1/gateways/L1ERC1155Gateway.sol";
 import {L2ERC1155Gateway} from "../L2/gateways/L2ERC1155Gateway.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
@@ -25,7 +27,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         messenger = new MockScrollMessenger();
 
         counterpart = new L1ERC1155Gateway();
-        gateway = new L2ERC1155Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpart), address(messenger));
 
         token = new MockERC1155();
@@ -346,5 +348,9 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         for (uint256 i = 0; i < count; i++) {
             assertEq(token.balanceOf(to, i), _amounts[i]);
         }
+    }
+
+    function _deployGateway() internal returns (L2ERC1155Gateway) {
+        return L2ERC1155Gateway(address(new ERC1967Proxy(address(new L2ERC1155Gateway()), new bytes(0))));
     }
 }
