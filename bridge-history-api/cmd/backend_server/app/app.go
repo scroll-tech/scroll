@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"os"
-	"scroll-tech/common/database"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/iris-contrib/middleware/cors"
@@ -16,6 +15,7 @@ import (
 	"bridge-history-api/controller"
 	"bridge-history-api/service"
 	cutils "bridge-history-api/utils"
+	"scroll-tech/common/database"
 )
 
 var (

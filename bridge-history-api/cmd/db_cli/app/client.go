@@ -1,8 +1,6 @@
 package app
 
 import (
-	"scroll-tech/common/database"
-
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 	"gorm.io/gorm"
@@ -10,6 +8,7 @@ import (
 	"bridge-history-api/config"
 	"bridge-history-api/db/migrate"
 	"bridge-history-api/utils"
+	"scroll-tech/common/database"
 )
 
 func getConfig(ctx *cli.Context) (*config.Config, error) {

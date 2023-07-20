@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"scroll-tech/common/database"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -17,6 +16,7 @@ import (
 	"bridge-history-api/crossmsg/messageproof"
 	"bridge-history-api/db/orm"
 	cutils "bridge-history-api/utils"
+	"scroll-tech/common/database"
 )
 
 var (

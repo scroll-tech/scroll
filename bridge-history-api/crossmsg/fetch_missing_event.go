@@ -114,11 +114,11 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, db *gor
 		return err
 	}
 	err = db.Transaction(func(tx *gorm.DB) error {
-		if txErr := l1CrossMsgOrm.BatchInsertL1CrossMsg(ctx, depositL1CrossMsgs); txErr != nil {
+		if txErr := l1CrossMsgOrm.BatchInsertL1CrossMsg(ctx, depositL1CrossMsgs, tx); txErr != nil {
 			log.Error("l1FetchAndSaveEvents: Failed to insert cross msg event logs", "err", txErr)
 			return err
 		}
-		if txErr := relayedOrm.BatchInsertRelayedMsg(ctx, relayedMsg); txErr != nil {
+		if txErr := relayedOrm.BatchInsertRelayedMsg(ctx, relayedMsg, tx); txErr != nil {
 			log.Error("l1FetchAndSaveEvents: Failed to insert relayed msg event logs", "err", txErr)
 			return err
 		}
@@ -162,17 +162,17 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, db *gor
 	}
 
 	err = db.Transaction(func(tx *gorm.DB) error {
-		if txErr := l2CrossMsgOrm.BatchInsertL2CrossMsg(ctx, depositL2CrossMsgs); txErr != nil {
+		if txErr := l2CrossMsgOrm.BatchInsertL2CrossMsg(ctx, depositL2CrossMsgs, tx); txErr != nil {
 			log.Error("l2FetchAndSaveEvents: Failed to insert cross msg event logs", "err", txErr)
 			return txErr
 		}
 
-		if txErr := relayedOrm.BatchInsertRelayedMsg(ctx, relayedMsg); txErr != nil {
+		if txErr := relayedOrm.BatchInsertRelayedMsg(ctx, relayedMsg, tx); txErr != nil {
 			log.Error("l2FetchAndSaveEvents: Failed to insert relayed message event logs", "err", txErr)
 			return txErr
 		}
 
-		if txErr := l2SentMsgOrm.BatchInsertL2SentMsg(ctx, l2SentMsgs); txErr != nil {
+		if txErr := l2SentMsgOrm.BatchInsertL2SentMsg(ctx, l2SentMsgs, tx); txErr != nil {
 			log.Error("l2FetchAndSaveEvents: Failed to insert l2 sent message", "err", txErr)
 			return txErr
 		}
@@ -206,7 +206,7 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, db *g
 		return err
 	}
 	err = db.Transaction(func(tx *gorm.DB) error {
-		if txErr := rollupBatchOrm.BatchInsertRollupBatch(ctx, rollupBatches); txErr != nil {
+		if txErr := rollupBatchOrm.BatchInsertRollupBatch(ctx, rollupBatches, tx); txErr != nil {
 			log.Error("FetchAndSaveBatchIndex: Failed to insert batch commit msg event logs", "err", txErr)
 			return txErr
 		}
