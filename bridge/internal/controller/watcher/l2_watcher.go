@@ -172,9 +172,9 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 		}
 		// Commented this check because for now l2geth doesn't store RowConsumption info for blocks
 		// Should be uncommented after this functionality added
-		// if block.RowConsumption == nil {
+		//if block.RowConsumption == nil {
 		// 	return fmt.Errorf("fetched Block doesn't contain RowConsumption. number: %v", number)
-		// }
+		//}
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
 
@@ -184,9 +184,9 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 		}
 
 		var rowConsumption uint64 = 0
-		for _, subCircuit := range *block.RowConsumption {
-			rowConsumption += subCircuit.Rows
-		}
+		//for _, subCircuit := range *block.RowConsumption {
+		//	rowConsumption += subCircuit.Rows
+		//}
 
 		blocks = append(blocks, &types.WrappedBlock{
 			Header:           block.Header(),
