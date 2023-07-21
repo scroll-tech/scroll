@@ -184,9 +184,9 @@ func TestRoller_SubmitProof(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, pubKey, proofPubKey)
 
-	rollermanager.InitRollerManager()
+	rollermanager.InitRollerManager(nil)
 
-	taskChan, err := rollermanager.Manager.Register(pubKey, tmpAuthMsg.Identity)
+	taskChan, err := rollermanager.Manager.Register(context.Background(), pubKey, tmpAuthMsg.Identity)
 	assert.NotNil(t, taskChan)
 	assert.NoError(t, err)
 

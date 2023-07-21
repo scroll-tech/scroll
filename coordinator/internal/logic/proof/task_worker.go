@@ -39,7 +39,7 @@ func (t *TaskWorker) AllocTaskWorker(ctx context.Context, authMsg *message.AuthM
 	identity := authMsg.Identity
 
 	// create or get the roller message channel
-	taskCh, err := rollermanager.Manager.Register(pubKey, identity)
+	taskCh, err := rollermanager.Manager.Register(ctx, pubKey, identity)
 	if err != nil {
 		return &rpc.Subscription{}, err
 	}

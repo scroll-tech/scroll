@@ -56,7 +56,7 @@ func action(ctx *cli.Context) error {
 
 	proofCollector := cron.NewCollector(subCtx, db, cfg)
 
-	rollermanager.InitRollerManager()
+	rollermanager.InitRollerManager(db)
 
 	defer func() {
 		proofCollector.Stop()

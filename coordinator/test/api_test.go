@@ -85,7 +85,7 @@ func setupCoordinator(t *testing.T, rollersPerSession uint8, wsURL string, reset
 	tmpAPI := api.RegisterAPIs(&conf, db)
 	handler, _, err := utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], tmpAPI, flate.NoCompression)
 	assert.NoError(t, err)
-	rollermanager.InitRollerManager()
+	rollermanager.InitRollerManager(db)
 	return handler, proofCollector
 }
 
