@@ -198,10 +198,9 @@ func TestRoller_SubmitProof(t *testing.T) {
 
 	convey.Convey("verify failure", t, func() {
 		var s *message.ProofMsg
-		patchGuard := gomonkey.ApplyMethodFunc(s, "Verify", func() (bool, error) {
+		patchGuard.ApplyMethodFunc(s, "Verify", func() (bool, error) {
 			return false, errors.New("proof verify error")
 		})
-		defer patchGuard.Reset()
 		err = rollerController.SubmitProof(tmpProof)
 		assert.Error(t, err)
 	})
