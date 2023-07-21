@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 import {IScrollGateway} from "./IScrollGateway.sol";
 import {IScrollMessenger} from "../IScrollMessenger.sol";
@@ -31,6 +31,9 @@ abstract contract ScrollGatewayBase is IScrollGateway {
 
     /// @dev The status of for non-reentrant check.
     uint256 private _status;
+
+    /// @dev The storage slots for future usage.
+    uint256[46] private __gap;
 
     /**********************
      * Function Modifiers *

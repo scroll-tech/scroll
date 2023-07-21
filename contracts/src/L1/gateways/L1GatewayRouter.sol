@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -54,6 +54,10 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L1GatewayRouter.
     /// @param _ethGateway The address of L1ETHGateway contract.

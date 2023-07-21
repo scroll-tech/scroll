@@ -1,4 +1,4 @@
-package cross_msg_test
+package crossmsg_test
 
 import (
 	"crypto/rand"
@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	"bridge-history-api/cross_msg"
+	"bridge-history-api/crossmsg"
 )
 
 func TestMergeIntoList(t *testing.T) {
@@ -18,7 +18,7 @@ func TestMergeIntoList(t *testing.T) {
 	assert.Equal(t, headers[0].Hash(), headers[1].ParentHash)
 	headers2, err := generateHeaders(18)
 	assert.NoError(t, err)
-	result := cross_msg.MergeAddIntoHeaderList(headers, headers2, 64)
+	result := crossmsg.MergeAddIntoHeaderList(headers, headers2, 64)
 	assert.Equal(t, 64, len(result))
 	assert.Equal(t, headers2[len(headers2)-1], result[len(result)-1])
 	assert.NotEqual(t, headers[0], result[0])
@@ -53,7 +53,7 @@ func generateHeaders(amount int) ([]*types.Header, error) {
 			Time:        uint64(i * 15),
 			Extra:       []byte{},
 			MixDigest:   common.Hash{},
-			Nonce:       types.EncodeNonce(uint64(nonce.Uint64())),
+			Nonce:       types.EncodeNonce(nonce.Uint64()),
 		}
 		headers[i] = header
 	}

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
@@ -81,6 +81,10 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L1ScrollMessenger.
     /// @param _counterpart The address of L2ScrollMessenger contract in L2.
