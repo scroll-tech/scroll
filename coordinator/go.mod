@@ -10,6 +10,7 @@ require (
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
 	golang.org/x/sync v0.3.0
 	gorm.io/gorm v1.25.2
 )
