@@ -18,8 +18,8 @@ type ProverCore struct {
 	cfg *config.ProverConfig
 }
 
-// NewProver inits a ProverCore object.
-func NewProver(cfg *config.ProverConfig) (*ProverCore, error) {
+// NewProverCore inits a ProverCore object.
+func NewProverCore(cfg *config.ProverConfig) (*ProverCore, error) {
 	return &ProverCore{cfg: cfg}, nil
 }
 
