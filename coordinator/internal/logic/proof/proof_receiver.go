@@ -90,34 +90,11 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 	proofTime := time.Since(proverTask.CreatedAt)
 	proofTimeSec := uint64(proofTime.Seconds())
 
-	// store proof content
-	var storeProofErr error
-	switch proofMsg.Type {
-	case message.ProofTypeChunk:
-		storeProofErr = m.db.Transaction(func(tx *gorm.DB) error {
-			if dbErr := m.chunkOrm.UpdateProofByHash(ctx, proofMsg.ID, proofMsg.Proof, proofTimeSec, tx); dbErr != nil {
-				return fmt.Errorf("failed to store chunk proof into db, err:%w", dbErr)
-			}
-			if dbErr := m.chunkOrm.UpdateProvingStatus(ctx, proofMsg.ID, types.ProvingTaskProved, tx); dbErr != nil {
-				return fmt.Errorf("failed to update chunk task status as proved, error:%w", dbErr)
-			}
-			return nil
-		})
-	case message.ProofTypeBatch:
-		storeProofErr = m.db.Transaction(func(tx *gorm.DB) error {
-			if dbErr := m.batchOrm.UpdateProofByHash(ctx, proofMsg.ID, proofMsg.Proof, proofTimeSec, tx); dbErr != nil {
-				return fmt.Errorf("failed to store batch proof into db, error:%w", dbErr)
-			}
-			if dbErr := m.batchOrm.UpdateProvingStatus(ctx, proofMsg.ID, types.ProvingTaskProved, tx); dbErr != nil {
-				return fmt.Errorf("failed to update batch task status as proved, error:%w", dbErr)
-			}
-			return nil
-		})
-	}
-	if storeProofErr != nil {
+	err = m.proverTaskOrm.UpdateProverTaskProof(ctx, proofMsg.Type, proofMsg.ID, pk, proofMsg.Proof)
+	if err != nil {
 		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
-		log.Error("failed to store basic proof into db", "error", storeProofErr)
-		return storeProofErr
+		log.Error("failed to store basic proof into db", "error", err)
+		return err
 	}
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
@@ -214,6 +191,35 @@ func (m *ZKProofReceiver) proofRecover(ctx context.Context, hash string, pubKey 
 }
 
 func (m *ZKProofReceiver) closeProofTask(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) error {
+	
+
+
+	// // store proof content
+	// switch proofMsg.Type {
+	// case message.ProofTypeChunk:
+	// 	storeProofErr = m.db.Transaction(func(tx *gorm.DB) error {
+	// 		if dbErr := m.chunkOrm.UpdateProofByHash(ctx, proofMsg.ID, proofMsg.Proof, proofTimeSec, tx); dbErr != nil {
+	// 			return fmt.Errorf("failed to store chunk proof into db, err:%w", dbErr)
+	// 		}
+	// 		if dbErr := m.chunkOrm.UpdateProvingStatus(ctx, proofMsg.ID, types.ProvingTaskVerified, tx); dbErr != nil {
+	// 			return fmt.Errorf("failed to update chunk task status as proved, error:%w", dbErr)
+	// 		}
+	// 		return nil
+	// 	})
+	// case message.ProofTypeBatch:
+	// 	storeProofErr = m.db.Transaction(func(tx *gorm.DB) error {
+	// 		if dbErr := m.batchOrm.UpdateProofByHash(ctx, proofMsg.ID, proofMsg.Proof, proofTimeSec, tx); dbErr != nil {
+	// 			return fmt.Errorf("failed to store batch proof into db, error:%w", dbErr)
+	// 		}
+	// 		if dbErr := m.batchOrm.UpdateProvingStatus(ctx, proofMsg.ID, types.ProvingTaskVerified, tx); dbErr != nil {
+	// 			return fmt.Errorf("failed to update batch task status as proved, error:%w", dbErr)
+	// 		}
+	// 		return nil
+	// 	})
+	// }
+
+
+
 	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsg.Type, types.ProvingTaskVerified); err != nil {
 		log.Error("failed to updated proof status ProvingTaskVerified", "hash", hash, "pubKey", pubKey, "error", err)
 		return err

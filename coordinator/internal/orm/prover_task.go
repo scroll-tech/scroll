@@ -160,6 +160,24 @@ func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofTyp
 	return nil
 }
 
+// UpdateProverTaskProvingStatus updates the proving_status of a specific ProverTask record.
+func (o *ProverTask) UpdateProverTaskProof(ctx context.Context, proofType message.ProofType, taskID string, pk string, proof *message.AggProof) error {
+	db := o.db
+	db = db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", int(proofType), taskID, pk)
+
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
+		return err
+	}
+
+	if err := db.Update("proof", proofBytes).Update("proving_status", types.ProvingTaskProved).Error; err != nil {
+		return fmt.Errorf("ProverTask.UpdateProverTaskProvingStatus error: %w, proof type: %v, taskID: %v, prover public key: %v, status: %v", err, proofType.String(), taskID, pk, status.String())
+	}
+	return nil
+}
+
 // UpdateAllProverTaskProvingStatusOfTaskID updates all the proving_status of a specific task id.
 func (o *ProverTask) UpdateAllProverTaskProvingStatusOfTaskID(ctx context.Context, proofType message.ProofType, taskID string, status types.RollerProveStatus, dbTX ...*gorm.DB) error {
 	db := o.db
