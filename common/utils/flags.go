@@ -26,12 +26,6 @@ var (
 		Usage: "JSON configuration file",
 		Value: "./config.json",
 	}
-	// MigrationDirFlag migration directory.
-	MigrationDirFlag = cli.StringFlag{
-		Name:  "migrationdir",
-		Usage: "Directory containing migration files",
-		Value: "./migrations",
-	}
 	// VerbosityFlag log level.
 	VerbosityFlag = cli.IntFlag{
 		Name:  "verbosity",
