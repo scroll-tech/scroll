@@ -7,24 +7,24 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
-	"scroll-tech/database/migrate"
-
-	"github.com/gin-gonic/gin"
-
-	"testing"
 
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/controller"
 	"scroll-tech/prover-stats-api/internal/orm"
 	"scroll-tech/prover-stats-api/internal/route"
 	api_types "scroll-tech/prover-stats-api/internal/types"
-
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 )
 
 var (
