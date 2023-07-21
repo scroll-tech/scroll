@@ -92,6 +92,8 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	total += numL1Messages * 100 // numL1Messages times call to L1MessageQueue
 	total += numL1Messages * 100 // numL1Messages times warm address access to L1MessageQueue
 
+	total += w.EstimateL1CommitCalldataSize() * 16 // approximate calldata gas cost
+
 	return total
 }
 
