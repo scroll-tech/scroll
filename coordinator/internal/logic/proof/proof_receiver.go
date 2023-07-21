@@ -162,7 +162,7 @@ func (m *ZKProofReceiver) checkAreAllChunkProofsReady(ctx context.Context, chunk
 		return err
 	}
 	if allReady {
-		err := m.chunkOrm.UpdateChunkProofsStatusByBatchHash(ctx, batchHash, types.ChunkProofsStatusReady)
+		err := m.batchOrm.UpdateChunkProofsStatusByBatchHash(ctx, batchHash, types.ChunkProofsStatusReady)
 		if err != nil {
 			return err
 		}

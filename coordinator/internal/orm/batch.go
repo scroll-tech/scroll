@@ -203,7 +203,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 
 // UpdateChunkProofsStatusByBatchHash updates the status of chunk_proofs_status field for a given batch hash.
 // The function will set the chunk_proofs_status to the status provided.
-func (o *Chunk) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, status types.ChunkProofsStatus) error {
+func (o *Batch) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, status types.ChunkProofsStatus) error {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash = ?", batchHash)
