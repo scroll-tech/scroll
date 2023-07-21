@@ -122,7 +122,6 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
-	// TODO: wrap both basic verifier and aggregator verifier
 	success, verifyErr := m.verifier.VerifyProof(proofMsg.Proof)
 	if verifyErr != nil || !success {
 		if verifyErr != nil {
@@ -224,7 +223,7 @@ func (m *ZKProofReceiver) closeProofTask(ctx context.Context, hash string, pubKe
 	return nil
 }
 
-// UpdateProofStatus update the block batch/agg task and session info status
+// UpdateProofStatus update the chunk/batch task and session info status
 func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, proverPublicKey string, proofMsgType message.ProofType, status types.ProvingStatus) error {
 	// if the prover task failure type is SessionInfoFailureTimeout,
 	// just skip update the status because the proof result come so slow.
@@ -253,12 +252,12 @@ func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, pr
 		switch proofMsgType {
 		case message.ProofTypeChunk:
 			if err := m.chunkOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
-				log.Error("failed to update basic proving_status as failed", "msg.ID", hash, "error", err)
+				log.Error("failed to update chunk proving_status as failed", "msg.ID", hash, "error", err)
 				return err
 			}
 		case message.ProofTypeBatch:
 			if err := m.batchOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
-				log.Error("failed to update aggregator proving_status as failed", "msg.ID", hash, "error", err)
+				log.Error("failed to update batch proving_status as failed", "msg.ID", hash, "error", err)
 				return err
 			}
 		}

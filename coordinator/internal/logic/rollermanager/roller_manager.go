@@ -22,7 +22,7 @@ var (
 	Manager *rollerManager
 )
 
-// RollerNode the interface for controller how to use roller.
+// RollerNode is the interface that controls the rollers
 type rollerNode struct {
 	// Roller name
 	Name string

@@ -33,12 +33,6 @@ type Collector interface {
 	Collect(ctx context.Context) error
 }
 
-// HashTaskPublicKey hash public key pair
-type HashTaskPublicKey struct {
-	Attempt int
-	PubKey  string
-}
-
 // BaseCollector a base collector which contain series functions
 type BaseCollector struct {
 	cfg *config.Config
@@ -74,10 +68,6 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 		}
 
 		transErr := b.db.Transaction(func(tx *gorm.DB) error {
-			// Set status as skipped.
-			// Note that this is only a workaround for testnet here.
-			// TODO: In real cases we should reset to orm.ProvingTaskUnassigned
-			// so as to re-distribute the task in the future
 			switch message.ProofType(proverTasks[0].TaskType) {
 			case message.ProofTypeChunk:
 				if err := b.chunkOrm.UpdateProvingStatus(b.ctx, hash, types.ProvingTaskFailed, tx); err != nil {

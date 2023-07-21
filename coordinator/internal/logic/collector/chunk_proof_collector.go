@@ -54,7 +54,7 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 	}
 
 	if len(chunkTasks) != 1 {
-		return fmt.Errorf("get unassigned chunk proving task len not 1")
+		return fmt.Errorf("get unassigned chunk proving task len not 1, chunk tasks:%v", chunkTasks)
 	}
 
 	chunkTask := chunkTasks[0]

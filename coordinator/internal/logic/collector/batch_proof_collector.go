@@ -23,7 +23,7 @@ type BatchProofCollector struct {
 
 // NewBatchProofCollector new a batch collector
 func NewBatchProofCollector(cfg *config.Config, db *gorm.DB) *BatchProofCollector {
-	ac := &BatchProofCollector{
+	bp := &BatchProofCollector{
 		BaseCollector: BaseCollector{
 			db:            db,
 			cfg:           cfg,
@@ -32,7 +32,7 @@ func NewBatchProofCollector(cfg *config.Config, db *gorm.DB) *BatchProofCollecto
 			proverTaskOrm: orm.NewProverTask(db),
 		},
 	}
-	return ac
+	return bp
 }
 
 // Name return the batch proof collector name
@@ -52,7 +52,7 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 	}
 
 	if len(batchTasks) != 1 {
-		return fmt.Errorf("get unassigned batch proving task len not 1")
+		return fmt.Errorf("get unassigned batch proving task len not 1, batch tasks:%v", batchTasks)
 	}
 
 	batchTask := batchTasks[0]

@@ -2,6 +2,7 @@ package proof
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -30,13 +31,17 @@ func (t *TaskWorker) AllocTaskWorker(ctx context.Context, authMsg *message.AuthM
 		return &rpc.Subscription{}, rpc.ErrNotificationsUnsupported
 	}
 
-	pubKey, _ := authMsg.PublicKey()
+	pubKey, err := authMsg.PublicKey()
+	if err != nil {
+		return &rpc.Subscription{}, fmt.Errorf("AllocTaskWorker auth msg public key error:%w", err)
+	}
+
 	identity := authMsg.Identity
 
 	// create or get the roller message channel
 	taskCh, err := rollermanager.Manager.Register(pubKey, identity)
 	if err != nil {
-		return nil, err
+		return &rpc.Subscription{}, err
 	}
 
 	rpcSub := notifier.CreateSubscription()

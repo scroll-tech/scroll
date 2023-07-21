@@ -41,7 +41,10 @@ func (r *RollerController) RequestToken(authMsg *message.AuthMsg) (string, error
 		}
 		return "", errors.New("signature verification failed")
 	}
-	pubkey, _ := authMsg.PublicKey()
+	pubkey, err := authMsg.PublicKey()
+	if err != nil {
+		return "", fmt.Errorf("RequestToken auth msg public key error:%w", err)
+	}
 	if token, ok := r.tokenCache.Get(pubkey); ok {
 		return token.(string), nil
 	}
@@ -53,9 +56,12 @@ func (r *RollerController) RequestToken(authMsg *message.AuthMsg) (string, error
 	return token, nil
 }
 
-// VerifyToken verifies pukey for token and expiration time
+// VerifyToken verifies pubkey for token and expiration time
 func (r *RollerController) verifyToken(authMsg *message.AuthMsg) (bool, error) {
-	pubkey, _ := authMsg.PublicKey()
+	pubkey, err := authMsg.PublicKey()
+	if err != nil {
+		return false, fmt.Errorf("verify token auth msg public key error:%w", err)
+	}
 	// GetValue returns nil if value is expired
 	if token, ok := r.tokenCache.Get(pubkey); !ok || token != authMsg.Identity.Token {
 		return false, fmt.Errorf("failed to find corresponding token. roller name: %s roller pk: %s", authMsg.Identity.Name, pubkey)
@@ -76,7 +82,10 @@ func (r *RollerController) Register(ctx context.Context, authMsg *message.AuthMs
 	if ok, err := r.verifyToken(authMsg); !ok {
 		return nil, err
 	}
-	pubkey, _ := authMsg.PublicKey()
+	pubkey, err := authMsg.PublicKey()
+	if err != nil {
+		return nil, fmt.Errorf("register auth msg public key error:%w", err)
+	}
 	// roller successfully registered, remove token associated with this roller
 	r.tokenCache.Delete(pubkey)
 
