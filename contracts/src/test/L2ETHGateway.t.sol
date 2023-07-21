@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L2GatewayRouter} from "../L2/gateways/L2GatewayRouter.sol";
 import {IL1ETHGateway, L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
@@ -26,8 +28,8 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
         setUpBase();
 
         // Deploy L2 contracts
-        gateway = new L2ETHGateway();
-        router = new L2GatewayRouter();
+        gateway = _deployGateway();
+        router = L2GatewayRouter(address(new ERC1967Proxy(address(new L2GatewayRouter()), new bytes(0))));
 
         // Deploy L1 contracts
         counterpartGateway = new L1ETHGateway();
@@ -113,7 +115,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
         gateway.finalizeDepositETH(sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L2ETHGateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
@@ -192,7 +194,6 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
 
     function testFinalizeWithdrawETH(
         address sender,
-        address recipient,
         uint256 amount,
         bytes memory dataToCall
     ) public {
@@ -445,5 +446,9 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
         }
+    }
+
+    function _deployGateway() internal returns (L2ETHGateway) {
+        return L2ETHGateway(address(new ERC1967Proxy(address(new L2ETHGateway()), new bytes(0))));
     }
 }
