@@ -105,9 +105,15 @@ func (r *rollerManager) Register(ctx context.Context, proverPublicKey string, id
 
 func (r *rollerManager) reloadRollerAssignedTasks(ctx context.Context, proverPublicKey string) (*cmap.ConcurrentMap, error) {
 	var assignedProverTasks []orm.ProverTask
+	page := 0
+	limit := 100
 	for {
-		limit := 100
-		batchAssignedProverTasks, err := r.proverTaskOrm.GetAssignedProverTasks(ctx, limit)
+		page++
+		whereFields := make(map[string]interface{})
+		whereFields["proving_status"] = int16(types.RollerAssigned)
+		orderBy := []string{"id asc"}
+		offset := (page - 1) * limit
+		batchAssignedProverTasks, err := r.proverTaskOrm.GetProverTasks(ctx, whereFields, orderBy, offset, limit)
 		if err != nil {
 			log.Warn("reloadRollerAssignedTasks get all assigned failure", "error", err)
 			return nil, fmt.Errorf("reloadRollerAssignedTasks error:%w", err)

@@ -50,7 +50,7 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 	whereFields := make(map[string]interface{})
 	whereFields["task_id"] = hash
 	whereFields["task_type"] = int16(taskType)
-	proverTasks, err := b.proverTaskOrm.GetProverTasks(whereFields, nil, 0)
+	proverTasks, err := b.proverTaskOrm.GetProverTasks(b.ctx, whereFields, nil, 0, 0)
 	if err != nil {
 		log.Error("get prover task error", "hash id", hash, "error", err)
 		return true

@@ -50,9 +50,10 @@ func (*ProverTask) TableName() string {
 }
 
 // GetProverTasks get prover tasks
-func (o *ProverTask) GetProverTasks(fields map[string]interface{}, orderByList []string, limit int) ([]ProverTask, error) {
-	var proverTasks []ProverTask
-	db := o.db
+func (o *ProverTask) GetProverTasks(ctx context.Context, fields map[string]interface{}, orderByList []string, offset, limit int) ([]ProverTask, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+
 	for k, v := range fields {
 		db = db.Where(k, v)
 	}
@@ -65,6 +66,11 @@ func (o *ProverTask) GetProverTasks(fields map[string]interface{}, orderByList [
 		db = db.Limit(limit)
 	}
 
+	if offset != 0 {
+		db = db.Offset(offset)
+	}
+
+	var proverTasks []ProverTask
 	if err := db.Find(&proverTasks).Error; err != nil {
 		return nil, err
 	}
