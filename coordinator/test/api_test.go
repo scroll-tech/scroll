@@ -377,7 +377,7 @@ func testInvalidProof(t *testing.T) {
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
-	err = chunkOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
+	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
 	// verify proof status
@@ -438,7 +438,7 @@ func testProofGeneratedFailed(t *testing.T) {
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
-	err = chunkOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
+	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
 	// verify proof status
@@ -489,7 +489,7 @@ func testTimeoutProof(t *testing.T) {
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
-	err = chunkOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
+	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
 	// verify proof status, it should be assigned, because roller didn't send any proof
