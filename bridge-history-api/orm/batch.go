@@ -72,7 +72,6 @@ func (r *RollupBatch) BatchInsertRollupBatch(ctx context.Context, batches []*Rol
 		db = dbTx[0]
 	}
 	err := db.WithContext(ctx).Model(&RollupBatch{}).Create(&batches).Error
-
 	if err != nil {
 		batchIndexes := make([]uint64, 0, len(batches))
 		heights := make([]uint64, 0, len(batches))
