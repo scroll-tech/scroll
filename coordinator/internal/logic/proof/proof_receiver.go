@@ -90,6 +90,7 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 	proofTime := time.Since(proverTask.CreatedAt)
 	proofTimeSec := uint64(proofTime.Seconds())
 
+	// update proverTask's proof. will also update status to `ProvingTaskProved`.
 	err = m.proverTaskOrm.UpdateProverTaskProof(ctx, proofMsg.Type, proofMsg.ID, pk, proofMsg.Proof)
 	if err != nil {
 		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
@@ -192,7 +193,9 @@ func (m *ZKProofReceiver) proofRecover(ctx context.Context, hash string, pubKey 
 
 func (m *ZKProofReceiver) closeProofTask(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) error {
 	
-
+	// update proverTask to verifier
+	// update chunkOrm/batchOrm's proof and status
+	// TODO: need to remove a status
 
 	// // store proof content
 	// switch proofMsg.Type {
