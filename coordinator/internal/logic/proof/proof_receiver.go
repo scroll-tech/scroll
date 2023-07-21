@@ -226,7 +226,7 @@ func (m *ZKProofReceiver) closeProofTask(ctx context.Context, hash string, pubKe
 // UpdateProofStatus update the chunk/batch task and session info status
 func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, proverPublicKey string, proofMsgType message.ProofType, status types.ProvingStatus) error {
 	// if the prover task failure type is SessionInfoFailureTimeout,
-	// just skip update the status because the proof result come so slow.
+	// just skip update the status because the proof result come too late.
 	if m.checkIsTimeoutFailure(ctx, hash, proverPublicKey) {
 		return nil
 	}
@@ -240,7 +240,7 @@ func (m *ZKProofReceiver) updateProofStatus(ctx context.Context, hash string, pr
 	}
 
 	err := m.db.Transaction(func(tx *gorm.DB) error {
-		if updateErr := m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, proofMsgType, hash, proverPublicKey, proverTaskStatus); updateErr != nil {
+		if updateErr := m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, proofMsgType, hash, proverPublicKey, proverTaskStatus, tx); updateErr != nil {
 			return updateErr
 		}
 
