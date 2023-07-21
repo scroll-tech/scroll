@@ -33,6 +33,7 @@ func (*RollupBatch) TableName() string {
 	return "rollup_batch"
 }
 
+// GetLatestRollupBatchProcessedHeight return latest processed height from rollup_batch table
 func (r *RollupBatch) GetLatestRollupBatchProcessedHeight(ctx context.Context) (uint64, error) {
 	result := &RollupBatch{}
 	err := r.db.WithContext(ctx).Unscoped().Select("commit_height").Order("id desc").Limit(1).Find(&result).Error

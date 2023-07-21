@@ -20,11 +20,10 @@ import (
 )
 
 var (
-	app *cli.App
+	app    *cli.App
+	db     *gorm.DB
+	subCtx context.Context
 )
-
-var db *gorm.DB
-var subCtx context.Context
 
 func pong(ctx iris.Context) {
 	_, err := ctx.WriteString("pong")
