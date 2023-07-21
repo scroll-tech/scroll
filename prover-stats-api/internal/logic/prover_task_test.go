@@ -3,11 +3,13 @@ package logic
 import (
 	"context"
 	"math/big"
+	"testing"
+
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
-	"scroll-tech/database/migrate"
-	"testing"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
