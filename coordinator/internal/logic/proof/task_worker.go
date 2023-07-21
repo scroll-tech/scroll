@@ -53,6 +53,7 @@ func (t *TaskWorker) AllocTaskWorker(ctx context.Context, authMsg *message.AuthM
 	return rpcSub, nil
 }
 
+// TODO worker add metrics
 func (t *TaskWorker) worker(rpcSub *rpc.Subscription, notifier *rpc.Notifier, pubKey string, identity *message.Identity, taskCh <-chan *message.TaskMsg) {
 	defer func() {
 		if err := recover(); err != nil {

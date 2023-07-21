@@ -184,6 +184,12 @@ func TestRoller_SubmitProof(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, pubKey, proofPubKey)
 
+	var proverTaskOrm *orm.ProverTask
+	patchGuard := gomonkey.ApplyMethodFunc(proverTaskOrm, "GetProverTasks", func(ctx context.Context, fields map[string]interface{}, orderByList []string, offset, limit int) ([]orm.ProverTask, error) {
+		return nil, nil
+	})
+	defer patchGuard.Reset()
+
 	rollermanager.InitRollerManager(nil)
 
 	taskChan, err := rollermanager.Manager.Register(context.Background(), pubKey, tmpAuthMsg.Identity)
@@ -201,10 +207,9 @@ func TestRoller_SubmitProof(t *testing.T) {
 	})
 
 	var s *message.ProofMsg
-	patchGuard := gomonkey.ApplyMethodFunc(s, "Verify", func() (bool, error) {
+	patchGuard.ApplyMethodFunc(s, "Verify", func() (bool, error) {
 		return true, nil
 	})
-	defer patchGuard.Reset()
 
 	var chunkOrm *orm.Chunk
 	patchGuard.ApplyMethodFunc(chunkOrm, "UpdateProofByHash", func(context.Context, string, *message.AggProof, uint64, ...*gorm.DB) error {
@@ -222,7 +227,6 @@ func TestRoller_SubmitProof(t *testing.T) {
 		return nil
 	})
 
-	var proverTaskOrm *orm.ProverTask
 	convey.Convey("get none rollers of prover task", t, func() {
 		patchGuard.ApplyMethodFunc(proverTaskOrm, "GetProverTaskByTaskIDAndPubKey", func(ctx context.Context, hash, pubKey string) (*orm.ProverTask, error) {
 			return nil, nil
