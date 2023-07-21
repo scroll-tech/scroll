@@ -41,21 +41,21 @@ func (*L2SentMsg) TableName() string {
 
 // GetL2SentMsgByHash get l2 sent msg by hash
 func (l *L2SentMsg) GetL2SentMsgByHash(ctx context.Context, msgHash string) (*L2SentMsg, error) {
-	result := &L2SentMsg{}
+	var result L2SentMsg
 	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("msg_hash = ?", msgHash).
-		First(result).
+		First(&result).
 		Error
-	return result, err
+	return &result, err
 }
 
 // GetLatestSentMsgHeightOnL2 get latest sent msg height on l2
 func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, error) {
-	result := &L2SentMsg{}
+	var result L2SentMsg
 	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Select("height").
 		Order("nonce DESC").
-		First(result).Error
+		First(&result).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -83,12 +83,12 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(ctx context.Context, 
 
 // GetLatestL2SentMsgBatchIndex get latest l2 sent msg batch index
 func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex(ctx context.Context) (int64, error) {
-	result := &L2SentMsg{}
+	var result L2SentMsg
 	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("batch_index != 0").
 		Order("batch_index DESC").
 		Select("batch_index").
-		First(result).
+		First(&result).
 		Error
 	if err != nil {
 		return -1, err
@@ -110,23 +110,23 @@ func (l *L2SentMsg) GetL2SentMsgMsgHashByHeightRange(ctx context.Context, startH
 
 // GetL2SentMessageByNonce get l2 sent message by nonce
 func (l *L2SentMsg) GetL2SentMessageByNonce(ctx context.Context, nonce uint64) (*L2SentMsg, error) {
-	result := &L2SentMsg{}
+	var result L2SentMsg
 	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("nonce = ?", nonce).
-		First(result).
+		First(&result).
 		Error
-	return result, err
+	return &result, err
 }
 
 // GetLatestL2SentMsgLEHeight get latest l2 sent msg less than or equal to end block number
 func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(ctx context.Context, endBlockNumber uint64) (*L2SentMsg, error) {
-	result := &L2SentMsg{}
+	var result L2SentMsg
 	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("height <= ?", endBlockNumber).
 		Order("nonce DESC").
-		First(result).
+		First(&result).
 		Error
-	return result, err
+	return &result, err
 }
 
 // InsertL2SentMsg batch insert l2 sent msg

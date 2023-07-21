@@ -35,32 +35,32 @@ func (*RollupBatch) TableName() string {
 
 // GetLatestRollupBatchProcessedHeight return latest processed height from rollup_batch table
 func (r *RollupBatch) GetLatestRollupBatchProcessedHeight(ctx context.Context) (uint64, error) {
-	result := &RollupBatch{}
-	err := r.db.WithContext(ctx).Unscoped().Select("commit_height").Order("id desc").First(result).Error
+	var result RollupBatch
+	err := r.db.WithContext(ctx).Unscoped().Select("commit_height").Order("id desc").First(&result).Error
 	return result.CommitHeight, err
 }
 
 // GetLatestRollupBatch return the latest rollup batch in db
 func (r *RollupBatch) GetLatestRollupBatch(ctx context.Context) (*RollupBatch, error) {
-	result := &RollupBatch{}
-	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_hash is not NULL").Order("batch_index desc").First(result).Error
+	var result RollupBatch
+	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_hash is not NULL").Order("batch_index desc").First(&result).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
 		return nil, err
 	}
-	return result, nil
+	return &result, nil
 }
 
 // GetRollupBatchByIndex return the rollup batch by index
 func (r *RollupBatch) GetRollupBatchByIndex(ctx context.Context, index uint64) (*RollupBatch, error) {
-	result := &RollupBatch{}
-	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index = ?", index).First(result).Error
+	var result RollupBatch
+	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index = ?", index).First(&result).Error
 	if err != nil {
 		return nil, err
 	}
-	return result, nil
+	return &result, nil
 }
 
 // InsertRollupBatch batch insert rollup batch into db and return the transaction
