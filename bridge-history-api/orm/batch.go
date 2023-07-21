@@ -36,7 +36,7 @@ func (*RollupBatch) TableName() string {
 // GetLatestRollupBatchProcessedHeight return latest processed height from rollup_batch table
 func (r *RollupBatch) GetLatestRollupBatchProcessedHeight(ctx context.Context) (uint64, error) {
 	result := &RollupBatch{}
-	err := r.db.WithContext(ctx).Unscoped().Select("commit_height").Order("id desc").Limit(1).Find(&result).Error
+	err := r.db.WithContext(ctx).Unscoped().Select("commit_height").Order("id desc").First(result).Error
 	return result.CommitHeight, err
 }
 
@@ -63,8 +63,8 @@ func (r *RollupBatch) GetRollupBatchByIndex(ctx context.Context, index uint64) (
 	return result, nil
 }
 
-// BatchInsertRollupBatch batch insert rollup batch into db and return the transaction
-func (r *RollupBatch) BatchInsertRollupBatch(ctx context.Context, batches []*RollupBatch, dbTx ...*gorm.DB) error {
+// InsertRollupBatch batch insert rollup batch into db and return the transaction
+func (r *RollupBatch) InsertRollupBatch(ctx context.Context, batches []*RollupBatch, dbTx ...*gorm.DB) error {
 	if len(batches) == 0 {
 		return nil
 	}

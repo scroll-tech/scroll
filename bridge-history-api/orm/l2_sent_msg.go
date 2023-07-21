@@ -44,7 +44,7 @@ func (l *L2SentMsg) GetL2SentMsgByHash(ctx context.Context, msgHash string) (*L2
 	result := &L2SentMsg{}
 	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("msg_hash = ?", msgHash).
-		First(&result).
+		First(result).
 		Error
 	return result, err
 }
@@ -53,10 +53,9 @@ func (l *L2SentMsg) GetL2SentMsgByHash(ctx context.Context, msgHash string) (*L2
 func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, error) {
 	result := &L2SentMsg{}
 	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
-		Order("nonce DESC").
-		Limit(1).
 		Select("height").
-		First(&result).Error
+		Order("nonce DESC").
+		First(result).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -89,8 +88,7 @@ func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex(ctx context.Context) (int64, er
 		Where("batch_index != 0").
 		Order("batch_index DESC").
 		Select("batch_index").
-		Limit(1).
-		First(&result).
+		First(result).
 		Error
 	if err != nil {
 		return -1, err
@@ -115,7 +113,7 @@ func (l *L2SentMsg) GetL2SentMessageByNonce(ctx context.Context, nonce uint64) (
 	result := &L2SentMsg{}
 	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("nonce = ?", nonce).
-		First(&result).
+		First(result).
 		Error
 	return result, err
 }
@@ -126,13 +124,13 @@ func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(ctx context.Context, endBlockNumb
 	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("height <= ?", endBlockNumber).
 		Order("nonce DESC").
-		First(&result).
+		First(result).
 		Error
 	return result, err
 }
 
-// BatchInsertL2SentMsg batch insert l2 sent msg
-func (l *L2SentMsg) BatchInsertL2SentMsg(ctx context.Context, messages []*L2SentMsg, dbTx ...*gorm.DB) error {
+// InsertL2SentMsg batch insert l2 sent msg
+func (l *L2SentMsg) InsertL2SentMsg(ctx context.Context, messages []*L2SentMsg, dbTx ...*gorm.DB) error {
 	if len(messages) == 0 {
 		return nil
 	}

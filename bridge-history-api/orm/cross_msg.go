@@ -89,7 +89,7 @@ func NewCrossMsg(db *gorm.DB) *CrossMsg {
 // GetL1CrossMsgByHash returns layer1 cross message by given hash
 func (l *CrossMsg) GetL1CrossMsgByHash(ctx context.Context, l1Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	err := l.db.WithContext(ctx).Model(&CrossMsg{}).Where("layer1_hash = ? AND msg_type = ?", l1Hash.String(), Layer1Msg).First(&result).Error
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).Where("layer1_hash = ? AND msg_type = ?", l1Hash.String(), Layer1Msg).First(result).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -102,9 +102,9 @@ func (l *CrossMsg) GetL1CrossMsgByHash(ctx context.Context, l1Hash common.Hash) 
 func (l *CrossMsg) GetLatestL1ProcessedHeight(ctx context.Context) (uint64, error) {
 	result := &CrossMsg{}
 	err := l.db.WithContext(ctx).Model(&CrossMsg{}).Where("msg_type = ?", Layer1Msg).
-		Order("id DESC").
 		Select("height").
-		First(&result).
+		Order("id DESC").
+		First(result).
 		Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -119,9 +119,9 @@ func (l *CrossMsg) GetL1EarliestNoBlockTimestampHeight(ctx context.Context) (uin
 	result := &CrossMsg{}
 	err := l.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("block_timestamp IS NULL AND msg_type = ?", Layer1Msg).
-		Order("height ASC").
 		Select("height").
-		First(&result).
+		Order("height ASC").
+		First(result).
 		Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -141,7 +141,7 @@ func (l *CrossMsg) InsertL1CrossMsg(ctx context.Context, messages []*CrossMsg, d
 		db = dbTx[0]
 	}
 	db.WithContext(ctx)
-	err := db.Model(&CrossMsg{}).Model(&CrossMsg{}).Create(&messages).Error
+	err := db.Model(&CrossMsg{}).Create(&messages).Error
 	if err != nil {
 		l1hashes := make([]string, 0, len(messages))
 		heights := make([]uint64, 0, len(messages))
@@ -161,7 +161,7 @@ func (l *CrossMsg) UpdateL1CrossMsgHash(ctx context.Context, l1Hash, msgHash com
 		db = dbTx[0]
 	}
 	db.WithContext(ctx)
-	err := l.db.Model(&CrossMsg{}).Model(&CrossMsg{}).Where("layer1_hash = ?", l1Hash.Hex()).Update("msg_hash", msgHash.Hex()).Error
+	err := l.db.Model(&CrossMsg{}).Where("layer1_hash = ?", l1Hash.Hex()).Update("msg_hash", msgHash.Hex()).Error
 	return err
 
 }
@@ -190,7 +190,7 @@ func (l *CrossMsg) DeleteL1CrossMsgAfterHeight(ctx context.Context, height uint6
 // GetL2CrossMsgByHash returns layer2 cross message by given hash
 func (l *CrossMsg) GetL2CrossMsgByHash(ctx context.Context, l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	err := l.db.WithContext(ctx).Model(&CrossMsg{}).Where("layer2_hash = ? AND msg_type = ?", l2Hash.String(), Layer1Msg).First(&result).Error
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).Where("layer2_hash = ? AND msg_type = ?", l2Hash.String(), Layer1Msg).First(result).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -203,10 +203,10 @@ func (l *CrossMsg) GetL2CrossMsgByHash(ctx context.Context, l2Hash common.Hash) 
 func (l *CrossMsg) GetLatestL2ProcessedHeight(ctx context.Context) (uint64, error) {
 	result := &CrossMsg{}
 	err := l.db.WithContext(ctx).Model(&CrossMsg{}).
+		Select("height").
 		Where("msg_type = ?", Layer2Msg).
 		Order("id DESC").
-		Select("height").
-		First(&result).
+		First(result).
 		Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -240,9 +240,9 @@ func (l *CrossMsg) GetL2EarliestNoBlockTimestampHeight(ctx context.Context) (uin
 	result := &CrossMsg{}
 	err := l.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("block_timestamp IS NULL AND msg_type = ?", Layer2Msg).
-		Order("height ASC").
 		Select("height").
-		First(&result).
+		Order("height ASC").
+		First(result).
 		Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -267,8 +267,8 @@ func (l *CrossMsg) GetL2CrossMsgByAddress(ctx context.Context, sender common.Add
 
 }
 
-// BatchInsertL2CrossMsg batch insert layer2 cross messages
-func (l *CrossMsg) BatchInsertL2CrossMsg(ctx context.Context, messages []*CrossMsg, dbTx ...*gorm.DB) error {
+// InsertL2CrossMsg batch insert layer2 cross messages
+func (l *CrossMsg) InsertL2CrossMsg(ctx context.Context, messages []*CrossMsg, dbTx ...*gorm.DB) error {
 	if len(messages) == 0 {
 		return nil
 	}

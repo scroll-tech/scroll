@@ -37,7 +37,7 @@ func (r *RelayedMsg) GetRelayedMsgByHash(ctx context.Context, msgHash string) (*
 	result := &RelayedMsg{}
 	err := r.db.WithContext(ctx).Model(&RelayedMsg{}).
 		Where("msg_hash = ?", msgHash).
-		First(&result).
+		First(result).
 		Error
 	return result, err
 }
@@ -49,8 +49,7 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL1(ctx context.Context) (uint64, er
 		Select("height").
 		Where("layer1_hash != ''").
 		Order("height DESC").
-		Limit(1).
-		Scan(&result).
+		First(result).
 		Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -67,8 +66,7 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL2(ctx context.Context) (uint64, er
 		Select("height").
 		Where("layer2_hash != ''").
 		Order("height DESC").
-		Limit(1).
-		Scan(&result).
+		First(result).
 		Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -78,8 +76,8 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL2(ctx context.Context) (uint64, er
 	return result.Height, nil
 }
 
-// BatchInsertRelayedMsg batch insert relayed msg into db and return the transaction
-func (r *RelayedMsg) BatchInsertRelayedMsg(ctx context.Context, messages []*RelayedMsg, dbTx ...*gorm.DB) error {
+// InsertRelayedMsg batch insert relayed msg into db and return the transaction
+func (r *RelayedMsg) InsertRelayedMsg(ctx context.Context, messages []*RelayedMsg, dbTx ...*gorm.DB) error {
 	if len(messages) == 0 {
 		return nil
 	}
