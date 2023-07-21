@@ -10,6 +10,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/rollermanager"
@@ -89,6 +90,8 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 				ProverName:      rollerStatus.Name,
 				ProvingStatus:   int16(types.RollerAssigned),
 				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
+				// here why need use UTC time. see scroll/common/databased/db.go
+				AssignedTime: utils.NowUTC(),
 			}
 			if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
 				return fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, rollerStatus.PublicKey, err)

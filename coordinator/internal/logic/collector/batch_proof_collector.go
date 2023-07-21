@@ -9,6 +9,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/rollermanager"
@@ -85,6 +86,8 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 				ProverName:      rollerStatus.Name,
 				ProvingStatus:   int16(types.RollerAssigned),
 				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
+				// here why need use UTC time. see scroll/common/databased/db.go
+				AssignedTime: utils.NowUTC(),
 			}
 
 			// Store session info.
