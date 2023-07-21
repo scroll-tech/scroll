@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
@@ -83,6 +84,40 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 			numL1Messages++
 			continue
 		}
+
+		data, _ := hexutil.Decode(txData.Data)
+		tx := types.NewTx(&types.LegacyTx{
+			Nonce:    txData.Nonce,
+			To:       txData.To,
+			Value:    txData.Value.ToInt(),
+			Gas:      txData.Gas,
+			GasPrice: txData.GasPrice.ToInt(),
+			Data:     data,
+			V:        txData.V.ToInt(),
+			R:        txData.R.ToInt(),
+			S:        txData.S.ToInt(),
+		})
+		rlpTxData, _ := tx.MarshalBinary()
+
+		// approximate calldata gas cost
+		for _, b := range rlpTxData {
+			if b == 0 {
+				total += 4
+			} else {
+				total += 16
+			}
+		}
+
+		var txLen [4]byte
+		binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
+
+		for _, b := range txLen {
+			if b == 0 {
+				total += 4
+			} else {
+				total += 16
+			}
+		}
 	}
 
 	// sload
@@ -91,8 +126,6 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	// staticcall
 	total += numL1Messages * 100 // numL1Messages times call to L1MessageQueue
 	total += numL1Messages * 100 // numL1Messages times warm address access to L1MessageQueue
-
-	total += w.EstimateL1CommitCalldataSize() * 16 // approximate calldata gas cost
 
 	return total
 }
