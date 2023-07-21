@@ -26,8 +26,8 @@ func getIndex() int {
 	return rollerIndex
 }
 
-// RollerApp prover-test client manager.
-type RollerApp struct {
+// ProverApp prover-test client manager.
+type ProverApp struct {
 	Config *rollerConfig.Config
 
 	base *docker.App
@@ -42,10 +42,10 @@ type RollerApp struct {
 	docker.AppAPI
 }
 
-// NewRollerApp return a new rollerApp manager.
-func NewRollerApp(base *docker.App, file string, wsURL string) *RollerApp {
+// NewProverApp return a new rollerApp manager.
+func NewProverApp(base *docker.App, file string, wsURL string) *ProverApp {
 	rollerFile := fmt.Sprintf("/tmp/%d_roller-config.json", base.Timestamp)
-	rollerApp := &RollerApp{
+	rollerApp := &ProverApp{
 		base:       base,
 		originFile: file,
 		rollerFile: rollerFile,
@@ -61,13 +61,13 @@ func NewRollerApp(base *docker.App, file string, wsURL string) *RollerApp {
 }
 
 // RunApp run prover-test child process by multi parameters.
-func (r *RollerApp) RunApp(t *testing.T, args ...string) {
+func (r *ProverApp) RunApp(t *testing.T, args ...string) {
 	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
 	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
 // Free stop and release prover-test.
-func (r *RollerApp) Free() {
+func (r *ProverApp) Free() {
 	if !utils.IsNil(r.AppAPI) {
 		r.AppAPI.WaitExit()
 	}
@@ -77,7 +77,7 @@ func (r *RollerApp) Free() {
 }
 
 // MockConfig creates a new prover config.
-func (r *RollerApp) MockConfig(store bool, wsURL string) error {
+func (r *ProverApp) MockConfig(store bool, wsURL string) error {
 	cfg, err := rollerConfig.NewConfig(r.originFile)
 	if err != nil {
 		return err
@@ -108,7 +108,7 @@ func (r *RollerApp) MockConfig(store bool, wsURL string) error {
 }
 
 // RollerApps rollerApp list.
-type RollerApps []*RollerApp
+type RollerApps []*ProverApp
 
 // RunApps starts all the rollerApps.
 func (r RollerApps) RunApps(t *testing.T, args ...string) {

@@ -16,7 +16,7 @@ import (
 
 	"scroll-tech/common/docker"
 
-	rapp "scroll-tech/roller/cmd/app"
+	rapp "scroll-tech/prover/cmd/app"
 
 	"scroll-tech/database/migrate"
 
@@ -27,18 +27,18 @@ var (
 	base           *docker.App
 	bridgeApp      *bcmd.MockApp
 	coordinatorApp *capp.CoordinatorApp
-	rollerApp      *rapp.RollerApp
+	proverApp      *rapp.ProverApp
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
 	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/config.json")
-	rollerApp = rapp.NewRollerApp(base, "../../prover/config.json", coordinatorApp.WSEndpoint())
+	proverApp = rapp.NewProverApp(base, "../../roller/config.json", coordinatorApp.WSEndpoint())
 	m.Run()
 	bridgeApp.Free()
 	coordinatorApp.Free()
-	rollerApp.Free()
+	proverApp.Free()
 	base.Free()
 }
 
@@ -51,10 +51,10 @@ func TestStartProcess(t *testing.T) {
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
 	// Run prover app.
-	rollerApp.RunApp(t)
+	proverApp.RunApp(t)
 
 	// Free apps.
-	rollerApp.WaitExit()
+	proverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
 
