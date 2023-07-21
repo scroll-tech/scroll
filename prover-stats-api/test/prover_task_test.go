@@ -7,10 +7,12 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
-	"scroll-tech/database/migrate"
 
 	"github.com/gin-gonic/gin"
 
