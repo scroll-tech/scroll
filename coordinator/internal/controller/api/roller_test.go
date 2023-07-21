@@ -63,7 +63,8 @@ func TestRoller_RequestToken(t *testing.T) {
 
 	convey.Convey("token has already been distributed", t, func() {
 		tmpAuthMsg, _ := geneAuthMsg(t)
-		key, _ := tmpAuthMsg.PublicKey()
+		key, err := tmpAuthMsg.PublicKey()
+		assert.NoError(t, err)
 		tokenCacheStored := "c393987bb791dd285dd3d8ffbd770ed1"
 		rollerController.tokenCache.Set(key, tokenCacheStored, time.Hour)
 		token, err := rollerController.RequestToken(tmpAuthMsg)

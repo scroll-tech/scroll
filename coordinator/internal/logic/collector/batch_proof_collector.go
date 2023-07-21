@@ -37,13 +37,13 @@ func NewBatchProofCollector(cfg *config.Config, db *gorm.DB) *BatchProofCollecto
 }
 
 // Name return the batch proof collector name
-func (ac *BatchProofCollector) Name() string {
+func (bp *BatchProofCollector) Name() string {
 	return BatchCollectorName
 }
 
 // Collect load and send batch tasks
-func (ac *BatchProofCollector) Collect(ctx context.Context) error {
-	batchTasks, err := ac.batchOrm.GetUnassignedBatches(ctx, 1)
+func (bp *BatchProofCollector) Collect(ctx context.Context) error {
+	batchTasks, err := bp.batchOrm.GetUnassignedBatches(ctx, 1)
 	if err != nil {
 		return fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
 	}
@@ -63,18 +63,18 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 		return fmt.Errorf("no idle common roller when starting proof generation session, id:%s", batchTask.Hash)
 	}
 
-	if !ac.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
+	if !bp.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
 		return fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
 	}
 
-	rollerStatusList, err := ac.sendTask(ctx, batchTask.Hash)
+	rollerStatusList, err := bp.sendTask(ctx, batchTask.Hash)
 	if err != nil {
 		return fmt.Errorf("send batch task id:%s err:%w", batchTask.Hash, err)
 	}
 
-	transErr := ac.db.Transaction(func(tx *gorm.DB) error {
+	transErr := bp.db.Transaction(func(tx *gorm.DB) error {
 		// Update session proving status as assigned.
-		if err = ac.batchOrm.UpdateProvingStatus(ctx, batchTask.Hash, types.ProvingTaskAssigned, tx); err != nil {
+		if err = bp.batchOrm.UpdateProvingStatus(ctx, batchTask.Hash, types.ProvingTaskAssigned, tx); err != nil {
 			return fmt.Errorf("failed to update task status, id:%s, error:%w", batchTask.Hash, err)
 		}
 
@@ -91,7 +91,7 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 			}
 
 			// Store session info.
-			if err = ac.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
+			if err = bp.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
 				return fmt.Errorf("db set session info fail, session id:%s, error:%w", proverTask.TaskID, err)
 			}
 		}
@@ -100,12 +100,12 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 	return transErr
 }
 
-func (ac *BatchProofCollector) sendTask(ctx context.Context, taskID string) ([]*coordinatorType.RollerStatus, error) {
+func (bp *BatchProofCollector) sendTask(ctx context.Context, taskID string) ([]*coordinatorType.RollerStatus, error) {
 	// get chunk proofs from db
-	chunkProofs, err := ac.chunkOrm.GetProofsByBatchHash(ctx, taskID)
+	chunkProofs, err := bp.chunkOrm.GetProofsByBatchHash(ctx, taskID)
 	if err != nil {
 		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", taskID, err)
 		return nil, err
 	}
-	return ac.BaseCollector.sendTask(message.ProofTypeBatch, taskID, nil, chunkProofs)
+	return bp.BaseCollector.sendTask(message.ProofTypeBatch, taskID, nil, chunkProofs)
 }
