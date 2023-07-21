@@ -1,6 +1,8 @@
 package orm
 
 import (
+	"context"
+
 	"gorm.io/gorm"
 )
 
@@ -17,9 +19,9 @@ func NewUtilDBOrm(db *gorm.DB) *UtilDBOrm {
 }
 
 // GetTotalCrossMsgCountByAddress get total cross msg count by address
-func (u *UtilDBOrm) GetTotalCrossMsgCountByAddress(sender string) (uint64, error) {
+func (u *UtilDBOrm) GetTotalCrossMsgCountByAddress(ctx context.Context, sender string) (uint64, error) {
 	var count int64
-	err := u.db.Model(&CrossMsg{}).
+	err := u.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("sender = ?", sender).
 		Count(&count).
 		Error
@@ -32,9 +34,9 @@ func (u *UtilDBOrm) GetTotalCrossMsgCountByAddress(sender string) (uint64, error
 }
 
 // GetCrossMsgsByAddressWithOffset get cross msgs by address with offset
-func (u *UtilDBOrm) GetCrossMsgsByAddressWithOffset(sender string, offset int, limit int) ([]CrossMsg, error) {
+func (u *UtilDBOrm) GetCrossMsgsByAddressWithOffset(ctx context.Context, sender string, offset int, limit int) ([]CrossMsg, error) {
 	var messages []CrossMsg
-	err := u.db.Model(&CrossMsg{}).
+	err := u.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("sender = ?", sender).
 		Order("block_timestamp DESC NULLS FIRST, id DESC").
 		Limit(limit).

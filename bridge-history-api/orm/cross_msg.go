@@ -87,9 +87,9 @@ func NewCrossMsg(db *gorm.DB) *CrossMsg {
 // L1 Cross Msgs Operations
 
 // GetL1CrossMsgByHash returns layer1 cross message by given hash
-func (l *CrossMsg) GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error) {
+func (l *CrossMsg) GetL1CrossMsgByHash(ctx context.Context, l1Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	err := l.db.Model(&CrossMsg{}).Where("layer1_hash = ? AND msg_type = ?", l1Hash.String(), Layer1Msg).First(&result).Error
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).Where("layer1_hash = ? AND msg_type = ?", l1Hash.String(), Layer1Msg).First(&result).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -99,9 +99,9 @@ func (l *CrossMsg) GetL1CrossMsgByHash(l1Hash common.Hash) (*CrossMsg, error) {
 }
 
 // GetLatestL1ProcessedHeight returns the latest processed height of layer1 cross messages
-func (l *CrossMsg) GetLatestL1ProcessedHeight() (uint64, error) {
+func (l *CrossMsg) GetLatestL1ProcessedHeight(ctx context.Context) (uint64, error) {
 	result := &CrossMsg{}
-	err := l.db.Model(&CrossMsg{}).Where("msg_type = ?", Layer1Msg).
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).Where("msg_type = ?", Layer1Msg).
 		Order("id DESC").
 		Select("height").
 		First(&result).
@@ -115,9 +115,9 @@ func (l *CrossMsg) GetLatestL1ProcessedHeight() (uint64, error) {
 }
 
 // GetL1EarliestNoBlockTimestampHeight returns the earliest layer1 cross message height which has no block timestamp
-func (l *CrossMsg) GetL1EarliestNoBlockTimestampHeight() (uint64, error) {
+func (l *CrossMsg) GetL1EarliestNoBlockTimestampHeight(ctx context.Context) (uint64, error) {
 	result := &CrossMsg{}
-	err := l.db.Model(&CrossMsg{}).
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("block_timestamp IS NULL AND msg_type = ?", Layer1Msg).
 		Order("height ASC").
 		Select("height").
@@ -167,8 +167,8 @@ func (l *CrossMsg) UpdateL1CrossMsgHash(ctx context.Context, l1Hash, msgHash com
 }
 
 // UpdateL1BlockTimestamp update layer1 block timestamp
-func (l *CrossMsg) UpdateL1BlockTimestamp(height uint64, timestamp time.Time) error {
-	err := l.db.Model(&CrossMsg{}).
+func (l *CrossMsg) UpdateL1BlockTimestamp(ctx context.Context, height uint64, timestamp time.Time) error {
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("height = ? AND msg_type = ?", height, Layer1Msg).
 		Update("block_timestamp", timestamp).Error
 	return err
@@ -188,9 +188,9 @@ func (l *CrossMsg) DeleteL1CrossMsgAfterHeight(ctx context.Context, height uint6
 // L2 Cross Msgs Operations
 
 // GetL2CrossMsgByHash returns layer2 cross message by given hash
-func (l *CrossMsg) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
+func (l *CrossMsg) GetL2CrossMsgByHash(ctx context.Context, l2Hash common.Hash) (*CrossMsg, error) {
 	result := &CrossMsg{}
-	err := l.db.Model(&CrossMsg{}).Where("layer2_hash = ? AND msg_type = ?", l2Hash.String(), Layer1Msg).First(&result).Error
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).Where("layer2_hash = ? AND msg_type = ?", l2Hash.String(), Layer1Msg).First(&result).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -200,9 +200,9 @@ func (l *CrossMsg) GetL2CrossMsgByHash(l2Hash common.Hash) (*CrossMsg, error) {
 }
 
 // GetLatestL2ProcessedHeight returns the latest processed height of layer2 cross messages
-func (l *CrossMsg) GetLatestL2ProcessedHeight() (uint64, error) {
+func (l *CrossMsg) GetLatestL2ProcessedHeight(ctx context.Context) (uint64, error) {
 	result := &CrossMsg{}
-	err := l.db.Model(&CrossMsg{}).
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("msg_type = ?", Layer2Msg).
 		Order("id DESC").
 		Select("height").
@@ -217,9 +217,9 @@ func (l *CrossMsg) GetLatestL2ProcessedHeight() (uint64, error) {
 }
 
 // GetL2CrossMsgByMsgHashList returns layer2 cross messages under given msg hashes
-func (l *CrossMsg) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg, error) {
+func (l *CrossMsg) GetL2CrossMsgByMsgHashList(ctx context.Context, msgHashList []string) ([]*CrossMsg, error) {
 	var results []*CrossMsg
-	err := l.db.Model(&CrossMsg{}).
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("msg_hash IN (?) AND msg_type = ?", msgHashList, Layer2Msg).
 		Find(&results).
 		Error
@@ -236,9 +236,9 @@ func (l *CrossMsg) GetL2CrossMsgByMsgHashList(msgHashList []string) ([]*CrossMsg
 }
 
 // GetL2EarliestNoBlockTimestampHeight returns the earliest layer2 cross message height which has no block timestamp
-func (l *CrossMsg) GetL2EarliestNoBlockTimestampHeight() (uint64, error) {
+func (l *CrossMsg) GetL2EarliestNoBlockTimestampHeight(ctx context.Context) (uint64, error) {
 	result := &CrossMsg{}
-	err := l.db.Model(&CrossMsg{}).
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("block_timestamp IS NULL AND msg_type = ?", Layer2Msg).
 		Order("height ASC").
 		Select("height").
@@ -254,9 +254,9 @@ func (l *CrossMsg) GetL2EarliestNoBlockTimestampHeight() (uint64, error) {
 
 // GetL2CrossMsgByAddress returns all layer2 cross messages under given address
 // Warning: return empty slice if no data found
-func (l *CrossMsg) GetL2CrossMsgByAddress(sender common.Address) ([]*CrossMsg, error) {
+func (l *CrossMsg) GetL2CrossMsgByAddress(ctx context.Context, sender common.Address) ([]*CrossMsg, error) {
 	var results []*CrossMsg
-	err := l.db.Model(&CrossMsg{}).Where("sender = ? AND msg_type = ?", sender.String(), Layer2Msg).
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).Where("sender = ? AND msg_type = ?", sender.String(), Layer2Msg).
 		Find(&results).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -305,8 +305,8 @@ func (l *CrossMsg) UpdateL2CrossMsgHash(ctx context.Context, l2Hash, msgHash com
 }
 
 // UpdateL2BlockTimestamp update layer2 cross message block timestamp
-func (l *CrossMsg) UpdateL2BlockTimestamp(height uint64, timestamp time.Time) error {
-	err := l.db.Model(&CrossMsg{}).
+func (l *CrossMsg) UpdateL2BlockTimestamp(ctx context.Context, height uint64, timestamp time.Time) error {
+	err := l.db.WithContext(ctx).Model(&CrossMsg{}).
 		Where("height = ? AND msg_type = ?", height, Layer2Msg).
 		Update("block_timestamp", timestamp).Error
 	return err

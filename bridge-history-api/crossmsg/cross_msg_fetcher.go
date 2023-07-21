@@ -120,7 +120,7 @@ func (c *MsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) {
 		log.Error(fmt.Sprintf("%s: invalid get/fetch function", c.worker.Name))
 		return
 	}
-	processedHeight, err := c.worker.G(c.db)
+	processedHeight, err := c.worker.G(c.ctx, c.db)
 	if err != nil {
 		log.Error(fmt.Sprintf("%s: can not get latest processed block height", c.worker.Name))
 	}

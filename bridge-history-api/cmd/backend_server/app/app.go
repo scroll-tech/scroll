@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -23,6 +24,7 @@ var (
 )
 
 var db *gorm.DB
+var subCtx context.Context
 
 func pong(ctx iris.Context) {
 	_, err := ctx.WriteString("pong")
@@ -34,6 +36,7 @@ func pong(ctx iris.Context) {
 func setupQueryByAddressHandler(backendApp *mvc.Application) {
 	// Register Dependencies.
 	backendApp.Register(
+		subCtx,
 		db,
 		service.NewHistoryService,
 	)
@@ -45,6 +48,7 @@ func setupQueryByAddressHandler(backendApp *mvc.Application) {
 func setupQueryClaimableHandler(backendApp *mvc.Application) {
 	// Register Dependencies.
 	backendApp.Register(
+		subCtx,
 		db,
 		service.NewHistoryService,
 	)
@@ -55,6 +59,7 @@ func setupQueryClaimableHandler(backendApp *mvc.Application) {
 
 func setupQueryByHashHandler(backendApp *mvc.Application) {
 	backendApp.Register(
+		subCtx,
 		db,
 		service.NewHistoryService,
 	)
@@ -102,6 +107,7 @@ func action(ctx *cli.Context) error {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
+	subCtx = ctx.Context
 	bridgeApp := iris.New()
 	bridgeApp.UseRouter(corsOptions)
 	bridgeApp.Get("/ping", pong).Describe("healthcheck")

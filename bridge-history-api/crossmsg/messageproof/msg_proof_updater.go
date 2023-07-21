@@ -46,7 +46,7 @@ func (m *MsgProofUpdater) Start() {
 				tick.Stop()
 				return
 			case <-tick.C:
-				latestBatch, err := m.rollupOrm.GetLatestRollupBatch()
+				latestBatch, err := m.rollupOrm.GetLatestRollupBatch(m.ctx)
 				if err != nil {
 					log.Warn("MsgProofUpdater: Can not get latest RollupBatch: ", "err", err)
 					continue
@@ -54,7 +54,7 @@ func (m *MsgProofUpdater) Start() {
 				if latestBatch == nil {
 					continue
 				}
-				latestBatchIndexWithProof, err := m.l2SentMsgOrm.GetLatestL2SentMsgBatchIndex()
+				latestBatchIndexWithProof, err := m.l2SentMsgOrm.GetLatestL2SentMsgBatchIndex(m.ctx)
 				if err != nil {
 					log.Error("MsgProofUpdater: Can not get latest L2SentMsgBatchIndex: ", "err", err)
 					continue
@@ -66,7 +66,7 @@ func (m *MsgProofUpdater) Start() {
 					start = uint64(latestBatchIndexWithProof) + 1
 				}
 				for i := start; i <= latestBatch.BatchIndex; i++ {
-					batch, err := m.rollupOrm.GetRollupBatchByIndex(i)
+					batch, err := m.rollupOrm.GetRollupBatchByIndex(m.ctx, i)
 					if err != nil {
 						log.Error("MsgProofUpdater: Can not get RollupBatch: ", "err", err, "index", i)
 						break
@@ -115,7 +115,7 @@ func (m *MsgProofUpdater) initialize(ctx context.Context) {
 
 func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 	var batch *orm.RollupBatch
-	firstMsg, err := m.l2SentMsgOrm.GetL2SentMessageByNonce(0)
+	firstMsg, err := m.l2SentMsgOrm.GetL2SentMessageByNonce(m.ctx, 0)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return fmt.Errorf("failed to get first l2 message: %v", err)
 	}
@@ -127,7 +127,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 	}
 
 	// if no batch, return and wait for next try round
-	batch, err = m.rollupOrm.GetLatestRollupBatch()
+	batch, err = m.rollupOrm.GetLatestRollupBatch(m.ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get latest batch: %v", err)
 	}
@@ -139,7 +139,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 	batchIndex := batch.BatchIndex
 	for {
 		var msg *orm.L2SentMsg
-		msg, err = m.l2SentMsgOrm.GetLatestL2SentMsgLEHeight(batch.EndBlockNumber)
+		msg, err = m.l2SentMsgOrm.GetLatestL2SentMsgLEHeight(m.ctx, batch.EndBlockNumber)
 		if err != nil {
 			log.Warn("failed to get l2 sent message less than height", "endBlocknum", batch.EndBlockNumber, "err", err)
 		}
@@ -163,7 +163,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		// iterate for next batch
 		batchIndex--
 
-		batch, err = m.rollupOrm.GetRollupBatchByIndex(batchIndex)
+		batch, err = m.rollupOrm.GetRollupBatchByIndex(m.ctx, batchIndex)
 		if err != nil {
 			return fmt.Errorf("failed to get block batch %v: %v", batchIndex, err)
 		}
@@ -214,7 +214,7 @@ func (m *MsgProofUpdater) updateMsgProof(msgs []*orm.L2SentMsg, proofs [][]byte,
 // appendL2Messages will append all messages between firstBlock and lastBlock (both inclusive) to withdrawTrie and compute corresponding merkle proof of each message.
 func (m *MsgProofUpdater) appendL2Messages(firstBlock, lastBlock uint64) ([]*orm.L2SentMsg, [][]byte, error) {
 	var msgProofs [][]byte
-	messages, err := m.l2SentMsgOrm.GetL2SentMsgMsgHashByHeightRange(firstBlock, lastBlock)
+	messages, err := m.l2SentMsgOrm.GetL2SentMsgMsgHashByHeightRange(m.ctx, firstBlock, lastBlock)
 	if err != nil {
 		log.Error("GetL2SentMsgMsgHashByHeightRange failed", "error", err, "firstBlock", firstBlock, "lastBlock", lastBlock)
 		return messages, msgProofs, err

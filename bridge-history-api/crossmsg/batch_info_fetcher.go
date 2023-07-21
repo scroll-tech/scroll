@@ -83,7 +83,7 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 		log.Error("Can not get latest block number: ", "err", err)
 		return err
 	}
-	latestBatchHeight, err := b.rollupOrm.GetLatestRollupBatchProcessedHeight()
+	latestBatchHeight, err := b.rollupOrm.GetLatestRollupBatchProcessedHeight(b.ctx)
 	if err != nil {
 		log.Error("Can not get latest BatchInfo: ", "err", err)
 		return err

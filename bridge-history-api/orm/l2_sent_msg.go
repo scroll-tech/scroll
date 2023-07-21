@@ -40,9 +40,9 @@ func (*L2SentMsg) TableName() string {
 }
 
 // GetL2SentMsgByHash get l2 sent msg by hash
-func (l *L2SentMsg) GetL2SentMsgByHash(msgHash string) (*L2SentMsg, error) {
+func (l *L2SentMsg) GetL2SentMsgByHash(ctx context.Context, msgHash string) (*L2SentMsg, error) {
 	result := &L2SentMsg{}
-	err := l.db.Model(&L2SentMsg{}).
+	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("msg_hash = ?", msgHash).
 		First(&result).
 		Error
@@ -50,9 +50,9 @@ func (l *L2SentMsg) GetL2SentMsgByHash(msgHash string) (*L2SentMsg, error) {
 }
 
 // GetLatestSentMsgHeightOnL2 get latest sent msg height on l2
-func (l *L2SentMsg) GetLatestSentMsgHeightOnL2() (uint64, error) {
+func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, error) {
 	result := &L2SentMsg{}
-	err := l.db.Model(&L2SentMsg{}).
+	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Order("nonce DESC").
 		Limit(1).
 		Select("height").
@@ -67,25 +67,25 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2() (uint64, error) {
 }
 
 // GetClaimableL2SentMsgByAddressWithOffset get claimable l2 sent msg by address with offset
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(address string, offset int, limit int) ([]*L2SentMsg, error) {
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context, address string, offset int, limit int) ([]*L2SentMsg, error) {
 	var results []*L2SentMsg
-	err := l.db.Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
+	err := l.db.WithContext(ctx).Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
 		Scan(&results).Error
 	return results, err
 }
 
 // GetClaimableL2SentMsgByAddressTotalNum get claimable l2 sent msg by address total num
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(address string) (uint64, error) {
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(ctx context.Context, address string) (uint64, error) {
 	var count uint64
-	err := l.db.Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).
+	err := l.db.WithContext(ctx).Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).
 		Scan(&count).Error
 	return count, err
 }
 
 // GetLatestL2SentMsgBatchIndex get latest l2 sent msg batch index
-func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex() (int64, error) {
+func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex(ctx context.Context) (int64, error) {
 	result := &L2SentMsg{}
-	err := l.db.Model(&L2SentMsg{}).
+	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("batch_index != 0").
 		Order("batch_index DESC").
 		Select("batch_index").
@@ -100,9 +100,9 @@ func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex() (int64, error) {
 }
 
 // GetL2SentMsgMsgHashByHeightRange get l2 sent msg msg hash by height range
-func (l *L2SentMsg) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint64) ([]*L2SentMsg, error) {
+func (l *L2SentMsg) GetL2SentMsgMsgHashByHeightRange(ctx context.Context, startHeight, endHeight uint64) ([]*L2SentMsg, error) {
 	var results []*L2SentMsg
-	err := l.db.Model(&L2SentMsg{}).
+	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("height >= ? AND height <= ?", startHeight, endHeight).
 		Order("nonce ASC").
 		Find(&results).
@@ -111,9 +111,9 @@ func (l *L2SentMsg) GetL2SentMsgMsgHashByHeightRange(startHeight, endHeight uint
 }
 
 // GetL2SentMessageByNonce get l2 sent message by nonce
-func (l *L2SentMsg) GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error) {
+func (l *L2SentMsg) GetL2SentMessageByNonce(ctx context.Context, nonce uint64) (*L2SentMsg, error) {
 	result := &L2SentMsg{}
-	err := l.db.Model(&L2SentMsg{}).
+	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("nonce = ?", nonce).
 		First(&result).
 		Error
@@ -121,9 +121,9 @@ func (l *L2SentMsg) GetL2SentMessageByNonce(nonce uint64) (*L2SentMsg, error) {
 }
 
 // GetLatestL2SentMsgLEHeight get latest l2 sent msg less than or equal to end block number
-func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(endBlockNumber uint64) (*L2SentMsg, error) {
+func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(ctx context.Context, endBlockNumber uint64) (*L2SentMsg, error) {
 	result := &L2SentMsg{}
-	err := l.db.Model(&L2SentMsg{}).
+	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("height <= ?", endBlockNumber).
 		Order("nonce DESC").
 		First(&result).
@@ -176,7 +176,7 @@ func (l *L2SentMsg) DeleteL2SentMsgAfterHeight(ctx context.Context, height uint6
 	if len(dbTx) > 0 && dbTx[0] != nil {
 		db = dbTx[0]
 	}
-	err := db.Model(&L2SentMsg{}).
+	err := db.WithContext(ctx).Model(&L2SentMsg{}).
 		Where("height > ?", height).
 		Updates(map[string]interface{}{
 			"deleted_at": gorm.Expr("current_timestamp"),

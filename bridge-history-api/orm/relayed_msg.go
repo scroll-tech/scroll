@@ -33,9 +33,9 @@ func (*RelayedMsg) TableName() string {
 }
 
 // GetRelayedMsgByHash get relayed msg by hash
-func (r *RelayedMsg) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
+func (r *RelayedMsg) GetRelayedMsgByHash(ctx context.Context, msgHash string) (*RelayedMsg, error) {
 	result := &RelayedMsg{}
-	err := r.db.Model(&RelayedMsg{}).
+	err := r.db.WithContext(ctx).Model(&RelayedMsg{}).
 		Where("msg_hash = ?", msgHash).
 		First(&result).
 		Error
@@ -43,9 +43,9 @@ func (r *RelayedMsg) GetRelayedMsgByHash(msgHash string) (*RelayedMsg, error) {
 }
 
 // GetLatestRelayedHeightOnL1 get latest relayed height on l1
-func (r *RelayedMsg) GetLatestRelayedHeightOnL1() (uint64, error) {
+func (r *RelayedMsg) GetLatestRelayedHeightOnL1(ctx context.Context) (uint64, error) {
 	result := &RelayedMsg{}
-	err := r.db.Model(&RelayedMsg{}).
+	err := r.db.WithContext(ctx).Model(&RelayedMsg{}).
 		Select("height").
 		Where("layer1_hash != ''").
 		Order("height DESC").
@@ -61,9 +61,9 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL1() (uint64, error) {
 }
 
 // GetLatestRelayedHeightOnL2 get latest relayed height on l2
-func (r *RelayedMsg) GetLatestRelayedHeightOnL2() (uint64, error) {
+func (r *RelayedMsg) GetLatestRelayedHeightOnL2(ctx context.Context) (uint64, error) {
 	result := &RelayedMsg{}
-	err := r.db.Model(&RelayedMsg{}).
+	err := r.db.WithContext(ctx).Model(&RelayedMsg{}).
 		Select("height").
 		Where("layer2_hash != ''").
 		Order("height DESC").

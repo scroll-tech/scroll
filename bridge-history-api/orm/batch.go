@@ -33,16 +33,16 @@ func (*RollupBatch) TableName() string {
 	return "rollup_batch"
 }
 
-func (r *RollupBatch) GetLatestRollupBatchProcessedHeight() (uint64, error) {
+func (r *RollupBatch) GetLatestRollupBatchProcessedHeight(ctx context.Context) (uint64, error) {
 	result := &RollupBatch{}
-	err := r.db.Unscoped().Select("commit_height").Order("id desc").Limit(1).Find(&result).Error
+	err := r.db.WithContext(ctx).Unscoped().Select("commit_height").Order("id desc").Limit(1).Find(&result).Error
 	return result.CommitHeight, err
 }
 
 // GetLatestRollupBatch return the latest rollup batch in db
-func (r *RollupBatch) GetLatestRollupBatch() (*RollupBatch, error) {
+func (r *RollupBatch) GetLatestRollupBatch(ctx context.Context) (*RollupBatch, error) {
 	result := &RollupBatch{}
-	err := r.db.Model(&RollupBatch{}).Where("batch_hash is not NULL").Order("batch_index desc").First(result).Error
+	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_hash is not NULL").Order("batch_index desc").First(result).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
@@ -53,9 +53,9 @@ func (r *RollupBatch) GetLatestRollupBatch() (*RollupBatch, error) {
 }
 
 // GetRollupBatchByIndex return the rollup batch by index
-func (r *RollupBatch) GetRollupBatchByIndex(index uint64) (*RollupBatch, error) {
+func (r *RollupBatch) GetRollupBatchByIndex(ctx context.Context, index uint64) (*RollupBatch, error) {
 	result := &RollupBatch{}
-	err := r.db.Model(&RollupBatch{}).Where("batch_index = ?", index).First(result).Error
+	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index = ?", index).First(result).Error
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (r *RollupBatch) BatchInsertRollupBatch(ctx context.Context, batches []*Rol
 	if len(dbTx) > 0 && dbTx[0] != nil {
 		db = dbTx[0]
 	}
-	err := db.Model(&RollupBatch{}).Create(&batches).Error
+	err := db.WithContext(ctx).Model(&RollupBatch{}).Create(&batches).Error
 
 	if err != nil {
 		batchIndexes := make([]uint64, 0, len(batches))

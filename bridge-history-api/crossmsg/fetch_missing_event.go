@@ -25,7 +25,7 @@ var (
 type FetchAndSave func(ctx context.Context, client *ethclient.Client, database *gorm.DB, from int64, to int64, addressList []common.Address) error
 
 // GetLatestProcessed is a function type that gets the latest processed block height from database
-type GetLatestProcessed func(db *gorm.DB) (uint64, error)
+type GetLatestProcessed func(ctx context.Context, db *gorm.DB) (uint64, error)
 
 // FetchEventWorker defines worker with fetch and save function, processed number getter, and name
 type FetchEventWorker struct {
@@ -35,15 +35,15 @@ type FetchEventWorker struct {
 }
 
 // GetLatestL1ProcessedHeight get L1 the latest processed height
-func GetLatestL1ProcessedHeight(db *gorm.DB) (uint64, error) {
+func GetLatestL1ProcessedHeight(ctx context.Context, db *gorm.DB) (uint64, error) {
 	l1CrossMsgOrm := orm.NewCrossMsg(db)
 	relayedOrm := orm.NewRelayedMsg(db)
-	crossHeight, err := l1CrossMsgOrm.GetLatestL1ProcessedHeight()
+	crossHeight, err := l1CrossMsgOrm.GetLatestL1ProcessedHeight(ctx)
 	if err != nil {
 		log.Error("failed to get L1 cross message processed height: ", "err", err)
 		return 0, err
 	}
-	relayedHeight, err := relayedOrm.GetLatestRelayedHeightOnL1()
+	relayedHeight, err := relayedOrm.GetLatestRelayedHeightOnL1(ctx)
 	if err != nil {
 		log.Error("failed to get L1 relayed message processed height: ", "err", err)
 		return 0, err
@@ -55,21 +55,21 @@ func GetLatestL1ProcessedHeight(db *gorm.DB) (uint64, error) {
 }
 
 // GetLatestL2ProcessedHeight get L2 latest processed height
-func GetLatestL2ProcessedHeight(db *gorm.DB) (uint64, error) {
+func GetLatestL2ProcessedHeight(ctx context.Context, db *gorm.DB) (uint64, error) {
 	l2CrossMsgOrm := orm.NewCrossMsg(db)
 	relayedOrm := orm.NewRelayedMsg(db)
 	l2SentMsgOrm := orm.NewL2SentMsg(db)
-	crossHeight, err := l2CrossMsgOrm.GetLatestL2ProcessedHeight()
+	crossHeight, err := l2CrossMsgOrm.GetLatestL2ProcessedHeight(ctx)
 	if err != nil {
 		log.Error("failed to get L2 cross message processed height", "err", err)
 		return 0, err
 	}
-	relayedHeight, err := relayedOrm.GetLatestRelayedHeightOnL2()
+	relayedHeight, err := relayedOrm.GetLatestRelayedHeightOnL2(ctx)
 	if err != nil {
 		log.Error("failed to get L2 relayed message processed height", "err", err)
 		return 0, err
 	}
-	l2SentHeight, err := l2SentMsgOrm.GetLatestSentMsgHeightOnL2()
+	l2SentHeight, err := l2SentMsgOrm.GetLatestSentMsgHeightOnL2(ctx)
 	if err != nil {
 		log.Error("failed to get L2 sent message processed height", "err", err)
 		return 0, err
