@@ -36,14 +36,7 @@ contract L2ScrollMessengerTest is DSTestPlus {
         l2MessageQueue = new L2MessageQueue(address(this));
         l1GasOracle = new L1GasPriceOracle(address(this));
         l2Messenger = L2ScrollMessenger(
-            payable(
-                new ERC1967Proxy(
-                    address(
-                        new L2ScrollMessenger(address(l1BlockContainer), address(l1GasOracle), address(l2MessageQueue))
-                    ),
-                    new bytes(0)
-                )
-            )
+            payable(new ERC1967Proxy(address(new L2ScrollMessenger(address(l2MessageQueue))), new bytes(0)))
         );
 
         // Initialize L2 contracts
