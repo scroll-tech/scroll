@@ -19,9 +19,9 @@ type BatchProposer struct {
 	ctx context.Context
 	db  *gorm.DB
 
-	batchOrm *orm.Batch
-	chunkOrm *orm.Chunk
-	l2Block  *orm.L2Block
+	batchOrm   *orm.Batch
+	chunkOrm   *orm.Chunk
+	l2BlockOrm *orm.L2Block
 
 	maxChunkNumPerBatch             uint64
 	maxL1CommitGasPerBatch          uint64
@@ -37,7 +37,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		db:                              db,
 		batchOrm:                        orm.NewBatch(db),
 		chunkOrm:                        orm.NewChunk(db),
-		l2Block:                         orm.NewL2Block(db),
+		l2BlockOrm:                      orm.NewL2Block(db),
 		maxChunkNumPerBatch:             cfg.MaxChunkNumPerBatch,
 		maxL1CommitGasPerBatch:          cfg.MaxL1CommitGasPerBatch,
 		maxL1CommitCalldataSizePerBatch: cfg.MaxL1CommitCalldataSizePerBatch,
@@ -157,7 +157,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*types.Chunk, error) {
 	chunks := make([]*types.Chunk, len(dbChunks))
 	for i, c := range dbChunks {
-		wrappedBlocks, err := p.l2Block.GetL2BlocksInRange(p.ctx, c.StartBlockNumber, c.EndBlockNumber)
+		wrappedBlocks, err := p.l2BlockOrm.GetL2BlocksInRange(p.ctx, c.StartBlockNumber, c.EndBlockNumber)
 		if err != nil {
 			log.Error("Failed to fetch wrapped blocks",
 				"start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)

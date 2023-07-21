@@ -17,15 +17,30 @@ describe("L1MessageQueue", async () => {
   let oracle: L2GasPriceOracle;
   let queue: L1MessageQueue;
 
+  const deployProxy = async (name: string, admin: string): Promise<string> => {
+    const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
+    const Factory = await ethers.getContractFactory(name, deployer);
+    const impl = await Factory.deploy();
+    await impl.deployed();
+    const proxy = await TransparentUpgradeableProxy.deploy(impl.address, admin, "0x");
+    await proxy.deployed();
+    return proxy.address;
+  };
+
   beforeEach(async () => {
     [deployer, scrollChain, messenger, gateway, signer] = await ethers.getSigners();
 
-    const L1MessageQueue = await ethers.getContractFactory("L1MessageQueue", deployer);
-    queue = await L1MessageQueue.deploy();
-    await queue.deployed();
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin", deployer);
+    const admin = await ProxyAdmin.deploy();
+    await admin.deployed();
 
-    const L2GasPriceOracle = await ethers.getContractFactory("L2GasPriceOracle", deployer);
-    oracle = await L2GasPriceOracle.deploy();
+    queue = await ethers.getContractAt("L1MessageQueue", await deployProxy("L1MessageQueue", admin.address), deployer);
+
+    oracle = await ethers.getContractAt(
+      "L2GasPriceOracle",
+      await deployProxy("L2GasPriceOracle", admin.address),
+      deployer
+    );
 
     await oracle.initialize(21000, 0, 8, 16);
     await queue.initialize(messenger.address, scrollChain.address, gateway.address, oracle.address, 10000000);

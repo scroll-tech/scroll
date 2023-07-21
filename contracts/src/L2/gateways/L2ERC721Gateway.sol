@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
@@ -40,6 +40,9 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(address _counterpart, address _messenger) external initializer {
         OwnableUpgradeable.__Ownable_init();

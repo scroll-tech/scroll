@@ -5,26 +5,6 @@ import (
 	"fmt"
 )
 
-// L1BlockStatus represents current l1 block processing status
-type L1BlockStatus int
-
-const (
-	// L1BlockUndefined : undefined l1 block status
-	L1BlockUndefined L1BlockStatus = iota
-
-	// L1BlockPending represents the l1 block status is pending
-	L1BlockPending
-
-	// L1BlockImporting represents the l1 block status is importing
-	L1BlockImporting
-
-	// L1BlockImported represents the l1 block status is imported
-	L1BlockImported
-
-	// L1BlockFailed represents the l1 block status is failed
-	L1BlockFailed
-)
-
 // GasOracleStatus represents current gas oracle processing status
 type GasOracleStatus int
 

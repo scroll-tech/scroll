@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -43,6 +43,8 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
      ***************/
 
     constructor(address _l1USDC, address _l2USDC) {
+        _disableInitializers();
+
         l1USDC = _l1USDC;
         l2USDC = _l2USDC;
     }
