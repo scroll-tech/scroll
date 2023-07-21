@@ -18,7 +18,7 @@ create table prover_task
     failure_type        SMALLINT        NOT NULL DEFAULT 0,
     reward              DECIMAL(78, 0)  NOT NULL DEFAULT 0,
     proof               BYTEA           DEFAULT NULL,
-    assigned_time       TIMESTAMP(0)    NOT NULL,
+    assigned_at         TIMESTAMP(0)    NOT NULL,
 
 -- metadata
     created_at          TIMESTAMP(0)   NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -87,7 +87,7 @@ func (ac *BatchProofCollector) Collect(ctx context.Context) error {
 				ProvingStatus:   int16(types.RollerAssigned),
 				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 				// here why need use UTC time. see scroll/common/databased/db.go
-				AssignedTime: utils.NowUTC(),
+				AssignedAt: utils.NowUTC(),
 			}
 
 			// Store session info.

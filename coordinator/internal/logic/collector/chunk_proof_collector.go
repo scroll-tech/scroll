@@ -91,7 +91,7 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 				ProvingStatus:   int16(types.RollerAssigned),
 				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 				// here why need use UTC time. see scroll/common/databased/db.go
-				AssignedTime: utils.NowUTC(),
+				AssignedAt: utils.NowUTC(),
 			}
 			if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
 				return fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, rollerStatus.PublicKey, err)

@@ -25,7 +25,7 @@ type ProverTask struct {
 	FailureType     int16           `json:"failure_type" gorm:"column:failure_type;default:0"`
 	Reward          decimal.Decimal `json:"reward" gorm:"column:reward;default:0;type:decimal(78)"`
 	Proof           []byte          `json:"proof" gorm:"column:proof;default:NULL"`
-	AssignedTime    time.Time       `json:"assigned_time" gorm:"assigned_time"`
+	AssignedAt      time.Time       `json:"assigned_at" gorm:"assigned_at"`
 	CreatedAt       time.Time       `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt       time.Time       `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt       gorm.DeletedAt  `json:"deleted_at" gorm:"column:deleted_at"`
@@ -94,7 +94,7 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, 
 	db = db.Model(&ProverTask{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"proving_status", "failure_type", "assigned_time"}),
+		DoUpdates: clause.AssignmentColumns([]string{"proving_status", "failure_type", "assigned_at"}),
 	})
 
 	if err := db.Create(&proverTask).Error; err != nil {
