@@ -291,10 +291,6 @@ func TestRoller_SubmitProof(t *testing.T) {
 		return true, nil
 	})
 
-	patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyProof", func(proof *message.AggProof) (bool, error) {
-		return true, nil
-	})
-
 	patchGuard.ApplyPrivateMethod(rollerController.proofReceiver, "closeProofTask", func(hash string, pubKey string, proofMsg *message.ProofMsg, rollersInfo *coordinatorType.RollersInfo) error {
 		return nil
 	})
