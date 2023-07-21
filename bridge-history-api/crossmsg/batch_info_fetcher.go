@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 
 	"bridge-history-api/crossmsg/messageproof"
-	"bridge-history-api/db/orm"
+	"bridge-history-api/orm"
 	"bridge-history-api/utils"
 )
 

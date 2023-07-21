@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"gorm.io/gorm"
 
-	"bridge-history-api/db/orm"
+	"bridge-history-api/orm"
 )
 
 // MsgProofUpdater is used to update message proof in db

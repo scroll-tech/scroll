@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 
 	"bridge-history-api/config"
-	"bridge-history-api/db/migrate"
+	"bridge-history-api/orm/migrate"
 	"bridge-history-api/utils"
 	"scroll-tech/common/database"
 )

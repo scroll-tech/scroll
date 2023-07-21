@@ -14,7 +14,7 @@ import (
 	"bridge-history-api/config"
 	"bridge-history-api/crossmsg"
 	"bridge-history-api/crossmsg/messageproof"
-	"bridge-history-api/db/orm"
+	"bridge-history-api/orm"
 	cutils "bridge-history-api/utils"
 	"scroll-tech/common/database"
 )
@@ -115,15 +115,14 @@ func action(ctx *cli.Context) error {
 	go l2crossMsgFetcher.Start()
 	defer l2crossMsgFetcher.Stop()
 
-	l1CrossMsgOrm := orm.NewL1CrossMsg(db)
-	l2CrossMsgOrm := orm.NewL2CrossMsg(db)
+	CrossMsgOrm := orm.NewCrossMsg(db)
 
 	// BlockTimestamp fetcher for l1 and l2
-	l1BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, l1CrossMsgOrm.UpdateL1BlockTimestamp, l1CrossMsgOrm.GetL1EarliestNoBlockTimestampHeight)
+	l1BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, CrossMsgOrm.UpdateL1BlockTimestamp, CrossMsgOrm.GetL1EarliestNoBlockTimestampHeight)
 	go l1BlockTimeFetcher.Start()
 	defer l1BlockTimeFetcher.Stop()
 
-	l2BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, l2CrossMsgOrm.UpdateL2BlockTimestamp, l2CrossMsgOrm.GetL2EarliestNoBlockTimestampHeight)
+	l2BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, CrossMsgOrm.UpdateL2BlockTimestamp, CrossMsgOrm.GetL2EarliestNoBlockTimestampHeight)
 	go l2BlockTimeFetcher.Start()
 	defer l2BlockTimeFetcher.Stop()
 

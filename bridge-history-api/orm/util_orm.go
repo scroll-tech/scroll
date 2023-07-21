@@ -1,9 +1,7 @@
-package db
+package orm
 
 import (
 	"gorm.io/gorm"
-
-	"bridge-history-api/db/orm"
 )
 
 // UtilDBOrm provide combined db operations
@@ -21,7 +19,7 @@ func NewUtilDBOrm(db *gorm.DB) *UtilDBOrm {
 // GetTotalCrossMsgCountByAddress get total cross msg count by address
 func (u *UtilDBOrm) GetTotalCrossMsgCountByAddress(sender string) (uint64, error) {
 	var count int64
-	err := u.db.Model(&orm.CrossMsg{}).
+	err := u.db.Model(&CrossMsg{}).
 		Where("sender = ?", sender).
 		Count(&count).
 		Error
@@ -34,9 +32,9 @@ func (u *UtilDBOrm) GetTotalCrossMsgCountByAddress(sender string) (uint64, error
 }
 
 // GetCrossMsgsByAddressWithOffset get cross msgs by address with offset
-func (u *UtilDBOrm) GetCrossMsgsByAddressWithOffset(sender string, offset int, limit int) ([]orm.CrossMsg, error) {
-	var messages []orm.CrossMsg
-	err := u.db.Model(&orm.CrossMsg{}).
+func (u *UtilDBOrm) GetCrossMsgsByAddressWithOffset(sender string, offset int, limit int) ([]CrossMsg, error) {
+	var messages []CrossMsg
+	err := u.db.Model(&CrossMsg{}).
 		Where("sender = ?", sender).
 		Order("block_timestamp DESC NULLS FIRST, id DESC").
 		Limit(limit).

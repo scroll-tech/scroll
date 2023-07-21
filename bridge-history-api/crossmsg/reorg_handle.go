@@ -1,13 +1,14 @@
 package crossmsg
 
 import (
-	"bridge-history-api/db/orm"
 	"context"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	"gorm.io/gorm"
+
+	"bridge-history-api/orm"
 )
 
 // ReorgHandling handles reorg function type
@@ -61,7 +62,7 @@ func BackwardFindReorgBlock(ctx context.Context, headers []*types.Header, client
 
 // L1ReorgHandling handles l1 reorg
 func L1ReorgHandling(ctx context.Context, reorgHeight uint64, db *gorm.DB) error {
-	l1CrossMsgOrm := orm.NewL1CrossMsg(db)
+	l1CrossMsgOrm := orm.NewCrossMsg(db)
 	relayedOrm := orm.NewRelayedMsg(db)
 	err := db.Transaction(func(tx *gorm.DB) error {
 		if err := l1CrossMsgOrm.DeleteL1CrossMsgAfterHeight(ctx, reorgHeight, tx); err != nil {
@@ -82,7 +83,7 @@ func L1ReorgHandling(ctx context.Context, reorgHeight uint64, db *gorm.DB) error
 
 // L2ReorgHandling handles l2 reorg
 func L2ReorgHandling(ctx context.Context, reorgHeight uint64, db *gorm.DB) error {
-	l2CrossMsgOrm := orm.NewL2CrossMsg(db)
+	l2CrossMsgOrm := orm.NewCrossMsg(db)
 	relayedOrm := orm.NewRelayedMsg(db)
 	l2SentMsgOrm := orm.NewL2SentMsg(db)
 	err := db.Transaction(func(tx *gorm.DB) error {

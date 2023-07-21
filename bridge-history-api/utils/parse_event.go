@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	backendabi "bridge-history-api/abi"
-	"bridge-history-api/db/orm"
+	"bridge-history-api/orm"
 )
 
 // CachedParsedTxCalldata store parsed batch infos

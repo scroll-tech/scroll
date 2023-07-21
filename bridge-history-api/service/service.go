@@ -8,8 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"gorm.io/gorm"
 
-	database "bridge-history-api/db"
-	"bridge-history-api/db/orm"
+	"bridge-history-api/orm"
 )
 
 // Finalized the schema of tx finalized infos
@@ -119,7 +118,7 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db *gorm.DB) {
 func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
 	l2SentMsgOrm := orm.NewL2SentMsg(h.db)
-	l2CrossMsgOrm := orm.NewL2CrossMsg(h.db)
+	l2CrossMsgOrm := orm.NewCrossMsg(h.db)
 	total, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressTotalNum(address.Hex())
 	if err != nil || total == 0 {
 		return txHistories, 0, err
@@ -163,7 +162,7 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 // GetTxsByAddress get all txs under given address
 func (h *historyBackend) GetTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
-	utilOrm := database.NewUtilDBOrm(h.db)
+	utilOrm := orm.NewUtilDBOrm(h.db)
 	total, err := utilOrm.GetTotalCrossMsgCountByAddress(address.String())
 	if err != nil || total == 0 {
 		return txHistories, 0, err
@@ -196,10 +195,9 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int, lim
 // GetTxsByHashes get tx infos under given tx hashes
 func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error) {
 	txHistories := make([]*TxHistoryInfo, 0)
-	l1CrossMsgOrm := orm.NewL1CrossMsg(h.db)
-	l2CrossMsgOrm := orm.NewL2CrossMsg(h.db)
+	CrossMsgOrm := orm.NewCrossMsg(h.db)
 	for _, hash := range hashes {
-		l1result, err := l1CrossMsgOrm.GetL1CrossMsgByHash(common.HexToHash(hash))
+		l1result, err := CrossMsgOrm.GetL1CrossMsgByHash(common.HexToHash(hash))
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +218,7 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 			txHistories = append(txHistories, txHistory)
 			continue
 		}
-		l2result, err := l2CrossMsgOrm.GetL2CrossMsgByHash(common.HexToHash(hash))
+		l2result, err := CrossMsgOrm.GetL2CrossMsgByHash(common.HexToHash(hash))
 		if err != nil {
 			return nil, err
 		}

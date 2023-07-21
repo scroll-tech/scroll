@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	backendabi "bridge-history-api/abi"
-	"bridge-history-api/db/orm"
+	"bridge-history-api/orm"
 	"bridge-history-api/utils"
 )
 
@@ -36,7 +36,7 @@ type FetchEventWorker struct {
 
 // GetLatestL1ProcessedHeight get L1 the latest processed height
 func GetLatestL1ProcessedHeight(db *gorm.DB) (uint64, error) {
-	l1CrossMsgOrm := orm.NewL1CrossMsg(db)
+	l1CrossMsgOrm := orm.NewCrossMsg(db)
 	relayedOrm := orm.NewRelayedMsg(db)
 	crossHeight, err := l1CrossMsgOrm.GetLatestL1ProcessedHeight()
 	if err != nil {
@@ -56,7 +56,7 @@ func GetLatestL1ProcessedHeight(db *gorm.DB) (uint64, error) {
 
 // GetLatestL2ProcessedHeight get L2 latest processed height
 func GetLatestL2ProcessedHeight(db *gorm.DB) (uint64, error) {
-	l2CrossMsgOrm := orm.NewL2CrossMsg(db)
+	l2CrossMsgOrm := orm.NewCrossMsg(db)
 	relayedOrm := orm.NewRelayedMsg(db)
 	l2SentMsgOrm := orm.NewL2SentMsg(db)
 	crossHeight, err := l2CrossMsgOrm.GetLatestL2ProcessedHeight()
@@ -86,7 +86,7 @@ func GetLatestL2ProcessedHeight(db *gorm.DB) (uint64, error) {
 
 // L1FetchAndSaveEvents fetch and save events on L1
 func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, db *gorm.DB, from int64, to int64, addrList []common.Address) error {
-	l1CrossMsgOrm := orm.NewL1CrossMsg(db)
+	l1CrossMsgOrm := orm.NewCrossMsg(db)
 	relayedOrm := orm.NewRelayedMsg(db)
 	query := geth.FilterQuery{
 		FromBlock: big.NewInt(from), // inclusive
@@ -114,25 +114,25 @@ func L1FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, db *gor
 		return err
 	}
 	err = db.Transaction(func(tx *gorm.DB) error {
-		if txErr := l1CrossMsgOrm.BatchInsertL1CrossMsg(ctx, depositL1CrossMsgs, tx); txErr != nil {
+		if txErr := l1CrossMsgOrm.InsertL1CrossMsg(ctx, depositL1CrossMsgs, tx); txErr != nil {
 			log.Error("l1FetchAndSaveEvents: Failed to insert cross msg event logs", "err", txErr)
-			return err
+			return txErr
 		}
 		if txErr := relayedOrm.BatchInsertRelayedMsg(ctx, relayedMsg, tx); txErr != nil {
 			log.Error("l1FetchAndSaveEvents: Failed to insert relayed msg event logs", "err", txErr)
-			return err
+			return txErr
 		}
 		return nil
 	})
 	if err != nil {
 		log.Crit("l2FetchAndSaveEvents: Failed to finish transaction", "err", err)
 	}
-	return nil
+	return err
 }
 
 // L2FetchAndSaveEvents fetche and save events on L2
 func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, db *gorm.DB, from int64, to int64, addrList []common.Address) error {
-	l2CrossMsgOrm := orm.NewL2CrossMsg(db)
+	l2CrossMsgOrm := orm.NewCrossMsg(db)
 	relayedOrm := orm.NewRelayedMsg(db)
 	l2SentMsgOrm := orm.NewL2SentMsg(db)
 	query := geth.FilterQuery{
@@ -181,7 +181,7 @@ func L2FetchAndSaveEvents(ctx context.Context, client *ethclient.Client, db *gor
 	if err != nil {
 		log.Crit("l2FetchAndSaveEvents: Failed to begin db transaction", "err", err)
 	}
-	return nil
+	return err
 }
 
 // FetchAndSaveBatchIndex fetche and save batch index
@@ -215,5 +215,5 @@ func FetchAndSaveBatchIndex(ctx context.Context, client *ethclient.Client, db *g
 	if err != nil {
 		log.Crit("FetchAndSaveBatchIndex: Failed to begin db transaction", "err", err)
 	}
-	return nil
+	return err
 }
