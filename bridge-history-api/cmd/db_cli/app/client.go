@@ -8,6 +8,7 @@ import (
 	"bridge-history-api/config"
 	"bridge-history-api/orm/migrate"
 	"bridge-history-api/utils"
+
 	"scroll-tech/common/database"
 )
 
