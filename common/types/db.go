@@ -95,18 +95,24 @@ func (s RollerProveStatus) String() string {
 	}
 }
 
-// RollerFailureType is the type of a roller session's failure
-type RollerFailureType int
+// ProverTaskFailureType the type of prover task failure
+type ProverTaskFailureType int
 
 const (
-	// RollerFailureTypeUndefined indicates an unknown roller failure type
-	RollerFailureTypeUndefined RollerFailureType = iota
+	// ProverTaskFailureTypeUndefined indicates an unknown roller failure type
+	ProverTaskFailureTypeUndefined ProverTaskFailureType = iota
+	// ProverTaskFailureTypeTimeout prover task failure of timeout
+	ProverTaskFailureTypeTimeout
 )
 
-func (s RollerFailureType) String() string {
-	switch s {
+func (r ProverTaskFailureType) String() string {
+	switch r {
+	case ProverTaskFailureTypeUndefined:
+		return "prover task failure undefined"
+	case ProverTaskFailureTypeTimeout:
+		return "prover task failure timeout"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(s))
+		return "illegal prover task failure type"
 	}
 }
 
