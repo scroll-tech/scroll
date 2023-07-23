@@ -82,8 +82,7 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
                     _total += 16;
                 }
             }
-            uint256 _unsigned = _total + overhead;
-            return _unsigned + (4 * 16);
+            return _total + overhead + (4 * 16);
         }
     }
 
