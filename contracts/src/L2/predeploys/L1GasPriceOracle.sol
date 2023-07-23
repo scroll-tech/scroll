@@ -69,14 +69,8 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
     }
 
     /// @inheritdoc IL1GasPriceOracle
-    /// @dev The extra 74 bytes on top of the RLP encoded unsigned transaction data consist of
-    ///   4 bytes   Add 4 bytes in the beginning for transaction data length
-    ///   1 byte    RLP V prefix
-    ///   3 bytes   V
-    ///   1 bytes   RLP R prefix
-    ///   32 bytes  R
-    ///   1 bytes   RLP S prefix
-    ///   32 bytes  S
+    /// @dev The `_data` is the RLP-encoded transaction with signature. And we also reserve additional
+    ///      4 bytes in the non-zero bytes to store the number of bytes in the RLP-encoded transaction.
     function getL1GasUsed(bytes memory _data) public view override returns (uint256) {
         uint256 _total = 0;
         uint256 _length = _data.length;
@@ -88,8 +82,7 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
                     _total += 16;
                 }
             }
-            uint256 _unsigned = _total + overhead;
-            return _unsigned + (74 * 16);
+            return _total + overhead + (4 * 16);
         }
     }
 
