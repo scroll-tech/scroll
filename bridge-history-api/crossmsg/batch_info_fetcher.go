@@ -7,9 +7,10 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	"gorm.io/gorm"
 
 	"bridge-history-api/crossmsg/messageproof"
-	"bridge-history-api/db"
+	"bridge-history-api/orm"
 	"bridge-history-api/utils"
 )
 
@@ -21,12 +22,13 @@ type BatchInfoFetcher struct {
 	confirmation         uint64
 	blockTimeInSec       int
 	client               *ethclient.Client
-	db                   db.OrmFactory
+	db                   *gorm.DB
+	rollupOrm            *orm.RollupBatch
 	msgProofUpdater      *messageproof.MsgProofUpdater
 }
 
 // NewBatchInfoFetcher creates a new BatchInfoFetcher instance
-func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db db.OrmFactory, msgProofUpdater *messageproof.MsgProofUpdater) *BatchInfoFetcher {
+func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, batchInfoStartNumber uint64, confirmation uint64, blockTimeInSec int, client *ethclient.Client, db *gorm.DB, msgProofUpdater *messageproof.MsgProofUpdater) *BatchInfoFetcher {
 	return &BatchInfoFetcher{
 		ctx:                  ctx,
 		scrollChainAddr:      scrollChainAddr,
@@ -35,6 +37,7 @@ func NewBatchInfoFetcher(ctx context.Context, scrollChainAddr common.Address, ba
 		blockTimeInSec:       blockTimeInSec,
 		client:               client,
 		db:                   db,
+		rollupOrm:            orm.NewRollupBatch(db),
 		msgProofUpdater:      msgProofUpdater,
 	}
 }
@@ -80,19 +83,20 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 		log.Error("Can not get latest block number: ", "err", err)
 		return err
 	}
-	latestBatch, err := b.db.GetLatestRollupBatch()
+	latestBatchHeight, err := b.rollupOrm.GetLatestRollupBatchProcessedHeight(b.ctx)
 	if err != nil {
 		log.Error("Can not get latest BatchInfo: ", "err", err)
 		return err
 	}
 	var startHeight uint64
-	if latestBatch == nil {
+	if latestBatchHeight == 0 {
+		log.Info("no batch record in database, start from batchInfoStartNumber", "batchInfoStartNumber", b.batchInfoStartNumber)
 		startHeight = b.batchInfoStartNumber
 	} else {
-		startHeight = latestBatch.CommitHeight + 1
+		startHeight = latestBatchHeight + 1
 	}
-	for from := startHeight; number >= from; from += uint64(fetchLimit) {
-		to := from + uint64(fetchLimit) - 1
+	for from := startHeight; number >= from; from += fetchLimit {
+		to := from + fetchLimit - 1
 		// number - confirmation can never less than 0 since the for loop condition
 		// but watch out the overflow
 		if to > number {
