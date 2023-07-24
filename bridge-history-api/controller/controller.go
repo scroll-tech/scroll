@@ -24,7 +24,7 @@ type QueryClaimableController struct {
 
 // Get defines the http get method behavior for QueryClaimableController
 func (c *QueryClaimableController) Get(req model.QueryByAddressRequest) (*model.QueryByAddressResponse, error) {
-	txs, total, err := c.Service.GetClaimableTxsByAddress(common.HexToAddress(req.Address), int64(req.Offset), int64(req.Limit))
+	txs, total, err := c.Service.GetClaimableTxsByAddress(common.HexToAddress(req.Address), req.Offset, req.Limit)
 	if err != nil {
 		return &model.QueryByAddressResponse{Message: "500", Data: &model.Data{}}, err
 	}
@@ -38,7 +38,7 @@ func (c *QueryClaimableController) Get(req model.QueryByAddressRequest) (*model.
 
 // Get defines the http get method behavior for QueryAddressController
 func (c *QueryAddressController) Get(req model.QueryByAddressRequest) (*model.QueryByAddressResponse, error) {
-	message, total, err := c.Service.GetTxsByAddress(common.HexToAddress(req.Address), int64(req.Offset), int64(req.Limit))
+	message, total, err := c.Service.GetTxsByAddress(common.HexToAddress(req.Address), req.Offset, req.Limit)
 	if err != nil {
 		return &model.QueryByAddressResponse{Message: "500", Data: &model.Data{}}, err
 	}

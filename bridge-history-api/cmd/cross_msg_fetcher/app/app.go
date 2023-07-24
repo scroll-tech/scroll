@@ -14,8 +14,10 @@ import (
 	"bridge-history-api/config"
 	"bridge-history-api/crossmsg"
 	"bridge-history-api/crossmsg/messageproof"
-	"bridge-history-api/db"
+	"bridge-history-api/orm"
 	cutils "bridge-history-api/utils"
+
+	"scroll-tech/common/database"
 )
 
 var (
@@ -55,9 +57,18 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
-	db, err := db.NewOrmFactory(cfg)
+	dbCfg := &database.Config{
+		DriverName: cfg.DB.DriverName,
+		DSN:        cfg.DB.DSN,
+		MaxOpenNum: cfg.DB.MaxOpenNum,
+		MaxIdleNum: cfg.DB.MaxIdleNum,
+	}
+	db, err := database.InitDB(dbCfg)
+	if err != nil {
+		log.Crit("failed to init db", "err", err)
+	}
 	defer func() {
-		if deferErr := db.Close(); deferErr != nil {
+		if deferErr := database.CloseDB(db); deferErr != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
@@ -105,12 +116,14 @@ func action(ctx *cli.Context) error {
 	go l2crossMsgFetcher.Start()
 	defer l2crossMsgFetcher.Stop()
 
+	CrossMsgOrm := orm.NewCrossMsg(db)
+
 	// BlockTimestamp fetcher for l1 and l2
-	l1BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db.UpdateL1BlockTimestamp, db.GetL1EarliestNoBlockTimestampHeight)
+	l1BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, CrossMsgOrm.UpdateL1BlockTimestamp, CrossMsgOrm.GetL1EarliestNoBlockTimestampHeight)
 	go l1BlockTimeFetcher.Start()
 	defer l1BlockTimeFetcher.Stop()
 
-	l2BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, db.UpdateL2BlockTimestamp, db.GetL2EarliestNoBlockTimestampHeight)
+	l2BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, CrossMsgOrm.UpdateL2BlockTimestamp, CrossMsgOrm.GetL2EarliestNoBlockTimestampHeight)
 	go l2BlockTimeFetcher.Start()
 	defer l2BlockTimeFetcher.Stop()
 
