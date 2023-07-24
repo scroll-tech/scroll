@@ -1,6 +1,6 @@
 //go:build ffi
 
-package verifier_test
+package verifier
 
 import (
 	"encoding/json"
@@ -9,12 +9,11 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/verifier"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -30,7 +29,7 @@ func TestFFI(t *testing.T) {
 		ParamsPath: *paramsPath,
 		AggVkPath:  *aggVkPath,
 	}
-	v, err := verifier.NewVerifier(cfg)
+	v, err := NewVerifier(cfg)
 	as.NoError(err)
 
 	f, err := os.Open(*proofPath)

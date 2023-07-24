@@ -203,7 +203,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 
 // UpdateChunkProofsStatusByBatchHash updates the status of chunk_proofs_status field for a given batch hash.
 // The function will set the chunk_proofs_status to the status provided.
-func (o *Chunk) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, status types.ChunkProofsStatus) error {
+func (o *Batch) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, status types.ChunkProofsStatus) error {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash = ?", batchHash)
@@ -215,7 +215,11 @@ func (o *Chunk) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHas
 }
 
 // UpdateProvingStatus updates the proving status of a batch.
-func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus) error {
+func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
 	updateFields := make(map[string]interface{})
 	updateFields["proving_status"] = int(status)
 
@@ -228,7 +232,7 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["proved_at"] = time.Now()
 	}
 
-	db := o.db.WithContext(ctx)
+	db = db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash", hash)
 
@@ -239,7 +243,11 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 }
 
 // UpdateProofByHash updates the batch proof by hash.
-func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
 	proofBytes, err := json.Marshal(proof)
 	if err != nil {
 		return err
@@ -249,7 +257,7 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	updateFields["proof"] = proofBytes
 	updateFields["proof_time_sec"] = proofTimeSec
 
-	db := o.db.WithContext(ctx)
+	db = db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash", hash)
 

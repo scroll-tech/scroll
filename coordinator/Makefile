@@ -19,8 +19,8 @@ test:
 
 libzkp:
 	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
-	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
-	find ../common | grep libzktrie.so | xargs -I{} cp {} ./verifier/lib/
+	rm -rf ./internal/logic/verifier/lib && cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
+	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/verifier/lib
 
 coordinator: libzkp ## Builds the Coordinator instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
@@ -29,13 +29,13 @@ mock_coordinator: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator ./cmd
 
 test-verifier: libzkp
-	go test -tags ffi -timeout 0 -v ./verifier
+	go test -tags ffi -timeout 0 -v ./internal/logic/verifier
 
 test-gpu-verifier: libzkp
-	go test -tags="gpu ffi" -timeout 0 -v ./verifier
+	go test -tags="gpu ffi" -timeout 0 -v ./internal/logic/verifier
 
 lint: ## Lint the files - used for CI
-	cp -r ../common/libzkp/interface ./verifier/lib
+	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
