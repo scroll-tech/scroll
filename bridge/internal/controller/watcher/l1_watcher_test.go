@@ -264,7 +264,8 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 		defer patchGuard.Reset()
 
 		rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.EqualError(t, err, targetErr.Error())
+		// Will not fail here because L1QueueTransactionEventSignature ignored
+		assert.NoError(t, err)
 		assert.Empty(t, rollupEvents)
 	})
 
