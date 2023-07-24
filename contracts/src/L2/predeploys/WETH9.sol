@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 // solhint-disable reason-string
 
@@ -51,7 +51,7 @@ contract WETH9 {
             balanceOf[msg.sender] -= wad;
         }
 
-        (bool success, ) = msg.sender.call{value:wad}("");
+        (bool success, ) = msg.sender.call{value: wad}("");
         require(success, "withdraw ETH failed");
 
         emit Withdrawal(msg.sender, wad);

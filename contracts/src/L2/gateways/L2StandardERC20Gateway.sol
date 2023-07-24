@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -38,6 +38,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(
         address _counterpart,
@@ -77,7 +80,7 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         address _from,
         address _to,
         uint256 _amount,
-        bytes calldata _data
+        bytes memory _data
     ) external payable override onlyCallByCounterpart nonReentrant {
         require(msg.value == 0, "nonzero msg.value");
         require(_l1Token != address(0), "token address cannot be 0");
@@ -91,12 +94,13 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
             require(_l2Token == _expectedL2Token, "l2 token mismatch");
         }
 
+        bool _hasMetadata;
+        (_hasMetadata, _data) = abi.decode(_data, (bool, bytes));
+
         bytes memory _deployData;
         bytes memory _callData;
 
-        if (tokenMapping[_l2Token] == address(0)) {
-            // first deposit, update mapping
-            tokenMapping[_l2Token] = _l1Token;
+        if (_hasMetadata) {
             (_callData, _deployData) = abi.decode(_data, (bytes, bytes));
         } else {
             require(tokenMapping[_l2Token] == _l1Token, "token mapping mismatch");
@@ -104,6 +108,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         }
 
         if (!_l2Token.isContract()) {
+            // first deposit, update mapping
+            tokenMapping[_l2Token] = _l1Token;
+
             _deployL2Token(_deployData, _l1Token);
         }
 

@@ -2,32 +2,11 @@
 package types
 
 import (
-	"database/sql"
 	"fmt"
 )
 
-// L1BlockStatus represents current l1 block processing status
-type L1BlockStatus int
-
 // GasOracleStatus represents current gas oracle processing status
 type GasOracleStatus int
-
-const (
-	// L1BlockUndefined : undefined l1 block status
-	L1BlockUndefined L1BlockStatus = iota
-
-	// L1BlockPending represents the l1 block status is pending
-	L1BlockPending
-
-	// L1BlockImporting represents the l1 block status is importing
-	L1BlockImporting
-
-	// L1BlockImported represents the l1 block status is imported
-	L1BlockImported
-
-	// L1BlockFailed represents the l1 block status is failed
-	L1BlockFailed
-)
 
 const (
 	// GasOracleUndefined : undefined gas oracle status
@@ -46,18 +25,21 @@ const (
 	GasOracleFailed
 )
 
-// L1BlockInfo is structure of stored l1 block
-type L1BlockInfo struct {
-	Number    uint64 `json:"number" db:"number"`
-	Hash      string `json:"hash" db:"hash"`
-	HeaderRLP string `json:"header_rlp" db:"header_rlp"`
-	BaseFee   uint64 `json:"base_fee" db:"base_fee"`
-
-	BlockStatus     L1BlockStatus   `json:"block_status" db:"block_status"`
-	GasOracleStatus GasOracleStatus `json:"oracle_status" db:"oracle_status"`
-
-	ImportTxHash sql.NullString `json:"import_tx_hash" db:"import_tx_hash"`
-	OracleTxHash sql.NullString `json:"oracle_tx_hash" db:"oracle_tx_hash"`
+func (s GasOracleStatus) String() string {
+	switch s {
+	case GasOracleUndefined:
+		return "GasOracleUndefined"
+	case GasOraclePending:
+		return "GasOraclePending"
+	case GasOracleImporting:
+		return "GasOracleImporting"
+	case GasOracleImported:
+		return "GasOracleImported"
+	case GasOracleFailed:
+		return "GasOracleFailed"
+	default:
+		return fmt.Sprintf("Undefined (%d)", int32(s))
+	}
 }
 
 // MsgStatus represents current layer1 transaction processing status
@@ -86,50 +68,14 @@ const (
 	MsgRelayFailed
 )
 
-// L1Message is structure of stored layer1 bridge message
-type L1Message struct {
-	QueueIndex uint64    `json:"queue_index" db:"queue_index"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	GasLimit   uint64    `json:"gas_limit" db:"gas_limit"`
-	Layer1Hash string    `json:"layer1_hash" db:"layer1_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
-}
-
-// L2Message is structure of stored layer2 bridge message
-type L2Message struct {
-	Nonce      uint64    `json:"nonce" db:"nonce"`
-	MsgHash    string    `json:"msg_hash" db:"msg_hash"`
-	Height     uint64    `json:"height" db:"height"`
-	Sender     string    `json:"sender" db:"sender"`
-	Value      string    `json:"value" db:"value"`
-	Target     string    `json:"target" db:"target"`
-	Calldata   string    `json:"calldata" db:"calldata"`
-	Layer2Hash string    `json:"layer2_hash" db:"layer2_hash"`
-	Status     MsgStatus `json:"status" db:"status"`
-}
-
-// BlockInfo is structure of stored `block_trace` without `trace`
-type BlockInfo struct {
-	Number         uint64         `json:"number" db:"number"`
-	Hash           string         `json:"hash" db:"hash"`
-	ParentHash     string         `json:"parent_hash" db:"parent_hash"`
-	BatchHash      sql.NullString `json:"batch_hash" db:"batch_hash"`
-	TxNum          uint64         `json:"tx_num" db:"tx_num"`
-	GasUsed        uint64         `json:"gas_used" db:"gas_used"`
-	BlockTimestamp uint64         `json:"block_timestamp" db:"block_timestamp"`
-}
-
 // RollerProveStatus is the roller prove status of a block batch (session)
 type RollerProveStatus int32
 
 const (
+	// RollerProveStatusUndefined indicates an unknown roller proving status
+	RollerProveStatusUndefined RollerProveStatus = iota
 	// RollerAssigned indicates roller assigned but has not submitted proof
-	RollerAssigned RollerProveStatus = iota
+	RollerAssigned
 	// RollerProofValid indicates roller has submitted valid proof
 	RollerProofValid
 	// RollerProofInvalid indicates roller has submitted invalid proof
@@ -149,11 +95,25 @@ func (s RollerProveStatus) String() string {
 	}
 }
 
-// RollerStatus is the roller name and roller prove status
-type RollerStatus struct {
-	PublicKey string            `json:"public_key"`
-	Name      string            `json:"name"`
-	Status    RollerProveStatus `json:"status"`
+// ProverTaskFailureType the type of prover task failure
+type ProverTaskFailureType int
+
+const (
+	// ProverTaskFailureTypeUndefined indicates an unknown roller failure type
+	ProverTaskFailureTypeUndefined ProverTaskFailureType = iota
+	// ProverTaskFailureTypeTimeout prover task failure of timeout
+	ProverTaskFailureTypeTimeout
+)
+
+func (r ProverTaskFailureType) String() string {
+	switch r {
+	case ProverTaskFailureTypeUndefined:
+		return "prover task failure undefined"
+	case ProverTaskFailureTypeTimeout:
+		return "prover task failure timeout"
+	default:
+		return "illegal prover task failure type"
+	}
 }
 
 // ProvingStatus block_batch proving_status (unassigned, assigned, proved, verified, submitted)
@@ -164,8 +124,6 @@ const (
 	ProvingStatusUndefined ProvingStatus = iota
 	// ProvingTaskUnassigned : proving_task is not assigned to be proved
 	ProvingTaskUnassigned
-	// ProvingTaskSkipped : proving_task is skipped for proof generation
-	ProvingTaskSkipped
 	// ProvingTaskAssigned : proving_task is assigned to be proved
 	ProvingTaskAssigned
 	// ProvingTaskProved : proof has been returned by prover
@@ -180,8 +138,6 @@ func (ps ProvingStatus) String() string {
 	switch ps {
 	case ProvingTaskUnassigned:
 		return "unassigned"
-	case ProvingTaskSkipped:
-		return "skipped"
 	case ProvingTaskAssigned:
 		return "assigned"
 	case ProvingTaskProved:
@@ -191,7 +147,7 @@ func (ps ProvingStatus) String() string {
 	case ProvingTaskFailed:
 		return "failed"
 	default:
-		return "undefined"
+		return fmt.Sprintf("Undefined (%d)", int32(ps))
 	}
 }
 
@@ -209,6 +165,17 @@ const (
 	ChunkProofsStatusReady
 )
 
+func (s ChunkProofsStatus) String() string {
+	switch s {
+	case ChunkProofsStatusPending:
+		return "ChunkProofsStatusPending"
+	case ChunkProofsStatusReady:
+		return "ChunkProofsStatusReady"
+	default:
+		return fmt.Sprintf("Undefined (%d)", int32(s))
+	}
+}
+
 // RollupStatus block_batch rollup_status (pending, committing, committed, commit_failed, finalizing, finalized, finalize_skipped, finalize_failed)
 type RollupStatus int
 
@@ -225,10 +192,29 @@ const (
 	RollupFinalizing
 	// RollupFinalized : finalize transaction is confirmed to layer1
 	RollupFinalized
-	// RollupFinalizationSkipped : batch finalization is skipped
-	RollupFinalizationSkipped
 	// RollupCommitFailed : rollup commit transaction confirmed but failed
 	RollupCommitFailed
 	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
 	RollupFinalizeFailed
 )
+
+func (s RollupStatus) String() string {
+	switch s {
+	case RollupPending:
+		return "RollupPending"
+	case RollupCommitting:
+		return "RollupCommitting"
+	case RollupCommitted:
+		return "RollupCommitted"
+	case RollupFinalizing:
+		return "RollupFinalizing"
+	case RollupFinalized:
+		return "RollupFinalized"
+	case RollupCommitFailed:
+		return "RollupCommitFailed"
+	case RollupFinalizeFailed:
+		return "RollupFinalizeFailed"
+	default:
+		return fmt.Sprintf("Undefined (%d)", int32(s))
+	}
+}

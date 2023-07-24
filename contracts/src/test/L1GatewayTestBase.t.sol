@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {EnforcedTxGateway} from "../L1/gateways/EnforcedTxGateway.sol";
 import {L1MessageQueue} from "../L1/rollup/L1MessageQueue.sol";
@@ -55,20 +57,30 @@ abstract contract L1GatewayTestBase is DSTestPlus {
 
     L2ScrollMessenger internal l2Messenger;
 
+    bool internal revertOnReceive;
+
+    receive() external payable {
+        if (revertOnReceive) {
+            revert("RevertOnReceive");
+        }
+    }
+
     function setUpBase() internal {
         feeVault = address(uint160(address(this)) - 1);
 
         // Deploy L1 contracts
-        l1Messenger = new L1ScrollMessenger();
-        messageQueue = new L1MessageQueue();
-        gasOracle = new L2GasPriceOracle();
-        rollup = new ScrollChain(1233);
-        enforcedTxGateway = new EnforcedTxGateway();
+        l1Messenger = L1ScrollMessenger(payable(new ERC1967Proxy(address(new L1ScrollMessenger()), new bytes(0))));
+        messageQueue = L1MessageQueue(address(new ERC1967Proxy(address(new L1MessageQueue()), new bytes(0))));
+        gasOracle = L2GasPriceOracle(address(new ERC1967Proxy(address(new L2GasPriceOracle()), new bytes(0))));
+        rollup = ScrollChain(address(new ERC1967Proxy(address(new ScrollChain(1233)), new bytes(0))));
+        enforcedTxGateway = EnforcedTxGateway(
+            address(new ERC1967Proxy(address(new EnforcedTxGateway()), new bytes(0)))
+        );
         whitelist = new Whitelist(address(this));
         verifier = new MockRollupVerifier();
 
         // Deploy L2 contracts
-        l2Messenger = new L2ScrollMessenger(address(0), address(0), address(0));
+        l2Messenger = new L2ScrollMessenger(address(0));
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(rollup), address(messageQueue));

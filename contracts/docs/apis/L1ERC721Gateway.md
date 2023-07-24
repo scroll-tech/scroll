@@ -175,6 +175,22 @@ The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 |---|---|---|
 | _0 | address | undefined |
 
+### onDropMessage
+
+```solidity
+function onDropMessage(bytes _message) external payable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _message | bytes | undefined |
+
 ### onERC721Received
 
 ```solidity
@@ -225,7 +241,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### router
@@ -324,6 +340,24 @@ Emitted when the ERC721 NFT is batch deposited to gateway in layer 1.
 | _to  | address | undefined |
 | _tokenIds  | uint256[] | undefined |
 
+### BatchRefundERC721
+
+```solidity
+event BatchRefundERC721(address indexed token, address indexed recipient, uint256[] tokenIds)
+```
+
+Emitted when a batch of ERC721 tokens are refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenIds  | uint256[] | undefined |
+
 ### DepositERC721
 
 ```solidity
@@ -384,6 +418,22 @@ Emitted when the ERC721 NFT is transfered to recipient in layer 1.
 | _to  | address | undefined |
 | _tokenId  | uint256 | undefined |
 
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
+
 ### OwnershipTransferred
 
 ```solidity
@@ -400,6 +450,24 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 |---|---|---|
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
+
+### RefundERC721
+
+```solidity
+event RefundERC721(address indexed token, address indexed recipient, uint256 tokenId)
+```
+
+Emitted when some ERC721 token is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| tokenId  | uint256 | undefined |
 
 ### UpdateTokenMapping
 

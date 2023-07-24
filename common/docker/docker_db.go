@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
@@ -65,8 +66,12 @@ func (i *ImgDB) Stop() error {
 	if i.id == "" {
 		i.id = GetContainerID(i.name)
 	}
-	timeout := time.Second * 3
-	if err := cli.ContainerStop(ctx, i.id, &timeout); err != nil {
+
+	timeoutSec := 3
+	timeout := container.StopOptions{
+		Timeout: &timeoutSec,
+	}
+	if err := cli.ContainerStop(ctx, i.id, timeout); err != nil {
 		return err
 	}
 	// remove the stopped container.

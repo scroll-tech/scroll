@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"scroll-tech/common/types"
@@ -32,12 +33,12 @@ type Batch struct {
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
 	// proof
-	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status"`
+	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
 	ProvingStatus     int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
 	Proof             []byte     `json:"proof" gorm:"column:proof;default:NULL"`
 	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt          *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
-	ProofTimeSec      int        `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	ProofTimeSec      int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 
 	// rollup
 	RollupStatus   int16      `json:"rollup_status" gorm:"column:rollup_status;default:1"`
@@ -47,7 +48,7 @@ type Batch struct {
 	FinalizedAt    *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
 
 	// gas oracle
-	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
+	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1;default:1"`
 	OracleTxHash string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
 
 	// metadata
@@ -76,67 +77,67 @@ func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, 
 		return nil, nil
 	}
 
-	var batches []*Batch
 	db := o.db.WithContext(ctx)
 	db = db.Where("proving_status = ? AND chunk_proofs_status = ?", types.ProvingTaskUnassigned, types.ChunkProofsStatusReady)
 	db = db.Order("index ASC")
 	db = db.Limit(limit)
 
+	var batches []*Batch
 	if err := db.Find(&batches).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Batch.GetUnassignedBatches error: %w", err)
 	}
 	return batches, nil
 }
 
 // GetAssignedBatches retrieves all batches whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProved.
 func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)})
+
 	var assignedBatches []*Batch
-	err := o.db.WithContext(ctx).
-		Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)}).
-		Find(&assignedBatches).Error
-	if err != nil {
-		return nil, err
+	if err := db.Find(&assignedBatches).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetAssignedBatches error: %w", err)
 	}
 	return assignedBatches, nil
 }
 
 // GetProvingStatusByHash retrieves the proving status of a batch given its hash.
 func (o *Batch) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
-	var batch Batch
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Select("proving_status")
 	db = db.Where("hash = ?", hash)
+
+	var batch Batch
 	if err := db.Find(&batch).Error; err != nil {
-		return types.ProvingStatusUndefined, err
+		return types.ProvingStatusUndefined, fmt.Errorf("Batch.GetProvingStatusByHash error: %w, batch hash: %v", err, hash)
 	}
 	return types.ProvingStatus(batch.ProvingStatus), nil
 }
 
 // GetLatestBatch retrieves the latest batch from the database.
 func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Order("index desc")
+
 	var latestBatch Batch
-	err := o.db.WithContext(ctx).Order("index desc").First(&latestBatch).Error
-	if err != nil {
-		return nil, err
+	if err := db.First(&latestBatch).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetLatestBatch error: %w", err)
 	}
 	return &latestBatch, nil
 }
 
 // InsertBatch inserts a new batch into the database.
 // for unit test
-func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk) (*Batch, error) {
 	if len(chunks) == 0 {
 		return nil, errors.New("invalid args")
 	}
 
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-
 	parentBatch, err := o.GetLatestBatch(ctx)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get the latest batch", "err", err)
 		return nil, err
 	}
@@ -190,21 +191,27 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		RollupStatus:      int16(types.RollupPending),
 	}
 
-	if err := db.WithContext(ctx).Create(&newBatch).Error; err != nil {
-		log.Error("failed to insert batch", "batch", newBatch, "err", err)
-		return nil, err
-	}
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
 
+	if err := db.Create(&newBatch).Error; err != nil {
+		log.Error("failed to insert batch", "batch", newBatch, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
+	}
 	return &newBatch, nil
 }
 
 // UpdateChunkProofsStatusByBatchHash updates the status of chunk_proofs_status field for a given batch hash.
 // The function will set the chunk_proofs_status to the status provided.
-func (o *Chunk) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, status types.ChunkProofsStatus) error {
+func (o *Batch) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, status types.ChunkProofsStatus) error {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash = ?", batchHash)
-	return db.Update("chunk_proofs_status", int(status)).Error
+
+	if err := db.Update("chunk_proofs_status", status).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateChunkProofsStatusByBatchHash error: %w, batch hash: %v, status: %v", err, batchHash, status.String())
+	}
+	return nil
 }
 
 // UpdateProvingStatus updates the proving status of a batch.
@@ -213,7 +220,6 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-
 	updateFields := make(map[string]interface{})
 	updateFields["proving_status"] = int(status)
 
@@ -226,14 +232,22 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["proved_at"] = time.Now()
 	}
 
-	if err := db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error; err != nil {
-		return err
+	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash", hash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateProvingStatus error: %w, batch hash: %v, status: %v", err, hash, status.String())
 	}
 	return nil
 }
 
 // UpdateProofByHash updates the batch proof by hash.
-func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
 	proofBytes, err := json.Marshal(proof)
 	if err != nil {
 		return err
@@ -242,6 +256,13 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	updateFields := make(map[string]interface{})
 	updateFields["proof"] = proofBytes
 	updateFields["proof_time_sec"] = proofTimeSec
-	err = o.db.WithContext(ctx).Model(&Batch{}).Where("hash", hash).Updates(updateFields).Error
-	return err
+
+	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash", hash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateProofByHash error: %w, batch hash: %v", err, hash)
+	}
+	return nil
 }

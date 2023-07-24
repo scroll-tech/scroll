@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 interface IScrollChain {
     /**********
@@ -8,18 +8,21 @@ interface IScrollChain {
      **********/
 
     /// @notice Emitted when a new batch is committed.
+    /// @param batchIndex The index of the batch.
     /// @param batchHash The hash of the batch.
-    event CommitBatch(bytes32 indexed batchHash);
+    event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
 
     /// @notice revert a pending batch.
+    /// @param batchIndex The index of the batch.
     /// @param batchHash The hash of the batch
-    event RevertBatch(bytes32 indexed batchHash);
+    event RevertBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
 
     /// @notice Emitted when a batch is finalized.
+    /// @param batchIndex The index of the batch.
     /// @param batchHash The hash of the batch
     /// @param stateRoot The state root in layer 2 after this batch.
     /// @param withdrawRoot The merkle root in layer2 after this batch.
-    event FinalizeBatch(bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
+    event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
 
     /*************************
      * Public View Functions *

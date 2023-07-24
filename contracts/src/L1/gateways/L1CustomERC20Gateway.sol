@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -41,6 +41,10 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initialize the storage of L1CustomERC20Gateway.
     /// @param _counterpart The address of L2CustomERC20Gateway in L2.
     /// @param _router The address of L1GatewayRouter.
@@ -65,32 +69,6 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
         return tokenMapping[_l1Token];
     }
 
-    /*****************************
-     * Public Mutating Functions *
-     *****************************/
-
-    /// @inheritdoc IL1ERC20Gateway
-    function finalizeWithdrawERC20(
-        address _l1Token,
-        address _l2Token,
-        address _from,
-        address _to,
-        uint256 _amount,
-        bytes calldata _data
-    ) external payable override onlyCallByCounterpart nonReentrant {
-        require(msg.value == 0, "nonzero msg.value");
-        require(_l2Token != address(0), "token address cannot be 0");
-        require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
-
-        // @note can possible trigger reentrant call to this contract or messenger,
-        // but it seems not a big problem.
-        IERC20Upgradeable(_l1Token).safeTransfer(_to, _amount);
-
-        _doCallback(_to, _data);
-
-        emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
-    }
-
     /************************
      * Restricted Functions *
      ************************/
@@ -109,6 +87,29 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
     /**********************
      * Internal Functions *
      **********************/
+
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeFinalizeWithdrawERC20(
+        address _l1Token,
+        address _l2Token,
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+        require(_l2Token != address(0), "token address cannot be 0");
+        require(_l2Token == tokenMapping[_l1Token], "l2 token mismatch");
+    }
+
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeDropMessage(
+        address,
+        address,
+        uint256
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+    }
 
     /// @inheritdoc L1ERC20Gateway
     function _deposit(
@@ -137,7 +138,7 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _from);
 
         emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);
     }

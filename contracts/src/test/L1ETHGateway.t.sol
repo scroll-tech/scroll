@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {IL1ETHGateway, L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
 import {IL2ETHGateway, L2ETHGateway} from "../L2/gateways/L2ETHGateway.sol";
 import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 
 import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
@@ -16,6 +19,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
     // from L1ETHGateway
     event DepositETH(address indexed from, address indexed to, uint256 amount, bytes data);
     event FinalizeWithdrawETH(address indexed from, address indexed to, uint256 amount, bytes data);
+    event RefundETH(address indexed recipient, uint256 amount);
 
     L1ETHGateway private gateway;
     L1GatewayRouter private router;
@@ -26,8 +30,8 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         setUpBase();
 
         // Deploy L1 contracts
-        gateway = new L1ETHGateway();
-        router = new L1GatewayRouter();
+        gateway = _deployGateway();
+        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
 
         // Deploy L2 contracts
         counterpartGateway = new L2ETHGateway();
@@ -100,6 +104,83 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         _depositETHWithRecipientAndCalldata(true, amount, recipient, dataToCall, gasLimit, feePerGas);
     }
 
+    function testDropMessageMocking() public {
+        MockScrollMessenger mockMessenger = new MockScrollMessenger();
+        gateway = _deployGateway();
+        gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
+
+        // only messenger can call, revert
+        hevm.expectRevert("only messenger can call");
+        gateway.onDropMessage(new bytes(0));
+
+        // only called in drop context, revert
+        hevm.expectRevert("only called in drop context");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(0))
+        );
+
+        mockMessenger.setXDomainMessageSender(ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER);
+
+        // invalid selector, revert
+        hevm.expectRevert("invalid selector");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(4))
+        );
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ETHGateway.finalizeDepositETH.selector,
+            address(this),
+            address(this),
+            100,
+            new bytes(0)
+        );
+
+        // msg.value mismatch, revert
+        hevm.expectRevert("msg.value mismatch");
+        mockMessenger.callTarget{value: 99}(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, message)
+        );
+    }
+
+    function testDropMessage(
+        uint256 amount,
+        address recipient,
+        bytes memory dataToCall
+    ) public {
+        amount = bound(amount, 1, address(this).balance);
+        bytes memory message = abi.encodeWithSelector(
+            IL2ETHGateway.finalizeDepositETH.selector,
+            address(this),
+            recipient,
+            amount,
+            dataToCall
+        );
+        gateway.depositETHAndCall{value: amount}(recipient, amount, dataToCall, 0);
+
+        // skip message 0
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(0, 1, 0x1);
+        assertEq(messageQueue.pendingQueueIndex(), 1);
+        hevm.stopPrank();
+
+        // ETH transfer failed, revert
+        revertOnReceive = true;
+        hevm.expectRevert("ETH transfer failed");
+        l1Messenger.dropMessage(address(gateway), address(counterpartGateway), amount, 0, message);
+
+        // drop message 0
+        hevm.expectEmit(true, true, false, true);
+        emit RefundETH(address(this), amount);
+
+        revertOnReceive = false;
+        uint256 balance = address(this).balance;
+        l1Messenger.dropMessage(address(gateway), address(counterpartGateway), amount, 0, message);
+        assertEq(balance + amount, address(this).balance);
+    }
+
     function testFinalizeWithdrawETHFailedMocking(
         address sender,
         address recipient,
@@ -113,7 +194,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         gateway.finalizeWithdrawETH(sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1ETHGateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
@@ -133,6 +214,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         );
 
         // ETH transfer failed
+        revertOnReceive = true;
         hevm.expectRevert("ETH transfer failed");
         mockMessenger.callTarget{value: amount}(
             address(gateway),
@@ -464,5 +546,9 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
         }
+    }
+
+    function _deployGateway() internal returns (L1ETHGateway) {
+        return L1ETHGateway(address(new ERC1967Proxy(address(new L1ETHGateway()), new bytes(0))));
     }
 }

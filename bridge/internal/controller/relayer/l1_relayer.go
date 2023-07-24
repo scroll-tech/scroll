@@ -52,7 +52,7 @@ type Layer1Relayer struct {
 	gasPriceDiff uint64
 
 	l1MessageOrm *orm.L1Message
-	l1Block      *orm.L1Block
+	l1BlockOrm   *orm.L1Block
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
@@ -90,7 +90,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 	l1Relayer := &Layer1Relayer{
 		ctx:          ctx,
 		l1MessageOrm: orm.NewL1Message(db),
-		l1Block:      orm.NewL1Block(db),
+		l1BlockOrm:   orm.NewL1Block(db),
 
 		messageSender:  messageSender,
 		l2MessengerABI: bridgeAbi.L2ScrollMessengerABI,
@@ -159,13 +159,13 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
-	latestBlockHeight, err := r.l1Block.GetLatestL1BlockHeight()
+	latestBlockHeight, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
 	if err != nil {
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
 		return
 	}
 
-	blocks, err := r.l1Block.GetL1Blocks(map[string]interface{}{
+	blocks, err := r.l1BlockOrm.GetL1Blocks(r.ctx, map[string]interface{}{
 		"number": latestBlockHeight,
 	})
 	if err != nil {
@@ -197,7 +197,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			err = r.l1Block.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, hash.String())
+			err = r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, block.Hash, types.GasOracleImporting, hash.String())
 			if err != nil {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
@@ -232,14 +232,14 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 		case cfm := <-r.gasOracleSender.ConfirmChan():
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
-				err := r.l1Block.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
+				err := r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
 				if err != nil {
 					log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", err)
 				}
 				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
 			} else {
 				// @todo handle db error
-				err := r.l1Block.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
+				err := r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
 				if err != nil {
 					log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
 				}

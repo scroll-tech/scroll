@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -8,6 +8,10 @@ import {IL2GasPriceOracle} from "./IL2GasPriceOracle.sol";
 import {IL1MessageQueue} from "./IL1MessageQueue.sol";
 
 import {AddressAliasHelper} from "../../libraries/common/AddressAliasHelper.sol";
+
+// solhint-disable no-empty-blocks
+// solhint-disable no-inline-assembly
+// solhint-disable reason-string
 
 /// @title L1MessageQueue
 /// @notice This contract will hold all L1 to L2 messages.
@@ -57,9 +61,22 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @notice The max gas limit of L1 transactions.
     uint256 public maxGasLimit;
 
+    /**********************
+     * Function Modifiers *
+     **********************/
+
+    modifier onlyMessenger() {
+        require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
+        _;
+    }
+
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(
         address _messenger,
@@ -248,9 +265,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         address _target,
         uint256 _gasLimit,
         bytes calldata _data
-    ) external override {
-        require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
-
+    ) external override onlyMessenger {
         // validate gas limit
         _validateGasLimit(_gasLimit, _data);
 
@@ -300,6 +315,16 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         }
 
         emit DequeueTransaction(_startIndex, _count, _skippedBitmap);
+    }
+
+    /// @inheritdoc IL1MessageQueue
+    function dropCrossDomainMessage(uint256 _index) external onlyMessenger {
+        require(_index < pendingQueueIndex, "cannot drop pending message");
+        require(messageQueue[_index] != bytes32(0), "message already dropped or executed");
+
+        messageQueue[_index] = bytes32(0);
+
+        emit DropTransaction(_index);
     }
 
     /************************
