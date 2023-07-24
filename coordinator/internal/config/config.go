@@ -20,7 +20,7 @@ type ProverManagerConfig struct {
 	CompressionLevel int `json:"compression_level,omitempty"`
 	// asc or desc (default: asc)
 	OrderSession string `json:"order_session,omitempty"`
-	// The amount of rollers to pick per proof generation session.
+	// The amount of provers to pick per proof generation session.
 	ProversPerSession uint8 `json:"provers_per_session"`
 	// Number of attempts that a session can be retried if previous attempts failed.
 	// Currently we only consider proving timeout as failure here.

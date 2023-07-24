@@ -5,7 +5,7 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// ProversInfo is assigned rollers info of a task (session)
+// ProversInfo is assigned provers info of a task (session)
 type ProversInfo struct {
 	ID               string            `json:"id"`
 	ProverStatusList []*ProverStatus   `json:"provers"`
