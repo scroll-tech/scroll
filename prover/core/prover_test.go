@@ -26,7 +26,7 @@ var (
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
-	cfg := &config.ProverConfig{
+	cfg := &config.ProverCoreConfig{
 		ParamsPath: *paramsPath,
 		SeedPath:   *seedPath,
 	}

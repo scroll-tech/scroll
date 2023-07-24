@@ -15,11 +15,11 @@ import (
 
 // ProverCore sends block-traces to rust-prover through socket and get back the zk-proof.
 type ProverCore struct {
-	cfg *config.ProverConfig
+	cfg *config.ProverCoreConfig
 }
 
 // NewProverCore inits a ProverCore object.
-func NewProverCore(cfg *config.ProverConfig) (*ProverCore, error) {
+func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	return &ProverCore{cfg: cfg}, nil
 }
 

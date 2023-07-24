@@ -23,14 +23,14 @@ libzkp:
 	rm -rf ./core/lib && cp -r ../common/libzkp/interface ./core/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./core/lib/
 
-prover: libzkp ## Build the Roller instance.
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
+prover: libzkp ## Build the prover instance.
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/prover ./cmd
 
-mock_prover: ## Build the mocked Roller instance.
-	GOBIN=$(PWD)/build/bin go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/roller ./cmd
+mock_prover: ## Build the mocked prover instance.
+	GOBIN=$(PWD)/build/bin go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/prover ./cmd
 
-gpu-prover: libzkp ## Build the GPU Roller instance.
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
+gpu-prover: libzkp ## Build the GPU prover instance.
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/prover ./cmd
 
 test-prover: libzkp
 	go test -tags ffi -timeout 0 -v ./prover

@@ -26,11 +26,11 @@ import (
 
 // ProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
 type ProverCore struct {
-	cfg *config.ProverConfig
+	cfg *config.ProverCoreConfig
 }
 
 // NewProverCore inits a Prover object.
-func NewProverCore(cfg *config.ProverConfig) (*ProverCore, error) {
+func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	seedPathStr := C.CString(cfg.SeedPath)
 	defer func() {

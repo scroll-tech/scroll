@@ -50,8 +50,8 @@ type Prover struct {
 	priv *ecdsa.PrivateKey
 }
 
-// NewRoller new a Prover object.
-func NewRoller(cfg *config.Config) (*Prover, error) {
+// NewProver new a Prover object.
+func NewProver(cfg *config.Config) (*Prover, error) {
 	// load or create wallet
 	priv, err := utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
@@ -122,7 +122,7 @@ func (r *Prover) Start() {
 func (r *Prover) Register() error {
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:       r.cfg.RollerName,
+			Name:       r.cfg.ProverName,
 			ProverType: r.Type(),
 			Version:    version.Version,
 		},
