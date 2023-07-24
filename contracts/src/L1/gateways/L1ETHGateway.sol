@@ -127,13 +127,7 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway, IMessa
         }
 
         // 2. Generate message passed to L1ScrollMessenger.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ETHGateway.finalizeDepositETH.selector,
-            _from,
-            _to,
-            _amount,
-            _data
-        );
+        bytes memory _message = abi.encodeCall(IL2ETHGateway.finalizeDepositETH, (_from, _to, _amount, _data));
 
         IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit, _from);
 
