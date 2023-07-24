@@ -8,11 +8,10 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56
 	github.com/shopspring/decimal v1.3.1
-	github.com/stretchr/testify v1.8.2
-	github.com/urfave/cli/v2 v2.17.2-0.20221006022127-8f469abc00aa
-	golang.org/x/exp v0.0.0-20230206171751-46f607a40771
-	golang.org/x/sync v0.1.0
-	gorm.io/gorm v1.25.1
+	github.com/stretchr/testify v1.8.3
+	github.com/urfave/cli/v2 v2.25.7
+	golang.org/x/sync v0.3.0
+	gorm.io/gorm v1.25.2
 )
 
 require (
@@ -48,8 +47,8 @@ require (
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	golang.org/x/crypto v0.10.0 // indirect
-	golang.org/x/sys v0.9.0 // indirect
+	golang.org/x/crypto v0.11.0 // indirect
+	golang.org/x/sys v0.10.0 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

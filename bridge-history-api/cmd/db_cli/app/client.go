@@ -2,13 +2,14 @@ package app
 
 import (
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/jmoiron/sqlx"
 	"github.com/urfave/cli/v2"
+	"gorm.io/gorm"
 
 	"bridge-history-api/config"
-	"bridge-history-api/db"
-	"bridge-history-api/db/migrate"
+	"bridge-history-api/orm/migrate"
 	"bridge-history-api/utils"
+
+	"scroll-tech/common/database"
 )
 
 func getConfig(ctx *cli.Context) (*config.Config, error) {
@@ -20,14 +21,14 @@ func getConfig(ctx *cli.Context) (*config.Config, error) {
 	return dbCfg, nil
 }
 
-func initDB(dbCfg *config.Config) (*sqlx.DB, error) {
-	factory, err := db.NewOrmFactory(dbCfg)
-	if err != nil {
-		return nil, err
+func initDB(dbCfg *config.DBConfig) (*gorm.DB, error) {
+	cfg := &database.Config{
+		DriverName: dbCfg.DriverName,
+		DSN:        dbCfg.DSN,
+		MaxOpenNum: dbCfg.MaxOpenNum,
+		MaxIdleNum: dbCfg.MaxIdleNum,
 	}
-	log.Debug("Got db config from env", "driver name", dbCfg.DB.DriverName, "dsn", dbCfg.DB.DSN)
-
-	return factory.GetDB(), nil
+	return database.InitDB(cfg)
 }
 
 // resetDB clean or reset database.
@@ -36,11 +37,15 @@ func resetDB(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	gormDB, err := initDB(cfg.DB)
 	if err != nil {
 		return err
 	}
-	err = migrate.ResetDB(db.DB)
+	db, err := gormDB.DB()
+	if err != nil {
+		return err
+	}
+	err = migrate.ResetDB(db)
 	if err != nil {
 		return err
 	}
@@ -54,12 +59,15 @@ func checkDBStatus(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	gormDB, err := initDB(cfg.DB)
 	if err != nil {
 		return err
 	}
-
-	return migrate.Status(db.DB)
+	db, err := gormDB.DB()
+	if err != nil {
+		return err
+	}
+	return migrate.Status(db)
 }
 
 // dbVersion return the latest version
@@ -68,12 +76,15 @@ func dbVersion(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	gormDB, err := initDB(cfg.DB)
 	if err != nil {
 		return err
 	}
-
-	version, err := migrate.Current(db.DB)
+	db, err := gormDB.DB()
+	if err != nil {
+		return err
+	}
+	version, err := migrate.Current(db)
 	log.Info("show database version", "db version", version)
 
 	return err
@@ -85,12 +96,15 @@ func migrateDB(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	gormDB, err := initDB(cfg.DB)
 	if err != nil {
 		return err
 	}
-
-	return migrate.Migrate(db.DB)
+	db, err := gormDB.DB()
+	if err != nil {
+		return err
+	}
+	return migrate.Migrate(db)
 }
 
 // rollbackDB rollback db by version
@@ -99,10 +113,14 @@ func rollbackDB(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	db, err := initDB(cfg)
+	gormDB, err := initDB(cfg.DB)
+	if err != nil {
+		return err
+	}
+	db, err := gormDB.DB()
 	if err != nil {
 		return err
 	}
 	version := ctx.Int64("version")
-	return migrate.Rollback(db.DB, &version)
+	return migrate.Rollback(db, &version)
 }

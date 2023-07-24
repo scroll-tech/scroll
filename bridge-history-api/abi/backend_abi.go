@@ -39,6 +39,12 @@ var (
 	L2WithdrawERC721Sig      common.Hash
 	L2WithdrawERC1155Sig     common.Hash
 
+	// batch nft sigs
+	L1BatchDepositERC721Sig   common.Hash
+	L1BatchDepositERC1155Sig  common.Hash
+	L2BatchWithdrawERC721Sig  common.Hash
+	L2BatchWithdrawERC1155Sig common.Hash
+
 	// scroll mono repo
 
 	// ScrollChainABI holds information about ScrollChain's context and available invokable methods.
@@ -115,6 +121,12 @@ func init() {
 	L2WithdrawERC721Sig = L2ERC721GatewayABI.Events["WithdrawERC721"].ID
 	L2ERC1155GatewayABI, _ = L2ERC1155GatewayMetaData.GetAbi()
 	L2WithdrawERC1155Sig = L2ERC1155GatewayABI.Events["WithdrawERC1155"].ID
+
+	// batch nft events
+	L1BatchDepositERC721Sig = L1ERC721GatewayABI.Events["BatchDepositERC721"].ID
+	L1BatchDepositERC1155Sig = L1ERC1155GatewayABI.Events["BatchDepositERC1155"].ID
+	L2BatchWithdrawERC721Sig = L2ERC721GatewayABI.Events["BatchWithdrawERC721"].ID
+	L2BatchWithdrawERC1155Sig = L2ERC1155GatewayABI.Events["BatchWithdrawERC1155"].ID
 
 	// scroll monorepo
 	ScrollChainABI, _ = ScrollChainMetaData.GetAbi()
@@ -275,6 +287,23 @@ type ERC1155MessageEvent struct {
 	To      common.Address
 	TokenID *big.Int
 	Amount  *big.Int
+}
+
+type BatchERC721MessageEvent struct {
+	L1Token  common.Address
+	L2Token  common.Address
+	From     common.Address
+	To       common.Address
+	TokenIDs []*big.Int
+}
+
+type BatchERC1155MessageEvent struct {
+	L1Token      common.Address
+	L2Token      common.Address
+	From         common.Address
+	To           common.Address
+	TokenIDs     []*big.Int
+	TokenAmounts []*big.Int
 }
 
 // scroll monorepo

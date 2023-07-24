@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
@@ -14,6 +14,8 @@ import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
+
+// solhint-disable reason-string
 
 /// @title L2ScrollMessenger
 /// @notice The `L2ScrollMessenger` contract can:
@@ -36,12 +38,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     /*************
      * Constants *
      *************/
-
-    /// @notice The contract contains the list of L1 blocks.
-    address public immutable blockContainer;
-
-    /// @notice The address of L2MessageQueue.
-    address public immutable gasOracle;
 
     /// @notice The address of L2MessageQueue.
     address public immutable messageQueue;
@@ -66,13 +62,9 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
      * Constructor *
      ***************/
 
-    constructor(
-        address _blockContainer,
-        address _gasOracle,
-        address _messageQueue
-    ) {
-        blockContainer = _blockContainer;
-        gasOracle = _gasOracle;
+    constructor(address _messageQueue) {
+        _disableInitializers();
+
         messageQueue = _messageQueue;
     }
 
@@ -81,84 +73,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         ScrollMessengerBase._initialize(_counterpart, _feeVault);
 
         maxFailedExecutionTimes = 3;
-    }
-
-    /*************************
-     * Public View Functions *
-     *************************/
-
-    /// @notice Check whether the l1 message is included in the corresponding L1 block.
-    /// @param _blockHash The block hash where the message should in.
-    /// @param _msgHash The hash of the message to check.
-    /// @param _proof The encoded storage proof from eth_getProof.
-    /// @return bool Return true is the message is included in L1, otherwise return false.
-    function verifyMessageInclusionStatus(
-        bytes32 _blockHash,
-        bytes32 _msgHash,
-        bytes calldata _proof
-    ) public view returns (bool) {
-        bytes32 _expectedStateRoot = IL1BlockContainer(blockContainer).getStateRoot(_blockHash);
-        require(_expectedStateRoot != bytes32(0), "Block is not imported");
-
-        bytes32 _storageKey;
-        // `mapping(bytes32 => bool) public isL1MessageSent` is the 155-th slot of contract `L1ScrollMessenger`.
-        // + 1 from `Initializable`
-        // + 50 from `OwnableUpgradeable`
-        // + 50 from `ContextUpgradeable`
-        // + 4 from `ScrollMessengerBase`
-        // + 50 from `PausableUpgradeable`
-        // + 1-st in `L1ScrollMessenger`
-        assembly {
-            mstore(0x00, _msgHash)
-            mstore(0x20, 155)
-            _storageKey := keccak256(0x00, 0x40)
-        }
-
-        (bytes32 _computedStateRoot, bytes32 _storageValue) = PatriciaMerkleTrieVerifier.verifyPatriciaProof(
-            counterpart,
-            _storageKey,
-            _proof
-        );
-        require(_computedStateRoot == _expectedStateRoot, "State roots mismatch");
-
-        return uint256(_storageValue) == 1;
-    }
-
-    /// @notice Check whether the message is executed in the corresponding L1 block.
-    /// @param _blockHash The block hash where the message should in.
-    /// @param _msgHash The hash of the message to check.
-    /// @param _proof The encoded storage proof from eth_getProof.
-    /// @return bool Return true is the message is executed in L1, otherwise return false.
-    function verifyMessageExecutionStatus(
-        bytes32 _blockHash,
-        bytes32 _msgHash,
-        bytes calldata _proof
-    ) external view returns (bool) {
-        bytes32 _expectedStateRoot = IL1BlockContainer(blockContainer).getStateRoot(_blockHash);
-        require(_expectedStateRoot != bytes32(0), "Block not imported");
-
-        bytes32 _storageKey;
-        // `mapping(bytes32 => bool) public isL2MessageExecuted` is the 156-th slot of contract `L1ScrollMessenger`.
-        // + 1 from `Initializable`
-        // + 50 from `OwnableUpgradeable`
-        // + 50 from `ContextUpgradeable`
-        // + 4 from `ScrollMessengerBase`
-        // + 50 from `PausableUpgradeable`
-        // + 2-nd in `L1ScrollMessenger`
-        assembly {
-            mstore(0x00, _msgHash)
-            mstore(0x20, 156)
-            _storageKey := keccak256(0x00, 0x40)
-        }
-
-        (bytes32 _computedStateRoot, bytes32 _storageValue) = PatriciaMerkleTrieVerifier.verifyPatriciaProof(
-            counterpart,
-            _storageKey,
-            _proof
-        );
-        require(_computedStateRoot == _expectedStateRoot, "State root mismatch");
-
-        return uint256(_storageValue) == 1;
     }
 
     /*****************************
@@ -204,28 +118,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         _executeMessage(_from, _to, _value, _message, _xDomainCalldataHash);
     }
 
-    /// @inheritdoc IL2ScrollMessenger
-    function retryMessageWithProof(
-        address _from,
-        address _to,
-        uint256 _value,
-        uint256 _nonce,
-        bytes memory _message,
-        L1MessageProof calldata _proof
-    ) external override notInExecution whenNotPaused {
-        // check message status
-        bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
-        require(!isL1MessageExecuted[_xDomainCalldataHash], "Message successfully executed");
-        require(l1MessageFailedTimes[_xDomainCalldataHash] > 0, "Message not relayed before");
-
-        require(
-            verifyMessageInclusionStatus(_proof.blockHash, _xDomainCalldataHash, _proof.stateRootProof),
-            "Message not included"
-        );
-
-        _executeMessage(_from, _to, _value, _message, _xDomainCalldataHash);
-    }
-
     /************************
      * Restricted Functions *
      ************************/
@@ -245,6 +137,8 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     /// @dev This function can only called by contract owner.
     /// @param _maxFailedExecutionTimes The new max failed execution times.
     function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external onlyOwner {
+        require(_maxFailedExecutionTimes > 0, "maxFailedExecutionTimes cannot be zero");
+
         maxFailedExecutionTimes = _maxFailedExecutionTimes;
 
         emit UpdateMaxFailedExecutionTimes(_maxFailedExecutionTimes);
