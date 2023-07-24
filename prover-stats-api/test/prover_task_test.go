@@ -7,6 +7,12 @@ import (
 	"io"
 	"math/big"
 	"net/http"
+	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 
 	"scroll-tech/database/migrate"
 
@@ -14,19 +20,11 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 
-	"github.com/gin-gonic/gin"
-
-	"testing"
-
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/controller"
 	"scroll-tech/prover-stats-api/internal/orm"
 	"scroll-tech/prover-stats-api/internal/route"
-	api_types "scroll-tech/prover-stats-api/internal/types"
-
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
+	apitypes "scroll-tech/prover-stats-api/internal/types"
 )
 
 var (
@@ -113,10 +111,10 @@ func getResp(t *testing.T, url string) interface{} {
 	byt, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 
-	res := new(api_types.Response)
+	res := new(apitypes.Response)
 	assert.NoError(t, json.Unmarshal(byt, res))
 	t.Log("----byt is ", string(byt))
-	assert.Equal(t, api_types.Success, res.ErrCode)
+	assert.Equal(t, apitypes.Success, res.ErrCode)
 	return res.Data
 }
 

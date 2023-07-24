@@ -33,7 +33,7 @@ var (
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
-	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/config.json")
+	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
 	rollerApp = rapp.NewRollerApp(base, "../../roller/config.json", coordinatorApp.WSEndpoint())
 	m.Run()
 	bridgeApp.Free()

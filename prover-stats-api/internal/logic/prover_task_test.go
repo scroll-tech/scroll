@@ -5,15 +5,15 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/shopspring/decimal"
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
+
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
-
-	"github.com/shopspring/decimal"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
 
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/orm"
