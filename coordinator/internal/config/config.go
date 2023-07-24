@@ -71,7 +71,7 @@ func NewConfig(file string) (*Config, error) {
 	// Check prover's order session
 	order := strings.ToUpper(cfg.ProverManagerConfig.OrderSession)
 	if len(order) > 0 && !(order == "ASC" || order == "DESC") {
-		return nil, errors.New("prover config's order session is invalid")
+		return nil, errors.New("prover manager config's order session is invalid")
 	}
 	cfg.ProverManagerConfig.OrderSession = order
 
