@@ -75,6 +75,10 @@ linters-settings:
     # report about shadowed variables
     check-shadowing: true
 
+  gosec:
+    disable:
+      - G108
+
   golint:
     # minimal confidence for issues, default is 0.8
     min-confidence: 0.8
@@ -209,6 +213,13 @@ issues:
       linters:
         - errcheck
         - gosec
+        
+    # Exclude abi files in bridge-history-api
+    - path: backend_abi\.go
+      linters:
+        - errcheck
+        - gosec
+        - golint
 
     # Exclude some staticcheck messages
     - linters:
@@ -220,7 +231,12 @@ issues:
         - lll
       source: "^//go:generate "
       text: "long-lines"
-    
+
+    # Exclude gosec issues for G108: Profiling endpoint is automatically exposed
+    - linters:
+        - gosec
+      text: "G108"
+
     - linters:
         - wsl
       text: "return statements should not be cuddled if block has more than two lines"

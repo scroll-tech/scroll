@@ -1,0 +1,157 @@
+basePath: /api/v1
+definitions:
+  types.LoginSchema:
+    properties:
+      time:
+        type: string
+      token:
+        type: string
+    type: object
+  types.ProverTaskSchema:
+    properties:
+      created_at:
+        type: string
+      failure_type:
+        type: string
+      prover_name:
+        type: string
+      proving_status:
+        type: string
+      reward:
+        type: string
+      task_id:
+        type: string
+      task_type:
+        type: string
+    type: object
+  types.ProverTotalRewardsSchema:
+    properties:
+      rewards:
+        type: string
+    type: object
+host: localhost:8990
+info:
+  contact:
+    email: Be Pending
+    name: Prover Stats API Support
+  description: This is an API server for Provers.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  title: Zero-knowledge Prover Stats API
+  version: "1.0"
+paths:
+  /api/prover_task/v1/request_token:
+    get:
+      consumes:
+      - text/plain
+      description: login with prover public key
+      parameters:
+      - description: prover public key
+        in: query
+        name: pubkey
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.LoginSchema'
+            type: array
+      summary: login with prover public key
+      tags:
+      - prover_task
+  /api/prover_task/v1/task:
+    get:
+      consumes:
+      - text/plain
+      description: get prover task by task id
+      parameters:
+      - description: prover task hash
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Bearer license
+        in: header
+        name: Authorization
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ProverTaskSchema'
+      summary: give the specific prover task
+      tags:
+      - prover_task
+  /api/prover_task/v1/tasks:
+    get:
+      consumes:
+      - text/plain
+      description: get all the prover task by prover public key
+      parameters:
+      - description: prover public key
+        in: query
+        name: pubkey
+        required: true
+        type: string
+      - description: page
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: page_size
+        in: query
+        name: page_size
+        required: true
+        type: integer
+      - description: Bearer license
+        in: header
+        name: Authorization
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/types.ProverTaskSchema'
+            type: array
+      summary: get all the prover task by prover public key
+      tags:
+      - prover_task
+  /api/prover_task/v1/total_rewards:
+    get:
+      consumes:
+      - text/plain
+      description: get uint64 by prover public key
+      parameters:
+      - description: prover public key
+        in: path
+        name: pubkey
+        required: true
+        type: string
+      - description: Bearer license
+        in: header
+        name: Authorization
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/types.ProverTotalRewardsSchema'
+      summary: give the total rewards of a prover
+      tags:
+      - prover_task
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

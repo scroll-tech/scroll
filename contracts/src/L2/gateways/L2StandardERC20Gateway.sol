@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -38,6 +38,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(
         address _counterpart,

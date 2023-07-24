@@ -10,8 +10,8 @@ async function main() {
 
   if (!addressFile.get("WETH")) {
     console.log(">> Deploy WETH");
-    const WETH9 = await ethers.getContractFactory("WETH9", deployer);
-    const weth = await WETH9.deploy();
+    const WrappedEther = await ethers.getContractFactory("WrappedEther", deployer);
+    const weth = await WrappedEther.deploy();
     console.log(`>> waiting for transaction: ${weth.deployTransaction.hash}`);
     await weth.deployed();
     console.log(`✅ WETH deployed at ${weth.address}`);

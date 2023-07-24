@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -20,6 +20,13 @@ import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallba
 
 abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, ScrollGatewayBase {
     using SafeERC20 for IERC20;
+
+    /*************
+     * Variables *
+     *************/
+
+    /// @dev The storage slots for future usage.
+    uint256[50] private __gap;
 
     /*****************************
      * Public Mutating Functions *
