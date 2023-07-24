@@ -10,10 +10,10 @@ import (
 )
 
 // GetEarliestNoBlockTimestampHeightFunc is a function type that gets the earliest record without block timestamp from database
-type GetEarliestNoBlockTimestampHeightFunc func() (uint64, error)
+type GetEarliestNoBlockTimestampHeightFunc func(ctx context.Context) (uint64, error)
 
 // UpdateBlockTimestampFunc is a function type that updates block timestamp into database
-type UpdateBlockTimestampFunc func(height uint64, timestamp time.Time) error
+type UpdateBlockTimestampFunc func(ctx context.Context, height uint64, timestamp time.Time) error
 
 // BlockTimestampFetcher fetches block timestamp from blockchain and saves them to database
 type BlockTimestampFetcher struct {
@@ -52,7 +52,7 @@ func (b *BlockTimestampFetcher) Start() {
 					log.Error("Can not get latest block number", "err", err)
 					continue
 				}
-				startHeight, err := b.getEarliestNoBlockTimestampHeightFunc()
+				startHeight, err := b.getEarliestNoBlockTimestampHeightFunc(b.ctx)
 				if err != nil {
 					log.Error("Can not get latest record without block timestamp", "err", err)
 					continue
@@ -63,12 +63,12 @@ func (b *BlockTimestampFetcher) Start() {
 						log.Error("Can not get block by number", "err", err)
 						break
 					}
-					err = b.updateBlockTimestampFunc(height, time.Unix(int64(block.Time), 0))
+					err = b.updateBlockTimestampFunc(b.ctx, height, time.Unix(int64(block.Time), 0))
 					if err != nil {
 						log.Error("Can not update blockTimestamp into DB ", "err", err)
 						break
 					}
-					height, err = b.getEarliestNoBlockTimestampHeightFunc()
+					height, err = b.getEarliestNoBlockTimestampHeightFunc(b.ctx)
 					if err != nil {
 						log.Error("Can not get latest record without block timestamp", "err", err)
 						break
