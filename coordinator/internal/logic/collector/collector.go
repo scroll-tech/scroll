@@ -13,7 +13,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/rollermanager"
+	"scroll-tech/coordinator/internal/logic/provermanager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
@@ -56,14 +56,14 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 		return true
 	}
 
-	if len(proverTasks) >= int(b.cfg.RollerManagerConfig.SessionAttempts) {
+	if len(proverTasks) >= int(b.cfg.ProverManagerConfig.SessionAttempts) {
 		coordinatorSessionsTimeoutTotalCounter.Inc(1)
 
 		log.Warn("proof generation prover task %s ended because reach the max attempts", hash)
 
 		for _, proverTask := range proverTasks {
 			if types.ProvingStatus(proverTask.ProvingStatus) == types.ProvingTaskFailed {
-				rollermanager.Manager.FreeTaskIDForRoller(proverTask.ProverPublicKey, hash)
+				provermanager.Manager.FreeTaskIDForProver(proverTask.ProverPublicKey, hash)
 			}
 		}
 
@@ -79,7 +79,7 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 				}
 			}
 			// update the prover task status to let timeout checker don't check it.
-			if err := b.proverTaskOrm.UpdateAllProverTaskProvingStatusOfTaskID(b.ctx, message.ProofType(proverTasks[0].TaskType), hash, types.RollerProofInvalid, tx); err != nil {
+			if err := b.proverTaskOrm.UpdateAllProverTaskProvingStatusOfTaskID(b.ctx, message.ProofType(proverTasks[0].TaskType), hash, types.ProverProofInvalid, tx); err != nil {
 				log.Error("failed to update prover task proving_status as failed", "msg.ID", hash, "error", err)
 			}
 			return nil
@@ -101,19 +101,19 @@ func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, block
 
 	var err error
 	var rollerStatusList []*coordinatorType.RollerStatus
-	for i := uint8(0); i < b.cfg.RollerManagerConfig.RollersPerSession; i++ {
-		rollerPubKey, rollerName, sendErr := rollermanager.Manager.SendTask(proveType, sendMsg)
+	for i := uint8(0); i < b.cfg.ProverManagerConfig.ProversPerSession; i++ {
+		rollerPubKey, rollerName, sendErr := provermanager.Manager.SendTask(proveType, sendMsg)
 		if sendErr != nil {
 			err = sendErr
 			continue
 		}
 
-		rollermanager.Manager.UpdateMetricRollerProofsLastAssignedTimestampGauge(rollerPubKey)
+		provermanager.Manager.UpdateMetricProverProofsLastAssignedTimestampGauge(rollerPubKey)
 
 		rollerStatus := &coordinatorType.RollerStatus{
 			PublicKey: rollerPubKey,
 			Name:      rollerName,
-			Status:    types.RollerAssigned,
+			Status:    types.ProverAssigned,
 		}
 		rollerStatusList = append(rollerStatusList, rollerStatus)
 	}

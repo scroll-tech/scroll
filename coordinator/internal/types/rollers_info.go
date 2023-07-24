@@ -17,5 +17,5 @@ type RollersInfo struct {
 type RollerStatus struct {
 	PublicKey string                  `json:"public_key"`
 	Name      string                  `json:"name"`
-	Status    types.RollerProveStatus `json:"status"`
+	Status    types.ProverProveStatus `json:"status"`
 }

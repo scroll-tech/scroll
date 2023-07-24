@@ -21,7 +21,7 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/proof"
-	"scroll-tech/coordinator/internal/logic/rollermanager"
+	"scroll-tech/coordinator/internal/logic/provermanager"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
@@ -39,14 +39,14 @@ func geneAuthMsg(t *testing.T) (*message.AuthMsg, *ecdsa.PrivateKey) {
 	return authMsg, privKey
 }
 
-var rollerController *RollerController
+var rollerController *ProverController
 
 func init() {
-	conf := &config.RollerManagerConfig{
+	conf := &config.ProverManagerConfig{
 		TokenTimeToLive: 120,
 	}
 	conf.Verifier = &config.VerifierConfig{MockMode: true}
-	rollerController = NewRollerController(conf, nil)
+	rollerController = NewProverController(conf, nil)
 }
 
 func TestRoller_RequestToken(t *testing.T) {
@@ -191,9 +191,9 @@ func TestRoller_SubmitProof(t *testing.T) {
 	})
 	defer patchGuard.Reset()
 
-	rollermanager.InitRollerManager(nil)
+	provermanager.InitProverManager(nil)
 
-	taskChan, err := rollermanager.Manager.Register(context.Background(), pubKey, tmpAuthMsg.Identity)
+	taskChan, err := provermanager.Manager.Register(context.Background(), pubKey, tmpAuthMsg.Identity)
 	assert.NotNil(t, taskChan)
 	assert.NoError(t, err)
 
@@ -256,13 +256,13 @@ func TestRoller_SubmitProof(t *testing.T) {
 			ProverPublicKey: proofPubKey,
 			TaskType:        int16(message.ProofTypeChunk),
 			ProverName:      "rollers_info_test",
-			ProvingStatus:   int16(types.RollerAssigned),
+			ProvingStatus:   int16(types.ProverAssigned),
 			CreatedAt:       now,
 		}
 		return s, nil
 	})
 
-	patchGuard.ApplyMethodFunc(proverTaskOrm, "UpdateProverTaskProvingStatus", func(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus, dbTX ...*gorm.DB) error {
+	patchGuard.ApplyMethodFunc(proverTaskOrm, "UpdateProverTaskProvingStatus", func(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
 		return nil
 	})
 

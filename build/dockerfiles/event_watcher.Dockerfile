@@ -7,7 +7,7 @@ COPY ./bridge/go.* ./bridge/
 COPY ./common/go.* ./common/
 COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
-COPY ./roller/go.* ./roller/
+COPY ./prover/go.* ./prover/
 COPY ./tests/integration-test/go.* ./tests/integration-test/
 COPY ./bridge-history-api/go.* ./bridge-history-api/
 RUN go mod download -x

@@ -68,28 +68,28 @@ const (
 	MsgRelayFailed
 )
 
-// RollerProveStatus is the prover prove status of a block batch (session)
-type RollerProveStatus int32
+// ProverProveStatus is the prover prove status of a block batch (session)
+type ProverProveStatus int32
 
 const (
-	// RollerProveStatusUndefined indicates an unknown prover proving status
-	RollerProveStatusUndefined RollerProveStatus = iota
-	// RollerAssigned indicates prover assigned but has not submitted proof
-	RollerAssigned
-	// RollerProofValid indicates prover has submitted valid proof
-	RollerProofValid
-	// RollerProofInvalid indicates prover has submitted invalid proof
-	RollerProofInvalid
+	// ProverProveStatusUndefined indicates an unknown prover proving status
+	ProverProveStatusUndefined ProverProveStatus = iota
+	// ProverAssigned indicates prover assigned but has not submitted proof
+	ProverAssigned
+	// ProverProofValid indicates prover has submitted valid proof
+	ProverProofValid
+	// ProverProofInvalid indicates prover has submitted invalid proof
+	ProverProofInvalid
 )
 
-func (s RollerProveStatus) String() string {
+func (s ProverProveStatus) String() string {
 	switch s {
-	case RollerAssigned:
-		return "RollerAssigned"
-	case RollerProofValid:
-		return "RollerProofValid"
-	case RollerProofInvalid:
-		return "RollerProofInvalid"
+	case ProverAssigned:
+		return "ProverAssigned"
+	case ProverProofValid:
+		return "ProverProofValid"
+	case ProverProofInvalid:
+		return "ProverProofInvalid"
 	default:
 		return fmt.Sprintf("Bad Value: %d", int32(s))
 	}

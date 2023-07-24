@@ -51,7 +51,7 @@ func NewProverApp(base *docker.App, file string, wsURL string) *ProverApp {
 		rollerFile: rollerFile,
 		bboltDB:    fmt.Sprintf("/tmp/%d_bbolt_db", base.Timestamp),
 		index:      getIndex(),
-		name:       string(utils.RollerApp),
+		name:       string(utils.ProverApp),
 		args:       []string{"--log.debug", "--config", rollerFile},
 	}
 	if err := rollerApp.MockConfig(true, wsURL); err != nil {

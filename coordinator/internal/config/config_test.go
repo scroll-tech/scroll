@@ -12,9 +12,9 @@ import (
 
 func TestConfig(t *testing.T) {
 	configTemplate := `{
-		"roller_manager_config": {
+		"prover_manager_config": {
 			"compression_level": 9,
-			"rollers_per_session": 1,
+			"provers_per_session": 1,
 			"session_attempts": %d,
 			"collection_time": 180,
 			"token_time_to_live": 60,
@@ -116,7 +116,7 @@ func TestConfig(t *testing.T) {
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.RollerManagerConfig.MaxVerifierWorkers)
+		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.ProverManagerConfig.MaxVerifierWorkers)
 	})
 
 	t.Run("Default SessionAttempts", func(t *testing.T) {
@@ -132,6 +132,6 @@ func TestConfig(t *testing.T) {
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.RollerManagerConfig.SessionAttempts)
+		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.ProverManagerConfig.SessionAttempts)
 	})
 }

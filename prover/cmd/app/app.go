@@ -22,7 +22,7 @@ func init() {
 	app = cli.NewApp()
 	app.Action = action
 	app.Name = "prover"
-	app.Usage = "The Scroll L2 Roller"
+	app.Usage = "The Scroll L2 Prover"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {
@@ -30,7 +30,7 @@ func init() {
 	}
 
 	// Register `prover-test` app for integration-test.
-	utils.RegisterSimulation(app, utils.RollerApp)
+	utils.RegisterSimulation(app, utils.ProverApp)
 }
 
 func action(ctx *cli.Context) error {

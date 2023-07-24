@@ -65,7 +65,7 @@ jobs:
         workspaces: "common/libzkp/impl -> target"
     - name: Test
       run: |
-        make roller
+        make prover
   check:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest

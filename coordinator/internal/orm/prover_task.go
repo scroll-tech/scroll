@@ -115,7 +115,7 @@ func (o *ProverTask) GetProverTaskByTaskIDAndPubKey(ctx context.Context, taskID,
 func (o *ProverTask) GetAssignedProverTasks(ctx context.Context, limit int) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("proving_status", int(types.RollerAssigned))
+	db = db.Where("proving_status", int(types.ProverAssigned))
 	db = db.Limit(limit)
 
 	var proverTasks []ProverTask
@@ -146,7 +146,7 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, 
 }
 
 // UpdateProverTaskProvingStatus updates the proving_status of a specific ProverTask record.
-func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus, dbTX ...*gorm.DB) error {
+func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -162,7 +162,7 @@ func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofTyp
 }
 
 // UpdateAllProverTaskProvingStatusOfTaskID updates all the proving_status of a specific task id.
-func (o *ProverTask) UpdateAllProverTaskProvingStatusOfTaskID(ctx context.Context, proofType message.ProofType, taskID string, status types.RollerProveStatus, dbTX ...*gorm.DB) error {
+func (o *ProverTask) UpdateAllProverTaskProvingStatusOfTaskID(ctx context.Context, proofType message.ProofType, taskID string, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

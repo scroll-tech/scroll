@@ -17,16 +17,16 @@ import (
 	"scroll-tech/coordinator/internal/logic/proof"
 )
 
-// RollerController the prover api controller
-type RollerController struct {
+// ProverController the prover api controller
+type ProverController struct {
 	tokenCache    *cache.Cache
 	proofReceiver *proof.ZKProofReceiver
 	taskWorker    *proof.TaskWorker
 }
 
-// NewRollerController create a prover controller
-func NewRollerController(cfg *config.RollerManagerConfig, db *gorm.DB) *RollerController {
-	return &RollerController{
+// NewProverController create a prover controller
+func NewProverController(cfg *config.ProverManagerConfig, db *gorm.DB) *ProverController {
+	return &ProverController{
 		proofReceiver: proof.NewZKProofReceiver(cfg, db),
 		taskWorker:    proof.NewTaskWorker(),
 		tokenCache:    cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
@@ -34,7 +34,7 @@ func NewRollerController(cfg *config.RollerManagerConfig, db *gorm.DB) *RollerCo
 }
 
 // RequestToken get request token of authMsg
-func (r *RollerController) RequestToken(authMsg *message.AuthMsg) (string, error) {
+func (r *ProverController) RequestToken(authMsg *message.AuthMsg) (string, error) {
 	if ok, err := authMsg.Verify(); !ok {
 		if err != nil {
 			log.Error("failed to verify auth message", "error", err)
@@ -57,7 +57,7 @@ func (r *RollerController) RequestToken(authMsg *message.AuthMsg) (string, error
 }
 
 // VerifyToken verifies pubkey for token and expiration time
-func (r *RollerController) verifyToken(authMsg *message.AuthMsg) (bool, error) {
+func (r *ProverController) verifyToken(authMsg *message.AuthMsg) (bool, error) {
 	pubkey, err := authMsg.PublicKey()
 	if err != nil {
 		return false, fmt.Errorf("verify token auth msg public key error:%w", err)
@@ -70,7 +70,7 @@ func (r *RollerController) verifyToken(authMsg *message.AuthMsg) (bool, error) {
 }
 
 // Register register api for prover
-func (r *RollerController) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error) {
+func (r *ProverController) Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error) {
 	// Verify register message.
 	if ok, err := authMsg.Verify(); !ok {
 		if err != nil {
@@ -97,7 +97,7 @@ func (r *RollerController) Register(ctx context.Context, authMsg *message.AuthMs
 }
 
 // SubmitProof prover pull proof
-func (r *RollerController) SubmitProof(proof *message.ProofMsg) error {
+func (r *ProverController) SubmitProof(proof *message.ProofMsg) error {
 	// Verify the signature
 	if ok, err := proof.Verify(); !ok {
 		if err != nil {

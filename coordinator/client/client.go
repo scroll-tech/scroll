@@ -36,7 +36,7 @@ func NewClient(c *rpc.Client) *Client {
 // RequestToken generates token for prover
 func (c *Client) RequestToken(ctx context.Context, authMsg *message.AuthMsg) (string, error) {
 	var token string
-	err := c.client.CallContext(ctx, &token, "roller_requestToken", authMsg)
+	err := c.client.CallContext(ctx, &token, "prover_requestToken", authMsg)
 	return token, err
 }
 
@@ -47,5 +47,5 @@ func (c *Client) RegisterAndSubscribe(ctx context.Context, taskCh chan *message.
 
 // SubmitProof get proof from prover.
 func (c *Client) SubmitProof(ctx context.Context, proof *message.ProofMsg) error {
-	return c.client.CallContext(ctx, nil, "roller_submitProof", proof)
+	return c.client.CallContext(ctx, nil, "prover_submitProof", proof)
 }

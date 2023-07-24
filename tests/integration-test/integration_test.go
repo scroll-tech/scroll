@@ -80,7 +80,7 @@ func TestMonitorMetrics(t *testing.T) {
 	bodyStr := string(body)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_sessions_timeout_total"))
-	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_rollers_disconnects_total"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_provers_disconnects_total"))
 
 	// Exit.
 	coordinatorApp.WaitExit()
