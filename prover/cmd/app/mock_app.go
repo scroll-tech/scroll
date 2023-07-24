@@ -127,6 +127,7 @@ func (r ProverApps) RunApps(t *testing.T, args ...string) {
 func (r ProverApps) MockConfigs(store bool, wsURL string) error {
 	var eg errgroup.Group
 	for _, prover := range r {
+		prover := prover
 		eg.Go(func() error {
 			return prover.MockConfig(store, wsURL)
 		})
