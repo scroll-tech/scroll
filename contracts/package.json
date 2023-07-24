@@ -55,8 +55,8 @@
     "typescript": "^4.5.2"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^4.5.0",
-    "@openzeppelin/contracts-upgradeable": "^4.5.2"
+    "@openzeppelin/contracts": "^v4.9.2",
+    "@openzeppelin/contracts-upgradeable": "^v4.9.2"
   },
   "lint-staged": {
     "*.{js,ts}": "npx eslint --cache --fix",

@@ -495,9 +495,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		r.processingFinalization.Store(txID, hash)
 
 	default:
-		log.Error("encounter unreachable case in ProcessCommittedBatches",
-			"block_status", status,
-		)
+		log.Error("encounter unreachable case in ProcessCommittedBatches", "proving status", status)
 	}
 }
 

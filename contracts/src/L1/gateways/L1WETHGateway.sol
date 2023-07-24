@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -40,6 +40,8 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
      ***************/
 
     constructor(address _WETH, address _l2WETH) {
+        _disableInitializers();
+
         WETH = _WETH;
         l2WETH = _l2WETH;
     }

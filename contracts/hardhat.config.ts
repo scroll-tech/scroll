@@ -22,7 +22,7 @@ const RINKEBY_PRIVATE_KEY = process.env.RINKEBY_PRIVATE_KEY || "1".repeat(64);
 const L1_DEPLOYER_PRIVATE_KEY = process.env.L1_DEPLOYER_PRIVATE_KEY || "1".repeat(64);
 const L2_DEPLOYER_PRIVATE_KEY = process.env.L2_DEPLOYER_PRIVATE_KEY || "1".repeat(64);
 
-const SOLC_DEFAULT = "0.8.10";
+const SOLC_DEFAULT = "0.8.16";
 
 // try use forge config
 let foundry: any;
@@ -116,7 +116,7 @@ const config: HardhatUserConfig = {
       "IL2ERC1155Gateway",
       "IScrollStandardERC20Factory",
       "IZKRollup",
-      "WETH9",
+      "WrappedEther",
     ],
   },
 };
