@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
@@ -46,6 +46,10 @@ contract L1ERC721Gateway is
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L1ERC721Gateway.
     /// @param _counterpart The address of L2ERC721Gateway in L2.
@@ -196,13 +200,9 @@ contract L1ERC721Gateway is
         IERC721Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _tokenId);
 
         // 2. Generate message passed to L2ERC721Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC721Gateway.finalizeDepositERC721.selector,
-            _token,
-            _l2Token,
-            msg.sender,
-            _to,
-            _tokenId
+        bytes memory _message = abi.encodeCall(
+            IL2ERC721Gateway.finalizeDepositERC721,
+            (_token, _l2Token, msg.sender, _to, _tokenId)
         );
 
         // 3. Send message to L1ScrollMessenger.
@@ -233,13 +233,9 @@ contract L1ERC721Gateway is
         }
 
         // 2. Generate message passed to L2ERC721Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC721Gateway.finalizeBatchDepositERC721.selector,
-            _token,
-            _l2Token,
-            msg.sender,
-            _to,
-            _tokenIds
+        bytes memory _message = abi.encodeCall(
+            IL2ERC721Gateway.finalizeBatchDepositERC721,
+            (_token, _l2Token, msg.sender, _to, _tokenIds)
         );
 
         // 3. Send message to L1ScrollMessenger.

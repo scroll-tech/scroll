@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1MessageQueue} from "../L1/rollup/L1MessageQueue.sol";
 import {ScrollChain, IScrollChain} from "../L1/rollup/ScrollChain.sol";
@@ -19,8 +21,9 @@ contract ScrollChainTest is DSTestPlus {
     event UpdateVerifier(address oldVerifier, address newVerifier);
     event UpdateMaxNumL2TxInChunk(uint256 oldMaxNumL2TxInChunk, uint256 newMaxNumL2TxInChunk);
 
-    event CommitBatch(bytes32 indexed batchHash);
-    event FinalizeBatch(bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
+    event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
+    event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
+    event RevertBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
 
     ScrollChain private rollup;
     L1MessageQueue internal messageQueue;
@@ -28,8 +31,8 @@ contract ScrollChainTest is DSTestPlus {
     MockRollupVerifier internal verifier;
 
     function setUp() public {
-        messageQueue = new L1MessageQueue();
-        rollup = new ScrollChain(233);
+        messageQueue = L1MessageQueue(address(new ERC1967Proxy(address(new L1MessageQueue()), new bytes(0))));
+        rollup = ScrollChain(address(new ERC1967Proxy(address(new ScrollChain(233)), new bytes(0))));
         verifier = new MockRollupVerifier();
 
         rollup.initialize(address(messageQueue), address(verifier), 100);
@@ -277,12 +280,16 @@ contract ScrollChainTest is DSTestPlus {
         chunks = new bytes[](1);
         chunks[0] = chunk0;
         bitmap = new bytes(32);
+        hevm.expectEmit(true, true, false, true);
+        emit CommitBatch(1, bytes32(0x00847173b29b238cf319cde79512b7c213e5a8b4138daa7051914c4592b6dfc7));
         rollup.commitBatch(0, batchHeader0, chunks, bitmap);
         assertBoolEq(rollup.isBatchFinalized(1), false);
         bytes32 batchHash1 = rollup.committedBatches(1);
         assertEq(batchHash1, bytes32(0x00847173b29b238cf319cde79512b7c213e5a8b4138daa7051914c4592b6dfc7));
 
         // finalize batch1
+        hevm.expectEmit(true, true, false, true);
+        emit FinalizeBatch(1, batchHash1, bytes32(uint256(2)), bytes32(uint256(3)));
         rollup.finalizeBatchWithProof(
             batchHeader1,
             bytes32(uint256(1)),
@@ -395,12 +402,16 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(bitmap, add(0x20, 32)), 170) // bitmap1
         }
 
+        hevm.expectEmit(true, true, false, true);
+        emit CommitBatch(2, bytes32(0x2231cf185a5c07931584f970738b4cd2ae4fb39e2d90853b26746c7616ea71b9));
         rollup.commitBatch(0, batchHeader1, chunks, bitmap);
         assertBoolEq(rollup.isBatchFinalized(2), false);
         bytes32 batchHash2 = rollup.committedBatches(2);
         assertEq(batchHash2, bytes32(0x2231cf185a5c07931584f970738b4cd2ae4fb39e2d90853b26746c7616ea71b9));
 
         // verify committed batch correctly
+        hevm.expectEmit(true, true, false, true);
+        emit FinalizeBatch(2, batchHash2, bytes32(uint256(4)), bytes32(uint256(5)));
         rollup.finalizeBatchWithProof(
             batchHeader2,
             bytes32(uint256(2)),
@@ -485,11 +496,21 @@ contract ScrollChainTest is DSTestPlus {
         rollup.revertBatch(batchHeader1, 1);
         batchHeader1[0] = bytes1(uint8(0)); // change back
 
+        // revert middle batch, revert
+        hevm.expectRevert("reverting must start from the ending");
+        rollup.revertBatch(batchHeader1, 1);
+
         // can only revert unfinalized batch, revert
         hevm.expectRevert("can only revert unfinalized batch");
-        rollup.revertBatch(batchHeader0, 1);
+        rollup.revertBatch(batchHeader0, 3);
 
         // succeed to revert next two pending batches.
+
+        hevm.expectEmit(true, true, false, true);
+        emit RevertBatch(1, rollup.committedBatches(1));
+        hevm.expectEmit(true, true, false, true);
+        emit RevertBatch(2, rollup.committedBatches(2));
+
         assertGt(uint256(rollup.committedBatches(1)), 0);
         assertGt(uint256(rollup.committedBatches(2)), 0);
         rollup.revertBatch(batchHeader1, 2);

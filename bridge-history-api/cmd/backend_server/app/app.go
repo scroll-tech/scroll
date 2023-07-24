@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -9,52 +10,60 @@ import (
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/mvc"
 	"github.com/urfave/cli/v2"
+	"gorm.io/gorm"
 
 	"bridge-history-api/config"
 	"bridge-history-api/controller"
-	"bridge-history-api/db"
 	"bridge-history-api/service"
 	cutils "bridge-history-api/utils"
+
+	"scroll-tech/common/database"
 )
 
 var (
-	app *cli.App
+	app    *cli.App
+	db     *gorm.DB
+	subCtx context.Context
 )
 
-var database db.OrmFactory
-
 func pong(ctx iris.Context) {
-	ctx.WriteString("pong")
+	_, err := ctx.WriteString("pong")
+	if err != nil {
+		log.Error("failed to write pong", "err", err)
+	}
 }
 
-func setupQueryByAddressHandler(backend_app *mvc.Application) {
+func setupQueryByAddressHandler(backendApp *mvc.Application) {
 	// Register Dependencies.
-	backend_app.Register(
-		database,
+	backendApp.Register(
+		subCtx,
+		db,
 		service.NewHistoryService,
 	)
 
 	// Register Controllers.
-	backend_app.Handle(new(controller.QueryAddressController))
+	backendApp.Handle(new(controller.QueryAddressController))
 }
 
-func setupQueryClaimableHandler(backend_app *mvc.Application) {
+func setupQueryClaimableHandler(backendApp *mvc.Application) {
 	// Register Dependencies.
-	backend_app.Register(
-		database,
+	backendApp.Register(
+		subCtx,
+		db,
 		service.NewHistoryService,
 	)
 
 	// Register Controllers.
-	backend_app.Handle(new(controller.QueryClaimableController))
+	backendApp.Handle(new(controller.QueryClaimableController))
 }
 
-func setupQueryByHashHandler(backend_app *mvc.Application) {
-	backend_app.Register(
-		database,
+func setupQueryByHashHandler(backendApp *mvc.Application) {
+	backendApp.Register(
+		subCtx,
+		db,
 		service.NewHistoryService,
 	)
-	backend_app.Handle(new(controller.QueryHashController))
+	backendApp.Handle(new(controller.QueryHashController))
 }
 
 func init() {
@@ -83,11 +92,22 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	database, err = db.NewOrmFactory(cfg)
-	if err != nil {
-		log.Crit("can not connect to database", "err", err)
+	dbCfg := &database.Config{
+		DriverName: cfg.DB.DriverName,
+		DSN:        cfg.DB.DSN,
+		MaxOpenNum: cfg.DB.MaxOpenNum,
+		MaxIdleNum: cfg.DB.MaxIdleNum,
 	}
-	defer database.Close()
+	db, err = database.InitDB(dbCfg)
+	if err != nil {
+		log.Crit("failed to init db", "err", err)
+	}
+	defer func() {
+		if deferErr := database.CloseDB(db); deferErr != nil {
+			log.Error("failed to close db", "err", err)
+		}
+	}()
+	subCtx = ctx.Context
 	bridgeApp := iris.New()
 	bridgeApp.UseRouter(corsOptions)
 	bridgeApp.Get("/ping", pong).Describe("healthcheck")

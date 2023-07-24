@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
@@ -46,6 +46,10 @@ contract L1ERC1155Gateway is
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L1ERC1155Gateway.
     /// @param _counterpart The address of L2ERC1155Gateway in L2.
@@ -204,14 +208,9 @@ contract L1ERC1155Gateway is
         IERC1155Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _tokenId, _amount, "");
 
         // 2. Generate message passed to L2ERC1155Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC1155Gateway.finalizeDepositERC1155.selector,
-            _token,
-            _l2Token,
-            msg.sender,
-            _to,
-            _tokenId,
-            _amount
+        bytes memory _message = abi.encodeCall(
+            IL2ERC1155Gateway.finalizeDepositERC1155,
+            (_token, _l2Token, msg.sender, _to, _tokenId, _amount)
         );
 
         // 3. Send message to L1ScrollMessenger.
@@ -247,14 +246,9 @@ contract L1ERC1155Gateway is
         IERC1155Upgradeable(_token).safeBatchTransferFrom(msg.sender, address(this), _tokenIds, _amounts, "");
 
         // 2. Generate message passed to L2ERC1155Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC1155Gateway.finalizeBatchDepositERC1155.selector,
-            _token,
-            _l2Token,
-            msg.sender,
-            _to,
-            _tokenIds,
-            _amounts
+        bytes memory _message = abi.encodeCall(
+            IL2ERC1155Gateway.finalizeBatchDepositERC1155,
+            (_token, _l2Token, msg.sender, _to, _tokenIds, _amounts)
         );
 
         // 3. Send message to L1ScrollMessenger.

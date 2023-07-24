@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {MockERC1155} from "solmate/test/utils/mocks/MockERC1155.sol";
 import {ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {IL1ERC1155Gateway, L1ERC1155Gateway} from "../L1/gateways/L1ERC1155Gateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
@@ -72,7 +74,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         l2Token = new MockERC1155();
 
         // Deploy L1 contracts
-        gateway = new L1ERC1155Gateway();
+        gateway = _deployGateway();
 
         // Deploy L2 contracts
         counterpartGateway = new L2ERC1155Gateway();
@@ -160,7 +162,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
 
     function testDropMessageMocking() public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1ERC1155Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only messenger can call, revert
@@ -289,7 +291,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         gateway.finalizeWithdrawERC1155(address(l1Token), address(l2Token), sender, recipient, tokenId, amount);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1ERC1155Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only call by counterpart
@@ -474,7 +476,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         );
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1ERC1155Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only call by counterpart
@@ -670,7 +672,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         uint256 amount
     ) public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1ERC1155Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
         l1Token.setApprovalForAll(address(gateway), true);
 
@@ -1049,5 +1051,9 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         }
         assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
         assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+    }
+
+    function _deployGateway() internal returns (L1ERC1155Gateway) {
+        return L1ERC1155Gateway(address(new ERC1967Proxy(address(new L1ERC1155Gateway()), new bytes(0))));
     }
 }
