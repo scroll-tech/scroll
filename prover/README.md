@@ -37,7 +37,7 @@ go test -tags="mock_prover" -v -race -covermode=atomic scroll-tech/prover/...
 
 ## Configure
 
-The prover behavior can be configured using [`config.json`](conf/config.json). Check the code comments of `Config` and `ProverConfig` in [`config/config.go`](config/config.go), and `Newprover` in [`prover.go`](prover.go) for more details.
+The prover behavior can be configured using [`config.json`](conf/config.json). Check the code comments of `Config` and `ProverConfig` in [`config/config.go`](config/config.go), and `NewProver` in [`prover.go`](prover.go) for more details.
 
 
 ## Start
@@ -61,7 +61,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./prover/lib
 
 ## `cmd/app/app.go`
 
-This file defines the main entry point for the prover application, initializes prover instances via prover.go, and handles graceful shutdowns. The prover (`cmd/app/app.go`) calls `Newprover` with config.json parsed and cfg passed to `prover.go`. It then starts creating new instances of provers via `r.Start` and starts the main processing loop for generating proofs dispatched from the coordinator.
+This file defines the main entry point for the prover application, initializes prover instances via prover.go, and handles graceful shutdowns. The prover (`cmd/app/app.go`) calls `NewProver` with config.json parsed and cfg passed to `prover.go`. It then starts creating new instances of provers via `r.Start` and starts the main processing loop for generating proofs dispatched from the coordinator.
 
 Multiple prover can be started separately and registered with the coordinator via its API.
 
@@ -75,7 +75,7 @@ This file wrapps mock app functions and is used in the [integration test](../tes
 
 This file contains the logic of the `prover`, including starting it, registering with the coordinator, handling tasks from the coordinator, and running the proving loop. The `prover` interacts with `prover` and `stack` to perform its functions.
 
-`Newprover`: A constructor function for creating a new `prover` instance. It initializes it with the provided configuration, loads or creates a private key, initializes the `Stack` and `Prover` instances, and sets up a client connection to the coordinator.
+`NewProver`: A constructor function for creating a new `Prover` instance. It initializes it with the provided configuration, loads or creates a private key, initializes the `Stack` and `Prover` instances, and sets up a client connection to the coordinator.
 
 `Start`: Starts the prover and registers it with the coordinator. It contains `Register`, `HandleCoordinator` and `ProveLoop`:
 
