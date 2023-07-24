@@ -53,7 +53,7 @@ func TestProverTaskAPIs(t *testing.T) {
 	// insert some tasks
 	insertSomeProverTasks(t, db)
 
-	// run Prover Stats APIs
+	// run Core Stats APIs
 	router := gin.Default()
 	controller.InitController(db)
 	route.Route(router, cfg)

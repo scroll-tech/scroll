@@ -5,7 +5,6 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
-
 	"sort"
 	"sync/atomic"
 	"time"
@@ -33,13 +32,13 @@ var (
 	retryWait = time.Second * 10
 )
 
-// Prover contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
+// Prover contains websocket conn to coordinator, Stack, unix-socket to ipc-proverCore.
 type Prover struct {
 	cfg         *config.Config
 	client      *client.Client
 	traceClient *ethclient.Client
 	stack       *store.Stack
-	prover      *core.ProverCore
+	proverCore  *core.ProverCore
 	taskChan    chan *message.TaskMsg
 	sub         ethereum.Subscription
 
@@ -70,13 +69,13 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 		return nil, err
 	}
 
-	// Create prover instance
-	log.Info("init prover")
-	proverCore, err := core.NewProverCore(cfg.Prover)
+	// Create proverCore instance
+	log.Info("init proverCore")
+	proverCore, err := core.NewProverCore(cfg.Core)
 	if err != nil {
 		return nil, err
 	}
-	log.Info("init prover successfully!")
+	log.Info("init proverCore successfully!")
 
 	rClient, err := client.Dial(cfg.CoordinatorURL)
 	if err != nil {
@@ -88,7 +87,7 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 		client:      rClient,
 		traceClient: traceClient,
 		stack:       stackDb,
-		prover:      proverCore,
+		proverCore:  proverCore,
 		sub:         nil,
 		taskChan:    make(chan *message.TaskMsg, 10),
 		stopChan:    make(chan struct{}),
@@ -96,9 +95,9 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 	}, nil
 }
 
-// Type returns prover type.
+// Type returns proverCore type.
 func (r *Prover) Type() message.ProofType {
-	return r.cfg.Prover.ProofType
+	return r.cfg.Core.ProofType
 }
 
 // PublicKey translate public key to hex and return.
@@ -187,7 +186,7 @@ func (r *Prover) mustRetryCoordinator() {
 
 }
 
-// ProveLoop keep popping the block-traces from Stack and sends it to rust-prover for loop.
+// ProveLoop keep popping the block-traces from Stack and sends it to rust-proverCore for loop.
 func (r *Prover) ProveLoop() {
 	for {
 		select {
@@ -233,10 +232,10 @@ func (r *Prover) prove() error {
 			}
 			log.Error("get traces failed!", "task-id", task.Task.ID, "err", err)
 		} else {
-			// If FFI panic during Prove, the prover will restart and re-enter prove() function,
+			// If FFI panic during Prove, the proverCore will restart and re-enter prove() function,
 			// the proof will not be submitted.
 			var proof *message.AggProof
-			proof, err = r.prover.Prove(task.Task.ID, traces)
+			proof, err = r.proverCore.Prove(task.Task.ID, traces)
 			if err != nil {
 				proofMsg = &message.ProofDetail{
 					Status: message.StatusProofError,
@@ -257,7 +256,7 @@ func (r *Prover) prove() error {
 			}
 		}
 	} else {
-		// when the prover has more than 3 times panic,
+		// when the proverCore has more than 3 times panic,
 		// it will omit to prove the task, submit StatusProofError and then Delete the task.
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
@@ -271,7 +270,7 @@ func (r *Prover) prove() error {
 	defer func() {
 		err = r.stack.Delete(task.Task.ID)
 		if err != nil {
-			log.Error("prover stack pop failed!", "err", err)
+			log.Error("proverCore stack pop failed!", "err", err)
 		}
 	}()
 
@@ -288,8 +287,8 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) {
 
 	// Retry SubmitProof several times.
 	for i := 0; i < 3; i++ {
-		// When the prover is disconnected from the coordinator,
-		// wait until the prover reconnects to the coordinator.
+		// When the proverCore is disconnected from the coordinator,
+		// wait until the proverCore reconnects to the coordinator.
 		for atomic.LoadInt64(&r.isDisconnected) == 1 {
 			time.Sleep(retryWait)
 		}

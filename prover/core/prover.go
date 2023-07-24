@@ -29,7 +29,7 @@ type ProverCore struct {
 	cfg *config.ProverCoreConfig
 }
 
-// NewProverCore inits a Prover object.
+// NewProverCore inits a Core object.
 func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	seedPathStr := C.CString(cfg.SeedPath)

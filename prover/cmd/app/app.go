@@ -22,7 +22,7 @@ func init() {
 	app = cli.NewApp()
 	app.Action = action
 	app.Name = "prover"
-	app.Usage = "The Scroll L2 Prover"
+	app.Usage = "The Scroll L2 Core"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {

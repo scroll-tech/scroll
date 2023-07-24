@@ -29,13 +29,13 @@ var (
 
 // proverNode is the interface that controls the Provers
 type proverNode struct {
-	// Prover name
+	// Core name
 	Name string
-	// Prover type
+	// Core type
 	Type message.ProofType
-	// Prover public key
+	// Core public key
 	PublicKey string
-	// Prover version
+	// Core version
 	Version string
 
 	// task channel

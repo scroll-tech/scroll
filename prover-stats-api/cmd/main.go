@@ -5,11 +5,11 @@ import (
 	_ "scroll-tech/prover-stats-api/docs"
 )
 
-// @title           Scroll Prover Stats API
+// @title           Scroll Core Stats API
 // @version         1.0
 // @description     This is an API server for Provers.
 
-// @contact.name   Prover Stats API Support
+// @contact.name   Core Stats API Support
 // @contact.email  Be Pending
 
 // @license.name  Apache 2.0
