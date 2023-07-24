@@ -78,6 +78,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     /*****************************
      * Public Mutating Functions *
      *****************************/
+
     /// @inheritdoc IScrollMessenger
     function sendMessage(
         address _to,

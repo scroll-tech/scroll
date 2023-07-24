@@ -15,7 +15,7 @@ contract Whitelist is OwnableBase, IWhitelist {
     mapping(address => bool) private isWhitelisted;
 
     constructor(address _owner) {
-        owner = _owner;
+        _transferOwnership(_owner);
     }
 
     /// @notice See {IWhitelist-isSenderAllowed}
