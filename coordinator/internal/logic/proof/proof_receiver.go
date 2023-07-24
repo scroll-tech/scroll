@@ -131,7 +131,7 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 		}
 		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
 
-		// TODO: Core needs to be slashed if proof is invalid.
+		// TODO: Prover needs to be slashed if proof is invalid.
 		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 
 		provermanager.Manager.UpdateMetricProverProofsVerifiedFailedTimeTimer(pk, proofTime)

@@ -256,7 +256,7 @@ func (r *Prover) prove() error {
 			}
 		}
 	} else {
-		// when the proverCore has more than 3 times panic,
+		// when the prover has more than 3 times panic,
 		// it will omit to prove the task, submit StatusProofError and then Delete the task.
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
@@ -270,7 +270,7 @@ func (r *Prover) prove() error {
 	defer func() {
 		err = r.stack.Delete(task.Task.ID)
 		if err != nil {
-			log.Error("proverCore stack pop failed!", "err", err)
+			log.Error("prover stack pop failed!", "err", err)
 		}
 	}()
 
@@ -287,8 +287,8 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) {
 
 	// Retry SubmitProof several times.
 	for i := 0; i < 3; i++ {
-		// When the proverCore is disconnected from the coordinator,
-		// wait until the proverCore reconnects to the coordinator.
+		// When the prover is disconnected from the coordinator,
+		// wait until the prover reconnects to the coordinator.
 		for atomic.LoadInt64(&r.isDisconnected) == 1 {
 			time.Sleep(retryWait)
 		}
