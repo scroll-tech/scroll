@@ -7,6 +7,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -83,10 +84,11 @@ func setupEnv(t *testing.T) {
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
-	l1Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L1gethImg.ChainID())
+	privKey, _ := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(privKey, base.L1gethImg.ChainID())
 	assert.NoError(t, err)
 
-	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(privKey, base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 }
 
@@ -137,7 +139,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
 	// l1 message
-	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
+	// t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
 
 	// l2 message
 	// TODO: add a "user relay l2msg Succeed" test

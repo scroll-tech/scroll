@@ -49,9 +49,6 @@ type Layer2Relayer struct {
 
 	cfg *config.RelayerConfig
 
-	messageSender  *sender.Sender
-	l1MessengerABI *abi.ABI
-
 	rollupSender *sender.Sender
 	l1RollupABI  *abi.ABI
 
@@ -79,13 +76,6 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool) (*Layer2Relayer, error) {
-	// @todo use different sender for relayer, block commit and proof finalize
-	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
-	if err != nil {
-		log.Error("Failed to create messenger sender", "err", err)
-		return nil, err
-	}
-
 	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.RollupSenderPrivateKeys)
 	if err != nil {
 		log.Error("Failed to create rollup sender", "err", err)
@@ -122,9 +112,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		chunkOrm:   orm.NewChunk(db),
 
 		l2Client: l2Client,
-
-		messageSender:  messageSender,
-		l1MessengerABI: bridgeAbi.L1ScrollMessengerABI,
 
 		rollupSender: rollupSender,
 		l1RollupABI:  bridgeAbi.ScrollChainABI,
@@ -551,8 +538,6 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case confirmation := <-r.messageSender.ConfirmChan():
-			r.handleConfirmation(confirmation)
 		case confirmation := <-r.rollupSender.ConfirmChan():
 			r.handleConfirmation(confirmation)
 		case cfm := <-r.gasOracleSender.ConfirmChan():

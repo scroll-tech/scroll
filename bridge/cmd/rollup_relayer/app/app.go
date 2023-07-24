@@ -91,7 +91,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress,
+	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client,
 		cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db)
 
 	// Watcher loop to fetch missing blocks

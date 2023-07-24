@@ -8,7 +8,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -25,7 +24,6 @@ import (
 
 var (
 	bridgeL1MsgsSyncHeightGauge          = gethMetrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", metrics.ScrollRegistry)
-	bridgeL1MsgsSentEventsTotalCounter   = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", metrics.ScrollRegistry)
 	bridgeL1MsgsRollupEventsTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", metrics.ScrollRegistry)
 )
 
@@ -37,17 +35,15 @@ type rollupEvent struct {
 
 // L1WatcherClient will listen for smart contract events from Eth L1.
 type L1WatcherClient struct {
-	ctx          context.Context
-	client       *ethclient.Client
-	l1MessageOrm *orm.L1Message
-	l1BlockOrm   *orm.L1Block
-	batchOrm     *orm.Batch
+	ctx        context.Context
+	client     *ethclient.Client
+	l1BlockOrm *orm.L1Block
+	batchOrm   *orm.Batch
 
 	// The number of new blocks to wait for a block to be confirmed
 	confirmations rpc.BlockNumber
 
 	messengerAddress common.Address
-	messengerABI     *abi.ABI
 
 	messageQueueAddress common.Address
 	messageQueueABI     *abi.ABI
@@ -63,15 +59,8 @@ type L1WatcherClient struct {
 
 // NewL1WatcherClient returns a new instance of L1WatcherClient.
 func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db *gorm.DB) *L1WatcherClient {
-	l1MessageOrm := orm.NewL1Message(db)
-	savedHeight, err := l1MessageOrm.GetLayer1LatestWatchedHeight()
-	if err != nil {
-		log.Warn("Failed to fetch height from db", "err", err)
-		savedHeight = 0
-	}
-	if savedHeight < int64(startHeight) {
-		savedHeight = int64(startHeight)
-	}
+
+	savedHeight := 0
 
 	l1BlockOrm := orm.NewL1Block(db)
 	savedL1BlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(ctx)
@@ -86,13 +75,11 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 	return &L1WatcherClient{
 		ctx:           ctx,
 		client:        client,
-		l1MessageOrm:  l1MessageOrm,
 		l1BlockOrm:    l1BlockOrm,
 		batchOrm:      orm.NewBatch(db),
 		confirmations: confirmations,
 
 		messengerAddress: messengerAddress,
-		messengerABI:     bridgeAbi.L1ScrollMessengerABI,
 
 		messageQueueAddress: messageQueueAddress,
 		messageQueueABI:     bridgeAbi.L1MessageQueueABI,
@@ -225,16 +212,14 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 		}
 		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
 
-		sentMessageEvents, rollupEvents, err := w.parseBridgeEventLogs(logs)
+		rollupEvents, err := w.parseBridgeEventLogs(logs)
 		if err != nil {
 			log.Error("Failed to parse emitted events log", "err", err)
 			return err
 		}
-		sentMessageCount := int64(len(sentMessageEvents))
 		rollupEventCount := int64(len(rollupEvents))
-		bridgeL1MsgsSentEventsTotalCounter.Inc(sentMessageCount)
 		bridgeL1MsgsRollupEventsTotalCounter.Inc(rollupEventCount)
-		log.Info("L1 events types", "SentMessageCount", sentMessageCount, "RollupEventCount", rollupEventCount)
+		log.Info("L1 events types", "RollupEventCount", rollupEventCount)
 
 		// use rollup event to update rollup results db status
 		var batchHashes []string
@@ -268,10 +253,6 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 			}
 		}
 
-		if err = w.l1MessageOrm.SaveL1Messages(w.ctx, sentMessageEvents); err != nil {
-			return err
-		}
-
 		w.processedMsgHeight = uint64(to)
 		bridgeL1MsgsSyncHeightGauge.Update(to)
 	}
@@ -279,40 +260,39 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 	return nil
 }
 
-func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1Message, []rollupEvent, error) {
+func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]rollupEvent, error) {
 	// Need use contract abi to parse event Log
 	// Can only be tested after we have our contracts set up
-	var l1Messages []*orm.L1Message
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
 		case bridgeAbi.L1QueueTransactionEventSignature:
-			event := bridgeAbi.L1QueueTransactionEvent{}
-			err := utils.UnpackLog(w.messageQueueABI, &event, "QueueTransaction", vLog)
-			if err != nil {
-				log.Warn("Failed to unpack layer1 QueueTransaction event", "err", err)
-				return l1Messages, rollupEvents, err
-			}
+			// event := bridgeAbi.L1QueueTransactionEvent{}
+			// err := utils.UnpackLog(w.messageQueueABI, &event, "QueueTransaction", vLog)
+			// if err != nil {
+			// 	log.Warn("Failed to unpack layer1 QueueTransaction event", "err", err)
+			// 	return rollupEvents, err
+			// }
 
-			msgHash := common.BytesToHash(crypto.Keccak256(event.Data))
+			// msgHash := common.BytesToHash(crypto.Keccak256(event.Data))
 
-			l1Messages = append(l1Messages, &orm.L1Message{
-				QueueIndex: event.QueueIndex,
-				MsgHash:    msgHash.String(),
-				Height:     vLog.BlockNumber,
-				Sender:     event.Sender.String(),
-				Value:      event.Value.String(),
-				Target:     event.Target.String(),
-				Calldata:   common.Bytes2Hex(event.Data),
-				GasLimit:   event.GasLimit.Uint64(),
-				Layer1Hash: vLog.TxHash.Hex(),
-			})
+			// l1Messages = append(l1Messages, &orm.L1Message{
+			// 	QueueIndex: event.QueueIndex,
+			// 	MsgHash:    msgHash.String(),
+			// 	Height:     vLog.BlockNumber,
+			// 	Sender:     event.Sender.String(),
+			// 	Value:      event.Value.String(),
+			// 	Target:     event.Target.String(),
+			// 	Calldata:   common.Bytes2Hex(event.Data),
+			// 	GasLimit:   event.GasLimit.Uint64(),
+			// 	Layer1Hash: vLog.TxHash.Hex(),
+			// })
 		case bridgeAbi.L1CommitBatchEventSignature:
 			event := bridgeAbi.L1CommitBatchEvent{}
 			err := utils.UnpackLog(w.scrollChainABI, &event, "CommitBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 CommitBatch event", "err", err)
-				return l1Messages, rollupEvents, err
+				return rollupEvents, err
 			}
 
 			rollupEvents = append(rollupEvents, rollupEvent{
@@ -325,7 +305,7 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 			err := utils.UnpackLog(w.scrollChainABI, &event, "FinalizeBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 FinalizeBatch event", "err", err)
-				return l1Messages, rollupEvents, err
+				return rollupEvents, err
 			}
 
 			rollupEvents = append(rollupEvents, rollupEvent{
@@ -338,5 +318,5 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 		}
 	}
 
-	return l1Messages, rollupEvents, nil
+	return rollupEvents, nil
 }

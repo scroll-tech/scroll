@@ -3,38 +3,31 @@ package watcher
 import (
 	"context"
 	"crypto/ecdsa"
-	"errors"
 	"math/big"
 	"strconv"
 	"testing"
-	"time"
 
 	"gorm.io/gorm"
 
-	"github.com/agiledragon/gomonkey/v2"
-	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
-	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
-	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/utils"
 	"scroll-tech/bridge/mock_bridge"
 )
 
 func setupL2Watcher(t *testing.T) (*L2WatcherClient, *gorm.DB) {
 	db := setupDB(t)
 	l2cfg := cfg.L2Config
-	watcher := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
+	watcher := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
 	return watcher, db
 }
 
@@ -50,7 +43,8 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 	l1cfg := cfg.L1Config
 	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
-	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
+	privKey, _ := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, []*ecdsa.PrivateKey{privKey})
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
@@ -71,7 +65,8 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 	_, db := setupL2Watcher(t)
 	defer database.CloseDB(db)
 
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
+	privKey, _ := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	auth := prepareAuth(t, l2Cli, privKey)
 
 	// deploy mock bridge
 	_, tx, _, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
@@ -94,8 +89,7 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 }
 
 func prepareWatcherClient(l2Cli *ethclient.Client, db *gorm.DB, contractAddr common.Address) *L2WatcherClient {
-	confirmations := rpc.LatestBlockNumber
-	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db)
+	return NewL2WatcherClient(context.Background(), l2Cli, contractAddr, common.Hash{}, db)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {
@@ -110,85 +104,5 @@ func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.Privat
 }
 
 func loopToFetchEvent(subCtx context.Context, watcher *L2WatcherClient) {
-	go cutils.Loop(subCtx, 2*time.Second, watcher.FetchContractEvent)
-}
-
-func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
-	watcher, db := setupL2Watcher(t)
-	defer database.CloseDB(db)
-
-	logs := []gethTypes.Log{
-		{
-			Topics:      []common.Hash{bridgeAbi.L2RelayedMessageEventSignature},
-			BlockNumber: 100,
-			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-		},
-	}
-
-	convey.Convey("unpack RelayedMessage log failure", t, func() {
-		targetErr := errors.New("UnpackLog RelayedMessage failure")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
-			return targetErr
-		})
-		defer patchGuard.Reset()
-
-		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
-		assert.EqualError(t, err, targetErr.Error())
-		assert.Empty(t, relayedMessages)
-	})
-
-	convey.Convey("L2RelayedMessageEventSignature success", t, func() {
-		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
-			tmpOut := out.(*bridgeAbi.L2RelayedMessageEvent)
-			tmpOut.MessageHash = msgHash
-			return nil
-		})
-		defer patchGuard.Reset()
-
-		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
-		assert.NoError(t, err)
-		assert.Len(t, relayedMessages, 1)
-		assert.Equal(t, relayedMessages[0].msgHash, msgHash)
-	})
-}
-
-func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) {
-	watcher, db := setupL2Watcher(t)
-	defer database.CloseDB(db)
-
-	logs := []gethTypes.Log{
-		{
-			Topics:      []common.Hash{bridgeAbi.L2FailedRelayedMessageEventSignature},
-			BlockNumber: 100,
-			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-		},
-	}
-
-	convey.Convey("unpack FailedRelayedMessage log failure", t, func() {
-		targetErr := errors.New("UnpackLog FailedRelayedMessage failure")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
-			return targetErr
-		})
-		defer patchGuard.Reset()
-
-		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
-		assert.EqualError(t, err, targetErr.Error())
-		assert.Empty(t, relayedMessages)
-	})
-
-	convey.Convey("L2FailedRelayedMessageEventSignature success", t, func() {
-		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
-			tmpOut := out.(*bridgeAbi.L2FailedRelayedMessageEvent)
-			tmpOut.MessageHash = msgHash
-			return nil
-		})
-		defer patchGuard.Reset()
-
-		relayedMessages, err := watcher.parseBridgeEventLogs(logs)
-		assert.NoError(t, err)
-		assert.Len(t, relayedMessages, 1)
-		assert.Equal(t, relayedMessages[0].msgHash, msgHash)
-	})
+	// go cutils.Loop(subCtx, 2*time.Second, watcher.FetchContractEvent)
 }

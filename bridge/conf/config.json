@@ -27,9 +27,6 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
-      "message_sender_private_keys": [
-        "1212121212121212121212121212121212121212121212121212121212121212"
-      ],
       "gas_oracle_sender_private_keys": [
         "1313131313131313131313131313131313131313131313131313131313131313"
       ]
@@ -62,9 +59,6 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
-      "message_sender_private_keys": [
-        "1212121212121212121212121212121212121212121212121212121212121212"
-      ],
       "gas_oracle_sender_private_keys": [
         "1313131313131313131313131313131313131313131313131313131313131313"
       ],
