@@ -37,7 +37,7 @@ go test -tags="mock_prover" -v -race -covermode=atomic scroll-tech/prover/...
 
 ## Configure
 
-The prover behavior can be configured using [`config.json`](config.json). Check the code comments of `Config` and `ProverConfig` in [`config/config.go`](config/config.go), and `NewRoller` in [`roller.go`](roller.go) for more details.
+The prover behavior can be configured using [`config.json`](conf/config.json). Check the code comments of `Config` and `ProverConfig` in [`config/config.go`](config/config.go), and `NewRoller` in [`roller.go`](roller.go) for more details.
 
 
 ## Start
