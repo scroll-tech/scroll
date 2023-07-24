@@ -115,13 +115,7 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
         bytes calldata _blockHeaderRLP,
         bool _updateGasPriceOracle
     ) external {
-        {
-            IWhitelist _whitelist = whitelist;
-            require(
-                address(_whitelist) == address(0) || _whitelist.isSenderAllowed(msg.sender),
-                "Not whitelisted sender"
-            );
-        }
+        require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
 
         // The encoding order in block header is
         // 1. ParentHash: 32 bytes
