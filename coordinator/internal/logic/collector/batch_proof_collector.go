@@ -60,7 +60,7 @@ func (bp *BatchProofCollector) Collect(ctx context.Context) error {
 	log.Info("start batch proof generation session", "id", batchTask.Hash)
 
 	if rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch) == 0 {
-		return fmt.Errorf("no idle common roller when starting proof generation session, id:%s", batchTask.Hash)
+		return fmt.Errorf("no idle common prover when starting proof generation session, id:%s", batchTask.Hash)
 	}
 
 	if !bp.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {

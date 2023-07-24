@@ -22,7 +22,7 @@ type RollerAPI interface {
 func RegisterAPIs(cfg *config.Config, db *gorm.DB) []rpc.API {
 	return []rpc.API{
 		{
-			Namespace: "roller",
+			Namespace: "prover",
 			Service:   RollerAPI(NewRollerController(cfg.RollerManagerConfig, db)),
 			Public:    true,
 		},

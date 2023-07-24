@@ -58,7 +58,7 @@ func newMockRoller(t *testing.T, rollerName string, wsURL string, proofType mess
 	return roller
 }
 
-// connectToCoordinator sets up a websocket client to connect to the roller manager.
+// connectToCoordinator sets up a websocket client to connect to the prover manager.
 func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscription, error) {
 	// Create connection.
 	client, err := client2.Dial(r.wsURL)
@@ -98,9 +98,9 @@ func (r *mockRoller) releaseTasks() {
 	})
 }
 
-// Wait for the proof task, after receiving the proof task, roller submits proof after proofTime secs.
+// Wait for the proof task, after receiving the proof task, prover submits proof after proofTime secs.
 func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration, reconnect bool, proofStatus proofStatus) {
-	// simulating the case that the roller first disconnects and then reconnects to the coordinator
+	// simulating the case that the prover first disconnects and then reconnects to the coordinator
 	// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeRoller()`
 	if reconnect {
 		var err error

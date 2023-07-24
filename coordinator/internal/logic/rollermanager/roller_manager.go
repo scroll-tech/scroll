@@ -23,7 +23,7 @@ import (
 
 var (
 	once sync.Once
-	// Manager the global roller manager
+	// Manager the global prover manager
 	Manager *rollerManager
 )
 
@@ -40,7 +40,7 @@ type rollerNode struct {
 
 	// task channel
 	taskChan chan *message.TaskMsg
-	// session id list which delivered to roller.
+	// session id list which delivered to prover.
 	TaskIDs cmap.ConcurrentMap
 
 	// Time of message creation
@@ -54,7 +54,7 @@ type rollerManager struct {
 	proverTaskOrm *orm.ProverTask
 }
 
-// InitRollerManager init a roller manager
+// InitRollerManager init a prover manager
 func InitRollerManager(db *gorm.DB) {
 	once.Do(func() {
 		Manager = &rollerManager{
@@ -64,7 +64,7 @@ func InitRollerManager(db *gorm.DB) {
 	})
 }
 
-// Register the identity message to roller manager with the public key
+// Register the identity message to prover manager with the public key
 func (r *rollerManager) Register(ctx context.Context, proverPublicKey string, identity *message.Identity) (<-chan *message.TaskMsg, error) {
 	node, ok := r.rollerPool.Get(proverPublicKey)
 	if !ok {
@@ -74,11 +74,11 @@ func (r *rollerManager) Register(ctx context.Context, proverPublicKey string, id
 		}
 
 		rMs := &rollerMetrics{
-			rollerProofsVerifiedSuccessTimeTimer:   gethMetrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/verified/success/time/%s", proverPublicKey), metrics.ScrollRegistry),
-			rollerProofsVerifiedFailedTimeTimer:    gethMetrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/verified/failed/time/%s", proverPublicKey), metrics.ScrollRegistry),
-			rollerProofsGeneratedFailedTimeTimer:   gethMetrics.GetOrRegisterTimer(fmt.Sprintf("roller/proofs/generated/failed/time/%s", proverPublicKey), metrics.ScrollRegistry),
-			rollerProofsLastAssignedTimestampGauge: gethMetrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/assigned/timestamp/%s", proverPublicKey), metrics.ScrollRegistry),
-			rollerProofsLastFinishedTimestampGauge: gethMetrics.GetOrRegisterGauge(fmt.Sprintf("roller/proofs/last/finished/timestamp/%s", proverPublicKey), metrics.ScrollRegistry),
+			rollerProofsVerifiedSuccessTimeTimer:   gethMetrics.GetOrRegisterTimer(fmt.Sprintf("prover/proofs/verified/success/time/%s", proverPublicKey), metrics.ScrollRegistry),
+			rollerProofsVerifiedFailedTimeTimer:    gethMetrics.GetOrRegisterTimer(fmt.Sprintf("prover/proofs/verified/failed/time/%s", proverPublicKey), metrics.ScrollRegistry),
+			rollerProofsGeneratedFailedTimeTimer:   gethMetrics.GetOrRegisterTimer(fmt.Sprintf("prover/proofs/generated/failed/time/%s", proverPublicKey), metrics.ScrollRegistry),
+			rollerProofsLastAssignedTimestampGauge: gethMetrics.GetOrRegisterGauge(fmt.Sprintf("prover/proofs/last/assigned/timestamp/%s", proverPublicKey), metrics.ScrollRegistry),
+			rollerProofsLastFinishedTimestampGauge: gethMetrics.GetOrRegisterGauge(fmt.Sprintf("prover/proofs/last/finished/timestamp/%s", proverPublicKey), metrics.ScrollRegistry),
 		}
 		node = &rollerNode{
 			Name:      identity.Name,
@@ -94,8 +94,8 @@ func (r *rollerManager) Register(ctx context.Context, proverPublicKey string, id
 	roller := node.(*rollerNode)
 	// avoid reconnection too frequently.
 	if time.Since(roller.registerTime) < 60 {
-		log.Warn("roller reconnect too frequently", "prover_name", identity.Name, "roller_type", identity.RollerType, "public key", proverPublicKey)
-		return nil, fmt.Errorf("roller reconnect too frequently")
+		log.Warn("prover reconnect too frequently", "prover_name", identity.Name, "roller_type", identity.RollerType, "public key", proverPublicKey)
+		return nil, fmt.Errorf("prover reconnect too frequently")
 	}
 	// update register time and status
 	roller.registerTime = time.Now()
@@ -133,7 +133,7 @@ func (r *rollerManager) reloadRollerAssignedTasks(ctx context.Context, proverPub
 	return &taskIDs, nil
 }
 
-// SendTask send the need proved message to roller
+// SendTask send the need proved message to prover
 func (r *rollerManager) SendTask(rollerType message.ProofType, msg *message.TaskMsg) (string, string, error) {
 	tmpRoller := r.selectRoller(rollerType)
 	if tmpRoller == nil {
@@ -144,7 +144,7 @@ func (r *rollerManager) SendTask(rollerType message.ProofType, msg *message.Task
 	case tmpRoller.taskChan <- msg:
 		tmpRoller.TaskIDs.Set(msg.ID, struct{}{})
 	default:
-		err := fmt.Errorf("roller channel is full, rollerName:%s, publicKey:%s", tmpRoller.Name, tmpRoller.PublicKey)
+		err := fmt.Errorf("prover channel is full, rollerName:%s, publicKey:%s", tmpRoller.Name, tmpRoller.PublicKey)
 		return "", "", err
 	}
 
@@ -163,12 +163,12 @@ func (r *rollerManager) ExistTaskIDForRoller(pk string, id string) bool {
 	return roller.TaskIDs.Has(id)
 }
 
-// FreeRoller free the roller with the pk key
+// FreeRoller free the prover with the pk key
 func (r *rollerManager) FreeRoller(pk string) {
 	r.rollerPool.Pop(pk)
 }
 
-// FreeTaskIDForRoller free a task of the pk roller
+// FreeTaskIDForRoller free a task of the pk prover
 func (r *rollerManager) FreeTaskIDForRoller(pk string, id string) {
 	if node, ok := r.rollerPool.Get(pk); ok {
 		roller := node.(*rollerNode)

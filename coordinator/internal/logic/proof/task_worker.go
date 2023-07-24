@@ -16,7 +16,7 @@ import (
 
 var coordinatorRollersDisconnectsTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/rollers/disconnects/total", metrics.ScrollRegistry)
 
-// TaskWorker held the roller task connection
+// TaskWorker held the prover task connection
 type TaskWorker struct{}
 
 // NewTaskWorker create a task worker
@@ -38,7 +38,7 @@ func (t *TaskWorker) AllocTaskWorker(ctx context.Context, authMsg *message.AuthM
 
 	identity := authMsg.Identity
 
-	// create or get the roller message channel
+	// create or get the prover message channel
 	taskCh, err := rollermanager.Manager.Register(ctx, pubKey, identity)
 	if err != nil {
 		return &rpc.Subscription{}, err
@@ -48,7 +48,7 @@ func (t *TaskWorker) AllocTaskWorker(ctx context.Context, authMsg *message.AuthM
 
 	go t.worker(rpcSub, notifier, pubKey, identity, taskCh)
 
-	log.Info("roller register", "name", identity.Name, "pubKey", pubKey, "version", identity.Version)
+	log.Info("prover register", "name", identity.Name, "pubKey", pubKey, "version", identity.Version)
 
 	return rpcSub, nil
 }
@@ -61,7 +61,7 @@ func (t *TaskWorker) worker(rpcSub *rpc.Subscription, notifier *rpc.Notifier, pu
 		}
 
 		rollermanager.Manager.FreeRoller(pubKey)
-		log.Info("roller unregister", "name", identity.Name, "pubKey", pubKey)
+		log.Info("prover unregister", "name", identity.Name, "pubKey", pubKey)
 	}()
 
 	for {

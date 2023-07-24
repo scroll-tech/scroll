@@ -67,7 +67,7 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 	}
 
 	if rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk) == 0 {
-		return fmt.Errorf("no idle chunk roller when starting proof generation session, id:%s", chunkTask.Hash)
+		return fmt.Errorf("no idle chunk prover when starting proof generation session, id:%s", chunkTask.Hash)
 	}
 
 	rollerStatusList, err := cp.sendTask(ctx, chunkTask.Hash)

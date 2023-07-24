@@ -248,7 +248,7 @@ func testSeveralConnections(t *testing.T) {
 	}
 	assert.NoError(t, eg.Wait())
 
-	// check roller's idle connections
+	// check prover's idle connections
 	assert.Equal(t, batch/2, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 	assert.Equal(t, batch/2, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
@@ -268,7 +268,7 @@ func testSeveralConnections(t *testing.T) {
 				return
 			}
 		case <-tickStop:
-			t.Error("roller connect is blocked")
+			t.Error("prover connect is blocked")
 			return
 		}
 	}
@@ -293,7 +293,7 @@ func testValidProof(t *testing.T) {
 		}
 		rollers[i] = newMockRoller(t, "roller_test"+strconv.Itoa(i), wsURL, proofType)
 
-		// only roller 0 & 1 submit valid proofs.
+		// only prover 0 & 1 submit valid proofs.
 		proofStatus := generatedFailed
 		if i <= 1 {
 			proofStatus = verifiedSuccess
@@ -472,7 +472,7 @@ func testTimeoutProof(t *testing.T) {
 		collector.Stop()
 	}()
 
-	// create first chunk & batch mock roller, that will not send any proof.
+	// create first chunk & batch mock prover, that will not send any proof.
 	chunkRoller1 := newMockRoller(t, "roller_test"+strconv.Itoa(0), wsURL, message.ProofTypeChunk)
 	batchRoller1 := newMockRoller(t, "roller_test"+strconv.Itoa(1), wsURL, message.ProofTypeBatch)
 	defer func() {
@@ -492,7 +492,7 @@ func testTimeoutProof(t *testing.T) {
 	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
-	// verify proof status, it should be assigned, because roller didn't send any proof
+	// verify proof status, it should be assigned, because prover didn't send any proof
 	ok := utils.TryTimes(30, func() bool {
 		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
@@ -506,7 +506,7 @@ func testTimeoutProof(t *testing.T) {
 	})
 	assert.Falsef(t, !ok, "failed to check proof status")
 
-	// create second mock roller, that will send valid proof.
+	// create second mock prover, that will send valid proof.
 	chunkRoller2 := newMockRoller(t, "roller_test"+strconv.Itoa(2), wsURL, message.ProofTypeChunk)
 	chunkRoller2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
 	batchRoller2 := newMockRoller(t, "roller_test"+strconv.Itoa(3), wsURL, message.ProofTypeBatch)
@@ -519,7 +519,7 @@ func testTimeoutProof(t *testing.T) {
 	assert.Equal(t, 1, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
 	assert.Equal(t, 1, rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
 
-	// verify proof status, it should be verified now, because second roller sent valid proof
+	// verify proof status, it should be verified now, because second prover sent valid proof
 	ok = utils.TryTimes(200, func() bool {
 		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
@@ -610,16 +610,16 @@ func testGracefulRestart(t *testing.T) {
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
 	assert.NoError(t, err)
 
-	// create mock roller
+	// create mock prover
 	chunkRoller := newMockRoller(t, "roller_test", wsURL, message.ProofTypeChunk)
 	batchRoller := newMockRoller(t, "roller_test", wsURL, message.ProofTypeBatch)
-	// wait 10 seconds, coordinator restarts before roller submits proof
+	// wait 10 seconds, coordinator restarts before prover submits proof
 	chunkRoller.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
 	batchRoller.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
 
 	// wait for coordinator to dispatch task
 	<-time.After(5 * time.Second)
-	// the coordinator will delete the roller if the subscription is closed.
+	// the coordinator will delete the prover if the subscription is closed.
 	chunkRoller.close()
 	batchRoller.close()
 
@@ -638,7 +638,7 @@ func testGracefulRestart(t *testing.T) {
 		newCollector.Stop()
 	}()
 
-	// at this point, roller haven't submitted
+	// at this point, prover haven't submitted
 	status, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 	assert.NoError(t, err)
 	assert.Equal(t, types.ProvingTaskAssigned, status)
@@ -646,7 +646,7 @@ func testGracefulRestart(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, types.ProvingTaskUnassigned, status) // chunk proofs not ready yet
 
-	// will overwrite the roller client for `SubmitProof`
+	// will overwrite the prover client for `SubmitProof`
 	chunkRoller.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)
 	batchRoller.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)
 	defer func() {
@@ -662,8 +662,8 @@ func testGracefulRestart(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			// this proves that the roller submits to the new coordinator,
-			// because the roller client for `submitProof` has been overwritten
+			// this proves that the prover submits to the new coordinator,
+			// because the prover client for `submitProof` has been overwritten
 			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
 			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)

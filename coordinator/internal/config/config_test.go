@@ -100,7 +100,7 @@ func TestConfig(t *testing.T) {
 
 		_, err = NewConfig(tmpFile.Name())
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "roller config's order session is invalid")
+		assert.Contains(t, err.Error(), "prover config's order session is invalid")
 	})
 
 	t.Run("Default MaxVerifierWorkers", func(t *testing.T) {

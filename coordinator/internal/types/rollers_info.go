@@ -13,7 +13,7 @@ type RollersInfo struct {
 	ProveType        message.ProofType `json:"prove_type,omitempty"`
 }
 
-// RollerStatus is the roller name and roller prove status
+// RollerStatus is the prover name and prover prove status
 type RollerStatus struct {
 	PublicKey string                  `json:"public_key"`
 	Name      string                  `json:"name"`

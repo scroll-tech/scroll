@@ -99,7 +99,7 @@ func (s RollerProveStatus) String() string {
 type ProverTaskFailureType int
 
 const (
-	// ProverTaskFailureTypeUndefined indicates an unknown roller failure type
+	// ProverTaskFailureTypeUndefined indicates an unknown prover failure type
 	ProverTaskFailureTypeUndefined ProverTaskFailureType = iota
 	// ProverTaskFailureTypeTimeout prover task failure of timeout
 	ProverTaskFailureTypeTimeout

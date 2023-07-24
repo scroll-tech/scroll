@@ -68,10 +68,10 @@ func NewConfig(file string) (*Config, error) {
 		return nil, err
 	}
 
-	// Check roller's order session
+	// Check prover's order session
 	order := strings.ToUpper(cfg.RollerManagerConfig.OrderSession)
 	if len(order) > 0 && !(order == "ASC" || order == "DESC") {
-		return nil, errors.New("roller config's order session is invalid")
+		return nil, errors.New("prover config's order session is invalid")
 	}
 	cfg.RollerManagerConfig.OrderSession = order
 
