@@ -30,7 +30,7 @@ import (
 func geneAuthMsg(t *testing.T) (*message.AuthMsg, *ecdsa.PrivateKey) {
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name: "roller_test1",
+			Name: "prover_test1",
 		},
 	}
 	privKey, err := crypto.GenerateKey()
@@ -39,24 +39,24 @@ func geneAuthMsg(t *testing.T) (*message.AuthMsg, *ecdsa.PrivateKey) {
 	return authMsg, privKey
 }
 
-var rollerController *ProverController
+var proverController *ProverController
 
 func init() {
 	conf := &config.ProverManagerConfig{
 		TokenTimeToLive: 120,
 	}
 	conf.Verifier = &config.VerifierConfig{MockMode: true}
-	rollerController = NewProverController(conf, nil)
+	proverController = NewProverController(conf, nil)
 }
 
-func TestRoller_RequestToken(t *testing.T) {
+func TestProver_RequestToken(t *testing.T) {
 	convey.Convey("auth msg verify failure", t, func() {
 		tmpAuthMsg := &message.AuthMsg{
 			Identity: &message.Identity{
-				Name: "roller_test_request_token",
+				Name: "prover_test_request_token",
 			},
 		}
-		token, err := rollerController.RequestToken(tmpAuthMsg)
+		token, err := proverController.RequestToken(tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, token)
 	})
@@ -66,8 +66,8 @@ func TestRoller_RequestToken(t *testing.T) {
 		key, err := tmpAuthMsg.PublicKey()
 		assert.NoError(t, err)
 		tokenCacheStored := "c393987bb791dd285dd3d8ffbd770ed1"
-		rollerController.tokenCache.Set(key, tokenCacheStored, time.Hour)
-		token, err := rollerController.RequestToken(tmpAuthMsg)
+		proverController.tokenCache.Set(key, tokenCacheStored, time.Hour)
+		token, err := proverController.RequestToken(tmpAuthMsg)
 		assert.NoError(t, err)
 		assert.Equal(t, token, tokenCacheStored)
 	})
@@ -78,7 +78,7 @@ func TestRoller_RequestToken(t *testing.T) {
 			return "", errors.New("token generation failed")
 		})
 		defer patchGuard.Reset()
-		token, err := rollerController.RequestToken(tmpAuthMsg)
+		token, err := proverController.RequestToken(tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, token)
 	})
@@ -90,45 +90,45 @@ func TestRoller_RequestToken(t *testing.T) {
 			return tokenCacheStored, nil
 		})
 		defer patchGuard.Reset()
-		token, err := rollerController.RequestToken(tmpAuthMsg)
+		token, err := proverController.RequestToken(tmpAuthMsg)
 		assert.NoError(t, err)
 		assert.Equal(t, tokenCacheStored, token)
 	})
 }
 
-func TestRoller_Register(t *testing.T) {
+func TestProver_Register(t *testing.T) {
 	convey.Convey("auth msg verify failure", t, func() {
 		tmpAuthMsg := &message.AuthMsg{
 			Identity: &message.Identity{
-				Name: "roller_test_register",
+				Name: "prover_test_register",
 			},
 		}
-		subscription, err := rollerController.Register(context.Background(), tmpAuthMsg)
+		subscription, err := proverController.Register(context.Background(), tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, subscription)
 	})
 
 	convey.Convey("verify token failure", t, func() {
 		tmpAuthMsg, _ := geneAuthMsg(t)
-		patchGuard := gomonkey.ApplyPrivateMethod(rollerController, "verifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
+		patchGuard := gomonkey.ApplyPrivateMethod(proverController, "verifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
 			return false, errors.New("verify token failure")
 		})
 		defer patchGuard.Reset()
-		subscription, err := rollerController.Register(context.Background(), tmpAuthMsg)
+		subscription, err := proverController.Register(context.Background(), tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, subscription)
 	})
 
 	convey.Convey("notifier failure", t, func() {
 		tmpAuthMsg, _ := geneAuthMsg(t)
-		patchGuard := gomonkey.ApplyPrivateMethod(rollerController, "verifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
+		patchGuard := gomonkey.ApplyPrivateMethod(proverController, "verifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
 			return true, nil
 		})
 		defer patchGuard.Reset()
 		patchGuard.ApplyFunc(rpc.NotifierFromContext, func(ctx context.Context) (*rpc.Notifier, bool) {
 			return nil, false
 		})
-		subscription, err := rollerController.Register(context.Background(), tmpAuthMsg)
+		subscription, err := proverController.Register(context.Background(), tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Equal(t, err, rpc.ErrNotificationsUnsupported)
 		assert.Equal(t, *subscription, rpc.Subscription{})
@@ -136,7 +136,7 @@ func TestRoller_Register(t *testing.T) {
 
 	convey.Convey("register failure", t, func() {
 		tmpAuthMsg, _ := geneAuthMsg(t)
-		patchGuard := gomonkey.ApplyPrivateMethod(rollerController, "verifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
+		patchGuard := gomonkey.ApplyPrivateMethod(proverController, "verifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
 			return true, nil
 		})
 		defer patchGuard.Reset()
@@ -145,14 +145,14 @@ func TestRoller_Register(t *testing.T) {
 		patchGuard.ApplyPrivateMethod(taskWorker, "AllocTaskWorker", func(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error) {
 			return nil, errors.New("register error")
 		})
-		subscription, err := rollerController.Register(context.Background(), tmpAuthMsg)
+		subscription, err := proverController.Register(context.Background(), tmpAuthMsg)
 		assert.Error(t, err)
 		assert.Empty(t, subscription)
 	})
 
 	convey.Convey("register success", t, func() {
 		tmpAuthMsg, _ := geneAuthMsg(t)
-		patchGuard := gomonkey.ApplyPrivateMethod(rollerController, "verifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
+		patchGuard := gomonkey.ApplyPrivateMethod(proverController, "verifyToken", func(tmpAuthMsg *message.AuthMsg) (bool, error) {
 			return true, nil
 		})
 		defer patchGuard.Reset()
@@ -161,17 +161,17 @@ func TestRoller_Register(t *testing.T) {
 		patchGuard.ApplyPrivateMethod(taskWorker, "AllocTaskWorker", func(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error) {
 			return nil, nil
 		})
-		_, err := rollerController.Register(context.Background(), tmpAuthMsg)
+		_, err := proverController.Register(context.Background(), tmpAuthMsg)
 		assert.NoError(t, err)
 	})
 }
 
-func TestRoller_SubmitProof(t *testing.T) {
+func TestProver_SubmitProof(t *testing.T) {
 	tmpAuthMsg, prvKey := geneAuthMsg(t)
 	pubKey, err := tmpAuthMsg.PublicKey()
 	assert.NoError(t, err)
 
-	id := "rollers_info_test"
+	id := "provers_info_test"
 	tmpProof := &message.ProofMsg{
 		ProofDetail: &message.ProofDetail{
 			Type:   message.ProofTypeChunk,
@@ -202,7 +202,7 @@ func TestRoller_SubmitProof(t *testing.T) {
 		patchGuard.ApplyMethodFunc(s, "Verify", func() (bool, error) {
 			return false, errors.New("proof verify error")
 		})
-		err = rollerController.SubmitProof(tmpProof)
+		err = proverController.SubmitProof(tmpProof)
 		assert.Error(t, err)
 	})
 
@@ -227,7 +227,7 @@ func TestRoller_SubmitProof(t *testing.T) {
 		return nil
 	})
 
-	convey.Convey("get none rollers of prover task", t, func() {
+	convey.Convey("get none provers of prover task", t, func() {
 		patchGuard.ApplyMethodFunc(proverTaskOrm, "GetProverTaskByTaskIDAndPubKey", func(ctx context.Context, hash, pubKey string) (*orm.ProverTask, error) {
 			return nil, nil
 		})
@@ -243,7 +243,7 @@ func TestRoller_SubmitProof(t *testing.T) {
 		tmpProof1.Sign(privKey)
 		_, err1 := tmpProof1.PublicKey()
 		assert.NoError(t, err1)
-		err2 := rollerController.SubmitProof(tmpProof1)
+		err2 := proverController.SubmitProof(tmpProof1)
 		fmt.Println(err2)
 		targetErr := fmt.Errorf("validator failure get none prover task for the proof")
 		assert.Equal(t, err2.Error(), targetErr.Error())
@@ -255,7 +255,7 @@ func TestRoller_SubmitProof(t *testing.T) {
 			TaskID:          id,
 			ProverPublicKey: proofPubKey,
 			TaskType:        int16(message.ProofTypeChunk),
-			ProverName:      "rollers_info_test",
+			ProverName:      "provers_info_test",
 			ProvingStatus:   int16(types.ProverAssigned),
 			CreatedAt:       now,
 		}
@@ -266,12 +266,12 @@ func TestRoller_SubmitProof(t *testing.T) {
 		return nil
 	})
 
-	patchGuard.ApplyPrivateMethod(rollerController.proofReceiver, "proofFailure", func(hash string, pubKey string, proofMsgType message.ProofType) {
+	patchGuard.ApplyPrivateMethod(proverController.proofReceiver, "proofFailure", func(hash string, pubKey string, proofMsgType message.ProofType) {
 	})
 
 	convey.Convey("proof msg status is not ok", t, func() {
 		tmpProof.Status = message.StatusProofError
-		err1 := rollerController.SubmitProof(tmpProof)
+		err1 := proverController.SubmitProof(tmpProof)
 		assert.NoError(t, err1)
 	})
 	tmpProof.Status = message.StatusOk
@@ -287,7 +287,7 @@ func TestRoller_SubmitProof(t *testing.T) {
 		patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyProof", func(proof *message.AggProof) (bool, error) {
 			return false, targetErr
 		})
-		err1 := rollerController.SubmitProof(tmpProof)
+		err1 := proverController.SubmitProof(tmpProof)
 		assert.Nil(t, err1)
 	})
 
@@ -295,10 +295,10 @@ func TestRoller_SubmitProof(t *testing.T) {
 		return true, nil
 	})
 
-	patchGuard.ApplyPrivateMethod(rollerController.proofReceiver, "closeProofTask", func(hash string, pubKey string, proofMsg *message.ProofMsg, rollersInfo *coordinatorType.RollersInfo) error {
+	patchGuard.ApplyPrivateMethod(proverController.proofReceiver, "closeProofTask", func(hash string, pubKey string, proofMsg *message.ProofMsg, proversInfo *coordinatorType.ProversInfo) error {
 		return nil
 	})
 
-	err1 := rollerController.SubmitProof(tmpProof)
+	err1 := proverController.SubmitProof(tmpProof)
 	assert.Nil(t, err1)
 }

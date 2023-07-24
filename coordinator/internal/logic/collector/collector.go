@@ -91,7 +91,7 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 	return true
 }
 
-func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, blockHashes []common.Hash, subProofs []*message.AggProof) ([]*coordinatorType.RollerStatus, error) {
+func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, blockHashes []common.Hash, subProofs []*message.AggProof) ([]*coordinatorType.ProverStatus, error) {
 	sendMsg := &message.TaskMsg{
 		ID:          hash,
 		Type:        proveType,
@@ -100,26 +100,26 @@ func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, block
 	}
 
 	var err error
-	var rollerStatusList []*coordinatorType.RollerStatus
+	var proverStatusList []*coordinatorType.ProverStatus
 	for i := uint8(0); i < b.cfg.ProverManagerConfig.ProversPerSession; i++ {
-		rollerPubKey, rollerName, sendErr := provermanager.Manager.SendTask(proveType, sendMsg)
+		proverPubKey, proverName, sendErr := provermanager.Manager.SendTask(proveType, sendMsg)
 		if sendErr != nil {
 			err = sendErr
 			continue
 		}
 
-		provermanager.Manager.UpdateMetricProverProofsLastAssignedTimestampGauge(rollerPubKey)
+		provermanager.Manager.UpdateMetricProverProofsLastAssignedTimestampGauge(proverPubKey)
 
-		rollerStatus := &coordinatorType.RollerStatus{
-			PublicKey: rollerPubKey,
-			Name:      rollerName,
+		proverStatus := &coordinatorType.ProverStatus{
+			PublicKey: proverPubKey,
+			Name:      proverName,
 			Status:    types.ProverAssigned,
 		}
-		rollerStatusList = append(rollerStatusList, rollerStatus)
+		proverStatusList = append(proverStatusList, proverStatus)
 	}
 
 	if err != nil {
 		return nil, err
 	}
-	return rollerStatusList, nil
+	return proverStatusList, nil
 }

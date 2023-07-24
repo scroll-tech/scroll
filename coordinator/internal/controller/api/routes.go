@@ -11,7 +11,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 )
 
-// ProverAPI for rollers inorder to register and submit proof
+// ProverAPI for provers inorder to register and submit proof
 type ProverAPI interface {
 	RequestToken(authMsg *message.AuthMsg) (string, error)
 	Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error)

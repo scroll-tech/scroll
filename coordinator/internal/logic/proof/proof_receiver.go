@@ -33,8 +33,8 @@ var (
 	ErrValidatorFailureProofMsgStatusNotOk = errors.New("validator failure proof msg status not ok")
 	// ErrValidatorFailureProverTaskEmpty get none prover task
 	ErrValidatorFailureProverTaskEmpty = errors.New("validator failure get none prover task for the proof")
-	// ErrValidatorFailureRollerInfoHasProofValid proof is vaild
-	ErrValidatorFailureRollerInfoHasProofValid = errors.New("validator failure prover task info has proof valid")
+	// ErrValidatorFailureProverInfoHasProofValid proof is vaild
+	ErrValidatorFailureProverInfoHasProofValid = errors.New("validator failure prover task info has proof valid")
 )
 
 // ZKProofReceiver the proof receiver
@@ -131,7 +131,7 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 		}
 		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
 
-		// TODO: Roller needs to be slashed if proof is invalid.
+		// TODO: Prover needs to be slashed if proof is invalid.
 		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 
 		provermanager.Manager.UpdateMetricProverProofsVerifiedFailedTimeTimer(pk, proofTime)
@@ -179,7 +179,7 @@ func (m *ZKProofReceiver) validator(proverTask *orm.ProverTask, pk string, proof
 		// (ii) set the maximum failure retry times
 		log.Warn("prover has already submitted valid proof in proof session", "prover name", proverTask.ProverName,
 			"prover pk", proverTask.ProverPublicKey, "proof type", proverTask.TaskType, "proof id", proofMsg.ProofDetail.ID)
-		return ErrValidatorFailureRollerInfoHasProofValid
+		return ErrValidatorFailureProverInfoHasProofValid
 	}
 
 	proofTime := time.Since(proverTask.CreatedAt)
