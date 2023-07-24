@@ -5,26 +5,6 @@ import (
 	"fmt"
 )
 
-// L1BlockStatus represents current l1 block processing status
-type L1BlockStatus int
-
-const (
-	// L1BlockUndefined : undefined l1 block status
-	L1BlockUndefined L1BlockStatus = iota
-
-	// L1BlockPending represents the l1 block status is pending
-	L1BlockPending
-
-	// L1BlockImporting represents the l1 block status is importing
-	L1BlockImporting
-
-	// L1BlockImported represents the l1 block status is imported
-	L1BlockImported
-
-	// L1BlockFailed represents the l1 block status is failed
-	L1BlockFailed
-)
-
 // GasOracleStatus represents current gas oracle processing status
 type GasOracleStatus int
 
@@ -115,18 +95,24 @@ func (s RollerProveStatus) String() string {
 	}
 }
 
-// RollerFailureType is the type of a roller session's failure
-type RollerFailureType int
+// ProverTaskFailureType the type of prover task failure
+type ProverTaskFailureType int
 
 const (
-	// RollerFailureTypeUndefined indicates an unknown roller failure type
-	RollerFailureTypeUndefined RollerFailureType = iota
+	// ProverTaskFailureTypeUndefined indicates an unknown roller failure type
+	ProverTaskFailureTypeUndefined ProverTaskFailureType = iota
+	// ProverTaskFailureTypeTimeout prover task failure of timeout
+	ProverTaskFailureTypeTimeout
 )
 
-func (s RollerFailureType) String() string {
-	switch s {
+func (r ProverTaskFailureType) String() string {
+	switch r {
+	case ProverTaskFailureTypeUndefined:
+		return "prover task failure undefined"
+	case ProverTaskFailureTypeTimeout:
+		return "prover task failure timeout"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(s))
+		return "illegal prover task failure type"
 	}
 }
 
@@ -138,8 +124,6 @@ const (
 	ProvingStatusUndefined ProvingStatus = iota
 	// ProvingTaskUnassigned : proving_task is not assigned to be proved
 	ProvingTaskUnassigned
-	// ProvingTaskSkipped : proving_task is skipped for proof generation
-	ProvingTaskSkipped
 	// ProvingTaskAssigned : proving_task is assigned to be proved
 	ProvingTaskAssigned
 	// ProvingTaskProved : proof has been returned by prover
@@ -154,8 +138,6 @@ func (ps ProvingStatus) String() string {
 	switch ps {
 	case ProvingTaskUnassigned:
 		return "unassigned"
-	case ProvingTaskSkipped:
-		return "skipped"
 	case ProvingTaskAssigned:
 		return "assigned"
 	case ProvingTaskProved:
@@ -210,8 +192,6 @@ const (
 	RollupFinalizing
 	// RollupFinalized : finalize transaction is confirmed to layer1
 	RollupFinalized
-	// RollupFinalizationSkipped : batch finalization is skipped
-	RollupFinalizationSkipped
 	// RollupCommitFailed : rollup commit transaction confirmed but failed
 	RollupCommitFailed
 	// RollupFinalizeFailed : rollup finalize transaction is confirmed but failed
@@ -230,8 +210,6 @@ func (s RollupStatus) String() string {
 		return "RollupFinalizing"
 	case RollupFinalized:
 		return "RollupFinalized"
-	case RollupFinalizationSkipped:
-		return "RollupFinalizationSkipped"
 	case RollupCommitFailed:
 		return "RollupCommitFailed"
 	case RollupFinalizeFailed:

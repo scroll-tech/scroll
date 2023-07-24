@@ -244,6 +244,22 @@ Emitted when ERC20 token is deposited from L1 to L2 and transfer to recipient.
 | amount  | uint256 | undefined |
 | data  | bytes | undefined |
 
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
+
 ### WithdrawERC20
 
 ```solidity

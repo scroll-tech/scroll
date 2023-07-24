@@ -19,10 +19,6 @@ type L1Block struct {
 	Hash    string `json:"hash" gorm:"column:hash"`
 	BaseFee uint64 `json:"base_fee" gorm:"column:base_fee"`
 
-	// import
-	BlockStatus  int16  `json:"block_status" gorm:"column:block_status;default:1"`
-	ImportTxHash string `json:"import_tx_hash" gorm:"column:import_tx_hash;default:NULL"`
-
 	// oracle
 	GasOracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
 	OracleTxHash    string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`

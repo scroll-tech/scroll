@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
@@ -144,9 +144,9 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
             (_replayTimes, _lastIndex) = l1Messenger.replayStates(hash);
             assertEq(_replayTimes, i + 1);
             assertEq(_lastIndex, i + 3);
-            assertEq(l1Messenger.prevReplayIndex(i + 3), i + 2);
+            assertEq(l1Messenger.prevReplayIndex(i + 3), i + 2 + 1);
             for (uint256 j = 0; j <= i; j++) {
-                assertEq(l1Messenger.prevReplayIndex(i + 3 - j), i + 2 - j);
+                assertEq(l1Messenger.prevReplayIndex(i + 3 - j), i + 2 - j + 1);
             }
         }
     }
@@ -239,51 +239,76 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
 
         l1Messenger.updateMaxReplayTimes(10);
 
-        // replay 3 times
-        for (uint256 i = 0; i < 3; i++) {
-            l1Messenger.replayMessage(address(this), address(0), 0, 0, new bytes(0), 0, address(0));
-        }
-        assertEq(messageQueue.nextCrossDomainMessageIndex(), 4);
+        // replay 1 time
+        l1Messenger.replayMessage(address(this), address(0), 0, 0, new bytes(0), 0, address(0));
+        assertEq(messageQueue.nextCrossDomainMessageIndex(), 2);
 
-        // only first 3 are skipped
+        // skip all 2 messages
         hevm.startPrank(address(rollup));
-        messageQueue.popCrossDomainMessage(0, 4, 0x7);
-        assertEq(messageQueue.pendingQueueIndex(), 4);
+        messageQueue.popCrossDomainMessage(0, 2, 0x3);
+        assertEq(messageQueue.pendingQueueIndex(), 2);
         hevm.stopPrank();
-
-        // message already dropped or executed, revert
-        hevm.expectRevert("message already dropped or executed");
-        l1Messenger.dropMessage(address(this), address(0), 0, 0, new bytes(0));
-
-        // send one message with nonce 4 and replay 4 times
-        l1Messenger.sendMessage(address(0), 0, new bytes(0), 0);
-        for (uint256 i = 0; i < 4; i++) {
-            l1Messenger.replayMessage(address(this), address(0), 0, 4, new bytes(0), 0, address(0));
-        }
-        assertEq(messageQueue.nextCrossDomainMessageIndex(), 9);
-
-        // skip all 5 messages
-        hevm.startPrank(address(rollup));
-        messageQueue.popCrossDomainMessage(4, 5, 0x1f);
-        assertEq(messageQueue.pendingQueueIndex(), 9);
-        hevm.stopPrank();
-        for (uint256 i = 4; i < 9; ++i) {
+        for (uint256 i = 0; i < 2; ++i) {
             assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
         }
         hevm.expectEmit(false, false, false, true);
         emit OnDropMessageCalled(new bytes(0));
-        l1Messenger.dropMessage(address(this), address(0), 0, 4, new bytes(0));
-        for (uint256 i = 4; i < 9; ++i) {
+        l1Messenger.dropMessage(address(this), address(0), 0, 0, new bytes(0));
+        for (uint256 i = 0; i < 2; ++i) {
+            assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
+        }
+
+        // send one message with nonce 2 and replay 3 times
+        l1Messenger.sendMessage(address(0), 0, new bytes(0), 0);
+        assertEq(messageQueue.nextCrossDomainMessageIndex(), 3);
+        for (uint256 i = 0; i < 3; i++) {
+            l1Messenger.replayMessage(address(this), address(0), 0, 2, new bytes(0), 0, address(0));
+        }
+        assertEq(messageQueue.nextCrossDomainMessageIndex(), 6);
+
+        // only first 3 are skipped
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(2, 4, 0x7);
+        assertEq(messageQueue.pendingQueueIndex(), 6);
+        hevm.stopPrank();
+
+        // message already dropped or executed, revert
+        hevm.expectRevert("message already dropped or executed");
+        l1Messenger.dropMessage(address(this), address(0), 0, 2, new bytes(0));
+
+        // send one message with nonce 6 and replay 4 times
+        l1Messenger.sendMessage(address(0), 0, new bytes(0), 0);
+        for (uint256 i = 0; i < 4; i++) {
+            l1Messenger.replayMessage(address(this), address(0), 0, 6, new bytes(0), 0, address(0));
+        }
+        assertEq(messageQueue.nextCrossDomainMessageIndex(), 11);
+
+        // skip all 5 messages
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(6, 5, 0x1f);
+        assertEq(messageQueue.pendingQueueIndex(), 11);
+        hevm.stopPrank();
+        for (uint256 i = 6; i < 11; ++i) {
+            assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
+        }
+        hevm.expectEmit(false, false, false, true);
+        emit OnDropMessageCalled(new bytes(0));
+        l1Messenger.dropMessage(address(this), address(0), 0, 6, new bytes(0));
+        for (uint256 i = 6; i < 11; ++i) {
             assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
         }
 
         // Message already dropped, revert
         hevm.expectRevert("Message already dropped");
-        l1Messenger.dropMessage(address(this), address(0), 0, 4, new bytes(0));
+        l1Messenger.dropMessage(address(this), address(0), 0, 0, new bytes(0));
+        hevm.expectRevert("Message already dropped");
+        l1Messenger.dropMessage(address(this), address(0), 0, 6, new bytes(0));
 
         // replay dropped message, revert
         hevm.expectRevert("Message already dropped");
-        l1Messenger.replayMessage(address(this), address(0), 0, 4, new bytes(0), 0, address(0));
+        l1Messenger.replayMessage(address(this), address(0), 0, 0, new bytes(0), 0, address(0));
+        hevm.expectRevert("Message already dropped");
+        l1Messenger.replayMessage(address(this), address(0), 0, 6, new bytes(0), 0, address(0));
     }
 
     function onDropMessage(bytes memory message) external payable {

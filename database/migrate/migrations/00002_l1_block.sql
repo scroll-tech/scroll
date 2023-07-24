@@ -8,10 +8,6 @@ create table l1_block
     hash                    VARCHAR         NOT NULL,
     base_fee                BIGINT          NOT NULL,
 
--- import
-    block_status            SMALLINT        NOT NULL DEFAULT 1,
-    import_tx_hash          VARCHAR         DEFAULT NULL,
-
 -- oracle
     oracle_status           SMALLINT        NOT NULL DEFAULT 1,
     oracle_tx_hash          VARCHAR         DEFAULT NULL,
@@ -21,9 +17,6 @@ create table l1_block
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at              TIMESTAMP(0)    DEFAULT NULL
 );
-
-comment
-on column l1_block.block_status is 'undefined, pending, importing, imported, failed';
 
 comment
 on column l1_block.oracle_status is 'undefined, pending, importing, imported, failed';

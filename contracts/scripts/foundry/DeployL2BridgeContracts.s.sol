@@ -137,7 +137,7 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2ScrollMessenger() internal {
-        L2ScrollMessenger impl = new L2ScrollMessenger(address(container), address(oracle), address(queue));
+        L2ScrollMessenger impl = new L2ScrollMessenger(address(queue));
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
             address(proxyAdmin),

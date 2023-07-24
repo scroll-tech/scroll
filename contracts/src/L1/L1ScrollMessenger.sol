@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
@@ -66,15 +66,25 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     mapping(bytes32 => ReplayState) public replayStates;
 
     /// @notice Mapping from queue index to previous replay queue index.
+    ///
     /// @dev If a message `x` was replayed 3 times with index `q1`, `q2` and `q3`, the
     /// value of `prevReplayIndex` and `replayStates` will be `replayStates[hash(x)].lastIndex = q3`,
-    /// `replayStates[hash(x)].times = 3`, `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1`
-    /// and `prevReplayIndex[q1] = x`.
+    /// `replayStates[hash(x)].times = 3`, `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1`,
+    /// `prevReplayIndex[q1] = x` and `prevReplayIndex[x]=nil`.
+    ///
+    /// @dev The index `x` that `prevReplayIndex[x]=nil` is used as the termination of the list.
+    /// Usually we use `0` to represent `nil`, but we cannot distinguish it with the first message
+    /// with index zero. So a nonzero offset `1` is added to the value of `prevReplayIndex[x]` to
+    /// avoid such situation.
     mapping(uint256 => uint256) public prevReplayIndex;
 
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L1ScrollMessenger.
     /// @param _counterpart The address of L2ScrollMessenger contract in L2.
@@ -200,11 +210,13 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
         ReplayState memory _replayState = replayStates[_xDomainCalldataHash];
         // update the replayed message chain.
-        if (_replayState.lastIndex == 0) {
-            // the message has not been replayed before.
-            prevReplayIndex[_nextQueueIndex] = _messageNonce;
-        } else {
-            prevReplayIndex[_nextQueueIndex] = _replayState.lastIndex;
+        unchecked {
+            if (_replayState.lastIndex == 0) {
+                // the message has not been replayed before.
+                prevReplayIndex[_nextQueueIndex] = _messageNonce + 1;
+            } else {
+                prevReplayIndex[_nextQueueIndex] = _replayState.lastIndex + 1;
+            }
         }
         _replayState.lastIndex = uint128(_nextQueueIndex);
 
@@ -265,6 +277,9 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
             IL1MessageQueue(_messageQueue).dropCrossDomainMessage(_lastIndex);
             _lastIndex = prevReplayIndex[_lastIndex];
             if (_lastIndex == 0) break;
+            unchecked {
+                _lastIndex = _lastIndex - 1;
+            }
         }
 
         isL1MessageDropped[_xDomainCalldataHash] = true;

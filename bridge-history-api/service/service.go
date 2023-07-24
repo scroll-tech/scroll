@@ -11,6 +11,7 @@ import (
 	"bridge-history-api/db/orm"
 )
 
+// Finalized the schema of tx finalized infos
 type Finalized struct {
 	Hash           string     `json:"hash"`
 	Amount         string     `json:"amount"`
@@ -20,6 +21,7 @@ type Finalized struct {
 	BlockTimestamp *time.Time `json:"blockTimestamp"` // uselesss
 }
 
+// UserClaimInfo the schema of tx claim infos
 type UserClaimInfo struct {
 	From       string `json:"from"`
 	To         string `json:"to"`
@@ -31,6 +33,7 @@ type UserClaimInfo struct {
 	BatchIndex string `json:"batch_index"`
 }
 
+// TxHistoryInfo the schema of tx history infos
 type TxHistoryInfo struct {
 	Hash           string         `json:"hash"`
 	Amount         string         `json:"amount"`
@@ -61,6 +64,7 @@ type historyBackend struct {
 	db     db.OrmFactory
 }
 
+// GetCrossTxClaimInfo get UserClaimInfos by address
 func GetCrossTxClaimInfo(msgHash string, db db.OrmFactory) *UserClaimInfo {
 	l2sentMsg, err := db.GetL2SentMsgByHash(msgHash)
 	if err != nil {
@@ -107,6 +111,7 @@ func updateCrossTxHash(msgHash string, txInfo *TxHistoryInfo, db db.OrmFactory) 
 
 }
 
+// GetClaimableTxsByAddress get all claimable txs under given address
 func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
 	total, err := h.db.GetClaimableL2SentMsgByAddressTotalNum(address.Hex())
@@ -122,7 +127,8 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 		msgHashList = append(msgHashList, result.MsgHash)
 	}
 	crossMsgs, err := h.db.GetL2CrossMsgByMsgHashList(msgHashList)
-	if err != nil || len(crossMsgs) == 0 {
+	// crossMsgs can be empty, because they can be emitted by user directly call contract
+	if err != nil {
 		return txHistories, 0, err
 	}
 	crossMsgMap := make(map[string]*orm.CrossMsg)
@@ -148,6 +154,7 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 	return txHistories, total, err
 }
 
+// GetTxsByAddress get all txs under given address
 func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, limit int64) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
 	total, err := h.db.GetTotalCrossMsgCountByAddress(address.String())
@@ -179,6 +186,7 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int64, l
 	return txHistories, total, nil
 }
 
+// GetTxsByHashes get tx infos under given tx hashes
 func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error) {
 	txHistories := make([]*TxHistoryInfo, 0)
 	for _, hash := range hashes {
