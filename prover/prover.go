@@ -72,7 +72,7 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 
 	// Create prover instance
 	log.Info("init prover")
-	newProver, err := core.NewProverCore(cfg.Prover)
+	proverCore, err := core.NewProverCore(cfg.Prover)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +88,7 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 		client:      rClient,
 		traceClient: traceClient,
 		stack:       stackDb,
-		prover:      newProver,
+		prover:      proverCore,
 		sub:         nil,
 		taskChan:    make(chan *message.TaskMsg, 10),
 		stopChan:    make(chan struct{}),
