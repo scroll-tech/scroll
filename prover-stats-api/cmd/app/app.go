@@ -26,8 +26,8 @@ func init() {
 	// Set up prover-stats-api info.
 	app = cli.NewApp()
 	app.Action = action
-	app.Name = "Core Stats API"
-	app.Usage = "The Scroll L2 ZK Core Stats API"
+	app.Name = "Prover Stats API"
+	app.Usage = "The Scroll L2 ZK Prover Stats API"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Flags = append(app.Flags, apiFlags...)
@@ -63,7 +63,7 @@ func action(ctx *cli.Context) error {
 	// Start metrics server.
 	metrics.Serve(subCtx, ctx)
 
-	// init Core Stats API
+	// init Prover Stats API
 	port := ctx.String(httpPortFlag.Name)
 
 	router := gin.Default()
