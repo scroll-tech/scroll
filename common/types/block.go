@@ -10,6 +10,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
+const nonZeroByteGas uint64 = 16
+const zeroByteGas uint64 = 4
+
 // WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
@@ -102,9 +105,9 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 		// approximate calldata gas cost
 		for _, b := range rlpTxData {
 			if b == 0 {
-				total += 4
+				total += zeroByteGas
 			} else {
-				total += 16
+				total += nonZeroByteGas
 			}
 		}
 
@@ -113,9 +116,9 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 
 		for _, b := range txLen {
 			if b == 0 {
-				total += 4
+				total += zeroByteGas
 			} else {
-				total += 16
+				total += nonZeroByteGas
 			}
 		}
 	}
