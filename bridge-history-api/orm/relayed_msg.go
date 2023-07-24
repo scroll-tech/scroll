@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -39,7 +40,13 @@ func (r *RelayedMsg) GetRelayedMsgByHash(ctx context.Context, msgHash string) (*
 		Where("msg_hash = ?", msgHash).
 		First(&result).
 		Error
-	return &result, err
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("RelayedMsg.GetRelayedMsgByHash error: %w", err)
+	}
+	return &result, nil
 }
 
 // GetLatestRelayedHeightOnL1 get latest relayed height on l1
@@ -55,6 +62,7 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL1(ctx context.Context) (uint64, er
 		if err == gorm.ErrRecordNotFound {
 			return 0, nil
 		}
+		return 0, fmt.Errorf("RelayedMsg.GetLatestRelayedHeightOnL1 error: %w", err)
 	}
 	return result.Height, err
 }
@@ -72,6 +80,7 @@ func (r *RelayedMsg) GetLatestRelayedHeightOnL2(ctx context.Context) (uint64, er
 		if err == gorm.ErrRecordNotFound {
 			return 0, nil
 		}
+		return 0, fmt.Errorf("RelayedMsg.GetLatestRelayedHeightOnL2 error: %w", err)
 	}
 	return result.Height, nil
 }
@@ -97,8 +106,9 @@ func (r *RelayedMsg) InsertRelayedMsg(ctx context.Context, messages []*RelayedMs
 			heights = append(heights, msg.Height)
 		}
 		log.Error("failed to insert l2 sent messages", "l2hashes", l2hashes, "l1hashes", l1hashes, "heights", heights, "err", err)
+		return fmt.Errorf("RelayedMsg.InsertRelayedMsg error: %w", err)
 	}
-	return err
+	return nil
 }
 
 // DeleteL1RelayedHashAfterHeight delete l1 relayed hash after height
@@ -109,9 +119,11 @@ func (r *RelayedMsg) DeleteL1RelayedHashAfterHeight(ctx context.Context, height 
 	}
 	db.WithContext(ctx)
 	err := db.Model(&RelayedMsg{}).
-		Where("height > ? AND layer1_hash != ''", height).
-		Update("deleted_at", gorm.Expr("current_timestamp")).Error
-	return err
+		Delete("height > ? AND layer1_hash != ''", height).Error
+	if err != nil {
+		return fmt.Errorf("RelayedMsg.DeleteL1RelayedHashAfterHeight error: %w", err)
+	}
+	return nil
 }
 
 // DeleteL2RelayedHashAfterHeight delete l2 relayed hash after heights
@@ -122,7 +134,9 @@ func (r *RelayedMsg) DeleteL2RelayedHashAfterHeight(ctx context.Context, height 
 	}
 	db.WithContext(ctx)
 	err := db.Model(&RelayedMsg{}).
-		Where("height > ? AND layer2_hash != ''", height).
-		Update("deleted_at", gorm.Expr("current_timestamp")).Error
-	return err
+		Delete("height > ? AND layer2_hash != ''", height).Error
+	if err != nil {
+		return fmt.Errorf("RelayedMsg.DeleteL2RelayedHashAfterHeight error: %w", err)
+	}
+	return nil
 }

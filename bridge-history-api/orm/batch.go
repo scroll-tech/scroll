@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -37,7 +38,10 @@ func (*RollupBatch) TableName() string {
 func (r *RollupBatch) GetLatestRollupBatchProcessedHeight(ctx context.Context) (uint64, error) {
 	var result RollupBatch
 	err := r.db.WithContext(ctx).Unscoped().Select("commit_height").Order("id desc").First(&result).Error
-	return result.CommitHeight, err
+	if err != nil {
+		return 0, fmt.Errorf("RollupBatch.GetLatestRollupBatchProcessedHeight error: %w", err)
+	}
+	return result.CommitHeight, nil
 }
 
 // GetLatestRollupBatch return the latest rollup batch in db
@@ -48,7 +52,7 @@ func (r *RollupBatch) GetLatestRollupBatch(ctx context.Context) (*RollupBatch, e
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("RollupBatch.GetLatestRollupBatch error: %w", err)
 	}
 	return &result, nil
 }
@@ -58,7 +62,7 @@ func (r *RollupBatch) GetRollupBatchByIndex(ctx context.Context, index uint64) (
 	var result RollupBatch
 	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index = ?", index).First(&result).Error
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("RollupBatch.GetRollupBatchByIndex error: %w", err)
 	}
 	return &result, nil
 }
@@ -80,7 +84,8 @@ func (r *RollupBatch) InsertRollupBatch(ctx context.Context, batches []*RollupBa
 			batchIndexes = append(batchIndexes, batch.BatchIndex)
 			heights = append(heights, batch.CommitHeight)
 		}
-		log.Error("failed to insert rollup batch", "batchIndexes", batchIndexes, "heights", heights, "err", err)
+		log.Error("failed to insert rollup batch", "batchIndexes", batchIndexes, "heights", heights)
+		return fmt.Errorf("RollupBatch.InsertRollupBatch error: %w", err)
 	}
-	return err
+	return nil
 }

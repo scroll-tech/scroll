@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -46,7 +47,10 @@ func (l *L2SentMsg) GetL2SentMsgByHash(ctx context.Context, msgHash string) (*L2
 		Where("msg_hash = ?", msgHash).
 		First(&result).
 		Error
-	return &result, err
+	if err != nil {
+		return nil, fmt.Errorf("L2SentMsg.GetL2SentMsgByHash error: %w", err)
+	}
+	return &result, nil
 }
 
 // GetLatestSentMsgHeightOnL2 get latest sent msg height on l2
@@ -61,8 +65,10 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, err
 		if err == gorm.ErrRecordNotFound {
 			return 0, nil
 		}
+		return 0, fmt.Errorf("L2SentMsg.GetLatestSentMsgHeightOnL2 error: %w", err)
+
 	}
-	return result.Height, err
+	return result.Height, nil
 }
 
 // GetClaimableL2SentMsgByAddressWithOffset get claimable l2 sent msg by address with offset
@@ -70,7 +76,10 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context
 	var results []*L2SentMsg
 	err := l.db.WithContext(ctx).Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
 		Scan(&results).Error
-	return results, err
+	if err != nil {
+		return nil, fmt.Errorf("L2SentMsg.GetClaimableL2SentMsgByAddressWithOffset error: %w", err)
+	}
+	return results, nil
 }
 
 // GetClaimableL2SentMsgByAddressTotalNum get claimable l2 sent msg by address total num
@@ -78,7 +87,10 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(ctx context.Context, 
 	var count uint64
 	err := l.db.WithContext(ctx).Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).
 		Scan(&count).Error
-	return count, err
+	if err != nil {
+		return 0, fmt.Errorf("L2SentMsg.GetClaimableL2SentMsgByAddressTotalNum error: %w", err)
+	}
+	return count, nil
 }
 
 // GetLatestL2SentMsgBatchIndex get latest l2 sent msg batch index
@@ -91,7 +103,7 @@ func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex(ctx context.Context) (int64, er
 		First(&result).
 		Error
 	if err != nil {
-		return -1, err
+		return -1, fmt.Errorf("L2SentMsg.GetLatestL2SentMsgBatchIndex error: %w", err)
 	}
 	// Watch for overflow, tho its not likely to happen
 	return int64(result.Height), nil
@@ -105,7 +117,10 @@ func (l *L2SentMsg) GetL2SentMsgMsgHashByHeightRange(ctx context.Context, startH
 		Order("nonce ASC").
 		Find(&results).
 		Error
-	return results, err
+	if err != nil {
+		return nil, fmt.Errorf("L2SentMsg.GetL2SentMsgMsgHashByHeightRange error: %w", err)
+	}
+	return results, nil
 }
 
 // GetL2SentMessageByNonce get l2 sent message by nonce
@@ -115,7 +130,14 @@ func (l *L2SentMsg) GetL2SentMessageByNonce(ctx context.Context, nonce uint64) (
 		Where("nonce = ?", nonce).
 		First(&result).
 		Error
-	return &result, err
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("L2SentMsg.GetL2SentMessageByNonce error: %w", err)
+
+	}
+	return &result, nil
 }
 
 // GetLatestL2SentMsgLEHeight get latest l2 sent msg less than or equal to end block number
@@ -126,7 +148,14 @@ func (l *L2SentMsg) GetLatestL2SentMsgLEHeight(ctx context.Context, endBlockNumb
 		Order("nonce DESC").
 		First(&result).
 		Error
-	return &result, err
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("L2SentMsg.GetLatestL2SentMsgLEHeight error: %w", err)
+
+	}
+	return &result, nil
 }
 
 // InsertL2SentMsg batch insert l2 sent msg
@@ -148,8 +177,9 @@ func (l *L2SentMsg) InsertL2SentMsg(ctx context.Context, messages []*L2SentMsg, 
 			heights = append(heights, msg.Height)
 		}
 		log.Error("failed to insert l2 sent messages", "l2hashes", l2hashes, "heights", heights, "err", err)
+		return fmt.Errorf("L2SentMsg.InsertL2SentMsg error: %w", err)
 	}
-	return err
+	return nil
 }
 
 // UpdateL2MessageProof update l2 message proof in db tx
@@ -165,7 +195,10 @@ func (l *L2SentMsg) UpdateL2MessageProof(ctx context.Context, msgHash string, pr
 			"msg_proof":   proof,
 			"batch_index": batchIndex,
 		}).Error
-	return err
+	if err != nil {
+		return fmt.Errorf("L2SentMsg.UpdateL2MessageProof error: %w", err)
+	}
+	return nil
 }
 
 // DeleteL2SentMsgAfterHeight delete l2 sent msg after height
@@ -174,10 +207,9 @@ func (l *L2SentMsg) DeleteL2SentMsgAfterHeight(ctx context.Context, height uint6
 	if len(dbTx) > 0 && dbTx[0] != nil {
 		db = dbTx[0]
 	}
-	err := db.WithContext(ctx).Model(&L2SentMsg{}).
-		Where("height > ?", height).
-		Updates(map[string]interface{}{
-			"deleted_at": gorm.Expr("current_timestamp"),
-		}).Error
-	return err
+	err := db.WithContext(ctx).Model(&L2SentMsg{}).Delete("height > ?", height).Error
+	if err != nil {
+		return fmt.Errorf("L2SentMsg.DeleteL2SentMsgAfterHeight error: %w", err)
+	}
+	return nil
 }

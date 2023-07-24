@@ -71,7 +71,7 @@ func GetCrossTxClaimInfo(ctx context.Context, msgHash string, db *gorm.DB) *User
 	l2SentMsgOrm := orm.NewL2SentMsg(db)
 	rollupOrm := orm.NewRollupBatch(db)
 	l2sentMsg, err := l2SentMsgOrm.GetL2SentMsgByHash(ctx, msgHash)
-	if err != nil {
+	if err != nil || l2sentMsg == nil {
 		log.Debug("GetCrossTxClaimInfo failed", "error", err)
 		return &UserClaimInfo{}
 	}
@@ -164,7 +164,7 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 // GetTxsByAddress get all txs under given address
 func (h *historyBackend) GetTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
-	utilOrm := orm.NewUtilDBOrm(h.db)
+	utilOrm := orm.NewCrossMsg(h.db)
 	total, err := utilOrm.GetTotalCrossMsgCountByAddress(h.ctx, address.String())
 	if err != nil || total == 0 {
 		return txHistories, 0, err

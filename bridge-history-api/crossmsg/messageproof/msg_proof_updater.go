@@ -2,8 +2,6 @@ package messageproof
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -116,7 +114,7 @@ func (m *MsgProofUpdater) initialize(ctx context.Context) {
 func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 	var batch *orm.RollupBatch
 	firstMsg, err := m.l2SentMsgOrm.GetL2SentMessageByNonce(m.ctx, 0)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return fmt.Errorf("failed to get first l2 message: %v", err)
 	}
 	// no l2 message
@@ -164,7 +162,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		batchIndex--
 
 		batch, err = m.rollupOrm.GetRollupBatchByIndex(m.ctx, batchIndex)
-		if err != nil {
+		if err != nil || batch == nil {
 			return fmt.Errorf("failed to get block batch %v: %v", batchIndex, err)
 		}
 	}
