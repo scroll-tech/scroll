@@ -148,14 +148,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         IScrollERC20(_token).burn(_from, _amount);
 
         // 3. Generate message passed to L1StandardERC20Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ERC20Gateway.finalizeWithdrawERC20.selector,
-            _l1Token,
-            _token,
-            _from,
-            _to,
-            _amount,
-            _data
+        bytes memory _message = abi.encodeCall(
+            IL1ERC20Gateway.finalizeWithdrawERC20,
+            (_l1Token, _token, _from, _to, _amount, _data)
         );
 
         // 4. send message to L2ScrollMessenger
