@@ -4,7 +4,7 @@
     "keystore_password": "prover-pwd",
     "coordinator_url": "ws://localhost:8391",
     "db_path": "bbolt_db",
-    "prover": {
+    "core": {
         "params_path": "params",
         "seed_path": "seed"
     }
