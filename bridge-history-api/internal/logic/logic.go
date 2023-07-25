@@ -1,4 +1,4 @@
-package service
+package logic
 
 import (
 	"context"
@@ -47,22 +47,21 @@ type TxHistoryInfo struct {
 	CreatedAt      *time.Time     `json:"createdTime"`
 }
 
-// HistoryService example service.
-type HistoryService interface {
-	GetTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error)
-	GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error)
-	GetClaimableTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error)
+// HistoryLogic example service.
+type HistoryLogic interface {
+	GetTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error)
+	GetTxsByHashes(ctx context.Context, hashes []string) ([]*TxHistoryInfo, error)
+	GetClaimableTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error)
 }
 
-// NewHistoryService returns a service backed with a "db"
-func NewHistoryService(ctx context.Context, db *gorm.DB) HistoryService {
-	service := &historyBackend{ctx: ctx, db: db, prefix: "Scroll-Bridge-History-Server"}
-	return service
+// NewHistoryLogic returns services backed with a "db"
+func NewHistoryLogic(db *gorm.DB) HistoryLogic {
+	logic := &historyBackend{db: db, prefix: "Scroll-Bridge-History-Server"}
+	return logic
 }
 
 type historyBackend struct {
 	prefix string
-	ctx    context.Context
 	db     *gorm.DB
 }
 
@@ -117,15 +116,15 @@ func updateCrossTxHash(ctx context.Context, msgHash string, txInfo *TxHistoryInf
 }
 
 // GetClaimableTxsByAddress get all claimable txs under given address
-func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
+func (h *historyBackend) GetClaimableTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
 	l2SentMsgOrm := orm.NewL2SentMsg(h.db)
 	l2CrossMsgOrm := orm.NewCrossMsg(h.db)
-	total, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressTotalNum(h.ctx, address.Hex())
+	total, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressTotalNum(ctx, address.Hex())
 	if err != nil || total == 0 {
 		return txHistories, 0, err
 	}
-	results, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(h.ctx, address.Hex(), offset, limit)
+	results, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(ctx, address.Hex(), offset, limit)
 	if err != nil || len(results) == 0 {
 		return txHistories, 0, err
 	}
@@ -133,7 +132,7 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 	for _, result := range results {
 		msgHashList = append(msgHashList, result.MsgHash)
 	}
-	crossMsgs, err := l2CrossMsgOrm.GetL2CrossMsgByMsgHashList(h.ctx, msgHashList)
+	crossMsgs, err := l2CrossMsgOrm.GetL2CrossMsgByMsgHashList(ctx, msgHashList)
 	// crossMsgs can be empty, because they can be emitted by user directly call contract
 	if err != nil {
 		return txHistories, 0, err
@@ -148,7 +147,7 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 			IsL1:        false,
 			BlockNumber: result.Height,
 			FinalizeTx:  &Finalized{},
-			ClaimInfo:   GetCrossTxClaimInfo(h.ctx, result.MsgHash, h.db),
+			ClaimInfo:   GetCrossTxClaimInfo(ctx, result.MsgHash, h.db),
 		}
 		if crossMsg, exist := crossMsgMap[result.MsgHash]; exist {
 			txInfo.Amount = crossMsg.Amount
@@ -162,14 +161,14 @@ func (h *historyBackend) GetClaimableTxsByAddress(address common.Address, offset
 }
 
 // GetTxsByAddress get all txs under given address
-func (h *historyBackend) GetTxsByAddress(address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
+func (h *historyBackend) GetTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
 	var txHistories []*TxHistoryInfo
 	utilOrm := orm.NewCrossMsg(h.db)
-	total, err := utilOrm.GetTotalCrossMsgCountByAddress(h.ctx, address.String())
+	total, err := utilOrm.GetTotalCrossMsgCountByAddress(ctx, address.String())
 	if err != nil || total == 0 {
 		return txHistories, 0, err
 	}
-	result, err := utilOrm.GetCrossMsgsByAddressWithOffset(h.ctx, address.String(), offset, limit)
+	result, err := utilOrm.GetCrossMsgsByAddressWithOffset(ctx, address.String(), offset, limit)
 
 	if err != nil {
 		return nil, 0, err
@@ -186,20 +185,20 @@ func (h *historyBackend) GetTxsByAddress(address common.Address, offset int, lim
 			FinalizeTx: &Finalized{
 				Hash: "",
 			},
-			ClaimInfo: GetCrossTxClaimInfo(h.ctx, msg.MsgHash, h.db),
+			ClaimInfo: GetCrossTxClaimInfo(ctx, msg.MsgHash, h.db),
 		}
-		updateCrossTxHash(h.ctx, msg.MsgHash, txHistory, h.db)
+		updateCrossTxHash(ctx, msg.MsgHash, txHistory, h.db)
 		txHistories = append(txHistories, txHistory)
 	}
 	return txHistories, total, nil
 }
 
 // GetTxsByHashes get tx infos under given tx hashes
-func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, error) {
+func (h *historyBackend) GetTxsByHashes(ctx context.Context, hashes []string) ([]*TxHistoryInfo, error) {
 	txHistories := make([]*TxHistoryInfo, 0)
 	CrossMsgOrm := orm.NewCrossMsg(h.db)
 	for _, hash := range hashes {
-		l1result, err := CrossMsgOrm.GetL1CrossMsgByHash(h.ctx, common.HexToHash(hash))
+		l1result, err := CrossMsgOrm.GetL1CrossMsgByHash(ctx, common.HexToHash(hash))
 		if err != nil {
 			return nil, err
 		}
@@ -216,11 +215,11 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 					Hash: "",
 				},
 			}
-			updateCrossTxHash(h.ctx, l1result.MsgHash, txHistory, h.db)
+			updateCrossTxHash(ctx, l1result.MsgHash, txHistory, h.db)
 			txHistories = append(txHistories, txHistory)
 			continue
 		}
-		l2result, err := CrossMsgOrm.GetL2CrossMsgByHash(h.ctx, common.HexToHash(hash))
+		l2result, err := CrossMsgOrm.GetL2CrossMsgByHash(ctx, common.HexToHash(hash))
 		if err != nil {
 			return nil, err
 		}
@@ -236,9 +235,9 @@ func (h *historyBackend) GetTxsByHashes(hashes []string) ([]*TxHistoryInfo, erro
 				FinalizeTx: &Finalized{
 					Hash: "",
 				},
-				ClaimInfo: GetCrossTxClaimInfo(h.ctx, l2result.MsgHash, h.db),
+				ClaimInfo: GetCrossTxClaimInfo(ctx, l2result.MsgHash, h.db),
 			}
-			updateCrossTxHash(h.ctx, l2result.MsgHash, txHistory, h.db)
+			updateCrossTxHash(ctx, l2result.MsgHash, txHistory, h.db)
 			txHistories = append(txHistories, txHistory)
 			continue
 		}

@@ -1,70 +1,24 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"os"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/iris-contrib/middleware/cors"
-	"github.com/kataras/iris/v12"
-	"github.com/kataras/iris/v12/mvc"
+	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli/v2"
-	"gorm.io/gorm"
 
 	"bridge-history-api/config"
-	"bridge-history-api/controller"
-	"bridge-history-api/service"
+	"bridge-history-api/internal/controller"
+	"bridge-history-api/internal/route"
 	cutils "bridge-history-api/utils"
 
 	"scroll-tech/common/database"
 )
 
 var (
-	app    *cli.App
-	db     *gorm.DB
-	subCtx context.Context
+	app *cli.App
 )
-
-func pong(ctx iris.Context) {
-	_, err := ctx.WriteString("pong")
-	if err != nil {
-		log.Error("failed to write pong", "err", err)
-	}
-}
-
-func setupQueryByAddressHandler(backendApp *mvc.Application) {
-	// Register Dependencies.
-	backendApp.Register(
-		subCtx,
-		db,
-		service.NewHistoryService,
-	)
-
-	// Register Controllers.
-	backendApp.Handle(new(controller.QueryAddressController))
-}
-
-func setupQueryClaimableHandler(backendApp *mvc.Application) {
-	// Register Dependencies.
-	backendApp.Register(
-		subCtx,
-		db,
-		service.NewHistoryService,
-	)
-
-	// Register Controllers.
-	backendApp.Handle(new(controller.QueryClaimableController))
-}
-
-func setupQueryByHashHandler(backendApp *mvc.Application) {
-	backendApp.Register(
-		subCtx,
-		db,
-		service.NewHistoryService,
-	)
-	backendApp.Handle(new(controller.QueryHashController))
-}
 
 func init() {
 	app = cli.NewApp()
@@ -81,11 +35,6 @@ func init() {
 }
 
 func action(ctx *cli.Context) error {
-	corsOptions := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
-		AllowCredentials: true,
-	})
 	// Load config file.
 	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
@@ -98,7 +47,7 @@ func action(ctx *cli.Context) error {
 		MaxOpenNum: cfg.DB.MaxOpenNum,
 		MaxIdleNum: cfg.DB.MaxIdleNum,
 	}
-	db, err = database.InitDB(dbCfg)
+	db, err := database.InitDB(dbCfg)
 	if err != nil {
 		log.Crit("failed to init db", "err", err)
 	}
@@ -107,20 +56,18 @@ func action(ctx *cli.Context) error {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
-	subCtx = ctx.Context
-	bridgeApp := iris.New()
-	bridgeApp.UseRouter(corsOptions)
-	bridgeApp.Get("/ping", pong).Describe("healthcheck")
+	// init Prover Stats API
+	port := ctx.String(cfg.Server.HostPort)
 
-	mvc.Configure(bridgeApp.Party("/api/txs"), setupQueryByAddressHandler)
-	mvc.Configure(bridgeApp.Party("/api/txsbyhashes"), setupQueryByHashHandler)
-	mvc.Configure(bridgeApp.Party("/api/claimable"), setupQueryClaimableHandler)
+	router := gin.Default()
+	controller.InitController(db)
+	route.Route(router, cfg)
 
-	// TODO: make debug mode configurable
-	err = bridgeApp.Listen(cfg.Server.HostPort, iris.WithLogLevel("debug"))
-	if err != nil {
-		log.Crit("can not start server", "err", err)
-	}
+	go func() {
+		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
+			log.Crit("run http server failure", "error", runServerErr)
+		}
+	}()
 
 	return nil
 }
