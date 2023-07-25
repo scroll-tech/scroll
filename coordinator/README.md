@@ -59,7 +59,7 @@ The coordinator behavior can be configured using [`config.json`](config.json). C
 
 ### cmd/app/app.go
 
-This file defines the main entry point for the coordinator application, setting up the necessary modules, and handling graceful shutdowns. Upon loading config.json file, the coordinator (`cmd/app/app.go`) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. `flags.go` is used to parse the flags. Then, it creates a new `proverManager` (`manager.go`) and starts listening.
+This file defines the main entry point for the coordinator application, setting up the necessary modules, and handling graceful shutdowns. Upon loading config.json file, the coordinator (`cmd/app/app.go`) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. `flags.go` is used to parse the flags, then starts listening.
 
 ### manager.go
 
