@@ -100,7 +100,9 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
 	totalBlocks := uint64(1)
 	totalL1CommitGas := firstBlock.EstimateL1CommitGas()
-	totalL1CommitGas += 100 // warm sload per block
+	totalL1CommitGas += 100     // warm sload per block
+	totalL1CommitGas += 16      // numBlocks field of chunk encoding in calldata
+	totalL1CommitGas += 16 * 60 // BlockContext in chunk
 
 	getKeccakGas := func(size uint64) uint64 {
 		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
@@ -156,8 +158,9 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		totalTxGasUsed += block.Header.GasUsed
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas += block.EstimateL1CommitGas()
-		totalL1CommitGas += 100 // warm sload per block
-		// adjust chunk hash gas cost: add one block
+		totalL1CommitGas += 100     // warm sload per block
+		totalL1CommitGas += 16 * 60 // BlockContext in chunk
+		// adjust chunk hash gas cost
 		totalL1CommitGas -= getKeccakGas(58*totalBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum))
 		totalL2TxNum += block.L2TxsNum()
 		totalBlocks++

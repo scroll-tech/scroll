@@ -152,7 +152,9 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	numBlocks := uint64(len(chunk.Blocks))
 
 	// Calculate additional gas costs
-	totalL1CommitGas += numBlocks * 100 // numBlocks times warm sload
+	totalL1CommitGas += 100 * numBlocks     // numBlocks times warm sload
+	totalL1CommitGas += 16                  // numBlocks field of chunk encoding in calldata
+	totalL1CommitGas += 16 * 60 * numBlocks // // BlockContext in chunk
 
 	getKeccakGas := func(size uint64) uint64 {
 		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)

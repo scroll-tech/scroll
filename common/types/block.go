@@ -104,11 +104,11 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	}
 
 	// sload
-	total += numL1Messages * 2100 // numL1Messages times cold sload in L1MessageQueue
+	total += 2100 * numL1Messages // numL1Messages times cold sload in L1MessageQueue
 
 	// staticcall
-	total += numL1Messages * 100 // numL1Messages times call to L1MessageQueue
-	total += numL1Messages * 100 // numL1Messages times warm address access to L1MessageQueue
+	total += 100 * numL1Messages // numL1Messages times call to L1MessageQueue
+	total += 100 * numL1Messages // numL1Messages times warm address access to L1MessageQueue
 
 	return total
 }
