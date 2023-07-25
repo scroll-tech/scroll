@@ -166,13 +166,9 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         IScrollERC721(_token).burn(_tokenId);
 
         // 2. Generate message passed to L1ERC721Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ERC721Gateway.finalizeWithdrawERC721.selector,
-            _l1Token,
-            _token,
-            msg.sender,
-            _to,
-            _tokenId
+        bytes memory _message = abi.encodeCall(
+            IL1ERC721Gateway.finalizeWithdrawERC721,
+            (_l1Token, _token, msg.sender, _to, _tokenId)
         );
 
         // 3. Send message to L2ScrollMessenger.
@@ -205,13 +201,9 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
         }
 
         // 2. Generate message passed to L1ERC721Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ERC721Gateway.finalizeBatchWithdrawERC721.selector,
-            _l1Token,
-            _token,
-            msg.sender,
-            _to,
-            _tokenIds
+        bytes memory _message = abi.encodeCall(
+            IL1ERC721Gateway.finalizeBatchWithdrawERC721,
+            (_l1Token, _token, msg.sender, _to, _tokenIds)
         );
 
         // 3. Send message to L2ScrollMessenger.
