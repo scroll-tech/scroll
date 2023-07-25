@@ -27,14 +27,6 @@ import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 /// @dev It should be a predeployed contract in layer 2 and should hold infinite amount
 /// of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.
 contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2ScrollMessenger {
-    /**********
-     * Events *
-     **********/
-
-    /// @notice Emitted when the maximum number of times each message can fail in L2 is updated.
-    /// @param maxFailedExecutionTimes The new maximum number of times each message can fail in L2.
-    event UpdateMaxFailedExecutionTimes(uint256 maxFailedExecutionTimes);
-
     /*************
      * Constants *
      *************/
@@ -135,13 +127,14 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
 
     /// @notice Update max failed execution times.
     /// @dev This function can only called by contract owner.
-    /// @param _maxFailedExecutionTimes The new max failed execution times.
-    function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external onlyOwner {
-        require(_maxFailedExecutionTimes > 0, "maxFailedExecutionTimes cannot be zero");
+    /// @param _newMaxFailedExecutionTimes The new max failed execution times.
+    function updateMaxFailedExecutionTimes(uint256 _newMaxFailedExecutionTimes) external onlyOwner {
+        require(_newMaxFailedExecutionTimes > 0, "maxFailedExecutionTimes cannot be zero");
 
-        maxFailedExecutionTimes = _maxFailedExecutionTimes;
+        uint256 _oldMaxFailedExecutionTimes = maxFailedExecutionTimes;
+        maxFailedExecutionTimes = _newMaxFailedExecutionTimes;
 
-        emit UpdateMaxFailedExecutionTimes(_maxFailedExecutionTimes);
+        emit UpdateMaxFailedExecutionTimes(_oldMaxFailedExecutionTimes, _newMaxFailedExecutionTimes);
     }
 
     /**********************

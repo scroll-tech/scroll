@@ -11,15 +11,18 @@ interface IL2GatewayRouter is IL2ETHGateway, IL2ERC20Gateway {
      **********/
 
     /// @notice Emitted when the address of ETH Gateway is updated.
-    /// @param ethGateway The address of new ETH Gateway.
-    event SetETHGateway(address indexed ethGateway);
+    /// @param oldETHGateway The address of the old ETH Gateway.
+    /// @param newEthGateway The address of the new ETH Gateway.
+    event SetETHGateway(address indexed oldETHGateway, address indexed newEthGateway);
 
     /// @notice Emitted when the address of default ERC20 Gateway is updated.
-    /// @param defaultERC20Gateway The address of new default ERC20 Gateway.
-    event SetDefaultERC20Gateway(address indexed defaultERC20Gateway);
+    /// @param oldDefaultERC20Gateway The address of the old default ERC20 Gateway.
+    /// @param newDefaultERC20Gateway The address of the new default ERC20 Gateway.
+    event SetDefaultERC20Gateway(address indexed oldDefaultERC20Gateway, address indexed newDefaultERC20Gateway);
 
     /// @notice Emitted when the `gateway` for `token` is updated.
     /// @param token The address of token updated.
-    /// @param gateway The corresponding address of gateway updated.
-    event SetERC20Gateway(address indexed token, address indexed gateway);
+    /// @param oldGateway The corresponding address of the old gateway.
+    /// @param newGateway The corresponding address of the new gateway.
+    event SetERC20Gateway(address indexed token, address indexed oldGateway, address indexed newGateway);
 }

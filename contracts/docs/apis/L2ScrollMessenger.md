@@ -316,7 +316,7 @@ Update fee vault contract.
 ### updateMaxFailedExecutionTimes
 
 ```solidity
-function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external nonpayable
+function updateMaxFailedExecutionTimes(uint256 _newMaxFailedExecutionTimes) external nonpayable
 ```
 
 Update max failed execution times.
@@ -327,7 +327,7 @@ Update max failed execution times.
 
 | Name | Type | Description |
 |---|---|---|
-| _maxFailedExecutionTimes | uint256 | The new max failed execution times. |
+| _newMaxFailedExecutionTimes | uint256 | The new max failed execution times. |
 
 ### xDomainMessageSender
 
@@ -488,7 +488,7 @@ Emitted when owner updates fee vault contract.
 ### UpdateMaxFailedExecutionTimes
 
 ```solidity
-event UpdateMaxFailedExecutionTimes(uint256 maxFailedExecutionTimes)
+event UpdateMaxFailedExecutionTimes(uint256 oldMaxFailedExecutionTimes, uint256 newMaxFailedExecutionTimes)
 ```
 
 Emitted when the maximum number of times each message can fail in L2 is updated.
@@ -499,7 +499,8 @@ Emitted when the maximum number of times each message can fail in L2 is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| maxFailedExecutionTimes  | uint256 | The new maximum number of times each message can fail in L2. |
+| oldMaxFailedExecutionTimes  | uint256 | undefined |
+| newMaxFailedExecutionTimes  | uint256 | undefined |
 
 
 

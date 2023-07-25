@@ -308,11 +308,12 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
     /// @notice Update max replay times.
     /// @dev This function can only called by contract owner.
-    /// @param _maxReplayTimes The new max replay times.
-    function updateMaxReplayTimes(uint256 _maxReplayTimes) external onlyOwner {
-        maxReplayTimes = _maxReplayTimes;
+    /// @param _newMaxReplayTimes The new max replay times.
+    function updateMaxReplayTimes(uint256 _newMaxReplayTimes) external onlyOwner {
+        uint256 _oldMaxReplayTimes = maxReplayTimes;
+        maxReplayTimes = _newMaxReplayTimes;
 
-        emit UpdateMaxReplayTimes(_maxReplayTimes);
+        emit UpdateMaxReplayTimes(_oldMaxReplayTimes, _newMaxReplayTimes);
     }
 
     /**********************

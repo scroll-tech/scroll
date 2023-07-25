@@ -33,7 +33,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @notice Emitted when the address of rollup verifier is updated.
     /// @param oldVerifier The address of old rollup verifier.
     /// @param newVerifier The address of new rollup verifier.
-    event UpdateVerifier(address oldVerifier, address newVerifier);
+    event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
 
     /// @notice Emitted when the value of `maxNumL2TxInChunk` is updated.
     /// @param oldMaxNumL2TxInChunk The old value of `maxNumL2TxInChunk`.

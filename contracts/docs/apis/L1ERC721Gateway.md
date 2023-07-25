@@ -313,8 +313,8 @@ Update layer 2 to layer 2 token mapping.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token | address | The address of corresponding ERC721 token in layer 2. |
-| _l2Token | address | undefined |
+| _l1Token | address | The address of ERC721 token in layer 1. |
+| _l2Token | address | The address of corresponding ERC721 token in layer 2. |
 
 
 
@@ -472,7 +472,7 @@ Emitted when some ERC721 token is refunded.
 ### UpdateTokenMapping
 
 ```solidity
-event UpdateTokenMapping(address _l1Token, address _l2Token)
+event UpdateTokenMapping(address indexed l1Token, address indexed oldL2Token, address indexed newL2Token)
 ```
 
 Emitted when token mapping for ERC721 token is updated.
@@ -483,8 +483,9 @@ Emitted when token mapping for ERC721 token is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token  | address | The address of corresponding ERC721 token in layer 2. |
-| _l2Token  | address | undefined |
+| l1Token `indexed` | address | The address of ERC721 token in layer 1. |
+| oldL2Token `indexed` | address | The address of the old corresponding ERC721 token in layer 2. |
+| newL2Token `indexed` | address | The address of the new corresponding ERC721 token in layer 2. |
 
 
 
