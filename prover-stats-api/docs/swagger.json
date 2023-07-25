@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "description": "This is an API server for Provers.",
-        "title": "Zero-knowledge Prover Stats API",
+        "title": "Scroll Prover Stats API",
         "contact": {
             "name": "Prover Stats API Support",
             "email": "Be Pending"

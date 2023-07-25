@@ -11,7 +11,7 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "contact": {
-            "name": "Core Stats API Support",
+            "name": "Prover Stats API Support",
             "email": "Be Pending"
         },
         "license": {
@@ -250,7 +250,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8990",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
-	Title:            "Zero-knowledge Core Stats API",
+	Title:            "Scroll Prover Stats API",
 	Description:      "This is an API server for Provers.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
