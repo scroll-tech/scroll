@@ -143,14 +143,9 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
 
         // 3. Generate message passed to L1USDCGateway.
         address _l1USDC = l1USDC;
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ERC20Gateway.finalizeWithdrawERC20.selector,
-            _l1USDC,
-            _token,
-            _from,
-            _to,
-            _amount,
-            _data
+        bytes memory _message = abi.encodeCall(
+            IL1ERC20Gateway.finalizeWithdrawERC20,
+            (_l1USDC, _token, _from, _to, _amount, _data)
         );
 
         // 4. Send message to L1ScrollMessenger.

@@ -123,14 +123,9 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
 
         // 3. Generate message passed to L2StandardERC20Gateway.
         address _l1WETH = l1WETH;
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ERC20Gateway.finalizeWithdrawERC20.selector,
-            _l1WETH,
-            _token,
-            _from,
-            _to,
-            _amount,
-            _data
+        bytes memory _message = abi.encodeCall(
+            IL1ERC20Gateway.finalizeWithdrawERC20,
+            (_l1WETH, _token, _from, _to, _amount, _data)
         );
 
         // 4. Send message to L1ScrollMessenger.

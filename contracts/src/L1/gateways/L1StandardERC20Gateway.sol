@@ -150,14 +150,9 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         } else {
             _l2Data = abi.encode(false, _data);
         }
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC20Gateway.finalizeDepositERC20.selector,
-            _token,
-            _l2Token,
-            _from,
-            _to,
-            _amount,
-            _l2Data
+        bytes memory _message = abi.encodeCall(
+            IL2ERC20Gateway.finalizeDepositERC20,
+            (_token, _l2Token, _from, _to, _amount, _l2Data)
         );
 
         // 3. Send message to L1ScrollMessenger.
