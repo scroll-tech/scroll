@@ -21,11 +21,6 @@ contract L2MessageQueue is AppendOnlyMerkleTree, OwnableBase {
     /// @param messageHash The hash of the corresponding message.
     event AppendMessage(uint256 index, bytes32 messageHash);
 
-    /// @notice Emits each time the owner updates the address of `messenger`.
-    /// @param oldMessenger The address of old messenger.
-    /// @param newMessenger The address of new messenger.
-    event UpdateMessenger(address indexed oldMessenger, address indexed newMessenger);
-
     /*************
      * Variables *
      *************/
@@ -41,8 +36,15 @@ contract L2MessageQueue is AppendOnlyMerkleTree, OwnableBase {
         _transferOwnership(_owner);
     }
 
-    function initialize() external {
+    /// @notice Initialize the state of `L2MessageQueue`
+    /// @dev You are not allowed to initialize when there are some messages appended.
+    /// @param _messenger The address of messenger to update.
+    function initialize(address _messenger) external onlyOwner {
+        require(nextMessageIndex == 0, "cannot initialize");
+
         _initializeMerkleTree();
+
+        messenger = _messenger;
     }
 
     /*****************************
@@ -60,21 +62,5 @@ contract L2MessageQueue is AppendOnlyMerkleTree, OwnableBase {
         emit AppendMessage(_currentNonce, _messageHash);
 
         return _currentRoot;
-    }
-
-    /************************
-     * Restricted Functions *
-     ************************/
-
-    /// @notice Update the address of messenger.
-    /// @dev You are not allowed to update messenger when there are some messages appended.
-    /// @param _newMessenger The address of messenger to update.
-    function updateMessenger(address _newMessenger) external onlyOwner {
-        require(nextMessageIndex == 0, "cannot update messenger");
-
-        address _oldMessenger = messenger;
-        messenger = _newMessenger;
-
-        emit UpdateMessenger(_oldMessenger, _newMessenger);
     }
 }

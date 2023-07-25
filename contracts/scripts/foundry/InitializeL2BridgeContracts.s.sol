@@ -50,8 +50,7 @@ contract InitializeL2BridgeContracts is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // initialize L2MessageQueue
-        L2MessageQueue(L2_MESSAGE_QUEUE_ADDR).initialize();
-        L2MessageQueue(L2_MESSAGE_QUEUE_ADDR).updateMessenger(L2_SCROLL_MESSENGER_PROXY_ADDR);
+        L2MessageQueue(L2_MESSAGE_QUEUE_ADDR).initialize(L2_SCROLL_MESSENGER_PROXY_ADDR);
 
         // initialize L2TxFeeVault
         L2TxFeeVault(payable(L2_TX_FEE_VAULT_ADDR)).updateMessenger(L2_SCROLL_MESSENGER_PROXY_ADDR);
