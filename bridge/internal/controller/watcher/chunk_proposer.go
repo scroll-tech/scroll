@@ -154,12 +154,12 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 
 	for i, block := range blocks[1:] {
 		totalTxGasUsed += block.Header.GasUsed
-		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas += block.EstimateL1CommitGas()
 		totalL1CommitGas += 100 // warm sload per block
 		// adjust chunk hash gas cost: add one block
 		totalL1CommitGas -= getKeccakGas(58*totalBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum))
+		totalL2TxNum += block.L2TxsNum()
 		totalBlocks++
 		totalL1MessagesPoppedInChunk += block.NumL1Messages(totalL1MessagesPoppedBefore + totalL1MessagesPoppedInChunk)
 		totalL1CommitGas += getKeccakGas(58*totalBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum))
