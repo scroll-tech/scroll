@@ -10,9 +10,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
-const nonZeroByteGas uint64 = 16
-const zeroByteGas uint64 = 4
-
 // WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
@@ -101,26 +98,9 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 			S:        txData.S.ToInt(),
 		})
 		rlpTxData, _ := tx.MarshalBinary()
-
-		// approximate calldata gas cost
-		for _, b := range rlpTxData {
-			if b == 0 {
-				total += zeroByteGas
-			} else {
-				total += nonZeroByteGas
-			}
-		}
-
-		var txLen [4]byte
-		binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
-
-		for _, b := range txLen {
-			if b == 0 {
-				total += zeroByteGas
-			} else {
-				total += nonZeroByteGas
-			}
-		}
+		// an over-estimate: treat each byte as non-zero
+		total += 16 * uint64(len(rlpTxData))
+		total += 16 * 4 // size of a uint32 field
 	}
 
 	// sload
