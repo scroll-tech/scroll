@@ -2,11 +2,12 @@ package message
 
 import (
 	"encoding/hex"
+	"testing"
+	"time"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestAuthMessageSignAndVerify(t *testing.T) {
