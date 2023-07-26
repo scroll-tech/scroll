@@ -11,8 +11,7 @@ contract L2MessageQueueTest is DSTestPlus {
 
     function setUp() public {
         queue = new L2MessageQueue(address(this));
-        queue.initialize();
-        queue.updateMessenger(address(this));
+        queue.initialize(address(this));
     }
 
     function testConstructor() external {

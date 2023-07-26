@@ -25,7 +25,7 @@ type Config struct {
 type ProverCoreConfig struct {
 	ParamsPath string            `json:"params_path"`
 	SeedPath   string            `json:"seed_path"`
-	ProofType  message.ProofType `json:"prove_type,omitempty"` // 0: basic prover (default type), 1: aggregator prover
+	ProofType  message.ProofType `json:"proof_type,omitempty"` // 0: chunk proof (default type), 1: batch proof
 	DumpDir    string            `json:"dump_dir,omitempty"`
 }
 

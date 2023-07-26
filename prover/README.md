@@ -88,7 +88,7 @@ This file contains the logic of the `prover`, including starting it, registering
 Refer to the functions in `stack`, `prover` and `client` modules for more detail.
 
 
-## `prover/prover.go`
+## `core/prover.go`
 
 This file focuses on the go implementation of the `Prover` struct which is responsible for generating proofs from tasks provided by the coordinator. It handles interactions with the rust-prover library via FFI. Refer to `create_agg_proof_multi` in [`../common/libzkp/impl/src/prove.rs`](../common/libzkp/impl/src/prove.rs) for more detail.
 
@@ -99,4 +99,4 @@ This file is responsible for managing task storage and retrieval for the prover.
 
 ## `prover_metrics.go`
 
-This file is called from [`../coordinator/prover_metrics.go`](../coordinator/prover_metrics.go) and is used to collect metrics from the prover.
+This file is called from [`../coordinator/internal/logic/provermanager/metrics.go`](../coordinator/internal/logic/provermanager/metrics.go) and is used to collect metrics from the prover.
