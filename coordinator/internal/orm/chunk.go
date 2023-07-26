@@ -27,7 +27,12 @@ type Chunk struct {
 	EndBlockHash                 string `json:"end_block_hash" gorm:"column:end_block_hash"`
 	StartBlockTime               uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
-	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
+	TotalL1MessagesPoppedInChunk uint32 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
+	ParentChunkHash              string `json:"parent_chunk_hash" gorm:"column:parent_chunk_hash"`
+	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
+	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
+	WithdrawRoot                 string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	ParentChunkWithdrawRoot      string `json:"parent_chunk_withdraw_root" gorm:"column:parent_chunk_withdraw_root"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -195,7 +200,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk) (*Chunk, er
 	// if parentChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
 	if parentChunk != nil {
 		chunkIndex = parentChunk.Index + 1
-		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
+		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
 	}
 
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
@@ -229,7 +234,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk) (*Chunk, er
 		TotalL1CommitGas:             totalL1CommitGas,
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
-		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),
+		TotalL1MessagesPoppedInChunk: uint32(chunk.NumL1Messages(totalL1MessagePoppedBefore)),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 

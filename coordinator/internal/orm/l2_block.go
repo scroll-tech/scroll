@@ -19,15 +19,16 @@ type L2Block struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	// block
-	Number           uint64 `json:"number" gorm:"number"`
-	Hash             string `json:"hash" gorm:"hash"`
-	ParentHash       string `json:"parent_hash" gorm:"parent_hash"`
-	Header           string `json:"header" gorm:"header"`
-	Transactions     string `json:"transactions" gorm:"transactions"`
-	WithdrawTrieRoot string `json:"withdraw_trie_root" gorm:"withdraw_trie_root"`
-	TxNum            uint32 `json:"tx_num" gorm:"tx_num"`
-	GasUsed          uint64 `json:"gas_used" gorm:"gas_used"`
-	BlockTimestamp   uint64 `json:"block_timestamp" gorm:"block_timestamp"`
+	Number         uint64 `json:"number" gorm:"number"`
+	Hash           string `json:"hash" gorm:"hash"`
+	ParentHash     string `json:"parent_hash" gorm:"parent_hash"`
+	Header         string `json:"header" gorm:"header"`
+	Transactions   string `json:"transactions" gorm:"transactions"`
+	WithdrawRoot   string `json:"withdraw_root" gorm:"withdraw_root"`
+	StateRoot      string `json:"state_root" gorm:"state_root"`
+	TxNum          uint32 `json:"tx_num" gorm:"tx_num"`
+	GasUsed        uint64 `json:"gas_used" gorm:"gas_used"`
+	BlockTimestamp uint64 `json:"block_timestamp" gorm:"block_timestamp"`
 
 	// chunk
 	ChunkHash string `json:"chunk_hash" gorm:"chunk_hash;default:NULL"`
@@ -53,7 +54,7 @@ func (*L2Block) TableName() string {
 func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) ([]*types.WrappedBlock, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_trie_root")
+	db = db.Select("header, transactions, withdraw_root")
 	db = db.Where("chunk_hash = ?", chunkHash)
 	db = db.Order("number ASC")
 
@@ -75,7 +76,7 @@ func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) 
 			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 		}
 
-		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
+		wrappedBlock.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 
@@ -99,15 +100,15 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 		}
 
 		l2Block := L2Block{
-			Number:           block.Header.Number.Uint64(),
-			Hash:             block.Header.Hash().String(),
-			ParentHash:       block.Header.ParentHash.String(),
-			Transactions:     string(txs),
-			WithdrawTrieRoot: block.WithdrawTrieRoot.Hex(),
-			TxNum:            uint32(len(block.Transactions)),
-			GasUsed:          block.Header.GasUsed,
-			BlockTimestamp:   block.Header.Time,
-			Header:           string(header),
+			Number:         block.Header.Number.Uint64(),
+			Hash:           block.Header.Hash().String(),
+			ParentHash:     block.Header.ParentHash.String(),
+			Transactions:   string(txs),
+			WithdrawRoot:   block.WithdrawRoot.Hex(),
+			TxNum:          uint32(len(block.Transactions)),
+			GasUsed:        block.Header.GasUsed,
+			BlockTimestamp: block.Header.Time,
+			Header:         string(header),
 		}
 		l2Blocks = append(l2Blocks, l2Block)
 	}

@@ -13,6 +13,11 @@ create table chunk
     total_l1_messages_popped_before   BIGINT          NOT NULL,
     total_l1_messages_popped_in_chunk INTEGER         NOT NULL,
     start_block_time                  BIGINT          NOT NULL,
+    parent_chunk_hash                 VARCHAR         NOT NULL,
+    state_root                        VARCHAR         NOT NULL,
+    parent_chunk_state_root           VARCHAR         NOT NULL,
+    withdraw_root                     VARCHAR         NOT NULL,
+    parent_chunk_withdraw_root        VARCHAR         NOT NULL,
 
 -- proof
     proving_status                    SMALLINT        NOT NULL DEFAULT 1,
@@ -38,13 +43,13 @@ comment
 on column chunk.proving_status is 'undefined, unassigned, assigned, proved, verified, failed';
 
 create unique index chunk_index_uindex
-on chunk (index);
+on chunk (index) where deleted_at IS NULL;
 
 create unique index chunk_hash_uindex
-on chunk (hash);
+on chunk (hash) where deleted_at IS NULL;
 
 create index batch_hash_index
-on chunk (batch_hash);
+on chunk (batch_hash) where deleted_at IS NULL;
 
 -- +goose StatementEnd
 

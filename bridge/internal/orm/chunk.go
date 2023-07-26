@@ -26,6 +26,11 @@ type Chunk struct {
 	StartBlockTime               uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
 	TotalL1MessagesPoppedInChunk uint32 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
+	ParentChunkHash              string `json:"parent_chunk_hash" gorm:"column:parent_chunk_hash"`
+	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
+	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
+	WithdrawRoot                 string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	ParentChunkWithdrawRoot      string `json:"parent_chunk_withdraw_root" gorm:"column:parent_chunk_withdraw_root"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -118,6 +123,9 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 
 	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
+	var parentChunkHash string
+	var parentChunkStateRoot string
+	var parentChunkWithdrawRoot string
 	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get latest chunk", "err", err)
@@ -130,6 +138,9 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	if parentChunk != nil {
 		chunkIndex = parentChunk.Index + 1
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
+		parentChunkHash = parentChunk.Hash
+		parentChunkStateRoot = parentChunk.StateRoot
+		parentChunkWithdrawRoot = parentChunk.WithdrawRoot
 	}
 
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
@@ -164,6 +175,11 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
 		TotalL1MessagesPoppedInChunk: uint32(chunk.NumL1Messages(totalL1MessagePoppedBefore)),
+		ParentChunkHash:              parentChunkHash,
+		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
+		ParentChunkStateRoot:         parentChunkStateRoot,
+		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
+		ParentChunkWithdrawRoot:      parentChunkWithdrawRoot,
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 

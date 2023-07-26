@@ -171,9 +171,9 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	chunk := &types.Chunk{
 		Blocks: []*types.WrappedBlock{{
-			Header:           genesis,
-			Transactions:     nil,
-			WithdrawTrieRoot: common.Hash{},
+			Header:       genesis,
+			Transactions: nil,
+			WithdrawRoot: common.Hash{},
 		}},
 	}
 
