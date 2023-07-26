@@ -29,7 +29,7 @@ type ProverManagerConfig struct {
 	Verifier *VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in minutes).
 	CollectionTime int `json:"collection_time"`
-	// Token time to live (in Hours)
+	// Token time to live (in Seconds)
 	TokenTimeToLive int `json:"token_time_to_live"`
 	// Max number of workers in verifier worker pool
 	MaxVerifierWorkers int `json:"max_verifier_workers,omitempty"`

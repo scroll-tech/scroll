@@ -25,7 +25,7 @@ type ProverController struct {
 
 // NewProverController create a prover controller
 func NewProverController(cfg *config.ProverManagerConfig, db *gorm.DB) *ProverController {
-	tokenExpire := time.Duration(cfg.TokenTimeToLive) * time.Hour
+	tokenExpire := time.Duration(cfg.TokenTimeToLive) * time.Second
 	return &ProverController{
 		proofReceiver: proof.NewZKProofReceiver(cfg, db),
 		taskWorker:    proof.NewTaskWorker(),
