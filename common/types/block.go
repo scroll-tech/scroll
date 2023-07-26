@@ -75,7 +75,7 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 	return size
 }
 
-// EstimateL1CommitGas calculates the calldata gas in l1 commit approximately.
+// EstimateL1CommitGas calculates the total L1 commit gas for this block approximately.
 func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	var total uint64
 	var numL1Messages uint64

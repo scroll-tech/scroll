@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -89,31 +88,12 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, nil
 	}
 
-	parentChunk, err := p.chunkOrm.GetLatestChunk(p.ctx)
-	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
-		return nil, err
-	}
-
-	firstBlock := blocks[0]
+	chunk := &types.Chunk{Blocks: blocks[:1]}
+	firstBlock := chunk.Blocks[0]
 	totalTxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := firstBlock.L2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
-	totalBlocks := uint64(1)
-	totalL1CommitGas := firstBlock.EstimateL1CommitGas()
-	totalL1CommitGas += 100     // warm sload per block
-	totalL1CommitGas += 16      // numBlocks field of chunk encoding in calldata
-	totalL1CommitGas += 16 * 60 // BlockContext in chunk
-
-	getKeccakGas := func(size uint64) uint64 {
-		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
-	}
-
-	var totalL1MessagesPoppedBefore uint64
-	if parentChunk != nil {
-		totalL1MessagesPoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
-	}
-	totalL1MessagesPoppedInChunk := firstBlock.NumL1Messages(totalL1MessagesPoppedBefore)
-	totalL1CommitGas += getKeccakGas(58*totalBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum))
+	totalL1CommitGas := chunk.EstimateL1CommitGas()
 
 	// Check if the first block breaks hard limits.
 	// If so, it indicates there are bugs in sequencer, manual fix is needed.
@@ -154,23 +134,17 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		)
 	}
 
-	for i, block := range blocks[1:] {
+	for _, block := range blocks[1:] {
+		chunk.Blocks = append(chunk.Blocks, block)
 		totalTxGasUsed += block.Header.GasUsed
-		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
-		totalL1CommitGas += block.EstimateL1CommitGas()
-		totalL1CommitGas += 100     // warm sload per block
-		totalL1CommitGas += 16 * 60 // BlockContext in chunk
-		// adjust chunk hash gas cost
-		totalL1CommitGas -= getKeccakGas(58*totalBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum))
 		totalL2TxNum += block.L2TxsNum()
-		totalBlocks++
-		totalL1MessagesPoppedInChunk += block.NumL1Messages(totalL1MessagesPoppedBefore + totalL1MessagesPoppedInChunk)
-		totalL1CommitGas += getKeccakGas(58*totalBlocks + 32*(totalL1MessagesPoppedInChunk+totalL2TxNum))
+		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
+		totalL1CommitGas = chunk.EstimateL1CommitGas()
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
 			totalL1CommitGas > p.maxL1CommitGasPerChunk {
-			blocks = blocks[:i+1]
+			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1] // remove the last block from chunk
 			break
 		}
 	}
@@ -193,5 +167,5 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		)
 		return nil, nil
 	}
-	return &types.Chunk{Blocks: blocks}, nil
+	return chunk, nil
 }
