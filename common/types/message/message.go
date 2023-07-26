@@ -2,10 +2,10 @@ package message
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"github.com/golang-jwt/jwt"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -54,6 +54,8 @@ type AuthMsg struct {
 	Identity *Identity `json:"message"`
 	// Prover signature
 	Signature string `json:"signature"`
+	// Jwt claims
+	JwtClaims jwt.StandardClaims `json:"jwt_claims,omitempty"`
 }
 
 // Identity contains all the fields to be signed by the prover.
@@ -70,12 +72,11 @@ type Identity struct {
 }
 
 // GenerateToken generates token
-func GenerateToken() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
+func GenerateToken(tokenExpire time.Duration, secret []byte) (string, error) {
+	var auth AuthMsg
+	auth.JwtClaims.ExpiresAt = time.Now().Add(tokenExpire).Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.JwtClaims)
+	return token.SignedString(secret)
 }
 
 // SignWithKey auth message with private key and set public key in auth message's Identity

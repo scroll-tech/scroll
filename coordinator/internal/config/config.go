@@ -33,6 +33,8 @@ type ProverManagerConfig struct {
 	TokenTimeToLive int `json:"token_time_to_live"`
 	// Max number of workers in verifier worker pool
 	MaxVerifierWorkers int `json:"max_verifier_workers,omitempty"`
+	// jwt secret
+	JwtSecret string `json:"jwt_secret"`
 }
 
 // L2Config loads l2geth configuration items.

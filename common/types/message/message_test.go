@@ -3,6 +3,7 @@ package message
 import (
 	"encoding/hex"
 	"testing"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -39,7 +40,7 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 }
 
 func TestGenerateToken(t *testing.T) {
-	token, err := GenerateToken()
+	token, err := GenerateToken(time.Duration(1), []byte("secret"))
 	assert.NoError(t, err)
 	assert.Equal(t, 32, len(token))
 }

@@ -63,10 +63,7 @@ func TestProver_RequestToken(t *testing.T) {
 
 	convey.Convey("token has already been distributed", t, func() {
 		tmpAuthMsg, _ := geneAuthMsg(t)
-		key, err := tmpAuthMsg.PublicKey()
-		assert.NoError(t, err)
 		tokenCacheStored := "c393987bb791dd285dd3d8ffbd770ed1"
-		proverController.tokenCache.Set(key, tokenCacheStored, time.Hour)
 		token, err := proverController.RequestToken(tmpAuthMsg)
 		assert.NoError(t, err)
 		assert.Equal(t, token, tokenCacheStored)
