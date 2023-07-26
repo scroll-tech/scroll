@@ -4,8 +4,8 @@ go 1.19
 
 require (
 	github.com/agiledragon/gomonkey/v2 v2.9.0
+	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.8.3
@@ -16,7 +16,6 @@ require (
 
 require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/golang-jwt/jwt/v5 v5.0.0 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
