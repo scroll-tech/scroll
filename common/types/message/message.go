@@ -146,6 +146,9 @@ type ProofMsg struct {
 
 	// Prover public key
 	publicKey string
+
+	// jwt
+	Token string `json:"token"`
 }
 
 // Sign signs the ProofMsg.

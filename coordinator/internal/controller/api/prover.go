@@ -27,7 +27,7 @@ type ProverController struct {
 
 // NewProverController create a prover controller
 func NewProverController(cfg *config.ProverManagerConfig, db *gorm.DB) *ProverController {
-	tokenExpire := time.Duration(cfg.TokenTimeToLive) * time.Second
+	tokenExpire := time.Duration(cfg.TokenTimeToLive) * time.Hour
 	return &ProverController{
 		proofReceiver: proof.NewZKProofReceiver(cfg, db),
 		taskWorker:    proof.NewTaskWorker(),
@@ -51,9 +51,9 @@ func (r *ProverController) RequestToken(authMsg *message.AuthMsg) (string, error
 	return token, nil
 }
 
-// VerifyToken verifies pubkey for token and expiration time
-func (r *ProverController) verifyToken(authMsg *message.AuthMsg) (bool, error) {
-	token, err := jwt.Parse(authMsg.Identity.Token, func(token *jwt.Token) (interface{}, error) {
+// VerifyToken verifies JWT for token and expiration time
+func (r *ProverController) verifyToken(tokenStr string) (bool, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
@@ -74,8 +74,8 @@ func (r *ProverController) Register(ctx context.Context, authMsg *message.AuthMs
 		}
 		return nil, errors.New("signature verification failed")
 	}
-	// Lock here to avoid malicious prover message replay before cleanup of token
-	if ok, err := r.verifyToken(authMsg); !ok {
+	// Verify the jwt
+	if ok, err := r.verifyToken(authMsg.Identity.Token); !ok {
 		return nil, err
 	}
 
