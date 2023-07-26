@@ -127,14 +127,9 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
         (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
 
         // 2. Generate message passed to L2CustomERC20Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC20Gateway.finalizeDepositERC20.selector,
-            _token,
-            _l2Token,
-            _from,
-            _to,
-            _amount,
-            _data
+        bytes memory _message = abi.encodeCall(
+            IL2ERC20Gateway.finalizeDepositERC20,
+            (_token, _l2Token, _from, _to, _amount, _data)
         );
 
         // 3. Send message to L1ScrollMessenger.

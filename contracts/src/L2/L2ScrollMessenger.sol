@@ -15,6 +15,8 @@ import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 
+// solhint-disable reason-string
+
 /// @title L2ScrollMessenger
 /// @notice The `L2ScrollMessenger` contract can:
 ///
@@ -76,6 +78,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     /*****************************
      * Public Mutating Functions *
      *****************************/
+
     /// @inheritdoc IScrollMessenger
     function sendMessage(
         address _to,
@@ -134,6 +137,8 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     /// @dev This function can only called by contract owner.
     /// @param _maxFailedExecutionTimes The new max failed execution times.
     function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external onlyOwner {
+        require(_maxFailedExecutionTimes > 0, "maxFailedExecutionTimes cannot be zero");
+
         maxFailedExecutionTimes = _maxFailedExecutionTimes;
 
         emit UpdateMaxFailedExecutionTimes(_maxFailedExecutionTimes);

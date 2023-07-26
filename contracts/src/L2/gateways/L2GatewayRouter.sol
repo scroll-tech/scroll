@@ -45,6 +45,7 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         // it can be zero during initialization
         if (_defaultERC20Gateway != address(0)) {
             defaultERC20Gateway = _defaultERC20Gateway;
+            emit SetDefaultERC20Gateway(_defaultERC20Gateway);
         }
 
         // it can be zero during initialization

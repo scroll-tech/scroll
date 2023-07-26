@@ -173,14 +173,9 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         IScrollERC1155(_token).burn(msg.sender, _tokenId, _amount);
 
         // 2. Generate message passed to L1ERC1155Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ERC1155Gateway.finalizeWithdrawERC1155.selector,
-            _l1Token,
-            _token,
-            msg.sender,
-            _to,
-            _tokenId,
-            _amount
+        bytes memory _message = abi.encodeCall(
+            IL1ERC1155Gateway.finalizeWithdrawERC1155,
+            (_l1Token, _token, msg.sender, _to, _tokenId, _amount)
         );
 
         // 3. Send message to L2ScrollMessenger.
@@ -216,14 +211,9 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
         IScrollERC1155(_token).batchBurn(msg.sender, _tokenIds, _amounts);
 
         // 2. Generate message passed to L1ERC1155Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ERC1155Gateway.finalizeBatchWithdrawERC1155.selector,
-            _l1Token,
-            _token,
-            msg.sender,
-            _to,
-            _tokenIds,
-            _amounts
+        bytes memory _message = abi.encodeCall(
+            IL1ERC1155Gateway.finalizeBatchWithdrawERC1155,
+            (_l1Token, _token, msg.sender, _to, _tokenIds, _amounts)
         );
 
         // 3. Send message to L2ScrollMessenger.

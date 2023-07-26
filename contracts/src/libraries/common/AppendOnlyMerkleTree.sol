@@ -29,6 +29,8 @@ abstract contract AppendOnlyMerkleTree {
     }
 
     function _appendMessageHash(bytes32 _messageHash) internal returns (uint256, bytes32) {
+        require(zeroHashes[1] != bytes32(0), "call before initialization");
+
         uint256 _currentMessageIndex = nextMessageIndex;
         bytes32 _hash = _messageHash;
         uint256 _height = 0;
