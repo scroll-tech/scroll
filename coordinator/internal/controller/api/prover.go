@@ -3,10 +3,7 @@ package api
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
@@ -54,16 +51,7 @@ func (r *ProverController) RequestToken(authMsg *message.AuthMsg) (string, error
 
 // VerifyToken verifies JWT for token and expiration time
 func (r *ProverController) verifyToken(tokenStr string) (bool, error) {
-	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return r.jwtSecret, nil
-	})
-	if err != nil {
-		return false, err
-	}
-	return token.Valid, nil
+	return message.VerifyToken(r.jwtSecret, tokenStr)
 }
 
 // Register register api for prover

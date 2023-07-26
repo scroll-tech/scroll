@@ -80,6 +80,20 @@ func GenerateToken(tokenExpire time.Duration, secret []byte) (string, error) {
 	return token.SignedString(secret)
 }
 
+// VerifyToken verifies token
+func VerifyToken(secret []byte, tokenStr string) (bool, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return secret, nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return token.Valid, nil
+}
+
 // SignWithKey auth message with private key and set public key in auth message's Identity
 func (a *AuthMsg) SignWithKey(priv *ecdsa.PrivateKey) error {
 	// Hash identity content

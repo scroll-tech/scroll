@@ -6,6 +6,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 func TestAuthMessageSignAndVerify(t *testing.T) {
@@ -35,6 +36,15 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 	assert.NoError(t, err)
 	pubkey := crypto.CompressPubkey(&privkey.PublicKey)
 	assert.Equal(t, pub, common.Bytes2Hex(pubkey))
+}
+
+func TestJwtToken(t *testing.T) {
+	var secret = []byte("secret")
+	token, err := GenerateToken(time.Duration(1), secret)
+	assert.NoError(t, err)
+	ok, err := VerifyToken(secret, token)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 }
 
 func TestIdentityHash(t *testing.T) {
