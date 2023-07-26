@@ -446,6 +446,75 @@ contract ScrollChainTest is DSTestPlus {
         }
     }
 
+    function testForceFinalizeBatch() public {
+        // caller not owner, revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("Ownable: caller is not the owner");
+        rollup.forceFinalizeBatch(new bytes(0), bytes32(0), bytes32(0), bytes32(0));
+        hevm.stopPrank();
+
+        rollup.updateSequencer(address(this), true);
+
+        bytes memory batchHeader0 = new bytes(89);
+
+        // import genesis batch
+        assembly {
+            mstore(add(batchHeader0, add(0x20, 25)), 1)
+        }
+        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)));
+        bytes32 batchHash0 = rollup.committedBatches(0);
+
+        bytes[] memory chunks = new bytes[](1);
+        bytes memory chunk0;
+
+        // commit one batch
+        chunk0 = new bytes(1 + 60);
+        chunk0[0] = bytes1(uint8(1)); // one block in this chunk
+        chunks[0] = chunk0;
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
+        assertGt(uint256(rollup.committedBatches(1)), 0);
+
+        bytes memory batchHeader1 = new bytes(89);
+        assembly {
+            mstore(add(batchHeader1, 0x20), 0) // version
+            mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex
+            mstore(add(batchHeader1, add(0x20, 9)), 0) // l1MessagePopped
+            mstore(add(batchHeader1, add(0x20, 17)), 0) // totalL1MessagePopped
+            mstore(add(batchHeader1, add(0x20, 25)), 0x246394445f4fe64ed5598554d55d1682d6fb3fe04bf58eb54ef81d1189fafb51) // dataHash
+            mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
+        }
+
+        // incorrect batch hash, revert
+        hevm.expectRevert("incorrect batch hash");
+        batchHeader1[0] = bytes1(uint8(1)); // change version to 1
+        rollup.forceFinalizeBatch(batchHeader1, bytes32(uint256(1)), bytes32(uint256(2)), bytes32(0));
+        batchHeader1[0] = bytes1(uint8(0)); // change back
+
+        // batch header length too small, revert
+        hevm.expectRevert("batch header length too small");
+        rollup.forceFinalizeBatch(new bytes(88), bytes32(uint256(1)), bytes32(uint256(2)), bytes32(0));
+
+        // wrong bitmap length, revert
+        hevm.expectRevert("wrong bitmap length");
+        rollup.forceFinalizeBatch(new bytes(90), bytes32(uint256(1)), bytes32(uint256(2)), bytes32(0));
+
+        // incorrect previous state root, revert
+        hevm.expectRevert("incorrect previous state root");
+        rollup.forceFinalizeBatch(batchHeader1, bytes32(uint256(2)), bytes32(uint256(2)), bytes32(0));
+
+        // verify success
+        assertBoolEq(rollup.isBatchFinalized(1), false);
+        rollup.forceFinalizeBatch(batchHeader1, bytes32(uint256(1)), bytes32(uint256(2)), bytes32(uint256(3)));
+        assertBoolEq(rollup.isBatchFinalized(1), true);
+        assertEq(rollup.finalizedStateRoots(1), bytes32(uint256(2)));
+        assertEq(rollup.withdrawRoots(1), bytes32(uint256(3)));
+        assertEq(rollup.lastFinalizedBatchIndex(), 1);
+
+        // batch already verified, revert
+        hevm.expectRevert("batch already verified");
+        rollup.forceFinalizeBatch(batchHeader1, bytes32(uint256(1)), bytes32(uint256(2)), bytes32(uint256(3)));
+    }
+
     function testRevertBatch() public {
         // caller not owner, revert
         hevm.startPrank(address(1));
