@@ -29,6 +29,7 @@ type BatchProposer struct {
 	maxL1CommitCalldataSizePerBatch uint32
 	minChunkNumPerBatch             uint64
 	batchTimeoutSec                 uint64
+	gasCostIncreaseMultiplier       float64
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
@@ -44,6 +45,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		maxL1CommitCalldataSizePerBatch: cfg.MaxL1CommitCalldataSizePerBatch,
 		minChunkNumPerBatch:             cfg.MinChunkNumPerBatch,
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
+		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 	}
 }
 
@@ -133,7 +135,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 
 	// Check if the first chunk breaks hard limits.
 	// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
-	if totalL1CommitGas > p.maxL1CommitGasPerBatch {
+	if p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
 		return nil, fmt.Errorf(
 			"the first chunk exceeds l1 commit gas limit; start block number: %v, end block number: %v, commit gas: %v, max commit gas limit: %v",
 			firstChunk.StartBlockNumber,
@@ -168,7 +170,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		totalL1CommitGas += getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
 		if totalChunks > p.maxChunkNumPerBatch ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
-			totalL1CommitGas > p.maxL1CommitGasPerBatch {
+			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
 			return dbChunks[:i+1], nil
 		}
 	}
