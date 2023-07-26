@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bridge-history-api/config"
 	"context"
 	"fmt"
 	"time"
@@ -11,6 +10,8 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"gorm.io/gorm/utils"
+
+	"bridge-history-api/config"
 )
 
 type gormLogger struct {
