@@ -2,12 +2,10 @@ package message
 
 import (
 	"encoding/hex"
-	"testing"
-	"time"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestAuthMessageSignAndVerify(t *testing.T) {
@@ -37,12 +35,6 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 	assert.NoError(t, err)
 	pubkey := crypto.CompressPubkey(&privkey.PublicKey)
 	assert.Equal(t, pub, common.Bytes2Hex(pubkey))
-}
-
-func TestGenerateToken(t *testing.T) {
-	token, err := GenerateToken(time.Duration(1), []byte("secret"))
-	assert.NoError(t, err)
-	assert.Equal(t, 32, len(token))
 }
 
 func TestIdentityHash(t *testing.T) {
