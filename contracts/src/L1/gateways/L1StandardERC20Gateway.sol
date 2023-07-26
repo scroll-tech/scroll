@@ -16,7 +16,7 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 
 /// @title L1StandardERC20Gateway
-/// @notice The `L1StandardERC20Gateway` is used to deposit standard ERC20 tokens in layer 1 and
+/// @notice The `L1StandardERC20Gateway` is used to deposit standard ERC20 tokens on layer 1 and
 /// finalize withdraw the tokens from layer 2.
 /// @dev The deposited ERC20 tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// token will be transfer to the recipient directly. Any ERC20 that requires non-standard functionality
