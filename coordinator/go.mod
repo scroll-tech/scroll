@@ -4,7 +4,6 @@ go 1.19
 
 require (
 	github.com/agiledragon/gomonkey/v2 v2.9.0
-	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56
 	github.com/shopspring/decimal v1.3.1
