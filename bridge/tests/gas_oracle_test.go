@@ -82,7 +82,7 @@ func testImportL2GasPrice(t *testing.T) {
 				},
 				Transactions:     nil,
 				WithdrawTrieRoot: common.Hash{},
-				RowConsumption:   0,
+				RowConsumption:   &gethTypes.RowConsumption{},
 			},
 		},
 	}

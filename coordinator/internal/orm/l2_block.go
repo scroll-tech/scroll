@@ -19,16 +19,16 @@ type L2Block struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	// block
-	Number           uint64 `json:"number" gorm:"number"`
-	Hash             string `json:"hash" gorm:"hash"`
-	ParentHash       string `json:"parent_hash" gorm:"parent_hash"`
-	Header           string `json:"header" gorm:"header"`
-	Transactions     string `json:"transactions" gorm:"transactions"`
-	WithdrawTrieRoot string `json:"withdraw_trie_root" gorm:"withdraw_trie_root"`
-	TxNum            uint32 `json:"tx_num" gorm:"tx_num"`
-	GasUsed          uint64 `json:"gas_used" gorm:"gas_used"`
-	BlockTimestamp   uint64 `json:"block_timestamp" gorm:"block_timestamp"`
-	RowConsumption   uint64 `json:"row_consumption" gorm:"row_consumption"`
+	Number           uint64                  `json:"number" gorm:"number"`
+	Hash             string                  `json:"hash" gorm:"hash"`
+	ParentHash       string                  `json:"parent_hash" gorm:"parent_hash"`
+	Header           string                  `json:"header" gorm:"header"`
+	Transactions     string                  `json:"transactions" gorm:"transactions"`
+	WithdrawTrieRoot string                  `json:"withdraw_trie_root" gorm:"withdraw_trie_root"`
+	TxNum            uint32                  `json:"tx_num" gorm:"tx_num"`
+	GasUsed          uint64                  `json:"gas_used" gorm:"gas_used"`
+	BlockTimestamp   uint64                  `json:"block_timestamp" gorm:"block_timestamp"`
+	RowConsumption   *types.RowConsumptionDb `json:"row_consumption" gorm:"row_consumption"`
 
 	// chunk
 	ChunkHash string `json:"chunk_hash" gorm:"chunk_hash;default:NULL"`
@@ -77,7 +77,7 @@ func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) 
 		}
 
 		wrappedBlock.WithdrawTrieRoot = common.HexToHash(v.WithdrawTrieRoot)
-		wrappedBlock.RowConsumption = v.RowConsumption
+		wrappedBlock.RowConsumption = (*gethTypes.RowConsumption)(v.RowConsumption)
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 
@@ -110,7 +110,7 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 			GasUsed:          block.Header.GasUsed,
 			BlockTimestamp:   block.Header.Time,
 			Header:           string(header),
-			RowConsumption:   block.RowConsumption,
+			RowConsumption:   (*types.RowConsumptionDb)(block.RowConsumption),
 		}
 		l2Blocks = append(l2Blocks, l2Block)
 	}

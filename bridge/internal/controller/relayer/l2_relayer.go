@@ -10,6 +10,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -174,7 +175,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			Header:           genesis,
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
-			RowConsumption:   0,
+			RowConsumption:   &gethTypes.RowConsumption{},
 		}},
 	}
 

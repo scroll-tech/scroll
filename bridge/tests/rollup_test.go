@@ -48,7 +48,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			Header:           &header,
 			Transactions:     nil,
 			WithdrawTrieRoot: common.Hash{},
-			RowConsumption:   0,
+			RowConsumption:   &gethTypes.RowConsumption{},
 		})
 	}
 

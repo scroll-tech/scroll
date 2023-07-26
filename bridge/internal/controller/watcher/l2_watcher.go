@@ -182,17 +182,11 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 		if err3 != nil {
 			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
 		}
-
-		var rowConsumption uint64 = 0
-		//for _, subCircuit := range *block.RowConsumption {
-		//	rowConsumption += subCircuit.Rows
-		//}
-
 		blocks = append(blocks, &types.WrappedBlock{
 			Header:           block.Header(),
 			Transactions:     txsToTxsData(block.Transactions()),
 			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
-			RowConsumption:   rowConsumption,
+			RowConsumption:   block.RowConsumption,
 		})
 	}
 

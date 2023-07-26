@@ -19,7 +19,7 @@ type WrappedBlock struct {
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
 	Transactions     []*types.TransactionData `json:"transactions"`
 	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
-	RowConsumption   uint64                   `json:"row_consumption"`
+	RowConsumption   *types.RowConsumption    `json:"row_consumption"`
 }
 
 // NumL1Messages returns the number of L1 messages in this block.

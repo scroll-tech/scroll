@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -80,6 +81,25 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	return err
 }
 
+func updateRowConsumption(totalRowConsumption *map[string]uint64, rowConsumption *gethTypes.RowConsumption) {
+	if rowConsumption == nil {
+		return
+	}
+	for _, subCircuit := range *rowConsumption {
+		(*totalRowConsumption)[subCircuit.CircuitName] += subCircuit.Rows
+	}
+}
+
+func maxRowConsumption(totalRowConsumption *map[string]uint64) uint64 {
+	var maxRowConsumption uint64 = 0
+	for _, value := range *totalRowConsumption {
+		if value > maxRowConsumption {
+			maxRowConsumption = value
+		}
+	}
+	return maxRowConsumption
+}
+
 func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks(p.ctx)
 	if err != nil {
@@ -95,7 +115,8 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	totalL2TxNum := firstBlock.L2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
 	totalL1CommitGas := firstBlock.EstimateL1CommitGas()
-	totalRowConsumption := firstBlock.RowConsumption
+	totalRowConsumption := make(map[string]uint64)
+	updateRowConsumption(&totalRowConsumption, firstBlock.RowConsumption)
 
 	// Check if the first block breaks hard limits.
 	// If so, it indicates there are bugs in sequencer, manual fix is needed.
@@ -135,7 +156,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			"max gas limit", p.maxTxGasPerChunk,
 		)
 	}
-	if totalRowConsumption > p.maxRowConsumptionPerChunk {
+	if maxRowConsumption(&totalRowConsumption) > p.maxRowConsumptionPerChunk {
 		return nil, fmt.Errorf(
 			"the first block exceeds row consumption limit; block number: %v, row consumption: %v, max row consumption limit: %v",
 			firstBlock.Header.Number,
@@ -149,11 +170,12 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas += block.EstimateL1CommitGas()
+		updateRowConsumption(&totalRowConsumption, block.RowConsumption)
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
 			totalL1CommitGas > p.maxL1CommitGasPerChunk ||
-			totalRowConsumption > p.maxRowConsumptionPerChunk {
+			maxRowConsumption(&totalRowConsumption) > p.maxRowConsumptionPerChunk {
 			blocks = blocks[:i+1]
 			break
 		}
