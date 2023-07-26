@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -106,7 +105,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	totalL1MessagePopped := firstChunk.TotalL1MessagesPoppedBefore + uint64(firstChunk.TotalL1MessagesPoppedInChunk)
 
 	parentBatch, err := p.batchOrm.GetLatestBatch(p.ctx)
-	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+	if err != nil {
 		return nil, err
 	}
 
