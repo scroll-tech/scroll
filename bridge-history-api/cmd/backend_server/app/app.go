@@ -3,8 +3,11 @@ package app
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"time"
 
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli/v2"
 
@@ -12,8 +15,6 @@ import (
 	"bridge-history-api/internal/controller"
 	"bridge-history-api/internal/route"
 	cutils "bridge-history-api/utils"
-
-	"scroll-tech/common/database"
 )
 
 var (
@@ -41,25 +42,25 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	dbCfg := &database.Config{
-		DriverName: cfg.DB.DriverName,
-		DSN:        cfg.DB.DSN,
-		MaxOpenNum: cfg.DB.MaxOpenNum,
-		MaxIdleNum: cfg.DB.MaxIdleNum,
-	}
-	db, err := database.InitDB(dbCfg)
+	db, err := cutils.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db", "err", err)
 	}
 	defer func() {
-		if deferErr := database.CloseDB(db); deferErr != nil {
+		if deferErr := cutils.CloseDB(db); deferErr != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
 	// init Prover Stats API
-	port := ctx.String(cfg.Server.HostPort)
+	port := cfg.Server.HostPort
 
 	router := gin.Default()
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"*"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 	controller.InitController(db)
 	route.Route(router, cfg)
 
@@ -68,6 +69,12 @@ func action(ctx *cli.Context) error {
 			log.Crit("run http server failure", "error", runServerErr)
 		}
 	}()
+	// Catch CTRL-C to ensure a graceful shutdown.
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	// Wait until the interrupt signal is received from an OS signal.
+	<-interrupt
 
 	return nil
 }

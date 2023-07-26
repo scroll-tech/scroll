@@ -29,6 +29,7 @@ type HistoryController struct {
 	Service logic.HistoryLogic
 }
 
+// NewHistoryController return HistoryController instance
 func NewHistoryController(db *gorm.DB) *HistoryController {
 	return &HistoryController{
 		Service: logic.NewHistoryLogic(db),
