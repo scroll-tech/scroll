@@ -24,6 +24,7 @@ COPY ./bridge/go.* ./bridge/
 COPY ./common/go.* ./common/
 COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
+COPY ./prover-stats-api/go.* ./prover-stats-api/
 COPY ./roller/go.* ./roller/
 COPY ./tests/integration-test/go.* ./tests/integration-test/
 COPY ./bridge-history-api/go.* ./bridge-history-api/
