@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -40,6 +40,8 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
      ***************/
 
     constructor(address _WETH, address _l2WETH) {
+        _disableInitializers();
+
         WETH = _WETH;
         l2WETH = _l2WETH;
     }
@@ -119,14 +121,9 @@ contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
         IWETH(_token).withdraw(_amount);
 
         // 2. Generate message passed to L2WETHGateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC20Gateway.finalizeDepositERC20.selector,
-            _token,
-            l2WETH,
-            _from,
-            _to,
-            _amount,
-            _data
+        bytes memory _message = abi.encodeCall(
+            IL2ERC20Gateway.finalizeDepositERC20,
+            (_token, l2WETH, _from, _to, _amount, _data)
         );
 
         // 3. Send message to L1ScrollMessenger.

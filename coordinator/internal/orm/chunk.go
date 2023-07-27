@@ -245,7 +245,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk) (*Chunk, er
 }
 
 // UpdateProvingStatus updates the proving status of a chunk.
-func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus) error {
+func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})
 	updateFields["proving_status"] = int(status)
 
@@ -257,8 +257,11 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	case types.ProvingTaskProved, types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
 	}
-
-	db := o.db.WithContext(ctx)
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash", hash)
 
@@ -269,7 +272,11 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 }
 
 // UpdateProofByHash updates the chunk proof by hash.
-func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
 	proofBytes, err := json.Marshal(proof)
 	if err != nil {
 		return err
@@ -279,7 +286,7 @@ func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	updateFields["proof"] = proofBytes
 	updateFields["proof_time_sec"] = proofTimeSec
 
-	db := o.db.WithContext(ctx)
+	db = db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash", hash)
 

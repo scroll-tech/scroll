@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {WETH} from "solmate/tokens/WETH.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {IL1ERC20Gateway, L1WETHGateway} from "../L1/gateways/L1WETHGateway.sol";
@@ -51,8 +53,8 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         l2weth = new WETH();
 
         // Deploy L1 contracts
-        gateway = new L1WETHGateway(address(l1weth), address(l2weth));
-        router = new L1GatewayRouter();
+        gateway = _deployGateway();
+        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
 
         // Deploy L2 contracts
         counterpartGateway = new L2WETHGateway(address(l2weth), address(l1weth));
@@ -143,7 +145,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
 
     function testDropMessageMocking() public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1WETHGateway(address(l1weth), address(l2weth));
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only messenger can call, revert
@@ -247,7 +249,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         gateway.finalizeWithdrawERC20(address(l1weth), address(l2weth), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1WETHGateway(address(l1weth), address(l2weth));
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
@@ -684,5 +686,12 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
         }
+    }
+
+    function _deployGateway() internal returns (L1WETHGateway) {
+        return
+            L1WETHGateway(
+                payable(new ERC1967Proxy(address(new L1WETHGateway(address(l1weth), address(l2weth))), new bytes(0)))
+            );
     }
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -35,12 +35,17 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         // it can be zero during initialization
         if (_defaultERC20Gateway != address(0)) {
             defaultERC20Gateway = _defaultERC20Gateway;
+            emit SetDefaultERC20Gateway(_defaultERC20Gateway);
         }
 
         // it can be zero during initialization

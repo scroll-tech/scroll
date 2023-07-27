@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
@@ -19,6 +19,9 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L2ETHGateway.
     /// @param _counterpart The address of L1ETHGateway in L2.
@@ -97,13 +100,7 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
 
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ETHGateway.finalizeWithdrawETH.selector,
-            _from,
-            _to,
-            _amount,
-            _data
-        );
+        bytes memory _message = abi.encodeCall(IL1ETHGateway.finalizeWithdrawETH, (_from, _to, _amount, _data));
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit);
 
         emit WithdrawETH(_from, _to, _amount, _data);

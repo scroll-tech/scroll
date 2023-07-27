@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1BlockContainer} from "../L2/predeploys/L1BlockContainer.sol";
 import {L1GasPriceOracle} from "../L2/predeploys/L1GasPriceOracle.sol";
@@ -33,12 +35,13 @@ contract L2ScrollMessengerTest is DSTestPlus {
         l1BlockContainer = new L1BlockContainer(address(this));
         l2MessageQueue = new L2MessageQueue(address(this));
         l1GasOracle = new L1GasPriceOracle(address(this));
-        l2Messenger = new L2ScrollMessenger(address(l1BlockContainer), address(l1GasOracle), address(l2MessageQueue));
+        l2Messenger = L2ScrollMessenger(
+            payable(new ERC1967Proxy(address(new L2ScrollMessenger(address(l2MessageQueue))), new bytes(0)))
+        );
 
         // Initialize L2 contracts
         l2Messenger.initialize(address(l1Messenger), feeVault);
-        l2MessageQueue.initialize();
-        l2MessageQueue.updateMessenger(address(l2Messenger));
+        l2MessageQueue.initialize(address(l2Messenger));
         l1GasOracle.updateWhitelist(address(whitelist));
     }
 
