@@ -20,8 +20,8 @@ interface IScrollChain {
     /// @notice Emitted when a batch is finalized.
     /// @param batchIndex The index of the batch.
     /// @param batchHash The hash of the batch
-    /// @param stateRoot The state root in layer 2 after this batch.
-    /// @param withdrawRoot The merkle root in layer2 after this batch.
+    /// @param stateRoot The state root on layer 2 after this batch.
+    /// @param withdrawRoot The merkle root on layer2 after this batch.
     event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
 
     /*************************

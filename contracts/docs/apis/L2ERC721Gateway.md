@@ -4,7 +4,7 @@
 
 > L2ERC721Gateway
 
-The `L2ERC721Gateway` is used to withdraw ERC721 compatible NFTs in layer 2 and finalize deposit the NFTs from layer 1.
+The `L2ERC721Gateway` is used to withdraw ERC721 compatible NFTs on layer 2 and finalize deposit the NFTs from layer 1.
 
 *The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding NFT will be minted and transfered to the recipient. This will be changed if we have more specific scenarios.*
 
@@ -70,9 +70,9 @@ The address of corresponding L1/L2 Gateway contract.
 function finalizeBatchDepositERC721(address _l1Token, address _l2Token, address _from, address _to, uint256[] _tokenIds) external nonpayable
 ```
 
-Complete ERC721 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account in layer 2.
+Complete ERC721 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account on layer 2.
 
-*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC721Gateway in layer 1.*
+*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC721Gateway on layer 1.*
 
 #### Parameters
 
@@ -90,9 +90,9 @@ Complete ERC721 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s 
 function finalizeDepositERC721(address _l1Token, address _l2Token, address _from, address _to, uint256 _tokenId) external nonpayable
 ```
 
-Complete ERC721 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account in layer 2.
+Complete ERC721 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account on layer 2.
 
-*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC721Gateway in layer 1.*
+*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC721Gateway on layer 1.*
 
 #### Parameters
 
@@ -260,8 +260,8 @@ Update layer 2 to layer 1 token mapping.
 
 | Name | Type | Description |
 |---|---|---|
-| _l2Token | address | undefined |
-| _l1Token | address | The address of ERC721 token in layer 1. |
+| _l2Token | address | The address of corresponding ERC721 token on layer 2. |
+| _l1Token | address | The address of ERC721 token on layer 1. |
 
 ### withdrawERC721
 
@@ -310,7 +310,7 @@ Withdraw some ERC721 NFT to caller&#39;s account on layer 1.
 event BatchWithdrawERC721(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds)
 ```
 
-Emitted when the ERC721 NFT is batch transfered to gateway in layer 2.
+Emitted when the ERC721 NFT is batch transfered to gateway on layer 2.
 
 
 
@@ -330,7 +330,7 @@ Emitted when the ERC721 NFT is batch transfered to gateway in layer 2.
 event FinalizeBatchDepositERC721(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds)
 ```
 
-Emitted when the ERC721 NFT is batch transfered to recipient in layer 2.
+Emitted when the ERC721 NFT is batch transfered to recipient on layer 2.
 
 
 
@@ -350,7 +350,7 @@ Emitted when the ERC721 NFT is batch transfered to recipient in layer 2.
 event FinalizeDepositERC721(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId)
 ```
 
-Emitted when the ERC721 NFT is transfered to recipient in layer 2.
+Emitted when the ERC721 NFT is transfered to recipient on layer 2.
 
 
 
@@ -411,8 +411,8 @@ Emitted when token mapping for ERC721 token is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| _l2Token  | address | undefined |
-| _l1Token  | address | The address of ERC721 token in layer 1. |
+| _l2Token  | address | The address of corresponding ERC721 token on layer 2. |
+| _l1Token  | address | The address of ERC721 token on layer 1. |
 
 ### WithdrawERC721
 
@@ -420,7 +420,7 @@ Emitted when token mapping for ERC721 token is updated.
 event WithdrawERC721(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId)
 ```
 
-Emitted when the ERC721 NFT is transfered to gateway in layer 2.
+Emitted when the ERC721 NFT is transfered to gateway on layer 2.
 
 
 
