@@ -15,7 +15,6 @@ import {L2GatewayRouter} from "../../src/L2/gateways/L2GatewayRouter.sol";
 import {L2ScrollMessenger} from "../../src/L2/L2ScrollMessenger.sol";
 import {L2StandardERC20Gateway} from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
 import {L2WETHGateway} from "../../src/L2/gateways/L2WETHGateway.sol";
-import {L1BlockContainer} from "../../src/L2/predeploys/L1BlockContainer.sol";
 import {L1GasPriceOracle} from "../../src/L2/predeploys/L1GasPriceOracle.sol";
 import {L2MessageQueue} from "../../src/L2/predeploys/L2MessageQueue.sol";
 import {L2TxFeeVault} from "../../src/L2/predeploys/L2TxFeeVault.sol";
@@ -31,12 +30,10 @@ contract DeployL2BridgeContracts is Script {
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
 
     L1GasPriceOracle oracle;
-    L1BlockContainer container;
     L2MessageQueue queue;
     ProxyAdmin proxyAdmin;
 
     // predeploy contracts
-    address L1_BLOCK_CONTAINER_PREDEPLOY_ADDR = vm.envOr("L1_BLOCK_CONTAINER_PREDEPLOY_ADDR", address(0));
     address L1_GAS_PRICE_ORACLE_PREDEPLOY_ADDR = vm.envOr("L1_GAS_PRICE_ORACLE_PREDEPLOY_ADDR", address(0));
     address L2_MESSAGE_QUEUE_PREDEPLOY_ADDR = vm.envOr("L2_MESSAGE_QUEUE_PREDEPLOY_ADDR", address(0));
     address L2_TX_FEE_VAULT_PREDEPLOY_ADDR = vm.envOr("L2_TX_FEE_VAULT_PREDEPLOY_ADDR", address(0));
@@ -47,7 +44,6 @@ contract DeployL2BridgeContracts is Script {
 
         // predeploys
         deployL1GasPriceOracle();
-        deployL1BlockContainer();
         deployL2MessageQueue();
         deployTxFeeVault();
         deployL2Whitelist();
@@ -78,19 +74,6 @@ contract DeployL2BridgeContracts is Script {
         oracle = new L1GasPriceOracle(owner);
 
         logAddress("L1_GAS_PRICE_ORACLE_ADDR", address(oracle));
-    }
-
-    function deployL1BlockContainer() internal {
-        if (L1_BLOCK_CONTAINER_PREDEPLOY_ADDR != address(0)) {
-            container = L1BlockContainer(L1_BLOCK_CONTAINER_PREDEPLOY_ADDR);
-            logAddress("L1_BLOCK_CONTAINER_ADDR", address(L1_BLOCK_CONTAINER_PREDEPLOY_ADDR));
-            return;
-        }
-
-        address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
-        container = new L1BlockContainer(owner);
-
-        logAddress("L1_BLOCK_CONTAINER_ADDR", address(container));
     }
 
     function deployL2MessageQueue() internal {
