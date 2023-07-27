@@ -25,6 +25,52 @@
         "baseFeePerGas": "0x1de9",
         "hash": "0xc7b6c7022c8386cdaf6fcd3d4f8d03dce257ae3664a072fdce511ecefce73ad0"
     },
+    "row_consumption": [
+        {
+            "circuitName": "evm",
+            "rows": "0x1"
+        },
+        {
+            "circuitName": "state",
+            "rows": "0x2"
+        },
+        {
+            "circuitName": "bytecode",
+            "rows": "0x3"
+        },
+        {
+            "circuitName": "copy",
+            "rows": "0x4"
+        },
+        {
+            "circuitName": "keccak",
+            "rows": "0x5"
+        },
+        {
+            "circuitName": "tx",
+            "rows": "0x6"
+        },
+        {
+            "circuitName": "rlp",
+            "rows": "0x7"
+        },
+        {
+            "circuitName": "exp",
+            "rows": "0x8"
+        },
+        {
+            "circuitName": "pi",
+            "rows": "0x9"
+        },
+        {
+            "circuitName": "poseidon",
+            "rows": "0xa"
+        },
+        {
+            "circuitName": "mpt",
+            "rows": "0xb"
+        }
+    ],
     "transactions": [
         {
             "type": 0,

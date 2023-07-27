@@ -13,7 +13,7 @@ create table l2_block
     tx_num                  INTEGER         NOT NULL,
     gas_used                BIGINT          NOT NULL,
     block_timestamp         NUMERIC         NOT NULL,
-    row_consumption         BYTEA           NOT NULL,
+    row_consumption         BYTEA, -- todo: make this column NOT NUL when l2geth updated
 
 -- chunk
     chunk_hash              VARCHAR         DEFAULT NULL,
