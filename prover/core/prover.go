@@ -1,6 +1,6 @@
 //go:build !mock_prover
 
-package prover
+package core
 
 /*
 #cgo LDFLAGS: -lzkp -lm -ldl -lzktrie -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
@@ -24,13 +24,13 @@ import (
 	"scroll-tech/prover/config"
 )
 
-// Prover sends block-traces to rust-prover through ffi and get back the zk-proof.
-type Prover struct {
-	cfg *config.ProverConfig
+// ProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
+type ProverCore struct {
+	cfg *config.ProverCoreConfig
 }
 
-// NewProver inits a Prover object.
-func NewProver(cfg *config.ProverConfig) (*Prover, error) {
+// NewProverCore inits a ProverCore object.
+func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	seedPathStr := C.CString(cfg.SeedPath)
 	defer func() {
@@ -47,11 +47,11 @@ func NewProver(cfg *config.ProverConfig) (*Prover, error) {
 		log.Info("Enabled dump_proof", "dir", cfg.DumpDir)
 	}
 
-	return &Prover{cfg: cfg}, nil
+	return &ProverCore{cfg: cfg}, nil
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *Prover) Prove(taskID string, traces []*types.BlockTrace) (*message.AggProof, error) {
+func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.AggProof, error) {
 	var proofByt []byte
 	if p.cfg.ProofType == message.ProofTypeChunk {
 		tracesByt, err := json.Marshal(traces)
@@ -74,7 +74,7 @@ func (p *Prover) Prove(taskID string, traces []*types.BlockTrace) (*message.AggP
 }
 
 // Call cgo to generate proof.
-func (p *Prover) prove(tracesByt []byte) []byte {
+func (p *ProverCore) prove(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
 
 	defer func() {
@@ -89,7 +89,7 @@ func (p *Prover) prove(tracesByt []byte) []byte {
 	return []byte(proof)
 }
 
-func (p *Prover) dumpProof(id string, proofByt []byte) error {
+func (p *ProverCore) dumpProof(id string, proofByt []byte) error {
 	if p.cfg.DumpDir == "" {
 		return nil
 	}

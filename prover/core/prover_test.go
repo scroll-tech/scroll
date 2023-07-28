@@ -1,6 +1,6 @@
 //go:build ffi
 
-package prover_test
+package core_test
 
 import (
 	"encoding/json"
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/prover/config"
-	"scroll-tech/prover/prover"
+	"scroll-tech/prover/core"
 )
 
 var (
@@ -26,11 +26,11 @@ var (
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
-	cfg := &config.ProverConfig{
+	cfg := &config.ProverCoreConfig{
 		ParamsPath: *paramsPath,
 		SeedPath:   *seedPath,
 	}
-	prover, err := prover.NewProver(cfg)
+	proverCore, err := core.NewProverCore(cfg)
 	as.NoError(err)
 
 	files, err := os.ReadDir(*tracesPath)
@@ -50,7 +50,7 @@ func TestFFI(t *testing.T) {
 		as.NoError(json.Unmarshal(byt, trace))
 		traces = append(traces, trace)
 	}
-	proof, err := prover.Prove("test", traces)
+	proof, err := proverCore.Prove("test", traces)
 	as.NoError(err)
 	t.Log("prove success")
 

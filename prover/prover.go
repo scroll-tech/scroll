@@ -24,7 +24,7 @@ import (
 	"scroll-tech/coordinator/client"
 
 	"scroll-tech/prover/config"
-	"scroll-tech/prover/prover"
+	"scroll-tech/prover/core"
 	"scroll-tech/prover/store"
 )
 
@@ -33,13 +33,13 @@ var (
 	retryWait = time.Second * 10
 )
 
-// Prover contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
+// Prover contains websocket conn to coordinator, and task stack.
 type Prover struct {
 	cfg         *config.Config
 	client      *client.Client
 	traceClient *ethclient.Client
 	stack       *store.Stack
-	prover      *prover.Prover
+	proverCore  *core.ProverCore
 	taskChan    chan *message.TaskMsg
 	sub         ethereum.Subscription
 
@@ -70,13 +70,13 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 		return nil, err
 	}
 
-	// Create prover instance
-	log.Info("init prover")
-	newProver, err := prover.NewProver(cfg.Prover)
+	// Create prover_core instance
+	log.Info("init prover_core")
+	newProverCore, err := core.NewProverCore(cfg.Core)
 	if err != nil {
 		return nil, err
 	}
-	log.Info("init prover successfully!")
+	log.Info("init prover_core successfully!")
 
 	rClient, err := client.Dial(cfg.CoordinatorURL)
 	if err != nil {
@@ -88,7 +88,7 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 		client:      rClient,
 		traceClient: traceClient,
 		stack:       stackDb,
-		prover:      newProver,
+		proverCore:  newProverCore,
 		sub:         nil,
 		taskChan:    make(chan *message.TaskMsg, 10),
 		stopChan:    make(chan struct{}),
@@ -98,7 +98,7 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 
 // Type returns prover type.
 func (r *Prover) Type() message.ProofType {
-	return r.cfg.Prover.ProofType
+	return r.cfg.Core.ProofType
 }
 
 // PublicKey translate public key to hex and return.
@@ -236,7 +236,7 @@ func (r *Prover) prove() error {
 			// If FFI panic during Prove, the prover will restart and re-enter prove() function,
 			// the proof will not be submitted.
 			var proof *message.AggProof
-			proof, err = r.prover.Prove(task.Task.ID, traces)
+			proof, err = r.proverCore.Prove(task.Task.ID, traces)
 			if err != nil {
 				proofMsg = &message.ProofDetail{
 					Status: message.StatusProofError,
