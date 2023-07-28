@@ -63,18 +63,18 @@ This file defines the main entry point for the coordinator application, setting 
 
 ### manager.go
 
-`manager.go` calls `rollers.go` for prover (aka "roller") management functions. In the process, `rollers.go` calls `client.go`, initializing a prover client.  For communication between prover clients and the coordinator manager, `api.go` is used.
+`manager.go` calls `provers.go` for prover (aka "prover") management functions. In the process, `provers.go` calls `client.go`, initializing a prover client.  For communication between prover clients and the coordinator manager, `api.go` is used.
 
-`manager.go` uses either `verifier.go` or `mock.go` (for development/testing purposes) to verify the proofs submitted by provers. After verification, `manager.go` will call `roller.go` to update the state of the prover, and then return the result (whether the proof verification process was successful) to the prover.
+`manager.go` uses either `verifier.go` or `mock.go` (for development/testing purposes) to verify the proofs submitted by provers. After verification, `manager.go` will call `prover.go` to update the state of the prover, and then return the result (whether the proof verification process was successful) to the prover.
 
 ### api.go
 
 This file contains the implementation of the RPC API for the coordinator manager. The API allows prover clients to interact with the coordinator manager through functions such as `requestToken`, `register`, and `submitProof`.
 
-### rollers.go
+### provers.go
 
 This file contains the logic for handling prover-specific tasks, such as assigning tasks to provers, handling completed tasks, and managing prover metrics.
 
 ### client/client.go
 
-This file contains the `Client` struct that is callable on the prover side and responsible for communicating with the coordinator through RPC. `RequestToken`, `RegisterAndSubscribe`, and `SubmitProof` are used by `rollers.go`.
+This file contains the `Client` struct that is callable on the prover side and responsible for communicating with the coordinator through RPC. `RequestToken`, `RegisterAndSubscribe`, and `SubmitProof` are used by `provers.go`.

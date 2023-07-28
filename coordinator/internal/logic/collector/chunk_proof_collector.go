@@ -13,7 +13,7 @@ import (
 	"scroll-tech/common/utils"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/rollermanager"
+	"scroll-tech/coordinator/internal/logic/provermanager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
@@ -66,11 +66,11 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 		return fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
-	if rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk) == 0 {
-		return fmt.Errorf("no idle chunk roller when starting proof generation session, id:%s", chunkTask.Hash)
+	if provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk) == 0 {
+		return fmt.Errorf("no idle chunk prover when starting proof generation session, id:%s", chunkTask.Hash)
 	}
 
-	rollerStatusList, err := cp.sendTask(ctx, chunkTask.Hash)
+	proverStatusList, err := cp.sendTask(ctx, chunkTask.Hash)
 	if err != nil {
 		return fmt.Errorf("send task failure, id:%s error:%w", chunkTask.Hash, err)
 	}
@@ -82,19 +82,19 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 			return err
 		}
 
-		for _, rollerStatus := range rollerStatusList {
+		for _, proverStatus := range proverStatusList {
 			proverTask := orm.ProverTask{
 				TaskID:          chunkTask.Hash,
-				ProverPublicKey: rollerStatus.PublicKey,
+				ProverPublicKey: proverStatus.PublicKey,
 				TaskType:        int16(message.ProofTypeChunk),
-				ProverName:      rollerStatus.Name,
+				ProverName:      proverStatus.Name,
 				ProvingStatus:   int16(types.RollerAssigned),
 				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 				// here why need use UTC time. see scroll/common/databased/db.go
 				AssignedAt: utils.NowUTC(),
 			}
 			if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
-				return fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, rollerStatus.PublicKey, err)
+				return fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, proverStatus.PublicKey, err)
 			}
 		}
 		return nil

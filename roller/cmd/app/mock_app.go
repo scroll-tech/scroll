@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	rollerConfig "scroll-tech/roller/config"
+	proverConfig "scroll-tech/prover/config"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
@@ -18,22 +18,22 @@ import (
 )
 
 var (
-	rollerIndex int
+	proverIndex int
 )
 
 func getIndex() int {
-	defer func() { rollerIndex++ }()
-	return rollerIndex
+	defer func() { proverIndex++ }()
+	return proverIndex
 }
 
-// RollerApp roller-test client manager.
+// RollerApp prover-test client manager.
 type RollerApp struct {
-	Config *rollerConfig.Config
+	Config *proverConfig.Config
 
 	base *docker.App
 
 	originFile string
-	rollerFile string
+	proverFile string
 	bboltDB    string
 
 	index int
@@ -42,43 +42,43 @@ type RollerApp struct {
 	docker.AppAPI
 }
 
-// NewRollerApp return a new rollerApp manager.
+// NewRollerApp return a new proverApp manager.
 func NewRollerApp(base *docker.App, file string, wsURL string) *RollerApp {
-	rollerFile := fmt.Sprintf("/tmp/%d_roller-config.json", base.Timestamp)
-	rollerApp := &RollerApp{
+	proverFile := fmt.Sprintf("/tmp/%d_prover-config.json", base.Timestamp)
+	proverApp := &RollerApp{
 		base:       base,
 		originFile: file,
-		rollerFile: rollerFile,
+		proverFile: proverFile,
 		bboltDB:    fmt.Sprintf("/tmp/%d_bbolt_db", base.Timestamp),
 		index:      getIndex(),
 		name:       string(utils.RollerApp),
-		args:       []string{"--log.debug", "--config", rollerFile},
+		args:       []string{"--log.debug", "--config", proverFile},
 	}
-	if err := rollerApp.MockConfig(true, wsURL); err != nil {
+	if err := proverApp.MockConfig(true, wsURL); err != nil {
 		panic(err)
 	}
-	return rollerApp
+	return proverApp
 }
 
-// RunApp run roller-test child process by multi parameters.
+// RunApp run prover-test child process by multi parameters.
 func (r *RollerApp) RunApp(t *testing.T, args ...string) {
 	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
-	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "roller start successfully") })
+	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
-// Free stop and release roller-test.
+// Free stop and release prover-test.
 func (r *RollerApp) Free() {
 	if !utils.IsNil(r.AppAPI) {
 		r.AppAPI.WaitExit()
 	}
-	_ = os.Remove(r.rollerFile)
+	_ = os.Remove(r.proverFile)
 	_ = os.Remove(r.Config.KeystorePath)
 	_ = os.Remove(r.bboltDB)
 }
 
-// MockConfig creates a new roller config.
+// MockConfig creates a new prover config.
 func (r *RollerApp) MockConfig(store bool, wsURL string) error {
-	cfg, err := rollerConfig.NewConfig(r.originFile)
+	cfg, err := proverConfig.NewConfig(r.originFile)
 	if err != nil {
 		return err
 	}
@@ -104,13 +104,13 @@ func (r *RollerApp) MockConfig(store bool, wsURL string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(r.rollerFile, data, 0600)
+	return os.WriteFile(r.proverFile, data, 0600)
 }
 
-// RollerApps rollerApp list.
+// RollerApps proverApp list.
 type RollerApps []*RollerApp
 
-// RunApps starts all the rollerApps.
+// RunApps starts all the proverApps.
 func (r RollerApps) RunApps(t *testing.T, args ...string) {
 	var eg errgroup.Group
 	for i := range r {
@@ -123,19 +123,19 @@ func (r RollerApps) RunApps(t *testing.T, args ...string) {
 	_ = eg.Wait()
 }
 
-// MockConfigs creates all the rollerApps' configs.
+// MockConfigs creates all the proverApps' configs.
 func (r RollerApps) MockConfigs(store bool, wsURL string) error {
 	var eg errgroup.Group
-	for _, roller := range r {
-		roller := roller
+	for _, prover := range r {
+		prover := prover
 		eg.Go(func() error {
-			return roller.MockConfig(store, wsURL)
+			return prover.MockConfig(store, wsURL)
 		})
 	}
 	return eg.Wait()
 }
 
-// Free releases rollerApps.
+// Free releases proverApps.
 func (r RollerApps) Free() {
 	var wg sync.WaitGroup
 	wg.Add(len(r))
@@ -149,7 +149,7 @@ func (r RollerApps) Free() {
 	wg.Wait()
 }
 
-// WaitExit wait rollerApps stopped.
+// WaitExit wait proverApps stopped.
 func (r RollerApps) WaitExit() {
 	var wg sync.WaitGroup
 	wg.Add(len(r))

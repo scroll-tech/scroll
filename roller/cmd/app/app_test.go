@@ -10,10 +10,10 @@ import (
 )
 
 func TestRunRoller(t *testing.T) {
-	roller := cmd.NewCmd("roller-test", "--version")
-	defer roller.WaitExit()
+	prover := cmd.NewCmd("prover-test", "--version")
+	defer prover.WaitExit()
 
 	// wait result
-	roller.ExpectWithTimeout(t, true, time.Second*3, fmt.Sprintf("roller version %s", version.Version))
-	roller.RunApp(nil)
+	prover.ExpectWithTimeout(t, true, time.Second*3, fmt.Sprintf("prover version %s", version.Version))
+	prover.RunApp(nil)
 }

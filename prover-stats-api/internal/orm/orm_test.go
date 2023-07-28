@@ -67,7 +67,7 @@ func TestProverTaskOrm(t *testing.T) {
 
 	proverTask := ProverTask{
 		TaskID:          "test-hash",
-		ProverName:      "roller-0",
+		ProverName:      "prover-0",
 		ProverPublicKey: "0",
 		ProvingStatus:   int16(types.RollerAssigned),
 		Reward:          decimal.NewFromBigInt(reward, 0),
@@ -102,7 +102,7 @@ func TestProverTaskOrmUint256(t *testing.T) {
 	rewardUint256.SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
 	proverTask := ProverTask{
 		TaskID:          "test-hash",
-		ProverName:      "roller-0",
+		ProverName:      "prover-0",
 		ProverPublicKey: "0",
 		ProvingStatus:   int16(types.RollerAssigned),
 		Reward:          decimal.NewFromBigInt(rewardUint256, 0),

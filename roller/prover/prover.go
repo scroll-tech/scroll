@@ -21,7 +21,7 @@ import (
 
 	"scroll-tech/common/types/message"
 
-	"scroll-tech/roller/config"
+	"scroll-tech/prover/config"
 )
 
 // Prover sends block-traces to rust-prover through ffi and get back the zk-proof.

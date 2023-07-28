@@ -8,12 +8,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/roller"
+	"scroll-tech/prover"
 
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	"scroll-tech/roller/config"
+	"scroll-tech/prover/config"
 )
 
 var app *cli.App
@@ -21,7 +21,7 @@ var app *cli.App
 func init() {
 	app = cli.NewApp()
 	app.Action = action
-	app.Name = "roller"
+	app.Name = "prover"
 	app.Usage = "The Scroll L2 Roller"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
@@ -29,7 +29,7 @@ func init() {
 		return utils.LogSetup(ctx)
 	}
 
-	// Register `roller-test` app for integration-test.
+	// Register `prover-test` app for integration-test.
 	utils.RegisterSimulation(app, utils.RollerApp)
 }
 
@@ -41,16 +41,16 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
-	// Create roller
-	r, err := roller.NewRoller(cfg)
+	// Create prover
+	r, err := prover.NewRoller(cfg)
 	if err != nil {
 		return err
 	}
-	// Start roller.
+	// Start prover.
 	r.Start()
 
 	defer r.Stop()
-	log.Info("roller start successfully", "name", cfg.RollerName, "publickey", r.PublicKey(), "version", version.Version)
+	log.Info("prover start successfully", "name", cfg.RollerName, "publickey", r.PublicKey(), "version", version.Version)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -62,7 +62,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run the roller cmd func.
+// Run the prover cmd func.
 func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)

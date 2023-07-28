@@ -1,4 +1,4 @@
-.PHONY: lint docker clean roller mock_roller
+.PHONY: lint docker clean prover mock_prover
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
 	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
@@ -23,14 +23,14 @@ libzkp:
 	rm -rf ./prover/lib && cp -r ../common/libzkp/interface ./prover/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./prover/lib/
 
-roller: libzkp ## Build the Roller instance.
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/roller ./cmd
+prover: libzkp ## Build the Roller instance.
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/prover ./cmd
 
-mock_roller: ## Build the mocked Roller instance.
-	GOBIN=$(PWD)/build/bin go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/roller ./cmd
+mock_prover: ## Build the mocked Roller instance.
+	GOBIN=$(PWD)/build/bin go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/prover ./cmd
 
-gpu-roller: libzkp ## Build the GPU Roller instance.
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/roller ./cmd
+gpu-prover: libzkp ## Build the GPU Roller instance.
+	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/prover ./cmd
 
 test-prover: libzkp
 	go test -tags ffi -timeout 0 -v ./prover

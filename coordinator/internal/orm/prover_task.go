@@ -13,7 +13,7 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// ProverTask is assigned rollers info of chunk/batch proof prover task
+// ProverTask is assigned provers info of chunk/batch proof prover task
 type ProverTask struct {
 	db *gorm.DB `gorm:"column:-"`
 

@@ -11,7 +11,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 )
 
-// RollerAPI for rollers inorder to register and submit proof
+// RollerAPI for provers inorder to register and submit proof
 type RollerAPI interface {
 	RequestToken(authMsg *message.AuthMsg) (string, error)
 	Register(ctx context.Context, authMsg *message.AuthMsg) (*rpc.Subscription, error)
@@ -22,7 +22,7 @@ type RollerAPI interface {
 func RegisterAPIs(cfg *config.Config, db *gorm.DB) []rpc.API {
 	return []rpc.API{
 		{
-			Namespace: "roller",
+			Namespace: "prover",
 			Service:   RollerAPI(NewRollerController(cfg.RollerManagerConfig, db)),
 			Public:    true,
 		},

@@ -12,9 +12,9 @@ import (
 
 func TestConfig(t *testing.T) {
 	configTemplate := `{
-		"roller_manager_config": {
+		"prover_manager_config": {
 			"compression_level": 9,
-			"rollers_per_session": 1,
+			"provers_per_session": 1,
 			"session_attempts": %d,
 			"collection_time": 180,
 			"token_time_to_live": 60,
@@ -100,7 +100,7 @@ func TestConfig(t *testing.T) {
 
 		_, err = NewConfig(tmpFile.Name())
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "roller config's order session is invalid")
+		assert.Contains(t, err.Error(), "prover config's order session is invalid")
 	})
 
 	t.Run("Default MaxVerifierWorkers", func(t *testing.T) {

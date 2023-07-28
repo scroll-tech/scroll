@@ -68,17 +68,17 @@ const (
 	MsgRelayFailed
 )
 
-// RollerProveStatus is the roller prove status of a block batch (session)
+// RollerProveStatus is the prover prove status of a block batch (session)
 type RollerProveStatus int32
 
 const (
-	// RollerProveStatusUndefined indicates an unknown roller proving status
+	// RollerProveStatusUndefined indicates an unknown prover proving status
 	RollerProveStatusUndefined RollerProveStatus = iota
-	// RollerAssigned indicates roller assigned but has not submitted proof
+	// RollerAssigned indicates prover assigned but has not submitted proof
 	RollerAssigned
-	// RollerProofValid indicates roller has submitted valid proof
+	// RollerProofValid indicates prover has submitted valid proof
 	RollerProofValid
-	// RollerProofInvalid indicates roller has submitted invalid proof
+	// RollerProofInvalid indicates prover has submitted invalid proof
 	RollerProofInvalid
 )
 
@@ -99,7 +99,7 @@ func (s RollerProveStatus) String() string {
 type ProverTaskFailureType int
 
 const (
-	// ProverTaskFailureTypeUndefined indicates an unknown roller failure type
+	// ProverTaskFailureTypeUndefined indicates an unknown prover failure type
 	ProverTaskFailureTypeUndefined ProverTaskFailureType = iota
 	// ProverTaskFailureTypeTimeout prover task failure of timeout
 	ProverTaskFailureTypeTimeout

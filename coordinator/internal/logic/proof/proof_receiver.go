@@ -15,7 +15,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/rollermanager"
+	"scroll-tech/coordinator/internal/logic/provermanager"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/orm"
 )
@@ -67,12 +67,12 @@ func NewZKProofReceiver(cfg *config.RollerManagerConfig, db *gorm.DB) *ZKProofRe
 	}
 }
 
-// HandleZkProof handle a ZkProof submitted from a roller.
+// HandleZkProof handle a ZkProof submitted from a prover.
 // For now only proving/verifying error will lead to setting status as skipped.
 // db/unmarshal errors will not because they are errors on the business logic side.
 func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.ProofMsg) error {
 	pk, _ := proofMsg.PublicKey()
-	rollermanager.Manager.UpdateMetricRollerProofsLastFinishedTimestampGauge(pk)
+	provermanager.Manager.UpdateMetricRollerProofsLastFinishedTimestampGauge(pk)
 
 	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndPubKey(ctx, proofMsg.ID, pk)
 	if proverTask == nil || err != nil {
@@ -126,7 +126,7 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 	if verifyErr != nil || !success {
 		if verifyErr != nil {
 			// TODO: this is only a temp workaround for testnet, we should return err in real cases
-			log.Error("failed to verify zk proof", "proof id", proofMsg.ID, "roller pk", pk, "prove type",
+			log.Error("failed to verify zk proof", "proof id", proofMsg.ID, "prover pk", pk, "prove type",
 				proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
 		}
 		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
@@ -134,10 +134,10 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 		// TODO: Roller needs to be slashed if proof is invalid.
 		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 
-		rollermanager.Manager.UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk, proofTime)
+		provermanager.Manager.UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk, proofTime)
 
-		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "roller name", proverTask.ProverName,
-			"roller pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
+		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
+			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
 		return nil
 	}
 
@@ -146,7 +146,7 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 	}
 
 	coordinatorProofsVerifiedSuccessTimeTimer.Update(proofTime)
-	rollermanager.Manager.UpdateMetricRollerProofsVerifiedSuccessTimeTimer(pk, proofTime)
+	provermanager.Manager.UpdateMetricRollerProofsVerifiedSuccessTimeTimer(pk, proofTime)
 
 	return nil
 }
@@ -171,30 +171,30 @@ func (m *ZKProofReceiver) checkAreAllChunkProofsReady(ctx context.Context, chunk
 }
 
 func (m *ZKProofReceiver) validator(proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg) error {
-	// Ensure this roller is eligible to participate in the prover task.
+	// Ensure this prover is eligible to participate in the prover task.
 	if types.RollerProveStatus(proverTask.ProvingStatus) == types.RollerProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
-		// (i) slash the roller for each submission of invalid proof
+		// (i) slash the prover for each submission of invalid proof
 		// (ii) set the maximum failure retry times
-		log.Warn("roller has already submitted valid proof in proof session", "roller name", proverTask.ProverName,
-			"roller pk", proverTask.ProverPublicKey, "proof type", proverTask.TaskType, "proof id", proofMsg.ProofDetail.ID)
+		log.Warn("prover has already submitted valid proof in proof session", "prover name", proverTask.ProverName,
+			"prover pk", proverTask.ProverPublicKey, "proof type", proverTask.TaskType, "proof id", proofMsg.ProofDetail.ID)
 		return ErrValidatorFailureRollerInfoHasProofValid
 	}
 
 	proofTime := time.Since(proverTask.CreatedAt)
 	proofTimeSec := uint64(proofTime.Seconds())
 
-	log.Info("handling zk proof", "proof id", proofMsg.ID, "roller name", proverTask.ProverName,
-		"roller pk", pk, "prove type", proverTask.TaskType, "proof time", proofTimeSec)
+	log.Info("handling zk proof", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
+		"prover pk", pk, "prove type", proverTask.TaskType, "proof time", proofTimeSec)
 
 	if proofMsg.Status != message.StatusOk {
 		coordinatorProofsGeneratedFailedTimeTimer.Update(proofTime)
 
-		rollermanager.Manager.UpdateMetricRollerProofsGeneratedFailedTimeTimer(pk, proofTime)
+		provermanager.Manager.UpdateMetricRollerProofsGeneratedFailedTimeTimer(pk, proofTime)
 
-		log.Info("proof generated by roller failed", "proof id", proofMsg.ID, "roller name", proverTask.ProverName,
-			"roller pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", proofMsg.Error)
+		log.Info("proof generated by prover failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
+			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", proofMsg.Error)
 		return ErrValidatorFailureProofMsgStatusNotOk
 	}
 	return nil
@@ -219,7 +219,7 @@ func (m *ZKProofReceiver) closeProofTask(ctx context.Context, hash string, pubKe
 		return err
 	}
 
-	rollermanager.Manager.FreeTaskIDForRoller(pubKey, hash)
+	provermanager.Manager.FreeTaskIDForRoller(pubKey, hash)
 	return nil
 }
 

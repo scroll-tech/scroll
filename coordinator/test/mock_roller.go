@@ -26,7 +26,7 @@ const (
 )
 
 type mockRoller struct {
-	rollerName string
+	proverName string
 	privKey    *ecdsa.PrivateKey
 	proofType  message.ProofType
 
@@ -40,25 +40,25 @@ type mockRoller struct {
 	stopCh chan struct{}
 }
 
-func newMockRoller(t *testing.T, rollerName string, wsURL string, proofType message.ProofType) *mockRoller {
+func newMockRoller(t *testing.T, proverName string, wsURL string, proofType message.ProofType) *mockRoller {
 	privKey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
-	roller := &mockRoller{
-		rollerName: rollerName,
+	prover := &mockRoller{
+		proverName: proverName,
 		privKey:    privKey,
 		proofType:  proofType,
 		wsURL:      wsURL,
 		taskCh:     make(chan *message.TaskMsg, 4),
 		stopCh:     make(chan struct{}),
 	}
-	roller.client, roller.sub, err = roller.connectToCoordinator()
+	prover.client, prover.sub, err = prover.connectToCoordinator()
 	assert.NoError(t, err)
 
-	return roller
+	return prover
 }
 
-// connectToCoordinator sets up a websocket client to connect to the roller manager.
+// connectToCoordinator sets up a websocket client to connect to the prover manager.
 func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscription, error) {
 	// Create connection.
 	client, err := client2.Dial(r.wsURL)
@@ -69,7 +69,7 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 	// create a new ws connection
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:       r.rollerName,
+			Name:       r.proverName,
 			RollerType: r.proofType,
 		},
 	}
@@ -98,9 +98,9 @@ func (r *mockRoller) releaseTasks() {
 	})
 }
 
-// Wait for the proof task, after receiving the proof task, roller submits proof after proofTime secs.
+// Wait for the proof task, after receiving the proof task, prover submits proof after proofTime secs.
 func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration, reconnect bool, proofStatus proofStatus) {
-	// simulating the case that the roller first disconnects and then reconnects to the coordinator
+	// simulating the case that the prover first disconnects and then reconnects to the coordinator
 	// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeRoller()`
 	if reconnect {
 		var err error

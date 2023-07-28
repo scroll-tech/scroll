@@ -10,9 +10,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-// Config loads roller configuration items.
+// Config loads prover configuration items.
 type Config struct {
-	RollerName       string        `json:"roller_name"`
+	RollerName       string        `json:"prover_name"`
 	KeystorePath     string        `json:"keystore_path"`
 	KeystorePassword string        `json:"keystore_password"`
 	CoordinatorURL   string        `json:"coordinator_url"`
@@ -25,7 +25,7 @@ type Config struct {
 type ProverConfig struct {
 	ParamsPath string            `json:"params_path"`
 	SeedPath   string            `json:"seed_path"`
-	ProofType  message.ProofType `json:"prove_type,omitempty"` // 0: basic roller (default type), 1: aggregator roller
+	ProofType  message.ProofType `json:"prove_type,omitempty"` // 0: basic prover (default type), 1: aggregator prover
 	DumpDir    string            `json:"dump_dir,omitempty"`
 }
 

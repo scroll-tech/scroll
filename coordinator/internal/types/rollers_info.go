@@ -5,15 +5,15 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// RollersInfo is assigned rollers info of a task (session)
+// RollersInfo is assigned provers info of a task (session)
 type RollersInfo struct {
 	ID               string            `json:"id"`
-	RollerStatusList []*RollerStatus   `json:"rollers"`
+	RollerStatusList []*RollerStatus   `json:"provers"`
 	StartTimestamp   int64             `json:"start_timestamp"`
 	ProveType        message.ProofType `json:"prove_type,omitempty"`
 }
 
-// RollerStatus is the roller name and roller prove status
+// RollerStatus is the prover name and prover prove status
 type RollerStatus struct {
 	PublicKey string                  `json:"public_key"`
 	Name      string                  `json:"name"`

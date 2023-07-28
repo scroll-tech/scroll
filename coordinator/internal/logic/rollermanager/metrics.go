@@ -1,4 +1,4 @@
-package rollermanager
+package provermanager
 
 import (
 	"time"
@@ -6,55 +6,55 @@ import (
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 )
 
-type rollerMetrics struct {
-	rollerProofsVerifiedSuccessTimeTimer   gethMetrics.Timer
-	rollerProofsVerifiedFailedTimeTimer    gethMetrics.Timer
-	rollerProofsGeneratedFailedTimeTimer   gethMetrics.Timer
-	rollerProofsLastAssignedTimestampGauge gethMetrics.Gauge
-	rollerProofsLastFinishedTimestampGauge gethMetrics.Gauge
+type proverMetrics struct {
+	proverProofsVerifiedSuccessTimeTimer   gethMetrics.Timer
+	proverProofsVerifiedFailedTimeTimer    gethMetrics.Timer
+	proverProofsGeneratedFailedTimeTimer   gethMetrics.Timer
+	proverProofsLastAssignedTimestampGauge gethMetrics.Gauge
+	proverProofsLastFinishedTimestampGauge gethMetrics.Gauge
 }
 
-func (r *rollerManager) UpdateMetricRollerProofsLastFinishedTimestampGauge(pk string) {
-	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).metrics
+func (r *proverManager) UpdateMetricRollerProofsLastFinishedTimestampGauge(pk string) {
+	if node, ok := r.proverPool.Get(pk); ok {
+		rMs := node.(*proverNode).metrics
 		if rMs != nil {
-			rMs.rollerProofsLastFinishedTimestampGauge.Update(time.Now().Unix())
+			rMs.proverProofsLastFinishedTimestampGauge.Update(time.Now().Unix())
 		}
 	}
 }
 
-func (r *rollerManager) UpdateMetricRollerProofsLastAssignedTimestampGauge(pk string) {
-	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).metrics
+func (r *proverManager) UpdateMetricRollerProofsLastAssignedTimestampGauge(pk string) {
+	if node, ok := r.proverPool.Get(pk); ok {
+		rMs := node.(*proverNode).metrics
 		if rMs != nil {
-			rMs.rollerProofsLastAssignedTimestampGauge.Update(time.Now().Unix())
+			rMs.proverProofsLastAssignedTimestampGauge.Update(time.Now().Unix())
 		}
 	}
 }
 
-func (r *rollerManager) UpdateMetricRollerProofsVerifiedSuccessTimeTimer(pk string, d time.Duration) {
-	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).metrics
+func (r *proverManager) UpdateMetricRollerProofsVerifiedSuccessTimeTimer(pk string, d time.Duration) {
+	if node, ok := r.proverPool.Get(pk); ok {
+		rMs := node.(*proverNode).metrics
 		if rMs != nil {
-			rMs.rollerProofsVerifiedSuccessTimeTimer.Update(d)
+			rMs.proverProofsVerifiedSuccessTimeTimer.Update(d)
 		}
 	}
 }
 
-func (r *rollerManager) UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk string, d time.Duration) {
-	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).metrics
+func (r *proverManager) UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk string, d time.Duration) {
+	if node, ok := r.proverPool.Get(pk); ok {
+		rMs := node.(*proverNode).metrics
 		if rMs != nil {
-			rMs.rollerProofsVerifiedFailedTimeTimer.Update(d)
+			rMs.proverProofsVerifiedFailedTimeTimer.Update(d)
 		}
 	}
 }
 
-func (r *rollerManager) UpdateMetricRollerProofsGeneratedFailedTimeTimer(pk string, d time.Duration) {
-	if node, ok := r.rollerPool.Get(pk); ok {
-		rMs := node.(*rollerNode).metrics
+func (r *proverManager) UpdateMetricRollerProofsGeneratedFailedTimeTimer(pk string, d time.Duration) {
+	if node, ok := r.proverPool.Get(pk); ok {
+		rMs := node.(*proverNode).metrics
 		if rMs != nil {
-			rMs.rollerProofsGeneratedFailedTimeTimer.Update(d)
+			rMs.proverProofsGeneratedFailedTimeTimer.Update(d)
 		}
 	}
 }

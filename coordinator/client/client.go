@@ -33,19 +33,19 @@ func NewClient(c *rpc.Client) *Client {
 	return &Client{client: c}
 }
 
-// RequestToken generates token for roller
+// RequestToken generates token for prover
 func (c *Client) RequestToken(ctx context.Context, authMsg *message.AuthMsg) (string, error) {
 	var token string
-	err := c.client.CallContext(ctx, &token, "roller_requestToken", authMsg)
+	err := c.client.CallContext(ctx, &token, "prover_requestToken", authMsg)
 	return token, err
 }
 
-// RegisterAndSubscribe subscribe roller and register, verified by sign data.
+// RegisterAndSubscribe subscribe prover and register, verified by sign data.
 func (c *Client) RegisterAndSubscribe(ctx context.Context, taskCh chan *message.TaskMsg, authMsg *message.AuthMsg) (ethereum.Subscription, error) {
-	return c.client.Subscribe(ctx, "roller", taskCh, "register", authMsg)
+	return c.client.Subscribe(ctx, "prover", taskCh, "register", authMsg)
 }
 
-// SubmitProof get proof from roller.
+// SubmitProof get proof from prover.
 func (c *Client) SubmitProof(ctx context.Context, proof *message.ProofMsg) error {
-	return c.client.CallContext(ctx, nil, "roller_submitProof", proof)
+	return c.client.CallContext(ctx, nil, "prover_submitProof", proof)
 }
