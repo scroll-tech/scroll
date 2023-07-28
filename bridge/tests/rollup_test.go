@@ -45,9 +45,9 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			BaseFee:    big.NewInt(0),
 		}
 		wrappedBlocks = append(wrappedBlocks, &types.WrappedBlock{
-			Header:           &header,
-			Transactions:     nil,
-			WithdrawTrieRoot: common.Hash{},
+			Header:       &header,
+			Transactions: nil,
+			WithdrawRoot: common.Hash{},
 		})
 	}
 

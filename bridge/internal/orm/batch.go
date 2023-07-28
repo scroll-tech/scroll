@@ -30,6 +30,7 @@ type Batch struct {
 	EndChunkHash    string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
 	StateRoot       string `json:"state_root" gorm:"column:state_root"`
 	WithdrawRoot    string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
 	// proof
@@ -258,7 +259,8 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		EndChunkHash:      endChunkHash,
 		EndChunkIndex:     endChunkIndex,
 		StateRoot:         chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
+		WithdrawRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawRoot.Hex(),
+		ParentBatchHash:   parentBatchHash.Hex(),
 		BatchHeader:       batchHeader.Encode(),
 		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),

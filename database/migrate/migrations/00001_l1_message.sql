@@ -24,13 +24,13 @@ comment
 on column l1_message.status is 'undefined, pending, submitted, confirmed, failed, expired, relay_failed';
 
 create unique index l1_message_hash_uindex
-on l1_message (msg_hash);
+on l1_message (msg_hash) where deleted_at IS NULL;
 
 create unique index l1_message_nonce_uindex
-on l1_message (queue_index);
+on l1_message (queue_index) where deleted_at IS NULL;
 
 create index l1_message_height_index
-    on l1_message (height);
+on l1_message (height) where deleted_at IS NULL;
 
 -- +goose StatementEnd
 
