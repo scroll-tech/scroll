@@ -22,10 +22,10 @@ comment
 on column l1_block.oracle_status is 'undefined, pending, importing, imported, failed';
 
 create unique index l1_block_hash_uindex
-on l1_block (hash);
+on l1_block (hash) where deleted_at IS NULL;
 
 create unique index l1_block_number_uindex
-on l1_block (number);
+on l1_block (number) where deleted_at IS NULL;
 
 -- +goose StatementEnd
 
