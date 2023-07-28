@@ -91,7 +91,7 @@ func updateRowConsumption(totalRowConsumption *map[string]uint64, rowConsumption
 }
 
 func maxRowConsumption(totalRowConsumption *map[string]uint64) uint64 {
-	var maxRowConsumption uint64 = 0
+	var maxRowConsumption uint64
 	for _, value := range *totalRowConsumption {
 		if value > maxRowConsumption {
 			maxRowConsumption = value
