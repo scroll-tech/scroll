@@ -1,4 +1,4 @@
-package roller
+package prover
 
 import (
 	"context"
@@ -23,9 +23,9 @@ import (
 
 	"scroll-tech/coordinator/client"
 
-	"scroll-tech/roller/config"
-	"scroll-tech/roller/prover"
-	"scroll-tech/roller/store"
+	"scroll-tech/prover/config"
+	"scroll-tech/prover/core"
+	"scroll-tech/prover/store"
 )
 
 var (
@@ -33,13 +33,13 @@ var (
 	retryWait = time.Second * 10
 )
 
-// Roller contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
-type Roller struct {
+// Prover contains websocket conn to coordinator, and task stack.
+type Prover struct {
 	cfg         *config.Config
 	client      *client.Client
 	traceClient *ethclient.Client
 	stack       *store.Stack
-	prover      *prover.Prover
+	proverCore  *core.ProverCore
 	taskChan    chan *message.TaskMsg
 	sub         ethereum.Subscription
 
@@ -50,8 +50,8 @@ type Roller struct {
 	priv *ecdsa.PrivateKey
 }
 
-// NewRoller new a Roller object.
-func NewRoller(cfg *config.Config) (*Roller, error) {
+// NewProver new a Prover object.
+func NewProver(cfg *config.Config) (*Prover, error) {
 	// load or create wallet
 	priv, err := utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
@@ -70,25 +70,25 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		return nil, err
 	}
 
-	// Create prover instance
-	log.Info("init prover")
-	newProver, err := prover.NewProver(cfg.Prover)
+	// Create prover_core instance
+	log.Info("init prover_core")
+	newProverCore, err := core.NewProverCore(cfg.Core)
 	if err != nil {
 		return nil, err
 	}
-	log.Info("init prover successfully!")
+	log.Info("init prover_core successfully!")
 
 	rClient, err := client.Dial(cfg.CoordinatorURL)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Roller{
+	return &Prover{
 		cfg:         cfg,
 		client:      rClient,
 		traceClient: traceClient,
 		stack:       stackDb,
-		prover:      newProver,
+		proverCore:  newProverCore,
 		sub:         nil,
 		taskChan:    make(chan *message.TaskMsg, 10),
 		stopChan:    make(chan struct{}),
@@ -96,18 +96,18 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 	}, nil
 }
 
-// Type returns roller type.
-func (r *Roller) Type() message.ProofType {
-	return r.cfg.Prover.ProofType
+// Type returns prover type.
+func (r *Prover) Type() message.ProofType {
+	return r.cfg.Core.ProofType
 }
 
 // PublicKey translate public key to hex and return.
-func (r *Roller) PublicKey() string {
+func (r *Prover) PublicKey() string {
 	return common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey))
 }
 
-// Start runs Roller.
-func (r *Roller) Start() {
+// Start runs Prover.
+func (r *Prover) Start() {
 	log.Info("start to register to coordinator")
 	if err := r.Register(); err != nil {
 		log.Crit("register to coordinator failed", "error", err)
@@ -118,12 +118,12 @@ func (r *Roller) Start() {
 	go r.ProveLoop()
 }
 
-// Register registers Roller to the coordinator through Websocket.
-func (r *Roller) Register() error {
+// Register registers Prover to the coordinator through Websocket.
+func (r *Prover) Register() error {
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:       r.cfg.RollerName,
-			RollerType: r.Type(),
+			Name:       r.cfg.ProverName,
+			ProverType: r.Type(),
 			Version:    version.Version,
 		},
 	}
@@ -149,7 +149,7 @@ func (r *Roller) Register() error {
 }
 
 // HandleCoordinator accepts block-traces from coordinator through the Websocket and store it into Stack.
-func (r *Roller) HandleCoordinator() {
+func (r *Prover) HandleCoordinator() {
 	for {
 		select {
 		case <-r.stopChan:
@@ -170,7 +170,7 @@ func (r *Roller) HandleCoordinator() {
 	}
 }
 
-func (r *Roller) mustRetryCoordinator() {
+func (r *Prover) mustRetryCoordinator() {
 	atomic.StoreInt64(&r.isDisconnected, 1)
 	defer atomic.StoreInt64(&r.isDisconnected, 0)
 	for {
@@ -188,7 +188,7 @@ func (r *Roller) mustRetryCoordinator() {
 }
 
 // ProveLoop keep popping the block-traces from Stack and sends it to rust-prover for loop.
-func (r *Roller) ProveLoop() {
+func (r *Prover) ProveLoop() {
 	for {
 		select {
 		case <-r.stopChan:
@@ -206,7 +206,7 @@ func (r *Roller) ProveLoop() {
 	}
 }
 
-func (r *Roller) prove() error {
+func (r *Prover) prove() error {
 	task, err := r.stack.Peek()
 	if err != nil {
 		return err
@@ -233,10 +233,10 @@ func (r *Roller) prove() error {
 			}
 			log.Error("get traces failed!", "task-id", task.Task.ID, "err", err)
 		} else {
-			// If FFI panic during Prove, the roller will restart and re-enter prove() function,
+			// If FFI panic during Prove, the prover will restart and re-enter prove() function,
 			// the proof will not be submitted.
 			var proof *message.AggProof
-			proof, err = r.prover.Prove(task.Task.ID, traces)
+			proof, err = r.proverCore.Prove(task.Task.ID, traces)
 			if err != nil {
 				proofMsg = &message.ProofDetail{
 					Status: message.StatusProofError,
@@ -257,7 +257,7 @@ func (r *Roller) prove() error {
 			}
 		}
 	} else {
-		// when the roller has more than 3 times panic,
+		// when the prover has more than 3 times panic,
 		// it will omit to prove the task, submit StatusProofError and then Delete the task.
 		proofMsg = &message.ProofDetail{
 			Status: message.StatusProofError,
@@ -271,7 +271,7 @@ func (r *Roller) prove() error {
 	defer func() {
 		err = r.stack.Delete(task.Task.ID)
 		if err != nil {
-			log.Error("roller stack pop failed!", "err", err)
+			log.Error("prover stack pop failed!", "err", err)
 		}
 	}()
 
@@ -279,7 +279,7 @@ func (r *Roller) prove() error {
 	return nil
 }
 
-func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
+func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) {
 	authZkProof := &message.ProofMsg{ProofDetail: msg}
 	if err := authZkProof.Sign(r.priv); err != nil {
 		log.Error("sign proof error", "err", err)
@@ -288,8 +288,8 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 
 	// Retry SubmitProof several times.
 	for i := 0; i < 3; i++ {
-		// When the roller is disconnected from the coordinator,
-		// wait until the roller reconnects to the coordinator.
+		// When the prover is disconnected from the coordinator,
+		// wait until the prover reconnects to the coordinator.
 		for atomic.LoadInt64(&r.isDisconnected) == 1 {
 			time.Sleep(retryWait)
 		}
@@ -301,7 +301,7 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 	}
 }
 
-func (r *Roller) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
+func (r *Prover) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
 	var traces []*types.BlockTrace
 	for _, blockHash := range blockHashes {
 		trace, err := r.traceClient.GetBlockTraceByHash(context.Background(), blockHash)
@@ -319,7 +319,7 @@ func (r *Roller) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.Bl
 }
 
 // Stop closes the websocket connection.
-func (r *Roller) Stop() {
+func (r *Prover) Stop() {
 	if atomic.LoadInt64(&r.isClosed) == 1 {
 		return
 	}
