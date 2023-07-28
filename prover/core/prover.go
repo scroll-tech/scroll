@@ -60,7 +60,7 @@ func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.
 		}
 		proofByt = p.prove(tracesByt)
 	} else if p.cfg.ProofType == message.ProofTypeBatch {
-		// TODO: aggregator prove
+		// TODO: ProofTypeBatch prove
 	}
 
 	// dump proof

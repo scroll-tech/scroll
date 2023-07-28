@@ -54,27 +54,3 @@ The coordinator behavior can be configured using [`config.json`](config.json). C
 
 * For other flags, refer to [`cmd/app/flags.go`](cmd/app/flags.go).
 
-
-## Codeflow
-
-### cmd/app/app.go
-
-This file defines the main entry point for the coordinator application, setting up the necessary modules, and handling graceful shutdowns. Upon loading config.json file, the coordinator (`cmd/app/app.go`) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. `flags.go` is used to parse the flags. Then, it creates a new `ProverManager` (`manager.go`) and starts listening.
-
-### manager.go
-
-`manager.go` calls `provers.go` for prover (aka "prover") management functions. In the process, `provers.go` calls `client.go`, initializing a prover client.  For communication between prover clients and the coordinator manager, `api.go` is used.
-
-`manager.go` uses either `verifier.go` or `mock.go` (for development/testing purposes) to verify the proofs submitted by provers. After verification, `manager.go` will call `prover.go` to update the state of the prover, and then return the result (whether the proof verification process was successful) to the prover.
-
-### api.go
-
-This file contains the implementation of the RPC API for the coordinator manager. The API allows prover clients to interact with the coordinator manager through functions such as `requestToken`, `register`, and `submitProof`.
-
-### provers.go
-
-This file contains the logic for handling prover-specific tasks, such as assigning tasks to provers, handling completed tasks, and managing prover metrics.
-
-### client/client.go
-
-This file contains the `Client` struct that is callable on the prover side and responsible for communicating with the coordinator through RPC. `RequestToken`, `RegisterAndSubscribe`, and `SubmitProof` are used by `provers.go`.
