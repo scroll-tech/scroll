@@ -77,6 +77,10 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 
 // EstimateL1CommitGas calculates the total L1 commit gas for this block approximately.
 func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
+	getKeccakGas := func(size uint64) uint64 {
+		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+	}
+
 	var total uint64
 	var numL1Messages uint64
 	for _, txData := range w.Transactions {
@@ -98,9 +102,10 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 			S:        txData.S.ToInt(),
 		})
 		rlpTxData, _ := tx.MarshalBinary()
-		// an over-estimate: treat each byte as non-zero
-		total += 16 * uint64(len(rlpTxData))
-		total += 16 * 4 // size of a uint32 field
+		txPayloadLength := uint64(len(rlpTxData))
+		total += 16 * uint64(txPayloadLength)  // an over-estimate: treat each byte as non-zero
+		total += 16 * 4                        // size of a uint32 field
+		total += getKeccakGas(txPayloadLength) // l2 tx hash
 	}
 
 	// sload
