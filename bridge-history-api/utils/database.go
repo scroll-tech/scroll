@@ -91,6 +91,9 @@ func CloseDB(db *gorm.DB) error {
 
 // nowUTC get the utc time.Now
 func nowUTC() time.Time {
-	utc, _ := time.LoadLocation("")
-	return time.Now().In(utc)
+	utc, err := time.LoadLocation("")
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Now().In(utc), nil
 }
