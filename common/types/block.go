@@ -13,7 +13,7 @@ import (
 const nonZeroByteGas uint64 = 16
 const zeroByteGas uint64 = 4
 
-// WrappedBlock contains the block's Header, Transactions, WithdrawTrieRoot hash and RowConsumption.
+// WrappedBlock contains the block's Header, Transactions, WithdrawRoot hash and RowConsumption.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
