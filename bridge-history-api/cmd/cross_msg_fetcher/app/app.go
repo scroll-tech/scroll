@@ -16,8 +16,6 @@ import (
 	"bridge-history-api/crossmsg/messageproof"
 	"bridge-history-api/orm"
 	cutils "bridge-history-api/utils"
-
-	"scroll-tech/common/database"
 )
 
 var (
@@ -57,18 +55,12 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
-	dbCfg := &database.Config{
-		DriverName: cfg.DB.DriverName,
-		DSN:        cfg.DB.DSN,
-		MaxOpenNum: cfg.DB.MaxOpenNum,
-		MaxIdleNum: cfg.DB.MaxIdleNum,
-	}
-	db, err := database.InitDB(dbCfg)
+	db, err := cutils.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db", "err", err)
 	}
 	defer func() {
-		if deferErr := database.CloseDB(db); deferErr != nil {
+		if deferErr := cutils.CloseDB(db); deferErr != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
