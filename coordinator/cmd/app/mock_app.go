@@ -80,8 +80,8 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		return err
 	}
 	// Reset prover manager config for manager test cases.
-	cfg.RollerManagerConfig = &coordinatorConfig.RollerManagerConfig{
-		RollersPerSession: 1,
+	cfg.ProverManagerConfig = &coordinatorConfig.ProverManagerConfig{
+		ProversPerSession: 1,
 		Verifier:          &coordinatorConfig.VerifierConfig{MockMode: true},
 		CollectionTime:    1,
 		TokenTimeToLive:   1,

@@ -72,8 +72,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 	}
 
 	conf := config.Config{
-		RollerManagerConfig: &config.RollerManagerConfig{
-			RollersPerSession:  proversPerSession,
+		ProverManagerConfig: &config.ProverManagerConfig{
+			ProversPerSession:  proversPerSession,
 			Verifier:           &config.VerifierConfig{MockMode: true},
 			CollectionTime:     1,
 			TokenTimeToLive:    5,
@@ -85,7 +85,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 	tmpAPI := api.RegisterAPIs(&conf, db)
 	handler, _, err := utils.StartWSEndpoint(strings.Split(wsURL, "//")[1], tmpAPI, flate.NoCompression)
 	assert.NoError(t, err)
-	provermanager.InitRollerManager(db)
+	provermanager.InitProverManager(db)
 	return handler, proofCollector
 }
 
@@ -139,7 +139,7 @@ func TestApis(t *testing.T) {
 	t.Run("TestInvalidProof", testInvalidProof)
 	t.Run("TestProofGeneratedFailed", testProofGeneratedFailed)
 	t.Run("TestTimeoutProof", testTimeoutProof)
-	t.Run("TestIdleRollerSelection", testIdleRollerSelection)
+	t.Run("TestIdleProverSelection", testIdleProverSelection)
 	t.Run("TestGracefulRestart", testGracefulRestart)
 
 	// Teardown
@@ -157,14 +157,14 @@ func testHandshake(t *testing.T) {
 		proofCollector.Stop()
 	}()
 
-	prover1 := newMockRoller(t, "prover_test", wsURL, message.ProofTypeChunk)
+	prover1 := newMockProver(t, "prover_test", wsURL, message.ProofTypeChunk)
 	defer prover1.close()
 
-	prover2 := newMockRoller(t, "prover_test", wsURL, message.ProofTypeBatch)
+	prover2 := newMockProver(t, "prover_test", wsURL, message.ProofTypeBatch)
 	defer prover2.close()
 
-	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
-	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
+	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk))
+	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch))
 }
 
 func testFailedHandshake(t *testing.T) {
@@ -222,7 +222,7 @@ func testFailedHandshake(t *testing.T) {
 	_, err = c.RegisterAndSubscribe(ctx, make(chan *message.TaskMsg, 4), authMsg)
 	assert.Error(t, err)
 
-	assert.Equal(t, 0, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
+	assert.Equal(t, 0, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk))
 }
 
 func testSeveralConnections(t *testing.T) {
@@ -236,21 +236,21 @@ func testSeveralConnections(t *testing.T) {
 	var (
 		batch   = 200
 		eg      = errgroup.Group{}
-		provers = make([]*mockRoller, batch)
+		provers = make([]*mockProver, batch)
 	)
 	for i := 0; i < batch; i += 2 {
 		idx := i
 		eg.Go(func() error {
-			provers[idx] = newMockRoller(t, "prover_test_"+strconv.Itoa(idx), wsURL, message.ProofTypeChunk)
-			provers[idx+1] = newMockRoller(t, "prover_test_"+strconv.Itoa(idx+1), wsURL, message.ProofTypeBatch)
+			provers[idx] = newMockProver(t, "prover_test_"+strconv.Itoa(idx), wsURL, message.ProofTypeChunk)
+			provers[idx+1] = newMockProver(t, "prover_test_"+strconv.Itoa(idx+1), wsURL, message.ProofTypeBatch)
 			return nil
 		})
 	}
 	assert.NoError(t, eg.Wait())
 
 	// check prover's idle connections
-	assert.Equal(t, batch/2, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
-	assert.Equal(t, batch/2, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
+	assert.Equal(t, batch/2, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk))
+	assert.Equal(t, batch/2, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch))
 
 	// close connection
 	for _, prover := range provers {
@@ -264,7 +264,7 @@ func testSeveralConnections(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			if provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk) == 0 {
+			if provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk) == 0 {
 				return
 			}
 		case <-tickStop:
@@ -283,7 +283,7 @@ func testValidProof(t *testing.T) {
 	}()
 
 	// create mock provers.
-	provers := make([]*mockRoller, 6)
+	provers := make([]*mockProver, 6)
 	for i := 0; i < len(provers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
@@ -291,7 +291,7 @@ func testValidProof(t *testing.T) {
 		} else {
 			proofType = message.ProofTypeBatch
 		}
-		provers[i] = newMockRoller(t, "prover_test"+strconv.Itoa(i), wsURL, proofType)
+		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), wsURL, proofType)
 
 		// only prover 0 & 1 submit valid proofs.
 		proofStatus := generatedFailed
@@ -307,8 +307,8 @@ func testValidProof(t *testing.T) {
 			prover.close()
 		}
 	}()
-	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
-	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
+	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk))
+	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -351,7 +351,7 @@ func testInvalidProof(t *testing.T) {
 	}()
 
 	// create mock provers.
-	provers := make([]*mockRoller, 6)
+	provers := make([]*mockProver, 6)
 	for i := 0; i < len(provers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
@@ -359,7 +359,7 @@ func testInvalidProof(t *testing.T) {
 		} else {
 			proofType = message.ProofTypeBatch
 		}
-		provers[i] = newMockRoller(t, "prover_test"+strconv.Itoa(i), wsURL, proofType)
+		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), wsURL, proofType)
 		provers[i].waitTaskAndSendProof(t, time.Second, false, verifiedFailed)
 	}
 	defer func() {
@@ -368,8 +368,8 @@ func testInvalidProof(t *testing.T) {
 			prover.close()
 		}
 	}()
-	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
-	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
+	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk))
+	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -412,7 +412,7 @@ func testProofGeneratedFailed(t *testing.T) {
 	}()
 
 	// create mock provers.
-	provers := make([]*mockRoller, 6)
+	provers := make([]*mockProver, 6)
 	for i := 0; i < len(provers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
@@ -420,7 +420,7 @@ func testProofGeneratedFailed(t *testing.T) {
 		} else {
 			proofType = message.ProofTypeBatch
 		}
-		provers[i] = newMockRoller(t, "prover_test"+strconv.Itoa(i), wsURL, proofType)
+		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), wsURL, proofType)
 		provers[i].waitTaskAndSendProof(t, time.Second, false, generatedFailed)
 	}
 	defer func() {
@@ -429,8 +429,8 @@ func testProofGeneratedFailed(t *testing.T) {
 			prover.close()
 		}
 	}()
-	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
-	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
+	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk))
+	assert.Equal(t, 3, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -473,15 +473,15 @@ func testTimeoutProof(t *testing.T) {
 	}()
 
 	// create first chunk & batch mock prover, that will not send any proof.
-	chunkRoller1 := newMockRoller(t, "prover_test"+strconv.Itoa(0), wsURL, message.ProofTypeChunk)
-	batchRoller1 := newMockRoller(t, "prover_test"+strconv.Itoa(1), wsURL, message.ProofTypeBatch)
+	chunkProver1 := newMockProver(t, "prover_test"+strconv.Itoa(0), wsURL, message.ProofTypeChunk)
+	batchProver1 := newMockProver(t, "prover_test"+strconv.Itoa(1), wsURL, message.ProofTypeBatch)
 	defer func() {
 		// close connection
-		chunkRoller1.close()
-		batchRoller1.close()
+		chunkProver1.close()
+		batchProver1.close()
 	}()
-	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
-	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
+	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk))
+	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -507,17 +507,17 @@ func testTimeoutProof(t *testing.T) {
 	assert.Falsef(t, !ok, "failed to check proof status")
 
 	// create second mock prover, that will send valid proof.
-	chunkRoller2 := newMockRoller(t, "prover_test"+strconv.Itoa(2), wsURL, message.ProofTypeChunk)
-	chunkRoller2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
-	batchRoller2 := newMockRoller(t, "prover_test"+strconv.Itoa(3), wsURL, message.ProofTypeBatch)
-	batchRoller2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
+	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), wsURL, message.ProofTypeChunk)
+	chunkProver2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
+	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), wsURL, message.ProofTypeBatch)
+	batchProver2.waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
 	defer func() {
 		// close connection
-		chunkRoller2.close()
-		batchRoller2.close()
+		chunkProver2.close()
+		batchProver2.close()
 	}()
-	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
-	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
+	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk))
+	assert.Equal(t, 1, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch))
 
 	// verify proof status, it should be verified now, because second prover sent valid proof
 	ok = utils.TryTimes(200, func() bool {
@@ -534,7 +534,7 @@ func testTimeoutProof(t *testing.T) {
 	assert.Falsef(t, !ok, "failed to check proof status")
 }
 
-func testIdleRollerSelection(t *testing.T) {
+func testIdleProverSelection(t *testing.T) {
 	// Setup coordinator and ws server.
 	wsURL := "ws://" + randomURL()
 	handler, collector := setupCoordinator(t, 1, wsURL, true)
@@ -544,7 +544,7 @@ func testIdleRollerSelection(t *testing.T) {
 	}()
 
 	// create mock provers.
-	provers := make([]*mockRoller, 20)
+	provers := make([]*mockProver, 20)
 	for i := 0; i < len(provers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
@@ -552,7 +552,7 @@ func testIdleRollerSelection(t *testing.T) {
 		} else {
 			proofType = message.ProofTypeBatch
 		}
-		provers[i] = newMockRoller(t, "prover_test"+strconv.Itoa(i), wsURL, proofType)
+		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), wsURL, proofType)
 		provers[i].waitTaskAndSendProof(t, time.Second, false, verifiedSuccess)
 	}
 	defer func() {
@@ -562,8 +562,8 @@ func testIdleRollerSelection(t *testing.T) {
 		}
 	}()
 
-	assert.Equal(t, len(provers)/2, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk))
-	assert.Equal(t, len(provers)/2, provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch))
+	assert.Equal(t, len(provers)/2, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk))
+	assert.Equal(t, len(provers)/2, provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch))
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -611,17 +611,17 @@ func testGracefulRestart(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create mock prover
-	chunkRoller := newMockRoller(t, "prover_test", wsURL, message.ProofTypeChunk)
-	batchRoller := newMockRoller(t, "prover_test", wsURL, message.ProofTypeBatch)
+	chunkProver := newMockProver(t, "prover_test", wsURL, message.ProofTypeChunk)
+	batchProver := newMockProver(t, "prover_test", wsURL, message.ProofTypeBatch)
 	// wait 10 seconds, coordinator restarts before prover submits proof
-	chunkRoller.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
-	batchRoller.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
+	chunkProver.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
+	batchProver.waitTaskAndSendProof(t, 10*time.Second, false, verifiedSuccess)
 
 	// wait for coordinator to dispatch task
 	<-time.After(5 * time.Second)
 	// the coordinator will delete the prover if the subscription is closed.
-	chunkRoller.close()
-	batchRoller.close()
+	chunkProver.close()
+	batchProver.close()
 
 	provingStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 	assert.NoError(t, err)
@@ -647,11 +647,11 @@ func testGracefulRestart(t *testing.T) {
 	assert.Equal(t, types.ProvingTaskUnassigned, status) // chunk proofs not ready yet
 
 	// will overwrite the prover client for `SubmitProof`
-	chunkRoller.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)
-	batchRoller.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)
+	chunkProver.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)
+	batchProver.waitTaskAndSendProof(t, time.Second, true, verifiedSuccess)
 	defer func() {
-		chunkRoller.close()
-		batchRoller.close()
+		chunkProver.close()
+		batchProver.close()
 	}()
 
 	// verify proof status

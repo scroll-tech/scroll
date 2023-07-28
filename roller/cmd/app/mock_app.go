@@ -26,8 +26,8 @@ func getIndex() int {
 	return proverIndex
 }
 
-// RollerApp prover-test client manager.
-type RollerApp struct {
+// ProverApp prover-test client manager.
+type ProverApp struct {
 	Config *proverConfig.Config
 
 	base *docker.App
@@ -42,16 +42,16 @@ type RollerApp struct {
 	docker.AppAPI
 }
 
-// NewRollerApp return a new proverApp manager.
-func NewRollerApp(base *docker.App, file string, wsURL string) *RollerApp {
+// NewProverApp return a new proverApp manager.
+func NewProverApp(base *docker.App, file string, wsURL string) *ProverApp {
 	proverFile := fmt.Sprintf("/tmp/%d_prover-config.json", base.Timestamp)
-	proverApp := &RollerApp{
+	proverApp := &ProverApp{
 		base:       base,
 		originFile: file,
 		proverFile: proverFile,
 		bboltDB:    fmt.Sprintf("/tmp/%d_bbolt_db", base.Timestamp),
 		index:      getIndex(),
-		name:       string(utils.RollerApp),
+		name:       string(utils.ProverApp),
 		args:       []string{"--log.debug", "--config", proverFile},
 	}
 	if err := proverApp.MockConfig(true, wsURL); err != nil {
@@ -61,13 +61,13 @@ func NewRollerApp(base *docker.App, file string, wsURL string) *RollerApp {
 }
 
 // RunApp run prover-test child process by multi parameters.
-func (r *RollerApp) RunApp(t *testing.T, args ...string) {
+func (r *ProverApp) RunApp(t *testing.T, args ...string) {
 	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
 	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
 // Free stop and release prover-test.
-func (r *RollerApp) Free() {
+func (r *ProverApp) Free() {
 	if !utils.IsNil(r.AppAPI) {
 		r.AppAPI.WaitExit()
 	}
@@ -77,13 +77,13 @@ func (r *RollerApp) Free() {
 }
 
 // MockConfig creates a new prover config.
-func (r *RollerApp) MockConfig(store bool, wsURL string) error {
+func (r *ProverApp) MockConfig(store bool, wsURL string) error {
 	cfg, err := proverConfig.NewConfig(r.originFile)
 	if err != nil {
 		return err
 	}
-	cfg.RollerName = fmt.Sprintf("%s_%d", r.name, r.index)
-	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.RollerName)
+	cfg.ProverName = fmt.Sprintf("%s_%d", r.name, r.index)
+	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.ProverName)
 	cfg.TraceEndpoint = r.base.L2gethImg.Endpoint()
 	// Reuse l1geth's keystore file
 	cfg.KeystorePassword = "scrolltest"
@@ -107,11 +107,11 @@ func (r *RollerApp) MockConfig(store bool, wsURL string) error {
 	return os.WriteFile(r.proverFile, data, 0600)
 }
 
-// RollerApps proverApp list.
-type RollerApps []*RollerApp
+// ProverApps proverApp list.
+type ProverApps []*ProverApp
 
 // RunApps starts all the proverApps.
-func (r RollerApps) RunApps(t *testing.T, args ...string) {
+func (r ProverApps) RunApps(t *testing.T, args ...string) {
 	var eg errgroup.Group
 	for i := range r {
 		i := i
@@ -124,7 +124,7 @@ func (r RollerApps) RunApps(t *testing.T, args ...string) {
 }
 
 // MockConfigs creates all the proverApps' configs.
-func (r RollerApps) MockConfigs(store bool, wsURL string) error {
+func (r ProverApps) MockConfigs(store bool, wsURL string) error {
 	var eg errgroup.Group
 	for _, prover := range r {
 		prover := prover
@@ -136,7 +136,7 @@ func (r RollerApps) MockConfigs(store bool, wsURL string) error {
 }
 
 // Free releases proverApps.
-func (r RollerApps) Free() {
+func (r ProverApps) Free() {
 	var wg sync.WaitGroup
 	wg.Add(len(r))
 	for i := range r {
@@ -150,7 +150,7 @@ func (r RollerApps) Free() {
 }
 
 // WaitExit wait proverApps stopped.
-func (r RollerApps) WaitExit() {
+func (r ProverApps) WaitExit() {
 	var wg sync.WaitGroup
 	wg.Add(len(r))
 	for i := range r {

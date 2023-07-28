@@ -69,7 +69,7 @@ func TestProverTaskOrm(t *testing.T) {
 		TaskID:          "test-hash",
 		ProverName:      "prover-0",
 		ProverPublicKey: "0",
-		ProvingStatus:   int16(types.RollerAssigned),
+		ProvingStatus:   int16(types.ProverAssigned),
 		Reward:          decimal.NewFromBigInt(reward, 0),
 	}
 
@@ -84,7 +84,7 @@ func TestProverTaskOrm(t *testing.T) {
 	assert.Equal(t, resultReward, reward)
 	assert.Equal(t, resultReward.String(), "18446744073709551616")
 
-	proverTask.ProvingStatus = int16(types.RollerProofValid)
+	proverTask.ProvingStatus = int16(types.ProverProofValid)
 	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
 	getTask, err = proverTaskOrm.GetProverTasksByHash(context.Background(), "test-hash")
@@ -104,7 +104,7 @@ func TestProverTaskOrmUint256(t *testing.T) {
 		TaskID:          "test-hash",
 		ProverName:      "prover-0",
 		ProverPublicKey: "0",
-		ProvingStatus:   int16(types.RollerAssigned),
+		ProvingStatus:   int16(types.ProverAssigned),
 		Reward:          decimal.NewFromBigInt(rewardUint256, 0),
 	}
 

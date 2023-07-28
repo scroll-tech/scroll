@@ -66,7 +66,7 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 		return fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
-	if provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeChunk) == 0 {
+	if provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeChunk) == 0 {
 		return fmt.Errorf("no idle chunk prover when starting proof generation session, id:%s", chunkTask.Hash)
 	}
 
@@ -88,7 +88,7 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 				ProverPublicKey: proverStatus.PublicKey,
 				TaskType:        int16(message.ProofTypeChunk),
 				ProverName:      proverStatus.Name,
-				ProvingStatus:   int16(types.RollerAssigned),
+				ProvingStatus:   int16(types.ProverAssigned),
 				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 				// here why need use UTC time. see scroll/common/databased/db.go
 				AssignedAt: utils.NowUTC(),
@@ -102,7 +102,7 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 	return transErr
 }
 
-func (cp *ChunkProofCollector) sendTask(ctx context.Context, hash string) ([]*coordinatorType.RollerStatus, error) {
+func (cp *ChunkProofCollector) sendTask(ctx context.Context, hash string) ([]*coordinatorType.ProverStatus, error) {
 	// Get block hashes.
 	wrappedBlocks, err := cp.blockOrm.GetL2BlocksByChunkHash(ctx, hash)
 	if err != nil {

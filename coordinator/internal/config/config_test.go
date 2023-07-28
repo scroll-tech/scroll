@@ -116,7 +116,7 @@ func TestConfig(t *testing.T) {
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.RollerManagerConfig.MaxVerifierWorkers)
+		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.ProverManagerConfig.MaxVerifierWorkers)
 	})
 
 	t.Run("Default SessionAttempts", func(t *testing.T) {
@@ -132,6 +132,6 @@ func TestConfig(t *testing.T) {
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.RollerManagerConfig.SessionAttempts)
+		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.ProverManagerConfig.SessionAttempts)
 	})
 }

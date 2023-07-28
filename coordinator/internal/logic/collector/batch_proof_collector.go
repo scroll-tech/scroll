@@ -59,7 +59,7 @@ func (bp *BatchProofCollector) Collect(ctx context.Context) error {
 	batchTask := batchTasks[0]
 	log.Info("start batch proof generation session", "id", batchTask.Hash)
 
-	if provermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch) == 0 {
+	if provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch) == 0 {
 		return fmt.Errorf("no idle common prover when starting proof generation session, id:%s", batchTask.Hash)
 	}
 
@@ -84,7 +84,7 @@ func (bp *BatchProofCollector) Collect(ctx context.Context) error {
 				ProverPublicKey: proverStatus.PublicKey,
 				TaskType:        int16(message.ProofTypeBatch),
 				ProverName:      proverStatus.Name,
-				ProvingStatus:   int16(types.RollerAssigned),
+				ProvingStatus:   int16(types.ProverAssigned),
 				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 				// here why need use UTC time. see scroll/common/databased/db.go
 				AssignedAt: utils.NowUTC(),
@@ -100,7 +100,7 @@ func (bp *BatchProofCollector) Collect(ctx context.Context) error {
 	return transErr
 }
 
-func (bp *BatchProofCollector) sendTask(ctx context.Context, taskID string) ([]*coordinatorType.RollerStatus, error) {
+func (bp *BatchProofCollector) sendTask(ctx context.Context, taskID string) ([]*coordinatorType.ProverStatus, error) {
 	// get chunk proofs from db
 	chunkProofs, err := bp.chunkOrm.GetProofsByBatchHash(ctx, taskID)
 	if err != nil {

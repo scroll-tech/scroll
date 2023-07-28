@@ -56,14 +56,14 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 		return true
 	}
 
-	if len(proverTasks) >= int(b.cfg.RollerManagerConfig.SessionAttempts) {
+	if len(proverTasks) >= int(b.cfg.ProverManagerConfig.SessionAttempts) {
 		coordinatorSessionsTimeoutTotalCounter.Inc(1)
 
 		log.Warn("proof generation prover task %s ended because reach the max attempts", hash)
 
 		for _, proverTask := range proverTasks {
 			if types.ProvingStatus(proverTask.ProvingStatus) == types.ProvingTaskFailed {
-				provermanager.Manager.FreeTaskIDForRoller(proverTask.ProverPublicKey, hash)
+				provermanager.Manager.FreeTaskIDForProver(proverTask.ProverPublicKey, hash)
 			}
 		}
 
@@ -79,7 +79,7 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 				}
 			}
 			// update the prover task status to let timeout checker don't check it.
-			if err := b.proverTaskOrm.UpdateAllProverTaskProvingStatusOfTaskID(b.ctx, message.ProofType(proverTasks[0].TaskType), hash, types.RollerProofInvalid, tx); err != nil {
+			if err := b.proverTaskOrm.UpdateAllProverTaskProvingStatusOfTaskID(b.ctx, message.ProofType(proverTasks[0].TaskType), hash, types.ProverProofInvalid, tx); err != nil {
 				log.Error("failed to update prover task proving_status as failed", "msg.ID", hash, "error", err)
 			}
 			return nil
@@ -91,7 +91,7 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 	return true
 }
 
-func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, blockHashes []common.Hash, subProofs []*message.AggProof) ([]*coordinatorType.RollerStatus, error) {
+func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, blockHashes []common.Hash, subProofs []*message.AggProof) ([]*coordinatorType.ProverStatus, error) {
 	sendMsg := &message.TaskMsg{
 		ID:          hash,
 		Type:        proveType,
@@ -100,20 +100,20 @@ func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, block
 	}
 
 	var err error
-	var proverStatusList []*coordinatorType.RollerStatus
-	for i := uint8(0); i < b.cfg.RollerManagerConfig.RollersPerSession; i++ {
+	var proverStatusList []*coordinatorType.ProverStatus
+	for i := uint8(0); i < b.cfg.ProverManagerConfig.ProversPerSession; i++ {
 		proverPubKey, proverName, sendErr := provermanager.Manager.SendTask(proveType, sendMsg)
 		if sendErr != nil {
 			err = sendErr
 			continue
 		}
 
-		provermanager.Manager.UpdateMetricRollerProofsLastAssignedTimestampGauge(proverPubKey)
+		provermanager.Manager.UpdateMetricProverProofsLastAssignedTimestampGauge(proverPubKey)
 
-		proverStatus := &coordinatorType.RollerStatus{
+		proverStatus := &coordinatorType.ProverStatus{
 			PublicKey: proverPubKey,
 			Name:      proverName,
-			Status:    types.RollerAssigned,
+			Status:    types.ProverAssigned,
 		}
 		proverStatusList = append(proverStatusList, proverStatus)
 	}

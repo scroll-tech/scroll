@@ -25,7 +25,7 @@ const (
 	generatedFailed
 )
 
-type mockRoller struct {
+type mockProver struct {
 	proverName string
 	privKey    *ecdsa.PrivateKey
 	proofType  message.ProofType
@@ -40,11 +40,11 @@ type mockRoller struct {
 	stopCh chan struct{}
 }
 
-func newMockRoller(t *testing.T, proverName string, wsURL string, proofType message.ProofType) *mockRoller {
+func newMockProver(t *testing.T, proverName string, wsURL string, proofType message.ProofType) *mockProver {
 	privKey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
-	prover := &mockRoller{
+	prover := &mockProver{
 		proverName: proverName,
 		privKey:    privKey,
 		proofType:  proofType,
@@ -59,7 +59,7 @@ func newMockRoller(t *testing.T, proverName string, wsURL string, proofType mess
 }
 
 // connectToCoordinator sets up a websocket client to connect to the prover manager.
-func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscription, error) {
+func (r *mockProver) connectToCoordinator() (*client2.Client, ethereum.Subscription, error) {
 	// Create connection.
 	client, err := client2.Dial(r.wsURL)
 	if err != nil {
@@ -70,7 +70,7 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			Name:       r.proverName,
-			RollerType: r.proofType,
+			ProverType: r.proofType,
 		},
 	}
 	_ = authMsg.SignWithKey(r.privKey)
@@ -90,7 +90,7 @@ func (r *mockRoller) connectToCoordinator() (*client2.Client, ethereum.Subscript
 	return client, sub, nil
 }
 
-func (r *mockRoller) releaseTasks() {
+func (r *mockProver) releaseTasks() {
 	r.taskCache.Range(func(key, value any) bool {
 		r.taskCh <- value.(*message.TaskMsg)
 		r.taskCache.Delete(key)
@@ -99,9 +99,9 @@ func (r *mockRoller) releaseTasks() {
 }
 
 // Wait for the proof task, after receiving the proof task, prover submits proof after proofTime secs.
-func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration, reconnect bool, proofStatus proofStatus) {
+func (r *mockProver) waitTaskAndSendProof(t *testing.T, proofTime time.Duration, reconnect bool, proofStatus proofStatus) {
 	// simulating the case that the prover first disconnects and then reconnects to the coordinator
-	// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeRoller()`
+	// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeProver()`
 	if reconnect {
 		var err error
 		r.client, r.sub, err = r.connectToCoordinator()
@@ -118,7 +118,7 @@ func (r *mockRoller) waitTaskAndSendProof(t *testing.T, proofTime time.Duration,
 	go r.loop(t, r.client, proofTime, proofStatus, r.stopCh)
 }
 
-func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.Duration, proofStatus proofStatus, stopCh chan struct{}) {
+func (r *mockProver) loop(t *testing.T, client *client2.Client, proofTime time.Duration, proofStatus proofStatus, stopCh chan struct{}) {
 	for {
 		select {
 		case task := <-r.taskCh:
@@ -150,7 +150,7 @@ func (r *mockRoller) loop(t *testing.T, client *client2.Client, proofTime time.D
 	}
 }
 
-func (r *mockRoller) close() {
+func (r *mockProver) close() {
 	close(r.stopCh)
 	r.sub.Unsubscribe()
 }

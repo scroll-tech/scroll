@@ -23,13 +23,13 @@ libzkp:
 	rm -rf ./prover/lib && cp -r ../common/libzkp/interface ./prover/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./prover/lib/
 
-prover: libzkp ## Build the Roller instance.
+prover: libzkp ## Build the Prover instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/prover ./cmd
 
-mock_prover: ## Build the mocked Roller instance.
+mock_prover: ## Build the mocked Prover instance.
 	GOBIN=$(PWD)/build/bin go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/prover ./cmd
 
-gpu-prover: libzkp ## Build the GPU Roller instance.
+gpu-prover: libzkp ## Build the GPU Prover instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/prover ./cmd
 
 test-prover: libzkp

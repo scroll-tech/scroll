@@ -9,7 +9,7 @@ import (
 	"scroll-tech/common/version"
 )
 
-func TestRunRoller(t *testing.T) {
+func TestRunProver(t *testing.T) {
 	prover := cmd.NewCmd("prover-test", "--version")
 	defer prover.WaitExit()
 

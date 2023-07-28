@@ -27,14 +27,14 @@ var (
 	base           *docker.App
 	bridgeApp      *bcmd.MockApp
 	coordinatorApp *capp.CoordinatorApp
-	proverApp      *rapp.RollerApp
+	proverApp      *rapp.ProverApp
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
 	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
-	proverApp = rapp.NewRollerApp(base, "../../prover/config.json", coordinatorApp.WSEndpoint())
+	proverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.WSEndpoint())
 	m.Run()
 	bridgeApp.Free()
 	coordinatorApp.Free()

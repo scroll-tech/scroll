@@ -33,8 +33,8 @@ var (
 	retryWait = time.Second * 10
 )
 
-// Roller contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
-type Roller struct {
+// Prover contains websocket conn to coordinator, Stack, unix-socket to ipc-prover.
+type Prover struct {
 	cfg         *config.Config
 	client      *client.Client
 	traceClient *ethclient.Client
@@ -50,8 +50,8 @@ type Roller struct {
 	priv *ecdsa.PrivateKey
 }
 
-// NewRoller new a Roller object.
-func NewRoller(cfg *config.Config) (*Roller, error) {
+// NewProver new a Prover object.
+func NewProver(cfg *config.Config) (*Prover, error) {
 	// load or create wallet
 	priv, err := utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
@@ -83,7 +83,7 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 		return nil, err
 	}
 
-	return &Roller{
+	return &Prover{
 		cfg:         cfg,
 		client:      rClient,
 		traceClient: traceClient,
@@ -97,17 +97,17 @@ func NewRoller(cfg *config.Config) (*Roller, error) {
 }
 
 // Type returns prover type.
-func (r *Roller) Type() message.ProofType {
+func (r *Prover) Type() message.ProofType {
 	return r.cfg.Prover.ProofType
 }
 
 // PublicKey translate public key to hex and return.
-func (r *Roller) PublicKey() string {
+func (r *Prover) PublicKey() string {
 	return common.Bytes2Hex(crypto.CompressPubkey(&r.priv.PublicKey))
 }
 
-// Start runs Roller.
-func (r *Roller) Start() {
+// Start runs Prover.
+func (r *Prover) Start() {
 	log.Info("start to register to coordinator")
 	if err := r.Register(); err != nil {
 		log.Crit("register to coordinator failed", "error", err)
@@ -118,12 +118,12 @@ func (r *Roller) Start() {
 	go r.ProveLoop()
 }
 
-// Register registers Roller to the coordinator through Websocket.
-func (r *Roller) Register() error {
+// Register registers Prover to the coordinator through Websocket.
+func (r *Prover) Register() error {
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			Name:       r.cfg.RollerName,
-			RollerType: r.Type(),
+			Name:       r.cfg.ProverName,
+			ProverType: r.Type(),
 			Version:    version.Version,
 		},
 	}
@@ -149,7 +149,7 @@ func (r *Roller) Register() error {
 }
 
 // HandleCoordinator accepts block-traces from coordinator through the Websocket and store it into Stack.
-func (r *Roller) HandleCoordinator() {
+func (r *Prover) HandleCoordinator() {
 	for {
 		select {
 		case <-r.stopChan:
@@ -170,7 +170,7 @@ func (r *Roller) HandleCoordinator() {
 	}
 }
 
-func (r *Roller) mustRetryCoordinator() {
+func (r *Prover) mustRetryCoordinator() {
 	atomic.StoreInt64(&r.isDisconnected, 1)
 	defer atomic.StoreInt64(&r.isDisconnected, 0)
 	for {
@@ -188,7 +188,7 @@ func (r *Roller) mustRetryCoordinator() {
 }
 
 // ProveLoop keep popping the block-traces from Stack and sends it to rust-prover for loop.
-func (r *Roller) ProveLoop() {
+func (r *Prover) ProveLoop() {
 	for {
 		select {
 		case <-r.stopChan:
@@ -206,7 +206,7 @@ func (r *Roller) ProveLoop() {
 	}
 }
 
-func (r *Roller) prove() error {
+func (r *Prover) prove() error {
 	task, err := r.stack.Peek()
 	if err != nil {
 		return err
@@ -279,7 +279,7 @@ func (r *Roller) prove() error {
 	return nil
 }
 
-func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
+func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) {
 	authZkProof := &message.ProofMsg{ProofDetail: msg}
 	if err := authZkProof.Sign(r.priv); err != nil {
 		log.Error("sign proof error", "err", err)
@@ -301,7 +301,7 @@ func (r *Roller) signAndSubmitProof(msg *message.ProofDetail) {
 	}
 }
 
-func (r *Roller) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
+func (r *Prover) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
 	var traces []*types.BlockTrace
 	for _, blockHash := range blockHashes {
 		trace, err := r.traceClient.GetBlockTraceByHash(context.Background(), blockHash)
@@ -319,7 +319,7 @@ func (r *Roller) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.Bl
 }
 
 // Stop closes the websocket connection.
-func (r *Roller) Stop() {
+func (r *Prover) Stop() {
 	if atomic.LoadInt64(&r.isClosed) == 1 {
 		return
 	}

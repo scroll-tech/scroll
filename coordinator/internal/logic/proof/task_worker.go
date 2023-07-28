@@ -14,7 +14,7 @@ import (
 	"scroll-tech/coordinator/internal/logic/provermanager"
 )
 
-var coordinatorRollersDisconnectsTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/provers/disconnects/total", metrics.ScrollRegistry)
+var coordinatorProversDisconnectsTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/provers/disconnects/total", metrics.ScrollRegistry)
 
 // TaskWorker held the prover task connection
 type TaskWorker struct{}
@@ -60,7 +60,7 @@ func (t *TaskWorker) worker(rpcSub *rpc.Subscription, notifier *rpc.Notifier, pu
 			log.Error("task worker subId:%d panic for:%v", err)
 		}
 
-		provermanager.Manager.FreeRoller(pubKey)
+		provermanager.Manager.FreeProver(pubKey)
 		log.Info("prover unregister", "name", identity.Name, "pubKey", pubKey)
 	}()
 
@@ -69,7 +69,7 @@ func (t *TaskWorker) worker(rpcSub *rpc.Subscription, notifier *rpc.Notifier, pu
 		case task := <-taskCh:
 			notifier.Notify(rpcSub.ID, task) //nolint
 		case err := <-rpcSub.Err():
-			coordinatorRollersDisconnectsTotalCounter.Inc(1)
+			coordinatorProversDisconnectsTotalCounter.Inc(1)
 			log.Warn("client stopped the ws connection", "name", identity.Name, "pubkey", pubKey, "err", err)
 			return
 		case <-notifier.Closed():

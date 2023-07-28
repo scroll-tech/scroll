@@ -39,17 +39,17 @@ func geneAuthMsg(t *testing.T) (*message.AuthMsg, *ecdsa.PrivateKey) {
 	return authMsg, privKey
 }
 
-var proverController *RollerController
+var proverController *ProverController
 
 func init() {
-	conf := &config.RollerManagerConfig{
+	conf := &config.ProverManagerConfig{
 		TokenTimeToLive: 120,
 	}
 	conf.Verifier = &config.VerifierConfig{MockMode: true}
-	proverController = NewRollerController(conf, nil)
+	proverController = NewProverController(conf, nil)
 }
 
-func TestRoller_RequestToken(t *testing.T) {
+func TestProver_RequestToken(t *testing.T) {
 	convey.Convey("auth msg verify failure", t, func() {
 		tmpAuthMsg := &message.AuthMsg{
 			Identity: &message.Identity{
@@ -96,7 +96,7 @@ func TestRoller_RequestToken(t *testing.T) {
 	})
 }
 
-func TestRoller_Register(t *testing.T) {
+func TestProver_Register(t *testing.T) {
 	convey.Convey("auth msg verify failure", t, func() {
 		tmpAuthMsg := &message.AuthMsg{
 			Identity: &message.Identity{
@@ -166,7 +166,7 @@ func TestRoller_Register(t *testing.T) {
 	})
 }
 
-func TestRoller_SubmitProof(t *testing.T) {
+func TestProver_SubmitProof(t *testing.T) {
 	tmpAuthMsg, prvKey := geneAuthMsg(t)
 	pubKey, err := tmpAuthMsg.PublicKey()
 	assert.NoError(t, err)
@@ -191,7 +191,7 @@ func TestRoller_SubmitProof(t *testing.T) {
 	})
 	defer patchGuard.Reset()
 
-	provermanager.InitRollerManager(nil)
+	provermanager.InitProverManager(nil)
 
 	taskChan, err := provermanager.Manager.Register(context.Background(), pubKey, tmpAuthMsg.Identity)
 	assert.NotNil(t, taskChan)
@@ -256,13 +256,13 @@ func TestRoller_SubmitProof(t *testing.T) {
 			ProverPublicKey: proofPubKey,
 			TaskType:        int16(message.ProofTypeChunk),
 			ProverName:      "provers_info_test",
-			ProvingStatus:   int16(types.RollerAssigned),
+			ProvingStatus:   int16(types.ProverAssigned),
 			CreatedAt:       now,
 		}
 		return s, nil
 	})
 
-	patchGuard.ApplyMethodFunc(proverTaskOrm, "UpdateProverTaskProvingStatus", func(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus, dbTX ...*gorm.DB) error {
+	patchGuard.ApplyMethodFunc(proverTaskOrm, "UpdateProverTaskProvingStatus", func(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
 		return nil
 	})
 
@@ -295,7 +295,7 @@ func TestRoller_SubmitProof(t *testing.T) {
 		return true, nil
 	})
 
-	patchGuard.ApplyPrivateMethod(proverController.proofReceiver, "closeProofTask", func(hash string, pubKey string, proofMsg *message.ProofMsg, proversInfo *coordinatorType.RollersInfo) error {
+	patchGuard.ApplyPrivateMethod(proverController.proofReceiver, "closeProofTask", func(hash string, pubKey string, proofMsg *message.ProofMsg, proversInfo *coordinatorType.ProversInfo) error {
 		return nil
 	})
 

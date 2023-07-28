@@ -12,7 +12,7 @@ import (
 
 // Config loads prover configuration items.
 type Config struct {
-	RollerName       string        `json:"prover_name"`
+	ProverName       string        `json:"prover_name"`
 	KeystorePath     string        `json:"keystore_path"`
 	KeystorePassword string        `json:"keystore_password"`
 	CoordinatorURL   string        `json:"coordinator_url"`

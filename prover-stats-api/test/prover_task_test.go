@@ -123,7 +123,7 @@ var (
 		TaskID:          "1",
 		ProverPublicKey: proverPubkey,
 		ProverName:      "prover-0",
-		ProvingStatus:   int16(types.RollerAssigned),
+		ProvingStatus:   int16(types.ProverAssigned),
 		Reward:          decimal.NewFromInt(10),
 	}
 
@@ -131,7 +131,7 @@ var (
 		TaskID:          "2",
 		ProverPublicKey: proverPubkey,
 		ProverName:      "prover-1",
-		ProvingStatus:   int16(types.RollerAssigned),
+		ProvingStatus:   int16(types.ProverAssigned),
 		Reward:          decimal.NewFromInt(12),
 	}
 )

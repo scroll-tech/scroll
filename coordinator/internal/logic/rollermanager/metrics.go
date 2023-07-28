@@ -14,7 +14,7 @@ type proverMetrics struct {
 	proverProofsLastFinishedTimestampGauge gethMetrics.Gauge
 }
 
-func (r *proverManager) UpdateMetricRollerProofsLastFinishedTimestampGauge(pk string) {
+func (r *proverManager) UpdateMetricProverProofsLastFinishedTimestampGauge(pk string) {
 	if node, ok := r.proverPool.Get(pk); ok {
 		rMs := node.(*proverNode).metrics
 		if rMs != nil {
@@ -23,7 +23,7 @@ func (r *proverManager) UpdateMetricRollerProofsLastFinishedTimestampGauge(pk st
 	}
 }
 
-func (r *proverManager) UpdateMetricRollerProofsLastAssignedTimestampGauge(pk string) {
+func (r *proverManager) UpdateMetricProverProofsLastAssignedTimestampGauge(pk string) {
 	if node, ok := r.proverPool.Get(pk); ok {
 		rMs := node.(*proverNode).metrics
 		if rMs != nil {
@@ -32,7 +32,7 @@ func (r *proverManager) UpdateMetricRollerProofsLastAssignedTimestampGauge(pk st
 	}
 }
 
-func (r *proverManager) UpdateMetricRollerProofsVerifiedSuccessTimeTimer(pk string, d time.Duration) {
+func (r *proverManager) UpdateMetricProverProofsVerifiedSuccessTimeTimer(pk string, d time.Duration) {
 	if node, ok := r.proverPool.Get(pk); ok {
 		rMs := node.(*proverNode).metrics
 		if rMs != nil {
@@ -41,7 +41,7 @@ func (r *proverManager) UpdateMetricRollerProofsVerifiedSuccessTimeTimer(pk stri
 	}
 }
 
-func (r *proverManager) UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk string, d time.Duration) {
+func (r *proverManager) UpdateMetricProverProofsVerifiedFailedTimeTimer(pk string, d time.Duration) {
 	if node, ok := r.proverPool.Get(pk); ok {
 		rMs := node.(*proverNode).metrics
 		if rMs != nil {
@@ -50,7 +50,7 @@ func (r *proverManager) UpdateMetricRollerProofsVerifiedFailedTimeTimer(pk strin
 	}
 }
 
-func (r *proverManager) UpdateMetricRollerProofsGeneratedFailedTimeTimer(pk string, d time.Duration) {
+func (r *proverManager) UpdateMetricProverProofsGeneratedFailedTimeTimer(pk string, d time.Duration) {
 	if node, ok := r.proverPool.Get(pk); ok {
 		rMs := node.(*proverNode).metrics
 		if rMs != nil {

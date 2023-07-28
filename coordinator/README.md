@@ -37,7 +37,7 @@ make lint
 
 ## Configure
 
-The coordinator behavior can be configured using [`config.json`](config.json). Check the code comments under `RollerManagerConfig` in [`config/config.go`](config/config.go) for more details.
+The coordinator behavior can be configured using [`config.json`](config.json). Check the code comments under `ProverManagerConfig` in [`config/config.go`](config/config.go) for more details.
 
 
 ## Start
@@ -59,7 +59,7 @@ The coordinator behavior can be configured using [`config.json`](config.json). C
 
 ### cmd/app/app.go
 
-This file defines the main entry point for the coordinator application, setting up the necessary modules, and handling graceful shutdowns. Upon loading config.json file, the coordinator (`cmd/app/app.go`) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. `flags.go` is used to parse the flags. Then, it creates a new `RollerManager` (`manager.go`) and starts listening.
+This file defines the main entry point for the coordinator application, setting up the necessary modules, and handling graceful shutdowns. Upon loading config.json file, the coordinator (`cmd/app/app.go`) sets up and starts the HTTP and WebSocket servers using the configured ports and addresses. `flags.go` is used to parse the flags. Then, it creates a new `ProverManager` (`manager.go`) and starts listening.
 
 ### manager.go
 

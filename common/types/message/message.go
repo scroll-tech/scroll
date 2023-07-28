@@ -46,22 +46,22 @@ const (
 	ProofTypeBatch
 )
 
-// AuthMsg is the first message exchanged from the Roller to the Sequencer.
-// It effectively acts as a registration, and makes the Roller identification
+// AuthMsg is the first message exchanged from the Prover to the Sequencer.
+// It effectively acts as a registration, and makes the Prover identification
 // known to the Sequencer.
 type AuthMsg struct {
 	// Message fields
 	Identity *Identity `json:"message"`
-	// Roller signature
+	// Prover signature
 	Signature string `json:"signature"`
 }
 
 // Identity contains all the fields to be signed by the prover.
 type Identity struct {
-	// Roller name
+	// Prover name
 	Name string `json:"name"`
-	// Roller RollerType
-	RollerType ProofType `json:"prover_type,omitempty"`
+	// Prover ProverType
+	ProverType ProofType `json:"prover_type,omitempty"`
 	// Version is common.Version+ZkVersion. Use the following to check the latest ZkVersion version.
 	// curl -sL https://api.github.com/repos/scroll-tech/scroll-prover/commits | jq -r ".[0].sha"
 	Version string `json:"version"`
@@ -140,10 +140,10 @@ func (i *Identity) Hash() ([]byte, error) {
 // ProofMsg is the data structure sent to the coordinator.
 type ProofMsg struct {
 	*ProofDetail `json:"zkProof"`
-	// Roller signature
+	// Prover signature
 	Signature string `json:"signature"`
 
-	// Roller public key
+	// Prover public key
 	publicKey string
 }
 

@@ -27,15 +27,15 @@ var (
 	Manager *proverManager
 )
 
-// RollerNode is the interface that controls the provers
+// ProverNode is the interface that controls the provers
 type proverNode struct {
-	// Roller name
+	// Prover name
 	Name string
-	// Roller type
+	// Prover type
 	Type message.ProofType
-	// Roller public key
+	// Prover public key
 	PublicKey string
-	// Roller version
+	// Prover version
 	Version string
 
 	// task channel
@@ -54,8 +54,8 @@ type proverManager struct {
 	proverTaskOrm *orm.ProverTask
 }
 
-// InitRollerManager init a prover manager
-func InitRollerManager(db *gorm.DB) {
+// InitProverManager init a prover manager
+func InitProverManager(db *gorm.DB) {
 	once.Do(func() {
 		Manager = &proverManager{
 			proverPool:    cmap.New(),
@@ -68,7 +68,7 @@ func InitRollerManager(db *gorm.DB) {
 func (r *proverManager) Register(ctx context.Context, proverPublicKey string, identity *message.Identity) (<-chan *message.TaskMsg, error) {
 	node, ok := r.proverPool.Get(proverPublicKey)
 	if !ok {
-		taskIDs, err := r.reloadRollerAssignedTasks(ctx, proverPublicKey)
+		taskIDs, err := r.reloadProverAssignedTasks(ctx, proverPublicKey)
 		if err != nil {
 			return nil, fmt.Errorf("register error:%w", err)
 		}
@@ -82,7 +82,7 @@ func (r *proverManager) Register(ctx context.Context, proverPublicKey string, id
 		}
 		node = &proverNode{
 			Name:      identity.Name,
-			Type:      identity.RollerType,
+			Type:      identity.ProverType,
 			Version:   identity.Version,
 			PublicKey: proverPublicKey,
 			TaskIDs:   *taskIDs,
@@ -94,7 +94,7 @@ func (r *proverManager) Register(ctx context.Context, proverPublicKey string, id
 	prover := node.(*proverNode)
 	// avoid reconnection too frequently.
 	if time.Since(prover.registerTime) < 60 {
-		log.Warn("prover reconnect too frequently", "prover_name", identity.Name, "prover_type", identity.RollerType, "public key", proverPublicKey)
+		log.Warn("prover reconnect too frequently", "prover_name", identity.Name, "prover_type", identity.ProverType, "public key", proverPublicKey)
 		return nil, fmt.Errorf("prover reconnect too frequently")
 	}
 	// update register time and status
@@ -103,20 +103,20 @@ func (r *proverManager) Register(ctx context.Context, proverPublicKey string, id
 	return prover.taskChan, nil
 }
 
-func (r *proverManager) reloadRollerAssignedTasks(ctx context.Context, proverPublicKey string) (*cmap.ConcurrentMap, error) {
+func (r *proverManager) reloadProverAssignedTasks(ctx context.Context, proverPublicKey string) (*cmap.ConcurrentMap, error) {
 	var assignedProverTasks []orm.ProverTask
 	page := 0
 	limit := 100
 	for {
 		page++
 		whereFields := make(map[string]interface{})
-		whereFields["proving_status"] = int16(types.RollerAssigned)
+		whereFields["proving_status"] = int16(types.ProverAssigned)
 		orderBy := []string{"id asc"}
 		offset := (page - 1) * limit
 		batchAssignedProverTasks, err := r.proverTaskOrm.GetProverTasks(ctx, whereFields, orderBy, offset, limit)
 		if err != nil {
-			log.Warn("reloadRollerAssignedTasks get all assigned failure", "error", err)
-			return nil, fmt.Errorf("reloadRollerAssignedTasks error:%w", err)
+			log.Warn("reloadProverAssignedTasks get all assigned failure", "error", err)
+			return nil, fmt.Errorf("reloadProverAssignedTasks error:%w", err)
 		}
 		if len(batchAssignedProverTasks) < limit {
 			break
@@ -126,7 +126,7 @@ func (r *proverManager) reloadRollerAssignedTasks(ctx context.Context, proverPub
 
 	taskIDs := cmap.New()
 	for _, assignedProverTask := range assignedProverTasks {
-		if assignedProverTask.ProverPublicKey == proverPublicKey && assignedProverTask.ProvingStatus == int16(types.RollerAssigned) {
+		if assignedProverTask.ProverPublicKey == proverPublicKey && assignedProverTask.ProvingStatus == int16(types.ProverAssigned) {
 			taskIDs.Set(assignedProverTask.TaskID, struct{}{})
 		}
 	}
@@ -135,26 +135,26 @@ func (r *proverManager) reloadRollerAssignedTasks(ctx context.Context, proverPub
 
 // SendTask send the need proved message to prover
 func (r *proverManager) SendTask(proverType message.ProofType, msg *message.TaskMsg) (string, string, error) {
-	tmpRoller := r.selectRoller(proverType)
-	if tmpRoller == nil {
-		return "", "", errors.New("selectRoller returns nil")
+	tmpProver := r.selectProver(proverType)
+	if tmpProver == nil {
+		return "", "", errors.New("selectProver returns nil")
 	}
 
 	select {
-	case tmpRoller.taskChan <- msg:
-		tmpRoller.TaskIDs.Set(msg.ID, struct{}{})
+	case tmpProver.taskChan <- msg:
+		tmpProver.TaskIDs.Set(msg.ID, struct{}{})
 	default:
-		err := fmt.Errorf("prover channel is full, proverName:%s, publicKey:%s", tmpRoller.Name, tmpRoller.PublicKey)
+		err := fmt.Errorf("prover channel is full, proverName:%s, publicKey:%s", tmpProver.Name, tmpProver.PublicKey)
 		return "", "", err
 	}
 
-	r.UpdateMetricRollerProofsLastAssignedTimestampGauge(tmpRoller.PublicKey)
+	r.UpdateMetricProverProofsLastAssignedTimestampGauge(tmpProver.PublicKey)
 
-	return tmpRoller.PublicKey, tmpRoller.Name, nil
+	return tmpProver.PublicKey, tmpProver.Name, nil
 }
 
-// ExistTaskIDForRoller check the task exist
-func (r *proverManager) ExistTaskIDForRoller(pk string, id string) bool {
+// ExistTaskIDForProver check the task exist
+func (r *proverManager) ExistTaskIDForProver(pk string, id string) bool {
 	node, ok := r.proverPool.Get(pk)
 	if !ok {
 		return false
@@ -163,21 +163,21 @@ func (r *proverManager) ExistTaskIDForRoller(pk string, id string) bool {
 	return prover.TaskIDs.Has(id)
 }
 
-// FreeRoller free the prover with the pk key
-func (r *proverManager) FreeRoller(pk string) {
+// FreeProver free the prover with the pk key
+func (r *proverManager) FreeProver(pk string) {
 	r.proverPool.Pop(pk)
 }
 
-// FreeTaskIDForRoller free a task of the pk prover
-func (r *proverManager) FreeTaskIDForRoller(pk string, id string) {
+// FreeTaskIDForProver free a task of the pk prover
+func (r *proverManager) FreeTaskIDForProver(pk string, id string) {
 	if node, ok := r.proverPool.Get(pk); ok {
 		prover := node.(*proverNode)
 		prover.TaskIDs.Pop(id)
 	}
 }
 
-// GetNumberOfIdleRollers return the count of idle provers.
-func (r *proverManager) GetNumberOfIdleRollers(proverType message.ProofType) (count int) {
+// GetNumberOfIdleProvers return the count of idle provers.
+func (r *proverManager) GetNumberOfIdleProvers(proverType message.ProofType) (count int) {
 	for item := range r.proverPool.IterBuffered() {
 		prover := item.Val.(*proverNode)
 		if prover.TaskIDs.Count() == 0 && prover.Type == proverType {
@@ -187,7 +187,7 @@ func (r *proverManager) GetNumberOfIdleRollers(proverType message.ProofType) (co
 	return count
 }
 
-func (r *proverManager) selectRoller(proverType message.ProofType) *proverNode {
+func (r *proverManager) selectProver(proverType message.ProofType) *proverNode {
 	pubkeys := r.proverPool.Keys()
 	for len(pubkeys) > 0 {
 		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(pubkeys))))

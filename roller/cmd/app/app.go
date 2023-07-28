@@ -22,7 +22,7 @@ func init() {
 	app = cli.NewApp()
 	app.Action = action
 	app.Name = "prover"
-	app.Usage = "The Scroll L2 Roller"
+	app.Usage = "The Scroll L2 Prover"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {
@@ -30,7 +30,7 @@ func init() {
 	}
 
 	// Register `prover-test` app for integration-test.
-	utils.RegisterSimulation(app, utils.RollerApp)
+	utils.RegisterSimulation(app, utils.ProverApp)
 }
 
 func action(ctx *cli.Context) error {
@@ -42,7 +42,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Create prover
-	r, err := prover.NewRoller(cfg)
+	r, err := prover.NewProver(cfg)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func action(ctx *cli.Context) error {
 	r.Start()
 
 	defer r.Stop()
-	log.Info("prover start successfully", "name", cfg.RollerName, "publickey", r.PublicKey(), "version", version.Version)
+	log.Info("prover start successfully", "name", cfg.ProverName, "publickey", r.PublicKey(), "version", version.Version)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
