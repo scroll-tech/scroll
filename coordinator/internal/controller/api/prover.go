@@ -3,10 +3,8 @@ package api
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
-	"github.com/patrickmn/go-cache"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
@@ -19,17 +17,20 @@ import (
 
 // ProverController the prover api controller
 type ProverController struct {
-	tokenCache    *cache.Cache
 	proofReceiver *proof.ZKProofReceiver
 	taskWorker    *proof.TaskWorker
+	tokenExpire   time.Duration
+	jwtSecret     []byte
 }
 
 // NewProverController create a prover controller
 func NewProverController(cfg *config.ProverManagerConfig, db *gorm.DB) *ProverController {
+	tokenExpire := time.Duration(cfg.TokenTimeToLive) * time.Second
 	return &ProverController{
 		proofReceiver: proof.NewZKProofReceiver(cfg, db),
 		taskWorker:    proof.NewTaskWorker(),
-		tokenCache:    cache.New(time.Duration(cfg.TokenTimeToLive)*time.Second, 1*time.Hour),
+		tokenExpire:   tokenExpire,
+		jwtSecret:     []byte(cfg.JwtSecret),
 	}
 }
 
@@ -41,32 +42,16 @@ func (r *ProverController) RequestToken(authMsg *message.AuthMsg) (string, error
 		}
 		return "", errors.New("signature verification failed")
 	}
-	pubkey, err := authMsg.PublicKey()
-	if err != nil {
-		return "", fmt.Errorf("RequestToken auth msg public key error:%w", err)
-	}
-	if token, ok := r.tokenCache.Get(pubkey); ok {
-		return token.(string), nil
-	}
-	token, err := message.GenerateToken()
+	token, err := message.GenerateToken(r.tokenExpire, r.jwtSecret)
 	if err != nil {
 		return "", errors.New("token generation failed")
 	}
-	r.tokenCache.SetDefault(pubkey, token)
 	return token, nil
 }
 
-// VerifyToken verifies pubkey for token and expiration time
-func (r *ProverController) verifyToken(authMsg *message.AuthMsg) (bool, error) {
-	pubkey, err := authMsg.PublicKey()
-	if err != nil {
-		return false, fmt.Errorf("verify token auth msg public key error:%w", err)
-	}
-	// GetValue returns nil if value is expired
-	if token, ok := r.tokenCache.Get(pubkey); !ok || token != authMsg.Identity.Token {
-		return false, fmt.Errorf("failed to find corresponding token. prover name: %s prover pk: %s", authMsg.Identity.Name, pubkey)
-	}
-	return true, nil
+// VerifyToken verifies JWT for token and expiration time
+func (r *ProverController) verifyToken(tokenStr string) (bool, error) {
+	return message.VerifyToken(r.jwtSecret, tokenStr)
 }
 
 // Register register api for prover
@@ -78,16 +63,10 @@ func (r *ProverController) Register(ctx context.Context, authMsg *message.AuthMs
 		}
 		return nil, errors.New("signature verification failed")
 	}
-	// Lock here to avoid malicious prover message replay before cleanup of token
-	if ok, err := r.verifyToken(authMsg); !ok {
+	// Verify the jwt
+	if ok, err := r.verifyToken(authMsg.Identity.Token); !ok {
 		return nil, err
 	}
-	pubkey, err := authMsg.PublicKey()
-	if err != nil {
-		return nil, fmt.Errorf("register auth msg public key error:%w", err)
-	}
-	// prover successfully registered, remove token associated with this prover
-	r.tokenCache.Delete(pubkey)
 
 	rpcSub, err := r.taskWorker.AllocTaskWorker(ctx, authMsg)
 	if err != nil {

@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/docker/docker v23.0.6+incompatible
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-colorable v0.1.13
