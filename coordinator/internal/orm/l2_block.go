@@ -84,19 +84,20 @@ func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) 
 }
 
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
+// for unit test
 func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlock) error {
 	var l2Blocks []L2Block
 	for _, block := range blocks {
 		header, err := json.Marshal(block.Header)
 		if err != nil {
 			log.Error("failed to marshal block header", "hash", block.Header.Hash().String(), "err", err)
-			return fmt.Errorf("L2Block.InsertL2Blocks error: %w, block hash: %v", err, block.Header.Hash().String())
+			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
 		}
 
 		txs, err := json.Marshal(block.Transactions)
 		if err != nil {
 			log.Error("failed to marshal transactions", "hash", block.Header.Hash().String(), "err", err)
-			return fmt.Errorf("L2Block.InsertL2Blocks error: %w, block hash: %v", err, block.Header.Hash().String())
+			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
 		}
 
 		l2Block := L2Block{
@@ -105,6 +106,7 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 			ParentHash:     block.Header.ParentHash.String(),
 			Transactions:   string(txs),
 			WithdrawRoot:   block.WithdrawRoot.Hex(),
+			StateRoot:      block.Header.Root.Hex(),
 			TxNum:          uint32(len(block.Transactions)),
 			GasUsed:        block.Header.GasUsed,
 			BlockTimestamp: block.Header.Time,

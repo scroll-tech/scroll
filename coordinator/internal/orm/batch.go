@@ -132,7 +132,7 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 
 // InsertBatch inserts a new batch into the database.
 // for unit test
-func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
 	if len(chunks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -186,13 +186,19 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		EndChunkIndex:     endChunkIndex,
 		StateRoot:         chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
 		WithdrawRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawRoot.Hex(),
+		ParentBatchHash:   parentBatchHash.Hex(),
 		BatchHeader:       batchHeader.Encode(),
 		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),
 		RollupStatus:      int16(types.RollupPending),
+		OracleStatus:      int16(types.GasOraclePending),
 	}
 
-	db := o.db.WithContext(ctx)
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db.WithContext(ctx)
 	db = db.Model(&Batch{})
 
 	if err := db.Create(&newBatch).Error; err != nil {

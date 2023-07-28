@@ -17,7 +17,6 @@ create table chunk
     state_root                        VARCHAR         NOT NULL,
     parent_chunk_state_root           VARCHAR         NOT NULL,
     withdraw_root                     VARCHAR         NOT NULL,
-    parent_chunk_withdraw_root        VARCHAR         NOT NULL,
 
 -- proof
     proving_status                    SMALLINT        NOT NULL DEFAULT 1,

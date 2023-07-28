@@ -30,7 +30,6 @@ type Chunk struct {
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
 	WithdrawRoot                 string `json:"withdraw_root" gorm:"column:withdraw_root"`
-	ParentChunkWithdrawRoot      string `json:"parent_chunk_withdraw_root" gorm:"column:parent_chunk_withdraw_root"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -125,7 +124,6 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
-	var parentChunkWithdrawRoot string
 	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get latest chunk", "err", err)
@@ -140,7 +138,6 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
 		parentChunkHash = parentChunk.Hash
 		parentChunkStateRoot = parentChunk.StateRoot
-		parentChunkWithdrawRoot = parentChunk.WithdrawRoot
 	}
 
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
@@ -179,7 +176,6 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
 		ParentChunkStateRoot:         parentChunkStateRoot,
 		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
-		ParentChunkWithdrawRoot:      parentChunkWithdrawRoot,
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 
