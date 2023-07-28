@@ -4,7 +4,7 @@
 
 > L1StandardERC20Gateway
 
-The `L1StandardERC20Gateway` is used to deposit standard ERC20 tokens in layer 1 and finalize withdraw the tokens from layer 2.
+The `L1StandardERC20Gateway` is used to deposit standard ERC20 tokens on layer 1 and finalize withdraw the tokens from layer 2.
 
 *The deposited ERC20 tokens are held in this gateway. On finalizing withdraw, the corresponding token will be transfer to the recipient directly. Any ERC20 that requires non-standard functionality should use a separate gateway.*
 

@@ -16,7 +16,7 @@ import {IScrollStandardERC20Factory} from "../../libraries/token/IScrollStandard
 import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L2StandardERC20Gateway
-/// @notice The `L2StandardERC20Gateway` is used to withdraw standard ERC20 tokens in layer 2 and
+/// @notice The `L2StandardERC20Gateway` is used to withdraw standard ERC20 tokens on layer 2 and
 /// finalize deposit the tokens from layer 1.
 /// @dev The withdrawn ERC20 tokens will be burned directly. On finalizing deposit, the corresponding
 /// token will be minted and transfered to the recipient. Any ERC20 that requires non-standard functionality

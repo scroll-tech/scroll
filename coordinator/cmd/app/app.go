@@ -20,7 +20,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/controller/cron"
-	"scroll-tech/coordinator/internal/logic/rollermanager"
+	"scroll-tech/coordinator/internal/logic/provermanager"
 )
 
 var app *cli.App
@@ -56,7 +56,7 @@ func action(ctx *cli.Context) error {
 
 	proofCollector := cron.NewCollector(subCtx, db, cfg)
 
-	rollermanager.InitRollerManager(db)
+	provermanager.InitProverManager(db)
 
 	defer func() {
 		proofCollector.Stop()
@@ -84,7 +84,7 @@ func action(ctx *cli.Context) error {
 	}
 	// Register api and start ws service.
 	if ctx.Bool(wsEnabledFlag.Name) {
-		handler, addr, err := utils.StartWSEndpoint(fmt.Sprintf("%s:%d", ctx.String(wsListenAddrFlag.Name), ctx.Int(wsPortFlag.Name)), apis, cfg.RollerManagerConfig.CompressionLevel)
+		handler, addr, err := utils.StartWSEndpoint(fmt.Sprintf("%s:%d", ctx.String(wsListenAddrFlag.Name), ctx.Int(wsPortFlag.Name)), apis, cfg.ProverManagerConfig.CompressionLevel)
 		if err != nil {
 			log.Crit("Could not start WS api", "error", err)
 		}

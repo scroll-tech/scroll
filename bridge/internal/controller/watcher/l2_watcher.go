@@ -178,15 +178,15 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
 
-		withdrawTrieRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
+		withdrawRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
 		if err3 != nil {
-			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
+			return fmt.Errorf("failed to get withdrawRoot: %v. number: %v", err3, number)
 		}
 		blocks = append(blocks, &types.WrappedBlock{
-			Header:           block.Header(),
-			Transactions:     txsToTxsData(block.Transactions()),
-			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
-			RowConsumption:   block.RowConsumption,
+			Header:         block.Header(),
+			Transactions:   txsToTxsData(block.Transactions()),
+			WithdrawRoot:   common.BytesToHash(withdrawRoot),
+			RowConsumption: block.RowConsumption,
 		})
 	}
 

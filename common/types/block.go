@@ -17,9 +17,9 @@ const zeroByteGas uint64 = 4
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
-	Transactions     []*types.TransactionData `json:"transactions"`
-	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
-	RowConsumption   *types.RowConsumption    `json:"row_consumption"`
+	Transactions   []*types.TransactionData `json:"transactions"`
+	WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
+	RowConsumption *types.RowConsumption    `json:"row_consumption"`
 }
 
 // NumL1Messages returns the number of L1 messages in this block.

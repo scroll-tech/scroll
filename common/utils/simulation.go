@@ -24,8 +24,8 @@ var (
 	CoordinatorApp MockAppName = "coordinator-test"
 	// DBCliApp the name of mock database app.
 	DBCliApp MockAppName = "db_cli-test"
-	// RollerApp the name of mock roller app.
-	RollerApp MockAppName = "roller-test"
+	// ProverApp the name of mock prover app.
+	ProverApp MockAppName = "prover-test"
 )
 
 // RegisterSimulation register initializer function for integration-test.

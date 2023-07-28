@@ -47,7 +47,7 @@ func TestGenerateToken(t *testing.T) {
 func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
 		Name:       "testName",
-		RollerType: ProofTypeChunk,
+		ProverType: ProofTypeChunk,
 		Version:    "testVersion",
 		Token:      "testToken",
 	}

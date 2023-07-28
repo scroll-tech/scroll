@@ -13,7 +13,7 @@ import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollG
 import {IScrollERC721} from "../../libraries/token/IScrollERC721.sol";
 
 /// @title L2ERC721Gateway
-/// @notice The `L2ERC721Gateway` is used to withdraw ERC721 compatible NFTs in layer 2 and
+/// @notice The `L2ERC721Gateway` is used to withdraw ERC721 compatible NFTs on layer 2 and
 /// finalize deposit the NFTs from layer 1.
 /// @dev The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding
 /// NFT will be minted and transfered to the recipient.
@@ -25,8 +25,8 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
      **********/
 
     /// @notice Emitted when token mapping for ERC721 token is updated.
-    /// @param _l1Token The address of corresponding ERC721 token in layer 2.
-    /// @param _l1Token The address of ERC721 token in layer 1.
+    /// @param _l2Token The address of corresponding ERC721 token on layer 2.
+    /// @param _l1Token The address of ERC721 token on layer 1.
     event UpdateTokenMapping(address _l2Token, address _l1Token);
 
     /*************
@@ -132,8 +132,8 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
      ************************/
 
     /// @notice Update layer 2 to layer 1 token mapping.
-    /// @param _l1Token The address of corresponding ERC721 token in layer 2.
-    /// @param _l1Token The address of ERC721 token in layer 1.
+    /// @param _l2Token The address of corresponding ERC721 token on layer 2.
+    /// @param _l1Token The address of ERC721 token on layer 1.
     function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
         require(_l1Token != address(0), "token address cannot be 0");
 
@@ -147,8 +147,8 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
      **********************/
 
     /// @dev Internal function to withdraw ERC721 NFT to layer 1.
-    /// @param _token The address of ERC721 NFT in layer 2.
-    /// @param _to The address of recipient in layer 1.
+    /// @param _token The address of ERC721 NFT on layer 2.
+    /// @param _to The address of recipient on layer 1.
     /// @param _tokenId The token id to withdraw.
     /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 1.
     function _withdrawERC721(
@@ -178,8 +178,8 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     }
 
     /// @dev Internal function to batch withdraw ERC721 NFT to layer 1.
-    /// @param _token The address of ERC721 NFT in layer 2.
-    /// @param _to The address of recipient in layer 1.
+    /// @param _token The address of ERC721 NFT on layer 2.
+    /// @param _to The address of recipient on layer 1.
     /// @param _tokenIds The list of token ids to withdraw.
     /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 1.
     function _batchWithdrawERC721(

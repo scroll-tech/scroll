@@ -9,7 +9,8 @@ create table l2_block
     parent_hash             VARCHAR         NOT NULL,
     header                  TEXT            NOT NULL,
     transactions            TEXT            NOT NULL,
-    withdraw_trie_root      VARCHAR         NOT NULL,
+    withdraw_root           VARCHAR         NOT NULL,
+    state_root              VARCHAR         NOT NULL,
     tx_num                  INTEGER         NOT NULL,
     gas_used                BIGINT          NOT NULL,
     block_timestamp         NUMERIC         NOT NULL,
@@ -25,13 +26,13 @@ create table l2_block
 );
 
 create unique index l2_block_hash_uindex
-    on l2_block (hash);
+on l2_block (hash) where deleted_at IS NULL;
 
 create unique index l2_block_number_uindex
-    on l2_block (number);
+on l2_block (number) where deleted_at IS NULL;
 
 create index l2_block_chunk_hash_index
-    on l2_block (chunk_hash);
+on l2_block (chunk_hash) where deleted_at IS NULL;
 
 -- +goose StatementEnd
 
