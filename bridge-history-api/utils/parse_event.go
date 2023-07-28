@@ -367,7 +367,7 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 			}
 			rollupBatches = append(rollupBatches, &orm.RollupBatch{
 				CommitHeight:     vlog.BlockNumber,
-				BatchIndex:       indice,
+				BatchIndex:       index,
 				BatchHash:        event.BatchHash.Hex(),
 				StartBlockNumber: startBlock,
 				EndBlockNumber:   endBlock,
