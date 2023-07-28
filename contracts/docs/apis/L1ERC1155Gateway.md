@@ -4,7 +4,7 @@
 
 > L1ERC1155Gateway
 
-The `L1ERC1155Gateway` is used to deposit ERC1155 compatible NFT in layer 1 and finalize withdraw the NFTs from layer 2.
+The `L1ERC1155Gateway` is used to deposit ERC1155 compatible NFT on layer 1 and finalize withdraw the NFTs from layer 2.
 
 *The deposited NFTs are held in this gateway. On finalizing withdraw, the corresponding NFT will be transfer to the recipient directly. This will be changed if we have more specific scenarios.*
 
@@ -24,7 +24,7 @@ Deposit a list of some ERC1155 NFT to caller&#39;s account on layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of ERC1155 NFT in layer 1. |
+| _token | address | The address of ERC1155 NFT on layer 1. |
 | _tokenIds | uint256[] | The list of token ids to deposit. |
 | _amounts | uint256[] | The list of corresponding number of token to deposit. |
 | _gasLimit | uint256 | Estimated gas limit required to complete the deposit on layer 2. |
@@ -43,8 +43,8 @@ Deposit a list of some ERC1155 NFT to a recipient&#39;s account on layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of ERC1155 NFT in layer 1. |
-| _to | address | The address of recipient in layer 2. |
+| _token | address | The address of ERC1155 NFT on layer 1. |
+| _to | address | The address of recipient on layer 2. |
 | _tokenIds | uint256[] | The list of token ids to deposit. |
 | _amounts | uint256[] | The list of corresponding number of token to deposit. |
 | _gasLimit | uint256 | Estimated gas limit required to complete the deposit on layer 2. |
@@ -80,8 +80,8 @@ Deposit some ERC1155 NFT to a recipient&#39;s account on layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of ERC1155 NFT in layer 1. |
-| _to | address | The address of recipient in layer 2. |
+| _token | address | The address of ERC1155 NFT on layer 1. |
+| _to | address | The address of recipient on layer 2. |
 | _tokenId | uint256 | The token id to deposit. |
 | _amount | uint256 | The amount of token to deposit. |
 | _gasLimit | uint256 | Estimated gas limit required to complete the deposit on layer 2. |
@@ -100,7 +100,7 @@ Deposit some ERC1155 NFT to caller&#39;s account on layer 2.
 
 | Name | Type | Description |
 |---|---|---|
-| _token | address | The address of ERC1155 NFT in layer 1. |
+| _token | address | The address of ERC1155 NFT on layer 1. |
 | _tokenId | uint256 | The token id to deposit. |
 | _amount | uint256 | The amount of token to deposit. |
 | _gasLimit | uint256 | Estimated gas limit required to complete the deposit on layer 2. |
@@ -111,7 +111,7 @@ Deposit some ERC1155 NFT to caller&#39;s account on layer 2.
 function finalizeBatchWithdrawERC1155(address _l1Token, address _l2Token, address _from, address _to, uint256[] _tokenIds, uint256[] _amounts) external nonpayable
 ```
 
-Complete ERC1155 batch withdraw from layer 2 to layer 1 and send fund to recipient&#39;s account in layer 1.      The function should only be called by L1ScrollMessenger.      The function should also only be called by L2ERC1155Gateway in layer 2.
+Complete ERC1155 batch withdraw from layer 2 to layer 1 and send fund to recipient&#39;s account on layer 1.      The function should only be called by L1ScrollMessenger.      The function should also only be called by L2ERC1155Gateway on layer 2.
 
 
 
@@ -121,8 +121,8 @@ Complete ERC1155 batch withdraw from layer 2 to layer 1 and send fund to recipie
 |---|---|---|
 | _l1Token | address | The address of corresponding layer 1 token. |
 | _l2Token | address | The address of corresponding layer 2 token. |
-| _from | address | The address of account who withdraw the token in layer 2. |
-| _to | address | The address of recipient in layer 1 to receive the token. |
+| _from | address | The address of account who withdraw the token on layer 2. |
+| _to | address | The address of recipient on layer 1 to receive the token. |
 | _tokenIds | uint256[] | The list of token ids to withdraw. |
 | _amounts | uint256[] | The list of corresponding number of token to withdraw. |
 
@@ -132,7 +132,7 @@ Complete ERC1155 batch withdraw from layer 2 to layer 1 and send fund to recipie
 function finalizeWithdrawERC1155(address _l1Token, address _l2Token, address _from, address _to, uint256 _tokenId, uint256 _amount) external nonpayable
 ```
 
-Complete ERC1155 withdraw from layer 2 to layer 1 and send fund to recipient&#39;s account in layer 1.      The function should only be called by L1ScrollMessenger.      The function should also only be called by L2ERC1155Gateway in layer 2.
+Complete ERC1155 withdraw from layer 2 to layer 1 and send fund to recipient&#39;s account on layer 1.      The function should only be called by L1ScrollMessenger.      The function should also only be called by L2ERC1155Gateway on layer 2.
 
 
 
@@ -142,8 +142,8 @@ Complete ERC1155 withdraw from layer 2 to layer 1 and send fund to recipient&#39
 |---|---|---|
 | _l1Token | address | The address of corresponding layer 1 token. |
 | _l2Token | address | The address of corresponding layer 2 token. |
-| _from | address | The address of account who withdraw the token in layer 2. |
-| _to | address | The address of recipient in layer 1 to receive the token. |
+| _from | address | The address of account who withdraw the token on layer 2. |
+| _to | address | The address of recipient on layer 1 to receive the token. |
 | _tokenId | uint256 | The token id to withdraw. |
 | _amount | uint256 | The amount of token to withdraw. |
 
@@ -368,8 +368,8 @@ Update layer 2 to layer 2 token mapping.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token | address | The address of ERC1155 token in layer 1. |
-| _l2Token | address | The address of corresponding ERC1155 token in layer 2. |
+| _l1Token | address | The address of ERC1155 token on layer 1. |
+| _l2Token | address | The address of corresponding ERC1155 token on layer 2. |
 
 
 
@@ -381,7 +381,7 @@ Update layer 2 to layer 2 token mapping.
 event BatchDepositERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds, uint256[] _amounts)
 ```
 
-Emitted when the ERC1155 NFT is batch deposited to gateway in layer 1.
+Emitted when the ERC1155 NFT is batch deposited to gateway on layer 1.
 
 
 
@@ -421,7 +421,7 @@ Emitted when some ERC1155 token is refunded.
 event DepositERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId, uint256 _amount)
 ```
 
-Emitted when the ERC1155 NFT is deposited to gateway in layer 1.
+Emitted when the ERC1155 NFT is deposited to gateway on layer 1.
 
 
 
@@ -442,7 +442,7 @@ Emitted when the ERC1155 NFT is deposited to gateway in layer 1.
 event FinalizeBatchWithdrawERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds, uint256[] _amounts)
 ```
 
-Emitted when the ERC1155 NFT is batch transfered to recipient in layer 1.
+Emitted when the ERC1155 NFT is batch transfered to recipient on layer 1.
 
 
 
@@ -463,7 +463,7 @@ Emitted when the ERC1155 NFT is batch transfered to recipient in layer 1.
 event FinalizeWithdrawERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId, uint256 _amount)
 ```
 
-Emitted when the ERC1155 NFT is transfered to recipient in layer 1.
+Emitted when the ERC1155 NFT is transfered to recipient on layer 1.
 
 
 

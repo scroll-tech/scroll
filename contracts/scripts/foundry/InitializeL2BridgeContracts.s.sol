@@ -13,13 +13,14 @@ import {L2StandardERC20Gateway} from "../../src/L2/gateways/L2StandardERC20Gatew
 import {L2WETHGateway} from "../../src/L2/gateways/L2WETHGateway.sol";
 import {L2MessageQueue} from "../../src/L2/predeploys/L2MessageQueue.sol";
 import {L2TxFeeVault} from "../../src/L2/predeploys/L2TxFeeVault.sol";
-import {L1BlockContainer} from "../../src/L2/predeploys/L1BlockContainer.sol";
 import {L1GasPriceOracle} from "../../src/L2/predeploys/L1GasPriceOracle.sol";
 import {Whitelist} from "../../src/L2/predeploys/Whitelist.sol";
 import {ScrollStandardERC20Factory} from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
 contract InitializeL2BridgeContracts is Script {
     uint256 deployerPrivateKey = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
+
+    address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
 
     address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
     address L1_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L1_GATEWAY_ROUTER_PROXY_ADDR");
@@ -31,7 +32,6 @@ contract InitializeL2BridgeContracts is Script {
     address L1_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_WETH_GATEWAY_PROXY_ADDR");
 
     address L2_TX_FEE_VAULT_ADDR = vm.envAddress("L2_TX_FEE_VAULT_ADDR");
-    address L1_BLOCK_CONTAINER_ADDR = vm.envAddress("L1_BLOCK_CONTAINER_ADDR");
     address L1_GAS_PRICE_ORACLE_ADDR = vm.envAddress("L1_GAS_PRICE_ORACLE_ADDR");
     address L2_WHITELIST_ADDR = vm.envAddress("L2_WHITELIST_ADDR");
     address L2_MESSAGE_QUEUE_ADDR = vm.envAddress("L2_MESSAGE_QUEUE_ADDR");
@@ -50,14 +50,10 @@ contract InitializeL2BridgeContracts is Script {
         vm.startBroadcast(deployerPrivateKey);
 
         // initialize L2MessageQueue
-        L2MessageQueue(L2_MESSAGE_QUEUE_ADDR).initialize();
-        L2MessageQueue(L2_MESSAGE_QUEUE_ADDR).updateMessenger(L2_SCROLL_MESSENGER_PROXY_ADDR);
+        L2MessageQueue(L2_MESSAGE_QUEUE_ADDR).initialize(L2_SCROLL_MESSENGER_PROXY_ADDR);
 
         // initialize L2TxFeeVault
         L2TxFeeVault(payable(L2_TX_FEE_VAULT_ADDR)).updateMessenger(L2_SCROLL_MESSENGER_PROXY_ADDR);
-
-        // initialize L1BlockContainer
-        L1BlockContainer(L1_BLOCK_CONTAINER_ADDR).updateWhitelist(L2_WHITELIST_ADDR);
 
         // initialize L1GasPriceOracle
         L1GasPriceOracle(L1_GAS_PRICE_ORACLE_ADDR).updateWhitelist(L2_WHITELIST_ADDR);
@@ -114,6 +110,15 @@ contract InitializeL2BridgeContracts is Script {
             L2_GATEWAY_ROUTER_PROXY_ADDR,
             L2_SCROLL_MESSENGER_PROXY_ADDR
         );
+
+        // set WETH gateway in router
+        {
+            address[] memory _tokens = new address[](1);
+            _tokens[0] = L2_WETH_ADDR;
+            address[] memory _gateways = new address[](1);
+            _gateways[0] = L2_WETH_GATEWAY_PROXY_ADDR;
+            L2GatewayRouter(L2_GATEWAY_ROUTER_PROXY_ADDR).setERC20Gateway(_tokens, _gateways);
+        }
 
         // initialize ScrollStandardERC20Factory
         ScrollStandardERC20Factory(L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR).transferOwnership(

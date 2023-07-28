@@ -13,7 +13,7 @@ import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollG
 import {IScrollERC1155} from "../../libraries/token/IScrollERC1155.sol";
 
 /// @title L2ERC1155Gateway
-/// @notice The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs in layer 2 and
+/// @notice The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs on layer 2 and
 /// finalize deposit the NFTs from layer 1.
 /// @dev The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding
 /// NFT will be minted and transfered to the recipient.
@@ -138,8 +138,8 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
      ************************/
 
     /// @notice Update layer 2 to layer 1 token mapping.
-    /// @param _l2Token The address of corresponding ERC1155 token in layer 2.
-    /// @param _l1Token The address of ERC1155 token in layer 1.
+    /// @param _l2Token The address of corresponding ERC1155 token on layer 2.
+    /// @param _l1Token The address of ERC1155 token on layer 1.
     function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
         require(_l1Token != address(0), "token address cannot be 0");
 
@@ -154,8 +154,8 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
      **********************/
 
     /// @dev Internal function to withdraw ERC1155 NFT to layer 2.
-    /// @param _token The address of ERC1155 NFT in layer 1.
-    /// @param _to The address of recipient in layer 2.
+    /// @param _token The address of ERC1155 NFT on layer 1.
+    /// @param _to The address of recipient on layer 2.
     /// @param _tokenId The token id to withdraw.
     /// @param _amount The amount of token to withdraw.
     /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 2.
@@ -187,8 +187,8 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     }
 
     /// @dev Internal function to batch withdraw ERC1155 NFT to layer 2.
-    /// @param _token The address of ERC1155 NFT in layer 1.
-    /// @param _to The address of recipient in layer 2.
+    /// @param _token The address of ERC1155 NFT on layer 1.
+    /// @param _to The address of recipient on layer 2.
     /// @param _tokenIds The list of token ids to withdraw.
     /// @param _amounts The list of corresponding number of token to withdraw.
     /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 1.

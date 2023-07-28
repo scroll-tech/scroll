@@ -24,7 +24,7 @@ import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 /// 2. relay messages from layer 1 layer 2;
 /// 3. drop expired message due to sequencer problems.
 ///
-/// @dev It should be a predeployed contract in layer 2 and should hold infinite amount
+/// @dev It should be a predeployed contract on layer 2 and should hold infinite amount
 /// of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.
 contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2ScrollMessenger {
     /*************

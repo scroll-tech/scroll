@@ -12,7 +12,7 @@ import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollG
 import {IScrollERC20} from "../../libraries/token/IScrollERC20.sol";
 
 /// @title L2ERC20Gateway
-/// @notice The `L2ERC20Gateway` is used to withdraw custom ERC20 compatible tokens in layer 2 and
+/// @notice The `L2ERC20Gateway` is used to withdraw custom ERC20 compatible tokens on layer 2 and
 /// finalize deposit the tokens from layer 1.
 /// @dev The withdrawn tokens tokens will be burned directly. On finalizing deposit, the corresponding
 /// tokens will be minted and transfered to the recipient.
@@ -96,8 +96,8 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
      ************************/
 
     /// @notice Update layer 2 to layer 1 token mapping.
-    /// @param _l2Token The address of corresponding ERC20 token in layer 2.
-    /// @param _l1Token The address of ERC20 token in layer 1.
+    /// @param _l2Token The address of corresponding ERC20 token on layer 2.
+    /// @param _l1Token The address of ERC20 token on layer 1.
     function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
         require(_l1Token != address(0), "token address cannot be 0");
 
