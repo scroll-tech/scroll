@@ -30,6 +30,7 @@ type Batch struct {
 	EndChunkHash    string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
 	StateRoot       string `json:"state_root" gorm:"column:state_root"`
 	WithdrawRoot    string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
 	// proof
@@ -48,7 +49,7 @@ type Batch struct {
 	FinalizedAt    *time.Time `json:"finalized_at" gorm:"column:finalized_at;default:NULL"`
 
 	// gas oracle
-	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1;default:1"`
+	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
 	OracleTxHash string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
 
 	// metadata
@@ -131,7 +132,7 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 
 // InsertBatch inserts a new batch into the database.
 // for unit test
-func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
 	if len(chunks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -184,14 +185,20 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		EndChunkHash:      endChunkHash,
 		EndChunkIndex:     endChunkIndex,
 		StateRoot:         chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
+		WithdrawRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawRoot.Hex(),
+		ParentBatchHash:   parentBatchHash.Hex(),
 		BatchHeader:       batchHeader.Encode(),
 		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),
 		RollupStatus:      int16(types.RollupPending),
+		OracleStatus:      int16(types.GasOraclePending),
 	}
 
-	db := o.db.WithContext(ctx)
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db.WithContext(ctx)
 	db = db.Model(&Batch{})
 
 	if err := db.Create(&newBatch).Error; err != nil {

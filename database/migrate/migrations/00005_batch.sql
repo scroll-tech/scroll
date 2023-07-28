@@ -12,6 +12,7 @@ create table batch
     end_chunk_hash          VARCHAR         NOT NULL,
     state_root              VARCHAR         NOT NULL,
     withdraw_root           VARCHAR         NOT NULL,
+    parent_batch_hash       VARCHAR         NOT NULL,
     batch_header            BYTEA           NOT NULL,
 
 -- proof
@@ -40,10 +41,10 @@ create table batch
 );
 
 create unique index batch_index_uindex
-on batch (index);
+on batch (index) where deleted_at IS NULL;
 
 create unique index batch_hash_uindex
-on batch (hash);
+on batch (hash) where deleted_at IS NULL;
 
 comment
 on column batch.chunk_proofs_status is 'undefined, pending, ready';
