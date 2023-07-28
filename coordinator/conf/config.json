@@ -11,7 +11,8 @@
       "agg_vk_path": ""
     },
     "max_verifier_workers": 10,
-    "order_session": "ASC"
+    "order_session": "ASC",
+    "jwt_secret": "jwt"
   },
   "db_config": {
     "driver_name": "postgres",

@@ -2,10 +2,11 @@ package message
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
+	"time"
+
+	"github.com/golang-jwt/jwt"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -54,6 +55,8 @@ type AuthMsg struct {
 	Identity *Identity `json:"message"`
 	// Prover signature
 	Signature string `json:"signature"`
+	// Jwt claims
+	JwtClaims jwt.StandardClaims `json:"jwt_claims,omitempty"`
 }
 
 // Identity contains all the fields to be signed by the prover.
@@ -70,12 +73,25 @@ type Identity struct {
 }
 
 // GenerateToken generates token
-func GenerateToken() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
+func GenerateToken(tokenExpire time.Duration, secret []byte) (string, error) {
+	var auth AuthMsg
+	auth.JwtClaims.ExpiresAt = time.Now().Add(tokenExpire).Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, auth.JwtClaims)
+	return token.SignedString(secret)
+}
+
+// VerifyToken verifies token
+func VerifyToken(secret []byte, tokenStr string) (bool, error) {
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return secret, nil
+	})
+	if err != nil {
+		return false, err
 	}
-	return hex.EncodeToString(b), nil
+	return token.Valid, nil
 }
 
 // SignWithKey auth message with private key and set public key in auth message's Identity
@@ -145,6 +161,9 @@ type ProofMsg struct {
 
 	// Prover public key
 	publicKey string
+
+	// jwt
+	Token string `json:"token"`
 }
 
 // Sign signs the ProofMsg.
