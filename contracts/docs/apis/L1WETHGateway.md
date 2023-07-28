@@ -4,7 +4,7 @@
 
 > L1WETHGateway
 
-The `L1WETHGateway` contract is used to deposit `WETH` token in layer 1 and finalize withdraw `WETH` from layer 2.
+The `L1WETHGateway` contract is used to deposit `WETH` token on layer 1 and finalize withdraw `WETH` from layer 2.
 
 *The deposited WETH tokens are not held in the gateway. It will first be unwrapped as Ether and then the Ether will be sent to the `L1ScrollMessenger` contract. On finalizing withdraw, the Ether will be transfered from `L1ScrollMessenger`, then wrapped as WETH and finally transfer to recipient.*
 

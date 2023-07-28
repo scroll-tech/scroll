@@ -14,7 +14,7 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 
 /// @title L1CustomERC20Gateway
-/// @notice The `L1CustomERC20Gateway` is used to deposit custom ERC20 compatible tokens in layer 1 and
+/// @notice The `L1CustomERC20Gateway` is used to deposit custom ERC20 compatible tokens on layer 1 and
 /// finalize withdraw the tokens from layer 2.
 /// @dev The deposited tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// tokens will be transfer to the recipient directly.
@@ -26,8 +26,8 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
      **********/
 
     /// @notice Emitted when token mapping for ERC20 token is updated.
-    /// @param _l1Token The address of ERC20 token in layer 1.
-    /// @param _l2Token The address of corresponding ERC20 token in layer 2.
+    /// @param _l1Token The address of ERC20 token on layer 1.
+    /// @param _l2Token The address of corresponding ERC20 token on layer 2.
     event UpdateTokenMapping(address _l1Token, address _l2Token);
 
     /*************
@@ -74,8 +74,8 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
      ************************/
 
     /// @notice Update layer 1 to layer 2 token mapping.
-    /// @param _l1Token The address of ERC20 token in layer 1.
-    /// @param _l2Token The address of corresponding ERC20 token in layer 2.
+    /// @param _l1Token The address of ERC20 token on layer 1.
+    /// @param _l2Token The address of corresponding ERC20 token on layer 2.
     function updateTokenMapping(address _l1Token, address _l2Token) external onlyOwner {
         require(_l2Token != address(0), "token address cannot be 0");
 

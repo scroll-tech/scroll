@@ -22,8 +22,8 @@ contract InitializeL1BridgeContracts is Script {
     uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
     uint256 MAX_L2_TX_IN_CHUNK = vm.envUint("MAX_L2_TX_IN_CHUNK");
     address L1_ROLLUP_OPERATOR_ADDR = vm.envAddress("L1_ROLLUP_OPERATOR_ADDR");
-
     address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
+    address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
 
     address L1_WHITELIST_ADDR = vm.envAddress("L1_WHITELIST_ADDR");
     address L1_SCROLL_CHAIN_PROXY_ADDR = vm.envAddress("L1_SCROLL_CHAIN_PROXY_ADDR");
@@ -61,6 +61,7 @@ contract InitializeL1BridgeContracts is Script {
             MAX_L2_TX_IN_CHUNK
         );
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).updateSequencer(L1_ROLLUP_OPERATOR_ADDR, true);
+        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).updateProver(L1_ROLLUP_OPERATOR_ADDR, true);
 
         // initialize L2GasPriceOracle
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize(
@@ -141,6 +142,15 @@ contract InitializeL1BridgeContracts is Script {
             L1_GATEWAY_ROUTER_PROXY_ADDR,
             L1_SCROLL_MESSENGER_PROXY_ADDR
         );
+
+        // set WETH gateway in router
+        {
+            address[] memory _tokens = new address[](1);
+            _tokens[0] = L1_WETH_ADDR;
+            address[] memory _gateways = new address[](1);
+            _gateways[0] = L1_WETH_GATEWAY_PROXY_ADDR;
+            L1GatewayRouter(L1_GATEWAY_ROUTER_PROXY_ADDR).setERC20Gateway(_tokens, _gateways);
+        }
 
         vm.stopBroadcast();
     }

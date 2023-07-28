@@ -14,7 +14,7 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 // solhint-disable avoid-low-level-calls
 
 /// @title L1ETHGateway
-/// @notice The `L1ETHGateway` is used to deposit ETH in layer 1 and
+/// @notice The `L1ETHGateway` is used to deposit ETH on layer 1 and
 /// finalize withdraw ETH from layer 2.
 /// @dev The deposited ETH tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// ETH will be transfer to the recipient directly.

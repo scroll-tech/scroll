@@ -13,7 +13,7 @@ import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
 import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L2WETHGateway
-/// @notice The `L2WETHGateway` contract is used to withdraw `WETH` token in layer 2 and
+/// @notice The `L2WETHGateway` contract is used to withdraw `WETH` token on layer 2 and
 /// finalize deposit `WETH` from layer 1.
 /// @dev The WETH tokens are not held in the gateway. It will first be unwrapped as Ether and
 /// then the Ether will be sent to the `L2ScrollMessenger` contract.
