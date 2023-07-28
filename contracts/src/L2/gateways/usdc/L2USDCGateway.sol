@@ -15,7 +15,7 @@ import {ScrollGatewayBase, IScrollGateway} from "../../../libraries/gateway/Scro
 import {L2ERC20Gateway} from "../L2ERC20Gateway.sol";
 
 /// @title L2USDCGateway
-/// @notice The `L2USDCGateway` contract is used to withdraw `USDC` token in layer 2 and
+/// @notice The `L2USDCGateway` contract is used to withdraw `USDC` token on layer 2 and
 /// finalize deposit `USDC` from layer 1.
 contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway {
     using SafeERC20Upgradeable for IERC20Upgradeable;
