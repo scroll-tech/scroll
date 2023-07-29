@@ -15,13 +15,13 @@ const (
 	defaultNumberOfSessionRetryAttempts = 2
 )
 
-// RollerManagerConfig loads sequencer configuration items.
-type RollerManagerConfig struct {
+// ProverManagerConfig loads sequencer configuration items.
+type ProverManagerConfig struct {
 	CompressionLevel int `json:"compression_level,omitempty"`
 	// asc or desc (default: asc)
 	OrderSession string `json:"order_session,omitempty"`
-	// The amount of rollers to pick per proof generation session.
-	RollersPerSession uint8 `json:"rollers_per_session"`
+	// The amount of provers to pick per proof generation session.
+	ProversPerSession uint8 `json:"provers_per_session"`
 	// Number of attempts that a session can be retried if previous attempts failed.
 	// Currently we only consider proving timeout as failure here.
 	SessionAttempts uint8 `json:"session_attempts,omitempty"`
@@ -43,7 +43,7 @@ type L2Config struct {
 
 // Config load configuration items.
 type Config struct {
-	RollerManagerConfig *RollerManagerConfig `json:"roller_manager_config"`
+	ProverManagerConfig *ProverManagerConfig `json:"prover_manager_config"`
 	DBConfig            *database.Config     `json:"db_config"`
 	L2Config            *L2Config            `json:"l2_config"`
 }
@@ -68,18 +68,18 @@ func NewConfig(file string) (*Config, error) {
 		return nil, err
 	}
 
-	// Check roller's order session
-	order := strings.ToUpper(cfg.RollerManagerConfig.OrderSession)
+	// Check prover's order session
+	order := strings.ToUpper(cfg.ProverManagerConfig.OrderSession)
 	if len(order) > 0 && !(order == "ASC" || order == "DESC") {
-		return nil, errors.New("roller config's order session is invalid")
+		return nil, errors.New("prover config's order session is invalid")
 	}
-	cfg.RollerManagerConfig.OrderSession = order
+	cfg.ProverManagerConfig.OrderSession = order
 
-	if cfg.RollerManagerConfig.MaxVerifierWorkers == 0 {
-		cfg.RollerManagerConfig.MaxVerifierWorkers = defaultNumberOfVerifierWorkers
+	if cfg.ProverManagerConfig.MaxVerifierWorkers == 0 {
+		cfg.ProverManagerConfig.MaxVerifierWorkers = defaultNumberOfVerifierWorkers
 	}
-	if cfg.RollerManagerConfig.SessionAttempts == 0 {
-		cfg.RollerManagerConfig.SessionAttempts = defaultNumberOfSessionRetryAttempts
+	if cfg.ProverManagerConfig.SessionAttempts == 0 {
+		cfg.ProverManagerConfig.SessionAttempts = defaultNumberOfSessionRetryAttempts
 	}
 
 	return cfg, nil

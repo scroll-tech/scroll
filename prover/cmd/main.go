@@ -1,6 +1,6 @@
 package main
 
-import "scroll-tech/roller/cmd/app"
+import "scroll-tech/prover/cmd/app"
 
 func main() {
 	app.Run()

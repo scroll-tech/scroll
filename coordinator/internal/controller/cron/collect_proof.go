@@ -114,16 +114,16 @@ func (c *Collector) timeoutProofTask() {
 			}
 
 			for _, assignedProverTask := range assignedProverTasks {
-				timeoutDuration := time.Duration(c.cfg.RollerManagerConfig.CollectionTime) * time.Minute
+				timeoutDuration := time.Duration(c.cfg.ProverManagerConfig.CollectionTime) * time.Minute
 				// here not update the block batch proving status failed, because the collector loop will check
 				// the attempt times. if reach the times, the collector will set the block batch proving status.
 				if time.Since(assignedProverTask.AssignedAt) >= timeoutDuration {
 					log.Warn("proof task have reach the timeout", "task id", assignedProverTask.TaskID,
 						"prover public key", assignedProverTask.ProverPublicKey, "prover name", assignedProverTask.ProverName, "task type", assignedProverTask.TaskType)
 					err = c.db.Transaction(func(tx *gorm.DB) error {
-						// update prover task proving status as RollerProofInvalid
+						// update prover task proving status as ProverProofInvalid
 						if err = c.proverTaskOrm.UpdateProverTaskProvingStatus(c.ctx, message.ProofType(assignedProverTask.TaskType),
-							assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.RollerProofInvalid, tx); err != nil {
+							assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverProofInvalid, tx); err != nil {
 							log.Error("update prover task proving status failure", "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 							return err
 						}
