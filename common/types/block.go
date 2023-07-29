@@ -103,7 +103,7 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 		})
 		rlpTxData, _ := tx.MarshalBinary()
 		txPayloadLength := uint64(len(rlpTxData))
-		total += 16 * uint64(txPayloadLength)  // an over-estimate: treat each byte as non-zero
+		total += 16 * txPayloadLength          // an over-estimate: treat each byte as non-zero
 		total += 16 * 4                        // size of a uint32 field
 		total += getKeccakGas(txPayloadLength) // l2 tx hash
 	}
