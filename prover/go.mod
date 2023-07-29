@@ -1,4 +1,4 @@
-module scroll-tech/roller
+module scroll-tech/prover
 
 go 1.19
 

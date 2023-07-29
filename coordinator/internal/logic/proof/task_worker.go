@@ -11,12 +11,12 @@ import (
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types/message"
 
-	"scroll-tech/coordinator/internal/logic/rollermanager"
+	"scroll-tech/coordinator/internal/logic/provermanager"
 )
 
-var coordinatorRollersDisconnectsTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/rollers/disconnects/total", metrics.ScrollRegistry)
+var coordinatorProversDisconnectsTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/provers/disconnects/total", metrics.ScrollRegistry)
 
-// TaskWorker held the roller task connection
+// TaskWorker held the prover task connection
 type TaskWorker struct{}
 
 // NewTaskWorker create a task worker
@@ -38,8 +38,8 @@ func (t *TaskWorker) AllocTaskWorker(ctx context.Context, authMsg *message.AuthM
 
 	identity := authMsg.Identity
 
-	// create or get the roller message channel
-	taskCh, err := rollermanager.Manager.Register(ctx, pubKey, identity)
+	// create or get the prover message channel
+	taskCh, err := provermanager.Manager.Register(ctx, pubKey, identity)
 	if err != nil {
 		return &rpc.Subscription{}, err
 	}
@@ -48,7 +48,7 @@ func (t *TaskWorker) AllocTaskWorker(ctx context.Context, authMsg *message.AuthM
 
 	go t.worker(rpcSub, notifier, pubKey, identity, taskCh)
 
-	log.Info("roller register", "name", identity.Name, "pubKey", pubKey, "version", identity.Version)
+	log.Info("prover register", "name", identity.Name, "pubKey", pubKey, "version", identity.Version)
 
 	return rpcSub, nil
 }
@@ -60,8 +60,8 @@ func (t *TaskWorker) worker(rpcSub *rpc.Subscription, notifier *rpc.Notifier, pu
 			log.Error("task worker subId:%d panic for:%v", err)
 		}
 
-		rollermanager.Manager.FreeRoller(pubKey)
-		log.Info("roller unregister", "name", identity.Name, "pubKey", pubKey)
+		provermanager.Manager.FreeProver(pubKey)
+		log.Info("prover unregister", "name", identity.Name, "pubKey", pubKey)
 	}()
 
 	for {
@@ -69,7 +69,7 @@ func (t *TaskWorker) worker(rpcSub *rpc.Subscription, notifier *rpc.Notifier, pu
 		case task := <-taskCh:
 			notifier.Notify(rpcSub.ID, task) //nolint
 		case err := <-rpcSub.Err():
-			coordinatorRollersDisconnectsTotalCounter.Inc(1)
+			coordinatorProversDisconnectsTotalCounter.Inc(1)
 			log.Warn("client stopped the ws connection", "name", identity.Name, "pubkey", pubKey, "err", err)
 			return
 		case <-notifier.Closed():

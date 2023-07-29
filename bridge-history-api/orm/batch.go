@@ -39,6 +39,9 @@ func (r *RollupBatch) GetLatestRollupBatchProcessedHeight(ctx context.Context) (
 	var result RollupBatch
 	err := r.db.WithContext(ctx).Unscoped().Select("commit_height").Order("id desc").First(&result).Error
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
 		return 0, fmt.Errorf("RollupBatch.GetLatestRollupBatchProcessedHeight error: %w", err)
 	}
 	return result.CommitHeight, nil

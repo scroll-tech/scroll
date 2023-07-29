@@ -12,7 +12,7 @@ import (
 	"scroll-tech/common/utils"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/rollermanager"
+	"scroll-tech/coordinator/internal/logic/provermanager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
@@ -59,15 +59,15 @@ func (bp *BatchProofCollector) Collect(ctx context.Context) error {
 	batchTask := batchTasks[0]
 	log.Info("start batch proof generation session", "id", batchTask.Hash)
 
-	if rollermanager.Manager.GetNumberOfIdleRollers(message.ProofTypeBatch) == 0 {
-		return fmt.Errorf("no idle common roller when starting proof generation session, id:%s", batchTask.Hash)
+	if provermanager.Manager.GetNumberOfIdleProvers(message.ProofTypeBatch) == 0 {
+		return fmt.Errorf("no idle common prover when starting proof generation session, id:%s", batchTask.Hash)
 	}
 
 	if !bp.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
 		return fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
 	}
 
-	rollerStatusList, err := bp.sendTask(ctx, batchTask.Hash)
+	proverStatusList, err := bp.sendTask(ctx, batchTask.Hash)
 	if err != nil {
 		return fmt.Errorf("send batch task id:%s err:%w", batchTask.Hash, err)
 	}
@@ -78,13 +78,13 @@ func (bp *BatchProofCollector) Collect(ctx context.Context) error {
 			return fmt.Errorf("failed to update task status, id:%s, error:%w", batchTask.Hash, err)
 		}
 
-		for _, rollerStatus := range rollerStatusList {
+		for _, proverStatus := range proverStatusList {
 			proverTask := orm.ProverTask{
 				TaskID:          batchTask.Hash,
-				ProverPublicKey: rollerStatus.PublicKey,
+				ProverPublicKey: proverStatus.PublicKey,
 				TaskType:        int16(message.ProofTypeBatch),
-				ProverName:      rollerStatus.Name,
-				ProvingStatus:   int16(types.RollerAssigned),
+				ProverName:      proverStatus.Name,
+				ProvingStatus:   int16(types.ProverAssigned),
 				FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 				// here why need use UTC time. see scroll/common/databased/db.go
 				AssignedAt: utils.NowUTC(),
@@ -100,7 +100,7 @@ func (bp *BatchProofCollector) Collect(ctx context.Context) error {
 	return transErr
 }
 
-func (bp *BatchProofCollector) sendTask(ctx context.Context, taskID string) ([]*coordinatorType.RollerStatus, error) {
+func (bp *BatchProofCollector) sendTask(ctx context.Context, taskID string) ([]*coordinatorType.ProverStatus, error) {
 	// get chunk proofs from db
 	chunkProofs, err := bp.chunkOrm.GetProofsByBatchHash(ctx, taskID)
 	if err != nil {

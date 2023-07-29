@@ -10,22 +10,22 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-// Config loads roller configuration items.
+// Config loads prover configuration items.
 type Config struct {
-	RollerName       string        `json:"roller_name"`
-	KeystorePath     string        `json:"keystore_path"`
-	KeystorePassword string        `json:"keystore_password"`
-	CoordinatorURL   string        `json:"coordinator_url"`
-	TraceEndpoint    string        `json:"trace_endpoint"`
-	Prover           *ProverConfig `json:"prover"`
-	DBPath           string        `json:"db_path"`
+	ProverName       string            `json:"prover_name"`
+	KeystorePath     string            `json:"keystore_path"`
+	KeystorePassword string            `json:"keystore_password"`
+	CoordinatorURL   string            `json:"coordinator_url"`
+	TraceEndpoint    string            `json:"trace_endpoint"`
+	Core             *ProverCoreConfig `json:"core"`
+	DBPath           string            `json:"db_path"`
 }
 
-// ProverConfig load zk prover config.
-type ProverConfig struct {
+// ProverCoreConfig load zk prover config.
+type ProverCoreConfig struct {
 	ParamsPath string            `json:"params_path"`
 	SeedPath   string            `json:"seed_path"`
-	ProofType  message.ProofType `json:"prove_type,omitempty"` // 0: basic roller (default type), 1: aggregator roller
+	ProofType  message.ProofType `json:"prove_type,omitempty"` // 0: chunk prover (default type), 1: batch prover
 	DumpDir    string            `json:"dump_dir,omitempty"`
 }
 

@@ -346,7 +346,6 @@ func ParseBackendL2EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedM
 // ParseBatchInfoFromScrollChain parses ScrollChain events
 func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client, logs []types.Log) ([]*orm.RollupBatch, error) {
 	var rollupBatches []*orm.RollupBatch
-	cache := make(map[string]CachedParsedTxCalldata)
 	for _, vlog := range logs {
 		switch vlog.Topics[0] {
 		case backendabi.L1CommitBatchEventSignature:
@@ -356,42 +355,22 @@ func ParseBatchInfoFromScrollChain(ctx context.Context, client *ethclient.Client
 				log.Warn("Failed to unpack CommitBatch event", "err", err)
 				return rollupBatches, err
 			}
-			if _, ok := cache[vlog.TxHash.Hex()]; ok {
-				c := cache[vlog.TxHash.Hex()]
-				c.CallDataIndex++
-				rollupBatches = append(rollupBatches, &orm.RollupBatch{
-					CommitHeight:     vlog.BlockNumber,
-					BatchIndex:       c.BatchIndices[c.CallDataIndex],
-					BatchHash:        event.BatchHash.Hex(),
-					StartBlockNumber: c.StartBlocks[c.CallDataIndex],
-					EndBlockNumber:   c.EndBlocks[c.CallDataIndex],
-				})
-				cache[vlog.TxHash.Hex()] = c
-				continue
-			}
-
 			commitTx, isPending, err := client.TransactionByHash(ctx, vlog.TxHash)
 			if err != nil || isPending {
 				log.Warn("Failed to get commit Batch tx receipt or the tx is still pending", "err", err)
 				return rollupBatches, err
 			}
-			indices, startBlocks, endBlocks, err := GetBatchRangeFromCalldataV1(commitTx.Data())
+			index, startBlock, endBlock, err := GetBatchRangeFromCalldataV2(commitTx.Data())
 			if err != nil {
 				log.Warn("Failed to get batch range from calldata", "hash", commitTx.Hash().Hex(), "height", vlog.BlockNumber)
 				return rollupBatches, err
 			}
-			cache[vlog.TxHash.Hex()] = CachedParsedTxCalldata{
-				CallDataIndex: 0,
-				BatchIndices:  indices,
-				StartBlocks:   startBlocks,
-				EndBlocks:     endBlocks,
-			}
 			rollupBatches = append(rollupBatches, &orm.RollupBatch{
 				CommitHeight:     vlog.BlockNumber,
-				BatchIndex:       indices[0],
+				BatchIndex:       index,
 				BatchHash:        event.BatchHash.Hex(),
-				StartBlockNumber: startBlocks[0],
-				EndBlockNumber:   endBlocks[0],
+				StartBlockNumber: startBlock,
+				EndBlockNumber:   endBlock,
 			})
 
 		default:

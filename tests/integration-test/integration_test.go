@@ -16,7 +16,7 @@ import (
 
 	"scroll-tech/common/docker"
 
-	rapp "scroll-tech/roller/cmd/app"
+	rapp "scroll-tech/prover/cmd/app"
 
 	"scroll-tech/database/migrate"
 
@@ -27,18 +27,18 @@ var (
 	base           *docker.App
 	bridgeApp      *bcmd.MockApp
 	coordinatorApp *capp.CoordinatorApp
-	rollerApp      *rapp.RollerApp
+	proverApp      *rapp.ProverApp
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
 	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
-	rollerApp = rapp.NewRollerApp(base, "../../roller/config.json", coordinatorApp.WSEndpoint())
+	proverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.WSEndpoint())
 	m.Run()
 	bridgeApp.Free()
 	coordinatorApp.Free()
-	rollerApp.Free()
+	proverApp.Free()
 	base.Free()
 }
 
@@ -50,11 +50,11 @@ func TestStartProcess(t *testing.T) {
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
-	// Run roller app.
-	rollerApp.RunApp(t)
+	// Run prover app.
+	proverApp.RunApp(t)
 
 	// Free apps.
-	rollerApp.WaitExit()
+	proverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
 
@@ -80,7 +80,7 @@ func TestMonitorMetrics(t *testing.T) {
 	bodyStr := string(body)
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_sessions_timeout_total"))
-	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_rollers_disconnects_total"))
+	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_provers_disconnects_total"))
 
 	// Exit.
 	coordinatorApp.WaitExit()
