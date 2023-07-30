@@ -291,7 +291,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 // UpdateProofByHash updates the chunk proof by hash.
 //
 // TODO: seems to replace `BatchProof` with `ChunkProof` (until scroll-prover update).
-func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *message.BatchProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *message.ChunkProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
