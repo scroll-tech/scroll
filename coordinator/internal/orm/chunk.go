@@ -102,7 +102,7 @@ func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*
 		return nil, fmt.Errorf("Chunk.GetProofsByBatchHash error: %w, batch hash: %v", err, batchHash)
 	}
 
-	var proofs []*message.BatchProof
+	var proofs []*message.ChunkProof
 	for _, chunk := range chunks {
 		var proof message.BatchProof
 		if err := json.Unmarshal(chunk.Proof, &proof); err != nil {
