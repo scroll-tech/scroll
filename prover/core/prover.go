@@ -51,7 +51,7 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.AggProof, error) {
+func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.BatchProof, error) {
 	var proofByt []byte
 	if p.cfg.ProofType == message.ProofTypeChunk {
 		tracesByt, err := json.Marshal(traces)
@@ -69,7 +69,7 @@ func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.
 		log.Error("Dump proof failed", "task-id", taskID, "error", err)
 	}
 
-	zkProof := &message.AggProof{}
+	zkProof := &message.BatchProof{}
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 

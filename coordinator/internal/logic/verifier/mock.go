@@ -19,7 +19,7 @@ func NewVerifier(_ *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyProof always return true
-func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
+func (v *Verifier) VerifyProof(proof *message.BatchProof) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}

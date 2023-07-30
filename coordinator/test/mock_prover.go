@@ -134,7 +134,7 @@ func (r *mockProver) loop(t *testing.T, client *client2.Client, proofTime time.D
 					ID:     task.ID,
 					Type:   r.proofType,
 					Status: message.StatusOk,
-					Proof:  &message.AggProof{},
+					Proof:  &message.BatchProof{},
 				},
 			}
 			if proofStatus == generatedFailed {

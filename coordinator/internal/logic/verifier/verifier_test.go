@@ -36,10 +36,10 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
-	aggProof := &message.AggProof{}
-	as.NoError(json.Unmarshal(byt, aggProof))
+	proof := &message.BatchProof{}
+	as.NoError(json.Unmarshal(byt, proof))
 
-	ok, err := v.VerifyProof(aggProof)
+	ok, err := v.VerifyProof(proof)
 	as.NoError(err)
 	as.True(ok)
 }

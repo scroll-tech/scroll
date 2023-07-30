@@ -177,7 +177,7 @@ func TestProver_SubmitProof(t *testing.T) {
 			Type:   message.ProofTypeChunk,
 			ID:     id,
 			Status: message.StatusOk,
-			Proof:  &message.AggProof{},
+			Proof:  &message.BatchProof{},
 		},
 	}
 	assert.NoError(t, tmpProof.Sign(prvKey))
@@ -212,7 +212,7 @@ func TestProver_SubmitProof(t *testing.T) {
 	})
 
 	var chunkOrm *orm.Chunk
-	patchGuard.ApplyMethodFunc(chunkOrm, "UpdateProofByHash", func(context.Context, string, *message.AggProof, uint64, ...*gorm.DB) error {
+	patchGuard.ApplyMethodFunc(chunkOrm, "UpdateProofByHash", func(context.Context, string, *message.BatchProof, uint64, ...*gorm.DB) error {
 		return nil
 	})
 	patchGuard.ApplyMethodFunc(chunkOrm, "UpdateProvingStatus", func(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
@@ -220,7 +220,7 @@ func TestProver_SubmitProof(t *testing.T) {
 	})
 
 	var batchOrm *orm.Batch
-	patchGuard.ApplyMethodFunc(batchOrm, "UpdateProofByHash", func(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+	patchGuard.ApplyMethodFunc(batchOrm, "UpdateProofByHash", func(ctx context.Context, hash string, proof *message.BatchProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 		return nil
 	})
 	patchGuard.ApplyMethodFunc(batchOrm, "UpdateProvingStatus", func(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
@@ -235,7 +235,7 @@ func TestProver_SubmitProof(t *testing.T) {
 			ProofDetail: &message.ProofDetail{
 				ID:     "10001",
 				Status: message.StatusOk,
-				Proof:  &message.AggProof{},
+				Proof:  &message.BatchProof{},
 			},
 		}
 		privKey, err := crypto.GenerateKey()
@@ -284,14 +284,14 @@ func TestProver_SubmitProof(t *testing.T) {
 	var tmpVerifier *verifier.Verifier
 	convey.Convey("verifier proof failure", t, func() {
 		targetErr := errors.New("verify proof failure")
-		patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyProof", func(proof *message.AggProof) (bool, error) {
+		patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyProof", func(proof *message.BatchProof) (bool, error) {
 			return false, targetErr
 		})
 		err1 := proverController.SubmitProof(tmpProof)
 		assert.Nil(t, err1)
 	})
 
-	patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyProof", func(proof *message.AggProof) (bool, error) {
+	patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyProof", func(proof *message.BatchProof) (bool, error) {
 		return true, nil
 	})
 

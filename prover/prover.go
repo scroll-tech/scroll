@@ -235,7 +235,7 @@ func (r *Prover) prove() error {
 		} else {
 			// If FFI panic during Prove, the prover will restart and re-enter prove() function,
 			// the proof will not be submitted.
-			var proof *message.AggProof
+			var proof *message.BatchProof
 			proof, err = r.proverCore.Prove(task.Task.ID, traces)
 			if err != nil {
 				proofMsg = &message.ProofDetail{

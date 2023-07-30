@@ -67,7 +67,7 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 			ID:     "testID",
 			Type:   ProofTypeChunk,
 			Status: StatusOk,
-			Proof: &AggProof{
+			Proof: &BatchProof{
 				Proof:      []byte("testProof"),
 				Instance:   []byte("testInstance"),
 				FinalPair:  []byte("testFinalPair"),
@@ -95,7 +95,7 @@ func TestProofDetailHash(t *testing.T) {
 		ID:     "testID",
 		Type:   ProofTypeChunk,
 		Status: StatusOk,
-		Proof: &AggProof{
+		Proof: &BatchProof{
 			Proof:      []byte("testProof"),
 			Instance:   []byte("testInstance"),
 			FinalPair:  []byte("testFinalPair"),
@@ -130,7 +130,7 @@ func TestProofMsgPublicKey(t *testing.T) {
 			ID:     "testID",
 			Type:   ProofTypeChunk,
 			Status: StatusOk,
-			Proof: &AggProof{
+			Proof: &BatchProof{
 				Proof:      []byte("testProof"),
 				Instance:   []byte("testInstance"),
 				FinalPair:  []byte("testFinalPair"),

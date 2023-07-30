@@ -207,17 +207,17 @@ type TaskMsg struct {
 	// For decentralization, basic provers will get block hashes from the coordinator. So that they can refer to the block hashes and fetch traces locally. Only applicable for basic provers.
 	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
 	// Only applicable for aggregator provers.
-	SubProofs []*AggProof `json:"sub_proofs,omitempty"`
+	SubProofs []*BatchProof `json:"sub_proofs,omitempty"`
 }
 
 // ProofDetail is the message received from provers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofDetail struct {
-	ID     string     `json:"id"`
-	Type   ProofType  `json:"type,omitempty"`
-	Status RespStatus `json:"status"`
-	Proof  *AggProof  `json:"proof"`
-	Error  string     `json:"error,omitempty"`
+	ID     string      `json:"id"`
+	Type   ProofType   `json:"type,omitempty"`
+	Status RespStatus  `json:"status"`
+	Proof  *BatchProof `json:"proof"`
+	Error  string      `json:"error,omitempty"`
 }
 
 // Hash return proofMsg content hash.
@@ -242,8 +242,8 @@ type ChunkProof struct {
 	BlockCount   uint   `json:"block_count"`
 }
 
-// AggProof includes the proof info that are required for batch verification and rollup.
-type AggProof struct {
+// BatchProof includes the proof info that are required for batch verification and rollup.
+type BatchProof struct {
 	Proof      []byte `json:"proof"`
 	Instance   []byte `json:"instance"`
 	FinalPair  []byte `json:"final_pair"`
@@ -251,9 +251,9 @@ type AggProof struct {
 	BlockCount uint   `json:"block_count"`
 }
 
-// SanityCheck checks whether an AggProof is in a legal format
+// SanityCheck checks whether an BatchProof is in a legal format
 // TODO: change to check Proof&Instance when upgrading to snark verifier v0.4
-func (ap *AggProof) SanityCheck() error {
+func (ap *BatchProof) SanityCheck() error {
 	if ap == nil {
 		return errors.New("agg_proof is nil")
 	}
