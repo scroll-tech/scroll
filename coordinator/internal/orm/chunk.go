@@ -87,7 +87,7 @@ func (o *Chunk) GetUnassignedChunks(ctx context.Context, limit int) ([]*Chunk, e
 }
 
 // GetProofsByBatchHash retrieves the proofs associated with a specific batch hash.
-// It returns a slice of decoded proofs (message.BatchProof) obtained from the database.
+// It returns a slice of decoded proofs (message.ChunkProof) obtained from the database.
 // The returned proofs are sorted in ascending order by their associated chunk index.
 //
 // TODO: seems to replace `BatchProof` with `ChunkProof` (until scroll-prover update).
