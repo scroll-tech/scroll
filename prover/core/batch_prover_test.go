@@ -19,16 +19,14 @@ import (
 
 var (
 	paramsPath    = flag.String("params", "/assets/test_params", "params dir")
-	seedPath      = flag.String("seed", "/assets/test_seed", "seed path")
 	tracesPath    = flag.String("traces", "/assets/traces", "traces dir")
-	proofDumpPath = flag.String("dump", "/assets/agg_proof", "the path proofs dump to")
+	proofDumpPath = flag.String("dump", "/assets/proof_data", "the path proofs dump to")
 )
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
 	cfg := &config.ProverCoreConfig{
 		ParamsPath: *paramsPath,
-		SeedPath:   *seedPath,
 	}
 	proverCore, err := core.NewProverCore(cfg)
 	as.NoError(err)

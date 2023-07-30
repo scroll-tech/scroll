@@ -25,33 +25,31 @@ import (
 )
 
 // ProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
-type ProverCore struct {
-	cfg *config.ProverCoreConfig
+type ChunkProverCore struct {
+	cfg *config.ChunkProverCoreConfig
 }
 
-// NewProverCore inits a ProverCore object.
-func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
+// NewChunkProverCore inits a ChunkProverCore object.
+func NewChunkProverCore(cfg *config.ChunkProverCoreConfig) (*ChunkProverCore, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
-	seedPathStr := C.CString(cfg.SeedPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
-		C.free(unsafe.Pointer(seedPathStr))
 	}()
-	C.init_prover(paramsPathStr, seedPathStr)
+	C.init_chunk_prover(paramsPathStr)
 
 	if cfg.DumpDir != "" {
 		err := os.MkdirAll(cfg.DumpDir, os.ModePerm)
 		if err != nil {
 			return nil, err
 		}
-		log.Info("Enabled dump_proof", "dir", cfg.DumpDir)
+		log.Info("Enabled dump_chunk_proof", "dir", cfg.DumpDir)
 	}
 
-	return &ProverCore{cfg: cfg}, nil
+	return &ChunkProverCore{cfg: cfg}, nil
 }
 
-// Prove call rust ffi to generate proof, if first failed, try again.
-func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
+// Prove call rust ffi to generate chunk proof, if first failed, try again.
+func (p *ChunkProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
 	var proofByt []byte
 	if p.cfg.ProofType == message.ProofTypeChunk {
 		tracesByt, err := json.Marshal(traces)
@@ -69,7 +67,7 @@ func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.
 		log.Error("Dump proof failed", "task-id", taskID, "error", err)
 	}
 
-	zkProof := &message.ChunkProof{}
+	zkProof := &message.AggProof{}
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
