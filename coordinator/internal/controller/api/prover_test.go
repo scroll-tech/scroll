@@ -174,10 +174,10 @@ func TestProver_SubmitProof(t *testing.T) {
 	id := "provers_info_test"
 	tmpProof := &message.ProofMsg{
 		ProofDetail: &message.ProofDetail{
-			Type:   message.ProofTypeChunk,
-			ID:     id,
-			Status: message.StatusOk,
-			Proof:  &message.BatchProof{},
+			Type:       message.ProofTypeChunk,
+			ID:         id,
+			Status:     message.StatusOk,
+			ChunkProof: &message.ChunkProof{},
 		},
 	}
 	assert.NoError(t, tmpProof.Sign(prvKey))
@@ -233,9 +233,9 @@ func TestProver_SubmitProof(t *testing.T) {
 		})
 		tmpProof1 := &message.ProofMsg{
 			ProofDetail: &message.ProofDetail{
-				ID:     "10001",
-				Status: message.StatusOk,
-				Proof:  &message.BatchProof{},
+				ID:         "10001",
+				Status:     message.StatusOk,
+				ChunkProof: &message.ChunkProof{},
 			},
 		}
 		privKey, err := crypto.GenerateKey()

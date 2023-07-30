@@ -131,16 +131,18 @@ func (r *mockProver) loop(t *testing.T, client *client2.Client, proofTime time.D
 			}
 			proof := &message.ProofMsg{
 				ProofDetail: &message.ProofDetail{
-					ID:     task.ID,
-					Type:   r.proofType,
-					Status: message.StatusOk,
-					Proof:  &message.BatchProof{},
+					ID:         task.ID,
+					Type:       r.proofType,
+					Status:     message.StatusOk,
+					ChunkProof: &message.ChunkProof{},
+					BatchProof: &message.BatchProof{},
 				},
 			}
 			if proofStatus == generatedFailed {
 				proof.Status = message.StatusProofError
 			} else if proofStatus == verifiedFailed {
-				proof.ProofDetail.Proof.Proof = []byte(verifier.InvalidTestProof)
+				proof.ProofDetail.ChunkProof.Proof = []byte(verifier.InvalidTestProof)
+				proof.ProofDetail.BatchProof.Proof = []byte(verifier.InvalidTestProof)
 			}
 			assert.NoError(t, proof.Sign(r.privKey))
 			assert.NoError(t, client.SubmitProof(context.Background(), proof))

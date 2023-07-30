@@ -89,9 +89,7 @@ func (o *Chunk) GetUnassignedChunks(ctx context.Context, limit int) ([]*Chunk, e
 // GetProofsByBatchHash retrieves the proofs associated with a specific batch hash.
 // It returns a slice of decoded proofs (message.ChunkProof) obtained from the database.
 // The returned proofs are sorted in ascending order by their associated chunk index.
-//
-// TODO: seems to replace `BatchProof` with `ChunkProof` (until scroll-prover update).
-func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*message.BatchProof, error) {
+func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*message.ChunkProof, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("batch_hash", batchHash)
@@ -289,8 +287,6 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 }
 
 // UpdateProofByHash updates the chunk proof by hash.
-//
-// TODO: seems to replace `BatchProof` with `ChunkProof` (until scroll-prover update).
 func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *message.ChunkProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {

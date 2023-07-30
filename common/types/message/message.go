@@ -213,11 +213,12 @@ type TaskMsg struct {
 // ProofDetail is the message received from provers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofDetail struct {
-	ID     string      `json:"id"`
-	Type   ProofType   `json:"type,omitempty"`
-	Status RespStatus  `json:"status"`
-	Proof  *BatchProof `json:"proof"`
-	Error  string      `json:"error,omitempty"`
+	ID         string      `json:"id"`
+	Type       ProofType   `json:"type,omitempty"`
+	Status     RespStatus  `json:"status"`
+	ChunkProof *ChunkProof `json:"chunk_proof,omitempty"`
+	BatchProof *BatchProof `json:"batch_proof,omitempty"`
+	Error      string      `json:"error,omitempty"`
 }
 
 // Hash return proofMsg content hash.

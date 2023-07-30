@@ -24,9 +24,9 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 }
 
 // Prove call rust ffi to generate proof, if first failed, try again.
-func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.BatchProof, error) {
+func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
 	_empty := common.BigToHash(big.NewInt(0))
-	return &message.BatchProof{
+	return &message.ChunkProof{
 		Proof:     _empty[:],
 		Instance:  _empty[:],
 		FinalPair: _empty[:],
