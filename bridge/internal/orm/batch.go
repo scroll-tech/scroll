@@ -108,7 +108,7 @@ func (o *Batch) GetBatchCount(ctx context.Context) (uint64, error) {
 }
 
 // GetVerifiedProofByHash retrieves the verified aggregate proof for a batch with the given hash.
-func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
+func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.BatchProof, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Select("proof")
@@ -119,7 +119,7 @@ func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*messa
 		return nil, fmt.Errorf("Batch.GetVerifiedProofByHash error: %w, batch hash: %v", err, hash)
 	}
 
-	var proof message.AggProof
+	var proof message.BatchProof
 	if err := json.Unmarshal(batch.Proof, &proof); err != nil {
 		return nil, fmt.Errorf("Batch.GetVerifiedProofByHash error: %w, batch hash: %v", err, hash)
 	}
@@ -395,7 +395,7 @@ func (o *Batch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash st
 
 // UpdateProofByHash updates the batch proof by hash.
 // for unit test.
-func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.BatchProof, proofTimeSec uint64) error {
 	proofBytes, err := json.Marshal(proof)
 	if err != nil {
 		return fmt.Errorf("Batch.UpdateProofByHash error: %w, batch hash: %v", err, hash)

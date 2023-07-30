@@ -225,33 +225,33 @@ func (r *Prover) prove() error {
 		traces, err = r.getSortedTracesByHashes(task.Task.BlockHashes)
 		if err != nil {
 			proofMsg = &message.ProofDetail{
-				Status: message.StatusProofError,
-				Error:  "get traces failed",
-				ID:     task.Task.ID,
-				Type:   task.Task.Type,
-				Proof:  nil,
+				Status:     message.StatusProofError,
+				Error:      "get traces failed",
+				ID:         task.Task.ID,
+				Type:       task.Task.Type,
+				ChunkProof: nil,
 			}
 			log.Error("get traces failed!", "task-id", task.Task.ID, "err", err)
 		} else {
 			// If FFI panic during Prove, the prover will restart and re-enter prove() function,
 			// the proof will not be submitted.
-			var proof *message.AggProof
+			var proof *message.ChunkProof
 			proof, err = r.proverCore.Prove(task.Task.ID, traces)
 			if err != nil {
 				proofMsg = &message.ProofDetail{
-					Status: message.StatusProofError,
-					Error:  err.Error(),
-					ID:     task.Task.ID,
-					Type:   task.Task.Type,
-					Proof:  nil,
+					Status:     message.StatusProofError,
+					Error:      err.Error(),
+					ID:         task.Task.ID,
+					Type:       task.Task.Type,
+					ChunkProof: nil,
 				}
 				log.Error("prove block failed!", "task-id", task.Task.ID)
 			} else {
 				proofMsg = &message.ProofDetail{
-					Status: message.StatusOk,
-					ID:     task.Task.ID,
-					Type:   task.Task.Type,
-					Proof:  proof,
+					Status:     message.StatusOk,
+					ID:         task.Task.ID,
+					Type:       task.Task.Type,
+					ChunkProof: proof,
 				}
 				log.Info("prove block successfully!", "task-id", task.Task.ID)
 			}
@@ -260,11 +260,11 @@ func (r *Prover) prove() error {
 		// when the prover has more than 3 times panic,
 		// it will omit to prove the task, submit StatusProofError and then Delete the task.
 		proofMsg = &message.ProofDetail{
-			Status: message.StatusProofError,
-			Error:  "zk proving panic",
-			ID:     task.Task.ID,
-			Type:   task.Task.Type,
-			Proof:  nil,
+			Status:     message.StatusProofError,
+			Error:      "zk proving panic",
+			ID:         task.Task.ID,
+			Type:       task.Task.Type,
+			ChunkProof: nil,
 		}
 	}
 
