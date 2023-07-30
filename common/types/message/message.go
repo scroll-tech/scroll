@@ -231,7 +231,18 @@ func (z *ProofDetail) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
-// AggProof includes the proof and public input that are required to verification and rollup.
+// ChunkProof includes the proof info that are required for chunk verification and rollup.
+type ChunkProof struct {
+	StorageTrace []byte `json:"storage_trace"`
+	Protocol     []byte `json:"protocol"`
+	Proof        []byte `json:"proof"`
+	Instance     []byte `json:"instance"`
+	FinalPair    []byte `json:"final_pair"`
+	Vk           []byte `json:"vk"`
+	BlockCount   uint   `json:"block_count"`
+}
+
+// AggProof includes the proof info that are required for batch verification and rollup.
 type AggProof struct {
 	Proof      []byte `json:"proof"`
 	Instance   []byte `json:"instance"`
