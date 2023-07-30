@@ -207,7 +207,7 @@ type TaskMsg struct {
 	// For decentralization, basic provers will get block hashes from the coordinator. So that they can refer to the block hashes and fetch traces locally. Only applicable for basic provers.
 	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
 	// Only applicable for aggregator provers.
-	SubProofs []*BatchProof `json:"sub_proofs,omitempty"`
+	SubProofs []*ChunkProof `json:"sub_proofs,omitempty"`
 }
 
 // ProofDetail is the message received from provers that contains zk proof, the status of
