@@ -24,7 +24,7 @@ import (
 	"scroll-tech/prover/config"
 )
 
-// ProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
+// ChunkProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
 type ChunkProverCore struct {
 	cfg *config.ChunkProverCoreConfig
 }
@@ -50,44 +50,43 @@ func NewChunkProverCore(cfg *config.ChunkProverCoreConfig) (*ChunkProverCore, er
 
 // Prove call rust ffi to generate chunk proof, if first failed, try again.
 func (p *ChunkProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
-	var proofByt []byte
-	if p.cfg.ProofType == message.ProofTypeChunk {
-		tracesByt, err := json.Marshal(traces)
-		if err != nil {
-			return nil, err
-		}
-		proofByt = p.prove(tracesByt)
-	} else if p.cfg.ProofType == message.ProofTypeBatch {
-		// TODO: ProofTypeBatch prove
+	if p.cfg.ProofType != message.ProofTypeChunk {
+		return nil, errors.New("Wrong proof type in chunk-prover: %d", p.cfg.ProofType)
 	}
+
+	tracesByt, err := json.Marshal(traces)
+	if err != nil {
+		return nil, err
+	}
+	proofByt := p.prove(tracesByt)
 
 	// dump proof
 	err := p.dumpProof(taskID, proofByt)
 	if err != nil {
-		log.Error("Dump proof failed", "task-id", taskID, "error", err)
+		log.Error("Dump chunk proof failed", "task-id", taskID, "error", err)
 	}
 
-	zkProof := &message.AggProof{}
+	zkProof := &message.ChunkProof{}
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
-// Call cgo to generate proof.
-func (p *ProverCore) prove(tracesByt []byte) []byte {
+// Call cgo to generate chunk proof.
+func (p *ChunkProverCore) prove(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
 
 	defer func() {
 		C.free(unsafe.Pointer(tracesStr))
 	}()
 
-	log.Info("Start to create agg proof ...")
-	cProof := C.create_agg_proof_multi(tracesStr)
-	log.Info("Finish creating agg proof!")
+	log.Info("Start to create chunk proof ...")
+	cProof := C.gen_chunk_proof(tracesStr)
+	log.Info("Finish creating chunk proof!")
 
 	proof := C.GoString(cProof)
 	return []byte(proof)
 }
 
-func (p *ProverCore) dumpProof(id string, proofByt []byte) error {
+func (p *ChunkProverCore) dumpProof(id string, proofByt []byte) error {
 	if p.cfg.DumpDir == "" {
 		return nil
 	}
@@ -96,7 +95,7 @@ func (p *ProverCore) dumpProof(id string, proofByt []byte) error {
 	if err != nil {
 		return err
 	}
-	log.Info("Saving proof", "task-id", id)
+	log.Info("Saving chunk proof", "task-id", id)
 	_, err = f.Write(proofByt)
 	return err
 }

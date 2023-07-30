@@ -21,36 +21,36 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// InvalidTestProof invalid proof used in tests
-const InvalidTestProof = "this is a invalid proof"
+// InvalidTestChunkProof invalid chunk proof used in tests
+const InvalidTestChunkProof = "this is an invalid chunk proof"
 
-// Verifier represents a rust ffi to a halo2 verifier.
-type Verifier struct {
-	cfg *config.VerifierConfig
+// ChunkVerifier represents a rust ffi to a halo2 verifier.
+type ChunkVerifier struct {
+	cfg *config.ChunkVerifierConfig
 }
 
-// NewVerifier Sets up a rust ffi to call verify.
-func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
+// NewChunkVerifier Sets up a rust ffi to call verify.
+func NewChunkVerifier(cfg *config.ChunkVerifierConfig) (*ChunkVerifier, error) {
 	if cfg.MockMode {
-		return &Verifier{cfg: cfg}, nil
+		return &ChunkVerifier{cfg: cfg}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
-	aggVkPathStr := C.CString(cfg.AggVkPath)
+	vkPathStr := C.CString(cfg.vkPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
-		C.free(unsafe.Pointer(aggVkPathStr))
+		C.free(unsafe.Pointer(vkPathStr))
 	}()
 
-	C.init_verifier(paramsPathStr, aggVkPathStr)
+	C.init_chunk_verifier(paramsPathStr, vkPathStr)
 
-	return &Verifier{cfg: cfg}, nil
+	return &ChunkVerifier{cfg: cfg}, nil
 }
 
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyProof(proof *message.BatchProof) (bool, error) {
+func (v *ChunkVerifier) VerifyProof(proof *message.ChunkProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
-		if string(proof.Proof) == InvalidTestProof {
+		if string(proof.Proof) == InvalidTestChunkProof {
 			return false, nil
 		}
 		return true, nil
@@ -66,7 +66,7 @@ func (v *Verifier) VerifyProof(proof *message.BatchProof) (bool, error) {
 		C.free(unsafe.Pointer(proofStr))
 	}()
 
-	log.Info("Start to verify proof ...")
-	verified := C.verify_agg_proof(proofStr)
+	log.Info("Start to verify chunk proof ...")
+	verified := C.verify_chunk_proof(proofStr)
 	return verified != 0, nil
 }

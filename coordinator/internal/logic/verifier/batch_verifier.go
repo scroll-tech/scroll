@@ -21,36 +21,36 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// InvalidTestProof invalid proof used in tests
-const InvalidTestProof = "this is a invalid proof"
+// InvalidTestBatchProof invalid batch proof used in tests
+const InvalidTestBatchProof = "this is an invalid batch proof"
 
-// Verifier represents a rust ffi to a halo2 verifier.
-type Verifier struct {
-	cfg *config.VerifierConfig
+// BatchVerifier represents a rust ffi to a halo2 verifier.
+type BatchVerifier struct {
+	cfg *config.BatchVerifierConfig
 }
 
-// NewVerifier Sets up a rust ffi to call verify.
-func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
+// NewBatchVerifier Sets up a rust ffi to call verify.
+func NewBatchVerifier(cfg *config.BatchVerifierConfig) (*BatchVerifier, error) {
 	if cfg.MockMode {
-		return &Verifier{cfg: cfg}, nil
+		return &BatchVerifier{cfg: cfg}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
-	aggVkPathStr := C.CString(cfg.AggVkPath)
+	vkPathStr := C.CString(cfg.vkPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
-		C.free(unsafe.Pointer(aggVkPathStr))
+		C.free(unsafe.Pointer(vkPathStr))
 	}()
 
-	C.init_verifier(paramsPathStr, aggVkPathStr)
+	C.init_batch_verifier(paramsPathStr, vkPathStr)
 
-	return &Verifier{cfg: cfg}, nil
+	return &BatchVerifier{cfg: cfg}, nil
 }
 
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyProof(proof *message.BatchProof) (bool, error) {
+func (v *BatchVerifier) VerifyProof(proof *message.BatchProof) (bool, error) {
 	if v.cfg.MockMode {
-		log.Info("Mock mode, verifier disabled")
-		if string(proof.Proof) == InvalidTestProof {
+		log.Info("Mock mode, batch verifier disabled")
+		if string(proof.Proof) == InvalidTestBatchProof {
 			return false, nil
 		}
 		return true, nil
@@ -66,7 +66,7 @@ func (v *Verifier) VerifyProof(proof *message.BatchProof) (bool, error) {
 		C.free(unsafe.Pointer(proofStr))
 	}()
 
-	log.Info("Start to verify proof ...")
-	verified := C.verify_agg_proof(proofStr)
+	log.Info("Start to verify batch proof ...")
+	verified := C.verify_batch_proof(proofStr)
 	return verified != 0, nil
 }
