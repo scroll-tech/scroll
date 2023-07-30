@@ -250,7 +250,7 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 }
 
 // UpdateProofByHash updates the batch proof by hash.
-func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.BatchProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
