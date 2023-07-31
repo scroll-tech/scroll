@@ -13,6 +13,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/types/message"
+
 	"scroll-tech/prover/config"
 	"scroll-tech/prover/core"
 )
@@ -48,16 +50,36 @@ func TestFFI(t *testing.T) {
 		as.NoError(json.Unmarshal(byt, trace))
 		traces = append(traces, trace)
 	}
-	proof, err := proverCore.Prove("test", traces)
-	as.NoError(err)
-	t.Log("prove success")
 
-	// dump the proof
-	os.RemoveAll(*proofDumpPath)
-	proofByt, err := json.Marshal(proof)
+	chunkHash, err := proverCore.TracesToChunkHash(traces)
 	as.NoError(err)
-	proofFile, err := os.Create(*proofDumpPath)
+	t.Log("Generated chunk hash")
+
+	chunkProof, err := proverCore.ChunkProve("test", traces)
 	as.NoError(err)
-	_, err = proofFile.Write(proofByt)
+	t.Log("Generated chunk proof")
+
+	chunkProofByt, err := json.Marshal(chunkProof)
 	as.NoError(err)
+	chunkProofFile, err := os.Create(filepath.Join(*proofDumpPath, "chunk_proof"))
+	as.NoError(err)
+	_, err = chunkProofFile.Write(chunkProofByt)
+	as.NoError(err)
+	t.Log("Dumped chunk proof")
+
+	chunkHashes := make([]*message.ChunkHash, 0)
+	chunkHashes = append(chunkHashes, chunkHash)
+	chunkProofs := make([]*message.ChunkProof, 0)
+	chunkProofs = append(chunkProofs, proof)
+	batchProof, err := proverCore.BatchProve("test", chunkHashes, chunkProofs)
+	as.NoError(err)
+	t.Log("Generated batch proof")
+
+	batchProofByt, err := json.Marshal(batchProof)
+	as.NoError(err)
+	batchProofFile, err := os.Create(filepath.Join(*proofDumpPath, "batch_proof"))
+	as.NoError(err)
+	_, err = batchProofFile.Write(batchProofByt)
+	as.NoError(err)
+	t.Log("Dumped batch proof")
 }

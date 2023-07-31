@@ -102,6 +102,18 @@ func (p *ProverCore) ChunkProve(taskID string, traces []*types.BlockTrace) (*mes
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
+// TracesToChunkHash convert traces to chunk hash
+func (p *ProverCore) TracesToChunkHash(traces []*types.BlockTrace) (*message.ChunkHash, error) {
+	tracesByt, err := json.Marshal(traces)
+	if err != nil {
+		return nil, err
+	}
+	chunkHashByt := p.tracesToChunkHash(tracesByt)
+
+	chunkHash := &message.ChunkHash{}
+	return chunkHash, json.Unmarshal(chunkHashByt, chunkHash)
+}
+
 func (p *ProverCore) batchProve(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
 	chunkHashesStr := C.CString(string(chunkHashesByt))
 	chunkProofsStr := C.CString(string(chunkProofsByt))
@@ -146,4 +158,17 @@ func (p *ProverCore) dumpProof(id string, proofByt []byte) error {
 	log.Info("Saving proof", "task-id", id)
 	_, err = f.Write(proofByt)
 	return err
+}
+
+func (p *ProverCore) tracesToChunkHash(tracesByt []byte) []byte {
+	tracesStr := C.CString(string(tracesByt))
+
+	defer func() {
+		C.free(unsafe.Pointer(tracesStr))
+	}()
+
+	cChunkHash := C.block_traces_to_chunk_hash(tracesStr)
+
+	chunkHash := C.GoString(cChunkHash)
+	return []byte(chunkHash)
 }

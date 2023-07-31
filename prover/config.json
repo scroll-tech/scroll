@@ -5,7 +5,6 @@
     "coordinator_url": "ws://localhost:8391",
     "db_path": "bbolt_db",
     "core": {
-        "params_path": "params",
-        "assets_path": "assets"
+        "params_path": "params"
     }
 }
