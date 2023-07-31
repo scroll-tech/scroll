@@ -37,8 +37,8 @@ type ProverManagerConfig struct {
 
 // L2Config loads l2geth configuration items.
 type L2Config struct {
-	// l2geth node url.
-	Endpoint string `json:"endpoint"`
+	// l2geth chain_id.
+	ChainID uint64 `json:"chain_id"`
 }
 
 // Config load configuration items.
