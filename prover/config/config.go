@@ -10,14 +10,14 @@ import (
 
 // Config loads prover configuration items.
 type Config struct {
-	ProverName       string             `json:"prover_name"`
-	KeystorePath     string             `json:"keystore_path"`
-	KeystorePassword string             `json:"keystore_password"`
-	CoordinatorURL   string             `json:"coordinator_url"`
-	TraceEndpoint    string             `json:"trace_endpoint"`
-	DBPath           string             `json:"db_path"`
-	BatchConfig      *BatchProverConfig `json:"batch_config"`
-	ChunkConfig      *ChunkProverConfig `json:"chunk_config"`
+	ProverName        string             `json:"prover_name"`
+	KeystorePath      string             `json:"keystore_path"`
+	KeystorePassword  string             `json:"keystore_password"`
+	CoordinatorURL    string             `json:"coordinator_url"`
+	TraceEndpoint     string             `json:"trace_endpoint"`
+	DBPath            string             `json:"db_path"`
+	BatchProverConfig *BatchProverConfig `json:"batch_prover_config"`
+	ChunkProverConfig *ChunkProverConfig `json:"chunk_prover_config"`
 }
 
 // BatchProverConfig load batch prover config.
