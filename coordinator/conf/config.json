@@ -5,10 +5,15 @@
     "session_attempts": 2,
     "collection_time": 180,
     "token_time_to_live": 60,
-    "verifier": {
+    "batch_verifier_config": {
       "mock_mode": true,
       "params_path": "",
-      "agg_vk_path": ""
+      "assets_path": ""
+    },
+    "chunk_verifier_config": {
+      "mock_mode": true,
+      "params_path": "",
+      "assets_path": ""
     },
     "max_verifier_workers": 10,
     "order_session": "ASC"

@@ -35,13 +35,13 @@ func NewChunkVerifier(cfg *config.ChunkVerifierConfig) (*ChunkVerifier, error) {
 		return &ChunkVerifier{cfg: cfg}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
-	vkPathStr := C.CString(cfg.vkPath)
+	assetsPathStr := C.CString(cfg.assetsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
-		C.free(unsafe.Pointer(vkPathStr))
+		C.free(unsafe.Pointer(assetsPathStr))
 	}()
 
-	C.init_chunk_verifier(paramsPathStr, vkPathStr)
+	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
 
 	return &ChunkVerifier{cfg: cfg}, nil
 }

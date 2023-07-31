@@ -35,13 +35,13 @@ func NewBatchVerifier(cfg *config.BatchVerifierConfig) (*BatchVerifier, error) {
 		return &BatchVerifier{cfg: cfg}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
-	vkPathStr := C.CString(cfg.vkPath)
+	assetsPathStr := C.CString(cfg.AssetsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
-		C.free(unsafe.Pointer(vkPathStr))
+		C.free(unsafe.Pointer(assetsPathStr))
 	}()
 
-	C.init_batch_verifier(paramsPathStr, vkPathStr)
+	C.init_batch_verifier(paramsPathStr, assetsPathStr)
 
 	return &BatchVerifier{cfg: cfg}, nil
 }
