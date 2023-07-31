@@ -135,3 +135,25 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 	hash := crypto.Keccak256Hash(dataBytes)
 	return hash, nil
 }
+
+// EstimateL1CommitGas calculates the total L1 commit gas for this chunk approximately
+func (c *Chunk) EstimateL1CommitGas() uint64 {
+	var totalTxNum uint64
+	var totalL1CommitGas uint64
+	for _, block := range c.Blocks {
+		totalTxNum += uint64(len(block.Transactions))
+		totalL1CommitGas += block.EstimateL1CommitGas()
+	}
+
+	numBlocks := uint64(len(c.Blocks))
+	totalL1CommitGas += 100 * numBlocks     // numBlocks times warm sload
+	totalL1CommitGas += 16                  // numBlocks field of chunk encoding in calldata
+	totalL1CommitGas += 16 * 60 * numBlocks // BlockContext in chunk
+
+	getKeccakGas := func(size uint64) uint64 {
+		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+	}
+
+	totalL1CommitGas += getKeccakGas(58*numBlocks + 32*totalTxNum) // chunk hash
+	return totalL1CommitGas
+}
