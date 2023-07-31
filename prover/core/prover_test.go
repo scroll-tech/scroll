@@ -27,10 +27,12 @@ var (
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
-	cfg := &config.ProverCoreConfig{
+
+	chunkProverConfig := &config.ProverCoreConfig{
 		ParamsPath: *paramsPath,
+		ProofType:  message.ProofTypeChunk,
 	}
-	proverCore, err := core.NewProverCore(cfg)
+	chunkProverCore, err := core.NewProverCore(chunkProverConfig)
 	as.NoError(err)
 
 	files, err := os.ReadDir(*tracesPath)
@@ -51,11 +53,11 @@ func TestFFI(t *testing.T) {
 		traces = append(traces, trace)
 	}
 
-	chunkHash, err := proverCore.TracesToChunkHash(traces)
+	chunkHash, err := chunkProverCore.TracesToChunkHash(traces)
 	as.NoError(err)
 	t.Log("Generated chunk hash")
 
-	chunkProof, err := proverCore.ChunkProve("test", traces)
+	chunkProof, err := chunkProverCore.ChunkProve("test", traces)
 	as.NoError(err)
 	t.Log("Generated chunk proof")
 
@@ -67,11 +69,18 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Dumped chunk proof")
 
+	batchProverConfig := &config.ProverCoreConfig{
+		ParamsPath: *paramsPath,
+		ProofType:  message.ProofTypeBatch,
+	}
+	batchProverCore, err := core.NewProverCore(batchProverConfig)
+	as.NoError(err)
+
 	chunkHashes := make([]*message.ChunkHash, 0)
 	chunkHashes = append(chunkHashes, chunkHash)
 	chunkProofs := make([]*message.ChunkProof, 0)
 	chunkProofs = append(chunkProofs, chunkProof)
-	batchProof, err := proverCore.BatchProve("test", chunkHashes, chunkProofs)
+	batchProof, err := batchProverCore.BatchProve("test", chunkHashes, chunkProofs)
 	as.NoError(err)
 	t.Log("Generated batch proof")
 
