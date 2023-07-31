@@ -238,18 +238,14 @@ type ChunkProof struct {
 	Protocol     []byte `json:"protocol"`
 	Proof        []byte `json:"proof"`
 	Instance     []byte `json:"instance"`
-	FinalPair    []byte `json:"final_pair"`
 	Vk           []byte `json:"vk"`
-	BlockCount   uint   `json:"block_count"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
 type BatchProof struct {
-	Proof      []byte `json:"proof"`
-	Instance   []byte `json:"instance"`
-	FinalPair  []byte `json:"final_pair"`
-	Vk         []byte `json:"vk"`
-	BlockCount uint   `json:"block_count"`
+	Proof    []byte `json:"proof"`
+	Instance []byte `json:"instance"`
+	Vk       []byte `json:"vk"`
 }
 
 // SanityCheck checks whether an BatchProof is in a legal format

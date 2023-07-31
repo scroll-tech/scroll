@@ -32,10 +32,12 @@ type BatchProver struct {
 // NewBatchProver inits a BatchProver object.
 func NewBatchProver(cfg *config.BatchProverConfig) (*BatchProver, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
+	assetsPathStr := C.CString(cfg.assetsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
+		C.free(unsafe.Pointer(assetsPathStr))
 	}()
-	C.init_batch_prover(paramsPathStr)
+	C.init_batch_prover(paramsPathStr, assetsPathStr)
 
 	if cfg.DumpDir != "" {
 		err := os.MkdirAll(cfg.DumpDir, os.ModePerm)
@@ -49,7 +51,7 @@ func NewBatchProver(cfg *config.BatchProverConfig) (*BatchProver, error) {
 }
 
 // Prove call rust ffi to generate batch proof, if first failed, try again.
-func (p *BatchProver) Prove(taskID string, chunkHashes []*types.ChunkHash, chunkProofs []*types.ChunkProof) (*message.BatchProof, error) {
+func (p *BatchProver) Prove(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {
 		return nil, errors.New("Wrong proof type in batch-prover: %d", p.cfg.ProofType)
 	}

@@ -30,6 +30,7 @@ type BatchProverConfig struct {
 // ChunkProverConfig load chunk prover config.
 type ChunkProverConfig struct {
 	ParamsPath string `json:"params_path"`
+	AssetsPath string `json:"assets_path"`
 	DumpDir    string `json:"dump_dir,omitempty"`
 }
 

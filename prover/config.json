@@ -9,6 +9,7 @@
         "assets_path": "assets"
     },
     "chunk_config": {
-        "params_path": "params"
+        "params_path": "params",
+        "assets_path": "assets"
     }
 }

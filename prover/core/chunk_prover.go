@@ -32,10 +32,12 @@ type ChunkProver struct {
 // NewChunkProver inits a ChunkProver object.
 func NewChunkProver(cfg *config.ChunkProverConfig) (*ChunkProver, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
+	assetsPathStr := C.CString(cfg.AssetsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
+		C.free(unsafe.Pointer(assetsPathStr))
 	}()
-	C.init_chunk_prover(paramsPathStr)
+	C.init_chunk_prover(paramsPathStr, assetsPathStr)
 
 	if cfg.DumpDir != "" {
 		err := os.MkdirAll(cfg.DumpDir, os.ModePerm)
