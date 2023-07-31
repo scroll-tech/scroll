@@ -68,7 +68,7 @@ func (p *ProverCore) BatchProve(taskID string, chunkHashes []*message.ChunkHash,
 	if err != nil {
 		return nil, err
 	}
-	proofByt := p.BatchProveInner(chunkHashesByt, chunkProofsByt)
+	proofByt := p.batchProve(chunkHashesByt, chunkProofsByt)
 
 	// dump proof
 	err = p.dumpProof(taskID, proofByt)
@@ -90,7 +90,7 @@ func (p *ProverCore) ChunkProve(taskID string, traces []*types.BlockTrace) (*mes
 	if err != nil {
 		return nil, err
 	}
-	proofByt := p.ChunkProveInner(tracesByt)
+	proofByt := p.chunkProve(tracesByt)
 
 	// dump proof
 	err = p.dumpProof(taskID, proofByt)
@@ -102,8 +102,7 @@ func (p *ProverCore) ChunkProve(taskID string, traces []*types.BlockTrace) (*mes
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
-// BatchProveInner cgo to generate batch proof.
-func (p *ProverCore) BatchProveInner(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
+func (p *ProverCore) batchProve(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
 	chunkHashesStr := C.CString(string(chunkHashesByt))
 	chunkProofsStr := C.CString(string(chunkProofsByt))
 
@@ -120,8 +119,7 @@ func (p *ProverCore) BatchProveInner(chunkHashesByt []byte, chunkProofsByt []byt
 	return []byte(proof)
 }
 
-// Call cgo to generate chunk proof.
-func (p *ProverCore) ChunkProveInner(tracesByt []byte) []byte {
+func (p *ProverCore) chunkProve(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
 
 	defer func() {
