@@ -56,7 +56,7 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 }
 
 // Prove call rust ffi to generate batch proof, if first failed, try again.
-func (p *Prover) BatchProve(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
+func (p *ProverCore) BatchProve(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {
 		return nil, errors.New("Wrong proof type in batch-prover: %d", p.cfg.ProofType)
 	}
@@ -82,7 +82,7 @@ func (p *Prover) BatchProve(taskID string, chunkHashes []*message.ChunkHash, chu
 }
 
 // Prove call rust ffi to generate chunk proof, if first failed, try again.
-func (p *Prover) ChunkProve(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
+func (p *ProverCore) ChunkProve(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
 	if p.cfg.ProofType != message.ProofTypeChunk {
 		return nil, errors.New("Wrong proof type in chunk-prover: %d", p.cfg.ProofType)
 	}
@@ -104,7 +104,7 @@ func (p *Prover) ChunkProve(taskID string, traces []*types.BlockTrace) (*message
 }
 
 // Call cgo to generate batch proof.
-func (p *Prover) BatchProveInner(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
+func (p *ProverCore) BatchProveInner(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
 	chunkHashesStr := C.CString(string(chunkHashesByt))
 	chunkProofsStr := C.CString(string(chunkProofsByt))
 
@@ -122,7 +122,7 @@ func (p *Prover) BatchProveInner(chunkHashesByt []byte, chunkProofsByt []byte) [
 }
 
 // Call cgo to generate chunk proof.
-func (p *Prover) ChunkProveInner(tracesByt []byte) []byte {
+func (p *ProverCore) ChunkProveInner(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
 
 	defer func() {
@@ -137,7 +137,7 @@ func (p *Prover) ChunkProveInner(tracesByt []byte) []byte {
 	return []byte(proof)
 }
 
-func (p *Prover) dumpProof(id string, proofByt []byte) error {
+func (p *ProverCore) dumpProof(id string, proofByt []byte) error {
 	if p.cfg.DumpDir == "" {
 		return nil
 	}
