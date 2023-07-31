@@ -4,8 +4,11 @@
     "keystore_password": "prover-pwd",
     "coordinator_url": "ws://localhost:8391",
     "db_path": "bbolt_db",
-    "core": {
+    "batch_config": {
         "params_path": "params",
-        "seed_path": "seed"
+        "assets_path": "assets"
+    },
+    "chunk_config": {
+        "params_path": "params"
     }
 }

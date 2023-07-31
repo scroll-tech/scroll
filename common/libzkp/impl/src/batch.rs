@@ -2,7 +2,6 @@ use crate::utils::{c_char_to_str, c_char_to_vec, vec_to_c_char, OUTPUT_DIR};
 use libc::c_char;
 use prover::{
     aggregator::{Prover, Verifier},
-    io::read_all,
     utils::{chunk_trace_to_witness_block, init_env_and_log},
     ChunkHash, ChunkProof, Proof,
 };
@@ -25,12 +24,13 @@ pub unsafe extern "C" fn init_batch_prover(params_dir: *const c_char) {
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn init_batch_verifier(params_dir: *const c_char, vk_path: *const c_char) {
+pub unsafe extern "C" fn init_batch_verifier(params_dir: *const c_char, assets_dir: *const c_char) {
     init_env_and_log("ffi_batch_verify");
 
     let params_dir = c_char_to_str(params_dir);
-    let raw_vk = read_all(c_char_to_str(vk_path));
-    let verifier = Verifier::from_params_dir(params_dir, &raw_vk);
+    let assets_dir = c_char_to_str(assets_dir);
+
+    let verifier = Verifier::from_dirs(params_dir, assets_dir);
 
     VERIFIER.set(verifier).unwrap();
 }
@@ -56,7 +56,7 @@ pub unsafe extern "C" fn gen_batch_proof(
     let proof = PROVER
         .get_mut()
         .unwrap()
-        .gen_agg_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
+        .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
         .unwrap();
 
     let proof_bytes = serde_json::to_vec(&proof).unwrap();
@@ -69,7 +69,7 @@ pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<Proof>(proof.as_slice()).unwrap();
 
-    let verified = VERIFIER.get().unwrap().verify_agg_proof(proof);
+    let verified = VERIFIER.get().unwrap().verify_agg_evm_proof(&proof);
     verified as c_char
 }
 
