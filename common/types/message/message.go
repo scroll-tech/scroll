@@ -232,13 +232,28 @@ func (z *ProofDetail) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
+// ChunkHash is for chunk proof
+type ChunkHash struct {
+	ChainID       uint64      `json:"chain_id"`
+	PrevStateRoot common.Hash `json:"prev_state_root"`
+	PostStateRoot common.Hash `json:"post_state_root"`
+	WithdrawRoot  common.Hash `json:"withdraw_root"`
+	DataHash      common.Hash `json:"data_hash"`
+	IsPadding     bool        `json:"is_padding"`
+}
+
 // ChunkProof includes the proof info that are required for chunk verification and rollup.
 type ChunkProof struct {
 	StorageTrace []byte `json:"storage_trace"`
 	Protocol     []byte `json:"protocol"`
-	Proof        []byte `json:"proof"`
-	Instance     []byte `json:"instance"`
-	Vk           []byte `json:"vk"`
+	Proof        Proof  `json:"proof"`
+}
+
+// Proof is the zk proof detail
+type Proof struct {
+	Proof    []byte `json:"proof"`
+	Instance []byte `json:"instance"`
+	Vk       []byte `json:"vk"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
