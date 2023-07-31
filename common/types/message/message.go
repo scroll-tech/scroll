@@ -252,9 +252,9 @@ type ChunkProof struct {
 
 // Proof is the zk proof detail
 type Proof struct {
-	Proof    []byte `json:"proof"`
-	Instance []byte `json:"instance"`
-	Vk       []byte `json:"vk"`
+	Proof     []byte `json:"proof"`
+	Instances []byte `json:"instances"`
+	Vk        []byte `json:"vk"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
