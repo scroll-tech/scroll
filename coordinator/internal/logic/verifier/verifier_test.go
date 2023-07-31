@@ -14,6 +14,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/verifier"
 )
 
 var (
@@ -30,7 +31,7 @@ func TestFFI(t *testing.T) {
 		ParamsPath: *paramsPath,
 		AssetsPath: *assetsPath,
 	}
-	v, err := NewVerifier(cfg)
+	v, err := verifier.NewVerifier(cfg)
 	as.NoError(err)
 
 	chunkProofFile, err := os.Open(*chunkProofPath)
