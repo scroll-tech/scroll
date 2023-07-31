@@ -25,10 +25,8 @@ type ProverManagerConfig struct {
 	// Number of attempts that a session can be retried if previous attempts failed.
 	// Currently we only consider proving timeout as failure here.
 	SessionAttempts uint8 `json:"session_attempts,omitempty"`
-	// Batch verifier config.
-	BatchVerifierConfig *BatchVerifierConfig `json:"batch_verifier_config,omitempty"`
-	// Chunk verifier config.
-	ChunkVerifierConfig *ChunkVerifierConfig `json:"chunk_verifier_config,omitempty"`
+	// Zk verifier config.
+	Verifier *VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in minutes).
 	CollectionTime int `json:"collection_time"`
 	// Token time to live (in seconds)
@@ -50,15 +48,8 @@ type Config struct {
 	L2Config            *L2Config            `json:"l2_config"`
 }
 
-// BatchVerifierConfig load batch verifier config.
-type BatchVerifierConfig struct {
-	MockMode   bool   `json:"mock_mode"`
-	ParamsPath string `json:"params_path"`
-	AssetsPath string `json:"assets_path"`
-}
-
-// ChunkVerifierConfig load chunk verifier config.
-type ChunkVerifierConfig struct {
+// VerifierConfig load zk verifier config.
+type VerifierConfig struct {
 	MockMode   bool   `json:"mock_mode"`
 	ParamsPath string `json:"params_path"`
 	AssetsPath string `json:"assets_path"`

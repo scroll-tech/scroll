@@ -10,7 +10,7 @@
       "params_path": "",
       "assets_path": ""
     },
-    "chunk_verifier_config": {
+    "verifier": {
       "mock_mode": true,
       "params_path": "",
       "assets_path": ""
