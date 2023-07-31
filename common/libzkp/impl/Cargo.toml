@@ -33,8 +33,8 @@ once_cell = "1.8.0"
 
 [profile.test]
 opt-level = 3
-debug-assertions = true
+# debug-assertions = true
 
 [profile.release]
 opt-level = 3
-debug-assertions = true
+# debug-assertions = true
