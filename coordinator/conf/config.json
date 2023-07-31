@@ -5,11 +5,6 @@
     "session_attempts": 2,
     "collection_time": 180,
     "token_time_to_live": 60,
-    "batch_verifier_config": {
-      "mock_mode": true,
-      "params_path": "",
-      "assets_path": ""
-    },
     "verifier": {
       "mock_mode": true,
       "params_path": "",

@@ -24,34 +24,39 @@ import (
 	"scroll-tech/prover/config"
 )
 
-// BatchProver sends block-traces to rust-prover through ffi and get back the zk-proof.
-type BatchProver struct {
-	cfg *config.BatchProverConfig
+// ProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
+type ProverCore struct {
+	cfg *config.ProverCoreConfig
 }
 
-// NewBatchProver inits a BatchProver object.
-func NewBatchProver(cfg *config.BatchProverConfig) (*BatchProver, error) {
+// NewProverCore inits a ProverCore object.
+func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	assetsPathStr := C.CString(cfg.assetsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
 		C.free(unsafe.Pointer(assetsPathStr))
 	}()
-	C.init_batch_prover(paramsPathStr, assetsPathStr)
+
+	if p.cfg.ProofType == message.ProofTypeBatch {
+		C.init_batch_prover(paramsPathStr, assetsPathStr)
+	} else if p.cfg.ProofType == message.ProofTypeChunk {
+		C.init_chunk_prover(paramsPathStr, assetsPathStr)
+	}
 
 	if cfg.DumpDir != "" {
 		err := os.MkdirAll(cfg.DumpDir, os.ModePerm)
 		if err != nil {
 			return nil, err
 		}
-		log.Info("Enabled dump_batch_proof", "dir", cfg.DumpDir)
+		log.Info("Enabled dump_proof", "dir", cfg.DumpDir)
 	}
 
-	return &BatchProver{cfg: cfg}, nil
+	return &ProverCore{cfg: cfg}, nil
 }
 
 // Prove call rust ffi to generate batch proof, if first failed, try again.
-func (p *BatchProver) Prove(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
+func (p *Prover) BatchProve(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {
 		return nil, errors.New("Wrong proof type in batch-prover: %d", p.cfg.ProofType)
 	}
@@ -64,7 +69,7 @@ func (p *BatchProver) Prove(taskID string, chunkHashes []*message.ChunkHash, chu
 	if err != nil {
 		return nil, err
 	}
-	proofByt := p.prove(chunkHashesByt, chunkProofsByt)
+	proofByt := p.BatchProveInner(chunkHashesByt, chunkProofsByt)
 
 	// dump proof
 	err := p.dumpProof(taskID, proofByt)
@@ -76,8 +81,30 @@ func (p *BatchProver) Prove(taskID string, chunkHashes []*message.ChunkHash, chu
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
+// Prove call rust ffi to generate chunk proof, if first failed, try again.
+func (p *Prover) ChunkProve(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
+	if p.cfg.ProofType != message.ProofTypeChunk {
+		return nil, errors.New("Wrong proof type in chunk-prover: %d", p.cfg.ProofType)
+	}
+
+	tracesByt, err := json.Marshal(traces)
+	if err != nil {
+		return nil, err
+	}
+	proofByt := p.ChunkProveInner(tracesByt)
+
+	// dump proof
+	err := p.dumpProof(taskID, proofByt)
+	if err != nil {
+		log.Error("Dump chunk proof failed", "task-id", taskID, "error", err)
+	}
+
+	zkProof := &message.ChunkProof{}
+	return zkProof, json.Unmarshal(proofByt, zkProof)
+}
+
 // Call cgo to generate batch proof.
-func (p *BatchProver) prove(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
+func (p *Prover) BatchProveInner(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
 	chunkHashesStr := C.CString(string(chunkHashesByt))
 	chunkProofsStr := C.CString(string(chunkProofsByt))
 
@@ -94,7 +121,23 @@ func (p *BatchProver) prove(chunkHashesByt []byte, chunkProofsByt []byte) []byte
 	return []byte(proof)
 }
 
-func (p *BatchProver) dumpProof(id string, proofByt []byte) error {
+// Call cgo to generate chunk proof.
+func (p *Prover) ChunkProveInner(tracesByt []byte) []byte {
+	tracesStr := C.CString(string(tracesByt))
+
+	defer func() {
+		C.free(unsafe.Pointer(tracesStr))
+	}()
+
+	log.Info("Start to create chunk proof ...")
+	cProof := C.gen_chunk_proof(tracesStr)
+	log.Info("Finish creating chunk proof!")
+
+	proof := C.GoString(cProof)
+	return []byte(proof)
+}
+
+func (p *Prover) dumpProof(id string, proofByt []byte) error {
 	if p.cfg.DumpDir == "" {
 		return nil
 	}
@@ -103,7 +146,7 @@ func (p *BatchProver) dumpProof(id string, proofByt []byte) error {
 	if err != nil {
 		return err
 	}
-	log.Info("Saving batch proof", "task-id", id)
+	log.Info("Saving proof", "task-id", id)
 	_, err = f.Write(proofByt)
 	return err
 }

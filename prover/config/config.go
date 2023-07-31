@@ -5,33 +5,28 @@ import (
 	"os"
 	"path/filepath"
 
+	"scroll-tech/common/types/message"
+
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // Config loads prover configuration items.
 type Config struct {
-	ProverName        string             `json:"prover_name"`
-	KeystorePath      string             `json:"keystore_path"`
-	KeystorePassword  string             `json:"keystore_password"`
-	CoordinatorURL    string             `json:"coordinator_url"`
-	TraceEndpoint     string             `json:"trace_endpoint"`
-	DBPath            string             `json:"db_path"`
-	BatchProverConfig *BatchProverConfig `json:"batch_prover_config"`
-	ChunkProverConfig *ChunkProverConfig `json:"chunk_prover_config"`
+	ProverName       string            `json:"prover_name"`
+	KeystorePath     string            `json:"keystore_path"`
+	KeystorePassword string            `json:"keystore_password"`
+	CoordinatorURL   string            `json:"coordinator_url"`
+	TraceEndpoint    string            `json:"trace_endpoint"`
+	Core             *ProverCoreConfig `json:"core"`
+	DBPath           string            `json:"db_path"`
 }
 
-// BatchProverConfig load batch prover config.
-type BatchProverConfig struct {
-	ParamsPath string `json:"params_path"`
-	AssetsPath string `json:"assets_path"`
-	DumpDir    string `json:"dump_dir,omitempty"`
-}
-
-// ChunkProverConfig load chunk prover config.
-type ChunkProverConfig struct {
-	ParamsPath string `json:"params_path"`
-	AssetsPath string `json:"assets_path"`
-	DumpDir    string `json:"dump_dir,omitempty"`
+// ProverCoreConfig load zk prover config.
+type ProverCoreConfig struct {
+	ParamsPath string            `json:"params_path"`
+	AssetsPath string            `json:"assets_path"`
+	ProofType  message.ProofType `json:"prove_type,omitempty"` // 0: chunk prover (default type), 1: batch prover
+	DumpDir    string            `json:"dump_dir,omitempty"`
 }
 
 // NewConfig returns a new instance of Config.
