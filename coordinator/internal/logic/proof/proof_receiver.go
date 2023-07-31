@@ -95,7 +95,7 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 	switch proofMsg.Type {
 	case message.ProofTypeChunk:
 		storeProofErr = m.db.Transaction(func(tx *gorm.DB) error {
-			if dbErr := m.chunkOrm.UpdateProofByHash(ctx, proofMsg.ID, proofMsg.Proof, proofTimeSec, tx); dbErr != nil {
+			if dbErr := m.chunkOrm.UpdateProofByHash(ctx, proofMsg.ID, proofMsg.ChunkProof, proofTimeSec, tx); dbErr != nil {
 				return fmt.Errorf("failed to store chunk proof into db, err:%w", dbErr)
 			}
 			if dbErr := m.chunkOrm.UpdateProvingStatus(ctx, proofMsg.ID, types.ProvingTaskProved, tx); dbErr != nil {
@@ -105,7 +105,7 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 		})
 	case message.ProofTypeBatch:
 		storeProofErr = m.db.Transaction(func(tx *gorm.DB) error {
-			if dbErr := m.batchOrm.UpdateProofByHash(ctx, proofMsg.ID, proofMsg.Proof, proofTimeSec, tx); dbErr != nil {
+			if dbErr := m.batchOrm.UpdateProofByHash(ctx, proofMsg.ID, proofMsg.BatchProof, proofTimeSec, tx); dbErr != nil {
 				return fmt.Errorf("failed to store batch proof into db, error:%w", dbErr)
 			}
 			if dbErr := m.batchOrm.UpdateProvingStatus(ctx, proofMsg.ID, types.ProvingTaskProved, tx); dbErr != nil {
@@ -122,7 +122,8 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
-	success, verifyErr := m.verifier.VerifyProof(proofMsg.Proof)
+	// TODO: add switch case for ChunkProof & BatchProof
+	success, verifyErr := m.verifier.VerifyProof(proofMsg.BatchProof)
 	if verifyErr != nil || !success {
 		if verifyErr != nil {
 			// TODO: this is only a temp workaround for testnet, we should return err in real cases

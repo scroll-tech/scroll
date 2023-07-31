@@ -47,7 +47,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
+func (v *Verifier) VerifyProof(proof *message.BatchProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -61,12 +61,12 @@ func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 		return false, err
 	}
 
-	aggProofStr := C.CString(string(buf))
+	proofStr := C.CString(string(buf))
 	defer func() {
-		C.free(unsafe.Pointer(aggProofStr))
+		C.free(unsafe.Pointer(proofStr))
 	}()
 
 	log.Info("Start to verify proof ...")
-	verified := C.verify_agg_proof(aggProofStr)
+	verified := C.verify_agg_proof(proofStr)
 	return verified != 0, nil
 }
