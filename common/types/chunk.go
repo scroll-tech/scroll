@@ -138,14 +138,10 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 
 // EstimateL1CommitGas calculates the total L1 commit gas for this chunk approximately
 func (c *Chunk) EstimateL1CommitGas() uint64 {
-	var totalL2TxGas uint64
 	var totalTxNum uint64
-	var totalL1CommitCalldataSize uint64
 	var totalL1CommitGas uint64
 	for _, block := range c.Blocks {
-		totalL2TxGas += block.Header.GasUsed
 		totalTxNum += uint64(len(block.Transactions))
-		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas += block.EstimateL1CommitGas()
 	}
 
