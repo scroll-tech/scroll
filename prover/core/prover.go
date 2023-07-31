@@ -12,6 +12,7 @@ import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
 	"os"
 	"path/filepath"
 	"unsafe"
@@ -32,16 +33,14 @@ type ProverCore struct {
 // NewProverCore inits a ProverCore object.
 func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
-	assetsPathStr := C.CString(cfg.assetsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
-		C.free(unsafe.Pointer(assetsPathStr))
 	}()
 
-	if p.cfg.ProofType == message.ProofTypeBatch {
-		C.init_batch_prover(paramsPathStr, assetsPathStr)
-	} else if p.cfg.ProofType == message.ProofTypeChunk {
-		C.init_chunk_prover(paramsPathStr, assetsPathStr)
+	if cfg.ProofType == message.ProofTypeBatch {
+		C.init_batch_prover(paramsPathStr)
+	} else if cfg.ProofType == message.ProofTypeChunk {
+		C.init_chunk_prover(paramsPathStr)
 	}
 
 	if cfg.DumpDir != "" {
@@ -55,10 +54,10 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	return &ProverCore{cfg: cfg}, nil
 }
 
-// Prove call rust ffi to generate batch proof, if first failed, try again.
+// BatchProve call rust ffi to generate batch proof, if first failed, try again.
 func (p *ProverCore) BatchProve(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {
-		return nil, errors.New("Wrong proof type in batch-prover: %d", p.cfg.ProofType)
+		return nil, errors.Errorf("Wrong proof type in batch-prover: %d", p.cfg.ProofType)
 	}
 
 	chunkHashesByt, err := json.Marshal(chunkHashes)
@@ -72,7 +71,7 @@ func (p *ProverCore) BatchProve(taskID string, chunkHashes []*message.ChunkHash,
 	proofByt := p.BatchProveInner(chunkHashesByt, chunkProofsByt)
 
 	// dump proof
-	err := p.dumpProof(taskID, proofByt)
+	err = p.dumpProof(taskID, proofByt)
 	if err != nil {
 		log.Error("Dump batch proof failed", "task-id", taskID, "error", err)
 	}
@@ -81,10 +80,10 @@ func (p *ProverCore) BatchProve(taskID string, chunkHashes []*message.ChunkHash,
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
-// Prove call rust ffi to generate chunk proof, if first failed, try again.
+// ChunkProve call rust ffi to generate chunk proof, if first failed, try again.
 func (p *ProverCore) ChunkProve(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
 	if p.cfg.ProofType != message.ProofTypeChunk {
-		return nil, errors.New("Wrong proof type in chunk-prover: %d", p.cfg.ProofType)
+		return nil, errors.Errorf("Wrong proof type in chunk-prover: %d", p.cfg.ProofType)
 	}
 
 	tracesByt, err := json.Marshal(traces)
@@ -94,7 +93,7 @@ func (p *ProverCore) ChunkProve(taskID string, traces []*types.BlockTrace) (*mes
 	proofByt := p.ChunkProveInner(tracesByt)
 
 	// dump proof
-	err := p.dumpProof(taskID, proofByt)
+	err = p.dumpProof(taskID, proofByt)
 	if err != nil {
 		log.Error("Dump chunk proof failed", "task-id", taskID, "error", err)
 	}
@@ -103,7 +102,7 @@ func (p *ProverCore) ChunkProve(taskID string, traces []*types.BlockTrace) (*mes
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
-// Call cgo to generate batch proof.
+// BatchProveInner cgo to generate batch proof.
 func (p *ProverCore) BatchProveInner(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
 	chunkHashesStr := C.CString(string(chunkHashesByt))
 	chunkProofsStr := C.CString(string(chunkProofsByt))

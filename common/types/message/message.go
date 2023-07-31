@@ -258,14 +258,8 @@ func (ap *BatchProof) SanityCheck() error {
 	if len(ap.Proof) == 0 {
 		return errors.New("proof not ready")
 	}
-	if len(ap.FinalPair) == 0 {
-		return errors.New("final_pair not ready")
-	}
 	if len(ap.Proof)%32 != 0 {
 		return fmt.Errorf("proof buffer has wrong length, expected: 32, got: %d", len(ap.Proof))
-	}
-	if len(ap.FinalPair)%32 != 0 {
-		return fmt.Errorf("final_pair buffer has wrong length, expected: 32, got: %d", len(ap.FinalPair))
 	}
 
 	return nil
