@@ -91,7 +91,7 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 	return true
 }
 
-func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, blockHashes []common.Hash, subProofs []*message.AggProof) ([]*coordinatorType.ProverStatus, error) {
+func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, blockHashes []common.Hash, subProofs []*message.ChunkProof) ([]*coordinatorType.ProverStatus, error) {
 	sendMsg := &message.TaskMsg{
 		ID:          hash,
 		Type:        proveType,

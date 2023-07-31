@@ -87,9 +87,9 @@ func (o *Chunk) GetUnassignedChunks(ctx context.Context, limit int) ([]*Chunk, e
 }
 
 // GetProofsByBatchHash retrieves the proofs associated with a specific batch hash.
-// It returns a slice of decoded proofs (message.AggProof) obtained from the database.
+// It returns a slice of decoded proofs (message.ChunkProof) obtained from the database.
 // The returned proofs are sorted in ascending order by their associated chunk index.
-func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*message.AggProof, error) {
+func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*message.ChunkProof, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("batch_hash", batchHash)
@@ -100,9 +100,9 @@ func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*
 		return nil, fmt.Errorf("Chunk.GetProofsByBatchHash error: %w, batch hash: %v", err, batchHash)
 	}
 
-	var proofs []*message.AggProof
+	var proofs []*message.ChunkProof
 	for _, chunk := range chunks {
-		var proof message.AggProof
+		var proof message.ChunkProof
 		if err := json.Unmarshal(chunk.Proof, &proof); err != nil {
 			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash error: %w, batch hash: %v, chunk hash: %v", err, batchHash, chunk.Hash)
 		}
@@ -287,7 +287,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 }
 
 // UpdateProofByHash updates the chunk proof by hash.
-func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *message.ChunkProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
