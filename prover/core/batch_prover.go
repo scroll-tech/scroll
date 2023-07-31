@@ -24,13 +24,13 @@ import (
 	"scroll-tech/prover/config"
 )
 
-// BatchProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
-type BatchProverCore struct {
-	cfg *config.BatchProverCoreConfig
+// BatchProver sends block-traces to rust-prover through ffi and get back the zk-proof.
+type BatchProver struct {
+	cfg *config.BatchProverConfig
 }
 
-// NewBatchProverCore inits a BatchProverCore object.
-func NewBatchProverCore(cfg *config.BatchProverCoreConfig) (*BatchProverCore, error) {
+// NewBatchProver inits a BatchProver object.
+func NewBatchProver(cfg *config.BatchProverConfig) (*BatchProver, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
@@ -45,11 +45,11 @@ func NewBatchProverCore(cfg *config.BatchProverCoreConfig) (*BatchProverCore, er
 		log.Info("Enabled dump_batch_proof", "dir", cfg.DumpDir)
 	}
 
-	return &BatchProverCore{cfg: cfg}, nil
+	return &BatchProver{cfg: cfg}, nil
 }
 
 // Prove call rust ffi to generate batch proof, if first failed, try again.
-func (p *BatchProverCore) Prove(taskID string, chunkHashes []*types.ChunkHash, chunkProofs []*types.ChunkProof) (*message.BatchProof, error) {
+func (p *BatchProver) Prove(taskID string, chunkHashes []*types.ChunkHash, chunkProofs []*types.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {
 		return nil, errors.New("Wrong proof type in batch-prover: %d", p.cfg.ProofType)
 	}
@@ -75,7 +75,7 @@ func (p *BatchProverCore) Prove(taskID string, chunkHashes []*types.ChunkHash, c
 }
 
 // Call cgo to generate batch proof.
-func (p *BatchProverCore) prove(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
+func (p *BatchProver) prove(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
 	chunkHashesStr := C.CString(string(chunkHashesByt))
 	chunkProofsStr := C.CString(string(chunkProofsByt))
 
@@ -92,7 +92,7 @@ func (p *BatchProverCore) prove(chunkHashesByt []byte, chunkProofsByt []byte) []
 	return []byte(proof)
 }
 
-func (p *BatchProverCore) dumpProof(id string, proofByt []byte) error {
+func (p *BatchProver) dumpProof(id string, proofByt []byte) error {
 	if p.cfg.DumpDir == "" {
 		return nil
 	}

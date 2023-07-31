@@ -24,13 +24,13 @@ import (
 	"scroll-tech/prover/config"
 )
 
-// ChunkProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
-type ChunkProverCore struct {
-	cfg *config.ChunkProverCoreConfig
+// ChunkProver sends block-traces to rust-prover through ffi and get back the zk-proof.
+type ChunkProver struct {
+	cfg *config.ChunkProverConfig
 }
 
-// NewChunkProverCore inits a ChunkProverCore object.
-func NewChunkProverCore(cfg *config.ChunkProverCoreConfig) (*ChunkProverCore, error) {
+// NewChunkProver inits a ChunkProver object.
+func NewChunkProver(cfg *config.ChunkProverConfig) (*ChunkProver, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
@@ -45,11 +45,11 @@ func NewChunkProverCore(cfg *config.ChunkProverCoreConfig) (*ChunkProverCore, er
 		log.Info("Enabled dump_chunk_proof", "dir", cfg.DumpDir)
 	}
 
-	return &ChunkProverCore{cfg: cfg}, nil
+	return &ChunkProver{cfg: cfg}, nil
 }
 
 // Prove call rust ffi to generate chunk proof, if first failed, try again.
-func (p *ChunkProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
+func (p *ChunkProver) Prove(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
 	if p.cfg.ProofType != message.ProofTypeChunk {
 		return nil, errors.New("Wrong proof type in chunk-prover: %d", p.cfg.ProofType)
 	}
@@ -71,7 +71,7 @@ func (p *ChunkProverCore) Prove(taskID string, traces []*types.BlockTrace) (*mes
 }
 
 // Call cgo to generate chunk proof.
-func (p *ChunkProverCore) prove(tracesByt []byte) []byte {
+func (p *ChunkProver) prove(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
 
 	defer func() {
@@ -86,7 +86,7 @@ func (p *ChunkProverCore) prove(tracesByt []byte) []byte {
 	return []byte(proof)
 }
 
-func (p *ChunkProverCore) dumpProof(id string, proofByt []byte) error {
+func (p *ChunkProver) dumpProof(id string, proofByt []byte) error {
 	if p.cfg.DumpDir == "" {
 		return nil
 	}
