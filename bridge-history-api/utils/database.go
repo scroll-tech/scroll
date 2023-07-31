@@ -57,7 +57,11 @@ func InitDB(config *config.DBConfig) (*gorm.DB, error) {
 			// but when inserted, store to postgres is 2023-07-18 18:24:00 UTC+0 the timezone is incorrect.
 			// As mysql dsn user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local, we cant set
 			// the timezone by loc=Local. but postgres's dsn don't have loc option to set timezone, so just need set the gorm option like that.
-			return nowUTC()
+			t, err := nowUTC()
+			if err != nil {
+				log.Error("Can not get UTC time: ", "err", err)
+			}
+			return t
 		},
 	})
 	if err != nil {
@@ -90,7 +94,7 @@ func CloseDB(db *gorm.DB) error {
 }
 
 // nowUTC get the utc time.Now
-func nowUTC() time.Time {
+func nowUTC() (time.Time, error) {
 	utc, err := time.LoadLocation("")
 	if err != nil {
 		return time.Time{}, err
