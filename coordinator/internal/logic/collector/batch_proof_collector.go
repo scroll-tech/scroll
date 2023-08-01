@@ -2,8 +2,10 @@ package collector
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -110,11 +112,21 @@ func (bp *BatchProofCollector) sendTask(ctx context.Context, hash string) ([]*co
 
 	taskDetail := &message.BatchTaskDetail{}
 	for _, chunk := range chunks {
-		taskDetail.ChunkInfos = append(taskDetail.ChunkInfos, &message.ChunkInfo{
+		chunkInfo:= &message.ChunkInfo{
 			ChainID:       bp.cfg.L2Config.ChainID,
-			PrevStateRoot: chunk.ParentChunkStateRoot,
-		})
-		taskDetail.SubProofs = append(taskDetail.SubProofs, nil)
+			PrevStateRoot: common.HexToHash(chunk.ParentChunkStateRoot),
+			PostStateRoot: common.HexToHash(chunk.StateRoot),
+			WithdrawRoot:  common.HexToHash(chunk.WithdrawRoot),
+			DataHash:      common.HexToHash(chunk.Hash),
+			IsPadding:     false,
+		}
+		taskDetail.ChunkInfos = append(taskDetail.ChunkInfos, chunkInfo)
+
+		chunkProof := &message.ChunkProof{}
+		if err := json.Unmarshal(chunk.Proof, chunkProof); err != nil {
+			return nil, fmt.Errorf("json Unmarshal ChunkProof error: %w, chunk hash: %v", err, chunk.Hash)
+		}
+		taskDetail.SubProofs = append(taskDetail.SubProofs, chunkProof)
 	}
 
 	taskMsg := &message.TaskMsg{
