@@ -296,7 +296,7 @@ func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error
 	if task.Task.BatchTaskDetail == nil {
 		return nil, errors.New("BatchTaskDetail is empty")
 	}
-	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.SubProofs)
+	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.ChunkProofs)
 }
 
 func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) {

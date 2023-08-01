@@ -126,7 +126,7 @@ func (bp *BatchProofCollector) sendTask(ctx context.Context, hash string) ([]*co
 		if err := json.Unmarshal(chunk.Proof, chunkProof); err != nil {
 			return nil, fmt.Errorf("json Unmarshal ChunkProof error: %w, chunk hash: %v", err, chunk.Hash)
 		}
-		taskDetail.SubProofs = append(taskDetail.SubProofs, chunkProof)
+		taskDetail.ChunkProofs = append(taskDetail.ChunkProofs, chunkProof)
 	}
 
 	taskMsg := &message.TaskMsg{

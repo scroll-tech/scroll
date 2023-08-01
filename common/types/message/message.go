@@ -215,8 +215,8 @@ type ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos []*ChunkInfo  `json:"chunk_infos"`
-	SubProofs  []*ChunkProof `json:"sub_proofs"`
+	ChunkInfos  []*ChunkInfo  `json:"chunk_infos"`
+	ChunkProofs []*ChunkProof `json:"chunk_proofs"`
 }
 
 // ProofDetail is the message received from provers that contains zk proof, the status of
