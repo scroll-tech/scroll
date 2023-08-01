@@ -12,7 +12,7 @@ import "C" //nolint:typecheck
 
 import (
 	"encoding/json"
-	"github.com/pkg/errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"unsafe"
@@ -57,7 +57,7 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 // ProveBatch call rust ffi to generate batch proof, if first failed, try again.
 func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {
-		return nil, errors.Errorf("Wrong proof type in batch-prover: %d", p.cfg.ProofType)
+		return nil, fmt.Errorf("Wrong proof type in batch-prover: %v", p.cfg.ProofType)
 	}
 
 	chunkHashesByt, err := json.Marshal(chunkHashes)
@@ -83,7 +83,7 @@ func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkHash,
 // ProveChunk call rust ffi to generate chunk proof, if first failed, try again.
 func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
 	if p.cfg.ProofType != message.ProofTypeChunk {
-		return nil, errors.Errorf("Wrong proof type in chunk-prover: %d", p.cfg.ProofType)
+		return nil, fmt.Errorf("Wrong proof type in chunk-prover: %v", p.cfg.ProofType)
 	}
 
 	tracesByt, err := json.Marshal(traces)
