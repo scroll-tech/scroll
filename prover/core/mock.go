@@ -28,7 +28,7 @@ func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*mes
 	return &message.ChunkProof{
 		StorageTrace: _empty[:],
 		Protocol:     _empty[:],
-		Proof: message.Proof{
+		ChunkProofInner: message.ChunkProofInner{
 			Proof:     _empty[:],
 			Instances: _empty[:],
 			Vk:        _empty[:],

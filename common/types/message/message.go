@@ -251,13 +251,13 @@ type ChunkHash struct {
 
 // ChunkProof includes the proof info that are required for chunk verification and rollup.
 type ChunkProof struct {
-	StorageTrace []byte `json:"storage_trace"`
-	Protocol     []byte `json:"protocol"`
-	Proof        Proof  `json:"proof"`
+	StorageTrace    []byte          `json:"storage_trace"`
+	Protocol        []byte          `json:"protocol"`
+	ChunkProofInner ChunkProofInner `json:"proof"`
 }
 
-// Proof is the zk proof detail
-type Proof struct {
+// ChunkProofInner is the inner chunk_poof.
+type ChunkProofInner struct {
 	Proof     []byte `json:"proof"`
 	Instances []byte `json:"instances"`
 	Vk        []byte `json:"vk"`
