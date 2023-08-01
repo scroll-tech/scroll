@@ -112,7 +112,7 @@ func (bp *BatchProofCollector) sendTask(ctx context.Context, hash string) ([]*co
 
 	taskDetail := &message.BatchTaskDetail{}
 	for _, chunk := range chunks {
-		chunkInfo:= &message.ChunkInfo{
+		chunkInfo := &message.ChunkInfo{
 			ChainID:       bp.cfg.L2Config.ChainID,
 			PrevStateRoot: common.HexToHash(chunk.ParentChunkStateRoot),
 			PostStateRoot: common.HexToHash(chunk.StateRoot),
