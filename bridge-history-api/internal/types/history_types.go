@@ -24,7 +24,7 @@ const (
 type QueryByAddressRequest struct {
 	Address  string `form:"address" binding:"required"`
 	Page     int    `form:"page" binding:"required"`
-	PageSize int    `form:"limit" binding:"required"`
+	PageSize int    `form:"page_size" binding:"required"`
 }
 
 // QueryByHashRequest the request parameter of hash api
