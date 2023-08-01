@@ -4,7 +4,7 @@
     "keystore_password": "prover-pwd",
     "db_path": "bbolt_db",
     "core": {
-        "params_path": "params",
+        "params_path": "params"
     },
     "coordinator": {
         "base_url": "https://coordinator/v1",

@@ -88,6 +88,9 @@ func (r *ProverApp) MockConfig(store bool, wsURL string) error {
 	// Reuse l1geth's keystore file
 	cfg.KeystorePassword = "scrolltest"
 	cfg.DBPath = r.bboltDB
+	cfg.Coordinator.BaseURL = wsURL
+	cfg.Coordinator.RetryCount = 3
+	cfg.Coordinator.RetryWaitTime = 10
 	// Create keystore file.
 	_, err = utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
