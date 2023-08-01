@@ -39,7 +39,7 @@ require (
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.6.0 // indirect
+	github.com/scroll-tech/zktrie v0.5.3 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/smartystreets/assertions v1.13.1 // indirect
 	github.com/smartystreets/goconvey v1.8.0
