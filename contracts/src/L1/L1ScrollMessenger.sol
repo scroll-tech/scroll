@@ -326,6 +326,8 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _gasLimit,
         address _refundAddress
     ) internal nonReentrant {
+        _addUsedAmount(msg.sender, _value);
+
         address _messageQueue = messageQueue; // gas saving
         address _counterpart = counterpart; // gas saving
 

@@ -5,6 +5,7 @@ pragma solidity ^0.8.16;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import {ScrollConstants} from "./constants/ScrollConstants.sol";
+import {IETHRateLimiter} from "../rate-limiter/IETHRateLimiter.sol";
 import {IScrollMessenger} from "./IScrollMessenger.sol";
 
 // solhint-disable var-name-mixedcase
@@ -18,6 +19,11 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /// @param _oldFeeVault The address of old fee vault contract.
     /// @param _newFeeVault The address of new fee vault contract.
     event UpdateFeeVault(address _oldFeeVault, address _newFeeVault);
+
+    /// @notice Emitted when owner updates rate limiter contract.
+    /// @param _oldRateLimiter The address of old rate limiter contract.
+    /// @param _newRateLimiter The address of new rate limiter contract.
+    event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter);
 
     /*************
      * Constants *
@@ -44,8 +50,11 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /// @dev The status of for non-reentrant check.
     uint256 private _lock_status;
 
+    /// @notice The address of ETH rate limiter contract.
+    address public rateLimiter;
+
     /// @dev The storage slots for future usage.
-    uint256[46] private __gap;
+    uint256[45] private __gap;
 
     /**********************
      * Function Modifiers *
@@ -104,6 +113,16 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
         emit UpdateFeeVault(_oldFeeVault, _newFeeVault);
     }
 
+    /// @notice Update rate limiter contract.
+    /// @dev This function can only called by contract owner.
+    /// @param _newRateLimiter The address of new rate limiter contract.
+    function updateRateLimiter(address _newRateLimiter) external onlyOwner {
+        address _oldRateLimiter = rateLimiter;
+
+        rateLimiter = _newRateLimiter;
+        emit UpdateRateLimiter(_oldRateLimiter, _newRateLimiter);
+    }
+
     /**********************
      * Internal Functions *
      **********************/
@@ -131,5 +150,17 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
                 _messageNonce,
                 _message
             );
+    }
+
+    /// @dev Internal function to increase ETH usage for the given `_sender`.
+    /// @param _sender The address of sender.
+    /// @param _amount The amount of ETH used.
+    function _addUsedAmount(address _sender, uint256 _amount) internal {
+        if (_amount == 0) return;
+
+        address _rateLimiter = rateLimiter;
+        if (_rateLimiter != address(0)) {
+            IETHRateLimiter(_rateLimiter).addUsedAmount(_sender, _amount);
+        }
     }
 }

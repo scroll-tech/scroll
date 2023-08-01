@@ -21,7 +21,7 @@ import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 /// as Ether and then the Ether will be sent to the `L1ScrollMessenger` contract.
 /// On finalizing withdraw, the Ether will be transfered from `L1ScrollMessenger`, then
 /// wrapped as WETH and finally transfer to recipient.
-contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
+contract L1WETHGateway is ScrollGatewayBase, L1ERC20Gateway {
     using SafeERC20 for IERC20;
 
     /*************

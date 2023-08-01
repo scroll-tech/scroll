@@ -15,7 +15,7 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 /// finalize deposit ETH from layer 1.
 /// @dev The ETH are not held in the gateway. The ETH will be sent to the `L2ScrollMessenger` contract.
 /// On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then transfer to recipient.
-contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
+contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
     /***************
      * Constructor *
      ***************/
@@ -99,6 +99,9 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
         if (router == msg.sender) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
+
+        // rate limit
+        _addUsedAmount(address(0), _from, _amount);
 
         bytes memory _message = abi.encodeCall(IL1ETHGateway.finalizeWithdrawETH, (_from, _to, _amount, _data));
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit);

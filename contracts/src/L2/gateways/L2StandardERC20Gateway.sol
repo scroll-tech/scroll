@@ -21,7 +21,7 @@ import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollG
 /// @dev The withdrawn ERC20 tokens will be burned directly. On finalizing deposit, the corresponding
 /// token will be minted and transfered to the recipient. Any ERC20 that requires non-standard functionality
 /// should use a separate gateway.
-contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
+contract L2StandardERC20Gateway is ScrollGatewayBase, L2ERC20Gateway {
     using SafeERC20 for IERC20;
     using Address for address;
 
@@ -143,6 +143,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
 
         address _l1Token = tokenMapping[_token];
         require(_l1Token != address(0), "no corresponding l1 token");
+
+        // rate limit
+        _addUsedAmount(_token, _from, _amount);
 
         // 2. Burn token.
         IScrollERC20(_token).burn(_from, _amount);

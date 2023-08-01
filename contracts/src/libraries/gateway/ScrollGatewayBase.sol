@@ -2,12 +2,24 @@
 
 pragma solidity ^0.8.16;
 
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
 import {IScrollGateway} from "./IScrollGateway.sol";
 import {IScrollMessenger} from "../IScrollMessenger.sol";
 import {IScrollGatewayCallback} from "../callbacks/IScrollGatewayCallback.sol";
 import {ScrollConstants} from "../constants/ScrollConstants.sol";
+import {ITokenRateLimiter} from "../../rate-limiter/ITokenRateLimiter.sol";
 
-abstract contract ScrollGatewayBase is IScrollGateway {
+abstract contract ScrollGatewayBase is OwnableUpgradeable, IScrollGateway {
+    /**********
+     * Events *
+     **********/
+
+    /// @notice Emitted when owner updates rate limiter contract.
+    /// @param _oldRateLimiter The address of old rate limiter contract.
+    /// @param _newRateLimiter The address of new rate limiter contract.
+    event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter);
+
     /*************
      * Constants *
      *************/
@@ -31,6 +43,9 @@ abstract contract ScrollGatewayBase is IScrollGateway {
 
     /// @dev The status of for non-reentrant check.
     uint256 private _status;
+
+    /// @notice The address of token rate limiter contract.
+    address public rateLimiter;
 
     /// @dev The storage slots for future usage.
     uint256[46] private __gap;
@@ -87,6 +102,8 @@ abstract contract ScrollGatewayBase is IScrollGateway {
         require(_counterpart != address(0), "zero counterpart address");
         require(_messenger != address(0), "zero messenger address");
 
+        OwnableUpgradeable.__Ownable_init();
+
         counterpart = _counterpart;
         messenger = _messenger;
 
@@ -99,6 +116,20 @@ abstract contract ScrollGatewayBase is IScrollGateway {
         _status = _NOT_ENTERED;
     }
 
+    /************************
+     * Restricted Functions *
+     ************************/
+
+    /// @notice Update rate limiter contract.
+    /// @dev This function can only called by contract owner.
+    /// @param _newRateLimiter The address of new rate limiter contract.
+    function updateRateLimiter(address _newRateLimiter) external onlyOwner {
+        address _oldRateLimiter = rateLimiter;
+
+        rateLimiter = _newRateLimiter;
+        emit UpdateRateLimiter(_oldRateLimiter, _newRateLimiter);
+    }
+
     /**********************
      * Internal Functions *
      **********************/
@@ -109,6 +140,23 @@ abstract contract ScrollGatewayBase is IScrollGateway {
     function _doCallback(address _to, bytes memory _data) internal {
         if (_data.length > 0 && _to.code.length > 0) {
             IScrollGatewayCallback(_to).onScrollGatewayCallback(_data);
+        }
+    }
+
+    /// @dev Internal function to increase token usage for the given `_sender`.
+    /// @param _token The address of token.
+    /// @param _sender The address of sender.
+    /// @param _amount The amount of token used.
+    function _addUsedAmount(
+        address _token,
+        address _sender,
+        uint256 _amount
+    ) internal {
+        if (_amount == 0) return;
+
+        address _rateLimiter = rateLimiter;
+        if (_rateLimiter != address(0)) {
+            ITokenRateLimiter(_rateLimiter).addUsedAmount(_token, _sender, _amount);
         }
     }
 }

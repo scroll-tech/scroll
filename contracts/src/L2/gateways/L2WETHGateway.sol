@@ -19,7 +19,7 @@ import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollG
 /// then the Ether will be sent to the `L2ScrollMessenger` contract.
 /// On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then
 /// wrapped as WETH and finally transfer to recipient.
-contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
+contract L2WETHGateway is ScrollGatewayBase, L2ERC20Gateway {
     using SafeERC20 for IERC20;
 
     /*************
@@ -116,6 +116,9 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
         if (router == msg.sender) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
+
+        // rate limit
+        _addUsedAmount(_token, _from, _amount);
 
         // 2. Transfer token into this contract.
         IERC20(_token).safeTransferFrom(_from, address(this), _amount);

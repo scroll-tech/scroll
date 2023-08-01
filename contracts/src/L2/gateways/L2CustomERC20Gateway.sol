@@ -128,6 +128,9 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
 
+        // rate limit
+        _addUsedAmount(_token, _from, _amount);
+
         // 2. Burn token.
         IScrollERC20(_token).burn(_from, _amount);
 
