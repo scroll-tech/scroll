@@ -284,14 +284,14 @@ func TestProver_SubmitProof(t *testing.T) {
 	var tmpVerifier *verifier.Verifier
 	convey.Convey("verifier proof failure", t, func() {
 		targetErr := errors.New("verify proof failure")
-		patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyProof", func(proof *message.BatchProof) (bool, error) {
+		patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyChunkProof", func(proof *message.ChunkProof) (bool, error) {
 			return false, targetErr
 		})
 		err1 := proverController.SubmitProof(tmpProof)
 		assert.Nil(t, err1)
 	})
 
-	patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyProof", func(proof *message.BatchProof) (bool, error) {
+	patchGuard.ApplyMethodFunc(tmpVerifier, "VerifyChunkProof", func(proof *message.ChunkProof) (bool, error) {
 		return true, nil
 	})
 
