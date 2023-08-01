@@ -5,7 +5,7 @@ use prover::{
     zkevm::{Prover, Verifier},
     ChunkProof,
 };
-use std::cell::OnceCell;
+use std::{cell::OnceCell, panic};
 use types::eth::BlockTrace;
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();

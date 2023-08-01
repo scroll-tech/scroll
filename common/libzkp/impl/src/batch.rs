@@ -5,7 +5,7 @@ use prover::{
     utils::{chunk_trace_to_witness_block, init_env_and_log},
     ChunkHash, ChunkProof, Proof,
 };
-use std::cell::OnceCell;
+use std::{cell::OnceCell, panic};
 use types::eth::BlockTrace;
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
