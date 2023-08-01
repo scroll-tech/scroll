@@ -17,14 +17,15 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/common/types/message"
-	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
 	"scroll-tech/prover/client"
 	"scroll-tech/prover/config"
 	"scroll-tech/prover/core"
 	"scroll-tech/prover/store"
 	putils "scroll-tech/prover/utils"
+
+	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
 )
 
 var (
