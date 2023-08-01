@@ -23,13 +23,14 @@ const (
 // QueryByAddressRequest the request parameter of address api
 type QueryByAddressRequest struct {
 	Address string `form:"address" binding:"required"`
-	Offset  int    `form:"offset" binding:"required"`
-	Limit   int    `form:"limit" binding:"required"`
+	// offset can be 0
+	Offset int `form:"offset"`
+	Limit  int `form:"limit" binding:"required"`
 }
 
 // QueryByHashRequest the request parameter of hash api
 type QueryByHashRequest struct {
-	Txs []string `form:"txs" binding:"required"`
+	Txs []string `raw:"txs" binding:"required"`
 }
 
 // ResultData contains return txs and total

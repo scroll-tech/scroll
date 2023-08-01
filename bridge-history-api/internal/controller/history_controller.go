@@ -70,7 +70,7 @@ func (c *HistoryController) GetAllTxsByAddr(ctx *gin.Context) {
 // PostQueryTxsByHash defines the http post method behavior
 func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 	var req types.QueryByHashRequest
-	if err := ctx.ShouldBind(&req); err != nil {
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
 		return
 	}
