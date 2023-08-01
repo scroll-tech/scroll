@@ -43,7 +43,9 @@ type Response struct {
 	ErrCode int         `json:"errcode"`
 	ErrMsg  string      `json:"errmsg"`
 	Data    interface{} `json:"data"`
-} // Finalized the schema of tx finalized infos
+}
+
+// Finalized the schema of tx finalized infos
 type Finalized struct {
 	Hash           string     `json:"hash"`
 	Amount         string     `json:"amount"`
