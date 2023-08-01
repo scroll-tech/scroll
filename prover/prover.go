@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"sync/atomic"
@@ -173,24 +174,6 @@ func (r *Prover) proveAndSubmit() error {
 	return r.signAndSubmitProof(proofMsg)
 }
 
-func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error) {
-	if task.Task.ChunkTaskDetail == nil {
-		return nil, errors.New("ChunkTaskDetail is empty")
-	}
-	traces, err := r.getSortedTracesByHashes(task.Task.ChunkTaskDetail.BlockHashes)
-	if err != nil {
-		return nil, errors.New("get traces from eth node failed")
-	}
-	return r.proverCore.ProveChunk(task.Task.ID, traces)
-}
-
-func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error) {
-	if task.Task.BatchTaskDetail == nil {
-		return nil, errors.New("BatchTaskDetail is empty")
-	}
-	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.ChunkProofs)
-}
-
 // fetchTaskFromServer fetches a new task from the server
 func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 	// get the latest confirmed block number
@@ -232,14 +215,15 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 		if err != nil {
 			return nil, err
 		}
-		provingTask.Task.BlockHashes = blockHashes
+		provingTask.Task.ChunkTaskDetail.BlockHashes = blockHashes
 	case message.ProofTypeBatch:
 		var subProofs []*message.ChunkProof
 		err := json.Unmarshal([]byte(resp.Data.ProofData), &subProofs)
 		if err != nil {
 			return nil, err
 		}
-		provingTask.Task.SubProofs = subProofs
+		// TODO(colinlyguo): add chunk infos.
+		provingTask.Task.BatchTaskDetail.ChunkProofs = subProofs
 	default:
 		return nil, fmt.Errorf("unknown proof type: %d", resp.Data.ProofType)
 	}
@@ -247,13 +231,8 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 	return provingTask, nil
 }
 
-func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
-	authZkProof := &message.ProofMsg{ProofDetail: msg}
-	if err := authZkProof.Sign(r.priv); err != nil {
-		return fmt.Errorf("error signing proof: %v", err)
-	}
-  
-  detail = &message.ProofDetail{
+func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
+	detail = &message.ProofDetail{
 		ID:     task.Task.ID,
 		Type:   task.Task.Type,
 		Status: message.StatusOk,
@@ -287,6 +266,31 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
 	default:
 		log.Error("invalid task type", "task-id", task.Task.ID, "task-type", task.Task.Type)
 		return
+	}
+}
+
+func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error) {
+	if task.Task.ChunkTaskDetail == nil {
+		return nil, errors.New("ChunkTaskDetail is empty")
+	}
+	traces, err := r.getSortedTracesByHashes(task.Task.ChunkTaskDetail.BlockHashes)
+	if err != nil {
+		return nil, errors.New("get traces from eth node failed")
+	}
+	return r.proverCore.ProveChunk(task.Task.ID, traces)
+}
+
+func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error) {
+	if task.Task.BatchTaskDetail == nil {
+		return nil, errors.New("BatchTaskDetail is empty")
+	}
+	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.ChunkProofs)
+}
+
+func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
+	authZkProof := &message.ProofMsg{ProofDetail: msg}
+	if err := authZkProof.Sign(r.priv); err != nil {
+		return fmt.Errorf("error signing proof: %v", err)
 	}
 
 	// marshal the ChunkProof and BatchProof into a single JSON
