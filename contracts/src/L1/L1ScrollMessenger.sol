@@ -2,8 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-
 import {IScrollChain} from "./rollup/IScrollChain.sol";
 import {IL1MessageQueue} from "./rollup/IL1MessageQueue.sol";
 import {IL1ScrollMessenger} from "./IL1ScrollMessenger.sol";
@@ -28,7 +26,7 @@ import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.
 ///
 /// @dev All deposited Ether (including `WETH` deposited throng `L1WETHGateway`) will locked in
 /// this contract.
-contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1ScrollMessenger {
+contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
     /***********
      * Structs *
      ***********/
@@ -97,8 +95,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         address _rollup,
         address _messageQueue
     ) public initializer {
-        PausableUpgradeable.__Pausable_init();
-        ScrollMessengerBase._initialize(_counterpart, _feeVault);
+        ScrollMessengerBase.__ScrollMessengerBase_init(_counterpart, _feeVault);
 
         rollup = _rollup;
         messageQueue = _messageQueue;
@@ -294,17 +291,6 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
     /************************
      * Restricted Functions *
      ************************/
-
-    /// @notice Pause the contract
-    /// @dev This function can only called by contract owner.
-    /// @param _status The pause status to update.
-    function setPause(bool _status) external onlyOwner {
-        if (_status) {
-            _pause();
-        } else {
-            _unpause();
-        }
-    }
 
     /// @notice Update max replay times.
     /// @dev This function can only called by contract owner.

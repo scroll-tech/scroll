@@ -2,8 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-
 import {IL2ScrollMessenger} from "./IL2ScrollMessenger.sol";
 import {L2MessageQueue} from "./predeploys/L2MessageQueue.sol";
 import {IL1BlockContainer} from "./predeploys/IL1BlockContainer.sol";
@@ -26,7 +24,7 @@ import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 ///
 /// @dev It should be a predeployed contract on layer 2 and should hold infinite amount
 /// of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.
-contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2ScrollMessenger {
+contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
     /**********
      * Events *
      **********/
@@ -68,9 +66,8 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
         messageQueue = _messageQueue;
     }
 
-    function initialize(address _counterpart, address _feeVault) external initializer {
-        PausableUpgradeable.__Pausable_init();
-        ScrollMessengerBase._initialize(_counterpart, _feeVault);
+    function initialize(address _counterpart) external initializer {
+        ScrollMessengerBase.__ScrollMessengerBase_init(_counterpart, address(0));
 
         maxFailedExecutionTimes = 3;
     }
@@ -121,17 +118,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, PausableUpgradeable, IL2Scrol
     /************************
      * Restricted Functions *
      ************************/
-
-    /// @notice Pause the contract
-    /// @dev This function can only called by contract owner.
-    /// @param _status The pause status to update.
-    function setPause(bool _status) external onlyOwner {
-        if (_status) {
-            _pause();
-        } else {
-            _unpause();
-        }
-    }
 
     /// @notice Update max failed execution times.
     /// @dev This function can only called by contract owner.

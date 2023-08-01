@@ -2,8 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-
 import {IL1ETHGateway} from "../../L1/gateways/IL1ETHGateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL2ETHGateway} from "./IL2ETHGateway.sol";
@@ -15,7 +13,7 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 /// finalize deposit ETH from layer 1.
 /// @dev The ETH are not held in the gateway. The ETH will be sent to the `L2ScrollMessenger` contract.
 /// On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then transfer to recipient.
-contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
+contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
     /***************
      * Constructor *
      ***************/

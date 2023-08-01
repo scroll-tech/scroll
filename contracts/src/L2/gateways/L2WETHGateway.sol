@@ -2,9 +2,8 @@
 
 pragma solidity =0.8.16;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import {IL2ERC20Gateway, L2ERC20Gateway} from "./L2ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
@@ -19,8 +18,8 @@ import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollG
 /// then the Ether will be sent to the `L2ScrollMessenger` contract.
 /// On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then
 /// wrapped as WETH and finally transfer to recipient.
-contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
-    using SafeERC20 for IERC20;
+contract L2WETHGateway is ScrollGatewayBase, L2ERC20Gateway {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /*************
      * Constants *
@@ -89,7 +88,7 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
         require(_amount == msg.value, "msg.value mismatch");
 
         IWETH(_l2Token).deposit{value: _amount}();
-        IERC20(_l2Token).safeTransfer(_to, _amount);
+        IERC20Upgradeable(_l2Token).safeTransfer(_to, _amount);
 
         _doCallback(_to, _data);
 
@@ -118,7 +117,7 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
         }
 
         // 2. Transfer token into this contract.
-        IERC20(_token).safeTransferFrom(_from, address(this), _amount);
+        IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
         IWETH(_token).withdraw(_amount);
 
         // 3. Generate message passed to L2StandardERC20Gateway.
