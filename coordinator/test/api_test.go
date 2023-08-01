@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	mrand "math/rand"
 	"net/http"
 	"os"
 	"strconv"
@@ -72,6 +73,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 	}
 
 	conf := config.Config{
+		L2Config: &config.L2Config{ChainID: rand.Uint64()},
 		ProverManagerConfig: &config.ProverManagerConfig{
 			ProversPerSession:  proversPerSession,
 			Verifier:           &config.VerifierConfig{MockMode: true},
