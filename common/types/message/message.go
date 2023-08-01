@@ -208,10 +208,12 @@ type TaskMsg struct {
 	ChunkTaskDetail *ChunkTaskDetail `json:"chunk_task_detail,omitempty"`
 }
 
+// ChunkTaskDetail is a type containing ChunkTask detail.
 type ChunkTaskDetail struct {
 	BlockHashes []common.Hash `json:"block_hashes"`
 }
 
+// BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
 	ChunkInfos []*ChunkInfo  `json:"chunk_infos"`
 	SubProofs  []*ChunkProof `json:"sub_proofs"`

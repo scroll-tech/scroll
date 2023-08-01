@@ -76,7 +76,7 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
 func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
-		if string(proof.ChunkProofInner.Proof) == InvalidTestProof {
+		if string(proof.Proof) == InvalidTestProof {
 			return false, nil
 		}
 		return true, nil

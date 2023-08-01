@@ -141,7 +141,7 @@ func (r *mockProver) loop(t *testing.T, client *client2.Client, proofTime time.D
 			if proofStatus == generatedFailed {
 				proof.Status = message.StatusProofError
 			} else if proofStatus == verifiedFailed {
-				proof.ProofDetail.ChunkProof.ChunkProofInner.Proof = []byte(verifier.InvalidTestProof)
+				proof.ProofDetail.ChunkProof.Proof = []byte(verifier.InvalidTestProof)
 				proof.ProofDetail.BatchProof.Proof = []byte(verifier.InvalidTestProof)
 			}
 			assert.NoError(t, proof.Sign(r.privKey))

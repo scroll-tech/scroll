@@ -68,9 +68,11 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 			Type:   ProofTypeChunk,
 			Status: StatusOk,
 			ChunkProof: &ChunkProof{
-				Proof:    []byte("testProof"),
-				Instance: []byte("testInstance"),
-				Vk:       []byte("testVk"),
+				StorageTrace: []byte("testStorageTrace"),
+				Protocol:     []byte("testProtocol"),
+				Proof:        []byte("testProof"),
+				Instances:    []byte("testInstance"),
+				Vk:           []byte("testVk"),
 			},
 			Error: "testError",
 		},
@@ -94,15 +96,17 @@ func TestProofDetailHash(t *testing.T) {
 		Type:   ProofTypeChunk,
 		Status: StatusOk,
 		ChunkProof: &ChunkProof{
-			Proof:    []byte("testProof"),
-			Instance: []byte("testInstance"),
-			Vk:       []byte("testVk"),
+			StorageTrace: []byte("testStorageTrace"),
+			Protocol:     []byte("testProtocol"),
+			Proof:        []byte("testProof"),
+			Instances:    []byte("testInstance"),
+			Vk:           []byte("testVk"),
 		},
 		Error: "testError",
 	}
 	hash, err := proofDetail.Hash()
 	assert.NoError(t, err)
-	expectedHash := "f7c02bb8b9ff58a5ba61bb76a8b1fb76a023df9da2982d073d20e67f5e72df47"
+	expectedHash := "4165f5ab3399001002a5b8e4062914249a2deb72f6133d647b586f53e236802d"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
@@ -127,9 +131,11 @@ func TestProofMsgPublicKey(t *testing.T) {
 			Type:   ProofTypeChunk,
 			Status: StatusOk,
 			ChunkProof: &ChunkProof{
-				Proof:    []byte("testProof"),
-				Instance: []byte("testInstance"),
-				Vk:       []byte("testVk"),
+				StorageTrace: []byte("testStorageTrace"),
+				Protocol:     []byte("testProtocol"),
+				Proof:        []byte("testProof"),
+				Instances:    []byte("testInstance"),
+				Vk:           []byte("testVk"),
 			},
 			Error: "testError",
 		},

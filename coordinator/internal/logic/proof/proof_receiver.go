@@ -122,8 +122,14 @@ func (m *ZKProofReceiver) HandleZkProof(ctx context.Context, proofMsg *message.P
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
-	// TODO: add switch case for ChunkProof & BatchProof
-	success, verifyErr := m.verifier.VerifyProof(proofMsg.BatchProof)
+	var success bool
+	var verifyErr error
+	if proofMsg.Type == message.ProofTypeChunk {
+		success, verifyErr = m.verifier.VerifyChunkProof(proofMsg.ChunkProof)
+	} else if proofMsg.Type == message.ProofTypeBatch {
+		success, verifyErr = m.verifier.VerifyBatchProof(proofMsg.BatchProof)
+	}
+
 	if verifyErr != nil || !success {
 		if verifyErr != nil {
 			// TODO: this is only a temp workaround for testnet, we should return err in real cases
