@@ -88,7 +88,7 @@ func updateRowConsumption(totalRowConsumption *map[string]uint64, rowConsumption
 		return
 	}
 	for _, subCircuit := range *rowConsumption {
-		(*totalRowConsumption)[subCircuit.CircuitName] += subCircuit.Rows
+		(*totalRowConsumption)[subCircuit.Name] += subCircuit.RowNumber
 	}
 }
 
