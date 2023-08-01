@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"math/rand"
+	mrand "math/rand"
 	"os"
 	"strconv"
 	"testing"
@@ -88,7 +88,7 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		TokenTimeToLive:   1,
 	}
 	cfg.DBConfig.DSN = base.DBImg.Endpoint()
-	cfg.L2Config.ChainID = rand.Uint64()
+	cfg.L2Config.ChainID = mrand.Uint64()
 	c.Config = cfg
 
 	if !store {
