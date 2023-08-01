@@ -8,7 +8,7 @@
     "verifier": {
       "mock_mode": true,
       "params_path": "",
-      "agg_vk_path": ""
+      "assets_path": ""
     },
     "max_verifier_workers": 10,
     "order_session": "ASC"
@@ -20,6 +20,6 @@
     "maxIdleNum": 20
   },
   "l2_config": {
-    "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc"
+    "chain_id": 111
   }
 }

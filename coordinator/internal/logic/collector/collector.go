@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"gorm.io/gorm"
@@ -91,18 +90,11 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 	return true
 }
 
-func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, blockHashes []common.Hash, subProofs []*message.ChunkProof) ([]*coordinatorType.ProverStatus, error) {
-	sendMsg := &message.TaskMsg{
-		ID:          hash,
-		Type:        proveType,
-		BlockHashes: blockHashes,
-		SubProofs:   subProofs,
-	}
-
+func (b *BaseCollector) sendTask(taskMsg *message.TaskMsg) ([]*coordinatorType.ProverStatus, error) {
 	var err error
 	var proverStatusList []*coordinatorType.ProverStatus
 	for i := uint8(0); i < b.cfg.ProverManagerConfig.ProversPerSession; i++ {
-		proverPubKey, proverName, sendErr := provermanager.Manager.SendTask(proveType, sendMsg)
+		proverPubKey, proverName, sendErr := provermanager.Manager.SendTask(taskMsg.Type, taskMsg)
 		if sendErr != nil {
 			err = sendErr
 			continue
