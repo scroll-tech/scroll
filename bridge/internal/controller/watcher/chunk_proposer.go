@@ -173,6 +173,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		totalTxGasUsed += block.Header.GasUsed
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
+		updateRowConsumption(&totalRowConsumption, block.RowConsumption)
 		totalL1CommitGas = chunk.EstimateL1CommitGas()
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
