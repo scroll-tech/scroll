@@ -57,7 +57,7 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Generated chunk hash")
 
-	chunkProof, err := chunkProverCore.ChunkProve("test", traces)
+	chunkProof, err := chunkProverCore.ProveChunk("test", traces)
 	as.NoError(err)
 	t.Log("Generated chunk proof")
 
@@ -80,7 +80,7 @@ func TestFFI(t *testing.T) {
 	chunkHashes = append(chunkHashes, chunkHash)
 	chunkProofs := make([]*message.ChunkProof, 0)
 	chunkProofs = append(chunkProofs, chunkProof)
-	batchProof, err := batchProverCore.BatchProve("test", chunkHashes, chunkProofs)
+	batchProof, err := batchProverCore.ProveBatch("test", chunkHashes, chunkProofs)
 	as.NoError(err)
 	t.Log("Generated batch proof")
 
