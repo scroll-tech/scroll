@@ -202,13 +202,19 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID   string    `json:"id"`
-	Type ProofType `json:"type,omitempty"`
-	// For decentralization, basic provers will get block hashes from the coordinator. So that they can refer to the block hashes and fetch traces locally. Only applicable for basic provers.
-	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
-	// Only applicable for aggregator provers.
-	ChunkHashes []*ChunkHash  `json:"chunk_hashes,omitempty"`
-	SubProofs   []*ChunkProof `json:"sub_proofs,omitempty"`
+	ID              string           `json:"id"`
+	Type            ProofType        `json:"type,omitempty"`
+	BatchTaskDetail *BatchTaskDetail `json:"batch_task_detail,omitempty"`
+	ChunkTaskDetail *ChunkTaskDetail `json:"chunk_task_detail,omitempty"`
+}
+
+type ChunkTaskDetail struct {
+	BlockHashes []common.Hash `json:"block_hashes"`
+}
+
+type BatchTaskDetail struct {
+	ChunkHashes []*ChunkHash  `json:"chunk_hashes"`
+	SubProofs   []*ChunkProof `json:"sub_proofs"`
 }
 
 // ProofDetail is the message received from provers that contains zk proof, the status of
