@@ -41,14 +41,17 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
     let block_traces = c_char_to_vec(block_traces);
     let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces).unwrap();
 
-    let proof = PROVER
-        .get_mut()
-        .unwrap()
-        .gen_chunk_proof(block_traces, None, OUTPUT_DIR.as_deref())
-        .unwrap();
+    let proof = panic::catch_unwind(|| {
+        PROVER
+            .get_mut()
+            .unwrap()
+            .gen_chunk_proof(block_traces, None, OUTPUT_DIR.as_deref())
+            .unwrap();
 
-    let proof_bytes = serde_json::to_vec(&proof).unwrap();
-    vec_to_c_char(proof_bytes)
+        serde_json::to_vec(&proof).unwrap()
+    });
+
+    proof.map_or(null(), vec_to_c_char)
 }
 
 /// # Safety
@@ -57,6 +60,6 @@ pub unsafe extern "C" fn verify_chunk_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<ChunkProof>(proof.as_slice()).unwrap();
 
-    let verified = VERIFIER.get().unwrap().verify_chunk_proof(proof);
-    verified as c_char
+    let verified = panic::catch_unwind(|| VERIFIER.get().unwrap().verify_chunk_proof(proof));
+    verified.unwrap_or(false) as c_char
 }
