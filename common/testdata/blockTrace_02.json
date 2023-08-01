@@ -27,48 +27,48 @@
     },
     "row_consumption": [
         {
-            "circuitName": "evm",
-            "rows": "0x1"
+            "name": "evm",
+            "row_number": "0x1"
         },
         {
-            "circuitName": "state",
-            "rows": "0x2"
+            "name": "state",
+            "row_number": "0x2"
         },
         {
-            "circuitName": "bytecode",
-            "rows": "0x3"
+            "name": "bytecode",
+            "row_number": "0x3"
         },
         {
-            "circuitName": "copy",
-            "rows": "0x4"
+            "name": "copy",
+            "row_number": "0x4"
         },
         {
-            "circuitName": "keccak",
-            "rows": "0x5"
+            "name": "keccak",
+            "row_number": "0x5"
         },
         {
-            "circuitName": "tx",
-            "rows": "0x6"
+            "name": "tx",
+            "row_number": "0x6"
         },
         {
-            "circuitName": "rlp",
-            "rows": "0x7"
+            "name": "rlp",
+            "row_number": "0x7"
         },
         {
-            "circuitName": "exp",
-            "rows": "0x8"
+            "name": "exp",
+            "row_number": "0x8"
         },
         {
-            "circuitName": "pi",
-            "rows": "0x9"
+            "name": "pi",
+            "row_number": "0x9"
         },
         {
-            "circuitName": "poseidon",
-            "rows": "0xa"
+            "name": "poseidon",
+            "row_number": "0xa"
         },
         {
-            "circuitName": "mpt",
-            "rows": "0xb"
+            "name": "mpt",
+            "row_number": "0xb"
         }
     ],
     "transactions": [
