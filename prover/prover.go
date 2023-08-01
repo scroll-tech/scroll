@@ -250,7 +250,8 @@ func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
 		Status: message.StatusOk,
 	}
 
-	if r.Type() == message.ProofTypeChunk {
+	switch r.Type() {
+	case message.ProofTypeChunk:
 		proof, err := r.proveChunk(task)
 		if err != nil {
 			log.Error("prove chunk failed!", "task-id", task.Task.ID, "err", err)
@@ -261,7 +262,8 @@ func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
 		detail.ChunkProof = proof
 		log.Info("prove chunk successfully!", "task-id", task.Task.ID)
 		return
-	} else {
+
+	case message.ProofTypeBatch:
 		proof, err := r.proveBatch(task)
 		if err != nil {
 			log.Error("prove batch failed!", "task-id", task.Task.ID, "err", err)
@@ -271,6 +273,10 @@ func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
 		}
 		detail.BatchProof = proof
 		log.Info("prove batch successfully!", "task-id", task.Task.ID)
+		return
+
+	default:
+		log.Error("invalid task type", "task-id", task.Task.ID, "task-type", task.Task.Type)
 		return
 	}
 }
