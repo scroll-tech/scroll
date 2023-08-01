@@ -194,7 +194,7 @@ func (r *Prover) ProveLoop() {
 		case <-r.stopChan:
 			return
 		default:
-			if err := r.prove(); err != nil {
+			if err := r.proveAndSubmit(); err != nil {
 				if errors.Is(err, store.ErrEmpty) {
 					log.Debug("get empty trace", "error", err)
 					time.Sleep(time.Second * 3)
@@ -206,7 +206,7 @@ func (r *Prover) ProveLoop() {
 	}
 }
 
-func (r *Prover) prove() error {
+func (r *Prover) proveAndSubmit() error {
 	task, err := r.stack.Peek()
 	if err != nil {
 		return err
@@ -219,10 +219,8 @@ func (r *Prover) prove() error {
 			return err
 		}
 
-		log.Info("start to prove block", "task-id", task.Task.ID)
-
-		proofMsg = r.chooseProve(task)
-
+		log.Info("start to prove task", "task-type", task.Task.Type, "task-id", task.Task.ID)
+		proofMsg = r.prove(task)
 	} else {
 		// when the prover has more than 3 times panic,
 		// it will omit to prove the task, submit StatusProofError and then Delete the task.
@@ -245,34 +243,36 @@ func (r *Prover) prove() error {
 	return nil
 }
 
-func (r *Prover) chooseProve(task *store.ProvingTask) (detail *message.ProofDetail) {
+func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
 	detail = &message.ProofDetail{
 		ID:     task.Task.ID,
 		Type:   task.Task.Type,
 		Status: message.StatusOk,
 	}
-	// batch prove
-	if r.Type() == message.ProofTypeBatch {
+
+	if r.Type() == message.ProofTypeChunk {
+		proof, err := r.proveChunk(task)
+		if err != nil {
+			log.Error("prove chunk failed!", "task-id", task.Task.ID)
+			detail.Status = message.StatusProofError
+			detail.Error = err.Error()
+			return
+		}
+		detail.ChunkProof = proof
+		log.Info("prove chunk successfully!", "task-id", task.Task.ID)
+		return
+	} else{
 		proof, err := r.proveBatch(task)
 		if err != nil {
+			log.Error("prove batch failed!", "task-id", task.Task.ID)
 			detail.Status = message.StatusProofError
 			detail.Error = err.Error()
 			return
 		}
 		detail.BatchProof = proof
-		log.Info("batch prove block successfully!", "task-id", task.Task.ID)
+		log.Info("prove batch successfully!", "task-id", task.Task.ID)
 		return
 	}
-	// chunk prove
-	proof, err := r.proveChunk(task)
-	if err != nil {
-		detail.Status = message.StatusProofError
-		detail.Error = err.Error()
-		return
-	}
-	detail.ChunkProof = proof
-	log.Info("chunk prove block successfully!", "task-id", task.Task.ID)
-	return
 }
 
 func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error) {
