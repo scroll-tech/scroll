@@ -3,13 +3,12 @@
 pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import {ERC721HolderUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 
 import {IL2ERC721Gateway} from "./IL2ERC721Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL1ERC721Gateway} from "../../L1/gateways/IL1ERC721Gateway.sol";
-import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {IScrollERC721} from "../../libraries/token/IScrollERC721.sol";
 
 /// @title L2ERC721Gateway

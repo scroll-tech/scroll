@@ -4,8 +4,6 @@ pragma solidity =0.8.16;
 
 import {IL2ScrollMessenger} from "./IL2ScrollMessenger.sol";
 import {L2MessageQueue} from "./predeploys/L2MessageQueue.sol";
-import {IL1BlockContainer} from "./predeploys/IL1BlockContainer.sol";
-import {IL1GasPriceOracle} from "./predeploys/IL1GasPriceOracle.sol";
 
 import {PatriciaMerkleTrieVerifier} from "../libraries/verifier/PatriciaMerkleTrieVerifier.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";

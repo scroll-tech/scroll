@@ -8,7 +8,6 @@ import {IL1ScrollMessenger} from "./IL1ScrollMessenger.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
-import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {WithdrawTrieVerifier} from "../libraries/verifier/WithdrawTrieVerifier.sol";
 
 import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.sol";

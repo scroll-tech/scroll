@@ -9,7 +9,7 @@ import {IL2ERC20Gateway, L2ERC20Gateway} from "./L2ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IWETH} from "../../interfaces/IWETH.sol";
 import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
-import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L2WETHGateway
 /// @notice The `L2WETHGateway` contract is used to withdraw `WETH` token on layer 2 and

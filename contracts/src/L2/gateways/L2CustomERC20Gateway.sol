@@ -3,13 +3,12 @@
 pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import {IL2ERC20Gateway, L2ERC20Gateway} from "./L2ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
-import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
-import {IScrollERC20} from "../../libraries/token/IScrollERC20.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {IScrollERC20Upgradeable} from "../../libraries/token/IScrollERC20Upgradeable.sol";
 
 /// @title L2ERC20Gateway
 /// @notice The `L2ERC20Gateway` is used to withdraw custom ERC20 compatible tokens on layer 2 and
@@ -83,7 +82,7 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
         require(_l1Token != address(0), "token address cannot be 0");
         require(_l1Token == tokenMapping[_l2Token], "l1 token mismatch");
 
-        IScrollERC20(_l2Token).mint(_to, _amount);
+        IScrollERC20Upgradeable(_l2Token).mint(_to, _amount);
 
         _doCallback(_to, _data);
 
@@ -129,7 +128,7 @@ contract L2CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20G
         }
 
         // 2. Burn token.
-        IScrollERC20(_token).burn(_from, _amount);
+        IScrollERC20Upgradeable(_token).burn(_from, _amount);
 
         // 3. Generate message passed to L1StandardERC20Gateway.
         bytes memory _message = abi.encodeCall(

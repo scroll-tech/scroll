@@ -10,7 +10,7 @@ import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
 import {IScrollERC20Upgradeable} from "../../libraries/token/IScrollERC20Upgradeable.sol";
 import {ScrollStandardERC20} from "../../libraries/token/ScrollStandardERC20.sol";
 import {IScrollStandardERC20Factory} from "../../libraries/token/IScrollStandardERC20Factory.sol";
-import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L2StandardERC20Gateway
 /// @notice The `L2StandardERC20Gateway` is used to withdraw standard ERC20 tokens on layer 2 and
