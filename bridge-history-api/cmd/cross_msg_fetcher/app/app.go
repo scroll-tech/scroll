@@ -15,7 +15,7 @@ import (
 	"bridge-history-api/crossmsg"
 	"bridge-history-api/crossmsg/messageproof"
 	"bridge-history-api/orm"
-	cutils "bridge-history-api/utils"
+	"bridge-history-api/utils"
 )
 
 var (
@@ -28,17 +28,17 @@ func init() {
 	app.Action = action
 	app.Name = "Scroll Bridge History API"
 	app.Usage = "The Scroll Bridge Web Backend"
-	app.Flags = append(app.Flags, cutils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		return utils.LogSetup(ctx)
 	}
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
@@ -55,12 +55,12 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
-	db, err := cutils.InitDB(cfg.DB)
+	db, err := utils.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db", "err", err)
 	}
 	defer func() {
-		if deferErr := cutils.CloseDB(db); deferErr != nil {
+		if deferErr := utils.CloseDB(db); deferErr != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()

@@ -3,83 +3,41 @@ package logic
 import (
 	"context"
 	"strconv"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"gorm.io/gorm"
 
+	"bridge-history-api/internal/types"
 	"bridge-history-api/orm"
 )
 
-// Finalized the schema of tx finalized infos
-type Finalized struct {
-	Hash           string     `json:"hash"`
-	Amount         string     `json:"amount"`
-	To             string     `json:"to"` // useless
-	IsL1           bool       `json:"isL1"`
-	BlockNumber    uint64     `json:"blockNumber"`
-	BlockTimestamp *time.Time `json:"blockTimestamp"` // uselesss
-}
-
-// UserClaimInfo the schema of tx claim infos
-type UserClaimInfo struct {
-	From       string `json:"from"`
-	To         string `json:"to"`
-	Value      string `json:"value"`
-	Nonce      string `json:"nonce"`
-	BatchHash  string `json:"batch_hash"`
-	Message    string `json:"message"`
-	Proof      string `json:"proof"`
-	BatchIndex string `json:"batch_index"`
-}
-
-// TxHistoryInfo the schema of tx history infos
-type TxHistoryInfo struct {
-	Hash           string         `json:"hash"`
-	Amount         string         `json:"amount"`
-	To             string         `json:"to"` // useless
-	IsL1           bool           `json:"isL1"`
-	BlockNumber    uint64         `json:"blockNumber"`
-	BlockTimestamp *time.Time     `json:"blockTimestamp"` // useless
-	FinalizeTx     *Finalized     `json:"finalizeTx"`
-	ClaimInfo      *UserClaimInfo `json:"claimInfo"`
-	CreatedAt      *time.Time     `json:"createdTime"`
-}
-
 // HistoryLogic example service.
-type HistoryLogic interface {
-	GetTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error)
-	GetTxsByHashes(ctx context.Context, hashes []string) ([]*TxHistoryInfo, error)
-	GetClaimableTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error)
+type HistoryLogic struct {
+	db *gorm.DB
 }
 
 // NewHistoryLogic returns services backed with a "db"
-func NewHistoryLogic(db *gorm.DB) HistoryLogic {
-	logic := &historyBackend{db: db, prefix: "Scroll-Bridge-History-Server"}
+func NewHistoryLogic(db *gorm.DB) *HistoryLogic {
+	logic := &HistoryLogic{db: db}
 	return logic
 }
 
-type historyBackend struct {
-	prefix string
-	db     *gorm.DB
-}
-
-// GetCrossTxClaimInfo get UserClaimInfos by address
-func GetCrossTxClaimInfo(ctx context.Context, msgHash string, db *gorm.DB) *UserClaimInfo {
+// getCrossTxClaimInfo get UserClaimInfos by address
+func getCrossTxClaimInfo(ctx context.Context, msgHash string, db *gorm.DB) *types.UserClaimInfo {
 	l2SentMsgOrm := orm.NewL2SentMsg(db)
 	rollupOrm := orm.NewRollupBatch(db)
 	l2sentMsg, err := l2SentMsgOrm.GetL2SentMsgByHash(ctx, msgHash)
 	if err != nil || l2sentMsg == nil {
-		log.Debug("GetCrossTxClaimInfo failed", "error", err)
-		return &UserClaimInfo{}
+		log.Debug("getCrossTxClaimInfo failed", "error", err)
+		return &types.UserClaimInfo{}
 	}
 	batch, err := rollupOrm.GetRollupBatchByIndex(ctx, l2sentMsg.BatchIndex)
 	if err != nil {
-		log.Debug("GetCrossTxClaimInfo failed", "error", err)
-		return &UserClaimInfo{}
+		log.Debug("getCrossTxClaimInfo failed", "error", err)
+		return &types.UserClaimInfo{}
 	}
-	return &UserClaimInfo{
+	return &types.UserClaimInfo{
 		From:       l2sentMsg.Sender,
 		To:         l2sentMsg.Target,
 		Value:      l2sentMsg.Value,
@@ -92,7 +50,7 @@ func GetCrossTxClaimInfo(ctx context.Context, msgHash string, db *gorm.DB) *User
 
 }
 
-func updateCrossTxHash(ctx context.Context, msgHash string, txInfo *TxHistoryInfo, db *gorm.DB) {
+func updateCrossTxHash(ctx context.Context, msgHash string, txInfo *types.TxHistoryInfo, db *gorm.DB) {
 	relayed := orm.NewRelayedMsg(db)
 	relayed, err := relayed.GetRelayedMsgByHash(ctx, msgHash)
 	if err != nil {
@@ -116,8 +74,8 @@ func updateCrossTxHash(ctx context.Context, msgHash string, txInfo *TxHistoryInf
 }
 
 // GetClaimableTxsByAddress get all claimable txs under given address
-func (h *historyBackend) GetClaimableTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
-	var txHistories []*TxHistoryInfo
+func (h *HistoryLogic) GetClaimableTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*types.TxHistoryInfo, uint64, error) {
+	var txHistories []*types.TxHistoryInfo
 	l2SentMsgOrm := orm.NewL2SentMsg(h.db)
 	l2CrossMsgOrm := orm.NewCrossMsg(h.db)
 	total, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressTotalNum(ctx, address.Hex())
@@ -142,12 +100,12 @@ func (h *historyBackend) GetClaimableTxsByAddress(ctx context.Context, address c
 		crossMsgMap[crossMsg.MsgHash] = crossMsg
 	}
 	for _, result := range results {
-		txInfo := &TxHistoryInfo{
+		txInfo := &types.TxHistoryInfo{
 			Hash:        result.TxHash,
 			IsL1:        false,
 			BlockNumber: result.Height,
-			FinalizeTx:  &Finalized{},
-			ClaimInfo:   GetCrossTxClaimInfo(ctx, result.MsgHash, h.db),
+			FinalizeTx:  &types.Finalized{},
+			ClaimInfo:   getCrossTxClaimInfo(ctx, result.MsgHash, h.db),
 		}
 		if crossMsg, exist := crossMsgMap[result.MsgHash]; exist {
 			txInfo.Amount = crossMsg.Amount
@@ -161,8 +119,8 @@ func (h *historyBackend) GetClaimableTxsByAddress(ctx context.Context, address c
 }
 
 // GetTxsByAddress get all txs under given address
-func (h *historyBackend) GetTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*TxHistoryInfo, uint64, error) {
-	var txHistories []*TxHistoryInfo
+func (h *HistoryLogic) GetTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*types.TxHistoryInfo, uint64, error) {
+	var txHistories []*types.TxHistoryInfo
 	utilOrm := orm.NewCrossMsg(h.db)
 	total, err := utilOrm.GetTotalCrossMsgCountByAddress(ctx, address.String())
 	if err != nil || total == 0 {
@@ -174,7 +132,7 @@ func (h *historyBackend) GetTxsByAddress(ctx context.Context, address common.Add
 		return nil, 0, err
 	}
 	for _, msg := range result {
-		txHistory := &TxHistoryInfo{
+		txHistory := &types.TxHistoryInfo{
 			Hash:           msg.Layer1Hash + msg.Layer2Hash,
 			Amount:         msg.Amount,
 			To:             msg.Target,
@@ -182,10 +140,10 @@ func (h *historyBackend) GetTxsByAddress(ctx context.Context, address common.Add
 			BlockNumber:    msg.Height,
 			BlockTimestamp: msg.Timestamp,
 			CreatedAt:      msg.CreatedAt,
-			FinalizeTx: &Finalized{
+			FinalizeTx: &types.Finalized{
 				Hash: "",
 			},
-			ClaimInfo: GetCrossTxClaimInfo(ctx, msg.MsgHash, h.db),
+			ClaimInfo: getCrossTxClaimInfo(ctx, msg.MsgHash, h.db),
 		}
 		updateCrossTxHash(ctx, msg.MsgHash, txHistory, h.db)
 		txHistories = append(txHistories, txHistory)
@@ -194,8 +152,8 @@ func (h *historyBackend) GetTxsByAddress(ctx context.Context, address common.Add
 }
 
 // GetTxsByHashes get tx infos under given tx hashes
-func (h *historyBackend) GetTxsByHashes(ctx context.Context, hashes []string) ([]*TxHistoryInfo, error) {
-	txHistories := make([]*TxHistoryInfo, 0)
+func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, hashes []string) ([]*types.TxHistoryInfo, error) {
+	txHistories := make([]*types.TxHistoryInfo, 0)
 	CrossMsgOrm := orm.NewCrossMsg(h.db)
 	for _, hash := range hashes {
 		l1result, err := CrossMsgOrm.GetL1CrossMsgByHash(ctx, common.HexToHash(hash))
@@ -203,7 +161,7 @@ func (h *historyBackend) GetTxsByHashes(ctx context.Context, hashes []string) ([
 			return nil, err
 		}
 		if l1result != nil {
-			txHistory := &TxHistoryInfo{
+			txHistory := &types.TxHistoryInfo{
 				Hash:           l1result.Layer1Hash,
 				Amount:         l1result.Amount,
 				To:             l1result.Target,
@@ -211,7 +169,7 @@ func (h *historyBackend) GetTxsByHashes(ctx context.Context, hashes []string) ([
 				BlockNumber:    l1result.Height,
 				BlockTimestamp: l1result.Timestamp,
 				CreatedAt:      l1result.CreatedAt,
-				FinalizeTx: &Finalized{
+				FinalizeTx: &types.Finalized{
 					Hash: "",
 				},
 			}
@@ -224,7 +182,7 @@ func (h *historyBackend) GetTxsByHashes(ctx context.Context, hashes []string) ([
 			return nil, err
 		}
 		if l2result != nil {
-			txHistory := &TxHistoryInfo{
+			txHistory := &types.TxHistoryInfo{
 				Hash:           l2result.Layer2Hash,
 				Amount:         l2result.Amount,
 				To:             l2result.Target,
@@ -232,10 +190,10 @@ func (h *historyBackend) GetTxsByHashes(ctx context.Context, hashes []string) ([
 				BlockNumber:    l2result.Height,
 				BlockTimestamp: l2result.Timestamp,
 				CreatedAt:      l2result.CreatedAt,
-				FinalizeTx: &Finalized{
+				FinalizeTx: &types.Finalized{
 					Hash: "",
 				},
-				ClaimInfo: GetCrossTxClaimInfo(ctx, l2result.MsgHash, h.db),
+				ClaimInfo: getCrossTxClaimInfo(ctx, l2result.MsgHash, h.db),
 			}
 			updateCrossTxHash(ctx, l2result.MsgHash, txHistory, h.db)
 			txHistories = append(txHistories, txHistory)

@@ -4,17 +4,15 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"time"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli/v2"
 
 	"bridge-history-api/config"
 	"bridge-history-api/internal/controller"
 	"bridge-history-api/internal/route"
-	cutils "bridge-history-api/utils"
+	"bridge-history-api/utils"
 )
 
 var (
@@ -27,27 +25,27 @@ func init() {
 	app.Action = action
 	app.Name = "Scroll Bridge History Web Service"
 	app.Usage = "The Scroll Bridge History Web Service"
-	app.Flags = append(app.Flags, cutils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		return utils.LogSetup(ctx)
 	}
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	db, err := cutils.InitDB(cfg.DB)
+	db, err := utils.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db", "err", err)
 	}
 	defer func() {
-		if deferErr := cutils.CloseDB(db); deferErr != nil {
+		if deferErr := utils.CloseDB(db); deferErr != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
@@ -55,12 +53,6 @@ func action(ctx *cli.Context) error {
 	port := cfg.Server.HostPort
 
 	router := gin.Default()
-	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
-		AllowCredentials: true,
-		MaxAge:           12 * time.Hour,
-	}))
 	controller.InitController(db)
 	route.Route(router, cfg)
 

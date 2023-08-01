@@ -8,7 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"bridge-history-api/internal/logic"
-	"bridge-history-api/internal/model"
+	"bridge-history-api/internal/types"
 )
 
 var (
@@ -26,58 +26,58 @@ func InitController(db *gorm.DB) {
 
 // HistoryController contains the query claimable txs service
 type HistoryController struct {
-	Service logic.HistoryLogic
+	historyLogic logic.HistoryLogic
 }
 
 // NewHistoryController return HistoryController instance
 func NewHistoryController(db *gorm.DB) *HistoryController {
 	return &HistoryController{
-		Service: logic.NewHistoryLogic(db),
+		historyLogic: *logic.NewHistoryLogic(db),
 	}
 }
 
 // GetAllClaimableTxsByAddr defines the http get method behavior
 func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
-	var req model.QueryByAddressRequest
+	var req types.QueryByAddressRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		model.RenderJSON(ctx, 400, err, nil)
+		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
 		return
 	}
-	txs, total, err := c.Service.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address), req.Offset, req.Limit)
+	txs, total, err := c.historyLogic.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address), req.Offset, req.Limit)
 	if err != nil {
-		model.RenderJSON(ctx, 500, err, nil)
+		types.RenderJSON(ctx, types.ErrGetClaimablesFailure, err, nil)
 		return
 	}
 
-	model.RenderJSON(ctx, 200, nil, &model.ResultData{Result: txs, Total: total})
+	types.RenderJSON(ctx, types.Success, nil, &types.ResultData{Result: txs, Total: total})
 }
 
 // GetAllTxsByAddr defines the http get method behavior
 func (c *HistoryController) GetAllTxsByAddr(ctx *gin.Context) {
-	var req model.QueryByAddressRequest
+	var req types.QueryByAddressRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		model.RenderJSON(ctx, 400, err, nil)
+		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
 		return
 	}
-	message, total, err := c.Service.GetTxsByAddress(ctx, common.HexToAddress(req.Address), req.Offset, req.Limit)
+	message, total, err := c.historyLogic.GetTxsByAddress(ctx, common.HexToAddress(req.Address), req.Offset, req.Limit)
 	if err != nil {
-		model.RenderJSON(ctx, 500, err, nil)
+		types.RenderJSON(ctx, types.ErrGetTxsByAddrFailure, err, nil)
 		return
 	}
-	model.RenderJSON(ctx, 200, nil, &model.ResultData{Result: message, Total: total})
+	types.RenderJSON(ctx, types.Success, nil, &types.ResultData{Result: message, Total: total})
 }
 
 // PostQueryTxsByHash defines the http post method behavior
 func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
-	var req model.QueryByHashRequest
+	var req types.QueryByHashRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		model.RenderJSON(ctx, 400, err, nil)
+		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
 		return
 	}
-	result, err := c.Service.GetTxsByHashes(ctx, req.Txs)
+	result, err := c.historyLogic.GetTxsByHashes(ctx, req.Txs)
 	if err != nil {
-		model.RenderJSON(ctx, 500, err, nil)
+		types.RenderJSON(ctx, types.ErrGetTxsByHashFailure, err, nil)
 		return
 	}
-	model.RenderJSON(ctx, 200, nil, &model.ResultData{Result: result, Total: 0})
+	types.RenderJSON(ctx, types.Success, nil, &types.ResultData{Result: result, Total: 0})
 }
