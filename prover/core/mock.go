@@ -28,7 +28,7 @@ func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*mes
 	return &message.ChunkProof{
 		StorageTrace: _empty[:],
 		Protocol:     _empty[:],
-		Proof: message.Proof{
+		ChunkProofInner: message.ChunkProofInner{
 			Proof:     _empty[:],
 			Instances: _empty[:],
 			Vk:        _empty[:],
@@ -36,7 +36,7 @@ func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*mes
 	}, nil
 }
 
-func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
+func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	_empty := common.BigToHash(big.NewInt(0))
 	return &message.BatchProof{
 		Proof:     _empty[:],

@@ -112,6 +112,11 @@ func (cp *ChunkProofCollector) sendTask(ctx context.Context, hash string) ([]*co
 	for i, wrappedBlock := range wrappedBlocks {
 		blockHashes[i] = wrappedBlock.Header.Hash()
 	}
-
-	return cp.BaseCollector.sendTask(message.ProofTypeChunk, hash, blockHashes, nil)
+	taskMsg := &message.TaskMsg{
+		ID:              hash,
+		Type:            message.ProofTypeChunk,
+		ChunkTaskDetail: &message.ChunkTaskDetail{BlockHashes: blockHashes},
+		BatchTaskDetail: nil,
+	}
+	return cp.BaseCollector.sendTask(taskMsg)
 }

@@ -202,13 +202,19 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	ID   string    `json:"id"`
-	Type ProofType `json:"type,omitempty"`
-	// For decentralization, basic provers will get block hashes from the coordinator. So that they can refer to the block hashes and fetch traces locally. Only applicable for basic provers.
-	BlockHashes []common.Hash `json:"block_hashes,omitempty"`
-	// Only applicable for aggregator provers.
-	ChunkHashes []*ChunkHash  `json:"chunk_hashes,omitempty"`
-	SubProofs   []*ChunkProof `json:"sub_proofs,omitempty"`
+	ID              string           `json:"id"`
+	Type            ProofType        `json:"type,omitempty"`
+	BatchTaskDetail *BatchTaskDetail `json:"batch_task_detail,omitempty"`
+	ChunkTaskDetail *ChunkTaskDetail `json:"chunk_task_detail,omitempty"`
+}
+
+type ChunkTaskDetail struct {
+	BlockHashes []common.Hash `json:"block_hashes"`
+}
+
+type BatchTaskDetail struct {
+	ChunkInfos []*ChunkInfo  `json:"chunk_infos"`
+	SubProofs   []*ChunkProof `json:"sub_proofs"`
 }
 
 // ProofDetail is the message received from provers that contains zk proof, the status of
@@ -233,8 +239,8 @@ func (z *ProofDetail) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
-// ChunkHash is for chunk proof
-type ChunkHash struct {
+// ChunkInfo is for calculating pi_hash for chunk
+type ChunkInfo struct {
 	ChainID       uint64      `json:"chain_id"`
 	PrevStateRoot common.Hash `json:"prev_state_root"`
 	PostStateRoot common.Hash `json:"post_state_root"`
@@ -245,13 +251,13 @@ type ChunkHash struct {
 
 // ChunkProof includes the proof info that are required for chunk verification and rollup.
 type ChunkProof struct {
-	StorageTrace []byte `json:"storage_trace"`
-	Protocol     []byte `json:"protocol"`
-	Proof        Proof  `json:"proof"`
+	StorageTrace    []byte          `json:"storage_trace"`
+	Protocol        []byte          `json:"protocol"`
+	ChunkProofInner ChunkProofInner `json:"proof"`
 }
 
-// Proof is the zk proof detail
-type Proof struct {
+// ChunkProofInner is the inner chunk_poof.
+type ChunkProofInner struct {
 	Proof     []byte `json:"proof"`
 	Instances []byte `json:"instances"`
 	Vk        []byte `json:"vk"`
