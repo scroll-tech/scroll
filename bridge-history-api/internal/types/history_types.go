@@ -22,10 +22,9 @@ const (
 
 // QueryByAddressRequest the request parameter of address api
 type QueryByAddressRequest struct {
-	Address string `form:"address" binding:"required"`
-	// offset can be 0
-	Offset int `form:"offset"`
-	Limit  int `form:"limit" binding:"required"`
+	Address  string `form:"address" binding:"required"`
+	Page     int    `form:"page" binding:"required"`
+	PageSize int    `form:"limit" binding:"required"`
 }
 
 // QueryByHashRequest the request parameter of hash api

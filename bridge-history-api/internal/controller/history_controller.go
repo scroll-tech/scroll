@@ -28,7 +28,9 @@ func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
 		return
 	}
-	txs, total, err := c.historyLogic.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address), req.Offset, req.Limit)
+	offset := (req.Page - 1) * req.PageSize
+	limit := req.PageSize
+	txs, total, err := c.historyLogic.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
 	if err != nil {
 		types.RenderJSON(ctx, types.ErrGetClaimablesFailure, err, nil)
 		return
@@ -44,7 +46,9 @@ func (c *HistoryController) GetAllTxsByAddr(ctx *gin.Context) {
 		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
 		return
 	}
-	message, total, err := c.historyLogic.GetTxsByAddress(ctx, common.HexToAddress(req.Address), req.Offset, req.Limit)
+	offset := (req.Page - 1) * req.PageSize
+	limit := req.PageSize
+	message, total, err := c.historyLogic.GetTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
 	if err != nil {
 		types.RenderJSON(ctx, types.ErrGetTxsByAddrFailure, err, nil)
 		return
