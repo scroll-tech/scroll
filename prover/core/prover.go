@@ -100,16 +100,16 @@ func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*mes
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
-// TracesToChunkHash convert traces to chunk hash
-func (p *ProverCore) TracesToChunkHash(traces []*types.BlockTrace) (*message.ChunkHash, error) {
+// TracesToChunkInfo convert traces to chunk info
+func (p *ProverCore) TracesToChunkInfo(traces []*types.BlockTrace) (*message.ChunkInfo, error) {
 	tracesByt, err := json.Marshal(traces)
 	if err != nil {
 		return nil, err
 	}
-	chunkHashByt := p.tracesToChunkHash(tracesByt)
+	chunkInfoByt := p.tracesToChunkInfo(tracesByt)
 
-	chunkHash := &message.ChunkHash{}
-	return chunkHash, json.Unmarshal(chunkHashByt, chunkHash)
+	chunkInfo := &message.ChunkInfo{}
+	return chunkInfo, json.Unmarshal(chunkInfoByt, chunkInfo)
 }
 
 func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) []byte {
@@ -158,15 +158,15 @@ func (p *ProverCore) mayDumpProof(id string, proofByt []byte) error {
 	return err
 }
 
-func (p *ProverCore) tracesToChunkHash(tracesByt []byte) []byte {
+func (p *ProverCore) tracesToChunkInfo(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
 
 	defer func() {
 		C.free(unsafe.Pointer(tracesStr))
 	}()
 
-	cChunkHash := C.block_traces_to_chunk_hash(tracesStr)
+	cChunkInfo := C.block_traces_to_chunk_info(tracesStr)
 
-	chunkHash := C.GoString(cChunkHash)
-	return []byte(chunkHash)
+	chunkInfo := C.GoString(cChunkInfo)
+	return []byte(chunkInfo)
 }

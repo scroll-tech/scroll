@@ -8,4 +8,4 @@ void init_chunk_verifier(char* params_dir, char* assets_dir);
 char* gen_chunk_proof(char* block_traces);
 char verify_chunk_proof(char* proof);
 
-char* block_traces_to_chunk_hash(char* block_traces);
+char* block_traces_to_chunk_info(char* block_traces);

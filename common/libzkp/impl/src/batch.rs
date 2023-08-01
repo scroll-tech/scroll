@@ -78,13 +78,13 @@ pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char) -> c_char {
 // This function is only used for debugging on Go side.
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn block_traces_to_chunk_hash(block_traces: *const c_char) -> *const c_char {
+pub unsafe extern "C" fn block_traces_to_chunk_info(block_traces: *const c_char) -> *const c_char {
     let block_traces = c_char_to_vec(block_traces);
     let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces).unwrap();
 
     let witness_block = chunk_trace_to_witness_block(block_traces).unwrap();
-    let chunk_hash = ChunkHash::from_witness_block(&witness_block, false);
+    let chunk_info = ChunkHash::from_witness_block(&witness_block, false);
 
-    let chunk_hash_bytes = serde_json::to_vec(&chunk_hash).unwrap();
-    vec_to_c_char(chunk_hash_bytes)
+    let chunk_info_bytes = serde_json::to_vec(&chunk_info).unwrap();
+    vec_to_c_char(chunk_info_bytes)
 }
