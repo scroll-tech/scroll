@@ -8,6 +8,7 @@ create table rollup_batch
     start_block_number  BIGINT NOT NULL,
     end_block_number    BIGINT NOT NULL,
     batch_hash          VARCHAR NOT NULL,
+    withdraw_root       TEXT NOT NULL DEFAULT '',
     created_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP(0) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at          TIMESTAMP(0) DEFAULT NULL

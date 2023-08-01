@@ -174,7 +174,10 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		if err != nil {
 			return err
 		}
-
+		err = m.rollupOrm.UpdateRuollupBatchWithdrawRoot(m.ctx, b.BatchIndex, m.withdrawTrie.MessageRoot().Hex())
+		if err != nil {
+			return err
+		}
 		err = m.updateMsgProof(msgs, proofs, b.BatchIndex)
 		if err != nil {
 			return err
