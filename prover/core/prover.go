@@ -54,10 +54,10 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	return &ProverCore{cfg: cfg}, nil
 }
 
-// ProveBatch call rust ffi to generate batch proof, if first failed, try again.
+// ProveBatch call rust ffi to generate batch proof.
 func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {
-		return nil, fmt.Errorf("Wrong proof type in batch-prover: %v", p.cfg.ProofType)
+		return nil, fmt.Errorf("prover is not a batch-prover (type: %v), but is trying to prove a batch", p.cfg.ProofType)
 	}
 
 	chunkHashesByt, err := json.Marshal(chunkHashes)
@@ -70,8 +70,7 @@ func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkHash,
 	}
 	proofByt := p.proveBatch(chunkHashesByt, chunkProofsByt)
 
-	// dump proof
-	err = p.dumpProof(taskID, proofByt)
+	err = p.mayDumpProof(taskID, proofByt)
 	if err != nil {
 		log.Error("Dump batch proof failed", "task-id", taskID, "error", err)
 	}
@@ -80,10 +79,10 @@ func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkHash,
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
-// ProveChunk call rust ffi to generate chunk proof, if first failed, try again.
+// ProveChunk call rust ffi to generate chunk proof.
 func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
 	if p.cfg.ProofType != message.ProofTypeChunk {
-		return nil, fmt.Errorf("Wrong proof type in chunk-prover: %v", p.cfg.ProofType)
+		return nil, fmt.Errorf("prover is not a chunk-prover (type: %v), but is trying to prove a chunk", p.cfg.ProofType)
 	}
 
 	tracesByt, err := json.Marshal(traces)
@@ -92,8 +91,7 @@ func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*mes
 	}
 	proofByt := p.proveChunk(tracesByt)
 
-	// dump proof
-	err = p.dumpProof(taskID, proofByt)
+	err = p.mayDumpProof(taskID, proofByt)
 	if err != nil {
 		log.Error("Dump chunk proof failed", "task-id", taskID, "error", err)
 	}
@@ -146,7 +144,7 @@ func (p *ProverCore) proveChunk(tracesByt []byte) []byte {
 	return []byte(proof)
 }
 
-func (p *ProverCore) dumpProof(id string, proofByt []byte) error {
+func (p *ProverCore) mayDumpProof(id string, proofByt []byte) error {
 	if p.cfg.DumpDir == "" {
 		return nil
 	}
