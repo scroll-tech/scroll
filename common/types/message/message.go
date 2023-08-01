@@ -213,7 +213,7 @@ type ChunkTaskDetail struct {
 }
 
 type BatchTaskDetail struct {
-	ChunkHashes []*ChunkHash  `json:"chunk_hashes"`
+	ChunkInfos []*ChunkInfo  `json:"chunk_infos"`
 	SubProofs   []*ChunkProof `json:"sub_proofs"`
 }
 
@@ -239,8 +239,8 @@ func (z *ProofDetail) Hash() ([]byte, error) {
 	return hash[:], nil
 }
 
-// ChunkHash is for chunk proof
-type ChunkHash struct {
+// ChunkInfo is for calculating pi_hash for chunk
+type ChunkInfo struct {
 	ChainID       uint64      `json:"chain_id"`
 	PrevStateRoot common.Hash `json:"prev_state_root"`
 	PostStateRoot common.Hash `json:"post_state_root"`

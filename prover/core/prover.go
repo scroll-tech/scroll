@@ -55,12 +55,12 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 }
 
 // ProveBatch call rust ffi to generate batch proof.
-func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
+func (p *ProverCore) ProveBatch(taskID string, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {
 		return nil, fmt.Errorf("prover is not a batch-prover (type: %v), but is trying to prove a batch", p.cfg.ProofType)
 	}
 
-	chunkHashesByt, err := json.Marshal(chunkHashes)
+	chunkInfosByt, err := json.Marshal(chunkInfos)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkHash,
 	if err != nil {
 		return nil, err
 	}
-	proofByt := p.proveBatch(chunkHashesByt, chunkProofsByt)
+	proofByt := p.proveBatch(chunkInfosByt, chunkProofsByt)
 
 	err = p.mayDumpProof(taskID, proofByt)
 	if err != nil {
@@ -112,17 +112,17 @@ func (p *ProverCore) TracesToChunkHash(traces []*types.BlockTrace) (*message.Chu
 	return chunkHash, json.Unmarshal(chunkHashByt, chunkHash)
 }
 
-func (p *ProverCore) proveBatch(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
-	chunkHashesStr := C.CString(string(chunkHashesByt))
+func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) []byte {
+	chunkInfosStr := C.CString(string(chunkInfosByt))
 	chunkProofsStr := C.CString(string(chunkProofsByt))
 
 	defer func() {
-		C.free(unsafe.Pointer(chunkHashesStr))
+		C.free(unsafe.Pointer(chunkInfosStr))
 		C.free(unsafe.Pointer(chunkProofsStr))
 	}()
 
 	log.Info("Start to create batch proof ...")
-	cProof := C.gen_batch_proof(chunkHashesStr, chunkProofsStr)
+	cProof := C.gen_batch_proof(chunkInfosStr, chunkProofsStr)
 	log.Info("Finish creating batch proof!")
 
 	proof := C.GoString(cProof)
