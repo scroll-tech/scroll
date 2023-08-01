@@ -9,6 +9,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 )
 
 // Config loads prover configuration items.
@@ -20,6 +21,7 @@ type Config struct {
 	Core             *ProverCoreConfig  `json:"core"`
 	DBPath           string             `json:"db_path"`
 	Coordinator      *CoordinatorConfig `json:"coordinator"`
+	Confirmations    rpc.BlockNumber    `json:"confirmations"`
 }
 
 // ProverCoreConfig load zk prover config.

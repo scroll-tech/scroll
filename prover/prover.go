@@ -14,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -22,6 +23,7 @@ import (
 	"scroll-tech/prover/config"
 	"scroll-tech/prover/core"
 	"scroll-tech/prover/store"
+	putils "scroll-tech/prover/utils"
 )
 
 var (
@@ -209,14 +211,20 @@ func (r *Prover) prove() error {
 
 // fetchTaskFromServer fetches a new task from the server
 func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
-	// Prepare the request
+	// get the latest confirmed block number
+	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.traceClient, rpc.SafeBlockNumber)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
+	}
+
+	// prepare the request
 	req := &client.ProverTasksRequest{
 		ProverVersion: version.Version,
-		ProverHeight:  0, // TODO(colinlyguo): adjust prover height.
+		ProverHeight:  int(latestBlockNumber),
 		ProofType:     int(r.Type()),
 	}
 
-	// Send the request
+	// send the request
 	resp, err := r.coordinatorClient.ProverTasks(r.ctx, req)
 	if err != nil {
 		return nil, err
@@ -226,7 +234,7 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 		return nil, fmt.Errorf("no tasks available")
 	}
 
-	// Convert the response task to a ProvingTask
+	// convert the response task to a ProvingTask
 	provingTask := &store.ProvingTask{
 		Task: &message.TaskMsg{
 			ID:   resp.Data.TaskID,
@@ -263,28 +271,28 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
 		return fmt.Errorf("error signing proof: %v", err)
 	}
 
-	// Marshal the ChunkProof and BatchProof into a single JSON
+	// marshal the ChunkProof and BatchProof into a single JSON
 	proofs := map[string]interface{}{
 		"chunk_proof": authZkProof.ChunkProof,
 		"batch_proof": authZkProof.BatchProof,
 	}
 
-	proofJson, err := json.Marshal(proofs)
+	proofJSON, err := json.Marshal(proofs)
 	if err != nil {
 		return fmt.Errorf("error marshaling proofs into JSON: %v", err)
 	}
 
-	// Prepare the submit request
+	// prepare the submit request
 	req := &client.SubmitProofRequest{
 		TaskID:    authZkProof.ProofDetail.ID,
 		Status:    int(authZkProof.ProofDetail.Status),
 		Error:     msg.Error,
 		ProofType: int(authZkProof.ProofDetail.Type),
 		Signature: authZkProof.Signature,
-		Proof:     string(proofJson),
+		Proof:     string(proofJSON),
 	}
 
-	// Send the submit request
+	// send the submit request
 	resp, err := r.coordinatorClient.SubmitProof(r.ctx, req)
 	if err != nil {
 		return fmt.Errorf("error submitting proof: %v", err)

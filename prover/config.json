@@ -10,5 +10,6 @@
     "coordinator": {
         "base_url": "https://coordinator/v1",
         "timeout": 30
-    }
+    },
+    "confirmations": "0x1"
 }
