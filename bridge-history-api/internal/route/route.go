@@ -21,6 +21,6 @@ func Route(router *gin.Engine, conf *config.Config) {
 
 	r := router.Group("api/")
 	r.GET("/txs", controller.HistoryCtrler.GetAllTxsByAddr)
-	r.GET("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHash)
+	r.POST("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHash)
 	r.GET("/claimable", controller.HistoryCtrler.GetAllClaimableTxsByAddr)
 }
