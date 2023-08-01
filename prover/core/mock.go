@@ -27,8 +27,12 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 func (p *ProverCore) Prove(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
 	_empty := common.BigToHash(big.NewInt(0))
 	return &message.ChunkProof{
-		Proof:     _empty[:],
-		Instance:  _empty[:],
-		FinalPair: _empty[:],
+		StorageTrace: _empty[:],
+		Protocol:     _empty[:],
+		Proof: message.Proof{
+			Proof:     _empty[:],
+			Instances: _empty[:],
+			Vk:        _empty[:],
+		},
 	}, nil
 }
