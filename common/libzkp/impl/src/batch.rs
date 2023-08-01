@@ -5,7 +5,7 @@ use prover::{
     utils::{chunk_trace_to_witness_block, init_env_and_log},
     ChunkHash, ChunkProof, Proof,
 };
-use std::{cell::OnceCell, panic};
+use std::{cell::OnceCell, panic, ptr::null};
 use types::eth::BlockTrace;
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
@@ -53,8 +53,8 @@ pub unsafe extern "C" fn gen_batch_proof(
         .zip(chunk_proofs.into_iter())
         .collect();
 
-    let proof = panic::catch_unwind(|| {
-        PROVER
+    let proof_result = panic::catch_unwind(|| {
+        let proof = PROVER
             .get_mut()
             .unwrap()
             .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn gen_batch_proof(
 
         serde_json::to_vec(&proof).unwrap()
     });
-    proof.map_or(null(), vec_to_c_char)
+    proof_result.map_or(null(), vec_to_c_char)
 }
 
 /// # Safety

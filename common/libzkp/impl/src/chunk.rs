@@ -5,7 +5,7 @@ use prover::{
     zkevm::{Prover, Verifier},
     ChunkProof,
 };
-use std::{cell::OnceCell, panic};
+use std::{cell::OnceCell, panic, ptr::null};
 use types::eth::BlockTrace;
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
@@ -41,8 +41,8 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
     let block_traces = c_char_to_vec(block_traces);
     let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces).unwrap();
 
-    let proof = panic::catch_unwind(|| {
-        PROVER
+    let proof_result = panic::catch_unwind(|| {
+        let proof = PROVER
             .get_mut()
             .unwrap()
             .gen_chunk_proof(block_traces, None, OUTPUT_DIR.as_deref())
@@ -51,7 +51,7 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
         serde_json::to_vec(&proof).unwrap()
     });
 
-    proof.map_or(null(), vec_to_c_char)
+    proof_result.map_or(null(), vec_to_c_char)
 }
 
 /// # Safety
