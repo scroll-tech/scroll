@@ -9,6 +9,7 @@ import (
 	// enable the pprof
 	_ "net/http/pprof"
 
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -20,7 +21,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/controller/cron"
-	"scroll-tech/coordinator/internal/logic/provermanager"
+	"scroll-tech/coordinator/internal/route"
 )
 
 var app *cli.App
@@ -55,9 +56,6 @@ func action(ctx *cli.Context) error {
 	}
 
 	proofCollector := cron.NewCollector(subCtx, db, cfg)
-
-	provermanager.InitProverManager(db)
-
 	defer func() {
 		proofCollector.Stop()
 		cancel()
@@ -66,34 +64,19 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
+	router := gin.Default()
+	api.InitController(cfg, db)
+	route.Route(router, cfg)
+
 	// Start metrics server.
 	metrics.Serve(subCtx, ctx)
 
-	apis := api.RegisterAPIs(cfg, db)
-	// Register api and start rpc service.
-	if ctx.Bool(httpEnabledFlag.Name) {
-		handler, addr, err := utils.StartHTTPEndpoint(fmt.Sprintf("%s:%d", ctx.String(httpListenAddrFlag.Name), ctx.Int(httpPortFlag.Name)), apis)
-		if err != nil {
-			log.Crit("Could not start RPC api", "error", err)
+	port := ctx.String(httpPortFlag.Name)
+	go func() {
+		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
+			log.Crit("run http server failure", "error", runServerErr)
 		}
-		defer func() {
-			_ = handler.Shutdown(ctx.Context)
-			log.Info("HTTP endpoint closed", "url", fmt.Sprintf("http://%v/", addr))
-		}()
-		log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%v/", addr))
-	}
-	// Register api and start ws service.
-	if ctx.Bool(wsEnabledFlag.Name) {
-		handler, addr, err := utils.StartWSEndpoint(fmt.Sprintf("%s:%d", ctx.String(wsListenAddrFlag.Name), ctx.Int(wsPortFlag.Name)), apis, cfg.ProverManagerConfig.CompressionLevel)
-		if err != nil {
-			log.Crit("Could not start WS api", "error", err)
-		}
-		defer func() {
-			_ = handler.Shutdown(ctx.Context)
-			log.Info("WS endpoint closed", "url", fmt.Sprintf("ws://%v/", addr))
-		}()
-		log.Info("WS endpoint opened", "url", fmt.Sprintf("ws://%v/", addr))
-	}
+	}()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

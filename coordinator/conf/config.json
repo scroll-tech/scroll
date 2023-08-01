@@ -21,5 +21,9 @@
   },
   "l2_config": {
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc"
+  },
+  "auth": {
+    "secret": "prover secret key",
+    "token_expire_duration": 3600
   }
 }

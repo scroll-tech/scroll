@@ -1,9 +1,9 @@
-package collector
+package prover_task
 
 import (
 	"context"
 
-	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"gorm.io/gorm"
@@ -13,24 +13,15 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/provermanager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-const (
-	// BatchCollectorName the name of batch collector
-	BatchCollectorName = "batch_collector"
-	// ChunkCollectorName the name of chunk collector
-	ChunkCollectorName = "chunk_collector"
-)
-
 var coordinatorSessionsTimeoutTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
 
-// Collector the interface of a collector who send data to prover
-type Collector interface {
-	Name() string
-	Collect(ctx context.Context) error
+// ProverTask the interface of a collector who send data to prover
+type ProverTask interface {
+	Collect(ctx *gin.Context) (*coordinatorType.ProverTaskSchema, error)
 }
 
 // BaseCollector a base collector which contain series functions
@@ -61,12 +52,6 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 
 		log.Warn("proof generation prover task %s ended because reach the max attempts", hash)
 
-		for _, proverTask := range proverTasks {
-			if types.ProvingStatus(proverTask.ProvingStatus) == types.ProvingTaskFailed {
-				provermanager.Manager.FreeTaskIDForProver(proverTask.ProverPublicKey, hash)
-			}
-		}
-
 		transErr := b.db.Transaction(func(tx *gorm.DB) error {
 			switch message.ProofType(proverTasks[0].TaskType) {
 			case message.ProofTypeChunk:
@@ -89,37 +74,4 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 		}
 	}
 	return true
-}
-
-func (b *BaseCollector) sendTask(proveType message.ProofType, hash string, blockHashes []common.Hash, subProofs []*message.ChunkProof) ([]*coordinatorType.ProverStatus, error) {
-	sendMsg := &message.TaskMsg{
-		ID:          hash,
-		Type:        proveType,
-		BlockHashes: blockHashes,
-		SubProofs:   subProofs,
-	}
-
-	var err error
-	var proverStatusList []*coordinatorType.ProverStatus
-	for i := uint8(0); i < b.cfg.ProverManagerConfig.ProversPerSession; i++ {
-		proverPubKey, proverName, sendErr := provermanager.Manager.SendTask(proveType, sendMsg)
-		if sendErr != nil {
-			err = sendErr
-			continue
-		}
-
-		provermanager.Manager.UpdateMetricProverProofsLastAssignedTimestampGauge(proverPubKey)
-
-		proverStatus := &coordinatorType.ProverStatus{
-			PublicKey: proverPubKey,
-			Name:      proverName,
-			Status:    types.ProverAssigned,
-		}
-		proverStatusList = append(proverStatusList, proverStatus)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	return proverStatusList, nil
 }

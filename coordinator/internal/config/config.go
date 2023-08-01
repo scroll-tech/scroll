@@ -41,11 +41,18 @@ type L2Config struct {
 	Endpoint string `json:"endpoint"`
 }
 
+// Auth provides the auth of prover-stats-api
+type Auth struct {
+	Secret              string `json:"secret"`
+	TokenExpireDuration int    `json:"token_expire_duration"` // unit: seconds
+}
+
 // Config load configuration items.
 type Config struct {
 	ProverManagerConfig *ProverManagerConfig `json:"prover_manager_config"`
 	DBConfig            *database.Config     `json:"db_config"`
 	L2Config            *L2Config            `json:"l2_config"`
+	Auth                Auth                 `json:"auth"`
 }
 
 // VerifierConfig load zk verifier config.
