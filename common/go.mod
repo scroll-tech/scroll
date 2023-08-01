@@ -10,7 +10,7 @@ require (
 	github.com/mattn/go-isatty v0.0.19
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230719161034-a677ee3ccf91
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230801133212-7b75f163b0c3
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
 	gorm.io/driver/postgres v1.5.0
