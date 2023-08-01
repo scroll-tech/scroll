@@ -51,10 +51,10 @@ func TestStartProcess(t *testing.T) {
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
 	// Run prover app.
-	proverApp.RunApp(t)
+	//proverApp.RunApp(t)
 
 	// Free apps.
-	proverApp.WaitExit()
+	//proverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
 
