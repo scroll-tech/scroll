@@ -5,7 +5,6 @@
     "db_path": "bbolt_db",
     "core": {
         "params_path": "params",
-        "seed_path": "seed"
     },
     "coordinator": {
         "base_url": "https://coordinator/v1",

@@ -33,7 +33,7 @@ func TestConfig(t *testing.T) {
 			"maxIdleNum": 20
 		},
 		"l2_config": {
-			"endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc"
+			"chain_id": 111
 		}
 	}`
 

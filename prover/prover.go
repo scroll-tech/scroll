@@ -122,14 +122,14 @@ func (r *Prover) ProveLoop() {
 		case <-r.stopChan:
 			return
 		default:
-			if err := r.prove(); err != nil {
+			if err := r.proveAndSubmit(); err != nil {
 				log.Error("prove failed", "error", err)
 			}
 		}
 	}
 }
 
-func (r *Prover) prove() error {
+func (r *Prover) proveAndSubmit() error {
 	task, err := r.stack.Peek()
 	if err != nil {
 		if err != store.ErrEmpty {
@@ -150,52 +150,16 @@ func (r *Prover) prove() error {
 			return err
 		}
 
-		log.Info("start to prove block", "task-id", task.Task.ID)
-
-		var traces []*types.BlockTrace
-		traces, err = r.getSortedTracesByHashes(task.Task.BlockHashes)
-		if err != nil {
-			proofMsg = &message.ProofDetail{
-				Status:     message.StatusProofError,
-				Error:      "get traces failed",
-				ID:         task.Task.ID,
-				Type:       task.Task.Type,
-				ChunkProof: nil,
-			}
-			log.Error("get traces failed!", "task-id", task.Task.ID, "err", err)
-		} else {
-			// If FFI panic during Prove, the prover will restart and re-enter prove() function,
-			// the proof will not be submitted.
-			var proof *message.ChunkProof
-			proof, err = r.proverCore.Prove(task.Task.ID, traces)
-			if err != nil {
-				proofMsg = &message.ProofDetail{
-					Status:     message.StatusProofError,
-					Error:      err.Error(),
-					ID:         task.Task.ID,
-					Type:       task.Task.Type,
-					ChunkProof: nil,
-				}
-				log.Error("prove block failed!", "task-id", task.Task.ID)
-			} else {
-				proofMsg = &message.ProofDetail{
-					Status:     message.StatusOk,
-					ID:         task.Task.ID,
-					Type:       task.Task.Type,
-					ChunkProof: proof,
-				}
-				log.Info("prove block successfully!", "task-id", task.Task.ID)
-			}
-		}
+		log.Info("start to prove task", "task-type", task.Task.Type, "task-id", task.Task.ID)
+		proofMsg = r.prove(task)
 	} else {
 		// when the prover has more than 3 times panic,
 		// it will omit to prove the task, submit StatusProofError and then Delete the task.
 		proofMsg = &message.ProofDetail{
-			Status:     message.StatusProofError,
-			Error:      "zk proving panic",
-			ID:         task.Task.ID,
-			Type:       task.Task.Type,
-			ChunkProof: nil,
+			Status: message.StatusProofError,
+			Error:  "zk proving panic",
+			ID:     task.Task.ID,
+			Type:   task.Task.Type,
 		}
 	}
 
@@ -207,6 +171,24 @@ func (r *Prover) prove() error {
 	}()
 
 	return r.signAndSubmitProof(proofMsg)
+}
+
+func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error) {
+	if task.Task.ChunkTaskDetail == nil {
+		return nil, errors.New("ChunkTaskDetail is empty")
+	}
+	traces, err := r.getSortedTracesByHashes(task.Task.ChunkTaskDetail.BlockHashes)
+	if err != nil {
+		return nil, errors.New("get traces from eth node failed")
+	}
+	return r.proverCore.ProveChunk(task.Task.ID, traces)
+}
+
+func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error) {
+	if task.Task.BatchTaskDetail == nil {
+		return nil, errors.New("BatchTaskDetail is empty")
+	}
+	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.ChunkProofs)
 }
 
 // fetchTaskFromServer fetches a new task from the server
@@ -270,6 +252,42 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
 	if err := authZkProof.Sign(r.priv); err != nil {
 		return fmt.Errorf("error signing proof: %v", err)
 	}
+  
+  detail = &message.ProofDetail{
+		ID:     task.Task.ID,
+		Type:   task.Task.Type,
+		Status: message.StatusOk,
+	}
+
+	switch r.Type() {
+	case message.ProofTypeChunk:
+		proof, err := r.proveChunk(task)
+		if err != nil {
+			log.Error("prove chunk failed!", "task-id", task.Task.ID, "err", err)
+			detail.Status = message.StatusProofError
+			detail.Error = err.Error()
+			return
+		}
+		detail.ChunkProof = proof
+		log.Info("prove chunk successfully!", "task-id", task.Task.ID)
+		return
+
+	case message.ProofTypeBatch:
+		proof, err := r.proveBatch(task)
+		if err != nil {
+			log.Error("prove batch failed!", "task-id", task.Task.ID, "err", err)
+			detail.Status = message.StatusProofError
+			detail.Error = err.Error()
+			return
+		}
+		detail.BatchProof = proof
+		log.Info("prove batch successfully!", "task-id", task.Task.ID)
+		return
+
+	default:
+		log.Error("invalid task type", "task-id", task.Task.ID, "task-type", task.Task.Type)
+		return
+	}
 
 	// marshal the ChunkProof and BatchProof into a single JSON
 	proofs := map[string]interface{}{
@@ -286,7 +304,7 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
 	req := &client.SubmitProofRequest{
 		TaskID:    authZkProof.ProofDetail.ID,
 		Status:    int(authZkProof.ProofDetail.Status),
-		Error:     msg.Error,
+		Error:     authZkProof.ProofDetail.Error,
 		ProofType: int(authZkProof.ProofDetail.Type),
 		Signature: authZkProof.Signature,
 		Proof:     string(proofJSON),
