@@ -100,12 +100,18 @@ func (bp *BatchProofCollector) Collect(ctx context.Context) error {
 	return transErr
 }
 
-func (bp *BatchProofCollector) sendTask(ctx context.Context, taskID string) ([]*coordinatorType.ProverStatus, error) {
+func (bp *BatchProofCollector) sendTask(ctx context.Context, hash string) ([]*coordinatorType.ProverStatus, error) {
 	// get chunk proofs from db
-	chunkProofs, err := bp.chunkOrm.GetProofsByBatchHash(ctx, taskID)
+	chunkProofs, err := bp.chunkOrm.GetProofsByBatchHash(ctx, hash)
 	if err != nil {
-		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", taskID, err)
+		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", hash, err)
 		return nil, err
 	}
-	return bp.BaseCollector.sendTask(message.ProofTypeBatch, taskID, nil, chunkProofs)
+	taskMsg := &message.TaskMsg{
+		ID:              hash,
+		Type:            message.ProofTypeBatch,
+		ChunkTaskDetail: nil,
+		BatchTaskDetail: &message.BatchTaskDetail{SubProofs: chunkProofs},
+	}
+	return bp.BaseCollector.sendTask(taskMsg)
 }
