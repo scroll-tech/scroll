@@ -214,7 +214,7 @@ type ChunkTaskDetail struct {
 
 type BatchTaskDetail struct {
 	ChunkInfos []*ChunkInfo  `json:"chunk_infos"`
-	SubProofs   []*ChunkProof `json:"sub_proofs"`
+	SubProofs  []*ChunkProof `json:"sub_proofs"`
 }
 
 // ProofDetail is the message received from provers that contains zk proof, the status of
@@ -251,16 +251,11 @@ type ChunkInfo struct {
 
 // ChunkProof includes the proof info that are required for chunk verification and rollup.
 type ChunkProof struct {
-	StorageTrace    []byte          `json:"storage_trace"`
-	Protocol        []byte          `json:"protocol"`
-	ChunkProofInner ChunkProofInner `json:"proof"`
-}
-
-// ChunkProofInner is the inner chunk_poof.
-type ChunkProofInner struct {
-	Proof     []byte `json:"proof"`
-	Instances []byte `json:"instances"`
-	Vk        []byte `json:"vk"`
+	StorageTrace []byte `json:"storage_trace"`
+	Protocol     []byte `json:"protocol"`
+	Proof        []byte `json:"proof"`
+	Instances    []byte `json:"instances"`
+	Vk           []byte `json:"vk"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
