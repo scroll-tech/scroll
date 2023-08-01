@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -42,7 +43,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	// Create prover
-	r, err := prover.NewProver(cfg)
+	r, err := prover.NewProver(context.Background(), cfg)
 	if err != nil {
 		return err
 	}

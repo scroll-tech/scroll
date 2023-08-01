@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 
@@ -12,13 +13,13 @@ import (
 
 // Config loads prover configuration items.
 type Config struct {
-	ProverName       string            `json:"prover_name"`
-	KeystorePath     string            `json:"keystore_path"`
-	KeystorePassword string            `json:"keystore_password"`
-	CoordinatorURL   string            `json:"coordinator_url"`
-	TraceEndpoint    string            `json:"trace_endpoint"`
-	Core             *ProverCoreConfig `json:"core"`
-	DBPath           string            `json:"db_path"`
+	ProverName       string             `json:"prover_name"`
+	KeystorePath     string             `json:"keystore_path"`
+	KeystorePassword string             `json:"keystore_password"`
+	TraceEndpoint    string             `json:"trace_endpoint"`
+	Core             *ProverCoreConfig  `json:"core"`
+	DBPath           string             `json:"db_path"`
+	Coordinator      *CoordinatorConfig `json:"coordinator"`
 }
 
 // ProverCoreConfig load zk prover config.
@@ -27,6 +28,12 @@ type ProverCoreConfig struct {
 	SeedPath   string            `json:"seed_path"`
 	ProofType  message.ProofType `json:"prove_type,omitempty"` // 0: chunk prover (default type), 1: batch prover
 	DumpDir    string            `json:"dump_dir,omitempty"`
+}
+
+// CoordinatorConfig represents the configuration for the Coordinator client.
+type CoordinatorConfig struct {
+	Timeout int    `json:"timeout"`
+	BaseURL string `json:"base_url"`
 }
 
 // NewConfig returns a new instance of Config.
@@ -45,6 +52,9 @@ func NewConfig(file string) (*Config, error) {
 			log.Error("Failed to get abs path", "error", err)
 			return nil, err
 		}
+	}
+	if cfg.Coordinator == nil || cfg.Coordinator.BaseURL == "" {
+		return nil, errors.New("missing coordinator config or base_url in configuration")
 	}
 	return cfg, nil
 }

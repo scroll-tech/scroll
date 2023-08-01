@@ -3,26 +3,22 @@ package prover
 import (
 	"context"
 	"crypto/ecdsa"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"sync/atomic"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/ethclient"
-
-	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-
-	"scroll-tech/coordinator/client"
-
+	"scroll-tech/prover/client"
 	"scroll-tech/prover/config"
 	"scroll-tech/prover/core"
 	"scroll-tech/prover/store"
@@ -35,23 +31,21 @@ var (
 
 // Prover contains websocket conn to coordinator, and task stack.
 type Prover struct {
-	cfg         *config.Config
-	client      *client.Client
-	traceClient *ethclient.Client
-	stack       *store.Stack
-	proverCore  *core.ProverCore
-	taskChan    chan *message.TaskMsg
-	sub         ethereum.Subscription
+	ctx               context.Context
+	cfg               *config.Config
+	coordinatorClient *client.CoordinatorClient
+	traceClient       *ethclient.Client
+	stack             *store.Stack
+	proverCore        *core.ProverCore
 
-	isDisconnected int64
-	isClosed       int64
-	stopChan       chan struct{}
+	isClosed int64
+	stopChan chan struct{}
 
 	priv *ecdsa.PrivateKey
 }
 
 // NewProver new a Prover object.
-func NewProver(cfg *config.Config) (*Prover, error) {
+func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	// load or create wallet
 	priv, err := utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
@@ -65,7 +59,7 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 	}
 
 	// Collect geth node.
-	traceClient, err := ethclient.Dial(cfg.TraceEndpoint)
+	traceClient, err := ethclient.DialContext(ctx, cfg.TraceEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -78,21 +72,20 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 	}
 	log.Info("init prover_core successfully!")
 
-	rClient, err := client.Dial(cfg.CoordinatorURL)
+	coordinatorClient, err := client.NewCoordinatorClient(cfg.Coordinator)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Prover{
-		cfg:         cfg,
-		client:      rClient,
-		traceClient: traceClient,
-		stack:       stackDb,
-		proverCore:  newProverCore,
-		sub:         nil,
-		taskChan:    make(chan *message.TaskMsg, 10),
-		stopChan:    make(chan struct{}),
-		priv:        priv,
+		ctx:               ctx,
+		cfg:               cfg,
+		coordinatorClient: coordinatorClient,
+		traceClient:       traceClient,
+		stack:             stackDb,
+		proverCore:        newProverCore,
+		stopChan:          make(chan struct{}),
+		priv:              priv,
 	}, nil
 }
 
@@ -108,83 +101,16 @@ func (r *Prover) PublicKey() string {
 
 // Start runs Prover.
 func (r *Prover) Start() {
-	log.Info("start to register to coordinator")
-	if err := r.Register(); err != nil {
-		log.Crit("register to coordinator failed", "error", err)
+	log.Info("start to login to coordinator")
+	if _, err := r.coordinatorClient.Login(r.ctx, &client.ProverLoginRequest{
+		PublicKey:  r.PublicKey(),
+		ProverName: r.cfg.ProverName,
+	}); err != nil {
+		log.Crit("login to coordinator failed", "error", err)
 	}
-	log.Info("register to coordinator successfully!")
+	log.Info("login to coordinator successfully!")
 
-	go r.HandleCoordinator()
 	go r.ProveLoop()
-}
-
-// Register registers Prover to the coordinator through Websocket.
-func (r *Prover) Register() error {
-	authMsg := &message.AuthMsg{
-		Identity: &message.Identity{
-			Name:       r.cfg.ProverName,
-			ProverType: r.Type(),
-			Version:    version.Version,
-		},
-	}
-	// Sign request token message
-	if err := authMsg.SignWithKey(r.priv); err != nil {
-		return fmt.Errorf("sign request token message failed %v", err)
-	}
-
-	token, err := r.client.RequestToken(context.Background(), authMsg)
-	if err != nil {
-		return fmt.Errorf("request token failed %v", err)
-	}
-	authMsg.Identity.Token = token
-
-	// Sign auth message
-	if err = authMsg.SignWithKey(r.priv); err != nil {
-		return fmt.Errorf("sign auth message failed %v", err)
-	}
-
-	sub, err := r.client.RegisterAndSubscribe(context.Background(), r.taskChan, authMsg)
-	r.sub = sub
-	return err
-}
-
-// HandleCoordinator accepts block-traces from coordinator through the Websocket and store it into Stack.
-func (r *Prover) HandleCoordinator() {
-	for {
-		select {
-		case <-r.stopChan:
-			return
-		case task := <-r.taskChan:
-			log.Info("Accept BlockTrace from Scroll", "ID", task.ID)
-			err := r.stack.Push(&store.ProvingTask{Task: task, Times: 0})
-			if err != nil {
-				panic(fmt.Sprintf("could not push task(%s) into stack: %v", task.ID, err))
-			}
-		case err := <-r.sub.Err():
-			r.sub.Unsubscribe()
-			log.Error("Subscribe task with scroll failed", "error", err)
-			if atomic.LoadInt64(&r.isClosed) == 0 {
-				r.mustRetryCoordinator()
-			}
-		}
-	}
-}
-
-func (r *Prover) mustRetryCoordinator() {
-	atomic.StoreInt64(&r.isDisconnected, 1)
-	defer atomic.StoreInt64(&r.isDisconnected, 0)
-	for {
-		log.Info("retry to connect to coordinator...")
-		err := r.Register()
-		if err != nil {
-			log.Error("register to coordinator failed", "error", err)
-			time.Sleep(retryWait)
-		} else {
-			log.Info("re-register to coordinator successfully!")
-			break
-		}
-	}
-
 }
 
 // ProveLoop keep popping the block-traces from Stack and sends it to rust-prover for loop.
@@ -195,11 +121,6 @@ func (r *Prover) ProveLoop() {
 			return
 		default:
 			if err := r.prove(); err != nil {
-				if errors.Is(err, store.ErrEmpty) {
-					log.Debug("get empty trace", "error", err)
-					time.Sleep(time.Second * 3)
-					continue
-				}
 				log.Error("prove failed", "error", err)
 			}
 		}
@@ -209,7 +130,15 @@ func (r *Prover) ProveLoop() {
 func (r *Prover) prove() error {
 	task, err := r.stack.Peek()
 	if err != nil {
-		return err
+		if err != store.ErrEmpty {
+			return err
+		}
+		// fetch new proving task.
+		task, err = r.fetchTaskFromServer()
+		if err != nil {
+			time.Sleep(retryWait)
+			return err
+		}
 	}
 
 	var proofMsg *message.ProofDetail
@@ -275,36 +204,104 @@ func (r *Prover) prove() error {
 		}
 	}()
 
-	r.signAndSubmitProof(proofMsg)
-	return nil
+	return r.signAndSubmitProof(proofMsg)
 }
 
-func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) {
-	authZkProof := &message.ProofMsg{ProofDetail: msg}
-	if err := authZkProof.Sign(r.priv); err != nil {
-		log.Error("sign proof error", "err", err)
-		return
+// fetchTaskFromServer fetches a new task from the server
+func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
+	// Prepare the request
+	req := &client.ProverTasksRequest{
+		ProverVersion: version.Version,
+		ProverHeight:  0, // TODO(colinlyguo): adjust prover height.
+		ProofType:     int(r.Type()),
 	}
 
-	// Retry SubmitProof several times.
-	for i := 0; i < 3; i++ {
-		// When the prover is disconnected from the coordinator,
-		// wait until the prover reconnects to the coordinator.
-		for atomic.LoadInt64(&r.isDisconnected) == 1 {
-			time.Sleep(retryWait)
-		}
-		serr := r.client.SubmitProof(context.Background(), authZkProof)
-		if serr == nil {
-			return
-		}
-		log.Error("submit proof to coordinator error", "task ID", msg.ID, "error", serr)
+	// Send the request
+	resp, err := r.coordinatorClient.ProverTasks(r.ctx, req)
+	if err != nil {
+		return nil, err
 	}
+
+	if resp.Data == nil {
+		return nil, fmt.Errorf("no tasks available")
+	}
+
+	// Convert the response task to a ProvingTask
+	provingTask := &store.ProvingTask{
+		Task: &message.TaskMsg{
+			ID:   resp.Data.TaskID,
+			Type: resp.Data.ProofType,
+		},
+		Times: 0,
+	}
+
+	switch resp.Data.ProofType {
+	case message.ProofTypeChunk:
+		var blockHashes []common.Hash
+		err := json.Unmarshal([]byte(resp.Data.ProofData), &blockHashes)
+		if err != nil {
+			return nil, err
+		}
+		provingTask.Task.BlockHashes = blockHashes
+	case message.ProofTypeBatch:
+		var subProofs []*message.ChunkProof
+		err := json.Unmarshal([]byte(resp.Data.ProofData), &subProofs)
+		if err != nil {
+			return nil, err
+		}
+		provingTask.Task.SubProofs = subProofs
+	default:
+		return nil, fmt.Errorf("unknown proof type: %d", resp.Data.ProofType)
+	}
+
+	return provingTask, nil
+}
+
+func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
+	authZkProof := &message.ProofMsg{ProofDetail: msg}
+	if err := authZkProof.Sign(r.priv); err != nil {
+		return fmt.Errorf("error signing proof: %v", err)
+	}
+
+	// Marshal the ChunkProof and BatchProof into a single JSON
+	proofs := map[string]interface{}{
+		"chunk_proof": authZkProof.ChunkProof,
+		"batch_proof": authZkProof.BatchProof,
+	}
+
+	proofJson, err := json.Marshal(proofs)
+	if err != nil {
+		return fmt.Errorf("error marshaling proofs into JSON: %v", err)
+	}
+
+	// Prepare the submit request
+	req := &client.SubmitProofRequest{
+		TaskID:    authZkProof.ProofDetail.ID,
+		Status:    int(authZkProof.ProofDetail.Status),
+		Error:     msg.Error,
+		ProofType: int(authZkProof.ProofDetail.Type),
+		Signature: authZkProof.Signature,
+		Proof:     string(proofJson),
+	}
+
+	// Send the submit request
+	resp, err := r.coordinatorClient.SubmitProof(r.ctx, req)
+	if err != nil {
+		return fmt.Errorf("error submitting proof: %v", err)
+	}
+
+	if resp.ErrCode != 200 {
+		return fmt.Errorf("submit proof error, error code: %v, error message: %v", resp.ErrCode, resp.ErrMsg)
+	}
+
+	log.Debug("proof submitted successfully", "task-id", msg.ID)
+	return nil
 }
 
 func (r *Prover) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
 	var traces []*types.BlockTrace
 	for _, blockHash := range blockHashes {
-		trace, err := r.traceClient.GetBlockTraceByHash(context.Background(), blockHash)
+		trace, err := r.traceClient.GetBlockTraceByHash(r.ctx, blockHash)
 		if err != nil {
 			return nil, err
 		}
@@ -326,8 +323,6 @@ func (r *Prover) Stop() {
 	atomic.StoreInt64(&r.isClosed, 1)
 
 	close(r.stopChan)
-	// Close scroll's ws
-	r.sub.Unsubscribe()
 	// Close db
 	if err := r.stack.Close(); err != nil {
 		log.Error("failed to close bbolt db", "error", err)

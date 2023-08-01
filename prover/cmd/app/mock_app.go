@@ -93,7 +93,6 @@ func (r *ProverApp) MockConfig(store bool, wsURL string) error {
 	if err != nil {
 		return err
 	}
-	cfg.CoordinatorURL = wsURL
 	r.Config = cfg
 
 	if !store {
