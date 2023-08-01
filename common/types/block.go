@@ -10,10 +10,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
-const nonZeroByteGas uint64 = 16
-const zeroByteGas uint64 = 4
-
-// WrappedBlock contains the block's Header, Transactions and WithdrawRoot hash.
+// WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
@@ -78,16 +75,20 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 	return size
 }
 
-// EstimateL1CommitGas calculates the calldata gas in l1 commit approximately.
-// TODO: This will need to be adjusted.
-// The part added here is only the calldata cost,
-// but we have execution cost for verifying blocks / chunks / batches and storing the batch hash.
+// EstimateL1CommitGas calculates the total L1 commit gas for this block approximately.
 func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
+	getKeccakGas := func(size uint64) uint64 {
+		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+	}
+
 	var total uint64
+	var numL1Messages uint64
 	for _, txData := range w.Transactions {
 		if txData.Type == types.L1MessageTxType {
+			numL1Messages++
 			continue
 		}
+
 		data, _ := hexutil.Decode(txData.Data)
 		tx := types.NewTx(&types.LegacyTx{
 			Nonce:    txData.Nonce,
@@ -101,26 +102,19 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 			S:        txData.S.ToInt(),
 		})
 		rlpTxData, _ := tx.MarshalBinary()
-
-		for _, b := range rlpTxData {
-			if b == 0 {
-				total += zeroByteGas
-			} else {
-				total += nonZeroByteGas
-			}
-		}
-
-		var txLen [4]byte
-		binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
-
-		for _, b := range txLen {
-			if b == 0 {
-				total += zeroByteGas
-			} else {
-				total += nonZeroByteGas
-			}
-		}
+		txPayloadLength := uint64(len(rlpTxData))
+		total += 16 * txPayloadLength          // an over-estimate: treat each byte as non-zero
+		total += 16 * 4                        // size of a uint32 field
+		total += getKeccakGas(txPayloadLength) // l2 tx hash
 	}
+
+	// sload
+	total += 2100 * numL1Messages // numL1Messages times cold sload in L1MessageQueue
+
+	// staticcall
+	total += 100 * numL1Messages // numL1Messages times call to L1MessageQueue
+	total += 100 * numL1Messages // numL1Messages times warm address access to L1MessageQueue
+
 	return total
 }
 
