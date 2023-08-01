@@ -5,7 +5,7 @@ use prover::{
     utils::{chunk_trace_to_witness_block, init_env_and_log},
     ChunkHash, ChunkProof, Proof,
 };
-use std::cell::OnceCell;
+use std::{cell::OnceCell, panic};
 use types::eth::BlockTrace;
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
@@ -53,14 +53,16 @@ pub unsafe extern "C" fn gen_batch_proof(
         .zip(chunk_proofs.into_iter())
         .collect();
 
-    let proof = PROVER
-        .get_mut()
-        .unwrap()
-        .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
-        .unwrap();
+    let proof = panic::catch_unwind(|| {
+        PROVER
+            .get_mut()
+            .unwrap()
+            .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
+            .unwrap();
 
-    let proof_bytes = serde_json::to_vec(&proof).unwrap();
-    vec_to_c_char(proof_bytes)
+        serde_json::to_vec(&proof).unwrap()
+    });
+    proof.map_or(null(), vec_to_c_char)
 }
 
 /// # Safety
@@ -69,8 +71,8 @@ pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<Proof>(proof.as_slice()).unwrap();
 
-    let verified = VERIFIER.get().unwrap().verify_agg_evm_proof(&proof);
-    verified as c_char
+    let verified = panic::catch_unwind(|| VERIFIER.get().unwrap().verify_agg_evm_proof(&proof));
+    verified.unwrap_or(false) as c_char
 }
 
 // This function is only used for debugging on Go side.
