@@ -122,7 +122,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 	taskMsg := &coordinatorType.ProverTaskSchema{
 		TaskID:    taskID,
 		ProofType: int(message.ProofTypeBatch),
-		ProofData: chunkProofsBytes,
+		ProofData: string(chunkProofsBytes),
 	}
 	return taskMsg, nil
 }

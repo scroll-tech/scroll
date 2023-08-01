@@ -23,7 +23,7 @@ func NewAuthController() *AuthController {
 // Login the api controller for login
 func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	var login types.LoginParameter
-	if err := c.ShouldBindQuery(&login); err != nil {
+	if err := c.ShouldBind(&login); err != nil {
 		return "", fmt.Errorf("missing the public_key, err:%w", err)
 	}
 

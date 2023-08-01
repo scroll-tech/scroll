@@ -128,7 +128,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*
 	proverTaskSchema := &coordinatorType.ProverTaskSchema{
 		TaskID:    hash,
 		ProofType: int(message.ProofTypeChunk),
-		ProofData: blockHashesBytes,
+		ProofData: string(blockHashesBytes),
 	}
 
 	return proverTaskSchema, nil

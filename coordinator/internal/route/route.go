@@ -18,7 +18,7 @@ func v1(router *gin.RouterGroup, conf *config.Config) {
 	r := router.Group("/v1")
 
 	authMiddleware := middleware.AuthMiddleware(conf)
-	r.GET("/login", authMiddleware.LoginHandler)
+	r.POST("/login", authMiddleware.LoginHandler)
 
 	// need jwt token api
 	r.Use(authMiddleware.MiddlewareFunc())

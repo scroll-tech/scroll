@@ -11,5 +11,5 @@ type ProverTaskParameter struct {
 type ProverTaskSchema struct {
 	TaskID    string `json:"task_id"`
 	ProofType int    `json:"proof_type"`
-	ProofData []byte `json:"proof_data"`
+	ProofData string `json:"proof_data"`
 }

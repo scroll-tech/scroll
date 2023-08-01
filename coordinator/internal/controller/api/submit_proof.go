@@ -44,17 +44,21 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 
 	switch message.ProofType(spp.ProofType) {
 	case message.ProofTypeChunk:
-		if err := json.Unmarshal([]byte(spp.Proof), proofMsg.ChunkProof); err != nil {
+		var tmpChunkProof message.ChunkProof
+		if err := json.Unmarshal([]byte(spp.Proof), &tmpChunkProof); err != nil {
 			nerr := fmt.Errorf("unmarshal parameter chunk proof invalid, err:%w", err)
 			types.RenderJSON(ctx, types.ErrParameterInvalidNo, nerr, nil)
 			return
 		}
+		proofMsg.ChunkProof = &tmpChunkProof
 	case message.ProofTypeBatch:
-		if err := json.Unmarshal([]byte(spp.Proof), proofMsg.ChunkProof); err != nil {
+		var tmpBatchProof message.BatchProof
+		if err := json.Unmarshal([]byte(spp.Proof), &tmpBatchProof); err != nil {
 			nerr := fmt.Errorf("unmarshal parameter batch proof invalid, err:%w", err)
 			types.RenderJSON(ctx, types.ErrParameterInvalidNo, nerr, nil)
 			return
 		}
+		proofMsg.BatchProof = &tmpBatchProof
 	}
 
 	if err := spc.submitProofReceiverLogic.HandleZkProof(ctx, &proofMsg); err != nil {

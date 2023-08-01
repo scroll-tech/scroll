@@ -57,6 +57,12 @@ func (ptc *ProverTaskController) ProverTasks(ctx *gin.Context) {
 		return
 	}
 
+	if result == nil {
+		nerr := fmt.Errorf("get empty prover task")
+		types.RenderJSON(ctx, types.ErrEmptyProofData, nerr, nil)
+		return
+	}
+
 	types.RenderJSON(ctx, types.Success, nil, result)
 }
 
