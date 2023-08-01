@@ -1,9 +1,11 @@
 package api
 
 import (
-	"gorm.io/gorm"
-	"scroll-tech/coordinator/internal/config"
 	"sync"
+
+	"gorm.io/gorm"
+
+	"scroll-tech/coordinator/internal/config"
 )
 
 var (

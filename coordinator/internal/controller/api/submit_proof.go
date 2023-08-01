@@ -3,9 +3,12 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
 	"scroll-tech/common/types/message"
+
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/submit_proof"
 	"scroll-tech/coordinator/internal/types"
