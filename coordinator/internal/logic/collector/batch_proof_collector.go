@@ -2,8 +2,10 @@ package collector
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -101,17 +103,37 @@ func (bp *BatchProofCollector) Collect(ctx context.Context) error {
 }
 
 func (bp *BatchProofCollector) sendTask(ctx context.Context, hash string) ([]*coordinatorType.ProverStatus, error) {
-	// get chunk proofs from db
-	chunkProofs, err := bp.chunkOrm.GetProofsByBatchHash(ctx, hash)
+	// get chunks from db
+	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, hash)
 	if err != nil {
 		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", hash, err)
 		return nil, err
 	}
+
+	taskDetail := &message.BatchTaskDetail{}
+	for _, chunk := range chunks {
+		chunkInfo := &message.ChunkInfo{
+			ChainID:       bp.cfg.L2Config.ChainID,
+			PrevStateRoot: common.HexToHash(chunk.ParentChunkStateRoot),
+			PostStateRoot: common.HexToHash(chunk.StateRoot),
+			WithdrawRoot:  common.HexToHash(chunk.WithdrawRoot),
+			DataHash:      common.HexToHash(chunk.Hash),
+			IsPadding:     false,
+		}
+		taskDetail.ChunkInfos = append(taskDetail.ChunkInfos, chunkInfo)
+
+		chunkProof := &message.ChunkProof{}
+		if err := json.Unmarshal(chunk.Proof, chunkProof); err != nil {
+			return nil, fmt.Errorf("json Unmarshal ChunkProof error: %w, chunk hash: %v", err, chunk.Hash)
+		}
+		taskDetail.ChunkProofs = append(taskDetail.ChunkProofs, chunkProof)
+	}
+
 	taskMsg := &message.TaskMsg{
 		ID:              hash,
 		Type:            message.ProofTypeBatch,
 		ChunkTaskDetail: nil,
-		BatchTaskDetail: &message.BatchTaskDetail{SubProofs: chunkProofs},
+		BatchTaskDetail: taskDetail,
 	}
 	return bp.BaseCollector.sendTask(taskMsg)
 }

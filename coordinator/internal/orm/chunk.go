@@ -86,6 +86,21 @@ func (o *Chunk) GetUnassignedChunks(ctx context.Context, limit int) ([]*Chunk, e
 	return chunks, nil
 }
 
+// GetChunksByBatchHash retrieves the chunks associated with a specific batch hash.
+// The returned chunks are sorted in ascending order by their associated chunk index.
+func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("batch_hash", batchHash)
+	db = db.Order("index ASC")
+
+	var chunks []*Chunk
+	if err := db.Find(&chunks).Error; err != nil {
+		return nil, fmt.Errorf("Chunk.GetChunksByBatchHash error: %w, batch hash: %v", err, batchHash)
+	}
+	return chunks, nil
+}
+
 // GetProofsByBatchHash retrieves the proofs associated with a specific batch hash.
 // It returns a slice of decoded proofs (message.ChunkProof) obtained from the database.
 // The returned proofs are sorted in ascending order by their associated chunk index.
