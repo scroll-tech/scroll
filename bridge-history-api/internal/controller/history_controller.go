@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"sync"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -11,28 +9,15 @@ import (
 	"bridge-history-api/internal/types"
 )
 
-var (
-	// HistoryCtrler is controller instance
-	HistoryCtrler      *HistoryController
-	initControllerOnce sync.Once
-)
-
-// InitController inits Controller with database
-func InitController(db *gorm.DB) {
-	initControllerOnce.Do(func() {
-		HistoryCtrler = NewHistoryController(db)
-	})
-}
-
 // HistoryController contains the query claimable txs service
 type HistoryController struct {
-	historyLogic logic.HistoryLogic
+	historyLogic *logic.HistoryLogic
 }
 
 // NewHistoryController return HistoryController instance
 func NewHistoryController(db *gorm.DB) *HistoryController {
 	return &HistoryController{
-		historyLogic: *logic.NewHistoryLogic(db),
+		historyLogic: logic.NewHistoryLogic(db),
 	}
 }
 

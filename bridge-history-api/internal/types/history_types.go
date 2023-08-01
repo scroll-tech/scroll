@@ -9,7 +9,7 @@ import (
 
 const (
 	// Success shows OK.
-	Success = 200
+	Success = 0
 	// ErrParameterInvalidNo is invalid params
 	ErrParameterInvalidNo = 40001
 	// ErrGetClaimablesFailure is getting all claimables txs error

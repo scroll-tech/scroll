@@ -3,7 +3,6 @@
 		"batchIndexStartBlock": 9091265,
 		"ScrollChainAddr": "0xcD00DB804C819175B381b2B44Aa16A391c8a01D6"
 	},
-	
 	"l1": {
 		"confirmation": 64,
 		"endpoint": "https://rpc.ankr.com/eth_goerli",
@@ -17,7 +16,6 @@
 		"ERC721GatewayAddr": "0x4A73D25A4C99CB912acaf6C5B5e554f2982201c5",
 		"ERC1155GatewayAddr": "0xa3F5DD3033698c2832C53f3C3Fe6E062F58cD808"
 	},
-
 	"l2": {
 		"confirmation": 1,
 		"endpoint": "http://staging-l2geth-rpc0.scroll.tech:8545",
@@ -31,14 +29,12 @@
 		"WETHGatewayAddr": "0xb0aaA582564fade4232a16fdB1383004A6A7247F",
 		"ERC1155GatewayAddr": "0x4f33B1655619c2C0B7C450128Df760B4365Cb549"
 	},
-
 	"db": {
 		"dsn": "postgres://postgres:1234@localhost:5444/test?sslmode=disable",
 		"driverName": "postgres",
 		"maxOpenNum": 200,
 		"maxIdleNum": 20
 	},
-
 	"server": {
 		"hostPort": "20006"
 	}
