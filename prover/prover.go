@@ -253,7 +253,7 @@ func (r *Prover) chooseProve(task *store.ProvingTask) (detail *message.ProofDeta
 	}
 	// batch prove
 	if r.Type() == message.ProofTypeBatch {
-		proof, err := r.batchProve(task)
+		proof, err := r.proveBatch(task)
 		if err != nil {
 			detail.Status = message.StatusProofError
 			detail.Error = err.Error()
@@ -264,7 +264,7 @@ func (r *Prover) chooseProve(task *store.ProvingTask) (detail *message.ProofDeta
 		return
 	}
 	// chunk prove
-	proof, err := r.chunkProve(task)
+	proof, err := r.proveChunk(task)
 	if err != nil {
 		detail.Status = message.StatusProofError
 		detail.Error = err.Error()
@@ -275,17 +275,17 @@ func (r *Prover) chooseProve(task *store.ProvingTask) (detail *message.ProofDeta
 	return
 }
 
-func (r *Prover) chunkProve(task *store.ProvingTask) (*message.ChunkProof, error) {
+func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error) {
 	traces, err := r.getSortedTracesByHashes(task.Task.BlockHashes)
 	if err != nil {
 		log.Error("get traces failed!", "task-id", task.Task.ID, "err", err)
 		return nil, errors.New("get traces from eth node failed")
 	}
-	return r.proverCore.ChunkProve(task.Task.ID, traces)
+	return r.proverCore.ProveChunk(task.Task.ID, traces)
 }
 
-func (r *Prover) batchProve(task *store.ProvingTask) (*message.BatchProof, error) {
-	return r.proverCore.BatchProve(task.Task.ID, task.Task.ChunkHashes, task.Task.SubProofs)
+func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error) {
+	return r.proverCore.ProveBatch(task.Task.ID, task.Task.ChunkHashes, task.Task.SubProofs)
 }
 
 func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) {

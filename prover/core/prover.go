@@ -54,8 +54,8 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	return &ProverCore{cfg: cfg}, nil
 }
 
-// BatchProve call rust ffi to generate batch proof, if first failed, try again.
-func (p *ProverCore) BatchProve(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
+// ProveBatch call rust ffi to generate batch proof, if first failed, try again.
+func (p *ProverCore) ProveBatch(taskID string, chunkHashes []*message.ChunkHash, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {
 		return nil, errors.Errorf("Wrong proof type in batch-prover: %d", p.cfg.ProofType)
 	}
@@ -68,7 +68,7 @@ func (p *ProverCore) BatchProve(taskID string, chunkHashes []*message.ChunkHash,
 	if err != nil {
 		return nil, err
 	}
-	proofByt := p.batchProve(chunkHashesByt, chunkProofsByt)
+	proofByt := p.proveBatch(chunkHashesByt, chunkProofsByt)
 
 	// dump proof
 	err = p.dumpProof(taskID, proofByt)
@@ -80,8 +80,8 @@ func (p *ProverCore) BatchProve(taskID string, chunkHashes []*message.ChunkHash,
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
 
-// ChunkProve call rust ffi to generate chunk proof, if first failed, try again.
-func (p *ProverCore) ChunkProve(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
+// ProveChunk call rust ffi to generate chunk proof, if first failed, try again.
+func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
 	if p.cfg.ProofType != message.ProofTypeChunk {
 		return nil, errors.Errorf("Wrong proof type in chunk-prover: %d", p.cfg.ProofType)
 	}
@@ -90,7 +90,7 @@ func (p *ProverCore) ChunkProve(taskID string, traces []*types.BlockTrace) (*mes
 	if err != nil {
 		return nil, err
 	}
-	proofByt := p.chunkProve(tracesByt)
+	proofByt := p.proveChunk(tracesByt)
 
 	// dump proof
 	err = p.dumpProof(taskID, proofByt)
@@ -114,7 +114,7 @@ func (p *ProverCore) TracesToChunkHash(traces []*types.BlockTrace) (*message.Chu
 	return chunkHash, json.Unmarshal(chunkHashByt, chunkHash)
 }
 
-func (p *ProverCore) batchProve(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
+func (p *ProverCore) proveBatch(chunkHashesByt []byte, chunkProofsByt []byte) []byte {
 	chunkHashesStr := C.CString(string(chunkHashesByt))
 	chunkProofsStr := C.CString(string(chunkProofsByt))
 
@@ -131,7 +131,7 @@ func (p *ProverCore) batchProve(chunkHashesByt []byte, chunkProofsByt []byte) []
 	return []byte(proof)
 }
 
-func (p *ProverCore) chunkProve(tracesByt []byte) []byte {
+func (p *ProverCore) proveChunk(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
 
 	defer func() {
