@@ -24,6 +24,8 @@ func NewCoordinatorClient(cfg *config.CoordinatorConfig) (*CoordinatorClient, er
 
 	client := resty.New().
 		SetTimeout(time.Duration(cfg.Timeout) * time.Second).
+		SetRetryCount(cfg.RetryCount).
+		SetRetryWaitTime(time.Duration(cfg.RetryWaitTime) * time.Second).
 		SetBaseURL(cfg.BaseURL)
 
 	return &CoordinatorClient{

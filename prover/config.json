@@ -8,7 +8,9 @@
     },
     "coordinator": {
         "base_url": "https://coordinator/v1",
-        "timeout": 30
+        "timeout": 30,
+        "retry_count": 3,
+        "retry_wait_time": 10
     },
     "confirmations": "0x1"
 }

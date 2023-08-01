@@ -33,8 +33,10 @@ type ProverCoreConfig struct {
 
 // CoordinatorConfig represents the configuration for the Coordinator client.
 type CoordinatorConfig struct {
-	Timeout int    `json:"timeout"`
-	BaseURL string `json:"base_url"`
+	Timeout       int    `json:"timeout"`
+	BaseURL       string `json:"base_url"`
+	RetryCount    int    `json:"retry_count"`
+	RetryWaitTime int    `json:"retry_wait_time"`
 }
 
 // NewConfig returns a new instance of Config.
