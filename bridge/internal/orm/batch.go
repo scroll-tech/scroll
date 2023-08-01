@@ -134,6 +134,9 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 
 	var latestBatch Batch
 	if err := db.First(&latestBatch).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("Batch.GetLatestBatch error: %w", err)
 	}
 	return &latestBatch, nil
@@ -212,7 +215,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	}
 
 	parentBatch, err := o.GetLatestBatch(ctx)
-	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+	if err != nil {
 		log.Error("failed to get the latest batch", "err", err)
 		return nil, err
 	}
