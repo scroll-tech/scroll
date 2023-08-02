@@ -73,6 +73,8 @@ type TxHistoryInfo struct {
 	Amount         string         `json:"amount"`
 	To             string         `json:"to"` // useless
 	IsL1           bool           `json:"isL1"`
+	L1Token        string         `json:"l1Token"`
+	L2Token        string         `json:"l2Token"`
 	BlockNumber    uint64         `json:"blockNumber"`
 	BlockTimestamp *time.Time     `json:"blockTimestamp"` // useless
 	FinalizeTx     *Finalized     `json:"finalizeTx"`
