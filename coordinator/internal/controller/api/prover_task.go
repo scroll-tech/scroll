@@ -10,6 +10,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/logic/provertask"
 	"scroll-tech/coordinator/internal/types"
 )
 

@@ -4,11 +4,12 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"testing"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
 
 	"scroll-tech/common/types/message"
 
