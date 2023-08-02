@@ -5,6 +5,7 @@ package core_test
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -24,6 +25,18 @@ var (
 	tracesPath    = flag.String("traces", "/assets/traces", "traces dir")
 	proofDumpPath = flag.String("dump", "/assets/proof_data", "the path proofs dump to")
 )
+
+func TestTraceJson(t *testing.T) {
+
+	as := assert.New(t)
+	f, err = os.Open("1_transfer.json")
+	as.NoError(err)
+	byt, err = io.ReadAll(f)
+	as.NoError(err)
+	trace := &types.BlockTrace{}
+	as.NoError(json.Unmarshal(byt, trace))
+	fmt.Printf("%v", trace.TxStorageTraces)
+}
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
