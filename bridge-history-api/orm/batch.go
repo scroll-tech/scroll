@@ -93,6 +93,7 @@ func (r *RollupBatch) InsertRollupBatch(ctx context.Context, batches []*RollupBa
 	return nil
 }
 
+// UpdateRollupBatchWithdrawRoot updates the withdraw_root column in rollup_batch table
 func (r *RollupBatch) UpdateRollupBatchWithdrawRoot(ctx context.Context, batchIndex uint64, withdrawRoot string) error {
 	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index = ?", batchIndex).Update("withdraw_root", withdrawRoot).Error
 	if err != nil {
