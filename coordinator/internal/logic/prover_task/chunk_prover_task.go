@@ -120,7 +120,10 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*
 		blockHashes[i] = wrappedBlock.Header.Hash()
 	}
 
-	blockHashesBytes, err := json.Marshal(blockHashes)
+	taskDetail := message.ChunkTaskDetail{
+		BlockHashes: blockHashes,
+	}
+	blockHashesBytes, err := json.Marshal(taskDetail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", hash, err)
 	}
