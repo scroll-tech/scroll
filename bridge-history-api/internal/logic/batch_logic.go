@@ -11,19 +11,18 @@ import (
 
 // BatchLogic example service.
 type BatchLogic struct {
-	db *gorm.DB
+	rollupOrm *orm.RollupBatch
 }
 
 // NewBatchLogic returns services backed with a "db"
 func NewBatchLogic(db *gorm.DB) *BatchLogic {
-	logic := &BatchLogic{db: db}
+	logic := &BatchLogic{rollupOrm: orm.NewRollupBatch(db)}
 	return logic
 }
 
 // GetWithdrawRootByBatchIndex get withdraw root by batch index from db
 func (b *BatchLogic) GetWithdrawRootByBatchIndex(ctx context.Context, batchIndex uint64) (string, error) {
-	batchOrm := orm.NewRollupBatch(b.db)
-	batch, err := batchOrm.GetRollupBatchByIndex(ctx, batchIndex)
+	batch, err := b.rollupOrm.GetRollupBatchByIndex(ctx, batchIndex)
 	if err != nil {
 		log.Debug("getWithdrawRootByBatchIndex failed", "error", err)
 		return "", err
