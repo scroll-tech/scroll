@@ -93,10 +93,8 @@ func (r *RollupBatch) InsertRollupBatch(ctx context.Context, batches []*RollupBa
 	return nil
 }
 
-func (r *RollupBatch) UpdateRuollupBatchWithdrawRoot(ctx context.Context, batchIndex uint64, withdrawRoot string) error {
-	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index = ?", batchIndex).Updates(map[string]interface{}{
-		"withdraw_root": withdrawRoot,
-	}).Error
+func (r *RollupBatch) UpdateRollupBatchWithdrawRoot(ctx context.Context, batchIndex uint64, withdrawRoot string) error {
+	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index = ?", batchIndex).Update("withdraw_root", withdrawRoot).Error
 	if err != nil {
 		return fmt.Errorf("RollupBatch.UpdateRuollupBatch error: %w", err)
 	}

@@ -76,7 +76,7 @@ func (m *MsgProofUpdater) Start() {
 						break
 					}
 					// here we update batch withdraw root
-					err = m.rollupOrm.UpdateRuollupBatchWithdrawRoot(m.ctx, batch.BatchIndex, m.withdrawTrie.MessageRoot().Hex())
+					err = m.rollupOrm.UpdateRollupBatchWithdrawRoot(m.ctx, batch.BatchIndex, m.withdrawTrie.MessageRoot().Hex())
 					if err != nil {
 						// if failed better restart the binary
 						log.Error("MsgProofUpdater: can not update batch withdraw root", "err", err)
@@ -182,7 +182,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		if err != nil {
 			return err
 		}
-		err = m.rollupOrm.UpdateRuollupBatchWithdrawRoot(m.ctx, b.BatchIndex, m.withdrawTrie.MessageRoot().Hex())
+		err = m.rollupOrm.UpdateRollupBatchWithdrawRoot(m.ctx, b.BatchIndex, m.withdrawTrie.MessageRoot().Hex())
 		if err != nil {
 			return err
 		}
