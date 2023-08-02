@@ -9,7 +9,7 @@ import (
 
 const (
 	// Success shows OK.
-	Success = 200
+	Success = 0
 	// ErrParameterInvalidNo is invalid params
 	ErrParameterInvalidNo = 40001
 	// ErrGetClaimablesFailure is getting all claimables txs error
@@ -22,10 +22,9 @@ const (
 
 // QueryByAddressRequest the request parameter of address api
 type QueryByAddressRequest struct {
-	Address string `form:"address" binding:"required"`
-	// offset can be 0
-	Offset int `form:"offset"`
-	Limit  int `form:"limit" binding:"required"`
+	Address  string `form:"address" binding:"required"`
+	Page     int    `form:"page" binding:"required"`
+	PageSize int    `form:"page_size" binding:"required"`
 }
 
 // QueryByHashRequest the request parameter of hash api

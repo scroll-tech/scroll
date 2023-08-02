@@ -87,7 +87,7 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		TokenTimeToLive:   1,
 	}
 	cfg.DBConfig.DSN = base.DBImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L2Config.ChainID = 111
 	c.Config = cfg
 
 	if !store {

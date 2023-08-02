@@ -37,8 +37,8 @@ type ProverManagerConfig struct {
 
 // L2Config loads l2geth configuration items.
 type L2Config struct {
-	// l2geth node url.
-	Endpoint string `json:"endpoint"`
+	// l2geth chain_id.
+	ChainID uint64 `json:"chain_id"`
 }
 
 // Config load configuration items.
@@ -52,7 +52,7 @@ type Config struct {
 type VerifierConfig struct {
 	MockMode   bool   `json:"mock_mode"`
 	ParamsPath string `json:"params_path"`
-	AggVkPath  string `json:"agg_vk_path"`
+	AssetsPath string `json:"assets_path"`
 }
 
 // NewConfig returns a new instance of Config.

@@ -1,8 +1,6 @@
 package controller
 
 import (
-	"sync"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -11,28 +9,15 @@ import (
 	"bridge-history-api/internal/types"
 )
 
-var (
-	// HistoryCtrler is controller instance
-	HistoryCtrler      *HistoryController
-	initControllerOnce sync.Once
-)
-
-// InitController inits Controller with database
-func InitController(db *gorm.DB) {
-	initControllerOnce.Do(func() {
-		HistoryCtrler = NewHistoryController(db)
-	})
-}
-
 // HistoryController contains the query claimable txs service
 type HistoryController struct {
-	historyLogic logic.HistoryLogic
+	historyLogic *logic.HistoryLogic
 }
 
 // NewHistoryController return HistoryController instance
 func NewHistoryController(db *gorm.DB) *HistoryController {
 	return &HistoryController{
-		historyLogic: *logic.NewHistoryLogic(db),
+		historyLogic: logic.NewHistoryLogic(db),
 	}
 }
 
@@ -43,7 +28,9 @@ func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
 		return
 	}
-	txs, total, err := c.historyLogic.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address), req.Offset, req.Limit)
+	offset := (req.Page - 1) * req.PageSize
+	limit := req.PageSize
+	txs, total, err := c.historyLogic.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
 	if err != nil {
 		types.RenderJSON(ctx, types.ErrGetClaimablesFailure, err, nil)
 		return
@@ -59,7 +46,9 @@ func (c *HistoryController) GetAllTxsByAddr(ctx *gin.Context) {
 		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
 		return
 	}
-	message, total, err := c.historyLogic.GetTxsByAddress(ctx, common.HexToAddress(req.Address), req.Offset, req.Limit)
+	offset := (req.Page - 1) * req.PageSize
+	limit := req.PageSize
+	message, total, err := c.historyLogic.GetTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
 	if err != nil {
 		types.RenderJSON(ctx, types.ErrGetTxsByAddrFailure, err, nil)
 		return
