@@ -28,47 +28,47 @@
     "row_consumption": [
         {
             "name": "evm",
-            "row_number": "0x1"
+            "row_number": 1
         },
         {
             "name": "state",
-            "row_number": "0x2"
+            "row_number": 2
         },
         {
             "name": "bytecode",
-            "row_number": "0x3"
+            "row_number": 3
         },
         {
             "name": "copy",
-            "row_number": "0x4"
+            "row_number": 4
         },
         {
             "name": "keccak",
-            "row_number": "0x5"
+            "row_number": 5
         },
         {
             "name": "tx",
-            "row_number": "0x6"
+            "row_number": 6
         },
         {
             "name": "rlp",
-            "row_number": "0x7"
+            "row_number": 7
         },
         {
             "name": "exp",
-            "row_number": "0x8"
+            "row_number": 8
         },
         {
             "name": "pi",
-            "row_number": "0x9"
+            "row_number": 9
         },
         {
             "name": "poseidon",
-            "row_number": "0xa"
+            "row_number": 10
         },
         {
             "name": "mpt",
-            "row_number": "0xb"
+            "row_number": 11
         }
     ],
     "transactions": [
