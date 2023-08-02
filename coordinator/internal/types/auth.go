@@ -3,7 +3,9 @@ package types
 import "time"
 
 const (
-	PublicKeyCtxKey  = "public_key_context"
+	// PublicKeyCtxKey the public key for context
+	PublicKeyCtxKey = "public_key_context"
+	// ProverNameCtxKey the prover name key for context
 	ProverNameCtxKey = "prover_name_context"
 )
 

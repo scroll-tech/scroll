@@ -20,6 +20,7 @@ func NewAuthController() *AuthController {
 	return &AuthController{}
 }
 
+// HealthCheck the api controller for coordinator health check
 func (a *AuthController) HealthCheck(c *gin.Context) {
 	types.RenderJSON(c, types.Success, nil, nil)
 }

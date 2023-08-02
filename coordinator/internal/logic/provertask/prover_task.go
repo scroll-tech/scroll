@@ -1,4 +1,4 @@
-package prover_task
+package provertask
 
 import (
 	"context"

@@ -78,7 +78,7 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 	}
 	log.Info("init prover_core successfully!")
 
-	rClient, err := client.Dial(cfg.CoordinatorURL)
+	rClient, err := client.Dial(cfg.coordinatorURL)
 	if err != nil {
 		return nil, err
 	}

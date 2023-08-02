@@ -10,22 +10,21 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/prover_task"
 	"scroll-tech/coordinator/internal/types"
 )
 
 // ProverTaskController the prover task api controller
 type ProverTaskController struct {
-	proverTasks map[message.ProofType]prover_task.ProverTask
+	proverTasks map[message.ProofType]provertask.ProverTask
 }
 
 // NewProverTaskController create a prover task controller
 func NewProverTaskController(cfg *config.Config, db *gorm.DB) *ProverTaskController {
-	chunkProverTask := prover_task.NewChunkProverTask(cfg, db)
-	batchProverTask := prover_task.NewBatchProverTask(cfg, db)
+	chunkProverTask := provertask.NewChunkProverTask(cfg, db)
+	batchProverTask := provertask.NewBatchProverTask(cfg, db)
 
 	ptc := &ProverTaskController{
-		proverTasks: make(map[message.ProofType]prover_task.ProverTask),
+		proverTasks: make(map[message.ProofType]provertask.ProverTask),
 	}
 
 	ptc.proverTasks[message.ProofTypeChunk] = chunkProverTask

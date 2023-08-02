@@ -9,9 +9,12 @@ import (
 )
 
 var (
-	ProverTask  *ProverTaskController
+	// ProverTask the prover task controller
+	ProverTask *ProverTaskController
+	// SubmitProof the submit proof controller
 	SubmitProof *SubmitProofController
-	Auth        *AuthController
+	// Auth the auth controller
+	Auth *AuthController
 
 	initControllerOnce sync.Once
 )

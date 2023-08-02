@@ -10,19 +10,18 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/submit_proof"
 	"scroll-tech/coordinator/internal/types"
 )
 
 // SubmitProofController the submit proof api controller
 type SubmitProofController struct {
-	submitProofReceiverLogic *submit_proof.SubmitProofReceiverLogic
+	submitProofReceiverLogic *submitproof.SubmitProofReceiverLogic
 }
 
 // NewSubmitProofController create the submit proof api controller instance
 func NewSubmitProofController(cfg *config.Config, db *gorm.DB) *SubmitProofController {
 	return &SubmitProofController{
-		submitProofReceiverLogic: submit_proof.NewSubmitProofReceiverLogic(cfg.ProverManagerConfig, db),
+		submitProofReceiverLogic: submitproof.NewSubmitProofReceiverLogic(cfg.ProverManagerConfig, db),
 	}
 }
 

@@ -1,4 +1,4 @@
-package submit_proof
+package submitproof
 
 import (
 	"context"

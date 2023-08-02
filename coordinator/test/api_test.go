@@ -155,18 +155,18 @@ func TestApis(t *testing.T) {
 
 func testHandshake(t *testing.T) {
 	// Setup coordinator and http server.
-	coordinatorUrl := randomURL()
-	proofCollector := setupCoordinator(t, 1, coordinatorUrl, true)
+	coordinatorURL := randomURL()
+	proofCollector := setupCoordinator(t, 1, coordinatorURL, true)
 	defer func() {
 		proofCollector.Stop()
 	}()
 
-	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorUrl, message.ProofTypeChunk)
+	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
 	token := chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
 	assert.True(t, chunkProver.healthCheck(t, token))
 
-	batchProver := newMockProver(t, "prover_batch_test", coordinatorUrl, message.ProofTypeBatch)
+	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
 	token = batchProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
 	assert.True(t, batchProver.healthCheck(t, token))
@@ -174,20 +174,20 @@ func testHandshake(t *testing.T) {
 
 func testFailedHandshake(t *testing.T) {
 	// Setup coordinator and http server.
-	coordinatorUrl := randomURL()
-	proofCollector := setupCoordinator(t, 1, coordinatorUrl, true)
+	coordinatorURL := randomURL()
+	proofCollector := setupCoordinator(t, 1, coordinatorURL, true)
 	defer func() {
 		proofCollector.Stop()
 	}()
 
 	// Try to perform handshake without token
-	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorUrl, message.ProofTypeChunk)
+	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
 	token := chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
 	assert.True(t, chunkProver.healthCheck(t, token))
 
 	// Try to perform handshake with timeouted token
-	batchProver := newMockProver(t, "prover_batch_test", coordinatorUrl, message.ProofTypeBatch)
+	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
 	token = chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
 	<-time.After(7 * time.Second)
@@ -195,8 +195,8 @@ func testFailedHandshake(t *testing.T) {
 }
 
 func testValidProof(t *testing.T) {
-	coordinatorUrl := randomURL()
-	collector := setupCoordinator(t, 3, coordinatorUrl, true)
+	coordinatorURL := randomURL()
+	collector := setupCoordinator(t, 3, coordinatorURL, true)
 	defer func() {
 		collector.Stop()
 	}()
@@ -219,7 +219,7 @@ func testValidProof(t *testing.T) {
 		} else {
 			proofType = message.ProofTypeBatch
 		}
-		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorUrl, proofType)
+		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType)
 
 		// only prover 0 & 1 submit valid proofs.
 		proofStatus := generatedFailed
@@ -228,7 +228,7 @@ func testValidProof(t *testing.T) {
 		}
 		proverTask := provers[i].getProverTask(t, proofType)
 		assert.NotNil(t, proverTask)
-		provers[i].submitProof(t, proverTask, time.Second, proofStatus)
+		provers[i].submitProof(t, proverTask, proofStatus)
 	}
 
 	// verify proof status
@@ -255,8 +255,8 @@ func testValidProof(t *testing.T) {
 
 func testInvalidProof(t *testing.T) {
 	// Setup coordinator and ws server.
-	coordinatorUrl := randomURL()
-	collector := setupCoordinator(t, 3, coordinatorUrl, true)
+	coordinatorURL := randomURL()
+	collector := setupCoordinator(t, 3, coordinatorURL, true)
 	defer func() {
 		collector.Stop()
 	}()
@@ -279,10 +279,10 @@ func testInvalidProof(t *testing.T) {
 		} else {
 			proofType = message.ProofTypeBatch
 		}
-		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorUrl, proofType)
+		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType)
 		proverTask := provers[i].getProverTask(t, proofType)
 		assert.NotNil(t, proverTask)
-		provers[i].submitProof(t, proverTask, time.Second, verifiedFailed)
+		provers[i].submitProof(t, proverTask, verifiedFailed)
 	}
 
 	// verify proof status
@@ -309,8 +309,8 @@ func testInvalidProof(t *testing.T) {
 
 func testProofGeneratedFailed(t *testing.T) {
 	// Setup coordinator and ws server.
-	coordinatorUrl := randomURL()
-	collector := setupCoordinator(t, 3, coordinatorUrl, true)
+	coordinatorURL := randomURL()
+	collector := setupCoordinator(t, 3, coordinatorURL, true)
 	defer func() {
 		collector.Stop()
 	}()
@@ -333,10 +333,10 @@ func testProofGeneratedFailed(t *testing.T) {
 		} else {
 			proofType = message.ProofTypeBatch
 		}
-		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorUrl, proofType)
+		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType)
 		proverTask := provers[i].getProverTask(t, proofType)
 		assert.NotNil(t, proverTask)
-		provers[i].submitProof(t, proverTask, time.Second, generatedFailed)
+		provers[i].submitProof(t, proverTask, generatedFailed)
 	}
 
 	// verify proof status
@@ -363,8 +363,8 @@ func testProofGeneratedFailed(t *testing.T) {
 
 func testTimeoutProof(t *testing.T) {
 	// Setup coordinator and ws server.
-	coordinatorUrl := randomURL()
-	collector := setupCoordinator(t, 1, coordinatorUrl, true)
+	coordinatorURL := randomURL()
+	collector := setupCoordinator(t, 1, coordinatorURL, true)
 	defer func() {
 		collector.Stop()
 	}()
@@ -379,11 +379,11 @@ func testTimeoutProof(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create first chunk & batch mock prover, that will not send any proof.
-	chunkProver1 := newMockProver(t, "prover_test"+strconv.Itoa(0), coordinatorUrl, message.ProofTypeChunk)
+	chunkProver1 := newMockProver(t, "prover_test"+strconv.Itoa(0), coordinatorURL, message.ProofTypeChunk)
 	proverChunkTask := chunkProver1.getProverTask(t, message.ProofTypeChunk)
 	assert.NotNil(t, proverChunkTask)
 
-	batchProver1 := newMockProver(t, "prover_test"+strconv.Itoa(1), coordinatorUrl, message.ProofTypeBatch)
+	batchProver1 := newMockProver(t, "prover_test"+strconv.Itoa(1), coordinatorURL, message.ProofTypeBatch)
 	proverBatchTask := batchProver1.getProverTask(t, message.ProofTypeBatch)
 	assert.NotNil(t, proverBatchTask)
 
@@ -400,15 +400,15 @@ func testTimeoutProof(t *testing.T) {
 	time.Sleep(time.Duration(conf.ProverManagerConfig.CollectionTime) * time.Minute)
 
 	// create second mock prover, that will send valid proof.
-	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), coordinatorUrl, message.ProofTypeChunk)
+	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), coordinatorURL, message.ProofTypeChunk)
 	proverChunkTask2 := chunkProver2.getProverTask(t, message.ProofTypeChunk)
 	assert.NotNil(t, proverChunkTask2)
-	chunkProver2.submitProof(t, proverChunkTask2, time.Second, verifiedSuccess)
+	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess)
 
-	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), coordinatorUrl, message.ProofTypeBatch)
+	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), coordinatorURL, message.ProofTypeBatch)
 	proverBatchTask2 := batchProver2.getProverTask(t, message.ProofTypeChunk)
 	assert.NotNil(t, proverBatchTask2)
-	chunkProver2.submitProof(t, proverBatchTask2, time.Second, verifiedSuccess)
+	chunkProver2.submitProof(t, proverBatchTask2, verifiedSuccess)
 
 	// verify proof status, it should be verified now, because second prover sent valid proof
 	chunkProofStatus2, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)

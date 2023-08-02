@@ -15,7 +15,7 @@ type Config struct {
 	ProverName       string            `json:"prover_name"`
 	KeystorePath     string            `json:"keystore_path"`
 	KeystorePassword string            `json:"keystore_password"`
-	CoordinatorURL   string            `json:"coordinator_url"`
+	coordinatorURL   string            `json:"coordinator_url"`
 	TraceEndpoint    string            `json:"trace_endpoint"`
 	Core             *ProverCoreConfig `json:"core"`
 	DBPath           string            `json:"db_path"`

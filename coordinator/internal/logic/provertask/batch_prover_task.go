@@ -1,4 +1,4 @@
-package prover_task
+package provertask
 
 import (
 	"context"
@@ -119,8 +119,8 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 	var chunkInfos []*message.ChunkInfo
 	for _, chunk := range chunks {
 		var proof message.ChunkProof
-		if err := json.Unmarshal(chunk.Proof, &proof); err != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", err, taskID, chunk.Hash)
+		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, taskID, chunk.Hash)
 		}
 		chunkProofs = append(chunkProofs, &proof)
 
@@ -142,7 +142,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 
 	chunkProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%w err:%w", taskID, err)
+		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", taskID, err)
 	}
 
 	taskMsg := &coordinatorType.ProverTaskSchema{
