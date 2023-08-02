@@ -215,7 +215,6 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 		if err != nil {
 			return nil, err
 		}
-		provingTask.Task.ChunkTaskDetail.BlockHashes = blockHashes
 	case message.ProofTypeBatch:
 		err := json.Unmarshal([]byte(resp.Data.ProofData), &provingTask.Task.BatchTaskDetail)
 		if err != nil {
