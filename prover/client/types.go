@@ -22,9 +22,9 @@ type ProverLoginResponse struct {
 
 // ProverTasksRequest defines the request structure for ProverTasks API
 type ProverTasksRequest struct {
-	ProverVersion string `json:"prover_version"`
-	ProverHeight  int    `json:"prover_height"`
-	ProofType     int    `json:"proof_type"`
+	ProverVersion string            `json:"prover_version"`
+	ProverHeight  uint64            `json:"prover_height"`
+	ProofType     message.ProofType `json:"proof_type"`
 }
 
 // ProverTasksResponse defines the response structure for ProverTasks API
@@ -40,17 +40,16 @@ type ProverTasksResponse struct {
 
 // SubmitProofRequest defines the request structure for the SubmitProof API.
 type SubmitProofRequest struct {
-	TaskID    string `json:"task_id"`
-	Status    int    `json:"status"`
-	Error     string `json:"error"`
-	ProofType int    `json:"proof_type"`
-	Signature string `json:"signature"`
-	Proof     string `json:"proof"`
+	TaskID    string             `json:"task_id"`
+	Status    message.RespStatus `json:"status"`
+	Error     string             `json:"error"`
+	ProofType message.ProofType  `json:"proof_type"`
+	Signature string             `json:"signature"`
+	Proof     string             `json:"proof"`
 }
 
 // SubmitProofResponse defines the response structure for the SubmitProof API.
 type SubmitProofResponse struct {
 	ErrCode int    `json:"errcode"`
 	ErrMsg  string `json:"errmsg"`
-	Data    string `json:"data"` // todo: remove it?
 }

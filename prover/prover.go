@@ -186,8 +186,8 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 	// prepare the request
 	req := &client.ProverTasksRequest{
 		ProverVersion: version.Version,
-		ProverHeight:  int(latestBlockNumber),
-		ProofType:     int(r.Type()),
+		ProverHeight:  latestBlockNumber,
+		ProofType:     r.Type(),
 	}
 
 	// send the request
@@ -211,20 +211,16 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 
 	switch resp.Data.ProofType {
 	case message.ProofTypeChunk:
-		var blockHashes []common.Hash
-		err := json.Unmarshal([]byte(resp.Data.ProofData), &blockHashes)
+		err := json.Unmarshal([]byte(resp.Data.ProofData), &provingTask.Task.ChunkTaskDetail)
 		if err != nil {
 			return nil, err
 		}
 		provingTask.Task.ChunkTaskDetail.BlockHashes = blockHashes
 	case message.ProofTypeBatch:
-		var subProofs []*message.ChunkProof
-		err := json.Unmarshal([]byte(resp.Data.ProofData), &subProofs)
+		err := json.Unmarshal([]byte(resp.Data.ProofData), &provingTask.Task.BatchTaskDetail)
 		if err != nil {
 			return nil, err
 		}
-		// TODO(colinlyguo): add chunk infos.
-		provingTask.Task.BatchTaskDetail.ChunkProofs = subProofs
 	default:
 		return nil, fmt.Errorf("unknown proof type: %d", resp.Data.ProofType)
 	}
@@ -308,9 +304,9 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
 		TaskID:    authZkProof.ProofDetail.ID,
-		Status:    int(authZkProof.ProofDetail.Status),
+		Status:    authZkProof.ProofDetail.Status,
 		Error:     authZkProof.ProofDetail.Error,
-		ProofType: int(authZkProof.ProofDetail.Type),
+		ProofType: authZkProof.ProofDetail.Type,
 		Signature: authZkProof.Signature,
 		Proof:     string(proofJSON),
 	}

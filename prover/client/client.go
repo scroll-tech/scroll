@@ -54,12 +54,11 @@ func (c *CoordinatorClient) Login(ctx context.Context, req *ProverLoginRequest) 
 		return nil, fmt.Errorf("failed to parse login response: %v", err)
 	}
 
-	// Check errcode in the response
 	if result.ErrCode != 200 {
 		return nil, fmt.Errorf("failed to login, error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
 
-	// Store JWT token for future requests
+	// store JWT token for future requests
 	c.client.SetAuthToken(result.Data.Token)
 
 	return &result, nil
