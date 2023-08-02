@@ -59,8 +59,7 @@ func Unauthorized(c *gin.Context, code int, message string) {
 func PayloadFunc(data interface{}) jwt.MapClaims {
 	if v, ok := data.(types.LoginParameter); ok {
 		return jwt.MapClaims{
-			IdentityKey: v.PublicKey,
-			ProverName:  v.ProverName,
+			ProverName: v.ProverName,
 		}
 	}
 	return jwt.MapClaims{}
@@ -70,7 +69,6 @@ func PayloadFunc(data interface{}) jwt.MapClaims {
 func IdentityHandler(c *gin.Context) interface{} {
 	claims := jwt.ExtractClaims(c)
 	return &types.LoginParameter{
-		PublicKey:  claims[IdentityKey].(string),
 		ProverName: claims[ProverName].(string),
 	}
 }

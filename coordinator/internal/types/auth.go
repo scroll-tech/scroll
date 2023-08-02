@@ -9,7 +9,7 @@ const (
 
 // LoginParameter for /login api
 type LoginParameter struct {
-	PublicKey  string `form:"public_key" json:"public_key" binding:"required"`
+	//PublicKey  string `form:"public_key" json:"public_key" binding:"required"`
 	ProverName string `form:"prover_name" json:"prover_name" binding:"required"`
 }
 

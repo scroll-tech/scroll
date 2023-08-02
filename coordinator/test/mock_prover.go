@@ -1,19 +1,20 @@
 package test
 
 import (
-	"context"
 	"crypto/ecdsa"
-	"sync"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"scroll-tech/coordinator/internal/types"
 	"testing"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum"
+	"github.com/go-resty/resty/v2"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types/message"
 
-	client2 "scroll-tech/coordinator/client"
 	"scroll-tech/coordinator/internal/logic/verifier"
 )
 
@@ -26,133 +27,137 @@ const (
 )
 
 type mockProver struct {
-	proverName string
-	privKey    *ecdsa.PrivateKey
-	proofType  message.ProofType
-
-	wsURL  string
-	client *client2.Client
-
-	taskCh    chan *message.TaskMsg
-	taskCache sync.Map
-
-	sub    ethereum.Subscription
-	stopCh chan struct{}
+	proverName     string
+	privKey        *ecdsa.PrivateKey
+	proofType      message.ProofType
+	coordinatorUrl string
 }
 
-func newMockProver(t *testing.T, proverName string, wsURL string, proofType message.ProofType) *mockProver {
+func newMockProver(t *testing.T, proverName string, coordinatorUrl string, proofType message.ProofType) *mockProver {
 	privKey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
 	prover := &mockProver{
-		proverName: proverName,
-		privKey:    privKey,
-		proofType:  proofType,
-		wsURL:      wsURL,
-		taskCh:     make(chan *message.TaskMsg, 4),
-		stopCh:     make(chan struct{}),
+		proverName:     proverName,
+		privKey:        privKey,
+		proofType:      proofType,
+		coordinatorUrl: coordinatorUrl,
 	}
-	prover.client, prover.sub, err = prover.connectToCoordinator()
-	assert.NoError(t, err)
-
 	return prover
 }
 
 // connectToCoordinator sets up a websocket client to connect to the prover manager.
-func (r *mockProver) connectToCoordinator() (*client2.Client, ethereum.Subscription, error) {
-	// Create connection.
-	client, err := client2.Dial(r.wsURL)
-	if err != nil {
-		return nil, nil, err
-	}
+func (r *mockProver) connectToCoordinator(t *testing.T) string {
+	var loginResult types.LoginSchema
+	client := resty.New()
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody([]byte(`{"prover_name":"mock_test"}`)).
+		SetResult(&loginResult).
+		Post(r.coordinatorUrl + "/coordinator/v1/login")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode())
+	return loginResult.Token
+}
 
-	// create a new ws connection
-	authMsg := &message.AuthMsg{
-		Identity: &message.Identity{
-			Name:       r.proverName,
-			ProverType: r.proofType,
+func (r *mockProver) healthCheck(t *testing.T, token string) bool {
+	var result types.Response
+	client := resty.New()
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
+		SetResult(&result).
+		Get(r.coordinatorUrl + "/coordinator/v1/health_check")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode())
+	assert.Equal(t, types.Success, result.ErrCode)
+	return true
+}
+
+func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *types.ProverTaskSchema {
+	// get task from coordinator
+	token := r.connectToCoordinator(t)
+	assert.NotEmpty(t, token)
+
+	var result types.Response
+	client := resty.New()
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
+		SetBody(map[string]interface{}{"prover_version": 1, "prover_height": 100, "proof_type": int(proofType)}).
+		SetResult(&result).
+		Post(r.coordinatorUrl + "/coordinator/v1/prover_tasks")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode())
+	assert.Equal(t, types.Success, result.ErrCode)
+
+	data, ok := result.Data.(string)
+	assert.True(t, ok)
+
+	var proverTaskSchema types.ProverTaskSchema
+	assert.NoError(t, json.Unmarshal([]byte(data), &proverTaskSchema))
+	assert.NotEmpty(t, proverTaskSchema.TaskID)
+	assert.NotEmpty(t, proverTaskSchema.ProofType)
+	assert.NotEmpty(t, proverTaskSchema.ProofData)
+
+	return &proverTaskSchema
+}
+
+func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.ProverTaskSchema, proofTime time.Duration, proofStatus proofStatus) {
+	proof := &message.ProofMsg{
+		ProofDetail: &message.ProofDetail{
+			ID:         proverTaskSchema.TaskID,
+			Type:       message.ProofType(proverTaskSchema.ProofType),
+			Status:     message.StatusOk,
+			ChunkProof: &message.ChunkProof{},
+			BatchProof: &message.BatchProof{},
 		},
 	}
-	_ = authMsg.SignWithKey(r.privKey)
 
-	token, err := client.RequestToken(context.Background(), authMsg)
-	if err != nil {
-		return nil, nil, err
-	}
-	authMsg.Identity.Token = token
-	_ = authMsg.SignWithKey(r.privKey)
-
-	sub, err := client.RegisterAndSubscribe(context.Background(), r.taskCh, authMsg)
-	if err != nil {
-		return nil, nil, err
+	if proofStatus == generatedFailed {
+		proof.Status = message.StatusProofError
+	} else if proofStatus == verifiedFailed {
+		proof.ProofDetail.ChunkProof.Proof = []byte(verifier.InvalidTestProof)
+		proof.ProofDetail.BatchProof.Proof = []byte(verifier.InvalidTestProof)
 	}
 
-	return client, sub, nil
-}
-
-func (r *mockProver) releaseTasks() {
-	r.taskCache.Range(func(key, value any) bool {
-		r.taskCh <- value.(*message.TaskMsg)
-		r.taskCache.Delete(key)
-		return true
-	})
-}
-
-// Wait for the proof task, after receiving the proof task, prover submits proof after proofTime secs.
-func (r *mockProver) waitTaskAndSendProof(t *testing.T, proofTime time.Duration, reconnect bool, proofStatus proofStatus) {
-	// simulating the case that the prover first disconnects and then reconnects to the coordinator
-	// the Subscription and its `Err()` channel will be closed, and the coordinator will `freeProver()`
-	if reconnect {
-		var err error
-		r.client, r.sub, err = r.connectToCoordinator()
-		if err != nil {
-			t.Fatal(err)
-			return
-		}
+	assert.NoError(t, proof.Sign(r.privKey))
+	submitProof := types.SubmitProofParameter{
+		TaskID:    proof.ID,
+		ProofType: int(proof.Type),
+		Status:    int(proof.Status),
+		Signature: proof.Signature,
 	}
 
-	// Release cached tasks.
-	r.releaseTasks()
-
-	r.stopCh = make(chan struct{})
-	go r.loop(t, r.client, proofTime, proofStatus, r.stopCh)
-}
-
-func (r *mockProver) loop(t *testing.T, client *client2.Client, proofTime time.Duration, proofStatus proofStatus, stopCh chan struct{}) {
-	for {
-		select {
-		case task := <-r.taskCh:
-			r.taskCache.Store(task.ID, task)
-			// simulate proof time
-			select {
-			case <-time.After(proofTime):
-			case <-stopCh:
-				return
-			}
-			proof := &message.ProofMsg{
-				ProofDetail: &message.ProofDetail{
-					ID:         task.ID,
-					Type:       r.proofType,
-					Status:     message.StatusOk,
-					ChunkProof: &message.ChunkProof{},
-					BatchProof: &message.BatchProof{},
-				},
-			}
-			if proofStatus == generatedFailed {
-				proof.Status = message.StatusProofError
-			} else if proofStatus == verifiedFailed {
-				proof.ProofDetail.ChunkProof.Proof = []byte(verifier.InvalidTestProof)
-				proof.ProofDetail.BatchProof.Proof = []byte(verifier.InvalidTestProof)
-			}
-			assert.NoError(t, proof.Sign(r.privKey))
-			assert.NoError(t, client.SubmitProof(context.Background(), proof))
-		case <-stopCh:
-			return
-		}
+	switch proof.Type {
+	case message.ProofTypeChunk:
+		encodeData, err := json.Marshal(proof.ChunkProof)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, encodeData)
+		submitProof.Proof = string(encodeData)
+	case message.ProofTypeBatch:
+		encodeData, err := json.Marshal(proof.BatchProof)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, encodeData)
+		submitProof.Proof = string(encodeData)
 	}
-}
 
-func (r *mockProver) close() {
-	close(r.stopCh)
-	r.sub.Unsubscribe()
+	token := r.connectToCoordinator(t)
+	assert.NotEmpty(t, token)
+
+	submitProofData, err := json.Marshal(submitProof)
+	assert.NoError(t, err)
+	assert.NotNil(t, submitProofData)
+
+	var result types.Response
+	client := resty.New()
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
+		SetBody(string(submitProofData)).
+		SetResult(&result).
+		Post(r.coordinatorUrl + "/coordinator/v1/prover_tasks")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode())
+	assert.Equal(t, types.Success, result.ErrCode)
 }

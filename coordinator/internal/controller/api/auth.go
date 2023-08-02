@@ -20,6 +20,10 @@ func NewAuthController() *AuthController {
 	return &AuthController{}
 }
 
+func (a *AuthController) HealthCheck(c *gin.Context) {
+	types.RenderJSON(c, types.Success, nil, nil)
+}
+
 // Login the api controller for login
 func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	var login types.LoginParameter
@@ -31,11 +35,11 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return nil, errors.New("incorrect public_key")
 	}
 
-	return types.LoginParameter{PublicKey: login.PublicKey, ProverName: login.ProverName}, nil
+	return types.LoginParameter{ProverName: login.ProverName}, nil
 }
 
 func (a *AuthController) checkValidPublicKey(param *types.LoginParameter) bool {
-	return strings.TrimSpace(param.PublicKey) != "" && strings.TrimSpace(param.ProverName) != ""
+	return strings.TrimSpace(param.ProverName) != ""
 }
 
 // LoginResponse response login api
@@ -54,11 +58,10 @@ func (a *AuthController) Authorizator(data interface{}, c *gin.Context) bool {
 		return false
 	}
 
-	if tokenCliams.PublicKey == "" || tokenCliams.ProverName == "" {
+	if tokenCliams.ProverName == "" {
 		return false
 	}
 
-	c.Set(types.PublicKeyCtxKey, tokenCliams.PublicKey)
 	c.Set(types.ProverNameCtxKey, tokenCliams.ProverName)
 	return true
 }
