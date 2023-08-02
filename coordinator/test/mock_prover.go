@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"scroll-tech/coordinator/internal/types"
 	"testing"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/logic/verifier"
+	"scroll-tech/coordinator/internal/types"
 )
 
 type proofStatus uint32
