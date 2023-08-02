@@ -149,12 +149,10 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	var totalL2TxGas uint64
 	var totalL2TxNum uint64
 	var totalL1CommitCalldataSize uint64
-	var totalL1CommitGas uint64
 	for _, block := range chunk.Blocks {
 		totalL2TxGas += block.Header.GasUsed
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
-		totalL1CommitGas += block.EstimateL1CommitGas()
 	}
 
 	numBlocks := len(chunk.Blocks)
@@ -168,7 +166,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		TotalL2TxGas:                 totalL2TxGas,
 		TotalL2TxNum:                 uint32(totalL2TxNum),
 		TotalL1CommitCalldataSize:    uint32(totalL1CommitCalldataSize),
-		TotalL1CommitGas:             totalL1CommitGas,
+		TotalL1CommitGas:             chunk.EstimateL1CommitGas(),
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
 		TotalL1MessagesPoppedInChunk: uint32(chunk.NumL1Messages(totalL1MessagePoppedBefore)),

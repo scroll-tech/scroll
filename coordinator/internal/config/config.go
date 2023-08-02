@@ -37,8 +37,8 @@ type ProverManagerConfig struct {
 
 // L2Config loads l2geth configuration items.
 type L2Config struct {
-	// l2geth node url.
-	Endpoint string `json:"endpoint"`
+	// l2geth chain_id.
+	ChainID uint64 `json:"chain_id"`
 }
 
 // Auth provides the auth of prover-stats-api
@@ -52,14 +52,14 @@ type Config struct {
 	ProverManagerConfig *ProverManagerConfig `json:"prover_manager_config"`
 	DBConfig            *database.Config     `json:"db_config"`
 	L2Config            *L2Config            `json:"l2_config"`
-	Auth                Auth                 `json:"auth"`
+	Auth                *Auth                `json:"auth"`
 }
 
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
 	MockMode   bool   `json:"mock_mode"`
 	ParamsPath string `json:"params_path"`
-	AggVkPath  string `json:"agg_vk_path"`
+	AssetsPath string `json:"assets_path"`
 }
 
 // NewConfig returns a new instance of Config.

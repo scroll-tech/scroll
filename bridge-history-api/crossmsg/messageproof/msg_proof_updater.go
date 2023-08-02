@@ -75,8 +75,16 @@ func (m *MsgProofUpdater) Start() {
 						log.Error("MsgProofUpdater: can not append l2messages", "startBlockNumber", batch.StartBlockNumber, "endBlockNumber", batch.EndBlockNumber, "err", err)
 						break
 					}
+					// here we update batch withdraw root
+					err = m.rollupOrm.UpdateRollupBatchWithdrawRoot(m.ctx, batch.BatchIndex, m.withdrawTrie.MessageRoot().Hex())
+					if err != nil {
+						// if failed better restart the binary
+						log.Error("MsgProofUpdater: can not update batch withdraw root", "err", err)
+						break
+					}
 					err = m.updateMsgProof(msgs, proofs, batch.BatchIndex)
 					if err != nil {
+						// if failed better restart the binary
 						log.Error("MsgProofUpdater: can not update msg proof", "err", err)
 						break
 					}
@@ -174,7 +182,10 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 		if err != nil {
 			return err
 		}
-
+		err = m.rollupOrm.UpdateRollupBatchWithdrawRoot(m.ctx, b.BatchIndex, m.withdrawTrie.MessageRoot().Hex())
+		if err != nil {
+			return err
+		}
 		err = m.updateMsgProof(msgs, proofs, b.BatchIndex)
 		if err != nil {
 			return err

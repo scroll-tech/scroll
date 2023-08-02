@@ -121,23 +121,29 @@ func (m *SubmitProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *mes
 
 	coordinatorProofsReceivedTotalCounter.Inc(1)
 
-	// TODO: add switch case for ChunkProof & BatchProof
-	//success, verifyErr := m.verifier.VerifyProof(proofMsg.BatchProof)
-	//if verifyErr != nil || !success {
-	//	if verifyErr != nil {
-	//		// TODO: this is only a temp workaround for testnet, we should return err in real cases
-	//		log.Error("failed to verify zk proof", "proof id", proofMsg.ID, "prover pk", pk, "prove type",
-	//			proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
-	//	}
-	//	m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
-	//
-	//	// TODO: Prover needs to be slashed if proof is invalid.
-	//	coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
-	//
-	//	log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
-	//		"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
-	//	return nil
-	//}
+	var success bool
+	var verifyErr error
+	if proofMsg.Type == message.ProofTypeChunk {
+		success, verifyErr = m.verifier.VerifyChunkProof(proofMsg.ChunkProof)
+	} else if proofMsg.Type == message.ProofTypeBatch {
+		success, verifyErr = m.verifier.VerifyBatchProof(proofMsg.BatchProof)
+	}
+
+	if verifyErr != nil || !success {
+		if verifyErr != nil {
+			// TODO: this is only a temp workaround for testnet, we should return err in real cases
+			log.Error("failed to verify zk proof", "proof id", proofMsg.ID, "prover pk", pk, "prove type",
+				proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
+		}
+		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
+
+		// TODO: Prover needs to be slashed if proof is invalid.
+		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
+
+		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
+			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
+		return nil
+	}
 
 	if err := m.closeProofTask(ctx, proofMsg.ID, pk, proofMsg); err != nil {
 		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg.Type)

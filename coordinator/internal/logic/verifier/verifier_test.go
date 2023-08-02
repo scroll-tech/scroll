@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	paramsPath = flag.String("params", "/assets/test_params", "params dir")
-	aggVkPath  = flag.String("vk", "/assets/agg_vk", "aggregation proof verification key path")
-	proofPath  = flag.String("proof", "/assets/agg_proof", "aggregation proof path")
+	paramsPath     = flag.String("params", "/assets/test_params", "params dir")
+	assetsPath     = flag.String("assets", "/assets/test_assets", "assets dir")
+	batchProofPath = flag.String("batch_proof", "/assets/proof_data/batch_proof", "batch proof file path")
+	chunkProofPath = flag.String("chunk_proof", "/assets/proof_data/chunk_proof", "chunk proof file path")
 )
 
 func TestFFI(t *testing.T) {
@@ -27,19 +28,30 @@ func TestFFI(t *testing.T) {
 	cfg := &config.VerifierConfig{
 		MockMode:   false,
 		ParamsPath: *paramsPath,
-		AggVkPath:  *aggVkPath,
+		AssetsPath: *assetsPath,
 	}
 	v, err := NewVerifier(cfg)
 	as.NoError(err)
 
-	f, err := os.Open(*proofPath)
+	chunkProofFile, err := os.Open(*chunkProofPath)
 	as.NoError(err)
-	byt, err := io.ReadAll(f)
+	chunkProofByt, err := io.ReadAll(chunkProofFile)
 	as.NoError(err)
-	proof := &message.BatchProof{}
-	as.NoError(json.Unmarshal(byt, proof))
+	chunkProof := &message.ChunkProof{}
+	as.NoError(json.Unmarshal(chunkProofByt, chunkProof))
 
-	ok, err := v.VerifyProof(proof)
+	chunkOk, err := v.VerifyChunkProof(chunkProof)
 	as.NoError(err)
-	as.True(ok)
+	as.True(chunkOk)
+
+	batchProofFile, err := os.Open(*batchProofPath)
+	as.NoError(err)
+	batchProofByt, err := io.ReadAll(batchProofFile)
+	as.NoError(err)
+	batchProof := &message.BatchProof{}
+	as.NoError(json.Unmarshal(batchProofByt, batchProof))
+
+	batchOk, err := v.VerifyBatchProof(batchProof)
+	as.NoError(err)
+	as.True(batchOk)
 }

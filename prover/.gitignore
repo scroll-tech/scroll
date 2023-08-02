@@ -6,7 +6,7 @@ build/bin/
 # ignore db file
 bbolt_db
 
-prover/lib
+core/lib
 
 params/
 seed

@@ -69,6 +69,9 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 
 	tokenTimeout = 6
 	conf = &config.Config{
+		L2Config: &config.L2Config{
+			ChainID: 111,
+		},
 		ProverManagerConfig: &config.ProverManagerConfig{
 			ProversPerSession:  proversPerSession,
 			Verifier:           &config.VerifierConfig{MockMode: true},
@@ -77,7 +80,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 			MaxVerifierWorkers: 10,
 			SessionAttempts:    2,
 		},
-		Auth: config.Auth{
+		Auth: &config.Auth{
 			TokenExpireDuration: tokenTimeout,
 		},
 	}

@@ -28,6 +28,7 @@ type ChunkProposer struct {
 	maxL1CommitCalldataSizePerChunk uint64
 	minL1CommitCalldataSizePerChunk uint64
 	chunkTimeoutSec                 uint64
+	gasCostIncreaseMultiplier       float64
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
@@ -43,6 +44,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
 		minL1CommitCalldataSizePerChunk: cfg.MinL1CommitCalldataSizePerChunk,
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
+		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 	}
 }
 
@@ -88,11 +90,12 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, nil
 	}
 
-	firstBlock := blocks[0]
+	chunk := &types.Chunk{Blocks: blocks[:1]}
+	firstBlock := chunk.Blocks[0]
 	totalTxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := firstBlock.L2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
-	totalL1CommitGas := firstBlock.EstimateL1CommitGas()
+	totalL1CommitGas := chunk.EstimateL1CommitGas()
 
 	// Check if the first block breaks hard limits.
 	// If so, it indicates there are bugs in sequencer, manual fix is needed.
@@ -105,7 +108,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		)
 	}
 
-	if totalL1CommitGas > p.maxL1CommitGasPerChunk {
+	if p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerChunk) {
 		return nil, fmt.Errorf(
 			"the first block exceeds l1 commit gas limit; block number: %v, commit gas: %v, max commit gas limit: %v",
 			firstBlock.Header.Number,
@@ -133,16 +136,17 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		)
 	}
 
-	for i, block := range blocks[1:] {
+	for _, block := range blocks[1:] {
+		chunk.Blocks = append(chunk.Blocks, block)
 		totalTxGasUsed += block.Header.GasUsed
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
-		totalL1CommitGas += block.EstimateL1CommitGas()
+		totalL1CommitGas = chunk.EstimateL1CommitGas()
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
-			totalL1CommitGas > p.maxL1CommitGasPerChunk {
-			blocks = blocks[:i+1]
+			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerChunk) {
+			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1] // remove the last block from chunk
 			break
 		}
 	}
@@ -165,5 +169,5 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		)
 		return nil, nil
 	}
-	return &types.Chunk{Blocks: blocks}, nil
+	return chunk, nil
 }
