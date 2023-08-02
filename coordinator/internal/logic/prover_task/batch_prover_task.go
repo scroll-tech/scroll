@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -107,14 +108,39 @@ func (bp *BatchProverTask) Collect(ctx *gin.Context) (*coordinatorType.ProverTas
 }
 
 func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) (*coordinatorType.ProverTaskSchema, error) {
-	// get chunk proofs from db
-	chunkProofs, err := bp.chunkOrm.GetProofsByBatchHash(ctx, taskID)
+	// get chunk from db
+	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, taskID)
 	if err != nil {
 		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", taskID, err)
 		return nil, err
 	}
 
-	chunkProofsBytes, err := json.Marshal(chunkProofs)
+	var chunkProofs []*message.ChunkProof
+	var chunkInfos []*message.ChunkInfo
+	for _, chunk := range chunks {
+		var proof message.ChunkProof
+		if err := json.Unmarshal(chunk.Proof, &proof); err != nil {
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", err, taskID, chunk.Hash)
+		}
+		chunkProofs = append(chunkProofs, &proof)
+
+		chunkInfo := message.ChunkInfo{
+			ChainID:       bp.cfg.L2Config.ChainID,
+			PrevStateRoot: common.HexToHash(chunk.ParentChunkStateRoot),
+			PostStateRoot: common.HexToHash(chunk.StateRoot),
+			WithdrawRoot:  common.HexToHash(chunk.WithdrawRoot),
+			DataHash:      common.HexToHash(chunk.Hash),
+			IsPadding:     false,
+		}
+		chunkInfos = append(chunkInfos, &chunkInfo)
+	}
+
+	taskDetail := message.BatchTaskDetail{
+		ChunkInfos:  chunkInfos,
+		ChunkProofs: chunkProofs,
+	}
+
+	chunkProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%w err:%w", taskID, err)
 	}
