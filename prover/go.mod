@@ -3,7 +3,7 @@ module scroll-tech/prover
 go 1.19
 
 require (
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230802095950-4b2bbf6225e7
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
 	go.etcd.io/bbolt v1.3.7
@@ -34,7 +34,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.5.3 // indirect
+	github.com/scroll-tech/zktrie v0.6.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
