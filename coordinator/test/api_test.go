@@ -62,6 +62,9 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	var err error
 	db, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	tokenTimeout = 6
 	conf = &config.Config{
