@@ -294,6 +294,10 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
 }
 
 func (r *Prover) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
+	if len(blockHashes) == 0 {
+		return nil, fmt.Errorf("blockHashes is empty")
+	}
+
 	var traces []*types.BlockTrace
 	for _, blockHash := range blockHashes {
 		trace, err := r.l2GethClient.GetBlockTraceByHash(r.ctx, blockHash)
