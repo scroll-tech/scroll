@@ -259,39 +259,34 @@ func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error
 }
 
 func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
-	authZkProof := &message.ProofMsg{ProofDetail: msg}
-	if err := authZkProof.Sign(r.priv); err != nil {
-		return fmt.Errorf("error signing proof: %v", err)
+	var proofJSON []byte
+	var err error
+	switch msg.Type {
+	case message.ProofTypeChunk:
+		proofJSON, err = json.Marshal(msg.ChunkProof)
+	case message.ProofTypeBatch:
+		proofJSON, err = json.Marshal(msg.BatchProof)
+	default:
+		return fmt.Errorf("unknown task type: %v", msg.Type)
 	}
 
-	// marshal the ChunkProof and BatchProof into a single JSON
-	proofs := map[string]interface{}{
-		"chunk_proof": authZkProof.ChunkProof,
-		"batch_proof": authZkProof.BatchProof,
-	}
-
-	proofJSON, err := json.Marshal(proofs)
 	if err != nil {
-		return fmt.Errorf("error marshaling proofs into JSON: %v", err)
+		return fmt.Errorf("error marshaling proof into JSON: %v", err)
 	}
 
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
-		TaskID:   authZkProof.ProofDetail.ID,
-		Status:   authZkProof.ProofDetail.Status,
-		Error:    authZkProof.ProofDetail.Error,
-		TaskType: authZkProof.ProofDetail.Type,
+		TaskID:   msg.ID,
+		Status:   msg.Status,
+		Error:    msg.Error,
+		TaskType: msg.Type,
 		Proof:    string(proofJSON),
 	}
 
 	// send the submit request
-	resp, err := r.coordinatorClient.SubmitProof(r.ctx, req)
+	err = r.coordinatorClient.SubmitProof(r.ctx, req)
 	if err != nil {
 		return fmt.Errorf("error submitting proof: %v", err)
-	}
-
-	if resp.ErrCode != 200 {
-		return fmt.Errorf("submit proof error, error code: %v, error message: %v", resp.ErrCode, resp.ErrMsg)
 	}
 
 	log.Debug("proof submitted successfully", "task-id", msg.ID)
@@ -308,10 +303,17 @@ func (r *Prover) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.Bl
 		traces = append(traces, trace)
 	}
 	// Sort BlockTraces by header number.
-	// TODO: we should check that the number range here is continuous.
 	sort.Slice(traces, func(i, j int) bool {
 		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
 	})
+
+	// Check that the block numbers are continuous
+	for i := 0; i < len(traces)-1; i++ {
+		if traces[i].Header.Number.Int64()+1 != traces[i+1].Header.Number.Int64() {
+			return nil, fmt.Errorf("block numbers are not continuous, got %v and %v",
+				traces[i].Header.Number.Int64(), traces[i+1].Header.Number.Int64())
+		}
+	}
 	return traces, nil
 }
 

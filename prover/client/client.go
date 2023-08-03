@@ -10,6 +10,7 @@ import (
 
 	"scroll-tech/prover/config"
 
+	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 )
 
@@ -70,14 +71,14 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 	}
 
 	// Login to coordinator
-	loginReq := &ProverLoginRequest{
+	loginReq := &LoginRequest{
 		Message: *authMsg,
 	}
 
 	loginResp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(loginReq).
-		SetResult(&ProverLoginResponse{}).
+		SetResult(&LoginResponse{}).
 		Post("/v1/login")
 
 	if err != nil {
@@ -88,10 +89,9 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 		return fmt.Errorf("failed to login, status code: %v", loginResp.StatusCode())
 	}
 
-	loginResult := loginResp.Result().(*ProverLoginResponse)
+	loginResult := loginResp.Result().(*LoginResponse)
 
-	// TODO: refactor errcode
-	if loginResult.ErrCode != 200 {
+	if loginResult.ErrCode != types.Success {
 		return fmt.Errorf("failed to login, error code: %v, error message: %v", loginResult.ErrCode, loginResult.ErrMsg)
 	}
 
@@ -119,16 +119,13 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 
 	result := resp.Result().(*GetTaskResponse)
 
-	// TODO: refactor errcode
-	if result.ErrCode != 200 {
-		// TODO: refactor errcode
-		if result.ErrCode == 20005 {
+	if result.ErrCode != types.Success {
+		if result.ErrCode == types.ErrJWTTokenExpired {
 			if err := c.Login(ctx); err != nil {
 				return nil, fmt.Errorf("JWT expired, re-login failed: %v", err)
 			}
 			return c.GetTask(ctx, req)
 		}
-
 		return nil, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
 
@@ -136,7 +133,7 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 }
 
 // SubmitProof sends a request to the coordinator to submit proof.
-func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofRequest) (*SubmitProofResponse, error) {
+func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofRequest) error {
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
@@ -144,26 +141,23 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 		Post("/v1/submit_proof")
 
 	if err != nil {
-		return nil, fmt.Errorf("submit proof request failed: %v", err)
+		return fmt.Errorf("submit proof request failed: %v", err)
 	}
 
 	if resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("failed to submit proof, status code: %v", resp.StatusCode())
+		return fmt.Errorf("failed to submit proof, status code: %v", resp.StatusCode())
 	}
 
 	result := resp.Result().(*SubmitProofResponse)
 
-	// TODO: refactor errcode
-	if result.ErrCode != 200 {
-		// TODO: refactor errcode
-		if result.ErrCode == 20005 {
+	if result.ErrCode != types.Success {
+		if result.ErrCode == types.ErrJWTTokenExpired {
 			if err := c.Login(ctx); err != nil {
-				return nil, fmt.Errorf("JWT expired, re-login failed: %v", err)
+				return fmt.Errorf("JWT expired, re-login failed: %v", err)
 			}
 			return c.SubmitProof(ctx, req)
 		}
-
-		return nil, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
+		return fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
-	return result, nil
+	return nil
 }

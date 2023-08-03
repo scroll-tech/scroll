@@ -9,13 +9,13 @@ type RandomResponse struct {
 	Random string `json:"random"`
 }
 
-// ProverLoginRequest defines the request structure for login API
-type ProverLoginRequest struct {
+// LoginRequest defines the request structure for login API
+type LoginRequest struct {
 	Message message.AuthMsg `json:"message"`
 }
 
-// ProverLoginResponse defines the response structure for login API
-type ProverLoginResponse struct {
+// LoginResponse defines the response structure for login API
+type LoginResponse struct {
 	ErrCode int    `json:"errcode,omitempty"`
 	ErrMsg  string `json:"errmsg,omitempty"`
 	Data    *struct {
@@ -51,5 +51,4 @@ type SubmitProofRequest struct {
 type SubmitProofResponse struct {
 	ErrCode int    `json:"errcode,omitempty"`
 	ErrMsg  string `json:"errmsg,omitempty"`
-	Success bool   `json:"success"`
 }
