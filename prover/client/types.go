@@ -1,17 +1,51 @@
 package client
 
 import (
+	"net/http"
+
 	"scroll-tech/common/types/message"
+
+	"github.com/gin-gonic/gin"
 )
 
-// RandomResponse defines the response structure for random API
-type RandomResponse struct {
-	Challenge string `json:"challenge"`
+// Response the response schema
+type Response struct {
+	ErrCode int         `json:"errcode"`
+	ErrMsg  string      `json:"errmsg"`
+	Data    interface{} `json:"data"`
+}
+
+// RenderJSON renders response with json
+func RenderJSON(ctx *gin.Context, errCode int, err error, data interface{}) {
+	var errMsg string
+	if err != nil {
+		errMsg = err.Error()
+	}
+	renderData := Response{
+		ErrCode: errCode,
+		ErrMsg:  errMsg,
+		Data:    data,
+	}
+	ctx.JSON(http.StatusOK, renderData)
+}
+
+// ChallengeResponse defines the response structure for random API
+type ChallengeResponse struct {
+	ErrCode int    `json:"errcode,omitempty"`
+	ErrMsg  string `json:"errmsg,omitempty"`
+	Data    *struct {
+		Time  string `json:"time"`
+		Token string `json:"token"`
+	} `json:"data,omitempty"`
 }
 
 // LoginRequest defines the request structure for login API
 type LoginRequest struct {
-	Message message.AuthMsg `json:"message"`
+	Message struct {
+		Challenge  string `json:"challenge"`
+		ProverName string `json:"prover_name"`
+	} `json:"message"`
+	Signature string `json:"signature"`
 }
 
 // LoginResponse defines the response structure for login API

@@ -39,27 +39,27 @@ func NewCoordinatorClient(cfg *config.CoordinatorConfig, proverName string, priv
 
 // Login completes the entire login process in one function call.
 func (c *CoordinatorClient) Login(ctx context.Context) error {
-	var randomResult RandomResponse
+	var challengeResult ChallengeResponse
 
 	// Get random string
-	randomResp, err := c.client.R().
+	challengeResp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetResult(&randomResult).
-		Get("/v1/random")
+		SetResult(&challengeResult).
+		Get("/coordinator/v1/challenge")
 
 	if err != nil {
 		return fmt.Errorf("get random string failed: %v", err)
 	}
 
-	if randomResp.StatusCode() != 200 {
-		return fmt.Errorf("failed to get random string, status code: %v", randomResp.StatusCode())
+	if challengeResp.StatusCode() != 200 {
+		return fmt.Errorf("failed to get random string, status code: %v", challengeResp.StatusCode())
 	}
 
 	// Prepare and sign the login request
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
 			ProverName: c.proverName,
-			Challenge:  randomResult.Challenge,
+			Challenge:  challengeResult.Data.Token,
 		},
 	}
 
@@ -70,16 +70,23 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 
 	// Login to coordinator
 	loginReq := &LoginRequest{
-		Message: *authMsg,
+		Message: struct {
+			Challenge  string `json:"challenge"`
+			ProverName string `json:"prover_name"`
+		}{
+			Challenge:  authMsg.Identity.Challenge,
+			ProverName: authMsg.Identity.ProverName,
+		},
+		Signature: authMsg.Signature,
 	}
 
 	var loginResult LoginResponse
-
 	loginResp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", challengeResult.Data.Token)).
 		SetBody(loginReq).
 		SetResult(&loginResult).
-		Post("/v1/login")
+		Post("/coordinator/v1/login")
 
 	if err != nil {
 		return fmt.Errorf("login failed: %v", err)
@@ -107,7 +114,7 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
 		SetResult(&result).
-		Post("/v1/get_task")
+		Post("/coordinator/v1/get_task")
 
 	if err != nil {
 		return nil, fmt.Errorf("request for GetTask failed: %v", err)
@@ -138,7 +145,7 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
 		SetResult(&result).
-		Post("/v1/submit_proof")
+		Post("/coordinator/v1/submit_proof")
 
 	if err != nil {
 		return fmt.Errorf("submit proof request failed: %v", err)

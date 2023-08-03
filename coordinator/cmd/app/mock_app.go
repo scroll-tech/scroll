@@ -67,7 +67,7 @@ func (c *CoordinatorApp) Free() {
 	_ = os.Remove(c.coordinatorFile)
 }
 
-// HttpEndpoint returns ws endpoint.
+// HTTPEndpoint returns ws endpoint.
 func (c *CoordinatorApp) HTTPEndpoint() string {
 	return fmt.Sprintf("http://localhost:%d", c.HTTPPort)
 }

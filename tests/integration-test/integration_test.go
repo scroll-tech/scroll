@@ -41,6 +41,8 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	// Reset db.
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
+	base.RunL2Geth(t)
+
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
 	// Run prover app.
