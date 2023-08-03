@@ -18,6 +18,8 @@ const (
 	ErrGetTxsByHashFailure = 40003
 	// ErrGetTxsByAddrFailure is getting txs by address error
 	ErrGetTxsByAddrFailure = 40004
+	// ErrGetWithdrawRootByBatchIndexFailure is getting withdraw root by batch index error
+	ErrGetWithdrawRootByBatchIndexFailure = 40005
 )
 
 // QueryByAddressRequest the request parameter of address api
@@ -30,6 +32,12 @@ type QueryByAddressRequest struct {
 // QueryByHashRequest the request parameter of hash api
 type QueryByHashRequest struct {
 	Txs []string `raw:"txs" binding:"required"`
+}
+
+// QueryByBatchIndexRequest the request parameter of batch index api
+type QueryByBatchIndexRequest struct {
+	// BatchIndex can not be 0, because we dont decode the genesis block
+	BatchIndex uint64 `form:"batch_index" binding:"required"`
 }
 
 // ResultData contains return txs and total

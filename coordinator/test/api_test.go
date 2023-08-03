@@ -79,7 +79,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 			CollectionTime:     1,
 			TokenTimeToLive:    5,
 			MaxVerifierWorkers: 10,
-			SessionAttempts:    2,
+			SessionAttempts:    3,
 		},
 	}
 	proofCollector := cron.NewCollector(context.Background(), db, &conf)
@@ -322,21 +322,25 @@ func testValidProof(t *testing.T) {
 
 	// verify proof status
 	var (
-		tick     = time.Tick(500 * time.Millisecond)
+		tick     = time.Tick(1500 * time.Millisecond)
 		tickStop = time.Tick(time.Minute)
 	)
+
+	var chunkProofStatus types.ProvingStatus
+	var batchProofStatus types.ProvingStatus
+
 	for {
 		select {
 		case <-tick:
-			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
 			if chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified {
 				return
 			}
 		case <-tickStop:
-			t.Error("failed to check proof status")
+			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
 			return
 		}
 	}
@@ -383,21 +387,25 @@ func testInvalidProof(t *testing.T) {
 
 	// verify proof status
 	var (
-		tick     = time.Tick(500 * time.Millisecond)
+		tick     = time.Tick(1500 * time.Millisecond)
 		tickStop = time.Tick(time.Minute)
 	)
+
+	var chunkProofStatus types.ProvingStatus
+	var batchProofStatus types.ProvingStatus
+
 	for {
 		select {
 		case <-tick:
-			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
 			if chunkProofStatus == types.ProvingTaskFailed && batchProofStatus == types.ProvingTaskFailed {
 				return
 			}
 		case <-tickStop:
-			t.Error("failed to check proof status")
+			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
 			return
 		}
 	}
@@ -444,21 +452,25 @@ func testProofGeneratedFailed(t *testing.T) {
 
 	// verify proof status
 	var (
-		tick     = time.Tick(500 * time.Millisecond)
+		tick     = time.Tick(1500 * time.Millisecond)
 		tickStop = time.Tick(time.Minute)
 	)
+
+	var chunkProofStatus types.ProvingStatus
+	var batchProofStatus types.ProvingStatus
+
 	for {
 		select {
 		case <-tick:
-			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
 			if chunkProofStatus == types.ProvingTaskFailed && batchProofStatus == types.ProvingTaskFailed {
 				return
 			}
 		case <-tickStop:
-			t.Error("failed to check proof status")
+			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
 			return
 		}
 	}
@@ -494,18 +506,21 @@ func testTimeoutProof(t *testing.T) {
 	assert.NoError(t, err)
 
 	// verify proof status, it should be assigned, because prover didn't send any proof
+	var chunkProofStatus types.ProvingStatus
+	var batchProofStatus types.ProvingStatus
+
 	ok := utils.TryTimes(30, func() bool {
-		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+		chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
 			return false
 		}
-		batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+		batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 		if err != nil {
 			return false
 		}
 		return chunkProofStatus == types.ProvingTaskAssigned && batchProofStatus == types.ProvingTaskAssigned
 	})
-	assert.Falsef(t, !ok, "failed to check proof status")
+	assert.Falsef(t, !ok, "failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
 
 	// create second mock prover, that will send valid proof.
 	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), wsURL, message.ProofTypeChunk)
@@ -522,17 +537,17 @@ func testTimeoutProof(t *testing.T) {
 
 	// verify proof status, it should be verified now, because second prover sent valid proof
 	ok = utils.TryTimes(200, func() bool {
-		chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+		chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 		if err != nil {
 			return false
 		}
-		batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+		batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 		if err != nil {
 			return false
 		}
 		return chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified
 	})
-	assert.Falsef(t, !ok, "failed to check proof status")
+	assert.Falsef(t, !ok, "failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
 }
 
 func testIdleProverSelection(t *testing.T) {
@@ -577,21 +592,25 @@ func testIdleProverSelection(t *testing.T) {
 
 	// verify proof status
 	var (
-		tick     = time.Tick(500 * time.Millisecond)
+		tick     = time.Tick(1500 * time.Millisecond)
 		tickStop = time.Tick(10 * time.Second)
 	)
+
+	var chunkProofStatus types.ProvingStatus
+	var batchProofStatus types.ProvingStatus
+
 	for {
 		select {
 		case <-tick:
-			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
 			if chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified {
 				return
 			}
 		case <-tickStop:
-			t.Error("failed to check proof status")
+			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
 			return
 		}
 	}
@@ -657,23 +676,27 @@ func testGracefulRestart(t *testing.T) {
 
 	// verify proof status
 	var (
-		tick     = time.Tick(500 * time.Millisecond)
+		tick     = time.Tick(1500 * time.Millisecond)
 		tickStop = time.Tick(15 * time.Second)
 	)
+
+	var chunkProofStatus types.ProvingStatus
+	var batchProofStatus types.ProvingStatus
+
 	for {
 		select {
 		case <-tick:
 			// this proves that the prover submits to the new coordinator,
 			// because the prover client for `submitProof` has been overwritten
-			chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
 			if chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified {
 				return
 			}
 		case <-tickStop:
-			t.Error("failed to check proof status")
+			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
 			return
 		}
 	}
