@@ -277,12 +277,11 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
 
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
-		TaskID:    authZkProof.ProofDetail.ID,
-		Status:    authZkProof.ProofDetail.Status,
-		Error:     authZkProof.ProofDetail.Error,
-		TaskType:  authZkProof.ProofDetail.Type,
-		Signature: authZkProof.Signature,
-		Proof:     string(proofJSON),
+		TaskID:   authZkProof.ProofDetail.ID,
+		Status:   authZkProof.ProofDetail.Status,
+		Error:    authZkProof.ProofDetail.Error,
+		TaskType: authZkProof.ProofDetail.Type,
+		Proof:    string(proofJSON),
 	}
 
 	// send the submit request
