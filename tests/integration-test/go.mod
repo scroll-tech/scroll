@@ -3,7 +3,7 @@ module scroll-tech/integration-test
 go 1.19
 
 require (
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230801133212-7b75f163b0c3
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230802095950-4b2bbf6225e7
 	github.com/stretchr/testify v1.8.3
 )
 
@@ -25,7 +25,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
-	github.com/scroll-tech/zktrie v0.5.3 // indirect
+	github.com/scroll-tech/zktrie v0.6.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
