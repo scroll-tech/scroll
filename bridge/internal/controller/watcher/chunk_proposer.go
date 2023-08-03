@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -83,13 +84,14 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	return err
 }
 
-func updateRowConsumption(totalRowConsumption *map[string]uint64, rowConsumption *gethTypes.RowConsumption) {
+func updateRowConsumption(totalRowConsumption *map[string]uint64, rowConsumption *gethTypes.RowConsumption) error {
 	if rowConsumption == nil {
-		return
+		return errors.New("rowConsumption is <nil>")
 	}
 	for _, subCircuit := range *rowConsumption {
 		(*totalRowConsumption)[subCircuit.Name] += subCircuit.RowNumber
 	}
+	return nil
 }
 
 func maxRowConsumption(totalRowConsumption *map[string]uint64) uint64 {
@@ -118,8 +120,11 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	totalL2TxNum := firstBlock.L2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
 	totalRowConsumption := make(map[string]uint64)
-	updateRowConsumption(&totalRowConsumption, firstBlock.RowConsumption)
 	totalL1CommitGas := chunk.EstimateL1CommitGas()
+
+	if err := updateRowConsumption(&totalRowConsumption, firstBlock.RowConsumption); err != nil {
+		return nil, fmt.Errorf("chunk-proposer failed to update row consumption: %v", err)
+	}
 
 	// Check if the first block breaks hard limits.
 	// If so, it indicates there are bugs in sequencer, manual fix is needed.
@@ -173,8 +178,12 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		totalTxGasUsed += block.Header.GasUsed
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
-		updateRowConsumption(&totalRowConsumption, block.RowConsumption)
 		totalL1CommitGas = chunk.EstimateL1CommitGas()
+
+		if err := updateRowConsumption(&totalRowConsumption, block.RowConsumption); err != nil {
+			return nil, fmt.Errorf("chunk-proposer failed to update row consumption: %v", err)
+		}
+
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
