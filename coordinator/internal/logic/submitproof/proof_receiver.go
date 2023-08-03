@@ -38,8 +38,8 @@ var (
 	ErrValidatorFailureProverInfoHasProofValid = errors.New("validator failure prover task info has proof valid")
 )
 
-// SubmitProofReceiverLogic the proof receiver logic
-type SubmitProofReceiverLogic struct {
+// ProofReceiverLogic the proof receiver logic
+type ProofReceiverLogic struct {
 	chunkOrm      *orm.Chunk
 	batchOrm      *orm.Batch
 	proverTaskOrm *orm.ProverTask
@@ -51,12 +51,12 @@ type SubmitProofReceiverLogic struct {
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
-func NewSubmitProofReceiverLogic(cfg *config.ProverManagerConfig, db *gorm.DB) *SubmitProofReceiverLogic {
+func NewSubmitProofReceiverLogic(cfg *config.ProverManagerConfig, db *gorm.DB) *ProofReceiverLogic {
 	vf, err := verifier.NewVerifier(cfg.Verifier)
 	if err != nil {
 		panic("proof receiver new verifier failure")
 	}
-	return &SubmitProofReceiverLogic{
+	return &ProofReceiverLogic{
 		chunkOrm:      orm.NewChunk(db),
 		batchOrm:      orm.NewBatch(db),
 		proverTaskOrm: orm.NewProverTask(db),
@@ -71,7 +71,7 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManagerConfig, db *gorm.DB) *
 // HandleZkProof handle a ZkProof submitted from a prover.
 // For now only proving/verifying error will lead to setting status as skipped.
 // db/unmarshal errors will not because they are errors on the business logic side.
-func (m *SubmitProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.ProofMsg) error {
+func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.ProofMsg) error {
 	pk := ctx.GetString(coordinatorType.PublicKey)
 	if len(pk) == 0 {
 		return fmt.Errorf("get public key from contex failed")
@@ -158,7 +158,7 @@ func (m *SubmitProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *mes
 	return nil
 }
 
-func (m *SubmitProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Context, chunkHash string) error {
+func (m *ProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Context, chunkHash string) error {
 	batchHash, err := m.chunkOrm.GetChunkBatchHash(ctx, chunkHash)
 	if err != nil {
 		return err
@@ -177,7 +177,7 @@ func (m *SubmitProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Conte
 	return nil
 }
 
-func (m *SubmitProofReceiverLogic) validator(proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg) error {
+func (m *ProofReceiverLogic) validator(proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg) error {
 	// Ensure this prover is eligible to participate in the prover task.
 	if types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofValid {
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
@@ -205,20 +205,20 @@ func (m *SubmitProofReceiverLogic) validator(proverTask *orm.ProverTask, pk stri
 	return nil
 }
 
-func (m *SubmitProofReceiverLogic) proofFailure(ctx context.Context, hash string, pubKey string, proofMsgType message.ProofType) {
+func (m *ProofReceiverLogic) proofFailure(ctx context.Context, hash string, pubKey string, proofMsgType message.ProofType) {
 	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsgType, types.ProvingTaskFailed); err != nil {
 		log.Error("failed to updated proof status ProvingTaskFailed", "hash", hash, "pubKey", pubKey, "error", err)
 	}
 	coordinatorSessionsFailedTotalCounter.Inc(1)
 }
 
-func (m *SubmitProofReceiverLogic) proofRecover(ctx context.Context, hash string, pubKey string, proofMsgType message.ProofType) {
+func (m *ProofReceiverLogic) proofRecover(ctx context.Context, hash string, pubKey string, proofMsgType message.ProofType) {
 	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsgType, types.ProvingTaskUnassigned); err != nil {
 		log.Error("failed to updated proof status ProvingTaskUnassigned", "hash", hash, "pubKey", pubKey, "error", err)
 	}
 }
 
-func (m *SubmitProofReceiverLogic) closeProofTask(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) error {
+func (m *ProofReceiverLogic) closeProofTask(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) error {
 	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsg.Type, types.ProvingTaskVerified); err != nil {
 		log.Error("failed to updated proof status ProvingTaskVerified", "hash", hash, "pubKey", pubKey, "error", err)
 		return err
@@ -227,7 +227,7 @@ func (m *SubmitProofReceiverLogic) closeProofTask(ctx context.Context, hash stri
 }
 
 // UpdateProofStatus update the chunk/batch task and session info status
-func (m *SubmitProofReceiverLogic) updateProofStatus(ctx context.Context, hash string, proverPublicKey string, proofMsgType message.ProofType, status types.ProvingStatus) error {
+func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, hash string, proverPublicKey string, proofMsgType message.ProofType, status types.ProvingStatus) error {
 	// if the prover task failure type is SessionInfoFailureTimeout,
 	// just skip update the status because the proof result come too late.
 	if m.checkIsTimeoutFailure(ctx, hash, proverPublicKey) {
@@ -281,7 +281,7 @@ func (m *SubmitProofReceiverLogic) updateProofStatus(ctx context.Context, hash s
 	return nil
 }
 
-func (m *SubmitProofReceiverLogic) checkIsTaskSuccess(ctx context.Context, hash string, proofType message.ProofType) bool {
+func (m *ProofReceiverLogic) checkIsTaskSuccess(ctx context.Context, hash string, proofType message.ProofType) bool {
 	var provingStatus types.ProvingStatus
 	var err error
 
@@ -301,7 +301,7 @@ func (m *SubmitProofReceiverLogic) checkIsTaskSuccess(ctx context.Context, hash 
 	return provingStatus == types.ProvingTaskVerified
 }
 
-func (m *SubmitProofReceiverLogic) checkIsTimeoutFailure(ctx context.Context, hash, proverPublicKey string) bool {
+func (m *ProofReceiverLogic) checkIsTimeoutFailure(ctx context.Context, hash, proverPublicKey string) bool {
 	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndPubKey(ctx, hash, proverPublicKey)
 	if err != nil {
 		return false

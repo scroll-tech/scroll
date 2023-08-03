@@ -35,7 +35,8 @@ func NewProverTaskController(cfg *config.Config, db *gorm.DB) *ProverTaskControl
 	return ptc
 }
 
-func (ptc *ProverTaskController) ProverTasks(ctx *gin.Context) {
+// GetTasks get assigned chunk/batch task
+func (ptc *ProverTaskController) GetTasks(ctx *gin.Context) {
 	var proverTaskParameter coordinatorType.GetTaskParameter
 	if err := ctx.ShouldBind(&proverTaskParameter); err != nil {
 		nerr := fmt.Errorf("prover tasks parameter invalid, err:%w", err)

@@ -9,6 +9,7 @@ const (
 	ProverName = "prover_name"
 )
 
+// Message the login message struct
 type Message struct {
 	Random     string `form:"message" json:"random" binding:"required"`
 	ProverName string `form:"prover_name" json:"prover_name" binding:"required"`
