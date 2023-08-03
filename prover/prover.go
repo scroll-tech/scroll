@@ -106,7 +106,7 @@ func (r *Prover) PublicKey() string {
 // Start runs Prover.
 func (r *Prover) Start() {
 	log.Info("start to login to coordinator")
-	if _, err := r.coordinatorClient.Login(r.ctx, &client.ProverLoginRequest{
+	if err := r.coordinatorClient.Login(r.ctx, &client.ProverLoginRequest{
 		PublicKey:  r.PublicKey(),
 		ProverName: r.cfg.ProverName,
 	}); err != nil {
@@ -184,14 +184,14 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 	}
 
 	// prepare the request
-	req := &client.ProverTasksRequest{
+	req := &client.GetTaskRequest{
 		ProverVersion: version.Version,
 		ProverHeight:  latestBlockNumber,
-		ProofType:     r.Type(),
+		TaskType:      r.Type(),
 	}
 
 	// send the request
-	resp, err := r.coordinatorClient.ProverTasks(r.ctx, req)
+	resp, err := r.coordinatorClient.GetTask(r.ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -204,12 +204,12 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 	provingTask := &store.ProvingTask{
 		Task: &message.TaskMsg{
 			ID:   resp.Data.TaskID,
-			Type: resp.Data.ProofType,
+			Type: resp.Data.TaskType,
 		},
 		Times: 0,
 	}
 
-	switch resp.Data.ProofType {
+	switch resp.Data.TaskType {
 	case message.ProofTypeChunk:
 		err := json.Unmarshal([]byte(resp.Data.ProofData), &provingTask.Task.ChunkTaskDetail)
 		if err != nil {
@@ -221,7 +221,7 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 			return nil, err
 		}
 	default:
-		return nil, fmt.Errorf("unknown proof type: %d", resp.Data.ProofType)
+		return nil, fmt.Errorf("unknown proof type: %d", resp.Data.TaskType)
 	}
 
 	return provingTask, nil
@@ -305,7 +305,7 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
 		TaskID:    authZkProof.ProofDetail.ID,
 		Status:    authZkProof.ProofDetail.Status,
 		Error:     authZkProof.ProofDetail.Error,
-		ProofType: authZkProof.ProofDetail.Type,
+		TaskType:  authZkProof.ProofDetail.Type,
 		Signature: authZkProof.Signature,
 		Proof:     string(proofJSON),
 	}

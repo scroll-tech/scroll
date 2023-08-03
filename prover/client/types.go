@@ -20,20 +20,20 @@ type ProverLoginResponse struct {
 	} `json:"data,omitempty"`
 }
 
-// ProverTasksRequest defines the request structure for ProverTasks API
-type ProverTasksRequest struct {
+// GetTaskRequest defines the request structure for GetTask API
+type GetTaskRequest struct {
 	ProverVersion string            `json:"prover_version"`
 	ProverHeight  uint64            `json:"prover_height"`
-	ProofType     message.ProofType `json:"proof_type"`
+	TaskType      message.ProofType `json:"task_type"`
 }
 
-// ProverTasksResponse defines the response structure for ProverTasks API
-type ProverTasksResponse struct {
+// GetTaskResponse defines the response structure for GetTask API
+type GetTaskResponse struct {
 	ErrCode int    `json:"errcode,omitempty"`
 	ErrMsg  string `json:"errmsg,omitempty"`
 	Data    *struct {
 		TaskID    string            `json:"task_id"`
-		ProofType message.ProofType `json:"proof_type"`
+		TaskType  message.ProofType `json:"task_type"`
 		ProofData string            `json:"proof_data"`
 	} `json:"data,omitempty"`
 }
@@ -43,7 +43,7 @@ type SubmitProofRequest struct {
 	TaskID    string             `json:"task_id"`
 	Status    message.RespStatus `json:"status"`
 	Error     string             `json:"error"`
-	ProofType message.ProofType  `json:"proof_type"`
+	TaskType  message.ProofType  `json:"task_type"`
 	Signature string             `json:"signature"`
 	Proof     string             `json:"proof"`
 }
@@ -52,4 +52,5 @@ type SubmitProofRequest struct {
 type SubmitProofResponse struct {
 	ErrCode int    `json:"errcode,omitempty"`
 	ErrMsg  string `json:"errmsg,omitempty"`
+	Success bool   `json:"success"`
 }

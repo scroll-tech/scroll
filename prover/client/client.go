@@ -33,7 +33,7 @@ func NewCoordinatorClient(cfg *config.CoordinatorConfig) (*CoordinatorClient, er
 }
 
 // Login sends login request to the coordinator.
-func (c *CoordinatorClient) Login(ctx context.Context, req *ProverLoginRequest) (*ProverLoginResponse, error) {
+func (c *CoordinatorClient) Login(ctx context.Context, req *ProverLoginRequest) error {
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
@@ -41,38 +41,42 @@ func (c *CoordinatorClient) Login(ctx context.Context, req *ProverLoginRequest) 
 		Post("/api/login")
 
 	if err != nil {
-		return nil, fmt.Errorf("login failed: %v", err)
+		return fmt.Errorf("login failed: %v", err)
+	}
+
+	if resp.StatusCode() != 200 {
+		return fmt.Errorf("failed to login, status code: %v", resp.StatusCode())
+	}
+
+	result := resp.Result().(*ProverLoginResponse)
+
+	if result.ErrCode != 200 {
+		return fmt.Errorf("failed to login, error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
+	}
+
+	// store JWT token for future requests
+	c.client.SetAuthToken(result.Data.Token)
+
+	return nil
+}
+
+// GetTask sends a request to the coordinator to get prover task.
+func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*GetTaskResponse, error) {
+	resp, err := c.client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(req).
+		SetResult(&GetTaskResponse{}).
+		Post("/api/prover_tasks")
+
+	if err != nil {
+		return nil, fmt.Errorf("request for GetTask failed: %v", err)
 	}
 
 	if resp.StatusCode() != 200 {
 		return nil, fmt.Errorf("failed to login, status code: %v", resp.StatusCode())
 	}
 
-	result := resp.Result().(*ProverLoginResponse)
-
-	if result.ErrCode != 200 {
-		return nil, fmt.Errorf("failed to login, error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
-	}
-
-	// store JWT token for future requests
-	c.client.SetAuthToken(result.Data.Token)
-
-	return result, nil
-}
-
-// ProverTasks sends a request to the coordinator to get prover tasks.
-func (c *CoordinatorClient) ProverTasks(ctx context.Context, req *ProverTasksRequest) (*ProverTasksResponse, error) {
-	resp, err := c.client.R().
-		SetHeader("Content-Type", "application/json").
-		SetBody(req).
-		SetResult(&ProverTasksResponse{}).
-		Post("/api/prover_tasks")
-
-	if err != nil {
-		return nil, fmt.Errorf("request for ProverTasks failed: %v", err)
-	}
-
-	result := resp.Result().(*ProverTasksResponse)
+	result := resp.Result().(*GetTaskResponse)
 
 	if result.ErrCode != 200 {
 		return nil, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
