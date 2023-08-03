@@ -237,6 +237,9 @@ issues:
     - linters:
         - gosec
       text: "G108"
+    - linters:
+        - gosec
+      text: "G404"
 
     - linters:
         - wsl
