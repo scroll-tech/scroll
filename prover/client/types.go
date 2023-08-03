@@ -6,7 +6,7 @@ import (
 
 // RandomResponse defines the response structure for random API
 type RandomResponse struct {
-	Random string `json:"random"`
+	Challenge string `json:"challenge"`
 }
 
 // LoginRequest defines the request structure for login API
@@ -40,11 +40,7 @@ type GetTaskResponse struct {
 
 // SubmitProofRequest defines the request structure for the SubmitProof API.
 type SubmitProofRequest struct {
-	TaskID   string             `json:"task_id"`
-	Status   message.RespStatus `json:"status"`
-	Error    string             `json:"error"`
-	TaskType message.ProofType  `json:"task_type"`
-	Proof    string             `json:"proof"`
+	Message message.ProofDetail `json:"message"`
 }
 
 // SubmitProofResponse defines the response structure for the SubmitProof API.

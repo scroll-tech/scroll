@@ -6,13 +6,13 @@
     "core": {
         "params_path": "params"
     },
-    "coordinator_config": {
+    "coordinator": {
         "base_url": "https://coordinator/v1",
         "retry_count": 10,
         "retry_wait_time_sec": 10,
         "connection_timeout_sec": 30
     },
-    "l2geth_config": {
+    "l2geth": {
         "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
         "confirmations": "0x1"
     }

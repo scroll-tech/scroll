@@ -39,10 +39,12 @@ func NewCoordinatorClient(cfg *config.CoordinatorConfig, proverName string, priv
 
 // Login completes the entire login process in one function call.
 func (c *CoordinatorClient) Login(ctx context.Context) error {
+	var randomResult RandomResponse
+
 	// Get random string
 	randomResp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetResult(&RandomResponse{}).
+		SetResult(&randomResult).
 		Get("/v1/random")
 
 	if err != nil {
@@ -53,12 +55,10 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 		return fmt.Errorf("failed to get random string, status code: %v", randomResp.StatusCode())
 	}
 
-	randomResult := randomResp.Result().(*RandomResponse)
-
 	// Prepare and sign the login request
 	identity := &message.Identity{
 		ProverName: c.proverName,
-		Random:     randomResult.Random,
+		Challenge:  randomResult.Challenge,
 	}
 
 	authMsg := &message.AuthMsg{
@@ -75,10 +75,12 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 		Message: *authMsg,
 	}
 
+	var loginResult LoginResponse
+
 	loginResp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(loginReq).
-		SetResult(&LoginResponse{}).
+		SetResult(&loginResult).
 		Post("/v1/login")
 
 	if err != nil {
@@ -88,8 +90,6 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 	if loginResp.StatusCode() != 200 {
 		return fmt.Errorf("failed to login, status code: %v", loginResp.StatusCode())
 	}
-
-	loginResult := loginResp.Result().(*LoginResponse)
 
 	if loginResult.ErrCode != types.Success {
 		return fmt.Errorf("failed to login, error code: %v, error message: %v", loginResult.ErrCode, loginResult.ErrMsg)
@@ -103,10 +103,12 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 
 // GetTask sends a request to the coordinator to get prover task.
 func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*GetTaskResponse, error) {
+	var result GetTaskResponse
+
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
-		SetResult(&GetTaskResponse{}).
+		SetResult(&result).
 		Post("/v1/get_task")
 
 	if err != nil {
@@ -116,8 +118,6 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 	if resp.StatusCode() != 200 {
 		return nil, fmt.Errorf("failed to get task, status code: %v", resp.StatusCode())
 	}
-
-	result := resp.Result().(*GetTaskResponse)
 
 	if result.ErrCode != types.Success {
 		if result.ErrCode == types.ErrJWTTokenExpired {
@@ -129,15 +129,17 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 		return nil, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
 
-	return result, nil
+	return &result, nil
 }
 
 // SubmitProof sends a request to the coordinator to submit proof.
 func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofRequest) error {
+	var result SubmitProofResponse
+
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
-		SetResult(&SubmitProofResponse{}).
+		SetResult(&result).
 		Post("/v1/submit_proof")
 
 	if err != nil {
@@ -147,8 +149,6 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 	if resp.StatusCode() != 200 {
 		return fmt.Errorf("failed to submit proof, status code: %v", resp.StatusCode())
 	}
-
-	result := resp.Result().(*SubmitProofResponse)
 
 	if result.ErrCode != types.Success {
 		if result.ErrCode == types.ErrJWTTokenExpired {

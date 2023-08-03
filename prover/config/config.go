@@ -13,13 +13,13 @@ import (
 
 // Config loads prover configuration items.
 type Config struct {
-	ProverName        string             `json:"prover_name"`
-	KeystorePath      string             `json:"keystore_path"`
-	KeystorePassword  string             `json:"keystore_password"`
-	Core              *ProverCoreConfig  `json:"core"`
-	DBPath            string             `json:"db_path"`
-	CoordinatorConfig *CoordinatorConfig `json:"coordinator_config"`
-	L2GethConfig      *L2GethConfig      `json:"l2geth_config"`
+	ProverName       string             `json:"prover_name"`
+	KeystorePath     string             `json:"keystore_path"`
+	KeystorePassword string             `json:"keystore_password"`
+	Core             *ProverCoreConfig  `json:"core"`
+	DBPath           string             `json:"db_path"`
+	Coordinator      *CoordinatorConfig `json:"coordinator"`
+	L2Geth           *L2GethConfig      `json:"l2geth"`
 }
 
 // ProverCoreConfig load zk prover config.

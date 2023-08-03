@@ -63,7 +63,7 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	}
 
 	// Collect geth node.
-	l2GethClient, err := ethclient.DialContext(ctx, cfg.L2GethConfig.Endpoint)
+	l2GethClient, err := ethclient.DialContext(ctx, cfg.L2Geth.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	}
 	log.Info("init prover_core successfully!")
 
-	coordinatorClient, err := client.NewCoordinatorClient(cfg.CoordinatorConfig, cfg.ProverName, priv)
+	coordinatorClient, err := client.NewCoordinatorClient(cfg.Coordinator, cfg.ProverName, priv)
 	if err != nil {
 		return nil, err
 	}
@@ -276,11 +276,7 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
-		TaskID:   msg.ID,
-		Status:   msg.Status,
-		Error:    msg.Error,
-		TaskType: msg.Type,
-		Proof:    string(proofJSON),
+		Message: *msg,
 	}
 
 	// send the submit request
