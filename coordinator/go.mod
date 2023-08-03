@@ -7,7 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230802095950-4b2bbf6225e7
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
@@ -57,7 +57,7 @@ require (
 	github.com/iden3/go-iden3-crypto v0.0.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.5.3 // indirect
+	github.com/scroll-tech/zktrie v0.6.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
