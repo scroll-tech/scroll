@@ -1,7 +1,8 @@
 package middleware
 
 import (
-	"math/rand"
+	"crypto/rand"
+	"encoding/base64"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,8 +20,13 @@ func ChallengeMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 			return nil, nil
 		},
 		PayloadFunc: func(data interface{}) jwt.MapClaims {
+			b := make([]byte, 32)
+			_, err := rand.Read(b)
+			if err != nil {
+				return jwt.MapClaims{}
+			}
 			return jwt.MapClaims{
-				"random": rand.Int(),
+				"random": base64.URLEncoding.EncodeToString(b),
 			}
 		},
 		Unauthorized:  unauthorized,

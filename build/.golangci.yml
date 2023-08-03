@@ -78,7 +78,6 @@ linters-settings:
   gosec:
     disable:
       - G108
-      - G404
 
   golint:
     # minimal confidence for issues, default is 0.8
@@ -237,9 +236,6 @@ issues:
     - linters:
         - gosec
       text: "G108"
-    - linters:
-        - gosec
-      text: "G404"
 
     - linters:
         - wsl
