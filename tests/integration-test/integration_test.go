@@ -1,18 +1,19 @@
 package integration_test
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 
-	bcmd "scroll-tech/bridge/cmd"
-
-	"scroll-tech/common/docker"
+	"github.com/stretchr/testify/assert"
 
 	rapp "scroll-tech/prover/cmd/app"
 
 	"scroll-tech/database/migrate"
 
 	capp "scroll-tech/coordinator/cmd/app"
+
+	"scroll-tech/common/docker"
+
+	bcmd "scroll-tech/bridge/cmd"
 )
 
 var (
@@ -26,7 +27,7 @@ func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
 	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
-	proverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.WSEndpoint())
+	proverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	m.Run()
 	bridgeApp.Free()
 	coordinatorApp.Free()
