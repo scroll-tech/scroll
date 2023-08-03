@@ -21,7 +21,7 @@ var coordinatorSessionsTimeoutTotalCounter = gethMetrics.NewRegisteredCounter("c
 
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
-	Collect(ctx *gin.Context) (*coordinatorType.GetTaskSchema, error)
+	Collect(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
 }
 
 // BaseCollector a base collector which contain series functions

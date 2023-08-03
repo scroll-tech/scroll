@@ -39,7 +39,7 @@ func NewBatchProverTask(cfg *config.Config, db *gorm.DB) *BatchProverTask {
 }
 
 // Collect load and send batch tasks
-func (bp *BatchProverTask) Collect(ctx *gin.Context) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BatchProverTask) Collect(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	batchTasks, err := bp.batchOrm.GetUnassignedBatches(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)

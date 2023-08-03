@@ -39,7 +39,7 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB) *ChunkProverTask {
 }
 
 // Collect the chunk proof which need to prove
-func (cp *ChunkProverTask) Collect(ctx *gin.Context) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) Collect(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	// load and send chunk tasks
 	chunkTasks, err := cp.chunkOrm.GetUnassignedChunks(ctx, 1)
 	if err != nil {
@@ -55,6 +55,11 @@ func (cp *ChunkProverTask) Collect(ctx *gin.Context) (*coordinatorType.GetTaskSc
 	}
 
 	chunkTask := chunkTasks[0]
+
+	if chunkTask.EndBlockNumber >= uint64(getTaskParameter.ProverHeight) {
+		return nil, fmt.Errorf("chunk hash id:%s end block numer:%d large than prover height:%d",
+			chunkTask.Hash, chunkTask.EndBlockNumber, getTaskParameter.ProverHeight)
+	}
 
 	log.Info("start chunk generation session", "id", chunkTask.Hash)
 

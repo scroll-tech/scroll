@@ -37,14 +37,14 @@ func NewProverTaskController(cfg *config.Config, db *gorm.DB) *ProverTaskControl
 
 // GetTasks get assigned chunk/batch task
 func (ptc *ProverTaskController) GetTasks(ctx *gin.Context) {
-	var proverTaskParameter coordinatorType.GetTaskParameter
-	if err := ctx.ShouldBind(&proverTaskParameter); err != nil {
+	var getTaskParameter coordinatorType.GetTaskParameter
+	if err := ctx.ShouldBind(&getTaskParameter); err != nil {
 		nerr := fmt.Errorf("prover tasks parameter invalid, err:%w", err)
 		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
 		return
 	}
 
-	proofType := ptc.proofType(&proverTaskParameter)
+	proofType := ptc.proofType(&getTaskParameter)
 	proverTask, isExist := ptc.proverTasks[proofType]
 	if !isExist {
 		nerr := fmt.Errorf("parameter wrong proof type")
@@ -52,7 +52,7 @@ func (ptc *ProverTaskController) GetTasks(ctx *gin.Context) {
 		return
 	}
 
-	result, err := proverTask.Collect(ctx)
+	result, err := proverTask.Collect(ctx, &getTaskParameter)
 	if err != nil {
 		nerr := fmt.Errorf("return prover task err:%w", err)
 		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorGetTaskFailure, nerr, nil)
