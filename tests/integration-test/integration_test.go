@@ -34,18 +34,18 @@ func TestMain(m *testing.M) {
 	base.Free()
 }
 
-func TestStartProcess(t *testing.T) {
-	// Start l1geth l2geth and postgres docker containers.
-	base.RunImages(t)
+func TestCoordinatorProverInteraction(t *testing.T) {
+	// Start postgres docker containers.
+	base.RunDBImage(t)
 	// Reset db.
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
 	// Run prover app.
-	//proverApp.RunApp(t)
+	proverApp.RunApp(t) // login success.
 
 	// Free apps.
-	//proverApp.WaitExit()
+	proverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
