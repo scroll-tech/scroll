@@ -19,6 +19,7 @@ type RollupBatch struct {
 	CommitHeight     uint64         `json:"commit_height" gorm:"column:commit_height"`
 	StartBlockNumber uint64         `json:"start_block_number" gorm:"column:start_block_number"`
 	EndBlockNumber   uint64         `json:"end_block_number" gorm:"column:end_block_number"`
+	WithdrawRoot     string         `json:"withdraw_root" gorm:"column:withdraw_root;default:NULL"`
 	CreatedAt        *time.Time     `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt        *time.Time     `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt        gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
@@ -89,6 +90,15 @@ func (r *RollupBatch) InsertRollupBatch(ctx context.Context, batches []*RollupBa
 		}
 		log.Error("failed to insert rollup batch", "batchIndexes", batchIndexes, "heights", heights)
 		return fmt.Errorf("RollupBatch.InsertRollupBatch error: %w", err)
+	}
+	return nil
+}
+
+// UpdateRollupBatchWithdrawRoot updates the withdraw_root column in rollup_batch table
+func (r *RollupBatch) UpdateRollupBatchWithdrawRoot(ctx context.Context, batchIndex uint64, withdrawRoot string) error {
+	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index = ?", batchIndex).Update("withdraw_root", withdrawRoot).Error
+	if err != nil {
+		return fmt.Errorf("RollupBatch.UpdateRuollupBatch error: %w", err)
 	}
 	return nil
 }
