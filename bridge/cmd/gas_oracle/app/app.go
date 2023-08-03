@@ -33,6 +33,7 @@ func init() {
 	app.Description = "Scroll Gas Oracle."
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
+	app.Flags = append(app.Flags, &utils.ImportGenesisFlag)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
@@ -85,7 +86,8 @@ func action(ctx *cli.Context) error {
 		log.Error("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 		return err
 	}
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, false /* initGenesis */)
+	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis)
 	if err != nil {
 		log.Error("failed to create new l2 relayer", "config file", cfgFile, "error", err)
 		return err

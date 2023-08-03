@@ -42,6 +42,14 @@ contract MockBridgeL2 {
   /// @notice Message nonce, used to avoid relay attack.
   uint256 public messageNonce;
 
+
+  /***********************************
+   * Functions from ScrollChain *
+   ***********************************/
+
+  function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
+  }
+
   /***********************************
    * Functions from L1GasPriceOracle *
    ***********************************/

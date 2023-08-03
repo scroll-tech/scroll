@@ -33,6 +33,8 @@ func testProcessStartEnableMetrics(t *testing.T) {
 	db := setupDB(t)
 	defer database.CloseDB(db)
 
+	prepareContracts(t)
+
 	port, err := rand.Int(rand.Reader, big.NewInt(2000))
 	assert.NoError(t, err)
 	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
@@ -41,7 +43,7 @@ func testProcessStartEnableMetrics(t *testing.T) {
 	port, err = rand.Int(rand.Reader, big.NewInt(2000))
 	assert.NoError(t, err)
 	svrPort = strconv.FormatInt(port.Int64()+50000, 10)
-	bridgeApp.RunApp(t, cutils.GasOracleApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
+	bridgeApp.RunApp(t, cutils.GasOracleApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort, "--import-genesis")
 
 	port, err = rand.Int(rand.Reader, big.NewInt(2000))
 	assert.NoError(t, err)

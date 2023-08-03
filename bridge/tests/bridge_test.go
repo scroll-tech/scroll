@@ -101,10 +101,7 @@ func prepareContracts(t *testing.T) {
 	assert.NoError(t, err)
 
 	// L1 ScrolChain contract
-	_, tx, scrollChainInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
-	assert.NoError(t, err)
-	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
-	assert.NoError(t, err)
+	scrollChainAddress = l1MessengerAddress
 
 	// L2 messenger contract
 	_, tx, l2MessengerInstance, err = mock_bridge.DeployMockBridgeL2(l2Auth, l2Client)

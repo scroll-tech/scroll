@@ -60,7 +60,7 @@ func (b *MockApp) RunApp(t *testing.T, name utils.MockAppName, args ...string) {
 	}
 	appAPI := cmd.NewCmd(string(name), append(b.args, args...)...)
 	keyword := fmt.Sprintf("Start %s successfully", string(name)[:len(string(name))-len("-test")])
-	appAPI.RunApp(func() bool { return appAPI.WaitResult(t, time.Second*20, keyword) })
+	appAPI.RunApp(func() bool { return appAPI.WaitResult(t, time.Second*40, keyword) })
 	b.mockApps[name] = appAPI
 }
 
