@@ -17,14 +17,10 @@ type CoordinatorClient struct {
 
 // NewCoordinatorClient constructs a new CoordinatorClient.
 func NewCoordinatorClient(cfg *config.CoordinatorConfig) (*CoordinatorClient, error) {
-	if cfg.BaseURL == "" {
-		return nil, fmt.Errorf("base URL is not specified")
-	}
-
 	client := resty.New().
-		SetTimeout(time.Duration(cfg.Timeout) * time.Second).
+		SetTimeout(time.Duration(cfg.ConnectionTimeoutSec) * time.Second).
 		SetRetryCount(cfg.RetryCount).
-		SetRetryWaitTime(time.Duration(cfg.RetryWaitTime) * time.Second).
+		SetRetryWaitTime(time.Duration(cfg.RetryWaitTimeSec) * time.Second).
 		SetBaseURL(cfg.BaseURL)
 
 	return &CoordinatorClient{

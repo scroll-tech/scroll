@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"golang.org/x/sync/errgroup"
 
 	proverConfig "scroll-tech/prover/config"
@@ -84,18 +85,20 @@ func (r *ProverApp) MockConfig(store bool, wsURL string) error {
 	}
 	cfg.ProverName = fmt.Sprintf("%s_%d", r.name, r.index)
 	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.ProverName)
-	cfg.TraceEndpoint = r.base.L2gethImg.Endpoint()
+	cfg.L2GethConfig.Endpoint = r.base.L2gethImg.Endpoint()
+	cfg.L2GethConfig.Confirmations = rpc.SafeBlockNumber
 	// Reuse l1geth's keystore file
 	cfg.KeystorePassword = "scrolltest"
 	cfg.DBPath = r.bboltDB
-	cfg.Coordinator.BaseURL = wsURL
-	cfg.Coordinator.RetryCount = 3
-	cfg.Coordinator.RetryWaitTime = 10
 	// Create keystore file.
 	_, err = utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
 		return err
 	}
+	cfg.CoordinatorConfig.BaseURL = wsURL
+	cfg.CoordinatorConfig.RetryCount = 10
+	cfg.CoordinatorConfig.RetryWaitTimeSec = 10
+	cfg.CoordinatorConfig.ConnectionTimeoutSec = 30
 	r.Config = cfg
 
 	if !store {

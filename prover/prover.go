@@ -63,7 +63,7 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	}
 
 	// Collect geth node.
-	traceClient, err := ethclient.DialContext(ctx, cfg.TraceEndpoint)
+	traceClient, err := ethclient.DialContext(ctx, cfg.L2GethConfig.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	}
 	log.Info("init prover_core successfully!")
 
-	coordinatorClient, err := client.NewCoordinatorClient(cfg.Coordinator)
+	coordinatorClient, err := client.NewCoordinatorClient(cfg.CoordinatorConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -196,32 +196,10 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 		return nil, err
 	}
 
-	if resp.Data == nil {
-		return nil, fmt.Errorf("no tasks available")
-	}
-
 	// convert the response task to a ProvingTask
 	provingTask := &store.ProvingTask{
-		Task: &message.TaskMsg{
-			ID:   resp.Data.TaskID,
-			Type: resp.Data.TaskType,
-		},
+		Task:  &resp.Data,
 		Times: 0,
-	}
-
-	switch resp.Data.TaskType {
-	case message.ProofTypeChunk:
-		err := json.Unmarshal([]byte(resp.Data.ProofData), &provingTask.Task.ChunkTaskDetail)
-		if err != nil {
-			return nil, err
-		}
-	case message.ProofTypeBatch:
-		err := json.Unmarshal([]byte(resp.Data.ProofData), &provingTask.Task.BatchTaskDetail)
-		if err != nil {
-			return nil, err
-		}
-	default:
-		return nil, fmt.Errorf("unknown proof type: %d", resp.Data.TaskType)
 	}
 
 	return provingTask, nil

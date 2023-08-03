@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 
@@ -14,14 +13,13 @@ import (
 
 // Config loads prover configuration items.
 type Config struct {
-	ProverName       string             `json:"prover_name"`
-	KeystorePath     string             `json:"keystore_path"`
-	KeystorePassword string             `json:"keystore_password"`
-	TraceEndpoint    string             `json:"trace_endpoint"`
-	Core             *ProverCoreConfig  `json:"core"`
-	DBPath           string             `json:"db_path"`
-	Coordinator      *CoordinatorConfig `json:"coordinator"`
-	Confirmations    rpc.BlockNumber    `json:"confirmations"`
+	ProverName        string             `json:"prover_name"`
+	KeystorePath      string             `json:"keystore_path"`
+	KeystorePassword  string             `json:"keystore_password"`
+	Core              *ProverCoreConfig  `json:"core"`
+	DBPath            string             `json:"db_path"`
+	CoordinatorConfig *CoordinatorConfig `json:"coordinator_config"`
+	L2GethConfig      *L2GethConfig      `json:"l2geth_config"`
 }
 
 // ProverCoreConfig load zk prover config.
@@ -33,10 +31,16 @@ type ProverCoreConfig struct {
 
 // CoordinatorConfig represents the configuration for the Coordinator client.
 type CoordinatorConfig struct {
-	Timeout       int    `json:"timeout"`
-	BaseURL       string `json:"base_url"`
-	RetryCount    int    `json:"retry_count"`
-	RetryWaitTime int    `json:"retry_wait_time"`
+	BaseURL              string `json:"base_url"`
+	RetryCount           int    `json:"retry_count"`
+	RetryWaitTimeSec     int    `json:"retry_wait_time_sec"`
+	ConnectionTimeoutSec int    `json:"connection_timeout_sec"`
+}
+
+// L2GethConfig represents the configuration for the l2geth client.
+type L2GethConfig struct {
+	Endpoint      string          `json:"endpoint"`
+	Confirmations rpc.BlockNumber `json:"confirmations"`
 }
 
 // NewConfig returns a new instance of Config.
@@ -55,9 +59,6 @@ func NewConfig(file string) (*Config, error) {
 			log.Error("Failed to get abs path", "error", err)
 			return nil, err
 		}
-	}
-	if cfg.Coordinator == nil || cfg.Coordinator.BaseURL == "" {
-		return nil, errors.New("missing coordinator config or base_url in configuration")
 	}
 	return cfg, nil
 }
