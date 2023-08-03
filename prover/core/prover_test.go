@@ -7,7 +7,6 @@ import (
 	"flag"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -30,6 +29,7 @@ func TestFFI(t *testing.T) {
 	as := assert.New(t)
 
 	chunkProverConfig := &config.ProverCoreConfig{
+		DumpDir:    *proofDumpPath,
 		ParamsPath: *paramsPath,
 		ProofType:  message.ProofTypeChunk,
 	}
@@ -47,19 +47,16 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Converted to chunk infos")
 
-	chunkProof1, err := chunkProverCore.ProveChunk("prover_test", chunkTrace1)
+	chunkProof1, err := chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
 	as.NoError(err)
-	t.Log("Generated chunk proof 1")
+	t.Log("Generated and dumped chunk proof 1")
 
-	chunkProof2, err := chunkProverCore.ProveChunk("prover_test", chunkTrace2)
+	chunkProof2, err := chunkProverCore.ProveChunk("chunk_proof2", chunkTrace2)
 	as.NoError(err)
-	t.Log("Generated chunk proof 2")
-
-	dumpChunkProof("chunk_proof1", chunkProof1, as)
-	dumpChunkProof("chunk_proof2", chunkProof2, as)
-	t.Log("Dumped chunk proofs")
+	t.Log("Generated and dumped chunk proof 2")
 
 	batchProverConfig := &config.ProverCoreConfig{
+		DumpDir:    *proofDumpPath,
 		ParamsPath: *paramsPath,
 		ProofType:  message.ProofTypeBatch,
 	}
@@ -68,30 +65,9 @@ func TestFFI(t *testing.T) {
 
 	chunkInfos := []*message.ChunkInfo{chunkInfo1, chunkInfo2}
 	chunkProofs := []*message.ChunkProof{chunkProof1, chunkProof2}
-	batchProof, err := batchProverCore.ProveBatch("prover_test", chunkInfos, chunkProofs)
+	_, err = batchProverCore.ProveBatch("batch_proof", chunkInfos, chunkProofs)
 	as.NoError(err)
-	t.Log("Generated batch proof")
-
-	dumpBatchProof("batch_proof", batchProof, as)
-	t.Log("Dumped batch proofs")
-}
-
-func dumpBatchProof(filename string, proof *message.BatchProof, as *assert.Assertions) {
-	proofByt, err := json.Marshal(proof)
-	as.NoError(err)
-	f, err := os.Create(filepath.Join(*proofDumpPath, filename))
-	as.NoError(err)
-	_, err = f.Write(proofByt)
-	as.NoError(err)
-}
-
-func dumpChunkProof(filename string, proof *message.ChunkProof, as *assert.Assertions) {
-	proofByt, err := json.Marshal(proof)
-	as.NoError(err)
-	f, err := os.Create(filepath.Join(*proofDumpPath, filename))
-	as.NoError(err)
-	_, err = f.Write(proofByt)
-	as.NoError(err)
+	t.Log("Generated and dumped batch proof")
 }
 
 func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
