@@ -79,7 +79,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 			CollectionTime:     1,
 			TokenTimeToLive:    5,
 			MaxVerifierWorkers: 10,
-			SessionAttempts:    2,
+			SessionAttempts:    3,
 		},
 	}
 	proofCollector := cron.NewCollector(context.Background(), db, &conf)
