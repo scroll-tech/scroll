@@ -11,8 +11,7 @@ type RandomResponse struct {
 
 // ProverLoginRequest defines the request structure for login API
 type ProverLoginRequest struct {
-	Message   message.Identity `json:"message"`
-	Signature string           `json:"signature"`
+	Message message.AuthMsg `json:"message"`
 }
 
 // ProverLoginResponse defines the response structure for login API

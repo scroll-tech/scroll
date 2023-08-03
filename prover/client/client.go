@@ -71,11 +71,7 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 
 	// Login to coordinator
 	loginReq := &ProverLoginRequest{
-		Message: message.Identity{
-			Random:     randomResult.Random,
-			ProverName: c.proverName,
-		},
-		Signature: authMsg.Signature,
+		Message: *authMsg,
 	}
 
 	loginResp, err := c.client.R().
