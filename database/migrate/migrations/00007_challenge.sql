@@ -1,19 +1,19 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create table random
+create table challenge
 (
     id                      BIGSERIAL       PRIMARY KEY,
-    random                  VARCHAR         NOT NULL ,
+    challenge               VARCHAR         NOT NULL ,
     created_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP(0)    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at              TIMESTAMP(0)    DEFAULT NULL,
-    CONSTRAINT uk_random    UNIQUE (random)
+    CONSTRAINT uk_challenge    UNIQUE (challenge)
 );
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists random;
+drop table if exists challenge;
 -- +goose StatementEnd

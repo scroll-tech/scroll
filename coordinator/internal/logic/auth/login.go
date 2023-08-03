@@ -9,17 +9,17 @@ import (
 
 // LoginLogic the auth logic
 type LoginLogic struct {
-	randomOrm *orm.Random
+	challengeOrm *orm.Challenge
 }
 
 // NewLoginLogic new a LoginLogic
 func NewLoginLogic(db *gorm.DB) *LoginLogic {
 	return &LoginLogic{
-		randomOrm: orm.NewRandom(db),
+		challengeOrm: orm.NewChallenge(db),
 	}
 }
 
-// InsertRandomString insert and check the random string is existed
-func (l *LoginLogic) InsertRandomString(ctx *gin.Context, signature string) error {
-	return l.randomOrm.InsertRandom(ctx, signature)
+// InsertChallengeString insert and check the challenge string is existed
+func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, signature string) error {
+	return l.challengeOrm.InsertChallenge(ctx, signature)
 }

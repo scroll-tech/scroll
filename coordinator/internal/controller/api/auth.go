@@ -31,9 +31,9 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	if err := c.ShouldBind(&login); err != nil {
 		return "", fmt.Errorf("missing the public_key, err:%w", err)
 	}
-	// check the random is used, if used, return failure
-	if err := a.loginLogic.InsertRandomString(c, login.Signature); err != nil {
-		return "", fmt.Errorf("login insert random string failure:%w", err)
+	// check the challenge is used, if used, return failure
+	if err := a.loginLogic.InsertChallengeString(c, login.Signature); err != nil {
+		return "", fmt.Errorf("login insert challenge string failure:%w", err)
 	}
 	return login, nil
 }
@@ -48,7 +48,7 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 	// recover the public key
 	authMsg := message.AuthMsg{
 		Identity: &message.Identity{
-			Random:     v.Message.Random,
+			Challenge:  v.Message.Challenge,
 			ProverName: v.Message.ProverName,
 		},
 		Signature: v.Signature,

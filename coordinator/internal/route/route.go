@@ -17,17 +17,17 @@ func Route(router *gin.Engine, cfg *config.Config) {
 func v1(router *gin.RouterGroup, conf *config.Config) {
 	r := router.Group("/v1")
 
-	randomMiddleware := middleware.RandomMiddleware(conf)
-	r.GET("/random", randomMiddleware.LoginHandler)
+	challengeMiddleware := middleware.ChallengeMiddleware(conf)
+	r.GET("/challenge", challengeMiddleware.LoginHandler)
 
 	loginMiddleware := middleware.LoginMiddleware(conf)
-	r.POST("/login", randomMiddleware.MiddlewareFunc(), loginMiddleware.LoginHandler)
+	r.POST("/login", challengeMiddleware.MiddlewareFunc(), loginMiddleware.LoginHandler)
 
 	// need jwt token api
 	r.Use(loginMiddleware.MiddlewareFunc())
 	{
 		r.GET("/health_check", api.HealthCheck.HealthCheck)
-		r.POST("/get_task", api.ProverTask.ProverTasks)
+		r.POST("/get_task", api.ProverTask.GetTasks)
 		r.POST("/submit_proof", api.SubmitProof.SubmitProof)
 	}
 }

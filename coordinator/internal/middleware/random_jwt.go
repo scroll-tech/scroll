@@ -12,8 +12,8 @@ import (
 	"scroll-tech/coordinator/internal/config"
 )
 
-// RandomMiddleware jwt random middleware
-func RandomMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
+// ChallengeMiddleware jwt challenge middleware
+func ChallengeMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 	jwtMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		Authenticator: func(c *gin.Context) (interface{}, error) {
 			return nil, nil
@@ -25,7 +25,7 @@ func RandomMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 		},
 		Unauthorized:  unauthorized,
 		Key:           []byte(conf.Auth.Secret),
-		Timeout:       time.Second * time.Duration(conf.Auth.RandomExpireDuration),
+		Timeout:       time.Second * time.Duration(conf.Auth.ChallengeExpireDuration),
 		TokenLookup:   "header: Authorization, query: token, cookie: jwt",
 		TokenHeadName: "Bearer",
 		TimeFunc:      time.Now,

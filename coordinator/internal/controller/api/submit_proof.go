@@ -17,7 +17,7 @@ import (
 
 // SubmitProofController the submit proof api controller
 type SubmitProofController struct {
-	submitProofReceiverLogic *submitproof.SubmitProofReceiverLogic
+	submitProofReceiverLogic *submitproof.ProofReceiverLogic
 }
 
 // NewSubmitProofController create the submit proof api controller instance

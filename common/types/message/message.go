@@ -58,7 +58,7 @@ type AuthMsg struct {
 
 // Identity contains all the fields to be signed by the prover.
 type Identity struct {
-	Random     string `json:"random"`
+	Challenge  string `json:"challenge"`
 	ProverName string `json:"prover_name"`
 }
 

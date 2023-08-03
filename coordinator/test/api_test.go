@@ -77,8 +77,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			SessionAttempts:    5,
 		},
 		Auth: &config.Auth{
-			RandomExpireDuration: tokenTimeout,
-			LoginExpireDuration:  tokenTimeout,
+			ChallengeExpireDuration: tokenTimeout,
+			LoginExpireDuration:     tokenTimeout,
 		},
 	}
 
@@ -115,13 +115,13 @@ func setEnv(t *testing.T) {
 	chunkOrm = orm.NewChunk(db)
 	l2BlockOrm = orm.NewL2Block(db)
 
-	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_02.json")
+	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
 	wrappedBlock1 = &types.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace, wrappedBlock1)
 	assert.NoError(t, err)
 
-	templateBlockTrace, err = os.ReadFile("../testdata/blockTrace_03.json")
+	templateBlockTrace, err = os.ReadFile("../../common/testdata/blockTrace_03.json")
 	assert.NoError(t, err)
 	wrappedBlock2 = &types.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace, wrappedBlock2)

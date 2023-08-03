@@ -55,7 +55,7 @@ func (*L2Block) TableName() string {
 func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) ([]*types.WrappedBlock, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_root")
+	db = db.Select("header, transactions, withdraw_root, row_consumption")
 	db = db.Where("chunk_hash = ?", chunkHash)
 	db = db.Order("number ASC")
 
