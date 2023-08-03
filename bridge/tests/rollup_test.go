@@ -86,6 +86,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	batchOrm := orm.NewBatch(db)
 	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	batchHash := batch.Hash
 	assert.NotEmpty(t, batch.CommitTxHash)
 	assert.Equal(t, types.RollupCommitting, types.RollupStatus(batch.RollupStatus))
@@ -124,6 +125,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	batch, err = batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	assert.NotEmpty(t, batch.FinalizeTxHash)
 
 	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batch.FinalizeTxHash))

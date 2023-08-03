@@ -23,4 +23,5 @@ func Route(router *gin.Engine, conf *config.Config) {
 	r.GET("/txs", controller.HistoryCtrler.GetAllTxsByAddr)
 	r.POST("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHash)
 	r.GET("/claimable", controller.HistoryCtrler.GetAllClaimableTxsByAddr)
+	r.GET("/withdraw_root", controller.BatchCtrler.GetWithdrawRootByBatchIndex)
 }
