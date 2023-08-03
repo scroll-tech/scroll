@@ -15,5 +15,6 @@
     "l2geth_config": {
         "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
         "confirmations": "0x1"
-    }
+    },
+    "mock_proof_submission": true
 }
