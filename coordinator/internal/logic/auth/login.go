@@ -3,6 +3,7 @@ package auth
 import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
 	"scroll-tech/coordinator/internal/orm"
 )
 

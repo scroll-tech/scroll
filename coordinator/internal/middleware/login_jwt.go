@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"scroll-tech/coordinator/internal/types"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -9,6 +8,7 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
+	"scroll-tech/coordinator/internal/types"
 )
 
 // LoginMiddleware jwt auth middleware

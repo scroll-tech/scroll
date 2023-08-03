@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
 	"scroll-tech/coordinator/internal/types"
 )
 

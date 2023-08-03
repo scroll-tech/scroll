@@ -3,8 +3,9 @@ package orm
 import (
 	"context"
 	"fmt"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // Random store the random string from prover client

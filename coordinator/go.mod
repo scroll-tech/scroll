@@ -6,6 +6,7 @@ require (
 	github.com/appleboy/gin-jwt/v2 v2.9.1
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-resty/resty/v2 v2.7.0
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.8.3
@@ -54,7 +55,6 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.15 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/scroll-tech/zktrie v0.5.3 // indirect

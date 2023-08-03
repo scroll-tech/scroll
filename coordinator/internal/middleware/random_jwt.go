@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"github.com/gin-gonic/gin"
 	"math/rand"
 	"time"
+
+	"github.com/gin-gonic/gin"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/scroll-tech/go-ethereum/log"
