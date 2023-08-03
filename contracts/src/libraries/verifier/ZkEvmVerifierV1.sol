@@ -7,18 +7,33 @@ import {IZkEvmVerifier} from "./IZkEvmVerifier.sol";
 // solhint-disable no-inline-assembly
 
 contract ZkEvmVerifierV1 is IZkEvmVerifier {
+    /**********
+     * Errors *
+     **********/
+
+    /// @dev Thrown when aggregate zk proof verification is failed.
     error VerificationFailed();
+
+    /*************
+     * Constants *
+     *************/
 
     /// @notice The address of highly optimized plonk verifier contract.
     address public immutable plonkVerifier;
+
+    /***************
+     * Constructor *
+     ***************/
 
     constructor(address _verifier) {
         plonkVerifier = _verifier;
     }
 
-    /// @notice Verify aggregate zk proof.
-    /// @param aggrProof The aggregated proof.
-    /// @param publicInputHash The public input hash.
+    /*************************
+     * Public View Functions *
+     *************************/
+
+    /// @inheritdoc IZkEvmVerifier
     function verify(bytes calldata aggrProof, bytes32 publicInputHash) external view override {
         address _verifier = plonkVerifier;
         bool success;
