@@ -46,8 +46,6 @@ type Prover struct {
 	stopChan chan struct{}
 
 	priv *ecdsa.PrivateKey
-
-	mockProofSubmission bool
 }
 
 // NewProver new a Prover object.
@@ -84,15 +82,14 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	}
 
 	return &Prover{
-		ctx:                 ctx,
-		cfg:                 cfg,
-		coordinatorClient:   coordinatorClient,
-		l2GethClient:        l2GethClient,
-		stack:               stackDb,
-		proverCore:          newProverCore,
-		stopChan:            make(chan struct{}),
-		priv:                priv,
-		mockProofSubmission: cfg.MockProofSubmission,
+		ctx:               ctx,
+		cfg:               cfg,
+		coordinatorClient: coordinatorClient,
+		l2GethClient:      l2GethClient,
+		stack:             stackDb,
+		proverCore:        newProverCore,
+		stopChan:          make(chan struct{}),
+		priv:              priv,
 	}, nil
 }
 
@@ -146,32 +143,22 @@ func (r *Prover) proveAndSubmit() error {
 	}
 
 	var proofMsg *message.ProofDetail
-	if r.mockProofSubmission {
-		// If the mockProofSubmission flag is true, generate a mock proof
+	if task.Times <= 2 {
+		// If panic times <= 2, try to proof the task.
+		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
+			return err
+		}
+
+		log.Info("start to prove task", "task-type", task.Task.Type, "task-id", task.Task.ID)
+		proofMsg = r.prove(task)
+	} else {
+		// when the prover has more than 3 times panic,
+		// it will omit to prove the task, submit StatusProofError and then Delete the task.
 		proofMsg = &message.ProofDetail{
-			Status: message.StatusOk,
-			Error:  "",
+			Status: message.StatusProofError,
+			Error:  "zk proving panic",
 			ID:     task.Task.ID,
 			Type:   task.Task.Type,
-		}
-	} else {
-		if task.Times <= 2 {
-			// If panic times <= 2, try to proof the task.
-			if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
-				return err
-			}
-
-			log.Info("start to prove task", "task-type", task.Task.Type, "task-id", task.Task.ID)
-			proofMsg = r.prove(task)
-		} else {
-			// when the prover has more than 3 times panic,
-			// it will omit to prove the task, submit StatusProofError and then Delete the task.
-			proofMsg = &message.ProofDetail{
-				Status: message.StatusProofError,
-				Error:  "zk proving panic",
-				ID:     task.Task.ID,
-				Type:   task.Task.Type,
-			}
 		}
 	}
 
