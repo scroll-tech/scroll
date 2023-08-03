@@ -21,6 +21,7 @@ import {L2GasPriceOracle} from "../../src/L1/rollup/L2GasPriceOracle.sol";
 import {MultipleVersionRollupVerifier} from "../../src/L1/rollup/MultipleVersionRollupVerifier.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
 import {Whitelist} from "../../src/L2/predeploys/Whitelist.sol";
+import {ZkEvmVerifierV1} from "../../src/libraries/verifier/ZkEvmVerifierV1.sol";
 
 contract DeployL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
@@ -29,13 +30,16 @@ contract DeployL1BridgeContracts is Script {
 
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
-    address L1_ZKEVM_VERIFIER_ADDR = vm.envAddress("L1_ZKEVM_VERIFIER_ADDR");
 
+    address L1_PLONK_VERIFIER_ADDR = vm.envAddress("L1_PLONK_VERIFIER_ADDR");
+
+    ZkEvmVerifierV1 zkEvmVerifierV1;
     ProxyAdmin proxyAdmin;
 
     function run() external {
         vm.startBroadcast(L1_DEPLOYER_PRIVATE_KEY);
 
+        deployZkEvmVerifierV1();
         deployMultipleVersionRollupVerifier();
         deployProxyAdmin();
         deployL1Whitelist();
@@ -55,8 +59,14 @@ contract DeployL1BridgeContracts is Script {
         vm.stopBroadcast();
     }
 
+    function deployZkEvmVerifierV1() internal {
+        zkEvmVerifierV1 = new ZkEvmVerifierV1(L1_PLONK_VERIFIER_ADDR);
+
+        logAddress("L1_ZKEVM_VERIFIER_V1_ADDR", address(zkEvmVerifierV1));
+    }
+
     function deployMultipleVersionRollupVerifier() internal {
-        MultipleVersionRollupVerifier rollupVerifier = new MultipleVersionRollupVerifier(L1_ZKEVM_VERIFIER_ADDR);
+        MultipleVersionRollupVerifier rollupVerifier = new MultipleVersionRollupVerifier(address(zkEvmVerifierV1));
 
         logAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR", address(rollupVerifier));
     }
