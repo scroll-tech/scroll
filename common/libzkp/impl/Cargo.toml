@@ -18,8 +18,8 @@ maingate = { git = "https://github.com/scroll-tech/halo2wrong", branch = "halo2-
 halo2curves = { git = "https://github.com/scroll-tech/halo2curves.git", branch = "0.3.1-derive-serde" }
 
 [dependencies]
-prover = { git = "https://github.com/scroll-tech/scroll-prover", rev = "eb0120c" }
-types = { git = "https://github.com/scroll-tech/scroll-prover", rev = "eb0120c" }
+prover = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.5.1" }
+types = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.5.1" }
 halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "develop" }
 
 log = "0.4"
