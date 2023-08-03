@@ -8,8 +8,9 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"scroll-tech/common/types/message"
 	"scroll-tech/prover/config"
+
+	"scroll-tech/common/types/message"
 )
 
 // CoordinatorClient is a client used for interacting with the Coordinator service.
