@@ -45,9 +45,10 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			BaseFee:    big.NewInt(0),
 		}
 		wrappedBlocks = append(wrappedBlocks, &types.WrappedBlock{
-			Header:       &header,
-			Transactions: nil,
-			WithdrawRoot: common.Hash{},
+			Header:         &header,
+			Transactions:   nil,
+			WithdrawRoot:   common.Hash{},
+			RowConsumption: &gethTypes.RowConsumption{},
 		})
 	}
 
@@ -61,6 +62,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MinL1CommitCalldataSizePerChunk: 0,
+		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
 	}, db)
 	cp.TryProposeChunk()

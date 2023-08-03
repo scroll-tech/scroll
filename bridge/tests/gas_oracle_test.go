@@ -80,8 +80,9 @@ func testImportL2GasPrice(t *testing.T) {
 					Difficulty: big.NewInt(0),
 					BaseFee:    big.NewInt(0),
 				},
-				Transactions: nil,
-				WithdrawRoot: common.Hash{},
+				Transactions:   nil,
+				WithdrawRoot:   common.Hash{},
+				RowConsumption: &gethTypes.RowConsumption{},
 			},
 		},
 	}
