@@ -16,6 +16,31 @@ import (
 	"scroll-tech/bridge/internal/orm"
 )
 
+// sub-circuit name => sub-circuit row count
+type ChunkRowConsumption map[string]uint64
+
+// accumulate row consumption per sub-circuit
+func (crc *ChunkRowConsumption) add(rowConsumption *gethTypes.RowConsumption) error {
+	if rowConsumption == nil {
+		return errors.New("rowConsumption is <nil>")
+	}
+	for _, subCircuit := range *rowConsumption {
+		(*crc)[subCircuit.Name] += subCircuit.RowNumber
+	}
+	return nil
+}
+
+// find max row consumption among all sub-circuits
+func (crc *ChunkRowConsumption) max() uint64 {
+	var max uint64
+	for _, value := range *crc {
+		if value > max {
+			max = value
+		}
+	}
+	return max
+}
+
 // ChunkProposer proposes chunks based on available unchunked blocks.
 type ChunkProposer struct {
 	ctx context.Context
@@ -84,26 +109,6 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	return err
 }
 
-func updateRowConsumption(totalRowConsumption *map[string]uint64, rowConsumption *gethTypes.RowConsumption) error {
-	if rowConsumption == nil {
-		return errors.New("rowConsumption is <nil>")
-	}
-	for _, subCircuit := range *rowConsumption {
-		(*totalRowConsumption)[subCircuit.Name] += subCircuit.RowNumber
-	}
-	return nil
-}
-
-func maxRowConsumption(totalRowConsumption *map[string]uint64) uint64 {
-	var maxRowConsumption uint64
-	for _, value := range *totalRowConsumption {
-		if value > maxRowConsumption {
-			maxRowConsumption = value
-		}
-	}
-	return maxRowConsumption
-}
-
 func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks(p.ctx)
 	if err != nil {
@@ -119,11 +124,11 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	totalTxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := firstBlock.L2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
-	totalRowConsumption := make(map[string]uint64)
+	crc := ChunkRowConsumption{}
 	totalL1CommitGas := chunk.EstimateL1CommitGas()
 
-	if err := updateRowConsumption(&totalRowConsumption, firstBlock.RowConsumption); err != nil {
-		return nil, fmt.Errorf("chunk-proposer failed to update row consumption: %v", err)
+	if err := crc.add(firstBlock.RowConsumption); err != nil {
+		return nil, fmt.Errorf("chunk-proposer failed to update chunk row consumption: %v", err)
 	}
 
 	// Check if the first block breaks hard limits.
@@ -164,11 +169,12 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			"max gas limit", p.maxTxGasPerChunk,
 		)
 	}
-	if maxRowConsumption(&totalRowConsumption) > p.maxRowConsumptionPerChunk {
+	if max := crc.max(); max > p.maxRowConsumptionPerChunk {
 		return nil, fmt.Errorf(
-			"the first block exceeds row consumption limit; block number: %v, row consumption: %v, max row consumption limit: %v",
+			"the first block exceeds row consumption limit; block number: %v, row consumption: %v, max: %v, limit: %v",
 			firstBlock.Header.Number,
-			totalRowConsumption,
+			crc,
+			max,
 			p.maxRowConsumptionPerChunk,
 		)
 	}
@@ -180,15 +186,15 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas = chunk.EstimateL1CommitGas()
 
-		if err := updateRowConsumption(&totalRowConsumption, block.RowConsumption); err != nil {
-			return nil, fmt.Errorf("chunk-proposer failed to update row consumption: %v", err)
+		if err := crc.add(block.RowConsumption); err != nil {
+			return nil, fmt.Errorf("chunk-proposer failed to update chunk row consumption: %v", err)
 		}
 
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
 			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerChunk) ||
-			maxRowConsumption(&totalRowConsumption) > p.maxRowConsumptionPerChunk {
+			crc.max() > p.maxRowConsumptionPerChunk {
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1] // remove the last block from chunk
 			break
 		}
