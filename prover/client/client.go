@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -38,6 +37,7 @@ func (c *CoordinatorClient) Login(ctx context.Context, req *ProverLoginRequest) 
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
+		SetResult(&ProverLoginResponse{}).
 		Post("/api/login")
 
 	if err != nil {
@@ -48,11 +48,7 @@ func (c *CoordinatorClient) Login(ctx context.Context, req *ProverLoginRequest) 
 		return nil, fmt.Errorf("failed to login, status code: %v", resp.StatusCode())
 	}
 
-	var result ProverLoginResponse
-	err = json.Unmarshal(resp.Body(), &result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse login response: %v", err)
-	}
+	result := resp.Result().(*ProverLoginResponse)
 
 	if result.ErrCode != 200 {
 		return nil, fmt.Errorf("failed to login, error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
@@ -61,7 +57,7 @@ func (c *CoordinatorClient) Login(ctx context.Context, req *ProverLoginRequest) 
 	// store JWT token for future requests
 	c.client.SetAuthToken(result.Data.Token)
 
-	return &result, nil
+	return result, nil
 }
 
 // ProverTasks sends a request to the coordinator to get prover tasks.
@@ -69,23 +65,20 @@ func (c *CoordinatorClient) ProverTasks(ctx context.Context, req *ProverTasksReq
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
+		SetResult(&ProverTasksResponse{}).
 		Post("/api/prover_tasks")
 
 	if err != nil {
 		return nil, fmt.Errorf("request for ProverTasks failed: %v", err)
 	}
 
-	var result ProverTasksResponse
-	err = json.Unmarshal(resp.Body(), &result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse ProverTasks response: %v", err)
-	}
+	result := resp.Result().(*ProverTasksResponse)
 
 	if result.ErrCode != 200 {
 		return nil, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
 
-	return &result, nil
+	return result, nil
 }
 
 // SubmitProof sends a request to the coordinator to submit proof.
@@ -93,6 +86,7 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 	resp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(req).
+		SetResult(&SubmitProofResponse{}).
 		Post("/coordinator/v1/submit_proof")
 
 	if err != nil {
@@ -103,15 +97,11 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 		return nil, fmt.Errorf("failed to submit proof, status code: %v", resp.StatusCode())
 	}
 
-	var result SubmitProofResponse
-	err = json.Unmarshal(resp.Body(), &result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse submit proof response: %v", err)
-	}
+	result := resp.Result().(*SubmitProofResponse)
 
 	if result.ErrCode != 200 {
 		return nil, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
 
-	return &result, nil
+	return result, nil
 }
