@@ -3,7 +3,6 @@ package prover
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -259,29 +258,13 @@ func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error
 }
 
 func (r *Prover) submitProof(msg *message.ProofDetail) error {
-	var proofJSON []byte
-	var err error
-	switch msg.Type {
-	case message.ProofTypeChunk:
-		proofJSON, err = json.Marshal(msg.ChunkProof)
-	case message.ProofTypeBatch:
-		proofJSON, err = json.Marshal(msg.BatchProof)
-	default:
-		return fmt.Errorf("unknown task type: %v", msg.Type)
-	}
-
-	if err != nil {
-		return fmt.Errorf("error marshaling proof into JSON: %v", err)
-	}
-
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
 		Message: *msg,
 	}
 
 	// send the submit request
-	err = r.coordinatorClient.SubmitProof(r.ctx, req)
-	if err != nil {
+	if err := r.coordinatorClient.SubmitProof(r.ctx, req); err != nil {
 		return fmt.Errorf("error submitting proof: %v", err)
 	}
 

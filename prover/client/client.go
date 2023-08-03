@@ -56,13 +56,11 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 	}
 
 	// Prepare and sign the login request
-	identity := &message.Identity{
-		ProverName: c.proverName,
-		Challenge:  randomResult.Challenge,
-	}
-
 	authMsg := &message.AuthMsg{
-		Identity: identity,
+		Identity: &message.Identity{
+			ProverName: c.proverName,
+			Challenge:  randomResult.Challenge,
+		},
 	}
 
 	err = authMsg.SignWithKey(c.priv)
@@ -95,7 +93,7 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 		return fmt.Errorf("failed to login, error code: %v, error message: %v", loginResult.ErrCode, loginResult.ErrMsg)
 	}
 
-	// Store JWT token for future requests
+	// store JWT token for future requests
 	c.client.SetAuthToken(loginResult.Data.Token)
 
 	return nil
