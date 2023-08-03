@@ -18,6 +18,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/orm"
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 var (
@@ -71,7 +72,10 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManagerConfig, db *gorm.DB) *
 // For now only proving/verifying error will lead to setting status as skipped.
 // db/unmarshal errors will not because they are errors on the business logic side.
 func (m *SubmitProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.ProofMsg) error {
-	pk, _ := proofMsg.PublicKey()
+	pk := ctx.GetString(coordinatorType.PublicKey)
+	if len(pk) == 0 {
+		return fmt.Errorf("get public key from contex failed")
+	}
 
 	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndPubKey(ctx, proofMsg.ID, pk)
 	if proverTask == nil || err != nil {

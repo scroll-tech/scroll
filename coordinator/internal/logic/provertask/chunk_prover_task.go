@@ -111,7 +111,7 @@ func (cp *ChunkProverTask) Collect(ctx *gin.Context) (*coordinatorType.ProverTas
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*coordinatorType.ProverTaskSchema, error) {
 	// Get block hashes.
 	wrappedBlocks, err := cp.blockOrm.GetL2BlocksByChunkHash(ctx, hash)
-	if err != nil {
+	if err != nil || len(wrappedBlocks) == 0 {
 		return nil, fmt.Errorf("failed to fetch wrapped blocks, batch hash:%s err:%w", hash, err)
 	}
 

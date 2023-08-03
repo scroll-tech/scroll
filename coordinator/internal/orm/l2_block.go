@@ -123,3 +123,18 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 	}
 	return nil
 }
+
+// UpdateChunkHashInRange updates the chunk hash for l2 blocks within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end indices.
+// for unit test
+func (o *L2Block) UpdateChunkHashInRange(ctx context.Context, startNumber uint64, endNumber uint64, chunkHash string) error {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&L2Block{})
+	db = db.Where("number >= ? AND number <= ?", startNumber, endNumber)
+
+	if err := db.Update("chunk_hash", chunkHash).Error; err != nil {
+		return fmt.Errorf("L2Block.UpdateChunkHashInRange error: %w, start number: %v, end number: %v, chunk hash: %v",
+			err, startNumber, endNumber, chunkHash)
+	}
+	return nil
+}

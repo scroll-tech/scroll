@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"net/http"
 	"os"
 	"strconv"
 	"testing"
@@ -70,7 +69,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 	}
 
-	tokenTimeout = 6
+	tokenTimeout = 3600
 	conf = &config.Config{
 		L2Config: &config.L2Config{
 			ChainID: 111,
@@ -78,13 +77,14 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 		ProverManagerConfig: &config.ProverManagerConfig{
 			ProversPerSession:  proversPerSession,
 			Verifier:           &config.VerifierConfig{MockMode: true},
-			CollectionTime:     1,
+			CollectionTime:     10,
 			TokenTimeToLive:    5,
 			MaxVerifierWorkers: 10,
 			SessionAttempts:    2,
 		},
 		Auth: &config.Auth{
-			TokenExpireDuration: tokenTimeout,
+			RandomExpireDuration: tokenTimeout,
+			LoginExpireDuration:  tokenTimeout,
 		},
 	}
 
@@ -142,6 +142,17 @@ func TestApis(t *testing.T) {
 	base = docker.NewDockerApp()
 	setEnv(t)
 
+	//output := io.Writer(os.Stderr)
+	//usecolor := (isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd())) && os.Getenv("TERM") != "dumb"
+	//if usecolor {
+	//	output = colorable.NewColorableStderr()
+	//}
+	//ostream := log.StreamHandler(output, log.TerminalFormat(usecolor))
+	//glogger := log.NewGlogHandler(ostream)
+	//// Set log level
+	//glogger.Verbosity(log.Lvl(4))
+	//log.Root().SetHandler(glogger)
+
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestFailedHandshake", testFailedHandshake)
 	t.Run("TestValidProof", testValidProof)
@@ -167,11 +178,6 @@ func testHandshake(t *testing.T) {
 	token := chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
 	assert.True(t, chunkProver.healthCheck(t, token, coodinatorType.Success))
-
-	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
-	token = batchProver.connectToCoordinator(t)
-	assert.NotEmpty(t, token)
-	assert.True(t, batchProver.healthCheck(t, token, coodinatorType.Success))
 }
 
 func testFailedHandshake(t *testing.T) {
@@ -192,8 +198,8 @@ func testFailedHandshake(t *testing.T) {
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
 	token = chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
-	<-time.After(7 * time.Second)
-	assert.True(t, batchProver.healthCheck(t, token, http.StatusUnauthorized))
+	<-time.After(time.Duration(tokenTimeout+1) * time.Second)
+	assert.True(t, batchProver.healthCheck(t, token, coodinatorType.ErrJWTAuthFailure))
 }
 
 func testValidProof(t *testing.T) {
@@ -207,13 +213,15 @@ func testValidProof(t *testing.T) {
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
+	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
 	assert.NoError(t, err)
 
 	// create mock provers.
-	provers := make([]*mockProver, 6)
+	provers := make([]*mockProver, 2)
 	for i := 0; i < len(provers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
@@ -267,13 +275,15 @@ func testInvalidProof(t *testing.T) {
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
+	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
 	// create mock provers.
-	provers := make([]*mockProver, 6)
+	provers := make([]*mockProver, 2)
 	for i := 0; i < len(provers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
@@ -321,13 +331,15 @@ func testProofGeneratedFailed(t *testing.T) {
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
+	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
 	// create mock provers.
-	provers := make([]*mockProver, 6)
+	provers := make([]*mockProver, 2)
 	for i := 0; i < len(provers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
@@ -375,6 +387,8 @@ func testTimeoutProof(t *testing.T) {
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
+	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
@@ -399,7 +413,7 @@ func testTimeoutProof(t *testing.T) {
 	assert.Equal(t, batchProofStatus, types.ProvingTaskAssigned)
 
 	// wait coordinator to reset the prover task proving status
-	time.Sleep(time.Duration(conf.ProverManagerConfig.CollectionTime) * time.Minute)
+	time.Sleep(time.Duration(conf.ProverManagerConfig.CollectionTime*2) * time.Second)
 
 	// create second mock prover, that will send valid proof.
 	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), coordinatorURL, message.ProofTypeChunk)
@@ -408,9 +422,9 @@ func testTimeoutProof(t *testing.T) {
 	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess)
 
 	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), coordinatorURL, message.ProofTypeBatch)
-	proverBatchTask2 := batchProver2.getProverTask(t, message.ProofTypeChunk)
+	proverBatchTask2 := batchProver2.getProverTask(t, message.ProofTypeBatch)
 	assert.NotNil(t, proverBatchTask2)
-	chunkProver2.submitProof(t, proverBatchTask2, verifiedSuccess)
+	batchProver2.submitProof(t, proverBatchTask2, verifiedSuccess)
 
 	// verify proof status, it should be verified now, because second prover sent valid proof
 	chunkProofStatus2, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)

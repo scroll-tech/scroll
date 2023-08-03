@@ -27,7 +27,7 @@ type ProverManagerConfig struct {
 	SessionAttempts uint8 `json:"session_attempts,omitempty"`
 	// Zk verifier config.
 	Verifier *VerifierConfig `json:"verifier,omitempty"`
-	// Proof collection time (in minutes).
+	// Proof collection time (in seconds).
 	CollectionTime int `json:"collection_time"`
 	// Token time to live (in seconds)
 	TokenTimeToLive int `json:"token_time_to_live"`

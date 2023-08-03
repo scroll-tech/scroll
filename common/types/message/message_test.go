@@ -15,7 +15,7 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 	authMsg := &AuthMsg{
 		Identity: &Identity{
-			Random:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzU3MDYsIm9yaWdfaWF0IjoxNjkxMDMyMTA2fQ.UbTw2LvUO1kYBsPJzz3KghGTKveUBiz2gV6uUGV2ctI",
+			Random:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzgxNzUsIm9yaWdfaWF0IjoxNjkxMDM0NTc1fQ.HybBMsEJFhyZqtIa2iVcHUP7CEFttf708jmTMAImAWA",
 			ProverName: "hhf",
 		},
 	}

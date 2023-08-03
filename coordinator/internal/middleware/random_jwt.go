@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"github.com/gin-gonic/gin"
+	"math/rand"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -15,6 +16,11 @@ func RandomMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 	jwtMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		Authenticator: func(c *gin.Context) (interface{}, error) {
 			return nil, nil
+		},
+		PayloadFunc: func(data interface{}) jwt.MapClaims {
+			return jwt.MapClaims{
+				"random": rand.Int(),
+			}
 		},
 		Unauthorized:  unauthorized,
 		Key:           []byte(conf.Auth.Secret),

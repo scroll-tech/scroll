@@ -40,9 +40,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 			ID:     spp.TaskID,
 			Type:   message.ProofType(spp.ProofType),
 			Status: message.RespStatus(spp.Status),
-			Error:  spp.Error,
 		},
-		Signature: spp.Signature,
 	}
 
 	switch message.ProofType(spp.ProofType) {
