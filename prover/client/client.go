@@ -16,10 +16,13 @@ import (
 // CoordinatorClient is a client used for interacting with the Coordinator service.
 type CoordinatorClient struct {
 	client *resty.Client
+
+	proverName string
+	priv       *ecdsa.PrivateKey
 }
 
 // NewCoordinatorClient constructs a new CoordinatorClient.
-func NewCoordinatorClient(cfg *config.CoordinatorConfig) (*CoordinatorClient, error) {
+func NewCoordinatorClient(cfg *config.CoordinatorConfig, proverName string, priv *ecdsa.PrivateKey) (*CoordinatorClient, error) {
 	client := resty.New().
 		SetTimeout(time.Duration(cfg.ConnectionTimeoutSec) * time.Second).
 		SetRetryCount(cfg.RetryCount).
@@ -27,12 +30,14 @@ func NewCoordinatorClient(cfg *config.CoordinatorConfig) (*CoordinatorClient, er
 		SetBaseURL(cfg.BaseURL)
 
 	return &CoordinatorClient{
-		client: client,
+		client:     client,
+		proverName: proverName,
+		priv:       priv,
 	}, nil
 }
 
 // Login completes the entire login process in one function call.
-func (c *CoordinatorClient) Login(ctx context.Context, proverName string, priv *ecdsa.PrivateKey) error {
+func (c *CoordinatorClient) Login(ctx context.Context) error {
 	// Get random string
 	randomResp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
@@ -51,7 +56,7 @@ func (c *CoordinatorClient) Login(ctx context.Context, proverName string, priv *
 
 	// Prepare and sign the login request
 	identity := &message.Identity{
-		ProverName: proverName,
+		ProverName: c.proverName,
 		Random:     randomResult.Random,
 	}
 
@@ -59,7 +64,7 @@ func (c *CoordinatorClient) Login(ctx context.Context, proverName string, priv *
 		Identity: identity,
 	}
 
-	err = authMsg.SignWithKey(priv)
+	err = authMsg.SignWithKey(c.priv)
 	if err != nil {
 		return fmt.Errorf("signature failed: %v", err)
 	}
@@ -68,7 +73,7 @@ func (c *CoordinatorClient) Login(ctx context.Context, proverName string, priv *
 	loginReq := &ProverLoginRequest{
 		Message: message.Identity{
 			Random:     randomResult.Random,
-			ProverName: proverName,
+			ProverName: c.proverName,
 		},
 		Signature: authMsg.Signature,
 	}
@@ -89,7 +94,8 @@ func (c *CoordinatorClient) Login(ctx context.Context, proverName string, priv *
 
 	loginResult := loginResp.Result().(*ProverLoginResponse)
 
-	if loginResult.ErrCode != 0 {
+	// TODO: refactor errcode
+	if loginResult.ErrCode != 200 {
 		return fmt.Errorf("failed to login, error code: %v, error message: %v", loginResult.ErrCode, loginResult.ErrMsg)
 	}
 
@@ -112,12 +118,21 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 	}
 
 	if resp.StatusCode() != 200 {
-		return nil, fmt.Errorf("failed to login, status code: %v", resp.StatusCode())
+		return nil, fmt.Errorf("failed to get task, status code: %v", resp.StatusCode())
 	}
 
 	result := resp.Result().(*GetTaskResponse)
 
+	// TODO: refactor errcode
 	if result.ErrCode != 200 {
+		// TODO: refactor errcode
+		if result.ErrCode == 20005 {
+			if err := c.Login(ctx); err != nil {
+				return nil, fmt.Errorf("JWT expired, re-login failed: %v", err)
+			}
+			return c.GetTask(ctx, req)
+		}
+
 		return nil, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
 
@@ -142,9 +157,17 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 
 	result := resp.Result().(*SubmitProofResponse)
 
+	// TODO: refactor errcode
 	if result.ErrCode != 200 {
+		// TODO: refactor errcode
+		if result.ErrCode == 20005 {
+			if err := c.Login(ctx); err != nil {
+				return nil, fmt.Errorf("JWT expired, re-login failed: %v", err)
+			}
+			return c.SubmitProof(ctx, req)
+		}
+
 		return nil, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
-
 	return result, nil
 }

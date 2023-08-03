@@ -76,7 +76,7 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	}
 	log.Info("init prover_core successfully!")
 
-	coordinatorClient, err := client.NewCoordinatorClient(cfg.CoordinatorConfig)
+	coordinatorClient, err := client.NewCoordinatorClient(cfg.CoordinatorConfig, cfg.ProverName, priv)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func (r *Prover) PublicKey() string {
 // Start runs Prover.
 func (r *Prover) Start() {
 	log.Info("start to login to coordinator")
-	if err := r.coordinatorClient.Login(r.ctx, r.cfg.ProverName, r.priv); err != nil {
+	if err := r.coordinatorClient.Login(r.ctx); err != nil {
 		log.Crit("login to coordinator failed", "error", err)
 	}
 	log.Info("login to coordinator successfully!")
