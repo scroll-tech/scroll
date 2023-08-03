@@ -2,7 +2,7 @@ package integration_test
 
 import (
 	"crypto/rand"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"net/http"
 	"strconv"
@@ -42,19 +42,19 @@ func TestMain(m *testing.M) {
 	base.Free()
 }
 
-func TestStartProcess(t *testing.T) {
-	// Start l1geth l2geth and postgres docker containers.
-	base.RunImages(t)
+func TestCoordinatorProverInteraction(t *testing.T) {
+	// Start postgres docker containers.
+	base.RunDBImage(t)
 	// Reset db.
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
 	// Run prover app.
-	//proverApp.RunApp(t)
+	proverApp.RunApp(t) // login success.
 
 	// Free apps.
-	//proverApp.WaitExit()
+	proverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
 
@@ -75,7 +75,7 @@ func TestMonitorMetrics(t *testing.T) {
 	resp, err := http.Get("http://localhost:" + svrPort)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 	bodyStr := string(body)
 	assert.Equal(t, 200, resp.StatusCode)
