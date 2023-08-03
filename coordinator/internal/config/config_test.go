@@ -16,7 +16,7 @@ func TestConfig(t *testing.T) {
 			"compression_level": 9,
 			"provers_per_session": 1,
 			"session_attempts": %d,
-			"collection_time": 180,
+			"collection_time_sec": 180,
 			"token_time_to_live": 60,
 			"verifier": {
 				"mock_mode": true,
@@ -34,7 +34,12 @@ func TestConfig(t *testing.T) {
 		},
 		"l2_config": {
 			"chain_id": 111
-		}
+		},
+ 		"auth": {
+			"secret": "prover secret key",
+			"challenge_expire_duration_sec": 3600,
+			"login_expire_duration_sec": 3600
+  		}
 	}`
 
 	t.Run("Success Case", func(t *testing.T) {

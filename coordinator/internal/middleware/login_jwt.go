@@ -18,7 +18,7 @@ func LoginMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 		IdentityHandler: api.Auth.IdentityHandler,
 		IdentityKey:     types.PublicKey,
 		Key:             []byte(conf.Auth.Secret),
-		Timeout:         time.Second * time.Duration(conf.Auth.LoginExpireDuration),
+		Timeout:         time.Second * time.Duration(conf.Auth.LoginExpireDurationSec),
 		Authenticator:   api.Auth.Login,
 		Unauthorized:    unauthorized,
 		TokenLookup:     "header: Authorization, query: token, cookie: jwt",

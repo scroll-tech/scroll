@@ -28,7 +28,7 @@ type ProverManagerConfig struct {
 	// Zk verifier config.
 	Verifier *VerifierConfig `json:"verifier,omitempty"`
 	// Proof collection time (in seconds).
-	CollectionTime int `json:"collection_time"`
+	CollectionTimeSec int `json:"collection_time_sec"`
 	// Token time to live (in seconds)
 	TokenTimeToLive int `json:"token_time_to_live"`
 	// Max number of workers in verifier worker pool
@@ -43,9 +43,9 @@ type L2Config struct {
 
 // Auth provides the auth of prover-stats-api
 type Auth struct {
-	Secret                  string `json:"secret"`
-	ChallengeExpireDuration int    `json:"challenge_expire_duration"`
-	LoginExpireDuration     int    `json:"token_expire_duration"` // unit: seconds
+	Secret                     string `json:"secret"`
+	ChallengeExpireDurationSec int    `json:"challenge_expire_duration_sec"`
+	LoginExpireDurationSec     int    `json:"token_expire_duration_sec"` // unit: seconds
 }
 
 // Config load configuration items.
