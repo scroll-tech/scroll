@@ -11,7 +11,7 @@ const (
 
 	// ErrCoordinatorParameterInvalidNo is invalid params
 	ErrCoordinatorParameterInvalidNo = 20001
-	// ErrCoordinatorGetTaskFailure is getting prover task  error
+	// ErrCoordinatorGetTaskFailure is getting prover task error
 	ErrCoordinatorGetTaskFailure = 20002
 	// ErrCoordinatorHandleZkProofFailure is handle submit proof error
 	ErrCoordinatorHandleZkProofFailure = 20003
