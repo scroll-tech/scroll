@@ -16,7 +16,7 @@ import (
 	"scroll-tech/bridge/internal/orm"
 )
 
-// sub-circuit name => sub-circuit row count
+// ChunkRowConsumption is map(sub-circuit name => sub-circuit row count)
 type ChunkRowConsumption map[string]uint64
 
 // accumulate row consumption per sub-circuit
