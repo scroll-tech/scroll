@@ -47,8 +47,24 @@ contract MockBridgeL2 {
    * Functions from ScrollChain *
    ***********************************/
 
-  function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
-  }
+  function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {}
+
+  /***********************************
+   * Functions from ScrollChain *
+   ***********************************/
+
+  function commitBatch(
+    uint8 _version,
+    bytes calldata _parentBatchHeader,
+    bytes[] memory _chunks,
+    bytes calldata _skippedL1MessageBitmap
+  ) external {}
+
+  /***********************************
+   * Functions from ScrollChain *
+   ***********************************/
+
+  function revertBatch(bytes calldata _batchHeader, uint256 _count) external {}
 
   /***********************************
    * Functions from L1GasPriceOracle *
