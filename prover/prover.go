@@ -38,7 +38,7 @@ type Prover struct {
 	ctx               context.Context
 	cfg               *config.Config
 	coordinatorClient *client.CoordinatorClient
-	traceClient       *ethclient.Client
+	l2GethClient      *ethclient.Client
 	stack             *store.Stack
 	proverCore        *core.ProverCore
 
@@ -63,7 +63,7 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	}
 
 	// Collect geth node.
-	traceClient, err := ethclient.DialContext(ctx, cfg.L2GethConfig.Endpoint)
+	l2GethClient, err := ethclient.DialContext(ctx, cfg.L2GethConfig.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 		ctx:               ctx,
 		cfg:               cfg,
 		coordinatorClient: coordinatorClient,
-		traceClient:       traceClient,
+		l2GethClient:      l2GethClient,
 		stack:             stackDb,
 		proverCore:        newProverCore,
 		stopChan:          make(chan struct{}),
@@ -106,10 +106,7 @@ func (r *Prover) PublicKey() string {
 // Start runs Prover.
 func (r *Prover) Start() {
 	log.Info("start to login to coordinator")
-	if err := r.coordinatorClient.Login(r.ctx, &client.ProverLoginRequest{
-		PublicKey:  r.PublicKey(),
-		ProverName: r.cfg.ProverName,
-	}); err != nil {
+	if err := r.coordinatorClient.Login(r.ctx, r.cfg.ProverName, r.priv); err != nil {
 		log.Crit("login to coordinator failed", "error", err)
 	}
 	log.Info("login to coordinator successfully!")
@@ -178,7 +175,7 @@ func (r *Prover) proveAndSubmit() error {
 // fetchTaskFromServer fetches a new task from the server
 func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 	// get the latest confirmed block number
-	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.traceClient, rpc.SafeBlockNumber)
+	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, rpc.SafeBlockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
 	}
@@ -305,7 +302,7 @@ func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) error {
 func (r *Prover) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
 	var traces []*types.BlockTrace
 	for _, blockHash := range blockHashes {
-		trace, err := r.traceClient.GetBlockTraceByHash(r.ctx, blockHash)
+		trace, err := r.l2GethClient.GetBlockTraceByHash(r.ctx, blockHash)
 		if err != nil {
 			return nil, err
 		}

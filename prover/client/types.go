@@ -4,10 +4,15 @@ import (
 	"scroll-tech/common/types/message"
 )
 
+// RandomResponse defines the response structure for random API
+type RandomResponse struct {
+	Random string `json:"random"`
+}
+
 // ProverLoginRequest defines the request structure for login API
 type ProverLoginRequest struct {
-	PublicKey  string `json:"public_key"`
-	ProverName string `json:"prover_name"`
+	Message   message.Identity `json:"message"`
+	Signature string           `json:"signature"`
 }
 
 // ProverLoginResponse defines the response structure for login API
