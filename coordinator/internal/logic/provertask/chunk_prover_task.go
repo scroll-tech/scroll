@@ -62,12 +62,12 @@ func (cp *ChunkProverTask) Collect(ctx *gin.Context) (*coordinatorType.ProverTas
 		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
-	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKeyCtxKey)
+	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
 		return nil, fmt.Errorf("get public key from contex failed")
 	}
 
-	proverName, proverNameExist := ctx.Get(coordinatorType.ProverNameCtxKey)
+	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
 	if !proverNameExist {
 		return nil, fmt.Errorf("get prover name from contex failed")
 	}

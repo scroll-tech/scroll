@@ -3,16 +3,21 @@ package types
 import "time"
 
 const (
-	// PublicKeyCtxKey the public key for context
-	PublicKeyCtxKey = "public_key_context"
-	// ProverNameCtxKey the prover name key for context
-	ProverNameCtxKey = "prover_name_context"
+	// PublicKey the public key for context
+	PublicKey = "public_key"
+	// ProverName the prover name key for context
+	ProverName = "prover_name"
 )
+
+type Message struct {
+	Random     string `form:"message" json:"random" binding:"required"`
+	ProverName string `form:"prover_name" json:"prover_name" binding:"required"`
+}
 
 // LoginParameter for /login api
 type LoginParameter struct {
-	//PublicKey  string `form:"public_key" json:"public_key" binding:"required"`
-	ProverName string `form:"prover_name" json:"prover_name" binding:"required"`
+	Message   Message `form:"message" json:"message" binding:"required"`
+	Signature string  `form:"signature" json:"signature" binding:"required"`
 }
 
 // LoginSchema for /login response

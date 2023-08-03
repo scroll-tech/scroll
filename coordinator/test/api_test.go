@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"net/http"
 	"os"
 	"strconv"
 	"testing"
@@ -27,6 +28,7 @@ import (
 	"scroll-tech/coordinator/internal/controller/cron"
 	"scroll-tech/coordinator/internal/orm"
 	"scroll-tech/coordinator/internal/route"
+	coodinatorType "scroll-tech/coordinator/internal/types"
 )
 
 var (
@@ -55,7 +57,7 @@ func TestMain(m *testing.M) {
 
 func randomURL() string {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
-	return fmt.Sprintf(":%d", 10000+2000+id.Int64())
+	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
 
 func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, resetDB bool) *cron.Collector {
@@ -164,12 +166,12 @@ func testHandshake(t *testing.T) {
 	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
 	token := chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
-	assert.True(t, chunkProver.healthCheck(t, token))
+	assert.True(t, chunkProver.healthCheck(t, token, coodinatorType.Success))
 
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
 	token = batchProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
-	assert.True(t, batchProver.healthCheck(t, token))
+	assert.True(t, batchProver.healthCheck(t, token, coodinatorType.Success))
 }
 
 func testFailedHandshake(t *testing.T) {
@@ -184,14 +186,14 @@ func testFailedHandshake(t *testing.T) {
 	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
 	token := chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
-	assert.True(t, chunkProver.healthCheck(t, token))
+	assert.True(t, chunkProver.healthCheck(t, token, coodinatorType.Success))
 
 	// Try to perform handshake with timeouted token
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
 	token = chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
 	<-time.After(7 * time.Second)
-	assert.True(t, batchProver.healthCheck(t, token))
+	assert.True(t, batchProver.healthCheck(t, token, http.StatusUnauthorized))
 }
 
 func testValidProof(t *testing.T) {

@@ -1,28 +1,28 @@
 package api
 
 import (
-	"errors"
 	"fmt"
-	"strings"
-	"time"
 
+	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
+	"scroll-tech/common/types/message"
+
+	"scroll-tech/coordinator/internal/logic/auth"
 	"scroll-tech/coordinator/internal/types"
 )
 
-// AuthController is auth API
+// AuthController is login API
 type AuthController struct {
+	loginLogic *auth.LoginLogic
 }
 
-// NewAuthController returns an AuthController instance
-func NewAuthController() *AuthController {
-	return &AuthController{}
-}
-
-// HealthCheck the api controller for coordinator health check
-func (a *AuthController) HealthCheck(c *gin.Context) {
-	types.RenderJSON(c, types.Success, nil, nil)
+// NewAuthController returns an LoginController instance
+func NewAuthController(db *gorm.DB) *AuthController {
+	return &AuthController{
+		loginLogic: auth.NewLoginLogic(db),
+	}
 }
 
 // Login the api controller for login
@@ -31,38 +31,43 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	if err := c.ShouldBind(&login); err != nil {
 		return "", fmt.Errorf("missing the public_key, err:%w", err)
 	}
-
-	if !a.checkValidPublicKey(&login) {
-		return nil, errors.New("incorrect public_key")
+	// check the random is used, if used, return failure
+	if err := a.loginLogic.InsertRandomString(c, login.Signature); err != nil {
+		return "", fmt.Errorf("login insert random string failure:%w", err)
 	}
-
-	return types.LoginParameter{ProverName: login.ProverName}, nil
+	return login, nil
 }
 
-func (a *AuthController) checkValidPublicKey(param *types.LoginParameter) bool {
-	return strings.TrimSpace(param.ProverName) != ""
-}
-
-// LoginResponse response login api
-func (a *AuthController) LoginResponse(c *gin.Context, code int, message string, time time.Time) {
-	resp := types.LoginSchema{
-		Time:  time,
-		Token: message,
-	}
-	types.RenderJSON(c, code, nil, resp)
-}
-
-// Authorizator validate the token
-func (a *AuthController) Authorizator(data interface{}, c *gin.Context) bool {
-	tokenCliams, ok := data.(*types.LoginParameter)
+// PayloadFunc returns jwt.MapClaims with {public key, prover name}.
+func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
+	v, ok := data.(types.LoginParameter)
 	if !ok {
-		return false
+		return jwt.MapClaims{}
 	}
 
-	if tokenCliams.ProverName == "" {
-		return false
+	// recover the public key
+	authMsg := message.AuthMsg{
+		Identity: &message.Identity{
+			Random:     v.Message.Random,
+			ProverName: v.Message.ProverName,
+		},
+		Signature: v.Signature,
 	}
 
-	c.Set(types.ProverNameCtxKey, tokenCliams.ProverName)
-	return true
+	publicKey, err := authMsg.PublicKey()
+	if err != nil {
+		return jwt.MapClaims{}
+	}
+
+	return jwt.MapClaims{
+		types.PublicKey:  publicKey,
+		types.ProverName: v.Message.ProverName,
+	}
+}
+
+// IdentityHandler replies to client for /login
+func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
+	claims := jwt.ExtractClaims(c)
+	c.Set(types.ProverName, claims[types.ProverName])
+	return claims[types.PublicKey]
 }

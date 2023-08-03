@@ -43,8 +43,9 @@ type L2Config struct {
 
 // Auth provides the auth of prover-stats-api
 type Auth struct {
-	Secret              string `json:"secret"`
-	TokenExpireDuration int    `json:"token_expire_duration"` // unit: seconds
+	Secret               string `json:"secret"`
+	RandomExpireDuration int    `json:"random_expire_duration"`
+	LoginExpireDuration  int    `json:"token_expire_duration"` // unit: seconds
 }
 
 // Config load configuration items.

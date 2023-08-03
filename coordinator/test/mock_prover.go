@@ -4,12 +4,12 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"testing"
-
 	"github.com/go-resty/resty/v2"
+	"github.com/mitchellh/mapstructure"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
+	"net/http"
+	"testing"
 
 	"scroll-tech/common/types/message"
 
@@ -47,29 +47,37 @@ func newMockProver(t *testing.T, proverName string, coordinatorURL string, proof
 
 // connectToCoordinator sets up a websocket client to connect to the prover manager.
 func (r *mockProver) connectToCoordinator(t *testing.T) string {
-	var loginResult types.LoginSchema
+	var result types.Response
 	client := resty.New()
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetBody([]byte(`{"prover_name":"mock_test"}`)).
-		SetResult(&loginResult).
-		Post(r.coordinatorURL + "/coordinator/v1/login")
+		SetResult(&result).
+		Post("http://" + r.coordinatorURL + "/coordinator/v1/login")
+	assert.NoError(t, err)
+
+	type login struct {
+		Time  string `json:"time"`
+		Token string `json:"token"`
+	}
+	var loginData login
+	err = mapstructure.Decode(result.Data, &loginData)
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	return loginResult.Token
+	return loginData.Token
 }
 
-func (r *mockProver) healthCheck(t *testing.T, token string) bool {
+func (r *mockProver) healthCheck(t *testing.T, token string, errCode int) bool {
 	var result types.Response
 	client := resty.New()
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
 		SetResult(&result).
-		Get(r.coordinatorURL + "/coordinator/v1/health_check")
+		Get("http://" + r.coordinatorURL + "/coordinator/v1/health_check")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	assert.Equal(t, types.Success, result.ErrCode)
+	assert.Equal(t, errCode, result.ErrCode)
 	return true
 }
 
@@ -85,20 +93,16 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *t
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
 		SetBody(map[string]interface{}{"prover_version": 1, "prover_height": 100, "proof_type": int(proofType)}).
 		SetResult(&result).
-		Post(r.coordinatorURL + "/coordinator/v1/prover_tasks")
+		Post("http://" + r.coordinatorURL + "/coordinator/v1/prover_tasks")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
 	assert.Equal(t, types.Success, result.ErrCode)
 
-	data, ok := result.Data.(string)
-	assert.True(t, ok)
-
 	var proverTaskSchema types.ProverTaskSchema
-	assert.NoError(t, json.Unmarshal([]byte(data), &proverTaskSchema))
+	err = mapstructure.Decode(result.Data, &proverTaskSchema)
 	assert.NotEmpty(t, proverTaskSchema.TaskID)
 	assert.NotEmpty(t, proverTaskSchema.ProofType)
 	assert.NotEmpty(t, proverTaskSchema.ProofData)
-
 	return &proverTaskSchema
 }
 
@@ -155,7 +159,7 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.ProverTas
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
 		SetBody(string(submitProofData)).
 		SetResult(&result).
-		Post(r.coordinatorURL + "/coordinator/v1/prover_tasks")
+		Post("http://" + r.coordinatorURL + "/coordinator/v1/prover_tasks")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
 	assert.Equal(t, types.Success, result.ErrCode)

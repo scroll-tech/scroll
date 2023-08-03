@@ -15,9 +15,8 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 	authMsg := &AuthMsg{
 		Identity: &Identity{
-			Name:    "testName",
-			Version: "testVersion",
-			Token:   "testToken",
+			Random:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzU3MDYsIm9yaWdfaWF0IjoxNjkxMDMyMTA2fQ.UbTw2LvUO1kYBsPJzz3KghGTKveUBiz2gV6uUGV2ctI",
+			ProverName: "hhf",
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(privkey))
@@ -46,11 +45,10 @@ func TestGenerateToken(t *testing.T) {
 
 func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
-		Name:       "testName",
-		ProverType: ProofTypeChunk,
-		Version:    "testVersion",
-		Token:      "testToken",
+		Random:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzM0MTksIm9yaWdfaWF0IjoxNjkxMDI5ODE5fQ.EhkLZsj__rNPVC3ZDYBtvdh0nB8mmM_Hl82hObaIWOs",
+		ProverName: "hhf",
 	}
+
 	hash, err := identity.Hash()
 	assert.NoError(t, err)
 
