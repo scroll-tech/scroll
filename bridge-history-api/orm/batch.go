@@ -19,6 +19,7 @@ type RollupBatch struct {
 	CommitHeight     uint64         `json:"commit_height" gorm:"column:commit_height"`
 	StartBlockNumber uint64         `json:"start_block_number" gorm:"column:start_block_number"`
 	EndBlockNumber   uint64         `json:"end_block_number" gorm:"column:end_block_number"`
+	WithdrawRoot     string         `json:"withdraw_root" gorm:"column:withdraw_root;default:NULL"`
 	CreatedAt        *time.Time     `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt        *time.Time     `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt        gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
