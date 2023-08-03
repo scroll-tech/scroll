@@ -14,7 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/prover/client"
 	"scroll-tech/prover/config"
@@ -174,7 +173,7 @@ func (r *Prover) proveAndSubmit() error {
 // fetchTaskFromServer fetches a new task from the server
 func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 	// get the latest confirmed block number
-	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, rpc.SafeBlockNumber)
+	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, r.cfg.L2Geth.Confirmations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
 	}

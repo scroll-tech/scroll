@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -35,7 +36,7 @@ func TestMain(m *testing.M) {
 	base.Free()
 }
 
-func TestCoordinatorProverInteraction(t *testing.T) {
+func TestCoordinatorProverInteractionWithoutData(t *testing.T) {
 	// Start postgres docker containers.
 	base.RunDBImage(t)
 	// Reset db.
@@ -47,6 +48,8 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	coordinatorApp.RunApp(t)
 	// Run prover app.
 	proverApp.RunApp(t) // login success.
+
+	proverApp.ExpectWithTimeout(t, false, 60*time.Second, "get empty prover task") // get prover task without data.
 
 	// Free apps.
 	proverApp.WaitExit()

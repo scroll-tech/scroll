@@ -86,7 +86,7 @@ func (r *ProverApp) MockConfig(store bool, httpURL string) error {
 	cfg.ProverName = fmt.Sprintf("%s_%d", r.name, r.index)
 	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.ProverName)
 	cfg.L2Geth.Endpoint = r.base.L2gethImg.Endpoint()
-	cfg.L2Geth.Confirmations = rpc.SafeBlockNumber
+	cfg.L2Geth.Confirmations = rpc.LatestBlockNumber
 	// Reuse l1geth's keystore file
 	cfg.KeystorePassword = "scrolltest"
 	cfg.DBPath = r.bboltDB
