@@ -4,20 +4,30 @@ import (
 	"errors"
 	"time"
 
+	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 
-	"scroll-tech/coordinator/internal/types"
+	"scroll-tech/common/types"
+
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-func unauthorized(c *gin.Context, code int, message string) {
+func unauthorized(c *gin.Context, _ int, message string) {
+	var errCode int
 	err := errors.New(message)
-	types.RenderJSON(c, types.ErrJWTAuthFailure, err, nil)
+	switch message {
+	case jwt.ErrExpiredToken.Error():
+		errCode = types.ErrJWTTokenExpired
+	default:
+		errCode = types.ErrJWTCommonErr
+	}
+	coordinatorType.RenderJSON(c, errCode, err, nil)
 }
 
 func loginResponse(c *gin.Context, code int, message string, time time.Time) {
-	resp := types.LoginSchema{
+	resp := coordinatorType.LoginSchema{
 		Time:  time,
 		Token: message,
 	}
-	types.RenderJSON(c, code, nil, resp)
+	coordinatorType.RenderJSON(c, types.Success, nil, resp)
 }
