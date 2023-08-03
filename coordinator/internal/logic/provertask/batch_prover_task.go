@@ -39,7 +39,7 @@ func NewBatchProverTask(cfg *config.Config, db *gorm.DB) *BatchProverTask {
 }
 
 // Collect load and send batch tasks
-func (bp *BatchProverTask) Collect(ctx *gin.Context) (*coordinatorType.ProverTaskSchema, error) {
+func (bp *BatchProverTask) Collect(ctx *gin.Context) (*coordinatorType.GetTaskSchema, error) {
 	batchTasks, err := bp.batchOrm.GetUnassignedBatches(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
@@ -107,7 +107,7 @@ func (bp *BatchProverTask) Collect(ctx *gin.Context) (*coordinatorType.ProverTas
 	return taskMsg, nil
 }
 
-func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) (*coordinatorType.ProverTaskSchema, error) {
+func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) (*coordinatorType.GetTaskSchema, error) {
 	// get chunk from db
 	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, taskID)
 	if err != nil {
@@ -145,9 +145,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", taskID, err)
 	}
 
-	taskMsg := &coordinatorType.ProverTaskSchema{
+	taskMsg := &coordinatorType.GetTaskSchema{
 		TaskID:    taskID,
-		ProofType: int(message.ProofTypeBatch),
+		TaskType:  int(message.ProofTypeBatch),
 		ProofData: string(chunkProofsBytes),
 	}
 	return taskMsg, nil

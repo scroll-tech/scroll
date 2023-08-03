@@ -39,7 +39,7 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB) *ChunkProverTask {
 }
 
 // Collect the chunk proof which need to prove
-func (cp *ChunkProverTask) Collect(ctx *gin.Context) (*coordinatorType.ProverTaskSchema, error) {
+func (cp *ChunkProverTask) Collect(ctx *gin.Context) (*coordinatorType.GetTaskSchema, error) {
 	// load and send chunk tasks
 	chunkTasks, err := cp.chunkOrm.GetUnassignedChunks(ctx, 1)
 	if err != nil {
@@ -108,7 +108,7 @@ func (cp *ChunkProverTask) Collect(ctx *gin.Context) (*coordinatorType.ProverTas
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*coordinatorType.ProverTaskSchema, error) {
+func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
 	wrappedBlocks, err := cp.blockOrm.GetL2BlocksByChunkHash(ctx, hash)
 	if err != nil || len(wrappedBlocks) == 0 {
@@ -128,9 +128,9 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*
 		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", hash, err)
 	}
 
-	proverTaskSchema := &coordinatorType.ProverTaskSchema{
+	proverTaskSchema := &coordinatorType.GetTaskSchema{
 		TaskID:    hash,
-		ProofType: int(message.ProofTypeChunk),
+		TaskType:  int(message.ProofTypeChunk),
 		ProofData: string(blockHashesBytes),
 	}
 

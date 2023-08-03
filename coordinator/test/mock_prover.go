@@ -12,6 +12,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
+	ctypes "scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/logic/verifier"
@@ -120,15 +121,15 @@ func (r *mockProver) healthCheck(t *testing.T, token string, errCode int) bool {
 	return true
 }
 
-func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *types.ProverTaskSchema {
+func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *types.GetTaskSchema {
 	// get task from coordinator
 	token := r.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
 
 	type response struct {
-		ErrCode int                    `json:"errcode"`
-		ErrMsg  string                 `json:"errmsg"`
-		Data    types.ProverTaskSchema `json:"data"`
+		ErrCode int                 `json:"errcode"`
+		ErrMsg  string              `json:"errmsg"`
+		Data    types.GetTaskSchema `json:"data"`
 	}
 
 	var result response
@@ -136,24 +137,24 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *t
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
-		SetBody(map[string]interface{}{"prover_version": 1, "prover_height": 100, "proof_type": int(proofType)}).
+		SetBody(map[string]interface{}{"prover_version": 1, "prover_height": 100, "task_type": int(proofType)}).
 		SetResult(&result).
-		Post("http://" + r.coordinatorURL + "/coordinator/v1/prover_tasks")
+		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	assert.Equal(t, types.Success, result.ErrCode)
+	assert.Equal(t, ctypes.Success, result.ErrCode)
 
 	assert.NotEmpty(t, result.Data.TaskID)
-	assert.NotEmpty(t, result.Data.ProofType)
+	assert.NotEmpty(t, result.Data.TaskType)
 	assert.NotEmpty(t, result.Data.ProofData)
 	return &result.Data
 }
 
-func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.ProverTaskSchema, proofStatus proofStatus) {
+func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus) {
 	proof := &message.ProofMsg{
 		ProofDetail: &message.ProofDetail{
 			ID:         proverTaskSchema.TaskID,
-			Type:       message.ProofType(proverTaskSchema.ProofType),
+			Type:       message.ProofType(proverTaskSchema.TaskType),
 			Status:     message.RespStatus(proofStatus),
 			ChunkProof: &message.ChunkProof{},
 			BatchProof: &message.BatchProof{},
@@ -169,9 +170,9 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.ProverTas
 
 	assert.NoError(t, proof.Sign(r.privKey))
 	submitProof := types.SubmitProofParameter{
-		TaskID:    proof.ID,
-		ProofType: int(proof.Type),
-		Status:    int(proof.Status),
+		TaskID:   proof.ID,
+		TaskType: int(proof.Type),
+		Status:   int(proof.Status),
 	}
 
 	switch proof.Type {
@@ -204,5 +205,5 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.ProverTas
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/submit_proof")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	assert.Equal(t, types.Success, result.ErrCode)
+	assert.Equal(t, ctypes.Success, result.ErrCode)
 }

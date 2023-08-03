@@ -27,7 +27,6 @@ import (
 	"scroll-tech/coordinator/internal/controller/cron"
 	"scroll-tech/coordinator/internal/orm"
 	"scroll-tech/coordinator/internal/route"
-	coodinatorType "scroll-tech/coordinator/internal/types"
 )
 
 var (
@@ -69,7 +68,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, wsURL string, reset
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 	}
 
-	tokenTimeout = 3600
+	tokenTimeout = 6
 	conf = &config.Config{
 		L2Config: &config.L2Config{
 			ChainID: 111,
@@ -142,17 +141,6 @@ func TestApis(t *testing.T) {
 	base = docker.NewDockerApp()
 	setEnv(t)
 
-	//output := io.Writer(os.Stderr)
-	//usecolor := (isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd())) && os.Getenv("TERM") != "dumb"
-	//if usecolor {
-	//	output = colorable.NewColorableStderr()
-	//}
-	//ostream := log.StreamHandler(output, log.TerminalFormat(usecolor))
-	//glogger := log.NewGlogHandler(ostream)
-	//// Set log level
-	//glogger.Verbosity(log.Lvl(4))
-	//log.Root().SetHandler(glogger)
-
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestFailedHandshake", testFailedHandshake)
 	t.Run("TestValidProof", testValidProof)
@@ -177,7 +165,7 @@ func testHandshake(t *testing.T) {
 	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
 	token := chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
-	assert.True(t, chunkProver.healthCheck(t, token, coodinatorType.Success))
+	assert.True(t, chunkProver.healthCheck(t, token, types.Success))
 }
 
 func testFailedHandshake(t *testing.T) {
@@ -192,14 +180,14 @@ func testFailedHandshake(t *testing.T) {
 	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
 	token := chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
-	assert.True(t, chunkProver.healthCheck(t, token, coodinatorType.Success))
+	assert.True(t, chunkProver.healthCheck(t, token, types.Success))
 
 	// Try to perform handshake with timeouted token
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
 	token = chunkProver.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
 	<-time.After(time.Duration(tokenTimeout+1) * time.Second)
-	assert.True(t, batchProver.healthCheck(t, token, coodinatorType.ErrJWTAuthFailure))
+	assert.True(t, batchProver.healthCheck(t, token, types.ErrJWTTokenExpired))
 }
 
 func testValidProof(t *testing.T) {

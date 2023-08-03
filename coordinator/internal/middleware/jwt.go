@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -13,12 +14,12 @@ import (
 )
 
 func unauthorized(c *gin.Context, _ int, message string) {
+	lower := strings.ToLower(message)
 	var errCode int
-	err := errors.New(message)
-	switch message {
-	case jwt.ErrExpiredToken.Error():
+	err := errors.New(lower)
+	if jwt.ErrExpiredToken.Error() == lower {
 		errCode = types.ErrJWTTokenExpired
-	default:
+	} else {
 		errCode = types.ErrJWTCommonErr
 	}
 	coordinatorType.RenderJSON(c, errCode, err, nil)
