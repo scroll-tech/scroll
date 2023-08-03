@@ -44,7 +44,7 @@ type ProverApp struct {
 }
 
 // NewProverApp return a new proverApp manager.
-func NewProverApp(base *docker.App, file string, wsURL string) *ProverApp {
+func NewProverApp(base *docker.App, file string, httpURL string) *ProverApp {
 	proverFile := fmt.Sprintf("/tmp/%d_prover-config.json", base.Timestamp)
 	proverApp := &ProverApp{
 		base:       base,
@@ -55,7 +55,7 @@ func NewProverApp(base *docker.App, file string, wsURL string) *ProverApp {
 		name:       string(utils.ProverApp),
 		args:       []string{"--log.debug", "--config", proverFile},
 	}
-	if err := proverApp.MockConfig(true, wsURL); err != nil {
+	if err := proverApp.MockConfig(true, httpURL); err != nil {
 		panic(err)
 	}
 	return proverApp
@@ -78,7 +78,7 @@ func (r *ProverApp) Free() {
 }
 
 // MockConfig creates a new prover config.
-func (r *ProverApp) MockConfig(store bool, wsURL string) error {
+func (r *ProverApp) MockConfig(store bool, httpURL string) error {
 	cfg, err := proverConfig.NewConfig(r.originFile)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func (r *ProverApp) MockConfig(store bool, wsURL string) error {
 	if err != nil {
 		return err
 	}
-	cfg.Coordinator.BaseURL = wsURL
+	cfg.Coordinator.BaseURL = httpURL
 	cfg.Coordinator.RetryCount = 10
 	cfg.Coordinator.RetryWaitTimeSec = 10
 	cfg.Coordinator.ConnectionTimeoutSec = 30
