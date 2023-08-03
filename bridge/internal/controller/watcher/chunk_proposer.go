@@ -16,11 +16,11 @@ import (
 	"scroll-tech/bridge/internal/orm"
 )
 
-// ChunkRowConsumption is map(sub-circuit name => sub-circuit row count)
-type ChunkRowConsumption map[string]uint64
+// chunkRowConsumption is map(sub-circuit name => sub-circuit row count)
+type chunkRowConsumption map[string]uint64
 
-// accumulate row consumption per sub-circuit
-func (crc *ChunkRowConsumption) add(rowConsumption *gethTypes.RowConsumption) error {
+// add accumulates row consumption per sub-circuit
+func (crc *chunkRowConsumption) add(rowConsumption *gethTypes.RowConsumption) error {
 	if rowConsumption == nil {
 		return errors.New("rowConsumption is <nil>")
 	}
@@ -30,8 +30,8 @@ func (crc *ChunkRowConsumption) add(rowConsumption *gethTypes.RowConsumption) er
 	return nil
 }
 
-// find max row consumption among all sub-circuits
-func (crc *ChunkRowConsumption) max() uint64 {
+// max finds the maximum row consumption among all sub-circuits
+func (crc *chunkRowConsumption) max() uint64 {
 	var max uint64
 	for _, value := range *crc {
 		if value > max {
@@ -124,7 +124,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	totalTxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := firstBlock.L2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
-	crc := ChunkRowConsumption{}
+	crc := chunkRowConsumption{}
 	totalL1CommitGas := chunk.EstimateL1CommitGas()
 
 	if err := crc.add(firstBlock.RowConsumption); err != nil {
