@@ -113,6 +113,7 @@ func TestFunction(t *testing.T) {
 
 	// Run chunk-proposer test cases.
 	t.Run("TestChunkProposer", testChunkProposer)
+	t.Run("TestChunkProposerRowConsumption", testChunkProposerRowConsumption)
 
 	// Run batch-proposer test cases.
 	t.Run("TestBatchProposer", testBatchProposer)
