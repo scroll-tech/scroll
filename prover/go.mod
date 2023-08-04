@@ -3,7 +3,7 @@ module scroll-tech/prover
 go 1.19
 
 require (
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230802095950-4b2bbf6225e7
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230804022247-26eeb40ea3ca
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
 	go.etcd.io/bbolt v1.3.7
