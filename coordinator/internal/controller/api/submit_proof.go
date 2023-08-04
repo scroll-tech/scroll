@@ -23,7 +23,7 @@ type SubmitProofController struct {
 // NewSubmitProofController create the submit proof api controller instance
 func NewSubmitProofController(cfg *config.Config, db *gorm.DB) *SubmitProofController {
 	return &SubmitProofController{
-		submitProofReceiverLogic: submitproof.NewSubmitProofReceiverLogic(cfg.ProverManagerConfig, db),
+		submitProofReceiverLogic: submitproof.NewSubmitProofReceiverLogic(cfg.ProverManager, db),
 	}
 }
 

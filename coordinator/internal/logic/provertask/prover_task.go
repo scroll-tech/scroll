@@ -47,7 +47,7 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 		return true
 	}
 
-	if len(proverTasks) >= int(b.cfg.ProverManagerConfig.SessionAttempts) {
+	if len(proverTasks) >= int(b.cfg.ProverManager.SessionAttempts) {
 		coordinatorSessionsTimeoutTotalCounter.Inc(1)
 
 		log.Warn("proof generation prover task %s ended because reach the max attempts", hash)

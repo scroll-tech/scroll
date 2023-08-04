@@ -1,25 +1,22 @@
 {
-  "prover_manager_config": {
-    "compression_level": 9,
+  "prover_manager": {
     "provers_per_session": 1,
     "session_attempts": 2,
     "collection_time_sec": 180,
-    "token_time_to_live": 60,
     "verifier": {
       "mock_mode": true,
       "params_path": "",
       "assets_path": ""
     },
-    "max_verifier_workers": 10,
-    "order_session": "ASC"
+    "max_verifier_workers": 10
   },
-  "db_config": {
+  "db": {
     "driver_name": "postgres",
     "dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
     "maxOpenNum": 200,
     "maxIdleNum": 20
   },
-  "l2_config": {
+  "l2": {
     "chain_id": 111
   },
   "auth": {

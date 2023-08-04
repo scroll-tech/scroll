@@ -80,14 +80,13 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		return err
 	}
 	// Reset prover manager config for manager test cases.
-	cfg.ProverManagerConfig = &coordinatorConfig.ProverManagerConfig{
+	cfg.ProverManager = &coordinatorConfig.ProverManager{
 		ProversPerSession: 1,
 		Verifier:          &coordinatorConfig.VerifierConfig{MockMode: true},
 		CollectionTimeSec: 60,
-		TokenTimeToLive:   1,
 	}
-	cfg.DBConfig.DSN = base.DBImg.Endpoint()
-	cfg.L2Config.ChainID = 111
+	cfg.DB.DSN = base.DBImg.Endpoint()
+	cfg.L2.ChainID = 111
 	c.Config = cfg
 
 	if !store {

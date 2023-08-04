@@ -53,7 +53,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
-	db, err := database.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}

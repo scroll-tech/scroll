@@ -114,7 +114,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 		chunkProofs = append(chunkProofs, &proof)
 
 		chunkInfo := message.ChunkInfo{
-			ChainID:       bp.cfg.L2Config.ChainID,
+			ChainID:       bp.cfg.L2.ChainID,
 			PrevStateRoot: common.HexToHash(chunk.ParentChunkStateRoot),
 			PostStateRoot: common.HexToHash(chunk.StateRoot),
 			WithdrawRoot:  common.HexToHash(chunk.WithdrawRoot),

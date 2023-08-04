@@ -73,7 +73,7 @@ func (c *Collector) timeoutProofTask() {
 			}
 
 			for _, assignedProverTask := range assignedProverTasks {
-				timeoutDuration := time.Duration(c.cfg.ProverManagerConfig.CollectionTimeSec) * time.Second
+				timeoutDuration := time.Duration(c.cfg.ProverManager.CollectionTimeSec) * time.Second
 				// here not update the block batch proving status failed, because the collector loop will check
 				// the attempt times. if reach the times, the collector will set the block batch proving status.
 				if time.Since(assignedProverTask.AssignedAt) >= timeoutDuration {
