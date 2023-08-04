@@ -8,9 +8,9 @@ import (
 
 // Response the response schema
 type Response struct {
-	ErrCode int         `json:"errcode,omitempty"`
-	ErrMsg  string      `json:"errmsg,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
+	ErrCode int         `json:"errcode"`
+	ErrMsg  string      `json:"errmsg"`
+	Data    interface{} `json:"data"`
 }
 
 // RenderJSON renders response with json
