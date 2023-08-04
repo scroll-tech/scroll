@@ -6,7 +6,8 @@ import (
 	"testing"
 	"time"
 
-	geth_types "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/integration-test/orm"
@@ -94,10 +95,15 @@ func TestCoordinatorProverInteractionWithData(t *testing.T) {
 	l2BlockOrm := orm.NewL2Block(db)
 
 	wrappedBlock := &types.WrappedBlock{
-		Header: &geth_types.Header{
+		Header: &gethTypes.Header{
+			Number:     big.NewInt(1),
+			ParentHash: common.Hash{},
 			Difficulty: big.NewInt(0),
-			Number:     big.NewInt(0),
+			BaseFee:    big.NewInt(0),
 		},
+		Transactions:   nil,
+		WithdrawRoot:   common.Hash{},
+		RowConsumption: &gethTypes.RowConsumption{},
 	}
 	chunk := &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock}}
 
