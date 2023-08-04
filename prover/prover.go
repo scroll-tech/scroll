@@ -141,7 +141,7 @@ func (r *Prover) proveAndSubmit() error {
 		}
 
 		// Push the new task into the stack
-		if err := r.stack.Push(task); err != nil {
+		if err = r.stack.Push(task); err != nil {
 			return fmt.Errorf("failed to push task into stack: %v", err)
 		}
 	}
@@ -211,12 +211,12 @@ func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 	switch taskMsg.Type {
 	case message.ProofTypeBatch:
 		taskMsg.BatchTaskDetail = &message.BatchTaskDetail{}
-		if err := json.Unmarshal([]byte(resp.Data.TaskData), taskMsg.BatchTaskDetail); err != nil {
+		if err = json.Unmarshal([]byte(resp.Data.TaskData), taskMsg.BatchTaskDetail); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal batch task detail: %v", err)
 		}
 	case message.ProofTypeChunk:
 		taskMsg.ChunkTaskDetail = &message.ChunkTaskDetail{}
-		if err := json.Unmarshal([]byte(resp.Data.TaskData), taskMsg.ChunkTaskDetail); err != nil {
+		if err = json.Unmarshal([]byte(resp.Data.TaskData), taskMsg.ChunkTaskDetail); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal chunk task detail: %v", err)
 		}
 	default:
@@ -230,12 +230,12 @@ func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 	}
 
 	// marshal the task to a json string for logging
-	taskJson, err := json.Marshal(provingTask)
+	taskJSON, err := json.Marshal(provingTask)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal task to json: %v", err)
 	}
 
-	log.Info("successfully fetched new task from coordinator", "resp", resp, "task", string(taskJson))
+	log.Info("successfully fetched new task from coordinator", "resp", resp, "task", string(taskJSON))
 
 	return provingTask, nil
 }
@@ -280,18 +280,18 @@ func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
 
 func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error) {
 	if task.Task.ChunkTaskDetail == nil {
-		return nil, errors.New("ChunkTaskDetail is empty")
+		return nil, fmt.Errorf("ChunkTaskDetail is empty")
 	}
 	traces, err := r.getSortedTracesByHashes(task.Task.ChunkTaskDetail.BlockHashes)
 	if err != nil {
-		return nil, errors.New("get traces from eth node failed")
+		return nil, fmt.Errorf("get traces from eth node failed, block hashes: %v", task.Task.ChunkTaskDetail.BlockHashes)
 	}
 	return r.proverCore.ProveChunk(task.Task.ID, traces)
 }
 
 func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error) {
 	if task.Task.BatchTaskDetail == nil {
-		return nil, errors.New("BatchTaskDetail is empty")
+		return nil, fmt.Errorf("BatchTaskDetail is empty")
 	}
 	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.ChunkProofs)
 }
@@ -299,7 +299,29 @@ func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error
 func (r *Prover) submitProof(msg *message.ProofDetail) error {
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
-		Message: *msg,
+		TaskID:   msg.ID,
+		TaskType: int(msg.Type),
+		Status:   int(msg.Status),
+	}
+
+	// marshal proof by tasktype
+	switch msg.Type {
+	case message.ProofTypeChunk:
+		if msg.ChunkProof != nil {
+			proofData, err := json.Marshal(msg.ChunkProof)
+			if err != nil {
+				return fmt.Errorf("error marshaling chunk proof: %v", err)
+			}
+			req.Proof = string(proofData)
+		}
+	case message.ProofTypeBatch:
+		if msg.BatchProof != nil {
+			proofData, err := json.Marshal(msg.BatchProof)
+			if err != nil {
+				return fmt.Errorf("error marshaling batch proof: %v", err)
+			}
+			req.Proof = string(proofData)
+		}
 	}
 
 	// send the submit request
@@ -307,7 +329,7 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 		return fmt.Errorf("error submitting proof: %v", err)
 	}
 
-	log.Debug("proof submitted successfully", "task-id", msg.ID)
+	log.Info("proof submitted successfully", "task-id", msg.ID, "task-type", msg.Type, "task-status", msg.Status, "err", msg.Error)
 	return nil
 }
 
@@ -324,6 +346,7 @@ func (r *Prover) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.Bl
 		}
 		traces = append(traces, trace)
 	}
+
 	// Sort BlockTraces by header number.
 	sort.Slice(traces, func(i, j int) bool {
 		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()

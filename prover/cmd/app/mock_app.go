@@ -71,6 +71,13 @@ func (r *ProverApp) RunApp(t *testing.T, args ...string) {
 	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
+// RunAppWithExpectedResult runs the prover-test child process with multiple parameters,
+// and checks for a specific expected result in the output.
+func (r *ProverApp) RunAppWithExpectedResult(t *testing.T, expectedResult string, args ...string) {
+	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
+	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, expectedResult) })
+}
+
 // Free stop and release prover-test.
 func (r *ProverApp) Free() {
 	if !utils.IsNil(r.AppAPI) {

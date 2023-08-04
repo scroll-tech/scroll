@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230804022247-26eeb40ea3ca
 	github.com/stretchr/testify v1.8.3
+	gorm.io/gorm v1.25.2
 )
 
 require (
@@ -19,6 +20,8 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/holiman/uint256 v1.2.3 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.15 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

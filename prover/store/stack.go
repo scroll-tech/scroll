@@ -95,7 +95,7 @@ func (s *Stack) UpdateTimes(task *ProvingTask, updateTimes int) error {
 	task.Times = updateTimes
 	byt, err := json.Marshal(task)
 	if err != nil {
-		return fmt.Errorf("error marshalling task: %v", err)
+		return fmt.Errorf("error marshaling task: %v", err)
 	}
 	key := []byte(task.Task.ID)
 	return s.Update(func(tx *bbolt.Tx) error {
