@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	ethtypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -57,7 +58,7 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock1 = &types.WrappedBlock{}
+	wrappedBlock1 = &types.WrappedBlock{RowConsumption: &ethtypes.RowConsumption{}}
 	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
 		return err
 	}
@@ -67,7 +68,7 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock2 = &types.WrappedBlock{}
+	wrappedBlock2 = &types.WrappedBlock{RowConsumption: &ethtypes.RowConsumption{}}
 	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
 		return err
 	}
