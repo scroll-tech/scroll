@@ -92,17 +92,6 @@ func (s *Stack) Delete(taskID string) error {
 
 // UpdateTimes updates the prover prove times of the proving task.
 func (s *Stack) UpdateTimes(task *ProvingTask, updateTimes int) error {
-	// Print the field values
-	fmt.Printf("Task ID: %s\n", task.Task.ID)
-	fmt.Printf("Task Type: %v\n", task.Task.Type)
-	if task.Task.BatchTaskDetail != nil {
-		fmt.Printf("BatchTaskDetail: %+v\n", *task.Task.BatchTaskDetail)
-	}
-	if task.Task.ChunkTaskDetail != nil {
-		fmt.Printf("ChunkTaskDetail: %+v\n", *task.Task.ChunkTaskDetail)
-	}
-	fmt.Printf("Times: %d\n", task.Times)
-
 	task.Times = updateTimes
 	byt, err := json.Marshal(task)
 	if err != nil {

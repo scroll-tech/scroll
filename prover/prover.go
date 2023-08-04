@@ -139,6 +139,11 @@ func (r *Prover) proveAndSubmit() error {
 			time.Sleep(retryWait)
 			return fmt.Errorf("failed to fetch task from coordinator: %v", err)
 		}
+
+		// Push the new task into the stack
+		if err := r.stack.Push(task); err != nil {
+			return fmt.Errorf("failed to push task into stack: %v", err)
+		}
 	}
 
 	var proofMsg *message.ProofDetail
