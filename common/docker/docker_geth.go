@@ -93,6 +93,11 @@ func (i *ImgGeth) ChainID() *big.Int {
 	return i.chainID
 }
 
+// OpenLog open cmd log by this api.
+func (i *ImgGeth) OpenLog(open bool) {
+	i.cmd.OpenLog(open)
+}
+
 func (i *ImgGeth) isOk() bool {
 	keyword := "WebSocket enabled"
 	okCh := make(chan struct{}, 1)

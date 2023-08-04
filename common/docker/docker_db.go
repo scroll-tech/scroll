@@ -88,6 +88,11 @@ func (i *ImgDB) IsRunning() bool {
 	return i.running
 }
 
+// OpenLog open cmd log by this api.
+func (i *ImgDB) OpenLog(open bool) {
+	i.cmd.OpenLog(open)
+}
+
 func (i *ImgDB) prepare() []string {
 	cmd := []string{"docker", "run", "--rm", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
 	envs := []string{
