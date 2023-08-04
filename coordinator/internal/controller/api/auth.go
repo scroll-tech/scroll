@@ -68,6 +68,12 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 // IdentityHandler replies to client for /login
 func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 	claims := jwt.ExtractClaims(c)
-	c.Set(types.ProverName, claims[types.ProverName])
-	return claims[types.PublicKey]
+	if proverName, ok := claims[types.ProverName]; ok {
+		c.Set(types.ProverName, proverName)
+	}
+
+	if publicKey, ok := claims[types.PublicKey]; ok {
+		c.Set(types.PublicKey, publicKey)
+	}
+	return nil
 }
