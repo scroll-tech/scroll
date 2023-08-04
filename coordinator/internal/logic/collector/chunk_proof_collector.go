@@ -104,9 +104,9 @@ func (cp *ChunkProofCollector) Collect(ctx context.Context) error {
 
 func (cp *ChunkProofCollector) sendTask(ctx context.Context, hash string) ([]*coordinatorType.ProverStatus, error) {
 	// Get block hashes.
-	wrappedBlocks, err := cp.blockOrm.GetL2BlocksByChunkHash(ctx, hash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch wrapped blocks, batch hash:%s err:%w", hash, err)
+	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, hash)
+	if wrappedErr != nil {
+		return nil, fmt.Errorf("failed to fetch wrapped blocks, batch hash:%s err:%w", hash, wrappedErr)
 	}
 	blockHashes := make([]common.Hash, len(wrappedBlocks))
 	for i, wrappedBlock := range wrappedBlocks {
