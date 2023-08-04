@@ -128,7 +128,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*
 // recoverProvingStatus if not return the batch task to prover success,
 // need recover the proving status to unassigned
 func (cp *ChunkProverTask) recoverProvingStatus(ctx *gin.Context, chunkTask *orm.Chunk) {
-	if err := cp.chunkOrm.UpdateProvingStatus(ctx, chunkTask.Hash, types.ProvingTaskAssigned); err != nil {
+	if err := cp.chunkOrm.UpdateProvingStatus(ctx, chunkTask.Hash, types.ProvingTaskUnassigned); err != nil {
 		log.Warn("failed to recover chunk proving status", "hash:", chunkTask.Hash, "error", err)
 	}
 }
