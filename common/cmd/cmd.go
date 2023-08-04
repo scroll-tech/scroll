@@ -83,7 +83,7 @@ func (c *Cmd) Write(data []byte) (int, error) {
 	out := string(data)
 	if verbose || c.openLog {
 		fmt.Printf("%s:\n\t%v", c.name, out)
-	} else if strings.Contains(out, "ERROR") || strings.Contains(out, "WARNING") {
+	} else if strings.Contains(strings.ToLower(out), "error") || strings.Contains(strings.ToLower(out), "warning") {
 		fmt.Printf("%s:\n\t%v", c.name, out)
 	}
 	go c.checkFuncs.IterCb(func(_ string, value interface{}) {

@@ -72,8 +72,9 @@ func action(ctx *cli.Context) error {
 	route.Route(router, cfg)
 	port := ctx.String(httpPortFlag.Name)
 	srv := &http.Server{
-		Addr:    fmt.Sprintf(":%s", port),
-		Handler: router,
+		Addr:              fmt.Sprintf(":%s", port),
+		Handler:           router,
+		ReadHeaderTimeout: time.Minute,
 	}
 
 	// Start metrics server.
@@ -100,10 +101,7 @@ func action(ctx *cli.Context) error {
 		return nil
 	}
 
-	// catching ctx.Done(). timeout of 5 seconds.
-	select {
-	case <-closeCtx.Done():
-	}
+	<-closeCtx.Done()
 	log.Info("coordinator server exiting success")
 	return nil
 }
