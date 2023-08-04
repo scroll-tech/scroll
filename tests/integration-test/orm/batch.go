@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -10,10 +9,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
 )
 
 const defaultBatchHeaderVersion = 0
@@ -69,55 +66,6 @@ func (*Batch) TableName() string {
 	return "batch"
 }
 
-// GetUnassignedBatches retrieves unassigned batches based on the specified limit.
-// The returned batches are sorted in ascending order by their index.
-func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, error) {
-	if limit < 0 {
-		return nil, errors.New("limit must not be smaller than zero")
-	}
-	if limit == 0 {
-		return nil, nil
-	}
-
-	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status = ? AND chunk_proofs_status = ?", types.ProvingTaskUnassigned, types.ChunkProofsStatusReady)
-	db = db.Order("index ASC")
-	db = db.Limit(limit)
-
-	var batches []*Batch
-	if err := db.Find(&batches).Error; err != nil {
-		return nil, fmt.Errorf("Batch.GetUnassignedBatches error: %w", err)
-	}
-	return batches, nil
-}
-
-// GetAssignedBatches retrieves all batches whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProved.
-func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)})
-
-	var assignedBatches []*Batch
-	if err := db.Find(&assignedBatches).Error; err != nil {
-		return nil, fmt.Errorf("Batch.GetAssignedBatches error: %w", err)
-	}
-	return assignedBatches, nil
-}
-
-// GetProvingStatusByHash retrieves the proving status of a batch given its hash.
-func (o *Batch) GetProvingStatusByHash(ctx context.Context, hash string) (types.ProvingStatus, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Select("proving_status")
-	db = db.Where("hash = ?", hash)
-
-	var batch Batch
-	if err := db.Find(&batch).Error; err != nil {
-		return types.ProvingStatusUndefined, fmt.Errorf("Batch.GetProvingStatusByHash error: %w, batch hash: %v", err, hash)
-	}
-	return types.ProvingStatus(batch.ProvingStatus), nil
-}
-
 // GetLatestBatch retrieves the latest batch from the database.
 func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	db := o.db.WithContext(ctx)
@@ -132,7 +80,7 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 }
 
 // InsertBatch inserts a new batch into the database.
-// for unit test
+// for init data
 func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
 	if len(chunks) == 0 {
 		return nil, errors.New("invalid args")
@@ -207,95 +155,4 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 	return &newBatch, nil
-}
-
-// UpdateChunkProofsStatusByBatchHash updates the status of chunk_proofs_status field for a given batch hash.
-// The function will set the chunk_proofs_status to the status provided.
-func (o *Batch) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, status types.ChunkProofsStatus) error {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("hash = ?", batchHash)
-
-	if err := db.Update("chunk_proofs_status", status).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateChunkProofsStatusByBatchHash error: %w, batch hash: %v, status: %v", err, batchHash, status.String())
-	}
-	return nil
-}
-
-// UpdateProvingStatus updates the proving status of a batch.
-func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-	updateFields := make(map[string]interface{})
-	updateFields["proving_status"] = int(status)
-
-	switch status {
-	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now()
-	case types.ProvingTaskUnassigned:
-		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskProved, types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
-	}
-
-	db = db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("hash", hash)
-
-	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateProvingStatus error: %w, batch hash: %v, status: %v", err, hash, status.String())
-	}
-	return nil
-}
-
-// UpdateProofByHash updates the batch proof by hash.
-func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.BatchProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-	proofBytes, err := json.Marshal(proof)
-	if err != nil {
-		return err
-	}
-
-	updateFields := make(map[string]interface{})
-	updateFields["proof"] = proofBytes
-	updateFields["proof_time_sec"] = proofTimeSec
-
-	db = db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("hash", hash)
-
-	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateProofByHash error: %w, batch hash: %v", err, hash)
-	}
-	return nil
-}
-
-// UpdateUnassignedBatchReturning update the unassigned batch and return the update record
-func (o *Batch) UpdateUnassignedBatchReturning(ctx context.Context, limit int) ([]*Batch, error) {
-	if limit < 0 {
-		return nil, errors.New("limit must not be smaller than zero")
-	}
-	if limit == 0 {
-		return nil, nil
-	}
-
-	db := o.db.WithContext(ctx)
-
-	subQueryDB := db.Model(&Batch{}).Select("index")
-	subQueryDB = subQueryDB.Where("proving_status = ? AND chunk_proofs_status = ?", types.ProvingTaskUnassigned, types.ChunkProofsStatusReady)
-	subQueryDB = subQueryDB.Order("index ASC")
-	subQueryDB = subQueryDB.Limit(limit)
-
-	var batches []*Batch
-	db = db.Model(&batches).Clauses(clause.Returning{})
-	db = db.Where("index = (?)", subQueryDB)
-	if err := db.Update("proving_status", types.ProvingTaskAssigned).Error; err != nil {
-		return nil, fmt.Errorf("Batch.UpdateUnassignedBatchReturning error: %w", err)
-	}
-	return batches, nil
 }

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -48,44 +46,6 @@ func NewL2Block(db *gorm.DB) *L2Block {
 // TableName returns the name of the "l2_block" table.
 func (*L2Block) TableName() string {
 	return "l2_block"
-}
-
-// GetL2BlocksByChunkHash retrieves the L2 blocks associated with the specified chunk hash.
-// The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) ([]*types.WrappedBlock, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_root, row_consumption")
-	db = db.Where("chunk_hash = ?", chunkHash)
-	db = db.Order("number ASC")
-
-	var l2Blocks []L2Block
-	if err := db.Find(&l2Blocks).Error; err != nil {
-		return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
-	}
-
-	var wrappedBlocks []*types.WrappedBlock
-	for _, v := range l2Blocks {
-		var wrappedBlock types.WrappedBlock
-
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
-		}
-
-		wrappedBlock.Header = &gethTypes.Header{}
-		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
-		}
-
-		wrappedBlock.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
-		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
-		}
-
-		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
-	}
-
-	return wrappedBlocks, nil
 }
 
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.

@@ -1,17 +1,51 @@
 package client
 
 import (
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+
 	"scroll-tech/common/types/message"
 )
 
-// RandomResponse defines the response structure for random API
-type RandomResponse struct {
-	Challenge string `json:"challenge"`
+// Response the response schema
+type Response struct {
+	ErrCode int         `json:"errcode,omitempty"`
+	ErrMsg  string      `json:"errmsg,omitempty"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+// RenderJSON renders response with json
+func RenderJSON(ctx *gin.Context, errCode int, err error, data interface{}) {
+	var errMsg string
+	if err != nil {
+		errMsg = err.Error()
+	}
+	renderData := Response{
+		ErrCode: errCode,
+		ErrMsg:  errMsg,
+		Data:    data,
+	}
+	ctx.JSON(http.StatusOK, renderData)
+}
+
+// ChallengeResponse defines the response structure for random API
+type ChallengeResponse struct {
+	ErrCode int    `json:"errcode,omitempty"`
+	ErrMsg  string `json:"errmsg,omitempty"`
+	Data    *struct {
+		Time  string `json:"time"`
+		Token string `json:"token"`
+	} `json:"data,omitempty"`
 }
 
 // LoginRequest defines the request structure for login API
 type LoginRequest struct {
-	Message message.AuthMsg `json:"message"`
+	Message struct {
+		Challenge  string `json:"challenge"`
+		ProverName string `json:"prover_name"`
+	} `json:"message"`
+	Signature string `json:"signature"`
 }
 
 // LoginResponse defines the response structure for login API
@@ -33,9 +67,13 @@ type GetTaskRequest struct {
 
 // GetTaskResponse defines the response structure for GetTask API
 type GetTaskResponse struct {
-	ErrCode int             `json:"errcode,omitempty"`
-	ErrMsg  string          `json:"errmsg,omitempty"`
-	Data    message.TaskMsg `json:"data,omitempty"`
+	ErrCode int    `json:"errcode,omitempty"`
+	ErrMsg  string `json:"errmsg,omitempty"`
+	Data    *struct {
+		TaskID   string `json:"task_id"`
+		TaskType int    `json:"task_type"`
+		TaskData string `json:"task_data"`
+	} `json:"data,omitempty"`
 }
 
 // SubmitProofRequest defines the request structure for the SubmitProof API.

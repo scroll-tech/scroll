@@ -27,7 +27,7 @@ func GetLatestConfirmedBlockNumber(ctx context.Context, client ethClient, confir
 
 		header, err := client.HeaderByNumber(ctx, tag)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("client.HeaderByNumber failed: tag %v, err %v", tag, err)
 		}
 		if !header.Number.IsInt64() {
 			return 0, fmt.Errorf("received invalid block confirm: %v", header.Number)

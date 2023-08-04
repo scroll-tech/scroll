@@ -51,7 +51,9 @@ func action(ctx *cli.Context) error {
 	r.Start()
 
 	defer r.Stop()
-	log.Info("prover start successfully", "name", cfg.ProverName, "publickey", r.PublicKey(), "version", version.Version)
+	log.Info("prover start successfully",
+		"name", cfg.ProverName, "type", cfg.Core.ProofType,
+		"publickey", r.PublicKey(), "version", version.Version)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

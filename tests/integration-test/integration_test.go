@@ -1,87 +1,134 @@
 package integration_test
 
 import (
-	"crypto/rand"
-	"io"
+	"context"
 	"math/big"
-	"net/http"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	bcmd "scroll-tech/bridge/cmd"
-
-	"scroll-tech/common/docker"
-
+	"scroll-tech/integration-test/orm"
 	rapp "scroll-tech/prover/cmd/app"
 
 	"scroll-tech/database/migrate"
 
 	capp "scroll-tech/coordinator/cmd/app"
+
+	"scroll-tech/common/database"
+	"scroll-tech/common/docker"
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
+
+	bcmd "scroll-tech/bridge/cmd"
 )
 
 var (
 	base           *docker.App
 	bridgeApp      *bcmd.MockApp
 	coordinatorApp *capp.CoordinatorApp
-	proverApp      *rapp.ProverApp
+	chunkProverApp *rapp.ProverApp
+	batchProverApp *rapp.ProverApp
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
 	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
-	proverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.WSEndpoint())
+	chunkProverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.HTTPEndpoint(), message.ProofTypeChunk)
+	batchProverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.HTTPEndpoint(), message.ProofTypeBatch)
 	m.Run()
 	bridgeApp.Free()
 	coordinatorApp.Free()
-	proverApp.Free()
+	chunkProverApp.Free()
+	batchProverApp.Free()
 	base.Free()
 }
 
-func TestCoordinatorProverInteraction(t *testing.T) {
+func TestCoordinatorProverInteractionWithoutData(t *testing.T) {
 	// Start postgres docker containers.
+	base.RunL2Geth(t)
 	base.RunDBImage(t)
 	// Reset db.
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
+
 	// Run prover app.
-	proverApp.RunApp(t) // login success.
+	chunkProverApp.RunApp(t) // chunk prover login.
+	batchProverApp.RunApp(t) // batch prover login.
+
+	chunkProverApp.ExpectWithTimeout(t, true, 60*time.Second, "get empty prover task") // get prover task without data.
+	batchProverApp.ExpectWithTimeout(t, true, 60*time.Second, "get empty prover task") // get prover task without data.
 
 	// Free apps.
-	proverApp.WaitExit()
+	chunkProverApp.WaitExit()
+	batchProverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
 
-func TestMonitorMetrics(t *testing.T) {
-	// Start l1geth l2geth and postgres docker containers.
-	base.RunImages(t)
-	// Reset db.
-	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
+func TestCoordinatorProverInteractionWithData(t *testing.T) {
+	// Start postgres docker containers.
+	base.RunL2Geth(t)
+	base.RunDBImage(t)
 
-	// Start coordinator process with metrics server.
-	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	svrPort := strconv.FormatInt(port.Int64()+52000, 10)
-	coordinatorApp.RunApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
+	// Init data
+	dbCfg := &database.Config{
+		DSN:        base.DBConfig.DSN,
+		DriverName: base.DBConfig.DriverName,
+		MaxOpenNum: base.DBConfig.MaxOpenNum,
+		MaxIdleNum: base.DBConfig.MaxIdleNum,
+	}
 
-	time.Sleep(time.Second)
-
-	// Get coordinator monitor metrics.
-	resp, err := http.Get("http://localhost:" + svrPort)
+	db, err := database.InitDB(dbCfg)
 	assert.NoError(t, err)
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	bodyStr := string(body)
-	assert.Equal(t, 200, resp.StatusCode)
-	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_sessions_timeout_total"))
-	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_provers_disconnects_total"))
 
-	// Exit.
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	batchOrm := orm.NewBatch(db)
+	chunkOrm := orm.NewChunk(db)
+	l2BlockOrm := orm.NewL2Block(db)
+
+	wrappedBlock := &types.WrappedBlock{
+		Header: &gethTypes.Header{
+			Number:     big.NewInt(1),
+			ParentHash: common.Hash{},
+			Difficulty: big.NewInt(0),
+			BaseFee:    big.NewInt(0),
+		},
+		Transactions:   nil,
+		WithdrawRoot:   common.Hash{},
+		RowConsumption: &gethTypes.RowConsumption{},
+	}
+	chunk := &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock}}
+
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock})
+	assert.NoError(t, err)
+	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
+	assert.NoError(t, err)
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
+	assert.NoError(t, err)
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	assert.NoError(t, err)
+	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
+	assert.NoError(t, err)
+
+	// Run coordinator app.
+	coordinatorApp.RunApp(t)
+
+	// Run prover app.
+	chunkProverApp.RunApp(t) // chunk prover login.
+	batchProverApp.RunApp(t) // batch prover login.
+
+	time.Sleep(60 * time.Second) // TODO(colinlyguo): replace time.Sleep(60 * time.Second) with expected results.
+
+	// Free apps.
+	chunkProverApp.WaitExit()
+	batchProverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
