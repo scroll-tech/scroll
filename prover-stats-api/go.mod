@@ -46,7 +46,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230801133212-7b75f163b0c3
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230802095950-4b2bbf6225e7
 	github.com/shopspring/decimal v1.3.1
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
