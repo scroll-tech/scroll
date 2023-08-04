@@ -1,38 +1,13 @@
 package client
 
 import (
-	"net/http"
-
-	"github.com/gin-gonic/gin"
-
 	"scroll-tech/common/types/message"
 )
 
-// Response the response schema
-type Response struct {
-	ErrCode int         `json:"errcode,omitempty"`
-	ErrMsg  string      `json:"errmsg,omitempty"`
-	Data    interface{} `json:"data,omitempty"`
-}
-
-// RenderJSON renders response with json
-func RenderJSON(ctx *gin.Context, errCode int, err error, data interface{}) {
-	var errMsg string
-	if err != nil {
-		errMsg = err.Error()
-	}
-	renderData := Response{
-		ErrCode: errCode,
-		ErrMsg:  errMsg,
-		Data:    data,
-	}
-	ctx.JSON(http.StatusOK, renderData)
-}
-
 // ChallengeResponse defines the response structure for random API
 type ChallengeResponse struct {
-	ErrCode int    `json:"errcode,omitempty"`
-	ErrMsg  string `json:"errmsg,omitempty"`
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 	Data    *struct {
 		Time  string `json:"time"`
 		Token string `json:"token"`
@@ -50,12 +25,12 @@ type LoginRequest struct {
 
 // LoginResponse defines the response structure for login API
 type LoginResponse struct {
-	ErrCode int    `json:"errcode,omitempty"`
-	ErrMsg  string `json:"errmsg,omitempty"`
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 	Data    *struct {
 		Time  string `json:"time"`
 		Token string `json:"token"`
-	} `json:"data,omitempty"`
+	} `json:"data"`
 }
 
 // GetTaskRequest defines the request structure for GetTask API
@@ -67,13 +42,13 @@ type GetTaskRequest struct {
 
 // GetTaskResponse defines the response structure for GetTask API
 type GetTaskResponse struct {
-	ErrCode int    `json:"errcode,omitempty"`
-	ErrMsg  string `json:"errmsg,omitempty"`
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 	Data    *struct {
 		TaskID   string `json:"task_id"`
 		TaskType int    `json:"task_type"`
 		TaskData string `json:"task_data"`
-	} `json:"data,omitempty"`
+	} `json:"data"`
 }
 
 // SubmitProofRequest defines the request structure for the SubmitProof API.
@@ -86,6 +61,6 @@ type SubmitProofRequest struct {
 
 // SubmitProofResponse defines the response structure for the SubmitProof API.
 type SubmitProofResponse struct {
-	ErrCode int    `json:"errcode,omitempty"`
-	ErrMsg  string `json:"errmsg,omitempty"`
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
 }

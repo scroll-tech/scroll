@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/prover/config"
 
@@ -20,6 +22,8 @@ type CoordinatorClient struct {
 
 	proverName string
 	priv       *ecdsa.PrivateKey
+
+	mu sync.Mutex
 }
 
 // NewCoordinatorClient constructs a new CoordinatorClient.
@@ -39,6 +43,9 @@ func NewCoordinatorClient(cfg *config.CoordinatorConfig, proverName string, priv
 
 // Login completes the entire login process in one function call.
 func (c *CoordinatorClient) Login(ctx context.Context) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	var challengeResult ChallengeResponse
 
 	// Get random string
@@ -124,13 +131,14 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 		return nil, fmt.Errorf("failed to get task, status code: %v", resp.StatusCode())
 	}
 
-	if result.ErrCode != types.Success {
-		if result.ErrCode == types.ErrJWTTokenExpired {
-			if err := c.Login(ctx); err != nil {
-				return nil, fmt.Errorf("JWT expired, re-login failed: %v", err)
-			}
-			return c.GetTask(ctx, req)
+	if result.ErrCode == types.ErrJWTTokenExpired {
+		log.Debug("JWT expired, attempting to re-login")
+		if err := c.Login(ctx); err != nil {
+			return nil, fmt.Errorf("JWT expired, re-login failed: %v", err)
 		}
+		return c.GetTask(ctx, req)
+	}
+	if result.ErrCode != types.Success {
 		return nil, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
 
@@ -155,14 +163,16 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 		return fmt.Errorf("failed to submit proof, status code: %v", resp.StatusCode())
 	}
 
-	if result.ErrCode != types.Success {
-		if result.ErrCode == types.ErrJWTTokenExpired {
-			if err := c.Login(ctx); err != nil {
-				return fmt.Errorf("JWT expired, re-login failed: %v", err)
-			}
-			return c.SubmitProof(ctx, req)
+	if result.ErrCode == types.ErrJWTTokenExpired {
+		log.Debug("JWT expired, attempting to re-login")
+		if err := c.Login(ctx); err != nil {
+			return fmt.Errorf("JWT expired, re-login failed: %v", err)
 		}
+		return c.SubmitProof(ctx, req)
+	}
+	if result.ErrCode != types.Success {
 		return fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
+
 	return nil
 }
