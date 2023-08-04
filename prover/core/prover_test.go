@@ -13,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	scrollTypes "scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/prover/config"
@@ -48,19 +49,19 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Converted to chunk infos")
 
-	wrappedBlock1 = &types.WrappedBlock{
+	wrappedBlock1 := &scrollTypes.WrappedBlock{
 		// Header *types.Header `json:"header"`
 		Header: chunkTrace1[0].Header,
 		// // Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
 		// Transactions   []*types.TransactionData `json:"transactions"`
 		Transactions: chunkTrace1[0].Transactions,
 		// WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
-		WithdrawRoot: chunkTrace1[0].WithdrawRoot,
+		WithdrawRoot: chunkTrace1[0].WithdrawTrieRoot,
 		// // RowConsumption *types.RowConsumption    `json:"row_consumption"`
 		// RowConsumption: chunkTrace1[0].RowConsumption,
 	}
-	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
-	chunkHash1, err = chunk1.Hash(0)
+	chunk1 := &scrollTypes.Chunk{Blocks: []*scrollTypes.WrappedBlock{wrappedBlock1}}
+	chunkHash1, err := chunk1.Hash(0)
 	as.NoError(err)
 	as.Equal(chunkInfo1.PostStateRoot, wrappedBlock1.Header.Root)
 	as.Equal(chunkInfo1.WithdrawRoot, wrappedBlock1.WithdrawRoot)
@@ -73,19 +74,19 @@ func TestFFI(t *testing.T) {
 	// 	// DataHash      common.Hash `json:"data_hash"`
 	// 	// IsPadding     bool        `json:"is_padding"`
 	// }
-	wrappedBlock2 = &types.WrappedBlock{
+	wrappedBlock2 := &scrollTypes.WrappedBlock{
 		// Header *types.Header `json:"header"`
 		Header: chunkTrace2[0].Header,
 		// // Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
 		// Transactions   []*types.TransactionData `json:"transactions"`
 		Transactions: chunkTrace2[0].Transactions,
 		// WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
-		WithdrawRoot: chunkTrace2[0].WithdrawRoot,
+		WithdrawRoot: chunkTrace2[0].WithdrawTrieRoot,
 		// // RowConsumption *types.RowConsumption    `json:"row_consumption"`
 		// RowConsumption: chunkTrace2[0].RowConsumption,
 	}
-	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
-	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
+	chunk2 := &scrollTypes.Chunk{Blocks: []*scrollTypes.WrappedBlock{wrappedBlock2}}
+	chunkHash2, err := chunk2.Hash(chunk1.NumL1Messages(0))
 	as.NoError(err)
 	as.Equal(chunkInfo2.PostStateRoot, wrappedBlock2.Header.Root)
 	as.Equal(chunkInfo2.WithdrawRoot, wrappedBlock2.WithdrawRoot)
