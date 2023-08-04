@@ -135,9 +135,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		TaskID:    taskID,
-		TaskType:  int(message.ProofTypeBatch),
-		ProofData: string(chunkProofsBytes),
+		TaskID:   taskID,
+		TaskType: int(message.ProofTypeBatch),
+		TaskData: string(chunkProofsBytes),
 	}
 	return taskMsg, nil
 }

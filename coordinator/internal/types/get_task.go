@@ -9,7 +9,7 @@ type GetTaskParameter struct {
 
 // GetTaskSchema the schema data return to prover for get prover task
 type GetTaskSchema struct {
-	TaskID    string `json:"task_id"`
-	TaskType  int    `json:"task_type"`
-	ProofData string `json:"proof_data"`
+	TaskID   string `json:"task_id"`
+	TaskType int    `json:"task_type"`
+	TaskData string `json:"task_data"`
 }

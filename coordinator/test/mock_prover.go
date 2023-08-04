@@ -146,7 +146,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *t
 
 	assert.NotEmpty(t, result.Data.TaskID)
 	assert.NotEmpty(t, result.Data.TaskType)
-	assert.NotEmpty(t, result.Data.ProofData)
+	assert.NotEmpty(t, result.Data.TaskData)
 	return &result.Data
 }
 

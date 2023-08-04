@@ -123,9 +123,9 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*
 	}
 
 	proverTaskSchema := &coordinatorType.GetTaskSchema{
-		TaskID:    hash,
-		TaskType:  int(message.ProofTypeChunk),
-		ProofData: string(blockHashesBytes),
+		TaskID:   hash,
+		TaskType: int(message.ProofTypeChunk),
+		TaskData: string(blockHashesBytes),
 	}
 
 	return proverTaskSchema, nil
