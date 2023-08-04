@@ -178,6 +178,10 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 		return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
 	}
 
+	if latestBlockNumber == 0 {
+		return nil, fmt.Errorf("omit to prove task of the genesis block, latestBlockNumber: %v", latestBlockNumber)
+	}
+
 	// prepare the request
 	req := &client.GetTaskRequest{
 		ProverVersion: version.Version,
