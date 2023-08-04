@@ -66,6 +66,8 @@ func TestFFI(t *testing.T) {
 	as.Equal(chunkInfo1.PostStateRoot, wrappedBlock1.Header.Root)
 	as.Equal(chunkInfo1.WithdrawRoot, wrappedBlock1.WithdrawRoot)
 	as.Equal(chunkInfo1.DataHash, chunkHash1)
+	t.Log("Succeed to check chunk info 1")
+
 	// type message.ChunkInfo{
 	// 	// ChainID       uint64      `json:"chain_id"`
 	// 	// PrevStateRoot common.Hash `json:"prev_state_root"`
@@ -91,6 +93,7 @@ func TestFFI(t *testing.T) {
 	as.Equal(chunkInfo2.PostStateRoot, wrappedBlock2.Header.Root)
 	as.Equal(chunkInfo2.WithdrawRoot, wrappedBlock2.WithdrawRoot)
 	as.Equal(chunkInfo2.DataHash, chunkHash2)
+	t.Log("Succeed to check chunk info 2")
 
 	chunkProof1, err := chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
 	as.NoError(err)
