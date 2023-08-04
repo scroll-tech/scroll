@@ -47,12 +47,31 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Converted to chunk infos")
 
-
-	wrappedBlock1 = &types.WrappedBlock{}
+	wrappedBlock1 = &types.WrappedBlock{
+		// Header *types.Header `json:"header"`
+		Header: chunkTrace1[0].Header,
+		// // Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
+		// Transactions   []*types.TransactionData `json:"transactions"`
+		Transactions: chunkTrace1[0].Transactions,
+		// WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
+		WithdrawRoot: chunkTrace1[0].WithdrawRoot,
+		// // RowConsumption *types.RowConsumption    `json:"row_consumption"`
+		// RowConsumption: chunkTrace1[0].RowConsumption,
+	}
 	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
 	chunkHash1, err = chunk1.Hash(0)
 	as.NoError(err)
-	wrappedBlock2 = &types.WrappedBlock{}
+	wrappedBlock2 = &types.WrappedBlock{
+		// Header *types.Header `json:"header"`
+		Header: chunkTrace2[0].Header,
+		// // Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
+		// Transactions   []*types.TransactionData `json:"transactions"`
+		Transactions: chunkTrace2[0].Transactions,
+		// WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
+		WithdrawRoot: chunkTrace2[0].WithdrawRoot,
+		// // RowConsumption *types.RowConsumption    `json:"row_consumption"`
+		// RowConsumption: chunkTrace2[0].RowConsumption,
+	}
 	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
 	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
 	as.NoError(err)
