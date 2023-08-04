@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"golang.org/x/sync/errgroup"
 
@@ -15,6 +16,7 @@ import (
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
 
@@ -44,18 +46,20 @@ type ProverApp struct {
 }
 
 // NewProverApp return a new proverApp manager.
-func NewProverApp(base *docker.App, file string, httpURL string) *ProverApp {
-	proverFile := fmt.Sprintf("/tmp/%d_prover-config.json", base.Timestamp)
+func NewProverApp(base *docker.App, file string, httpURL string, proofType message.ProofType) *ProverApp {
+	uuid := uuid.New().String()
+
+	proverFile := fmt.Sprintf("/tmp/%s_%d_prover-config.json", uuid, base.Timestamp)
 	proverApp := &ProverApp{
 		base:       base,
 		originFile: file,
 		proverFile: proverFile,
-		bboltDB:    fmt.Sprintf("/tmp/%d_bbolt_db", base.Timestamp),
+		bboltDB:    fmt.Sprintf("/tmp/%s_%d_bbolt_db", uuid, base.Timestamp),
 		index:      getIndex(),
 		name:       string(utils.ProverApp),
 		args:       []string{"--log.debug", "--config", proverFile},
 	}
-	if err := proverApp.MockConfig(true, httpURL); err != nil {
+	if err := proverApp.MockConfig(true, httpURL, proofType); err != nil {
 		panic(err)
 	}
 	return proverApp
@@ -78,7 +82,7 @@ func (r *ProverApp) Free() {
 }
 
 // MockConfig creates a new prover config.
-func (r *ProverApp) MockConfig(store bool, httpURL string) error {
+func (r *ProverApp) MockConfig(store bool, httpURL string, proofType message.ProofType) error {
 	cfg, err := proverConfig.NewConfig(r.originFile)
 	if err != nil {
 		return err
@@ -99,6 +103,7 @@ func (r *ProverApp) MockConfig(store bool, httpURL string) error {
 	cfg.Coordinator.RetryCount = 10
 	cfg.Coordinator.RetryWaitTimeSec = 10
 	cfg.Coordinator.ConnectionTimeoutSec = 30
+	cfg.Core.ProofType = proofType
 	r.Config = cfg
 
 	if !store {
@@ -126,18 +131,6 @@ func (r ProverApps) RunApps(t *testing.T, args ...string) {
 		})
 	}
 	_ = eg.Wait()
-}
-
-// MockConfigs creates all the proverApps' configs.
-func (r ProverApps) MockConfigs(store bool, wsURL string) error {
-	var eg errgroup.Group
-	for _, prover := range r {
-		prover := prover
-		eg.Go(func() error {
-			return prover.MockConfig(store, wsURL)
-		})
-	}
-	return eg.Wait()
 }
 
 // Free releases proverApps.

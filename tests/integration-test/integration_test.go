@@ -13,6 +13,7 @@ import (
 	capp "scroll-tech/coordinator/cmd/app"
 
 	"scroll-tech/common/docker"
+	"scroll-tech/common/types/message"
 
 	bcmd "scroll-tech/bridge/cmd"
 )
@@ -21,37 +22,43 @@ var (
 	base           *docker.App
 	bridgeApp      *bcmd.MockApp
 	coordinatorApp *capp.CoordinatorApp
-	proverApp      *rapp.ProverApp
+	chunkProverApp *rapp.ProverApp
+	batchProverApp *rapp.ProverApp
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
 	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
-	proverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
+	chunkProverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.HTTPEndpoint(), message.ProofTypeChunk)
+	batchProverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.HTTPEndpoint(), message.ProofTypeBatch)
 	m.Run()
 	bridgeApp.Free()
 	coordinatorApp.Free()
-	proverApp.Free()
+	chunkProverApp.Free()
+	batchProverApp.Free()
 	base.Free()
 }
 
 func TestCoordinatorProverInteractionWithoutData(t *testing.T) {
 	// Start postgres docker containers.
+	base.RunL2Geth(t)
 	base.RunDBImage(t)
 	// Reset db.
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
-	base.RunL2Geth(t)
-
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
-	// Run prover app.
-	proverApp.RunApp(t) // login success.
 
-	proverApp.ExpectWithTimeout(t, false, 60*time.Second, "get empty prover task") // get prover task without data.
+	// Run prover app.
+	chunkProverApp.RunApp(t) // chunk prover login.
+	batchProverApp.RunApp(t) // batch prover login.
+
+	chunkProverApp.ExpectWithTimeout(t, false, 60*time.Second, "get empty prover task") // get prover task without data.
+	batchProverApp.ExpectWithTimeout(t, false, 60*time.Second, "get empty prover task") // get prover task without data.
 
 	// Free apps.
-	proverApp.WaitExit()
+	chunkProverApp.WaitExit()
+	batchProverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }

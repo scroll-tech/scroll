@@ -120,7 +120,7 @@ func (r *Prover) ProveLoop() {
 			return
 		default:
 			if err := r.proveAndSubmit(); err != nil {
-				log.Error("prove failed", "error", err)
+				log.Error("prove failed", "prover type", r.cfg.Core.ProofType, "error", err)
 			}
 		}
 	}
