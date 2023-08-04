@@ -6,7 +6,7 @@ require (
 	github.com/agiledragon/gomonkey/v2 v2.9.0
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230802095950-4b2bbf6225e7
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230804022247-26eeb40ea3ca
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7

@@ -3,7 +3,7 @@ use libc::c_char;
 use prover::{
     aggregator::{Prover, Verifier},
     utils::{chunk_trace_to_witness_block, init_env_and_log},
-    ChunkHash, ChunkProof, Proof,
+    BatchProof, ChunkHash, ChunkProof,
 };
 use std::{cell::OnceCell, panic, ptr::null};
 use types::eth::BlockTrace;
@@ -69,9 +69,9 @@ pub unsafe extern "C" fn gen_batch_proof(
 #[no_mangle]
 pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
-    let proof = serde_json::from_slice::<Proof>(proof.as_slice()).unwrap();
+    let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
 
-    let verified = panic::catch_unwind(|| VERIFIER.get().unwrap().verify_agg_evm_proof(&proof));
+    let verified = panic::catch_unwind(|| VERIFIER.get().unwrap().verify_agg_evm_proof(proof));
     verified.unwrap_or(false) as c_char
 }
 
