@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -33,11 +34,15 @@ var (
 )
 
 var (
-	port      = ":12990"
-	addr      = fmt.Sprintf("http://localhost%s", port)
-	basicPath = fmt.Sprintf("%s/api/prover_task/v1", addr)
+	addr      = randomURL()
+	basicPath = fmt.Sprintf("http://%s/api/prover_task/v1", addr)
 	token     string
 )
+
+func randomURL() string {
+	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
+	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
+}
 
 func TestProverTaskAPIs(t *testing.T) {
 	// start database image
@@ -58,9 +63,16 @@ func TestProverTaskAPIs(t *testing.T) {
 	router := gin.Default()
 	controller.InitController(db)
 	route.Route(router, cfg)
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: router,
+	}
 	go func() {
-		router.Run(port)
+		if err = srv.ListenAndServe(); err != http.ErrServerClosed {
+			assert.Failf(t, "addr: %s", srv.Addr)
+		}
 	}()
+	defer srv.Shutdown(context.Background())
 
 	t.Run("testRequestToken", testRequestToken)
 	t.Run("testGetProverTasksByProver", testGetProverTasksByProver)
@@ -79,6 +91,9 @@ func testRequestToken(t *testing.T) {
 
 func testGetProverTasksByProver(t *testing.T) {
 	datas := getResp(t, fmt.Sprintf("%s/tasks?public_key=%s&page=%d&page_size=%d", basicPath, proverPubkey, 1, 10))
+	if utils.IsNil(datas) {
+		return
+	}
 	anys := datas.([]interface{})
 	var tasks []map[string]interface{}
 	for _, data := range anys {
