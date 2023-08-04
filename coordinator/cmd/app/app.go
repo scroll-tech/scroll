@@ -2,9 +2,12 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	// enable the pprof
 	_ "net/http/pprof"
@@ -67,14 +70,18 @@ func action(ctx *cli.Context) error {
 	router := gin.Default()
 	api.InitController(cfg, db)
 	route.Route(router, cfg)
+	port := ctx.String(httpPortFlag.Name)
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%s", port),
+		Handler: router,
+	}
 
 	// Start metrics server.
 	metrics.Serve(subCtx, ctx)
 
-	port := ctx.String(httpPortFlag.Name)
 	go func() {
-		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
-			log.Crit("run http server failure", "error", runServerErr)
+		if runServerErr := srv.ListenAndServe(); err != nil && !errors.Is(runServerErr, http.ErrServerClosed) {
+			log.Crit("run coordinator http server failure", "error", runServerErr)
 		}
 	}()
 
@@ -84,7 +91,20 @@ func action(ctx *cli.Context) error {
 
 	// Wait until the interrupt signal is received from an OS signal.
 	<-interrupt
+	log.Info("start shutdown coordinator server ...")
 
+	closeCtx, cancelExit := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelExit()
+	if err = srv.Shutdown(closeCtx); err != nil {
+		log.Warn("shutdown coordinator server failure", "error", err)
+		return nil
+	}
+
+	// catching ctx.Done(). timeout of 5 seconds.
+	select {
+	case <-closeCtx.Done():
+	}
+	log.Info("coordinator server exiting success")
 	return nil
 }
 

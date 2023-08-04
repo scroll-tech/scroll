@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"os"
 	"strconv"
 	"testing"
@@ -58,7 +60,7 @@ func randomURL() string {
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
 
-func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) *cron.Collector {
+func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
 	var err error
 	db, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
@@ -90,10 +92,17 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	router := gin.Default()
 	api.InitController(conf, db)
 	route.Route(router, conf)
+	srv := &http.Server{
+		Addr:    coordinatorURL,
+		Handler: router,
+	}
 	go func() {
-		assert.NoError(t, router.Run(coordinatorURL))
+		runErr := srv.ListenAndServe()
+		if runErr != nil && !errors.Is(runErr, http.ErrServerClosed) {
+			assert.NoError(t, runErr)
+		}
 	}()
-	return proofCollector
+	return proofCollector, srv
 }
 
 func setEnv(t *testing.T) {
@@ -155,9 +164,10 @@ func TestApis(t *testing.T) {
 func testHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector := setupCoordinator(t, 1, coordinatorURL)
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
 	defer func() {
 		proofCollector.Stop()
+		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
 	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
@@ -169,9 +179,10 @@ func testHandshake(t *testing.T) {
 func testFailedHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector := setupCoordinator(t, 1, coordinatorURL)
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
 	defer func() {
 		proofCollector.Stop()
+		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
 	// Try to perform handshake without token
@@ -190,9 +201,10 @@ func testFailedHandshake(t *testing.T) {
 
 func testValidProof(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector := setupCoordinator(t, 3, coordinatorURL)
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
 	defer func() {
 		collector.Stop()
+		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
@@ -256,9 +268,10 @@ func testValidProof(t *testing.T) {
 func testInvalidProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector := setupCoordinator(t, 3, coordinatorURL)
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
 	defer func() {
 		collector.Stop()
+		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
@@ -316,9 +329,10 @@ func testInvalidProof(t *testing.T) {
 func testProofGeneratedFailed(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector := setupCoordinator(t, 3, coordinatorURL)
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
 	defer func() {
 		collector.Stop()
+		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
@@ -376,9 +390,10 @@ func testProofGeneratedFailed(t *testing.T) {
 func testTimeoutProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector := setupCoordinator(t, 1, coordinatorURL)
+	collector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
 	defer func() {
 		collector.Stop()
+		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
