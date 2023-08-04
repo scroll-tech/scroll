@@ -50,15 +50,9 @@ func TestFFI(t *testing.T) {
 	t.Log("Converted to chunk infos")
 
 	wrappedBlock1 := &scrollTypes.WrappedBlock{
-		// Header *types.Header `json:"header"`
-		Header: chunkTrace1[0].Header,
-		// // Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
-		// Transactions   []*types.TransactionData `json:"transactions"`
+		Header:       chunkTrace1[0].Header,
 		Transactions: chunkTrace1[0].Transactions,
-		// WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
 		WithdrawRoot: chunkTrace1[0].WithdrawTrieRoot,
-		// // RowConsumption *types.RowConsumption    `json:"row_consumption"`
-		// RowConsumption: chunkTrace1[0].RowConsumption,
 	}
 	chunk1 := &scrollTypes.Chunk{Blocks: []*scrollTypes.WrappedBlock{wrappedBlock1}}
 	chunkHash1, err := chunk1.Hash(0)
@@ -66,26 +60,12 @@ func TestFFI(t *testing.T) {
 	as.Equal(chunkInfo1.PostStateRoot, wrappedBlock1.Header.Root)
 	as.Equal(chunkInfo1.WithdrawRoot, wrappedBlock1.WithdrawRoot)
 	as.Equal(chunkInfo1.DataHash, chunkHash1)
-	t.Log("Succeed to check chunk info 1")
+	t.Log("Successful to check chunk info 1")
 
-	// type message.ChunkInfo{
-	// 	// ChainID       uint64      `json:"chain_id"`
-	// 	// PrevStateRoot common.Hash `json:"prev_state_root"`
-	// 	// PostStateRoot common.Hash `json:"post_state_root"`
-	// 	// WithdrawRoot  common.Hash `json:"withdraw_root"`
-	// 	// DataHash      common.Hash `json:"data_hash"`
-	// 	// IsPadding     bool        `json:"is_padding"`
-	// }
 	wrappedBlock2 := &scrollTypes.WrappedBlock{
-		// Header *types.Header `json:"header"`
-		Header: chunkTrace2[0].Header,
-		// // Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
-		// Transactions   []*types.TransactionData `json:"transactions"`
+		Header:       chunkTrace2[0].Header,
 		Transactions: chunkTrace2[0].Transactions,
-		// WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
 		WithdrawRoot: chunkTrace2[0].WithdrawTrieRoot,
-		// // RowConsumption *types.RowConsumption    `json:"row_consumption"`
-		// RowConsumption: chunkTrace2[0].RowConsumption,
 	}
 	chunk2 := &scrollTypes.Chunk{Blocks: []*scrollTypes.WrappedBlock{wrappedBlock2}}
 	chunkHash2, err := chunk2.Hash(chunk1.NumL1Messages(0))
@@ -93,7 +73,7 @@ func TestFFI(t *testing.T) {
 	as.Equal(chunkInfo2.PostStateRoot, wrappedBlock2.Header.Root)
 	as.Equal(chunkInfo2.WithdrawRoot, wrappedBlock2.WithdrawRoot)
 	as.Equal(chunkInfo2.DataHash, chunkHash2)
-	t.Log("Succeed to check chunk info 2")
+	t.Log("Successful to check chunk info 2")
 
 	chunkProof1, err := chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
 	as.NoError(err)
