@@ -125,12 +125,14 @@ contract InitializeL2BridgeContracts is Script {
         );
         L2DAIGateway(L2_DAI_GATEWAY_PROXY_ADDR).updateTokenMapping(L2_DAI_ADDR, L1_DAI_ADDR);
 
-        // set WETH gateway in router
+        // set WETH and DAI gateways in router
         {
-            address[] memory _tokens = new address[](1);
+            address[] memory _tokens = new address[](2);
             _tokens[0] = L2_WETH_ADDR;
-            address[] memory _gateways = new address[](1);
+            _tokens[1] = L2_DAI_ADDR;
+            address[] memory _gateways = new address[](2);
             _gateways[0] = L2_WETH_GATEWAY_PROXY_ADDR;
+            _gateways[1] = L2_DAI_GATEWAY_PROXY_ADDR;
             L2GatewayRouter(L2_GATEWAY_ROUTER_PROXY_ADDR).setERC20Gateway(_tokens, _gateways);
         }
 
