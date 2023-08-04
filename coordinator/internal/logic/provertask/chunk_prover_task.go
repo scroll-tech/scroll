@@ -51,7 +51,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	// load and send chunk tasks
-	chunkTasks, err := cp.chunkOrm.UpdateUnassignedChunkReturning(ctx, 1)
+	chunkTasks, err := cp.chunkOrm.UpdateUnassignedChunkReturning(ctx, getTaskParameter.ProverHeight, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned chunk proving tasks, error:%w", err)
 	}
@@ -65,12 +65,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	chunkTask := chunkTasks[0]
-
-	if chunkTask.EndBlockNumber >= uint64(getTaskParameter.ProverHeight) {
-		cp.recoverProvingStatus(ctx, chunkTask)
-		return nil, fmt.Errorf("chunk hash id:%s end block numer:%d large than prover height:%d",
-			chunkTask.Hash, chunkTask.EndBlockNumber, getTaskParameter.ProverHeight)
-	}
 
 	log.Info("start chunk generation session", "id", chunkTask.Hash)
 
