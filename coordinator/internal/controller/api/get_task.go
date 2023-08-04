@@ -52,7 +52,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		return
 	}
 
-	result, err := proverTask.Collect(ctx, &getTaskParameter)
+	result, err := proverTask.Assign(ctx, &getTaskParameter)
 	if err != nil {
 		nerr := fmt.Errorf("return prover task err:%w", err)
 		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorGetTaskFailure, nerr, nil)

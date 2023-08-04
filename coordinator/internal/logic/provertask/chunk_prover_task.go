@@ -21,13 +21,13 @@ import (
 
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
-	BaseCollector
+	BaseProverTask
 }
 
 // NewChunkProverTask new a chunk prover task
 func NewChunkProverTask(cfg *config.Config, db *gorm.DB) *ChunkProverTask {
 	cp := &ChunkProverTask{
-		BaseCollector: BaseCollector{
+		BaseProverTask: BaseProverTask{
 			db:            db,
 			cfg:           cfg,
 			chunkOrm:      orm.NewChunk(db),
@@ -38,8 +38,8 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB) *ChunkProverTask {
 	return cp
 }
 
-// Collect the chunk proof which need to prove
-func (cp *ChunkProverTask) Collect(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+// Assign the chunk proof which need to prove
+func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
 		return nil, fmt.Errorf("get public key from contex failed")

@@ -21,13 +21,13 @@ import (
 
 // BatchProverTask is prover task implement for batch proof
 type BatchProverTask struct {
-	BaseCollector
+	BaseProverTask
 }
 
 // NewBatchProverTask new a batch collector
 func NewBatchProverTask(cfg *config.Config, db *gorm.DB) *BatchProverTask {
 	bp := &BatchProverTask{
-		BaseCollector: BaseCollector{
+		BaseProverTask: BaseProverTask{
 			db:            db,
 			cfg:           cfg,
 			chunkOrm:      orm.NewChunk(db),
@@ -38,8 +38,8 @@ func NewBatchProverTask(cfg *config.Config, db *gorm.DB) *BatchProverTask {
 	return bp
 }
 
-// Collect load and send batch tasks
-func (bp *BatchProverTask) Collect(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+// Assign load and assign batch tasks
+func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
 		return nil, fmt.Errorf("get public key from contex failed")

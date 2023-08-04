@@ -21,11 +21,11 @@ var coordinatorSessionsTimeoutTotalCounter = gethMetrics.NewRegisteredCounter("c
 
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
-	Collect(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
+	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
 }
 
-// BaseCollector a base collector which contain series functions
-type BaseCollector struct {
+// BaseProverTask a base prover task which contain series functions
+type BaseProverTask struct {
 	cfg *config.Config
 	ctx context.Context
 	db  *gorm.DB
@@ -37,7 +37,7 @@ type BaseCollector struct {
 }
 
 // checkAttempts use the count of prover task info to check the attempts
-func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.ProofType) bool {
+func (b *BaseProverTask) checkAttemptsExceeded(hash string, taskType message.ProofType) bool {
 	whereFields := make(map[string]interface{})
 	whereFields["task_id"] = hash
 	whereFields["task_type"] = int16(taskType)
