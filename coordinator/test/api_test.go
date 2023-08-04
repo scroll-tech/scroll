@@ -322,7 +322,6 @@ func testValidProof(t *testing.T) {
 
 	// verify proof status
 	var (
-		tick     = time.Tick(1500 * time.Millisecond)
 		tickStop = time.Tick(time.Minute)
 	)
 
@@ -331,7 +330,10 @@ func testValidProof(t *testing.T) {
 
 	for {
 		select {
-		case <-tick:
+		case <-tickStop:
+			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
+			return
+		default:
 			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
 			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
@@ -339,9 +341,7 @@ func testValidProof(t *testing.T) {
 			if chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified {
 				return
 			}
-		case <-tickStop:
-			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
-			return
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 }

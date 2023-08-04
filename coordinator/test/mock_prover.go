@@ -114,11 +114,10 @@ func (r *mockProver) waitTaskAndSendProof(t *testing.T, proofTime time.Duration,
 	// Release cached tasks.
 	r.releaseTasks()
 
-	r.stopCh = make(chan struct{})
-	go r.loop(t, r.client, proofTime, proofStatus, r.stopCh)
+	go r.loop(t, r.client, proofTime, proofStatus)
 }
 
-func (r *mockProver) loop(t *testing.T, client *client2.Client, proofTime time.Duration, proofStatus proofStatus, stopCh chan struct{}) {
+func (r *mockProver) loop(t *testing.T, client *client2.Client, proofTime time.Duration, proofStatus proofStatus) {
 	for {
 		select {
 		case task := <-r.taskCh:
@@ -126,7 +125,7 @@ func (r *mockProver) loop(t *testing.T, client *client2.Client, proofTime time.D
 			// simulate proof time
 			select {
 			case <-time.After(proofTime):
-			case <-stopCh:
+			case <-r.stopCh:
 				return
 			}
 			proof := &message.ProofMsg{
@@ -146,7 +145,7 @@ func (r *mockProver) loop(t *testing.T, client *client2.Client, proofTime time.D
 			}
 			assert.NoError(t, proof.Sign(r.privKey))
 			assert.NoError(t, client.SubmitProof(context.Background(), proof))
-		case <-stopCh:
+		case <-r.stopCh:
 			return
 		}
 	}
