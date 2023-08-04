@@ -28,6 +28,8 @@
       "baseFeePerGas": null,
       "hash": "0x003fee335455c0c293dda17ea9365fe0caa94071ed7216baf61f7aeb808e8a28"
   },
+  "row_consumption": [
+  ],
   "transactions": [
       {
           "type": 126,

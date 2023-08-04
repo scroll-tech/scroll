@@ -79,6 +79,7 @@
       "max_l1_commit_calldata_size_per_chunk": 112345,
       "min_l1_commit_calldata_size_per_chunk": 11234,
       "chunk_timeout_sec": 300,
+      "max_row_consumption_per_chunk": 1048319,
       "gas_cost_increase_multiplier": 1.2
     },
     "batch_proposer_config": {

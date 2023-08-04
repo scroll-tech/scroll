@@ -8,7 +8,9 @@ import (
 
 var (
 	// HistoryCtrler is controller instance
-	HistoryCtrler      *HistoryController
+	HistoryCtrler *HistoryController
+	// BatchCtrler is controller instance
+	BatchCtrler        *BatchController
 	initControllerOnce sync.Once
 )
 
@@ -16,5 +18,6 @@ var (
 func InitController(db *gorm.DB) {
 	initControllerOnce.Do(func() {
 		HistoryCtrler = NewHistoryController(db)
+		BatchCtrler = NewBatchController(db)
 	})
 }

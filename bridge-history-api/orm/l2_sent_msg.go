@@ -106,7 +106,7 @@ func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex(ctx context.Context) (int64, er
 		return -1, fmt.Errorf("L2SentMsg.GetLatestL2SentMsgBatchIndex error: %w", err)
 	}
 	// Watch for overflow, tho its not likely to happen
-	return int64(result.Height), nil
+	return int64(result.BatchIndex), nil
 }
 
 // GetL2SentMsgMsgHashByHeightRange get l2 sent msg msg hash by height range

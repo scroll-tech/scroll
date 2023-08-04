@@ -53,6 +53,7 @@ func (m *MsgProofUpdater) Start() {
 					continue
 				}
 				latestBatchIndexWithProof, err := m.l2SentMsgOrm.GetLatestL2SentMsgBatchIndex(m.ctx)
+				log.Info("latest batc with proof", "batch_index", latestBatchIndexWithProof)
 				if err != nil {
 					log.Error("MsgProofUpdater: Can not get latest L2SentMsgBatchIndex: ", "err", err)
 					continue
