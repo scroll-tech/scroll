@@ -19,6 +19,7 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/controller"
@@ -69,6 +70,9 @@ func TestProverTaskAPIs(t *testing.T) {
 
 func testRequestToken(t *testing.T) {
 	data := getResp(t, fmt.Sprintf("%s/request_token?public_key=%s", basicPath, proverPubkey))
+	if utils.IsNil(data) {
+		return
+	}
 	token = fmt.Sprintf("Bearer %s", data.(map[string]interface{})["token"].(string))
 	t.Log("token: ", token)
 }
@@ -104,7 +108,10 @@ func getResp(t *testing.T, url string) interface{} {
 	req.Header.Add("Authorization", token)
 
 	resp, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
+	if err != nil {
+		assert.Fail(t, fmt.Sprintf("url: %s", url), err.Error())
+		return nil
+	}
 	defer resp.Body.Close()
 	assert.Equal(t, resp.StatusCode, http.StatusOK)
 
