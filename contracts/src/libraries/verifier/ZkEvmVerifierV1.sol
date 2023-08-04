@@ -40,7 +40,7 @@ contract ZkEvmVerifierV1 is IZkEvmVerifier {
 
         // 1. the first 12 * 32 (0x180) bytes of `aggrProof` is `accumulator`
         // 2. the rest bytes of `aggrProof` is the actual `batch_aggregated_proof`
-        // 3. each byte of the `reverse(public_input_hash)` should be converted to a `uint256` and the
+        // 3. each byte of the `public_input_hash` should be converted to a `uint256` and the
         //    1024 (0x400) bytes should inserted between `accumulator` and `batch_aggregated_proof`.
         assembly {
             let p := mload(0x40)
