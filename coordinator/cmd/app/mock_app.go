@@ -83,7 +83,7 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	cfg.ProverManagerConfig = &coordinatorConfig.ProverManagerConfig{
 		ProversPerSession: 1,
 		Verifier:          &coordinatorConfig.VerifierConfig{MockMode: true},
-		CollectionTimeSec: 1,
+		CollectionTimeSec: 60,
 		TokenTimeToLive:   1,
 	}
 	cfg.DBConfig.DSN = base.DBImg.Endpoint()
