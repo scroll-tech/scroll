@@ -7,7 +7,6 @@ import (
 	"flag"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -21,74 +20,64 @@ import (
 
 var (
 	paramsPath    = flag.String("params", "/assets/test_params", "params dir")
-	tracesPath    = flag.String("traces", "/assets/traces", "traces dir")
 	proofDumpPath = flag.String("dump", "/assets/proof_data", "the path proofs dump to")
+	tracePath1    = flag.String("trace1", "/assets/traces/1_transfer.json", "chunk trace 1")
+	tracePath2    = flag.String("trace2", "/assets/traces/10_transfer.json", "chunk trace 2")
 )
 
 func TestFFI(t *testing.T) {
 	as := assert.New(t)
 
 	chunkProverConfig := &config.ProverCoreConfig{
+		DumpDir:    *proofDumpPath,
 		ParamsPath: *paramsPath,
 		ProofType:  message.ProofTypeChunk,
 	}
 	chunkProverCore, err := core.NewProverCore(chunkProverConfig)
 	as.NoError(err)
+	t.Log("Constructed chunk prover")
 
-	files, err := os.ReadDir(*tracesPath)
-	as.NoError(err)
+	chunkTrace1 := readChunkTrace(*tracePath1, as)
+	chunkTrace2 := readChunkTrace(*tracePath2, as)
+	t.Log("Loaded chunk traces")
 
-	traces := make([]*types.BlockTrace, 0)
-	for _, file := range files {
-		var (
-			f   *os.File
-			byt []byte
-		)
-		f, err = os.Open(filepath.Join(*tracesPath, file.Name()))
-		as.NoError(err)
-		byt, err = io.ReadAll(f)
-		as.NoError(err)
-		trace := &types.BlockTrace{}
-		as.NoError(json.Unmarshal(byt, trace))
-		traces = append(traces, trace)
-	}
+	chunkInfo1, err := chunkProverCore.TracesToChunkInfo(chunkTrace1)
+	as.NoError(err)
+	chunkInfo2, err := chunkProverCore.TracesToChunkInfo(chunkTrace2)
+	as.NoError(err)
+	t.Log("Converted to chunk infos")
 
-	chunkInfo, err := chunkProverCore.TracesToChunkInfo(traces)
+	chunkProof1, err := chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
 	as.NoError(err)
-	t.Log("Generated chunk hash")
+	t.Log("Generated and dumped chunk proof 1")
 
-	chunkProof, err := chunkProverCore.ProveChunk("test", traces)
+	chunkProof2, err := chunkProverCore.ProveChunk("chunk_proof2", chunkTrace2)
 	as.NoError(err)
-	t.Log("Generated chunk proof")
-
-	chunkProofByt, err := json.Marshal(chunkProof)
-	as.NoError(err)
-	chunkProofFile, err := os.Create(filepath.Join(*proofDumpPath, "chunk_proof"))
-	as.NoError(err)
-	_, err = chunkProofFile.Write(chunkProofByt)
-	as.NoError(err)
-	t.Log("Dumped chunk proof")
+	t.Log("Generated and dumped chunk proof 2")
 
 	batchProverConfig := &config.ProverCoreConfig{
+		DumpDir:    *proofDumpPath,
 		ParamsPath: *paramsPath,
 		ProofType:  message.ProofTypeBatch,
 	}
 	batchProverCore, err := core.NewProverCore(batchProverConfig)
 	as.NoError(err)
 
-	chunkInfos := make([]*message.ChunkInfo, 0)
-	chunkInfos = append(chunkInfos, chunkInfo)
-	chunkProofs := make([]*message.ChunkProof, 0)
-	chunkProofs = append(chunkProofs, chunkProof)
-	batchProof, err := batchProverCore.ProveBatch("test", chunkInfos, chunkProofs)
+	chunkInfos := []*message.ChunkInfo{chunkInfo1, chunkInfo2}
+	chunkProofs := []*message.ChunkProof{chunkProof1, chunkProof2}
+	_, err = batchProverCore.ProveBatch("batch_proof", chunkInfos, chunkProofs)
 	as.NoError(err)
-	t.Log("Generated batch proof")
+	t.Log("Generated and dumped batch proof")
+}
 
-	batchProofByt, err := json.Marshal(batchProof)
+func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
+	f, err := os.Open(filePat)
 	as.NoError(err)
-	batchProofFile, err := os.Create(filepath.Join(*proofDumpPath, "batch_proof"))
+	byt, err := io.ReadAll(f)
 	as.NoError(err)
-	_, err = batchProofFile.Write(batchProofByt)
-	as.NoError(err)
-	t.Log("Dumped batch proof")
+
+	trace := &types.BlockTrace{}
+	as.NoError(json.Unmarshal(byt, trace))
+
+	return []*types.BlockTrace{trace}
 }
