@@ -47,6 +47,16 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Converted to chunk infos")
 
+
+	wrappedBlock1 = &types.WrappedBlock{}
+	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
+	chunkHash1, err = chunk1.Hash(0)
+	as.NoError(err)
+	wrappedBlock2 = &types.WrappedBlock{}
+	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
+	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
+	as.NoError(err)
+
 	chunkProof1, err := chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
 	as.NoError(err)
 	t.Log("Generated and dumped chunk proof 1")
