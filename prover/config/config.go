@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"scroll-tech/common/types/message"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
+
+	"scroll-tech/common/types/message"
 )
 
 // Config loads prover configuration items.
