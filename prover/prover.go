@@ -129,7 +129,7 @@ func (r *Prover) ProveLoop() {
 func (r *Prover) proveAndSubmit() error {
 	task, err := r.stack.Peek()
 	if err != nil {
-		if errors.Is(err, store.ErrEmpty) {
+		if !errors.Is(err, store.ErrEmpty) {
 			return err
 		}
 		// fetch new proving task.

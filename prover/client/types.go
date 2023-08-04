@@ -3,9 +3,9 @@ package client
 import (
 	"net/http"
 
-	"scroll-tech/common/types/message"
-
 	"github.com/gin-gonic/gin"
+
+	"scroll-tech/common/types/message"
 )
 
 // Response the response schema
