@@ -1,5 +1,6 @@
 //go:build ffi
 
+// go test -v -race -gcflags="-l" -ldflags="-s=false" -tags ffi ./...
 package core_test
 
 import (
