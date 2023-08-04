@@ -3,6 +3,7 @@ package prover
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -120,7 +121,7 @@ func (r *Prover) ProveLoop() {
 			return
 		default:
 			if err := r.proveAndSubmit(); err != nil {
-				log.Error("prove failed", "prover type", r.cfg.Core.ProofType, "error", err)
+				log.Error("proveAndSubmit", "prover type", r.cfg.Core.ProofType, "error", err)
 			}
 		}
 	}
@@ -130,13 +131,13 @@ func (r *Prover) proveAndSubmit() error {
 	task, err := r.stack.Peek()
 	if err != nil {
 		if !errors.Is(err, store.ErrEmpty) {
-			return err
+			return fmt.Errorf("failed to peek from stack: %v", err)
 		}
 		// fetch new proving task.
-		task, err = r.fetchTaskFromServer()
+		task, err = r.fetchTaskFromCoordinator()
 		if err != nil {
 			time.Sleep(retryWait)
-			return err
+			return fmt.Errorf("failed to fetch task from coordinator: %v", err)
 		}
 	}
 
@@ -144,7 +145,7 @@ func (r *Prover) proveAndSubmit() error {
 	if task.Times <= 2 {
 		// If panic times <= 2, try to proof the task.
 		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
-			return err
+			return fmt.Errorf("failed to update times on stack: %v", err)
 		}
 
 		log.Info("start to prove task", "task-type", task.Task.Type, "task-id", task.Task.ID)
@@ -170,8 +171,8 @@ func (r *Prover) proveAndSubmit() error {
 	return r.submitProof(proofMsg)
 }
 
-// fetchTaskFromServer fetches a new task from the server
-func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
+// fetchTaskFromCoordinator fetches a new task from the server
+func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 	// get the latest confirmed block number
 	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, r.cfg.L2Geth.Confirmations)
 	if err != nil {
@@ -192,14 +193,44 @@ func (r *Prover) fetchTaskFromServer() (*store.ProvingTask, error) {
 	// send the request
 	resp, err := r.coordinatorClient.GetTask(r.ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get task, req: %v, err: %v", req, err)
+	}
+
+	// create a new TaskMsg
+	taskMsg := message.TaskMsg{
+		ID:   resp.Data.TaskID,
+		Type: message.ProofType(resp.Data.TaskType),
+	}
+
+	// depending on the task type, unmarshal the task data into the appropriate field
+	switch taskMsg.Type {
+	case message.ProofTypeBatch:
+		taskMsg.BatchTaskDetail = &message.BatchTaskDetail{}
+		if err := json.Unmarshal([]byte(resp.Data.TaskData), taskMsg.BatchTaskDetail); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal batch task detail: %v", err)
+		}
+	case message.ProofTypeChunk:
+		taskMsg.ChunkTaskDetail = &message.ChunkTaskDetail{}
+		if err := json.Unmarshal([]byte(resp.Data.TaskData), taskMsg.ChunkTaskDetail); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal chunk task detail: %v", err)
+		}
+	default:
+		return nil, fmt.Errorf("unknown task type: %v", taskMsg.Type)
 	}
 
 	// convert the response task to a ProvingTask
 	provingTask := &store.ProvingTask{
-		Task:  &resp.Data,
+		Task:  &taskMsg,
 		Times: 0,
 	}
+
+	// marshal the task to a json string for logging
+	taskJson, err := json.Marshal(provingTask)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal task to json: %v", err)
+	}
+
+	log.Info("successfully fetched new task from coordinator", "resp", resp, "task", string(taskJson))
 
 	return provingTask, nil
 }

@@ -67,9 +67,13 @@ type GetTaskRequest struct {
 
 // GetTaskResponse defines the response structure for GetTask API
 type GetTaskResponse struct {
-	ErrCode int             `json:"errcode,omitempty"`
-	ErrMsg  string          `json:"errmsg,omitempty"`
-	Data    message.TaskMsg `json:"data,omitempty"`
+	ErrCode int    `json:"errcode,omitempty"`
+	ErrMsg  string `json:"errmsg,omitempty"`
+	Data    *struct {
+		TaskID   string `json:"task_id"`
+		TaskType int    `json:"task_type"`
+		TaskData string `json:"task_data"`
+	} `json:"data,omitempty"`
 }
 
 // SubmitProofRequest defines the request structure for the SubmitProof API.
