@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	// ProverTask the prover task controller
-	ProverTask *ProverTaskController
+	// GetTask the prover task controller
+	GetTask *GetTaskController
 	// SubmitProof the submit proof controller
 	SubmitProof *SubmitProofController
 	// HealthCheck the health check controller
@@ -26,7 +26,7 @@ func InitController(cfg *config.Config, db *gorm.DB) {
 	initControllerOnce.Do(func() {
 		Auth = NewAuthController(db)
 		HealthCheck = NewHealthCheckController()
-		ProverTask = NewProverTaskController(cfg, db)
+		GetTask = NewGetTaskController(cfg, db)
 		SubmitProof = NewSubmitProofController(cfg, db)
 	})
 }

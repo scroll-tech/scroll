@@ -15,17 +15,17 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-// ProverTaskController the prover task api controller
-type ProverTaskController struct {
+// GetTaskController the get prover task api controller
+type GetTaskController struct {
 	proverTasks map[message.ProofType]provertask.ProverTask
 }
 
-// NewProverTaskController create a prover task controller
-func NewProverTaskController(cfg *config.Config, db *gorm.DB) *ProverTaskController {
+// NewGetTaskController create a get prover task controller
+func NewGetTaskController(cfg *config.Config, db *gorm.DB) *GetTaskController {
 	chunkProverTask := provertask.NewChunkProverTask(cfg, db)
 	batchProverTask := provertask.NewBatchProverTask(cfg, db)
 
-	ptc := &ProverTaskController{
+	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),
 	}
 
@@ -36,7 +36,7 @@ func NewProverTaskController(cfg *config.Config, db *gorm.DB) *ProverTaskControl
 }
 
 // GetTasks get assigned chunk/batch task
-func (ptc *ProverTaskController) GetTasks(ctx *gin.Context) {
+func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	var getTaskParameter coordinatorType.GetTaskParameter
 	if err := ctx.ShouldBind(&getTaskParameter); err != nil {
 		nerr := fmt.Errorf("prover tasks parameter invalid, err:%w", err)
@@ -68,7 +68,7 @@ func (ptc *ProverTaskController) GetTasks(ctx *gin.Context) {
 	coordinatorType.RenderJSON(ctx, types.Success, nil, result)
 }
 
-func (ptc *ProverTaskController) proofType(para *coordinatorType.GetTaskParameter) message.ProofType {
+func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) message.ProofType {
 	proofType := message.ProofType(para.TaskType)
 
 	proofTypes := []message.ProofType{
