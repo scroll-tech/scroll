@@ -114,7 +114,7 @@ func (r *mockProver) healthCheck(t *testing.T, token string, errCode int) bool {
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
 		SetResult(&result).
-		Get("http://" + r.coordinatorURL + "/coordinator/v1/health_check")
+		Get("http://" + r.coordinatorURL + "/coordinator/v1/healthz")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
 	assert.Equal(t, errCode, result.ErrCode)

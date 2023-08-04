@@ -26,7 +26,7 @@ func v1(router *gin.RouterGroup, conf *config.Config) {
 	// need jwt token api
 	r.Use(loginMiddleware.MiddlewareFunc())
 	{
-		r.GET("/health_check", api.HealthCheck.HealthCheck)
+		r.GET("/healthz", api.HealthCheck.HealthCheck)
 		r.POST("/get_task", api.GetTask.GetTasks)
 		r.POST("/submit_proof", api.SubmitProof.SubmitProof)
 	}
