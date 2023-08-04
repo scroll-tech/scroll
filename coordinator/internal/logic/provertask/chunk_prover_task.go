@@ -40,8 +40,18 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB) *ChunkProverTask {
 
 // Collect the chunk proof which need to prove
 func (cp *ChunkProverTask) Collect(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
+	if !publicKeyExist {
+		return nil, fmt.Errorf("get public key from contex failed")
+	}
+
+	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
+	if !proverNameExist {
+		return nil, fmt.Errorf("get prover name from contex failed")
+	}
+
 	// load and send chunk tasks
-	chunkTasks, err := cp.chunkOrm.GetUnassignedChunks(ctx, 1)
+	chunkTasks, err := cp.chunkOrm.UpdateUnassignedChunkReturning(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned chunk proving tasks, error:%w", err)
 	}
@@ -57,6 +67,7 @@ func (cp *ChunkProverTask) Collect(ctx *gin.Context, getTaskParameter *coordinat
 	chunkTask := chunkTasks[0]
 
 	if chunkTask.EndBlockNumber >= uint64(getTaskParameter.ProverHeight) {
+		cp.recoverProvingStatus(ctx, chunkTask)
 		return nil, fmt.Errorf("chunk hash id:%s end block numer:%d large than prover height:%d",
 			chunkTask.Hash, chunkTask.EndBlockNumber, getTaskParameter.ProverHeight)
 	}
@@ -67,46 +78,24 @@ func (cp *ChunkProverTask) Collect(ctx *gin.Context, getTaskParameter *coordinat
 		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
-	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
-	if !publicKeyExist {
-		return nil, fmt.Errorf("get public key from contex failed")
+	proverTask := orm.ProverTask{
+		TaskID:          chunkTask.Hash,
+		ProverPublicKey: publicKey.(string),
+		TaskType:        int16(message.ProofTypeChunk),
+		ProverName:      proverName.(string),
+		ProvingStatus:   int16(types.ProverAssigned),
+		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
+		// here why need use UTC time. see scroll/common/databased/db.go
+		AssignedAt: utils.NowUTC(),
 	}
-
-	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
-	if !proverNameExist {
-		return nil, fmt.Errorf("get prover name from contex failed")
-	}
-
-	transErr := cp.db.Transaction(func(tx *gorm.DB) error {
-		// Update session proving status as assigned.
-		if err = cp.chunkOrm.UpdateProvingStatus(ctx, chunkTask.Hash, types.ProvingTaskAssigned, tx); err != nil {
-			log.Error("failed to update task status", "id", chunkTask.Hash, "err", err)
-			return err
-		}
-
-		proverTask := orm.ProverTask{
-			TaskID:          chunkTask.Hash,
-			ProverPublicKey: publicKey.(string),
-			TaskType:        int16(message.ProofTypeChunk),
-			ProverName:      proverName.(string),
-			ProvingStatus:   int16(types.ProverAssigned),
-			FailureType:     int16(types.ProverTaskFailureTypeUndefined),
-			// here why need use UTC time. see scroll/common/databased/db.go
-			AssignedAt: utils.NowUTC(),
-		}
-		if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
-			return fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, publicKey, err)
-		}
-
-		return nil
-	})
-
-	if transErr != nil {
-		return nil, transErr
+	if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
+		cp.recoverProvingStatus(ctx, chunkTask)
+		return nil, fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, publicKey, err)
 	}
 
 	taskMsg, err := cp.formatProverTask(ctx, chunkTask.Hash)
 	if err != nil {
+		cp.recoverProvingStatus(ctx, chunkTask)
 		return nil, fmt.Errorf("format prover task failure, id:%s error:%w", chunkTask.Hash, err)
 	}
 
@@ -140,4 +129,12 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*
 	}
 
 	return proverTaskSchema, nil
+}
+
+// recoverProvingStatus if not return the batch task to prover success,
+// need recover the proving status to unassigned
+func (cp *ChunkProverTask) recoverProvingStatus(ctx *gin.Context, chunkTask *orm.Chunk) {
+	if err := cp.chunkOrm.UpdateProvingStatus(ctx, chunkTask.Hash, types.ProvingTaskAssigned); err != nil {
+		log.Warn("failed to recover chunk proving status", "hash:", chunkTask.Hash, "error", err)
+	}
 }

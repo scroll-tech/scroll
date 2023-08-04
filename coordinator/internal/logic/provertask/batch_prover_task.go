@@ -40,7 +40,17 @@ func NewBatchProverTask(cfg *config.Config, db *gorm.DB) *BatchProverTask {
 
 // Collect load and send batch tasks
 func (bp *BatchProverTask) Collect(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	batchTasks, err := bp.batchOrm.GetUnassignedBatches(ctx, 1)
+	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
+	if !publicKeyExist {
+		return nil, fmt.Errorf("get public key from contex failed")
+	}
+
+	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
+	if !proverNameExist {
+		return nil, fmt.Errorf("get prover name from contex failed")
+	}
+
+	batchTasks, err := bp.batchOrm.UpdateUnassignedBatchReturning(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
 	}
@@ -60,47 +70,26 @@ func (bp *BatchProverTask) Collect(ctx *gin.Context, getTaskParameter *coordinat
 		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
 	}
 
-	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
-	if !publicKeyExist {
-		return nil, fmt.Errorf("get public key from contex failed")
+	proverTask := orm.ProverTask{
+		TaskID:          batchTask.Hash,
+		ProverPublicKey: publicKey.(string),
+		TaskType:        int16(message.ProofTypeBatch),
+		ProverName:      proverName.(string),
+		ProvingStatus:   int16(types.ProverAssigned),
+		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
+		// here why need use UTC time. see scroll/common/databased/db.go
+		AssignedAt: utils.NowUTC(),
 	}
 
-	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
-	if !proverNameExist {
-		return nil, fmt.Errorf("get prover name from contex failed")
-	}
-
-	transErr := bp.db.Transaction(func(tx *gorm.DB) error {
-		// Update session proving status as assigned.
-		if err = bp.batchOrm.UpdateProvingStatus(ctx, batchTask.Hash, types.ProvingTaskAssigned, tx); err != nil {
-			return fmt.Errorf("failed to update task status, id:%s, error:%w", batchTask.Hash, err)
-		}
-
-		proverTask := orm.ProverTask{
-			TaskID:          batchTask.Hash,
-			ProverPublicKey: publicKey.(string),
-			TaskType:        int16(message.ProofTypeBatch),
-			ProverName:      proverName.(string),
-			ProvingStatus:   int16(types.ProverAssigned),
-			FailureType:     int16(types.ProverTaskFailureTypeUndefined),
-			// here why need use UTC time. see scroll/common/databased/db.go
-			AssignedAt: utils.NowUTC(),
-		}
-
-		// Store session info.
-		if err = bp.proverTaskOrm.SetProverTask(ctx, &proverTask, tx); err != nil {
-			return fmt.Errorf("db set session info fail, session id:%s, error:%w", proverTask.TaskID, err)
-		}
-
-		return nil
-	})
-
-	if transErr != nil {
-		return nil, transErr
+	// Store session info.
+	if err = bp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
+		bp.recoverProvingStatus(ctx, batchTask)
+		return nil, fmt.Errorf("db set session info fail, session id:%s, error:%w", proverTask.TaskID, err)
 	}
 
 	taskMsg, err := bp.formatProverTask(ctx, batchTask.Hash)
 	if err != nil {
+		bp.recoverProvingStatus(ctx, batchTask)
 		return nil, fmt.Errorf("format prover failure, id:%s error:%w", batchTask.Hash, err)
 	}
 
@@ -151,4 +140,12 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 		ProofData: string(chunkProofsBytes),
 	}
 	return taskMsg, nil
+}
+
+// recoverProvingStatus if not return the batch task to prover success,
+// need recover the proving status to unassigned
+func (bp *BatchProverTask) recoverProvingStatus(ctx *gin.Context, batchTask *orm.Batch) {
+	if err := bp.batchOrm.UpdateProvingStatus(ctx, batchTask.Hash, types.ProvingTaskUnassigned); err != nil {
+		log.Warn("failed to recover batch proving status", "hash:", batchTask.Hash, "error", err)
+	}
 }
