@@ -137,7 +137,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *t
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
-		SetBody(map[string]interface{}{"prover_version": 1, "prover_height": 100, "task_type": int(proofType)}).
+		SetBody(map[string]interface{}{"prover_version": "v1.0.0", "prover_height": 100, "task_type": int(proofType)}).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
 	assert.NoError(t, err)
