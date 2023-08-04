@@ -61,6 +61,17 @@ func TestFFI(t *testing.T) {
 	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
 	chunkHash1, err = chunk1.Hash(0)
 	as.NoError(err)
+	as.Equal(chunkInfo1.PostStateRoot, wrappedBlock1.Header.Root)
+	as.Equal(chunkInfo1.WithdrawRoot, wrappedBlock1.WithdrawRoot)
+	as.Equal(chunkInfo1.DataHash, chunkHash1)
+	// type message.ChunkInfo{
+	// 	// ChainID       uint64      `json:"chain_id"`
+	// 	// PrevStateRoot common.Hash `json:"prev_state_root"`
+	// 	// PostStateRoot common.Hash `json:"post_state_root"`
+	// 	// WithdrawRoot  common.Hash `json:"withdraw_root"`
+	// 	// DataHash      common.Hash `json:"data_hash"`
+	// 	// IsPadding     bool        `json:"is_padding"`
+	// }
 	wrappedBlock2 = &types.WrappedBlock{
 		// Header *types.Header `json:"header"`
 		Header: chunkTrace2[0].Header,
@@ -75,6 +86,9 @@ func TestFFI(t *testing.T) {
 	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
 	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
 	as.NoError(err)
+	as.Equal(chunkInfo2.PostStateRoot, wrappedBlock2.Header.Root)
+	as.Equal(chunkInfo2.WithdrawRoot, wrappedBlock2.WithdrawRoot)
+	as.Equal(chunkInfo2.DataHash, chunkHash2)
 
 	chunkProof1, err := chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
 	as.NoError(err)
