@@ -341,7 +341,7 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 	return nil
 }
 
-// UpdateUnassignedChunkReturning update the unassigned batch which end_block_number < height and return the update record
+// UpdateUnassignedChunkReturning update the unassigned batch which end_block_number <= height and return the update record
 func (o *Chunk) UpdateUnassignedChunkReturning(ctx context.Context, height, limit int) ([]*Chunk, error) {
 	if limit < 0 {
 		return nil, errors.New("limit must not be smaller than zero")
@@ -354,7 +354,7 @@ func (o *Chunk) UpdateUnassignedChunkReturning(ctx context.Context, height, limi
 
 	subQueryDB := db.Model(&Chunk{}).Select("index")
 	subQueryDB = subQueryDB.Where("proving_status = ?", types.ProvingTaskUnassigned)
-	subQueryDB = subQueryDB.Where("end_block_number < ?", height)
+	subQueryDB = subQueryDB.Where("end_block_number <= ?", height)
 	subQueryDB = subQueryDB.Order("index ASC")
 	subQueryDB = subQueryDB.Limit(limit)
 
