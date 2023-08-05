@@ -118,7 +118,7 @@ func TestProveTypeString(t *testing.T) {
 	assert.Equal(t, "proof type batch", proofTypeBatch.String())
 
 	illegalProof := ProofType(3)
-	assert.Equal(t, "illegal proof type", illegalProof.String())
+	assert.Equal(t, "illegal proof type: 3", illegalProof.String())
 }
 
 func TestProofMsgPublicKey(t *testing.T) {
