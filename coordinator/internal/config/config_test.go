@@ -46,8 +46,7 @@ func TestConfig(t *testing.T) {
 			assert.NoError(t, tmpFile.Close())
 			assert.NoError(t, os.Remove(tmpFile.Name()))
 		}()
-		config := fmt.Sprintf(configTemplate)
-		_, err = tmpFile.WriteString(config)
+		_, err = tmpFile.WriteString(configTemplate)
 		assert.NoError(t, err)
 
 		cfg, err := NewConfig(tmpFile.Name())
