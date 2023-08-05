@@ -14,14 +14,14 @@ func TestConfig(t *testing.T) {
 	configTemplate := `{
 		"prover_manager": {
 			"provers_per_session": 1,
-			"session_attempts": %d,
+			"session_attempts": 5,
 			"collection_time_sec": 180,
 			"verifier": {
 				"mock_mode": true,
 				"params_path": "",
 				"agg_vk_path": ""
 			},
-			"max_verifier_workers": %d
+			"max_verifier_workers": 4
 		},
 		"db": {
 			"driver_name": "postgres",
@@ -46,8 +46,7 @@ func TestConfig(t *testing.T) {
 			assert.NoError(t, tmpFile.Close())
 			assert.NoError(t, os.Remove(tmpFile.Name()))
 		}()
-		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, defaultNumberOfVerifierWorkers)
-		_, err = tmpFile.WriteString(config)
+		_, err = tmpFile.WriteString(configTemplate)
 		assert.NoError(t, err)
 
 		cfg, err := NewConfig(tmpFile.Name())
@@ -87,37 +86,5 @@ func TestConfig(t *testing.T) {
 
 		_, err = NewConfig(tmpFile.Name())
 		assert.Error(t, err)
-	})
-
-	t.Run("Default MaxVerifierWorkers", func(t *testing.T) {
-		tmpFile, err := os.CreateTemp("", "example")
-		assert.NoError(t, err)
-		defer func() {
-			assert.NoError(t, tmpFile.Close())
-			assert.NoError(t, os.Remove(tmpFile.Name()))
-		}()
-		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, 0)
-		_, err = tmpFile.WriteString(config)
-		assert.NoError(t, err)
-
-		cfg, err := NewConfig(tmpFile.Name())
-		assert.NoError(t, err)
-		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.ProverManager.MaxVerifierWorkers)
-	})
-
-	t.Run("Default SessionAttempts", func(t *testing.T) {
-		tmpFile, err := os.CreateTemp("", "example")
-		assert.NoError(t, err)
-		defer func() {
-			assert.NoError(t, tmpFile.Close())
-			assert.NoError(t, os.Remove(tmpFile.Name()))
-		}()
-		config := fmt.Sprintf(configTemplate, 0, defaultNumberOfVerifierWorkers)
-		_, err = tmpFile.WriteString(config)
-		assert.NoError(t, err)
-
-		cfg, err := NewConfig(tmpFile.Name())
-		assert.NoError(t, err)
-		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.ProverManager.SessionAttempts)
 	})
 }

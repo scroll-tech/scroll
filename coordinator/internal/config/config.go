@@ -8,24 +8,19 @@ import (
 	"scroll-tech/common/database"
 )
 
-const (
-	defaultNumberOfVerifierWorkers      = 10
-	defaultNumberOfSessionRetryAttempts = 2
-)
-
 // ProverManager loads sequencer configuration items.
 type ProverManager struct {
 	// The amount of provers to pick per proof generation session.
 	ProversPerSession uint8 `json:"provers_per_session"`
 	// Number of attempts that a session can be retried if previous attempts failed.
 	// Currently we only consider proving timeout as failure here.
-	SessionAttempts uint8 `json:"session_attempts,omitempty"`
+	SessionAttempts uint8 `json:"session_attempts"`
 	// Zk verifier config.
-	Verifier *VerifierConfig `json:"verifier,omitempty"`
+	Verifier *VerifierConfig `json:"verifier"`
 	// Proof collection time (in seconds).
 	CollectionTimeSec int `json:"collection_time_sec"`
 	// Max number of workers in verifier worker pool
-	MaxVerifierWorkers int `json:"max_verifier_workers,omitempty"`
+	MaxVerifierWorkers int `json:"max_verifier_workers"`
 }
 
 // L2 loads l2geth configuration items.
@@ -38,7 +33,7 @@ type L2 struct {
 type Auth struct {
 	Secret                     string `json:"secret"`
 	ChallengeExpireDurationSec int    `json:"challenge_expire_duration_sec"`
-	LoginExpireDurationSec     int    `json:"token_expire_duration_sec"` // unit: seconds
+	LoginExpireDurationSec     int    `json:"token_expire_duration_sec"`
 }
 
 // Config load configuration items.
@@ -67,13 +62,6 @@ func NewConfig(file string) (*Config, error) {
 	err = json.Unmarshal(buf, cfg)
 	if err != nil {
 		return nil, err
-	}
-
-	if cfg.ProverManager.MaxVerifierWorkers == 0 {
-		cfg.ProverManager.MaxVerifierWorkers = defaultNumberOfVerifierWorkers
-	}
-	if cfg.ProverManager.SessionAttempts == 0 {
-		cfg.ProverManager.SessionAttempts = defaultNumberOfSessionRetryAttempts
 	}
 
 	return cfg, nil
