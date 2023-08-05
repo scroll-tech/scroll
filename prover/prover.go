@@ -180,20 +180,22 @@ func (r *Prover) proveAndSubmit() error {
 
 // fetchTaskFromCoordinator fetches a new task from the server
 func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
-	// get the latest confirmed block number
-	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, r.cfg.L2Geth.Confirmations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
-	}
-
-	if latestBlockNumber == 0 {
-		return nil, fmt.Errorf("omit to prove task of the genesis block, latestBlockNumber: %v", latestBlockNumber)
-	}
-
 	// prepare the request
 	req := &client.GetTaskRequest{
-		ProverHeight: latestBlockNumber,
-		TaskType:     r.Type(),
+		TaskType: r.Type(),
+	}
+
+	if req.TaskType == message.ProofTypeChunk {
+		// get the latest confirmed block number
+		latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, r.cfg.L2Geth.Confirmations)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
+		}
+
+		if latestBlockNumber == 0 {
+			return nil, fmt.Errorf("omit to prove task of the genesis block, latestBlockNumber: %v", latestBlockNumber)
+		}
+		req.ProverHeight = latestBlockNumber
 	}
 
 	// send the request

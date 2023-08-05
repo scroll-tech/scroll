@@ -19,7 +19,7 @@ type Config struct {
 	Core             *ProverCoreConfig  `json:"core"`
 	DBPath           string             `json:"db_path"`
 	Coordinator      *CoordinatorConfig `json:"coordinator"`
-	L2Geth           *L2GethConfig      `json:"l2geth,omitempty"` // mandatory for a chunk_prover, optional for a batch_prover
+	L2Geth           *L2GethConfig      `json:"l2geth,omitempty"` // only for chunk_prover
 }
 
 // ProverCoreConfig load zk prover config.
