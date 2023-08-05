@@ -13,8 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	ctypes "scroll-tech/common/types"
-	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 
+	"scroll-tech/common/types/message"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/types"
 )
@@ -55,10 +56,19 @@ func (r *mockProver) connectToCoordinator(t *testing.T) string {
 
 func (r *mockProver) challenge(t *testing.T) string {
 	var result types.Response
+	var resp *resty.Response
+	var err error
+
 	client := resty.New()
-	resp, err := client.R().
-		SetResult(&result).
-		Get("http://" + r.coordinatorURL + "/coordinator/v1/challenge")
+	utils.TryTimes(10, func() bool {
+		resp, err = client.R().
+			SetResult(&result).
+			Get("http://" + r.coordinatorURL + "/coordinator/v1/challenge")
+		if err != nil {
+			return false
+		}
+		return true
+	})
 	assert.NoError(t, err)
 
 	type login struct {
