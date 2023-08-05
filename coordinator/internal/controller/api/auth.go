@@ -32,11 +32,11 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return "", fmt.Errorf("missing the public_key, err:%w", err)
 	}
 
-	// check login parameter's token is equal to brear token, the Authorization must be existed
+	// check login parameter's token is equal to bearer token, the Authorization must be existed
 	// if not exist, the jwt token will intercept it
 	brearToken := c.GetHeader("Authorization")
 	if brearToken != "Bearer "+login.Message.Challenge {
-		return "", fmt.Errorf("check chanllege failure for the not equal chanllege string")
+		return "", fmt.Errorf("check challenge failure for the not equal chanllege string")
 	}
 
 	// check the challenge is used, if used, return failure
