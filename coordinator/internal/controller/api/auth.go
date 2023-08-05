@@ -35,7 +35,7 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	// check login parameter's token is equal to brear token, the Authorization must be existed
 	// if not exist, the jwt token will intercept it
 	brearToken := c.GetHeader("Authorization")
-	if brearToken != login.Message.Challenge {
+	if brearToken != "Bearer "+login.Message.Challenge {
 		return "", fmt.Errorf("check chanllege failure for the not equal chanllege string")
 	}
 
