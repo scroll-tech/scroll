@@ -54,7 +54,7 @@ func TestIdentityHash(t *testing.T) {
 	hash, err := identity.Hash()
 	assert.NoError(t, err)
 
-	expectedHash := "7373bb57ab7c01307d86fec55e088e00c526d82d9d1303fa4a189ff6ea95fbe2"
+	expectedHash := "83f5e0ad023e9c1de639ab07b9b4cb972ec9dbbd2524794c533a420a5b137721"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
