@@ -141,7 +141,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
 
 		if verifyErr == nil {
-			verifyErr = fmt.Errorf("verification failed but no error was provided")
+			verifyErr = fmt.Errorf("verification succeeded and it's an invalid proof")
 		}
 		return verifyErr
 	}
