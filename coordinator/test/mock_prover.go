@@ -15,9 +15,10 @@ import (
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/common/utils"
 
-	"scroll-tech/common/types/message"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/types"
+
+	"scroll-tech/common/types/message"
 )
 
 type proofStatus uint32
