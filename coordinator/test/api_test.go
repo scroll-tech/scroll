@@ -229,7 +229,7 @@ func testValidProof(t *testing.T) {
 		}
 		proverTask := provers[i].getProverTask(t, proofType)
 		assert.NotNil(t, proverTask)
-		provers[i].submitProof(t, proverTask, proofStatus)
+		provers[i].submitProof(t, proverTask, proofStatus, types.Success)
 	}
 
 	// verify proof status
@@ -290,7 +290,7 @@ func testInvalidProof(t *testing.T) {
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType)
 		proverTask := provers[i].getProverTask(t, proofType)
 		assert.NotNil(t, proverTask)
-		provers[i].submitProof(t, proverTask, verifiedFailed)
+		provers[i].submitProof(t, proverTask, verifiedFailed, types.ErrCoordinatorHandleZkProofFailure)
 	}
 
 	// verify proof status
@@ -351,7 +351,7 @@ func testProofGeneratedFailed(t *testing.T) {
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType)
 		proverTask := provers[i].getProverTask(t, proofType)
 		assert.NotNil(t, proverTask)
-		provers[i].submitProof(t, proverTask, generatedFailed)
+		provers[i].submitProof(t, proverTask, generatedFailed, types.ErrCoordinatorHandleZkProofFailure)
 	}
 
 	// verify proof status
@@ -425,12 +425,12 @@ func testTimeoutProof(t *testing.T) {
 	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), coordinatorURL, message.ProofTypeChunk)
 	proverChunkTask2 := chunkProver2.getProverTask(t, message.ProofTypeChunk)
 	assert.NotNil(t, proverChunkTask2)
-	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess)
+	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess, types.Success)
 
 	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), coordinatorURL, message.ProofTypeBatch)
 	proverBatchTask2 := batchProver2.getProverTask(t, message.ProofTypeBatch)
 	assert.NotNil(t, proverBatchTask2)
-	batchProver2.submitProof(t, proverBatchTask2, verifiedSuccess)
+	batchProver2.submitProof(t, proverBatchTask2, verifiedSuccess, types.Success)
 
 	// verify proof status, it should be verified now, because second prover sent valid proof
 	chunkProofStatus2, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)

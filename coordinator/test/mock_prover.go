@@ -161,7 +161,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *t
 	return &result.Data
 }
 
-func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus) {
+func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus, errCode int) {
 	proof := &message.ProofMsg{
 		ProofDetail: &message.ProofDetail{
 			ID:         proverTaskSchema.TaskID,
@@ -216,5 +216,5 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/submit_proof")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	assert.Equal(t, ctypes.Success, result.ErrCode)
+	assert.Equal(t, errCode, result.ErrCode)
 }
