@@ -1,8 +1,9 @@
-package collector
+package provertask
 
 import (
 	"context"
 
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"gorm.io/gorm"
@@ -12,28 +13,19 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/provermanager"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-const (
-	// BatchCollectorName the name of batch collector
-	BatchCollectorName = "batch_collector"
-	// ChunkCollectorName the name of chunk collector
-	ChunkCollectorName = "chunk_collector"
-)
-
 var coordinatorSessionsTimeoutTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
 
-// Collector the interface of a collector who send data to prover
-type Collector interface {
-	Name() string
-	Collect(ctx context.Context) error
+// ProverTask the interface of a collector who send data to prover
+type ProverTask interface {
+	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
 }
 
-// BaseCollector a base collector which contain series functions
-type BaseCollector struct {
+// BaseProverTask a base prover task which contain series functions
+type BaseProverTask struct {
 	cfg *config.Config
 	ctx context.Context
 	db  *gorm.DB
@@ -45,7 +37,7 @@ type BaseCollector struct {
 }
 
 // checkAttempts use the count of prover task info to check the attempts
-func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.ProofType) bool {
+func (b *BaseProverTask) checkAttemptsExceeded(hash string, taskType message.ProofType) bool {
 	whereFields := make(map[string]interface{})
 	whereFields["task_id"] = hash
 	whereFields["task_type"] = int16(taskType)
@@ -55,16 +47,10 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 		return true
 	}
 
-	if len(proverTasks) >= int(b.cfg.ProverManagerConfig.SessionAttempts) {
+	if len(proverTasks) >= int(b.cfg.ProverManager.SessionAttempts) {
 		coordinatorSessionsTimeoutTotalCounter.Inc(1)
 
 		log.Warn("proof generation prover task %s ended because reach the max attempts", hash)
-
-		for _, proverTask := range proverTasks {
-			if types.ProvingStatus(proverTask.ProvingStatus) == types.ProvingTaskFailed {
-				provermanager.Manager.FreeTaskIDForProver(proverTask.ProverPublicKey, hash)
-			}
-		}
 
 		transErr := b.db.Transaction(func(tx *gorm.DB) error {
 			switch message.ProofType(proverTasks[0].TaskType) {
@@ -88,30 +74,4 @@ func (b *BaseCollector) checkAttemptsExceeded(hash string, taskType message.Proo
 		}
 	}
 	return true
-}
-
-func (b *BaseCollector) sendTask(taskMsg *message.TaskMsg) ([]*coordinatorType.ProverStatus, error) {
-	var err error
-	var proverStatusList []*coordinatorType.ProverStatus
-	for i := uint8(0); i < b.cfg.ProverManagerConfig.ProversPerSession; i++ {
-		proverPubKey, proverName, sendErr := provermanager.Manager.SendTask(taskMsg.Type, taskMsg)
-		if sendErr != nil {
-			err = sendErr
-			continue
-		}
-
-		provermanager.Manager.UpdateMetricProverProofsLastAssignedTimestampGauge(proverPubKey)
-
-		proverStatus := &coordinatorType.ProverStatus{
-			PublicKey: proverPubKey,
-			Name:      proverName,
-			Status:    types.ProverAssigned,
-		}
-		proverStatusList = append(proverStatusList, proverStatus)
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	return proverStatusList, nil
 }

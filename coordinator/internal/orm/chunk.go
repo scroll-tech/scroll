@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"time"
 
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
-
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 )
 
 // Chunk represents a chunk of blocks in the database.
@@ -119,7 +120,7 @@ func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*
 	for _, chunk := range chunks {
 		var proof message.ChunkProof
 		if err := json.Unmarshal(chunk.Proof, &proof); err != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash error: %w, batch hash: %v, chunk hash: %v", err, batchHash, chunk.Hash)
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", err, batchHash, chunk.Hash)
 		}
 		proofs = append(proofs, &proof)
 	}
@@ -338,4 +339,30 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 		return fmt.Errorf("Chunk.UpdateBatchHashInRange error: %w, start index: %v, end index: %v, batch hash: %v", err, startIndex, endIndex, batchHash)
 	}
 	return nil
+}
+
+// UpdateUnassignedChunkReturning update the unassigned batch which end_block_number <= height and return the update record
+func (o *Chunk) UpdateUnassignedChunkReturning(ctx context.Context, height, limit int) ([]*Chunk, error) {
+	if limit < 0 {
+		return nil, errors.New("limit must not be smaller than zero")
+	}
+	if limit == 0 {
+		return nil, nil
+	}
+
+	db := o.db.WithContext(ctx)
+
+	subQueryDB := db.Model(&Chunk{}).Select("index")
+	subQueryDB = subQueryDB.Where("proving_status = ?", types.ProvingTaskUnassigned)
+	subQueryDB = subQueryDB.Where("end_block_number <= ?", height)
+	subQueryDB = subQueryDB.Order("index ASC")
+	subQueryDB = subQueryDB.Limit(limit)
+
+	var chunks []*Chunk
+	db = db.Model(&chunks).Clauses(clause.Returning{})
+	db = db.Where("index = (?)", subQueryDB)
+	if err := db.Update("proving_status", types.ProvingTaskAssigned).Error; err != nil {
+		return nil, fmt.Errorf("Chunk.UpdateUnassignedBatchReturning error: %w", err)
+	}
+	return chunks, nil
 }

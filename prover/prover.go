@@ -3,29 +3,27 @@ package prover
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
 	"sync/atomic"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/ethclient"
-
-	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/common/types/message"
-	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
-
-	"scroll-tech/coordinator/client"
-
+	"scroll-tech/prover/client"
 	"scroll-tech/prover/config"
 	"scroll-tech/prover/core"
 	"scroll-tech/prover/store"
+	putils "scroll-tech/prover/utils"
+
+	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 )
 
 var (
@@ -35,23 +33,21 @@ var (
 
 // Prover contains websocket conn to coordinator, and task stack.
 type Prover struct {
-	cfg         *config.Config
-	client      *client.Client
-	traceClient *ethclient.Client
-	stack       *store.Stack
-	proverCore  *core.ProverCore
-	taskChan    chan *message.TaskMsg
-	sub         ethereum.Subscription
+	ctx               context.Context
+	cfg               *config.Config
+	coordinatorClient *client.CoordinatorClient
+	l2GethClient      *ethclient.Client
+	stack             *store.Stack
+	proverCore        *core.ProverCore
 
-	isDisconnected int64
-	isClosed       int64
-	stopChan       chan struct{}
+	isClosed int64
+	stopChan chan struct{}
 
 	priv *ecdsa.PrivateKey
 }
 
 // NewProver new a Prover object.
-func NewProver(cfg *config.Config) (*Prover, error) {
+func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	// load or create wallet
 	priv, err := utils.LoadOrCreateKey(cfg.KeystorePath, cfg.KeystorePassword)
 	if err != nil {
@@ -65,7 +61,7 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 	}
 
 	// Collect geth node.
-	traceClient, err := ethclient.Dial(cfg.TraceEndpoint)
+	l2GethClient, err := ethclient.DialContext(ctx, cfg.L2Geth.Endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -78,21 +74,20 @@ func NewProver(cfg *config.Config) (*Prover, error) {
 	}
 	log.Info("init prover_core successfully!")
 
-	rClient, err := client.Dial(cfg.CoordinatorURL)
+	coordinatorClient, err := client.NewCoordinatorClient(cfg.Coordinator, cfg.ProverName, priv)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Prover{
-		cfg:         cfg,
-		client:      rClient,
-		traceClient: traceClient,
-		stack:       stackDb,
-		proverCore:  newProverCore,
-		sub:         nil,
-		taskChan:    make(chan *message.TaskMsg, 10),
-		stopChan:    make(chan struct{}),
-		priv:        priv,
+		ctx:               ctx,
+		cfg:               cfg,
+		coordinatorClient: coordinatorClient,
+		l2GethClient:      l2GethClient,
+		stack:             stackDb,
+		proverCore:        newProverCore,
+		stopChan:          make(chan struct{}),
+		priv:              priv,
 	}, nil
 }
 
@@ -108,83 +103,13 @@ func (r *Prover) PublicKey() string {
 
 // Start runs Prover.
 func (r *Prover) Start() {
-	log.Info("start to register to coordinator")
-	if err := r.Register(); err != nil {
-		log.Crit("register to coordinator failed", "error", err)
+	log.Info("start to login to coordinator")
+	if err := r.coordinatorClient.Login(r.ctx); err != nil {
+		log.Crit("login to coordinator failed", "error", err)
 	}
-	log.Info("register to coordinator successfully!")
+	log.Info("login to coordinator successfully!")
 
-	go r.HandleCoordinator()
 	go r.ProveLoop()
-}
-
-// Register registers Prover to the coordinator through Websocket.
-func (r *Prover) Register() error {
-	authMsg := &message.AuthMsg{
-		Identity: &message.Identity{
-			Name:       r.cfg.ProverName,
-			ProverType: r.Type(),
-			Version:    version.Version,
-		},
-	}
-	// Sign request token message
-	if err := authMsg.SignWithKey(r.priv); err != nil {
-		return fmt.Errorf("sign request token message failed %v", err)
-	}
-
-	token, err := r.client.RequestToken(context.Background(), authMsg)
-	if err != nil {
-		return fmt.Errorf("request token failed %v", err)
-	}
-	authMsg.Identity.Token = token
-
-	// Sign auth message
-	if err = authMsg.SignWithKey(r.priv); err != nil {
-		return fmt.Errorf("sign auth message failed %v", err)
-	}
-
-	sub, err := r.client.RegisterAndSubscribe(context.Background(), r.taskChan, authMsg)
-	r.sub = sub
-	return err
-}
-
-// HandleCoordinator accepts block-traces from coordinator through the Websocket and store it into Stack.
-func (r *Prover) HandleCoordinator() {
-	for {
-		select {
-		case <-r.stopChan:
-			return
-		case task := <-r.taskChan:
-			log.Info("Accept BlockTrace from Scroll", "ID", task.ID)
-			err := r.stack.Push(&store.ProvingTask{Task: task, Times: 0})
-			if err != nil {
-				panic(fmt.Sprintf("could not push task(%s) into stack: %v", task.ID, err))
-			}
-		case err := <-r.sub.Err():
-			r.sub.Unsubscribe()
-			log.Error("Subscribe task with scroll failed", "error", err)
-			if atomic.LoadInt64(&r.isClosed) == 0 {
-				r.mustRetryCoordinator()
-			}
-		}
-	}
-}
-
-func (r *Prover) mustRetryCoordinator() {
-	atomic.StoreInt64(&r.isDisconnected, 1)
-	defer atomic.StoreInt64(&r.isDisconnected, 0)
-	for {
-		log.Info("retry to connect to coordinator...")
-		err := r.Register()
-		if err != nil {
-			log.Error("register to coordinator failed", "error", err)
-			time.Sleep(retryWait)
-		} else {
-			log.Info("re-register to coordinator successfully!")
-			break
-		}
-	}
-
 }
 
 // ProveLoop keep popping the block-traces from Stack and sends it to rust-prover for loop.
@@ -195,12 +120,7 @@ func (r *Prover) ProveLoop() {
 			return
 		default:
 			if err := r.proveAndSubmit(); err != nil {
-				if errors.Is(err, store.ErrEmpty) {
-					log.Debug("get empty trace", "error", err)
-					time.Sleep(time.Second * 3)
-					continue
-				}
-				log.Error("prove failed", "error", err)
+				log.Error("proveAndSubmit", "prover type", r.cfg.Core.ProofType, "error", err)
 			}
 		}
 	}
@@ -209,14 +129,27 @@ func (r *Prover) ProveLoop() {
 func (r *Prover) proveAndSubmit() error {
 	task, err := r.stack.Peek()
 	if err != nil {
-		return err
+		if !errors.Is(err, store.ErrEmpty) {
+			return fmt.Errorf("failed to peek from stack: %v", err)
+		}
+		// fetch new proving task.
+		task, err = r.fetchTaskFromCoordinator()
+		if err != nil {
+			time.Sleep(retryWait)
+			return fmt.Errorf("failed to fetch task from coordinator: %v", err)
+		}
+
+		// Push the new task into the stack
+		if err = r.stack.Push(task); err != nil {
+			return fmt.Errorf("failed to push task into stack: %v", err)
+		}
 	}
 
 	var proofMsg *message.ProofDetail
 	if task.Times <= 2 {
 		// If panic times <= 2, try to proof the task.
 		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
-			return err
+			return fmt.Errorf("failed to update times on stack: %v", err)
 		}
 
 		log.Info("start to prove task", "task-type", task.Task.Type, "task-id", task.Task.ID)
@@ -239,8 +172,70 @@ func (r *Prover) proveAndSubmit() error {
 		}
 	}()
 
-	r.signAndSubmitProof(proofMsg)
-	return nil
+	return r.submitProof(proofMsg)
+}
+
+// fetchTaskFromCoordinator fetches a new task from the server
+func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
+	// get the latest confirmed block number
+	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, r.cfg.L2Geth.Confirmations)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
+	}
+
+	if latestBlockNumber == 0 {
+		return nil, fmt.Errorf("omit to prove task of the genesis block, latestBlockNumber: %v", latestBlockNumber)
+	}
+
+	// prepare the request
+	req := &client.GetTaskRequest{
+		ProverHeight: latestBlockNumber,
+		TaskType:     r.Type(),
+	}
+
+	// send the request
+	resp, err := r.coordinatorClient.GetTask(r.ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task, req: %v, err: %v", req, err)
+	}
+
+	// create a new TaskMsg
+	taskMsg := message.TaskMsg{
+		ID:   resp.Data.TaskID,
+		Type: message.ProofType(resp.Data.TaskType),
+	}
+
+	// depending on the task type, unmarshal the task data into the appropriate field
+	switch taskMsg.Type {
+	case message.ProofTypeBatch:
+		taskMsg.BatchTaskDetail = &message.BatchTaskDetail{}
+		if err = json.Unmarshal([]byte(resp.Data.TaskData), taskMsg.BatchTaskDetail); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal batch task detail: %v", err)
+		}
+	case message.ProofTypeChunk:
+		taskMsg.ChunkTaskDetail = &message.ChunkTaskDetail{}
+		if err = json.Unmarshal([]byte(resp.Data.TaskData), taskMsg.ChunkTaskDetail); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal chunk task detail: %v", err)
+		}
+	default:
+		return nil, fmt.Errorf("unknown task type: %v", taskMsg.Type)
+	}
+
+	// convert the response task to a ProvingTask
+	provingTask := &store.ProvingTask{
+		Task:  &taskMsg,
+		Times: 0,
+	}
+
+	// marshal the task to a json string for logging
+	taskJSON, err := json.Marshal(provingTask)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal task to json: %v", err)
+	}
+
+	log.Info("successfully fetched new task from coordinator", "resp", resp, "task", string(taskJSON))
+
+	return provingTask, nil
 }
 
 func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
@@ -283,58 +278,85 @@ func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
 
 func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error) {
 	if task.Task.ChunkTaskDetail == nil {
-		return nil, errors.New("ChunkTaskDetail is empty")
+		return nil, fmt.Errorf("ChunkTaskDetail is empty")
 	}
 	traces, err := r.getSortedTracesByHashes(task.Task.ChunkTaskDetail.BlockHashes)
 	if err != nil {
-		return nil, errors.New("get traces from eth node failed")
+		return nil, fmt.Errorf("get traces from eth node failed, block hashes: %v", task.Task.ChunkTaskDetail.BlockHashes)
 	}
 	return r.proverCore.ProveChunk(task.Task.ID, traces)
 }
 
 func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error) {
 	if task.Task.BatchTaskDetail == nil {
-		return nil, errors.New("BatchTaskDetail is empty")
+		return nil, fmt.Errorf("BatchTaskDetail is empty")
 	}
 	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.ChunkProofs)
 }
 
-func (r *Prover) signAndSubmitProof(msg *message.ProofDetail) {
-	authZkProof := &message.ProofMsg{ProofDetail: msg}
-	if err := authZkProof.Sign(r.priv); err != nil {
-		log.Error("sign proof error", "err", err)
-		return
+func (r *Prover) submitProof(msg *message.ProofDetail) error {
+	// prepare the submit request
+	req := &client.SubmitProofRequest{
+		TaskID:   msg.ID,
+		TaskType: int(msg.Type),
+		Status:   int(msg.Status),
 	}
 
-	// Retry SubmitProof several times.
-	for i := 0; i < 3; i++ {
-		// When the prover is disconnected from the coordinator,
-		// wait until the prover reconnects to the coordinator.
-		for atomic.LoadInt64(&r.isDisconnected) == 1 {
-			time.Sleep(retryWait)
+	// marshal proof by tasktype
+	switch msg.Type {
+	case message.ProofTypeChunk:
+		if msg.ChunkProof != nil {
+			proofData, err := json.Marshal(msg.ChunkProof)
+			if err != nil {
+				return fmt.Errorf("error marshaling chunk proof: %v", err)
+			}
+			req.Proof = string(proofData)
 		}
-		serr := r.client.SubmitProof(context.Background(), authZkProof)
-		if serr == nil {
-			return
+	case message.ProofTypeBatch:
+		if msg.BatchProof != nil {
+			proofData, err := json.Marshal(msg.BatchProof)
+			if err != nil {
+				return fmt.Errorf("error marshaling batch proof: %v", err)
+			}
+			req.Proof = string(proofData)
 		}
-		log.Error("submit proof to coordinator error", "task ID", msg.ID, "error", serr)
 	}
+
+	// send the submit request
+	if err := r.coordinatorClient.SubmitProof(r.ctx, req); err != nil {
+		return fmt.Errorf("error submitting proof: %v", err)
+	}
+
+	log.Info("proof submitted successfully", "task-id", msg.ID, "task-type", msg.Type, "task-status", msg.Status, "err", msg.Error)
+	return nil
 }
 
 func (r *Prover) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
+	if len(blockHashes) == 0 {
+		return nil, fmt.Errorf("blockHashes is empty")
+	}
+
 	var traces []*types.BlockTrace
 	for _, blockHash := range blockHashes {
-		trace, err := r.traceClient.GetBlockTraceByHash(context.Background(), blockHash)
+		trace, err := r.l2GethClient.GetBlockTraceByHash(r.ctx, blockHash)
 		if err != nil {
 			return nil, err
 		}
 		traces = append(traces, trace)
 	}
+
 	// Sort BlockTraces by header number.
-	// TODO: we should check that the number range here is continuous.
 	sort.Slice(traces, func(i, j int) bool {
 		return traces[i].Header.Number.Int64() < traces[j].Header.Number.Int64()
 	})
+
+	// Check that the block numbers are continuous
+	for i := 0; i < len(traces)-1; i++ {
+		if traces[i].Header.Number.Int64()+1 != traces[i+1].Header.Number.Int64() {
+			return nil, fmt.Errorf("block numbers are not continuous, got %v and %v",
+				traces[i].Header.Number.Int64(), traces[i+1].Header.Number.Int64())
+		}
+	}
 	return traces, nil
 }
 
@@ -346,8 +368,6 @@ func (r *Prover) Stop() {
 	atomic.StoreInt64(&r.isClosed, 1)
 
 	close(r.stopChan)
-	// Close scroll's ws
-	r.sub.Unsubscribe()
 	// Close db
 	if err := r.stack.Close(); err != nil {
 		log.Error("failed to close bbolt db", "error", err)

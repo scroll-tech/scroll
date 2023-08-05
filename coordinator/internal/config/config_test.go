@@ -12,29 +12,31 @@ import (
 
 func TestConfig(t *testing.T) {
 	configTemplate := `{
-		"prover_manager_config": {
-			"compression_level": 9,
+		"prover_manager": {
 			"provers_per_session": 1,
 			"session_attempts": %d,
-			"collection_time": 180,
-			"token_time_to_live": 60,
+			"collection_time_sec": 180,
 			"verifier": {
 				"mock_mode": true,
 				"params_path": "",
 				"agg_vk_path": ""
 			},
-			"max_verifier_workers": %d,
-			"order_session": "%s"
+			"max_verifier_workers": %d
 		},
-		"db_config": {
+		"db": {
 			"driver_name": "postgres",
 			"dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
 			"maxOpenNum": 200,
 			"maxIdleNum": 20
 		},
-		"l2_config": {
+		"l2": {
 			"chain_id": 111
-		}
+		},
+ 		"auth": {
+			"secret": "prover secret key",
+			"challenge_expire_duration_sec": 3600,
+			"login_expire_duration_sec": 3600
+  		}
 	}`
 
 	t.Run("Success Case", func(t *testing.T) {
@@ -44,7 +46,7 @@ func TestConfig(t *testing.T) {
 			assert.NoError(t, tmpFile.Close())
 			assert.NoError(t, os.Remove(tmpFile.Name()))
 		}()
-		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, defaultNumberOfVerifierWorkers, "ASC")
+		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, defaultNumberOfVerifierWorkers)
 		_, err = tmpFile.WriteString(config)
 		assert.NoError(t, err)
 
@@ -87,22 +89,6 @@ func TestConfig(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("Invalid Order Session", func(t *testing.T) {
-		tmpFile, err := os.CreateTemp("", "example")
-		assert.NoError(t, err)
-		defer func() {
-			assert.NoError(t, tmpFile.Close())
-			assert.NoError(t, os.Remove(tmpFile.Name()))
-		}()
-		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, defaultNumberOfVerifierWorkers, "INVALID")
-		_, err = tmpFile.WriteString(config)
-		assert.NoError(t, err)
-
-		_, err = NewConfig(tmpFile.Name())
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "prover config's order session is invalid")
-	})
-
 	t.Run("Default MaxVerifierWorkers", func(t *testing.T) {
 		tmpFile, err := os.CreateTemp("", "example")
 		assert.NoError(t, err)
@@ -110,13 +96,13 @@ func TestConfig(t *testing.T) {
 			assert.NoError(t, tmpFile.Close())
 			assert.NoError(t, os.Remove(tmpFile.Name()))
 		}()
-		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, 0, "ASC")
+		config := fmt.Sprintf(configTemplate, defaultNumberOfSessionRetryAttempts, 0)
 		_, err = tmpFile.WriteString(config)
 		assert.NoError(t, err)
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.ProverManagerConfig.MaxVerifierWorkers)
+		assert.Equal(t, defaultNumberOfVerifierWorkers, cfg.ProverManager.MaxVerifierWorkers)
 	})
 
 	t.Run("Default SessionAttempts", func(t *testing.T) {
@@ -126,12 +112,12 @@ func TestConfig(t *testing.T) {
 			assert.NoError(t, tmpFile.Close())
 			assert.NoError(t, os.Remove(tmpFile.Name()))
 		}()
-		config := fmt.Sprintf(configTemplate, 0, defaultNumberOfVerifierWorkers, "ASC")
+		config := fmt.Sprintf(configTemplate, 0, defaultNumberOfVerifierWorkers)
 		_, err = tmpFile.WriteString(config)
 		assert.NoError(t, err)
 
 		cfg, err := NewConfig(tmpFile.Name())
 		assert.NoError(t, err)
-		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.ProverManagerConfig.SessionAttempts)
+		assert.Equal(t, uint8(defaultNumberOfSessionRetryAttempts), cfg.ProverManager.SessionAttempts)
 	})
 }
