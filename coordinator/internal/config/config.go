@@ -16,7 +16,7 @@ type ProverManager struct {
 	// Currently we only consider proving timeout as failure here.
 	SessionAttempts uint8 `json:"session_attempts"`
 	// Zk verifier config.
-	Verifier *VerifierConfig `json:"verifier,omitempty"`
+	Verifier *VerifierConfig `json:"verifier"`
 	// Proof collection time (in seconds).
 	CollectionTimeSec int `json:"collection_time_sec"`
 	// Max number of workers in verifier worker pool
