@@ -8,7 +8,7 @@ use prover::{
 use std::{cell::OnceCell, panic, ptr::null};
 use types::eth::BlockTrace;
 
-static mut PROVER: OnceCell<Prover> = OnceCell::new();
+static mut BATCH_PROVER: OnceCell<Prover> = OnceCell::new();
 static mut VERIFIER: OnceCell<Verifier> = OnceCell::new();
 
 /// # Safety
@@ -19,7 +19,7 @@ pub unsafe extern "C" fn init_batch_prover(params_dir: *const c_char) {
     let params_dir = c_char_to_str(params_dir);
     let prover = Prover::from_params_dir(params_dir);
 
-    PROVER.set(prover).unwrap();
+    BATCH_PROVER.set(prover).unwrap();
 }
 
 /// # Safety
@@ -54,7 +54,7 @@ pub unsafe extern "C" fn gen_batch_proof(
         .collect();
 
     let proof_result = panic::catch_unwind(|| {
-        let proof = PROVER
+        let proof = BATCH_PROVER
             .get_mut()
             .unwrap()
             .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())

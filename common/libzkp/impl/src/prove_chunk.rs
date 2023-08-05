@@ -8,7 +8,7 @@ use prover::{
 use std::{cell::OnceCell, panic, ptr::null};
 use types::eth::BlockTrace;
 
-static mut PROVER: OnceCell<Prover> = OnceCell::new();
+static mut CHUNK_PROVER: OnceCell<Prover> = OnceCell::new();
 static mut VERIFIER: OnceCell<Verifier> = OnceCell::new();
 
 /// # Safety
@@ -19,7 +19,7 @@ pub unsafe extern "C" fn init_chunk_prover(params_dir: *const c_char) {
     let params_dir = c_char_to_str(params_dir);
     let prover = Prover::from_params_dir(params_dir);
 
-    PROVER.set(prover).unwrap();
+    CHUNK_PROVER.set(prover).unwrap();
 }
 
 /// # Safety
@@ -42,7 +42,7 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
     let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces).unwrap();
 
     let proof_result = panic::catch_unwind(|| {
-        let proof = PROVER
+        let proof = CHUNK_PROVER
             .get_mut()
             .unwrap()
             .gen_chunk_proof(block_traces, None, OUTPUT_DIR.as_deref())
