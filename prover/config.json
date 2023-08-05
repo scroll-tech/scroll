@@ -4,16 +4,17 @@
     "keystore_password": "prover-pwd",
     "db_path": "bbolt_db",
     "core": {
-        "params_path": "params"
+        "params_path": "params",
+        "proof_type": 1
     },
     "coordinator": {
-        "base_url": "https://coordinator/v1",
+        "base_url": "https://sepolia-coordinator.scroll.io/",
         "retry_count": 10,
         "retry_wait_time_sec": 10,
         "connection_timeout_sec": 30
     },
     "l2geth": {
-        "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
+        "endpoint": "http://sepolia-l2geth-rpc-internal1.scroll.tech:8545",
         "confirmations": "0x1"
     }
 }
