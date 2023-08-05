@@ -36,8 +36,8 @@ type Prover struct {
 	ctx               context.Context
 	cfg               *config.Config
 	coordinatorClient *client.CoordinatorClient
-	l2GethClient      *ethclient.Client
 	stack             *store.Stack
+	l2GethClient      *ethclient.Client // only applicable for a chunk_prover
 	proverCore        *core.ProverCore
 
 	isClosed int64
@@ -60,10 +60,13 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 		return nil, err
 	}
 
-	// Collect geth node.
-	l2GethClient, err := ethclient.DialContext(ctx, cfg.L2Geth.Endpoint)
-	if err != nil {
-		return nil, err
+	var l2GethClient *ethclient.Client
+	if cfg.Core.ProofType == message.ProofTypeChunk {
+		// Connect l2geth node. Only applicable for a chunk_prover.
+		l2GethClient, err = ethclient.DialContext(ctx, cfg.L2Geth.Endpoint)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Create prover_core instance
