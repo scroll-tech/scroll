@@ -1,14 +1,14 @@
 {
   "prover_manager": {
     "provers_per_session": 1,
-    "session_attempts": 2,
+    "session_attempts": 5,
     "collection_time_sec": 180,
     "verifier": {
       "mock_mode": true,
       "params_path": "",
       "assets_path": ""
     },
-    "max_verifier_workers": 10
+    "max_verifier_workers": 4
   },
   "db": {
     "driver_name": "postgres",
@@ -22,6 +22,6 @@
   "auth": {
     "secret": "prover secret key",
     "challenge_expire_duration_sec": 3600,
-    "login_expire_duration_sec": 3600
+    "login_expire_duration_sec": 10
   }
 }
