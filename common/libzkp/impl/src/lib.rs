@@ -1,5 +1,5 @@
 #![feature(once_cell)]
 
-mod batch;
-mod chunk;
+mod prove_batch;
+mod prove_chunk;
 mod utils;
