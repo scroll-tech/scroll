@@ -65,10 +65,7 @@ func (r *mockProver) challenge(t *testing.T) string {
 		resp, err = client.R().
 			SetResult(&result).
 			Get("http://" + r.coordinatorURL + "/coordinator/v1/challenge")
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	})
 	assert.NoError(t, err)
 
