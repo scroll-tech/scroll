@@ -17,7 +17,7 @@ func Route(router *gin.Engine, cfg *config.Config) {
 func v1(router *gin.RouterGroup, conf *config.Config) {
 	r := router.Group("/v1")
 
-	r.GET("/healthz", api.HealthCheck.HealthCheck)
+	r.GET("/health", api.HealthCheck.HealthCheck)
 
 	challengeMiddleware := middleware.ChallengeMiddleware(conf)
 	r.GET("/challenge", challengeMiddleware.LoginHandler)

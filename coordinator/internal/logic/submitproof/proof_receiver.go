@@ -134,16 +134,15 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	}
 
 	if verifyErr != nil || !success {
-		if verifyErr != nil {
-			log.Error("failed to verify zk proof", "proof id", proofMsg.ID, "prover pk", pk, "prove type",
-				proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
-		}
 		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
-
 		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
+
+		if verifyErr == nil {
+			verifyErr = fmt.Errorf("verification failed but no error was provided")
+		}
 		return verifyErr
 	}
 

@@ -113,7 +113,7 @@ func (r *mockProver) healthCheckSuccess(t *testing.T) bool {
 	client := resty.New()
 	resp, err := client.R().
 		SetResult(&result).
-		Get("http://" + r.coordinatorURL + "/coordinator/v1/healthz")
+		Get("http://" + r.coordinatorURL + "/coordinator/v1/health")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
 	assert.Equal(t, ctypes.Success, result.ErrCode)
@@ -125,7 +125,7 @@ func (r *mockProver) healthCheckFailure(t *testing.T) bool {
 	client := resty.New()
 	resp, err := client.R().
 		SetResult(&result).
-		Get("http://" + r.coordinatorURL + "/coordinator/v1/healthz")
+		Get("http://" + r.coordinatorURL + "/coordinator/v1/health")
 	assert.Error(t, err)
 	assert.Equal(t, 0, resp.StatusCode())
 	assert.Equal(t, 0, result.ErrCode)
