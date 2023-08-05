@@ -76,14 +76,15 @@ func (r *mockProver) challenge(t *testing.T) string {
 func (r *mockProver) login(t *testing.T, challengeString string) string {
 	authMsg := message.AuthMsg{
 		Identity: &message.Identity{
-			Challenge:  challengeString,
-			ProverName: "test",
+			Challenge:     challengeString,
+			ProverName:    "test",
+			ProverVersion: "v1.0.0",
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(r.privKey))
 
-	body := fmt.Sprintf("{\"message\":{\"challenge\":\"%s\",\"prover_name\":\"%s\"},\"signature\":\"%s\"}",
-		authMsg.Identity.Challenge, authMsg.Identity.ProverName, authMsg.Signature)
+	body := fmt.Sprintf("{\"message\":{\"challenge\":\"%s\",\"prover_name\":\"%s\", \"prover_version\":\"%s\"},\"signature\":\"%s\"}",
+		authMsg.Identity.Challenge, authMsg.Identity.ProverName, authMsg.Identity.ProverVersion, authMsg.Signature)
 
 	var result types.Response
 	client := resty.New()
@@ -137,7 +138,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *t
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
-		SetBody(map[string]interface{}{"prover_version": "v1.0.0", "prover_height": 100, "task_type": int(proofType)}).
+		SetBody(map[string]interface{}{"prover_height": 100, "task_type": int(proofType)}).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
 	assert.NoError(t, err)

@@ -17,8 +17,9 @@ type ChallengeResponse struct {
 // LoginRequest defines the request structure for login API
 type LoginRequest struct {
 	Message struct {
-		Challenge  string `json:"challenge"`
-		ProverName string `json:"prover_name"`
+		Challenge     string `json:"challenge"`
+		ProverName    string `json:"prover_name"`
+		ProverVersion string `json:"prover_version"`
 	} `json:"message"`
 	Signature string `json:"signature"`
 }
@@ -35,9 +36,8 @@ type LoginResponse struct {
 
 // GetTaskRequest defines the request structure for GetTask API
 type GetTaskRequest struct {
-	ProverVersion string            `json:"prover_version"`
-	ProverHeight  uint64            `json:"prover_height"`
-	TaskType      message.ProofType `json:"task_type"`
+	ProverHeight uint64            `json:"prover_height"`
+	TaskType     message.ProofType `json:"task_type"`
 }
 
 // GetTaskResponse defines the response structure for GetTask API

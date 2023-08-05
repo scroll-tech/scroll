@@ -48,8 +48,9 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 	// recover the public key
 	authMsg := message.AuthMsg{
 		Identity: &message.Identity{
-			Challenge:  v.Message.Challenge,
-			ProverName: v.Message.ProverName,
+			Challenge:     v.Message.Challenge,
+			ProverName:    v.Message.ProverName,
+			ProverVersion: v.Message.ProverVersion,
 		},
 		Signature: v.Signature,
 	}
@@ -60,8 +61,9 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 	}
 
 	return jwt.MapClaims{
-		types.PublicKey:  publicKey,
-		types.ProverName: v.Message.ProverName,
+		types.PublicKey:     publicKey,
+		types.ProverName:    v.Message.ProverName,
+		types.ProverVersion: v.Message.ProverVersion,
 	}
 }
 
@@ -74,6 +76,10 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 
 	if publicKey, ok := claims[types.PublicKey]; ok {
 		c.Set(types.PublicKey, publicKey)
+	}
+
+	if proverVersion, ok := claims[types.ProverVersion]; ok {
+		c.Set(types.ProverVersion, proverVersion)
 	}
 	return nil
 }

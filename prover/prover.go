@@ -24,7 +24,6 @@ import (
 
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
 )
 
 var (
@@ -190,9 +189,8 @@ func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 
 	// prepare the request
 	req := &client.GetTaskRequest{
-		ProverVersion: version.Version,
-		ProverHeight:  latestBlockNumber,
-		TaskType:      r.Type(),
+		ProverHeight: latestBlockNumber,
+		TaskType:     r.Type(),
 	}
 
 	// send the request

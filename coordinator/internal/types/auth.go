@@ -7,12 +7,15 @@ const (
 	PublicKey = "public_key"
 	// ProverName the prover name key for context
 	ProverName = "prover_name"
+	// ProverVersion the prover version for context
+	ProverVersion = "prover_version"
 )
 
 // Message the login message struct
 type Message struct {
-	Challenge  string `form:"challenge" json:"challenge" binding:"required"`
-	ProverName string `form:"prover_name" json:"prover_name" binding:"required"`
+	Challenge     string `form:"challenge" json:"challenge" binding:"required"`
+	ProverVersion string `form:"prover_version" json:"prover_version" binding:"required"`
+	ProverName    string `form:"prover_name" json:"prover_name" binding:"required"`
 }
 
 // LoginParameter for /login api

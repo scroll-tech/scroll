@@ -15,8 +15,9 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 	authMsg := &AuthMsg{
 		Identity: &Identity{
-			Challenge:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzgxNzUsIm9yaWdfaWF0IjoxNjkxMDM0NTc1fQ.HybBMsEJFhyZqtIa2iVcHUP7CEFttf708jmTMAImAWA",
-			ProverName: "test",
+			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzgxNzUsIm9yaWdfaWF0IjoxNjkxMDM0NTc1fQ.HybBMsEJFhyZqtIa2iVcHUP7CEFttf708jmTMAImAWA",
+			ProverName:    "test",
+			ProverVersion: "v1.0.0",
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(privkey))
@@ -45,8 +46,9 @@ func TestGenerateToken(t *testing.T) {
 
 func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
-		Challenge:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzM0MTksIm9yaWdfaWF0IjoxNjkxMDI5ODE5fQ.EhkLZsj__rNPVC3ZDYBtvdh0nB8mmM_Hl82hObaIWOs",
-		ProverName: "test",
+		Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzM0MTksIm9yaWdfaWF0IjoxNjkxMDI5ODE5fQ.EhkLZsj__rNPVC3ZDYBtvdh0nB8mmM_Hl82hObaIWOs",
+		ProverName:    "test",
+		ProverVersion: "v1.0.0",
 	}
 
 	hash, err := identity.Hash()

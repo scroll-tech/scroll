@@ -14,6 +14,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/version"
 )
 
 // CoordinatorClient is a client used for interacting with the Coordinator service.
@@ -65,8 +66,9 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 	// Prepare and sign the login request
 	authMsg := &message.AuthMsg{
 		Identity: &message.Identity{
-			ProverName: c.proverName,
-			Challenge:  challengeResult.Data.Token,
+			ProverVersion: version.Version,
+			ProverName:    c.proverName,
+			Challenge:     challengeResult.Data.Token,
 		},
 	}
 
@@ -78,11 +80,13 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 	// Login to coordinator
 	loginReq := &LoginRequest{
 		Message: struct {
-			Challenge  string `json:"challenge"`
-			ProverName string `json:"prover_name"`
+			Challenge     string `json:"challenge"`
+			ProverName    string `json:"prover_name"`
+			ProverVersion string `json:"prover_version"`
 		}{
-			Challenge:  authMsg.Identity.Challenge,
-			ProverName: authMsg.Identity.ProverName,
+			Challenge:     authMsg.Identity.Challenge,
+			ProverName:    authMsg.Identity.ProverName,
+			ProverVersion: authMsg.Identity.ProverVersion,
 		},
 		Signature: authMsg.Signature,
 	}
