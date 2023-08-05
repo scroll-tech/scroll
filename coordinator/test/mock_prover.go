@@ -108,17 +108,27 @@ func (r *mockProver) login(t *testing.T, challengeString string) string {
 	return loginData.Token
 }
 
-func (r *mockProver) healthCheck(t *testing.T, token string, errCode int) bool {
+func (r *mockProver) healthCheckSuccess(t *testing.T) bool {
 	var result types.Response
 	client := resty.New()
 	resp, err := client.R().
-		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
 		SetResult(&result).
 		Get("http://" + r.coordinatorURL + "/coordinator/v1/healthz")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	assert.Equal(t, errCode, result.ErrCode)
+	assert.Equal(t, ctypes.Success, result.ErrCode)
+	return true
+}
+
+func (r *mockProver) healthCheckFailure(t *testing.T) bool {
+	var result types.Response
+	client := resty.New()
+	resp, err := client.R().
+		SetResult(&result).
+		Get("http://" + r.coordinatorURL + "/coordinator/v1/healthz")
+	assert.Error(t, err)
+	assert.Equal(t, 0, resp.StatusCode())
+	assert.Equal(t, 0, result.ErrCode)
 	return true
 }
 

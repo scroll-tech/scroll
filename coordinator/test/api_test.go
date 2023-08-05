@@ -170,9 +170,7 @@ func testHandshake(t *testing.T) {
 	}()
 
 	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
-	token := chunkProver.connectToCoordinator(t)
-	assert.NotEmpty(t, token)
-	assert.True(t, chunkProver.healthCheck(t, token, types.Success))
+	assert.True(t, chunkProver.healthCheckSuccess(t))
 }
 
 func testFailedHandshake(t *testing.T) {
@@ -181,21 +179,17 @@ func testFailedHandshake(t *testing.T) {
 	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
 	defer func() {
 		proofCollector.Stop()
-		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
 	// Try to perform handshake without token
 	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
-	token := chunkProver.connectToCoordinator(t)
-	assert.NotEmpty(t, token)
-	assert.True(t, chunkProver.healthCheck(t, token, types.Success))
+	assert.True(t, chunkProver.healthCheckSuccess(t))
 
-	// Try to perform handshake with timeouted token
+	// Try to perform handshake with server shutdown
+	assert.NoError(t, httpHandler.Shutdown(context.Background()))
+	time.Sleep(time.Second)
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
-	token = chunkProver.connectToCoordinator(t)
-	assert.NotEmpty(t, token)
-	<-time.After(time.Duration(tokenTimeout+1) * time.Second)
-	assert.True(t, batchProver.healthCheck(t, token, types.ErrJWTTokenExpired))
+	assert.True(t, batchProver.healthCheckFailure(t))
 }
 
 func testValidProof(t *testing.T) {
