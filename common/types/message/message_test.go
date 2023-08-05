@@ -15,9 +15,9 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 	authMsg := &AuthMsg{
 		Identity: &Identity{
-			Name:    "testName",
-			Version: "testVersion",
-			Token:   "testToken",
+			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzgxNzUsIm9yaWdfaWF0IjoxNjkxMDM0NTc1fQ.HybBMsEJFhyZqtIa2iVcHUP7CEFttf708jmTMAImAWA",
+			ProverName:    "test",
+			ProverVersion: "v1.0.0",
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(privkey))
@@ -46,15 +46,15 @@ func TestGenerateToken(t *testing.T) {
 
 func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
-		Name:       "testName",
-		ProverType: ProofTypeChunk,
-		Version:    "testVersion",
-		Token:      "testToken",
+		Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzM0MTksIm9yaWdfaWF0IjoxNjkxMDI5ODE5fQ.EhkLZsj__rNPVC3ZDYBtvdh0nB8mmM_Hl82hObaIWOs",
+		ProverName:    "test",
+		ProverVersion: "v1.0.0",
 	}
+
 	hash, err := identity.Hash()
 	assert.NoError(t, err)
 
-	expectedHash := "c0411a19531fb8c6133b2bae91f361c14e65f2d318aef72b83519e6061cad001"
+	expectedHash := "83f5e0ad023e9c1de639ab07b9b4cb972ec9dbbd2524794c533a420a5b137721"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 

@@ -3,6 +3,7 @@ package store
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"go.etcd.io/bbolt"
@@ -89,12 +90,12 @@ func (s *Stack) Delete(taskID string) error {
 	})
 }
 
-// UpdateTimes udpates the prover prove times of the proving task.
-func (s *Stack) UpdateTimes(task *ProvingTask, udpateTimes int) error {
-	task.Times = udpateTimes
+// UpdateTimes updates the prover prove times of the proving task.
+func (s *Stack) UpdateTimes(task *ProvingTask, updateTimes int) error {
+	task.Times = updateTimes
 	byt, err := json.Marshal(task)
 	if err != nil {
-		return err
+		return fmt.Errorf("error marshaling task: %v", err)
 	}
 	key := []byte(task.Task.ID)
 	return s.Update(func(tx *bbolt.Tx) error {
