@@ -18,8 +18,8 @@ maingate = { git = "https://github.com/scroll-tech/halo2wrong", branch = "halo2-
 halo2curves = { git = "https://github.com/scroll-tech/halo2curves.git", branch = "0.3.1-derive-serde" }
 
 [dependencies]
-prover = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.5.1" }
-types = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.5.1" }
+prover = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.5.2" }
+types = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.5.2" }
 halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "develop" }
 
 log = "0.4"
@@ -33,8 +33,6 @@ once_cell = "1.8.0"
 
 [profile.test]
 opt-level = 3
-# debug-assertions = true
 
 [profile.release]
 opt-level = 3
-# debug-assertions = true
