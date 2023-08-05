@@ -31,8 +31,16 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	if err := c.ShouldBind(&login); err != nil {
 		return "", fmt.Errorf("missing the public_key, err:%w", err)
 	}
+
+	// check login parameter's token is equal to brear token, the Authorization must be existed
+	// if not exist, the jwt token will intercept it
+	brearToken := c.GetHeader("Authorization")
+	if brearToken != login.Message.Challenge {
+		return "", fmt.Errorf("check chanllege failure for the not equal chanllege string")
+	}
+
 	// check the challenge is used, if used, return failure
-	if err := a.loginLogic.InsertChallengeString(c, login.Signature); err != nil {
+	if err := a.loginLogic.InsertChallengeString(c, login.Message.Challenge); err != nil {
 		return "", fmt.Errorf("login insert challenge string failure:%w", err)
 	}
 	return login, nil
