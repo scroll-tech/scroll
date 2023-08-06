@@ -2,7 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
@@ -17,7 +16,7 @@ import {L2ERC20Gateway} from "../L2ERC20Gateway.sol";
 /// @title L2USDCGateway
 /// @notice The `L2USDCGateway` contract is used to withdraw `USDC` token on layer 2 and
 /// finalize deposit `USDC` from layer 1.
-contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway {
+contract L2USDCGateway is L2ERC20Gateway {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /*************
@@ -56,8 +55,6 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
     ) external initializer {
         require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
-
-        OwnableUpgradeable.__Ownable_init();
     }
 
     /*************************

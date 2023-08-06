@@ -7,9 +7,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {IL2GatewayRouter} from "./IL2GatewayRouter.sol";
 import {IL2ETHGateway} from "./IL2ETHGateway.sol";
 import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
-import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
-import {IL1ETHGateway} from "../../L1/gateways/IL1ETHGateway.sol";
-import {IScrollGateway} from "../../libraries/gateway/IScrollGateway.sol";
 
 /// @title L2GatewayRouter
 /// @notice The `L2GatewayRouter` is the main entry for withdrawing Ether and ERC20 tokens.

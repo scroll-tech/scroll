@@ -5,7 +5,6 @@ pragma solidity =0.8.16;
 import {OwnableBase} from "../../libraries/common/OwnableBase.sol";
 import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
 
-import {IL1BlockContainer} from "./IL1BlockContainer.sol";
 import {IL1GasPriceOracle} from "./IL1GasPriceOracle.sol";
 
 contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {

@@ -47,7 +47,7 @@ The address of fee vault, collecting cross domain messaging fee.
 ### initialize
 
 ```solidity
-function initialize(address _counterpart, address _feeVault) external nonpayable
+function initialize(address _counterpart) external nonpayable
 ```
 
 
@@ -59,7 +59,6 @@ function initialize(address _counterpart, address _feeVault) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | _counterpart | address | undefined |
-| _feeVault | address | undefined |
 
 ### isL1MessageExecuted
 
