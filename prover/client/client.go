@@ -91,10 +91,12 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 		Signature: authMsg.Signature,
 	}
 
+	// store JWT token for login requests
+	c.client.SetAuthToken(challengeResult.Data.Token)
+
 	var loginResult LoginResponse
 	loginResp, err := c.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("Bearer %s", challengeResult.Data.Token)).
 		SetBody(loginReq).
 		SetResult(&loginResult).
 		Post("/coordinator/v1/login")
