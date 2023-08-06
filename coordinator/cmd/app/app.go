@@ -67,6 +67,7 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	api.InitController(cfg, db)
 	route.Route(router, cfg)
