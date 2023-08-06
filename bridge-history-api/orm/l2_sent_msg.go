@@ -103,7 +103,7 @@ func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex(ctx context.Context) (int64, er
 		Select("batch_index").
 		First(&result).
 		Error
-	if err != nil || errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return -1, nil
 	}
 	if err != nil {
