@@ -66,8 +66,8 @@ contract InitializeL1BridgeContracts is Script {
             L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR,
             MAX_L2_TX_IN_CHUNK
         );
-        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).updateSequencer(L1_ROLLUP_OPERATOR_ADDR, true);
-        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).updateProver(L1_ROLLUP_OPERATOR_ADDR, true);
+        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addSequencer(L1_ROLLUP_OPERATOR_ADDR);
+        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addProver(L1_ROLLUP_OPERATOR_ADDR);
 
         // initialize L2GasPriceOracle
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize(
