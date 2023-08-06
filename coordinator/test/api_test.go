@@ -95,12 +95,15 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		Addr:    coordinatorURL,
 		Handler: router,
 	}
+
 	go func() {
 		runErr := srv.ListenAndServe()
 		if runErr != nil && !errors.Is(runErr, http.ErrServerClosed) {
 			assert.NoError(t, runErr)
 		}
 	}()
+	time.Sleep(time.Second * 2)
+
 	return proofCollector, srv
 }
 
