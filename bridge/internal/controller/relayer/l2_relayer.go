@@ -415,8 +415,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	hash := batch.Hash
 	status := types.ProvingStatus(batch.ProvingStatus)
 	switch status {
-	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
-		// The proof for this block is not ready yet.
+	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned, types.ProvingTaskFailed:
+		// We do not handle pending or failed proving tasks in this function.
 		return
 	case types.ProvingTaskProved:
 		// It's an intermediate state. The prover manager received the proof but has not verified
