@@ -129,3 +129,23 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	batchProverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
+
+func TestProverReLogin(t *testing.T) {
+	// Start postgres docker containers.
+	base.RunL2Geth(t)
+	base.RunDBImage(t)
+
+	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
+
+	// Run coordinator app.
+	coordinatorApp.RunApp(t) // login timeout: 1 sec
+
+	// Run prover app.
+	chunkProverApp.RunAppWithExpectedResult(t, "re-login success") // chunk prover login.
+	batchProverApp.RunAppWithExpectedResult(t, "re-login success") // batch prover login.
+
+	// Free apps.
+	chunkProverApp.WaitExit()
+	batchProverApp.WaitExit()
+	coordinatorApp.WaitExit()
+}

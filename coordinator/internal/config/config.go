@@ -33,7 +33,7 @@ type L2 struct {
 type Auth struct {
 	Secret                     string `json:"secret"`
 	ChallengeExpireDurationSec int    `json:"challenge_expire_duration_sec"`
-	LoginExpireDurationSec     int    `json:"token_expire_duration_sec"`
+	LoginExpireDurationSec     int    `json:"login_expire_duration_sec"`
 }
 
 // Config load configuration items.
