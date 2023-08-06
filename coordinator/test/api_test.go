@@ -101,6 +101,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			assert.NoError(t, runErr)
 		}
 	}()
+	time.Sleep(time.Second * 2)
+
 	return proofCollector, srv
 }
 
