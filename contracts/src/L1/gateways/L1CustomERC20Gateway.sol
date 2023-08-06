@@ -2,7 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
@@ -18,7 +17,7 @@ import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 /// finalize withdraw the tokens from layer 2.
 /// @dev The deposited tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// tokens will be transfer to the recipient directly.
-contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway {
+contract L1CustomERC20Gateway is L1ERC20Gateway {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**********
@@ -56,7 +55,6 @@ contract L1CustomERC20Gateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20G
     ) external initializer {
         require(_router != address(0), "zero router address");
 
-        OwnableUpgradeable.__Ownable_init();
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 

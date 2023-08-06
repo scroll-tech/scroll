@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.16;
 
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 import {IScrollGateway} from "./IScrollGateway.sol";
@@ -9,7 +10,7 @@ import {IScrollMessenger} from "../IScrollMessenger.sol";
 import {IScrollGatewayCallback} from "../callbacks/IScrollGatewayCallback.sol";
 import {ScrollConstants} from "../constants/ScrollConstants.sol";
 
-abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, IScrollGateway {
+abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, OwnableUpgradeable, IScrollGateway {
     /*************
      * Variables *
      *************/
@@ -60,6 +61,7 @@ abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, IScrollGatewa
         require(_messenger != address(0), "zero messenger address");
 
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+        OwnableUpgradeable.__Ownable_init();
 
         counterpart = _counterpart;
         messenger = _messenger;

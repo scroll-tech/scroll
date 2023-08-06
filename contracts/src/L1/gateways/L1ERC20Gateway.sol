@@ -8,8 +8,6 @@ import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ER
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
 import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
 
-import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
-
 import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
 import {IScrollMessenger} from "../../libraries/IScrollMessenger.sol";
 import {ScrollConstants} from "../../libraries/constants/ScrollConstants.sol";

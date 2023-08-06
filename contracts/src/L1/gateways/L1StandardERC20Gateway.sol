@@ -18,7 +18,7 @@ import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 /// @dev The deposited ERC20 tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// token will be transfer to the recipient directly. Any ERC20 that requires non-standard functionality
 /// should use a separate gateway.
-contract L1StandardERC20Gateway is ScrollGatewayBase, L1ERC20Gateway {
+contract L1StandardERC20Gateway is L1ERC20Gateway {
     /*************
      * Variables *
      *************/
