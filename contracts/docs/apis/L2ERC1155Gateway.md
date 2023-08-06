@@ -458,7 +458,7 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 ### UpdateTokenMapping
 
 ```solidity
-event UpdateTokenMapping(address _l2Token, address _l1Token)
+event UpdateTokenMapping(address indexed l2Token, address indexed oldL1Token, address indexed newL1Token)
 ```
 
 Emitted when token mapping for ERC1155 token is updated.
@@ -469,8 +469,9 @@ Emitted when token mapping for ERC1155 token is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| _l2Token  | address | The address of corresponding ERC1155 token on layer 2. |
-| _l1Token  | address | The address of ERC1155 token on layer 1. |
+| l2Token `indexed` | address | The address of corresponding ERC1155 token in layer 2. |
+| oldL1Token `indexed` | address | The address of the old corresponding ERC1155 token in layer 1. |
+| newL1Token `indexed` | address | The address of the new corresponding ERC1155 token in layer 1. |
 
 ### WithdrawERC1155
 

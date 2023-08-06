@@ -25,9 +25,10 @@ contract L1ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC72
      **********/
 
     /// @notice Emitted when token mapping for ERC721 token is updated.
-    /// @param _l1Token The address of ERC721 token on layer 1.
-    /// @param _l2Token The address of corresponding ERC721 token on layer 2.
-    event UpdateTokenMapping(address _l1Token, address _l2Token);
+    /// @param l1Token The address of ERC721 token in layer 1.
+    /// @param oldL2Token The address of the old corresponding ERC721 token in layer 2.
+    /// @param newL2Token The address of the new corresponding ERC721 token in layer 2.
+    event UpdateTokenMapping(address indexed l1Token, address indexed oldL2Token, address indexed newL2Token);
 
     /*************
      * Variables *
@@ -165,9 +166,10 @@ contract L1ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC72
     function updateTokenMapping(address _l1Token, address _l2Token) external onlyOwner {
         require(_l2Token != address(0), "token address cannot be 0");
 
+        address _oldL2Token = tokenMapping[_l1Token];
         tokenMapping[_l1Token] = _l2Token;
 
-        emit UpdateTokenMapping(_l1Token, _l2Token);
+        emit UpdateTokenMapping(_l1Token, _oldL2Token, _l2Token);
     }
 
     /**********************

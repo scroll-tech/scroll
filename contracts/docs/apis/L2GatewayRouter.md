@@ -220,7 +220,7 @@ function renounceOwnership() external nonpayable
 ### setDefaultERC20Gateway
 
 ```solidity
-function setDefaultERC20Gateway(address _defaultERC20Gateway) external nonpayable
+function setDefaultERC20Gateway(address _newDefaultERC20Gateway) external nonpayable
 ```
 
 Update the address of default ERC20 gateway contract.
@@ -231,7 +231,7 @@ Update the address of default ERC20 gateway contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _defaultERC20Gateway | address | The address to update. |
+| _newDefaultERC20Gateway | address | The address to update. |
 
 ### setERC20Gateway
 
@@ -253,7 +253,7 @@ Update the mapping from token address to gateway address.
 ### setETHGateway
 
 ```solidity
-function setETHGateway(address _ethGateway) external nonpayable
+function setETHGateway(address _newEthGateway) external nonpayable
 ```
 
 Update the address of ETH gateway contract.
@@ -264,7 +264,7 @@ Update the address of ETH gateway contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _ethGateway | address | The address to update. |
+| _newEthGateway | address | The address to update. |
 
 ### transferOwnership
 
@@ -473,7 +473,7 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 ### SetDefaultERC20Gateway
 
 ```solidity
-event SetDefaultERC20Gateway(address indexed defaultERC20Gateway)
+event SetDefaultERC20Gateway(address indexed oldDefaultERC20Gateway, address indexed newDefaultERC20Gateway)
 ```
 
 Emitted when the address of default ERC20 Gateway is updated.
@@ -484,12 +484,13 @@ Emitted when the address of default ERC20 Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| defaultERC20Gateway `indexed` | address | undefined |
+| oldDefaultERC20Gateway `indexed` | address | undefined |
+| newDefaultERC20Gateway `indexed` | address | undefined |
 
 ### SetERC20Gateway
 
 ```solidity
-event SetERC20Gateway(address indexed token, address indexed gateway)
+event SetERC20Gateway(address indexed token, address indexed oldGateway, address indexed newGateway)
 ```
 
 Emitted when the `gateway` for `token` is updated.
@@ -501,12 +502,13 @@ Emitted when the `gateway` for `token` is updated.
 | Name | Type | Description |
 |---|---|---|
 | token `indexed` | address | undefined |
-| gateway `indexed` | address | undefined |
+| oldGateway `indexed` | address | undefined |
+| newGateway `indexed` | address | undefined |
 
 ### SetETHGateway
 
 ```solidity
-event SetETHGateway(address indexed ethGateway)
+event SetETHGateway(address indexed oldETHGateway, address indexed newEthGateway)
 ```
 
 Emitted when the address of ETH Gateway is updated.
@@ -517,7 +519,8 @@ Emitted when the address of ETH Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| ethGateway `indexed` | address | undefined |
+| oldETHGateway `indexed` | address | undefined |
+| newEthGateway `indexed` | address | undefined |
 
 ### WithdrawERC20
 

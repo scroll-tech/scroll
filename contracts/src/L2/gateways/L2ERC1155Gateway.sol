@@ -23,9 +23,10 @@ contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC
      **********/
 
     /// @notice Emitted when token mapping for ERC1155 token is updated.
-    /// @param _l2Token The address of corresponding ERC1155 token on layer 2.
-    /// @param _l1Token The address of ERC1155 token on layer 1.
-    event UpdateTokenMapping(address _l2Token, address _l1Token);
+    /// @param l2Token The address of corresponding ERC1155 token in layer 2.
+    /// @param oldL1Token The address of the old corresponding ERC1155 token in layer 1.
+    /// @param newL1Token The address of the new corresponding ERC1155 token in layer 1.
+    event UpdateTokenMapping(address indexed l2Token, address indexed oldL1Token, address indexed newL1Token);
 
     /*************
      * Variables *
@@ -139,9 +140,10 @@ contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC
     function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
         require(_l1Token != address(0), "token address cannot be 0");
 
+        address _oldL1Token = tokenMapping[_l2Token];
         tokenMapping[_l2Token] = _l1Token;
 
-        emit UpdateTokenMapping(_l2Token, _l1Token);
+        emit UpdateTokenMapping(_l2Token, _oldL1Token, _l1Token);
     }
 
     /**********************

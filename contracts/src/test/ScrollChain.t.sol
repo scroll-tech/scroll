@@ -18,7 +18,7 @@ contract ScrollChainTest is DSTestPlus {
     // from ScrollChain
     event UpdateSequencer(address indexed account, bool status);
     event UpdateProver(address indexed account, bool status);
-    event UpdateVerifier(address oldVerifier, address newVerifier);
+    event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
     event UpdateMaxNumL2TxInChunk(uint256 oldMaxNumL2TxInChunk, uint256 newMaxNumL2TxInChunk);
 
     event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
@@ -596,7 +596,7 @@ contract ScrollChainTest is DSTestPlus {
         hevm.stopPrank();
 
         // change to random operator
-        hevm.expectEmit(false, false, false, true);
+        hevm.expectEmit(true, true, false, true);
         emit UpdateVerifier(address(verifier), _newVerifier);
 
         assertEq(rollup.verifier(), address(verifier));
