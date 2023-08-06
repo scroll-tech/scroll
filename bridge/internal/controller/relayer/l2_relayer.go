@@ -496,6 +496,25 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		success = true
 		r.processingFinalization.Store(txID, hash)
 
+	case types.ProvingTaskFailed:
+		// We were unable to prove this batch. There are two possibilities:
+		// (a) Prover bug. In this case, we should fix and redeploy the prover.
+		//     In the meantime, we continue to commit batches to L1 as well as
+		//     proposing and proving chunks and batches.
+		// (b) Unprovable batch, e.g. proof overflow. In this case we need to
+		//     stop the ledger, fix the limit, revert all the violating blocks,
+		//     chunks and batches and all subsequent ones, and resume, i.e. this
+		//     case requires manual resolution.
+		log.Error(
+			"batch proving failed",
+			"Index", batch.Index,
+			"Hash", batch.Hash,
+			"ProverAssignedAt", batch.ProverAssignedAt,
+			"ProvedAt", batch.ProvedAt,
+			"ProofTimeSec", batch.ProofTimeSec,
+		)
+		return
+
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches", "proving status", status)
 	}
