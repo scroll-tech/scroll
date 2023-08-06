@@ -95,7 +95,6 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		Addr:    coordinatorURL,
 		Handler: router,
 	}
-
 	go func() {
 		runErr := srv.ListenAndServe()
 		if runErr != nil && !errors.Is(runErr, http.ErrServerClosed) {
