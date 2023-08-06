@@ -36,8 +36,8 @@ type Prover struct {
 	ctx               context.Context
 	cfg               *config.Config
 	coordinatorClient *client.CoordinatorClient
-	l2GethClient      *ethclient.Client
 	stack             *store.Stack
+	l2GethClient      *ethclient.Client // only applicable for a chunk_prover
 	proverCore        *core.ProverCore
 
 	isClosed int64
@@ -60,10 +60,16 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 		return nil, err
 	}
 
-	// Collect geth node.
-	l2GethClient, err := ethclient.DialContext(ctx, cfg.L2Geth.Endpoint)
-	if err != nil {
-		return nil, err
+	var l2GethClient *ethclient.Client
+	if cfg.Core.ProofType == message.ProofTypeChunk {
+		if cfg.L2Geth == nil || cfg.L2Geth.Endpoint == "" {
+			return nil, errors.New("Missing l2geth config for chunk prover")
+		}
+		// Connect l2geth node. Only applicable for a chunk_prover.
+		l2GethClient, err = ethclient.DialContext(ctx, cfg.L2Geth.Endpoint)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Create prover_core instance
@@ -175,20 +181,22 @@ func (r *Prover) proveAndSubmit() error {
 
 // fetchTaskFromCoordinator fetches a new task from the server
 func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
-	// get the latest confirmed block number
-	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, r.cfg.L2Geth.Confirmations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
-	}
-
-	if latestBlockNumber == 0 {
-		return nil, fmt.Errorf("omit to prove task of the genesis block, latestBlockNumber: %v", latestBlockNumber)
-	}
-
 	// prepare the request
 	req := &client.GetTaskRequest{
-		ProverHeight: latestBlockNumber,
-		TaskType:     r.Type(),
+		TaskType: r.Type(),
+	}
+
+	if req.TaskType == message.ProofTypeChunk {
+		// get the latest confirmed block number
+		latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, r.cfg.L2Geth.Confirmations)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
+		}
+
+		if latestBlockNumber == 0 {
+			return nil, fmt.Errorf("omit to prove task of the genesis block, latestBlockNumber: %v", latestBlockNumber)
+		}
+		req.ProverHeight = latestBlockNumber
 	}
 
 	// send the request
