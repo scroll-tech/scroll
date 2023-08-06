@@ -492,6 +492,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
             // concatenate l2 transaction hashes
             uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+            require(_numTransactionsInBlock >= _numL1MessagesInBlock, "num txs less than num L1 msgs");
             for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
                 bytes32 txHash;
                 (txHash, l2TxPtr) = ChunkCodec.loadL2TxHash(l2TxPtr);
