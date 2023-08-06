@@ -38,8 +38,8 @@ github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjR
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56 h1:Cqj7haxwvzI2O4n9ZZ25helShzFGCy7Z/B+FFSBFHNI=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20230613025759-f055f50f9d56/go.mod h1:45PZqlQCqV0dU4o4+SE8LoJLEvXkK5j45ligvbih9QY=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20230804022247-26eeb40ea3ca h1:aQKsL9FiCPB6Eo3nuyxmw6aZpAhmFvJsRb7XGtXnOUc=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20230804022247-26eeb40ea3ca/go.mod h1:DiN3p2inoXOxGffxSswDKqWjQ7bU+Mp0c9v0XQXKmaA=
 github.com/stretchr/testify v1.8.3 h1:RP3t2pwF7cMEbC1dqtB6poj3niw/9gnV4Cjg5oW5gtY=
 github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/urfave/cli/v2 v2.25.7 h1:VAzn5oq403l5pHjc4OhD54+XGO9cdKVL/7lDjF+iKUs=

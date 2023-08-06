@@ -28,6 +28,7 @@ func testChunkProposer(t *testing.T) {
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MinL1CommitCalldataSizePerChunk: 0,
+		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
 	}, db)
 	cp.TryProposeChunk()
@@ -43,4 +44,29 @@ func testChunkProposer(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
 	assert.Equal(t, expectedHash.Hex(), chunks[0].Hash)
+}
+
+func testChunkProposerRowConsumption(t *testing.T) {
+	db := setupDB(t)
+	defer database.CloseDB(db)
+
+	l2BlockOrm := orm.NewL2Block(db)
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	assert.NoError(t, err)
+
+	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+		MaxTxGasPerChunk:                1000000000,
+		MaxL2TxNumPerChunk:              10000,
+		MaxL1CommitGasPerChunk:          50000000000,
+		MaxL1CommitCalldataSizePerChunk: 1000000,
+		MinL1CommitCalldataSizePerChunk: 0,
+		MaxRowConsumptionPerChunk:       0, // !
+		ChunkTimeoutSec:                 300,
+	}, db)
+	cp.TryProposeChunk()
+
+	chunkOrm := orm.NewChunk(db)
+	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
+	assert.NoError(t, err)
+	assert.Len(t, chunks, 0)
 }

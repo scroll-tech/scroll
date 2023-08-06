@@ -1,4 +1,4 @@
-.PHONY: lint docker clean prover mock_prover
+.PHONY: lint docker clean prover mock-prover
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
 	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
