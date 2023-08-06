@@ -2,10 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
 import {IWETH} from "../../interfaces/IWETH.sol";
 import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
@@ -21,9 +17,7 @@ import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 /// as Ether and then the Ether will be sent to the `L1ScrollMessenger` contract.
 /// On finalizing withdraw, the Ether will be transfered from `L1ScrollMessenger`, then
 /// wrapped as WETH and finally transfer to recipient.
-contract L1WETHGateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
-    using SafeERC20 for IERC20;
-
+contract L1WETHGateway is L1ERC20Gateway {
     /*************
      * Constants *
      *************/

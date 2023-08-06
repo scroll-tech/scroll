@@ -6,8 +6,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import {IScrollGateway} from "../../libraries/gateway/IScrollGateway.sol";
-import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ETHGateway} from "./IL1ETHGateway.sol";
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
 import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";

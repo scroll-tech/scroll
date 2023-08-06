@@ -80,8 +80,9 @@ func testImportL2GasPrice(t *testing.T) {
 					Difficulty: big.NewInt(0),
 					BaseFee:    big.NewInt(0),
 				},
-				Transactions:     nil,
-				WithdrawTrieRoot: common.Hash{},
+				Transactions:   nil,
+				WithdrawRoot:   common.Hash{},
+				RowConsumption: &gethTypes.RowConsumption{},
 			},
 		},
 	}
@@ -95,6 +96,7 @@ func testImportL2GasPrice(t *testing.T) {
 	// check db status
 	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	assert.Empty(t, batch.OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOraclePending)
 
@@ -102,6 +104,7 @@ func testImportL2GasPrice(t *testing.T) {
 	l2Relayer.ProcessGasPriceOracle()
 	batch, err = batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	assert.NotEmpty(t, batch.OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOracleImporting)
 }

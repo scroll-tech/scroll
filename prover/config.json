@@ -1,0 +1,20 @@
+{
+    "prover_name": "prover-1",
+    "keystore_path": "keystore.json",
+    "keystore_password": "prover-pwd",
+    "db_path": "unique-db-path-for-prover-1",
+    "core": {
+        "params_path": "params",
+        "proof_type": 2
+    },
+    "coordinator": {
+        "base_url": "http://localhost:8555",
+        "retry_count": 10,
+        "retry_wait_time_sec": 10,
+        "connection_timeout_sec": 30
+    },
+    "l2geth": {
+        "endpoint": "http://localhost:9999",
+        "confirmations": "0x1"
+    }
+}

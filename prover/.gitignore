@@ -1,0 +1,14 @@
+.idea
+stack/test_stack
+mock/stack
+build/bin/
+
+# ignore db file
+bbolt_db
+
+core/lib
+
+params/
+seed
+
+keystore

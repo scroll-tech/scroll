@@ -9,8 +9,8 @@ import (
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
-	Transactions     []*types.TransactionData `json:"transactions"`
-	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
+	Transactions []*types.TransactionData `json:"transactions"`
+	WithdrawRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
 }
 
 // BatchInfo contains the BlockBatch's main info

@@ -2,14 +2,12 @@
 
 pragma solidity =0.8.16;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import {ERC1155HolderUpgradeable, ERC1155ReceiverUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 
 import {IL2ERC1155Gateway} from "./IL2ERC1155Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL1ERC1155Gateway} from "../../L1/gateways/IL1ERC1155Gateway.sol";
-import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {IScrollERC1155} from "../../libraries/token/IScrollERC1155.sol";
 
 /// @title L2ERC1155Gateway
@@ -19,7 +17,7 @@ import {IScrollERC1155} from "../../libraries/token/IScrollERC1155.sol";
 /// NFT will be minted and transfered to the recipient.
 ///
 /// This will be changed if we have more specific scenarios.
-contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {
+contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {
     /**********
      * Events *
      **********/
@@ -46,7 +44,6 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     }
 
     function initialize(address _counterpart, address _messenger) external initializer {
-        OwnableUpgradeable.__Ownable_init();
         ERC1155HolderUpgradeable.__ERC1155Holder_init();
         ERC1155ReceiverUpgradeable.__ERC1155Receiver_init();
 

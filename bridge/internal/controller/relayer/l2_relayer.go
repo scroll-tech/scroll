@@ -10,6 +10,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -171,9 +172,10 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	chunk := &types.Chunk{
 		Blocks: []*types.WrappedBlock{{
-			Header:           genesis,
-			Transactions:     nil,
-			WithdrawTrieRoot: common.Hash{},
+			Header:         genesis,
+			Transactions:   nil,
+			WithdrawRoot:   common.Hash{},
+			RowConsumption: &gethTypes.RowConsumption{},
 		}},
 	}
 
@@ -266,8 +268,8 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 // ProcessGasPriceOracle imports gas price to layer1
 func (r *Layer2Relayer) ProcessGasPriceOracle() {
 	batch, err := r.batchOrm.GetLatestBatch(r.ctx)
-	if err != nil {
-		log.Error("Failed to GetLatestBatch", "err", err)
+	if batch == nil || err != nil {
+		log.Error("Failed to GetLatestBatch", "batch", batch, "err", err)
 		return
 	}
 
@@ -417,7 +419,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		// The proof for this block is not ready yet.
 		return
 	case types.ProvingTaskProved:
-		// It's an intermediate state. The roller manager received the proof but has not verified
+		// It's an intermediate state. The prover manager received the proof but has not verified
 		// the proof yet. We don't roll up the proof until it's verified.
 		return
 	case types.ProvingTaskVerified:

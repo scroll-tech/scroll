@@ -76,12 +76,7 @@ contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollERC20Upgradeable 
     }
 
     function isContract(address _addr) private view returns (bool hasCode) {
-        uint256 length;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            length := extcodesize(_addr)
-        }
-        return length > 0;
+        hasCode = _addr.code.length > 0;
     }
 
     /// @inheritdoc IScrollERC20Upgradeable

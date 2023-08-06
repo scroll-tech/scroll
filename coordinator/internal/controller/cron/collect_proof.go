@@ -12,7 +12,6 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/collector"
 	"scroll-tech/coordinator/internal/orm"
 )
 
@@ -22,10 +21,7 @@ type Collector struct {
 	db  *gorm.DB
 	ctx context.Context
 
-	stopRunChan     chan struct{}
 	stopTimeoutChan chan struct{}
-
-	collectors map[message.ProofType]collector.Collector
 
 	proverTaskOrm *orm.ProverTask
 	chunkOrm      *orm.Chunk
@@ -38,18 +34,12 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collect
 		cfg:             cfg,
 		db:              db,
 		ctx:             ctx,
-		stopRunChan:     make(chan struct{}),
 		stopTimeoutChan: make(chan struct{}),
-		collectors:      make(map[message.ProofType]collector.Collector),
 		proverTaskOrm:   orm.NewProverTask(db),
 		chunkOrm:        orm.NewChunk(db),
 		batchOrm:        orm.NewBatch(db),
 	}
 
-	c.collectors[message.ProofTypeBatch] = collector.NewBatchProofCollector(cfg, db)
-	c.collectors[message.ProofTypeChunk] = collector.NewChunkProofCollector(cfg, db)
-
-	go c.run()
 	go c.timeoutProofTask()
 
 	log.Info("Start coordinator successfully.")
@@ -59,38 +49,7 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collect
 
 // Stop all the collector
 func (c *Collector) Stop() {
-	c.stopRunChan <- struct{}{}
 	c.stopTimeoutChan <- struct{}{}
-}
-
-// run loop and cron collect
-func (c *Collector) run() {
-	defer func() {
-		if err := recover(); err != nil {
-			nerr := fmt.Errorf("collector panic error:%v", err)
-			log.Warn(nerr.Error())
-		}
-	}()
-
-	ticker := time.NewTicker(time.Second * 2)
-	for {
-		select {
-		case <-ticker.C:
-			for _, tmpCollector := range c.collectors {
-				if err := tmpCollector.Collect(c.ctx); err != nil {
-					log.Warn("collect data to prover failure", "collector name", tmpCollector.Name(), "error", err)
-				}
-			}
-		case <-c.ctx.Done():
-			if c.ctx.Err() != nil {
-				log.Error("manager context canceled with error", "error", c.ctx.Err())
-			}
-			return
-		case <-c.stopRunChan:
-			log.Info("the coordinator run loop exit")
-			return
-		}
-	}
 }
 
 // timeoutTask cron check the send task is timeout. if timeout reached, restore the
@@ -114,16 +73,16 @@ func (c *Collector) timeoutProofTask() {
 			}
 
 			for _, assignedProverTask := range assignedProverTasks {
-				timeoutDuration := time.Duration(c.cfg.RollerManagerConfig.CollectionTime) * time.Minute
+				timeoutDuration := time.Duration(c.cfg.ProverManager.CollectionTimeSec) * time.Second
 				// here not update the block batch proving status failed, because the collector loop will check
 				// the attempt times. if reach the times, the collector will set the block batch proving status.
 				if time.Since(assignedProverTask.AssignedAt) >= timeoutDuration {
 					log.Warn("proof task have reach the timeout", "task id", assignedProverTask.TaskID,
 						"prover public key", assignedProverTask.ProverPublicKey, "prover name", assignedProverTask.ProverName, "task type", assignedProverTask.TaskType)
 					err = c.db.Transaction(func(tx *gorm.DB) error {
-						// update prover task proving status as RollerProofInvalid
+						// update prover task proving status as ProverProofInvalid
 						if err = c.proverTaskOrm.UpdateProverTaskProvingStatus(c.ctx, message.ProofType(assignedProverTask.TaskType),
-							assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.RollerProofInvalid, tx); err != nil {
+							assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverProofInvalid, tx); err != nil {
 							log.Error("update prover task proving status failure", "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 							return err
 						}

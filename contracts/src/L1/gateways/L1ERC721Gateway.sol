@@ -2,7 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import {ERC721HolderUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 
@@ -20,13 +19,7 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 /// NFT will be transfer to the recipient directly.
 ///
 /// This will be changed if we have more specific scenarios.
-contract L1ERC721Gateway is
-    OwnableUpgradeable,
-    ERC721HolderUpgradeable,
-    ScrollGatewayBase,
-    IL1ERC721Gateway,
-    IMessageDropCallback
-{
+contract L1ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC721Gateway, IMessageDropCallback {
     /**********
      * Events *
      **********/
@@ -56,7 +49,6 @@ contract L1ERC721Gateway is
     /// @param _counterpart The address of L2ERC721Gateway in L2.
     /// @param _messenger The address of L1ScrollMessenger.
     function initialize(address _counterpart, address _messenger) external initializer {
-        OwnableUpgradeable.__Ownable_init();
         ERC721HolderUpgradeable.__ERC721Holder_init();
 
         ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
