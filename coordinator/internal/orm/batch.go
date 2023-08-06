@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"time"
 
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 )
 
 const defaultBatchHeaderVersion = 0
@@ -272,4 +273,29 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 		return fmt.Errorf("Batch.UpdateProofByHash error: %w, batch hash: %v", err, hash)
 	}
 	return nil
+}
+
+// UpdateUnassignedBatchReturning update the unassigned batch and return the update record
+func (o *Batch) UpdateUnassignedBatchReturning(ctx context.Context, limit int) ([]*Batch, error) {
+	if limit < 0 {
+		return nil, errors.New("limit must not be smaller than zero")
+	}
+	if limit == 0 {
+		return nil, nil
+	}
+
+	db := o.db.WithContext(ctx)
+
+	subQueryDB := db.Model(&Batch{}).Select("index")
+	subQueryDB = subQueryDB.Where("proving_status = ? AND chunk_proofs_status = ?", types.ProvingTaskUnassigned, types.ChunkProofsStatusReady)
+	subQueryDB = subQueryDB.Order("index ASC")
+	subQueryDB = subQueryDB.Limit(limit)
+
+	var batches []*Batch
+	db = db.Model(&batches).Clauses(clause.Returning{})
+	db = db.Where("index = (?)", subQueryDB)
+	if err := db.Update("proving_status", types.ProvingTaskAssigned).Error; err != nil {
+		return nil, fmt.Errorf("Batch.UpdateUnassignedBatchReturning error: %w", err)
+	}
+	return batches, nil
 }

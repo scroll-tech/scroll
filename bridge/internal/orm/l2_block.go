@@ -29,6 +29,7 @@ type L2Block struct {
 	TxNum          uint32 `json:"tx_num" gorm:"tx_num"`
 	GasUsed        uint64 `json:"gas_used" gorm:"gas_used"`
 	BlockTimestamp uint64 `json:"block_timestamp" gorm:"block_timestamp"`
+	RowConsumption string `json:"row_consumption" gorm:"row_consumption"`
 
 	// chunk
 	ChunkHash string `json:"chunk_hash" gorm:"chunk_hash;default:NULL"`
@@ -68,7 +69,7 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (uint64, error) {
 func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_root")
+	db = db.Select("header, transactions, withdraw_root, row_consumption")
 	db = db.Where("chunk_hash IS NULL")
 	db = db.Order("number ASC")
 
@@ -91,6 +92,11 @@ func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock
 		}
 
 		wrappedBlock.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
+
+		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
+			return nil, fmt.Errorf("L2Block.GetUnchunkedBlocks error: %w", err)
+		}
+
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 
@@ -134,7 +140,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_root")
+	db = db.Select("header, transactions, withdraw_root, row_consumption")
 	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
 	db = db.Order("number ASC")
 
@@ -162,6 +168,11 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 		}
 
 		wrappedBlock.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
+
+		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
+			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+		}
+
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 
@@ -184,6 +195,12 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
 		}
 
+		rc, err := json.Marshal(block.RowConsumption)
+		if err != nil {
+			log.Error("failed to marshal RowConsumption", "hash", block.Header.Hash().String(), "err", err)
+			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
+		}
+
 		l2Block := L2Block{
 			Number:         block.Header.Number.Uint64(),
 			Hash:           block.Header.Hash().String(),
@@ -194,6 +211,7 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 			TxNum:          uint32(len(block.Transactions)),
 			GasUsed:        block.Header.GasUsed,
 			BlockTimestamp: block.Header.Time,
+			RowConsumption: string(rc),
 			Header:         string(header),
 		}
 		l2Blocks = append(l2Blocks, l2Block)

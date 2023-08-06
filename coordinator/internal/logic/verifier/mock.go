@@ -18,8 +18,16 @@ func NewVerifier(_ *config.VerifierConfig) (*Verifier, error) {
 	return &Verifier{}, nil
 }
 
-// VerifyProof always return true
-func (v *Verifier) VerifyProof(proof *message.BatchProof) (bool, error) {
+// VerifyChunkProof return a mock verification result for a ChunkProof.
+func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
+	if string(proof.Proof) == InvalidTestProof {
+		return false, nil
+	}
+	return true, nil
+}
+
+// VerifyBatchProof return a mock verification result for a BatchProof.
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}
