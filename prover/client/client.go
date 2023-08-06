@@ -138,10 +138,11 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 	}
 
 	if result.ErrCode == types.ErrJWTTokenExpired {
-		log.Debug("JWT expired, attempting to re-login")
+		log.Info("JWT expired, attempting to re-login")
 		if err := c.Login(ctx); err != nil {
 			return nil, fmt.Errorf("JWT expired, re-login failed: %v", err)
 		}
+		log.Info("re-login success")
 		return c.GetTask(ctx, req)
 	}
 	if result.ErrCode != types.Success {
@@ -170,10 +171,11 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 	}
 
 	if result.ErrCode == types.ErrJWTTokenExpired {
-		log.Debug("JWT expired, attempting to re-login")
+		log.Info("JWT expired, attempting to re-login")
 		if err := c.Login(ctx); err != nil {
 			return fmt.Errorf("JWT expired, re-login failed: %v", err)
 		}
+		log.Info("re-login success")
 		return c.SubmitProof(ctx, req)
 	}
 	if result.ErrCode != types.Success {
