@@ -169,7 +169,7 @@ func TestBatchHeaderEncode(t *testing.T) {
 	assert.NotNil(t, batchHeader)
 	bytes = batchHeader.Encode()
 	assert.Equal(t, 121, len(bytes))
-	assert.Equal(t, "010000000000000001000000000000000b000000000000000b457a9e90e8e51ba2de2f66c6b589540b88cf594dac7fa7d04b99cdcfecf24e384136709aabc8a23aa17fbcc833da2f7857d3c2884feec9aae73429c135f9498500000000000000000000000000000000000000000000000000000000000003ff", common.Bytes2Hex(bytes))
+	assert.Equal(t, "010000000000000001000000000000000b000000000000000b34f419ce7e882295bdb5aec6cce56ffa788a5fed4744d7fbd77e4acbf409f1ca4136709aabc8a23aa17fbcc833da2f7857d3c2884feec9aae73429c135f9498500000000000000000000000000000000000000000000000000000000000003ff", common.Bytes2Hex(bytes))
 }
 
 func TestBatchHeaderHash(t *testing.T) {
@@ -230,7 +230,7 @@ func TestBatchHeaderHash(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	hash = batchHeader.Hash()
-	assert.Equal(t, "0ec9547c6645d5f0c1254e121f49e93f54525cfda5bfb2236440fb3470f48902", common.Bytes2Hex(hash.Bytes()))
+	assert.Equal(t, "1c3007880f0eafe74572ede7d164ff1ee5376e9ac9bff6f7fb837b2630cddc9a", common.Bytes2Hex(hash.Bytes()))
 }
 
 func TestBatchHeaderDecode(t *testing.T) {
