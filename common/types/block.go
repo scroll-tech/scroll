@@ -41,7 +41,7 @@ func (w *WrappedBlock) NumL2Transactions() uint64 {
 	var count uint64
 	for _, txData := range w.Transactions {
 		if txData.Type != types.L1MessageTxType {
-			count += 1
+			count++
 		}
 	}
 	return count
