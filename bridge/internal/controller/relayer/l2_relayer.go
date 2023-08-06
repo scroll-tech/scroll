@@ -374,6 +374,15 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		// send transaction
 		txID := batch.Hash + "-commit"
+		log.Info(
+			"Sending commitBatch",
+			"batch.Index", batch.Index,
+			"batch.Hash", batch.Hash,
+			"RollupContractAddress", r.cfg.RollupContractAddress,
+			"calldata", common.Bytes2Hex(calldata),
+			"parentBatch.BatchHeader", common.Bytes2Hex(parentBatch.BatchHeader),
+			"batch.BatchHeader", common.Bytes2Hex(batch.BatchHeader),
+		)
 		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
