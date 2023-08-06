@@ -17,6 +17,8 @@ func Route(router *gin.Engine, cfg *config.Config) {
 func v1(router *gin.RouterGroup, conf *config.Config) {
 	r := router.Group("/v1")
 
+	r.GET("/health", api.HealthCheck.HealthCheck)
+
 	challengeMiddleware := middleware.ChallengeMiddleware(conf)
 	r.GET("/challenge", challengeMiddleware.LoginHandler)
 
@@ -26,7 +28,6 @@ func v1(router *gin.RouterGroup, conf *config.Config) {
 	// need jwt token api
 	r.Use(loginMiddleware.MiddlewareFunc())
 	{
-		r.GET("/healthz", api.HealthCheck.HealthCheck)
 		r.POST("/get_task", api.GetTask.GetTasks)
 		r.POST("/submit_proof", api.SubmitProof.SubmitProof)
 	}
