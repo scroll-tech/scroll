@@ -5,6 +5,15 @@ pragma solidity ^0.8.16;
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 
 interface IL2ScrollMessenger is IScrollMessenger {
+    /**********
+     * Events *
+     **********/
+
+    /// @notice Emitted when the maximum number of times each message can fail in L2 is updated.
+    /// @param oldMaxFailedExecutionTimes The old maximum number of times each message can fail in L2.
+    /// @param newMaxFailedExecutionTimes The new maximum number of times each message can fail in L2.
+    event UpdateMaxFailedExecutionTimes(uint256 oldMaxFailedExecutionTimes, uint256 newMaxFailedExecutionTimes);
+
     /*****************************
      * Public Mutating Functions *
      *****************************/

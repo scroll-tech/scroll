@@ -87,7 +87,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		if errors.Is(err, ErrValidatorFailureProofMsgStatusNotOk) {
 			m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
 		}
-		return nil
+		return err
 	}
 
 	proofTime := time.Since(proverTask.CreatedAt)
@@ -134,23 +134,24 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	}
 
 	if verifyErr != nil || !success {
-		if verifyErr != nil {
-			// TODO: this is only a temp workaround for testnet, we should return err in real cases
-			log.Error("failed to verify zk proof", "proof id", proofMsg.ID, "prover pk", pk, "prove type",
-				proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
-		}
 		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg.Type)
-
-		// TODO: Prover needs to be slashed if proof is invalid.
 		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
-		return nil
+
+		if verifyErr == nil {
+			verifyErr = fmt.Errorf("verification succeeded and it's an invalid proof")
+		}
+		return verifyErr
 	}
+
+	log.Info("proof verified and valid", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
+		"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec)
 
 	if err := m.closeProofTask(ctx, proofMsg.ID, pk, proofMsg); err != nil {
 		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg.Type)
+		return err
 	}
 
 	coordinatorProofsVerifiedSuccessTimeTimer.Update(proofTime)

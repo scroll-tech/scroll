@@ -36,8 +36,8 @@ type Prover struct {
 	ctx               context.Context
 	cfg               *config.Config
 	coordinatorClient *client.CoordinatorClient
-	l2GethClient      *ethclient.Client
 	stack             *store.Stack
+	l2GethClient      *ethclient.Client // only applicable for a chunk_prover
 	proverCore        *core.ProverCore
 
 	isClosed int64
@@ -60,10 +60,16 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 		return nil, err
 	}
 
-	// Collect geth node.
-	l2GethClient, err := ethclient.DialContext(ctx, cfg.L2Geth.Endpoint)
-	if err != nil {
-		return nil, err
+	var l2GethClient *ethclient.Client
+	if cfg.Core.ProofType == message.ProofTypeChunk {
+		if cfg.L2Geth == nil || cfg.L2Geth.Endpoint == "" {
+			return nil, errors.New("Missing l2geth config for chunk prover")
+		}
+		// Connect l2geth node. Only applicable for a chunk_prover.
+		l2GethClient, err = ethclient.DialContext(ctx, cfg.L2Geth.Endpoint)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Create prover_core instance
@@ -145,6 +151,13 @@ func (r *Prover) proveAndSubmit() error {
 		}
 	}
 
+	defer func() {
+		err = r.stack.Delete(task.Task.ID)
+		if err != nil {
+			log.Error("prover stack pop failed!", "err", err)
+		}
+	}()
+
 	var proofMsg *message.ProofDetail
 	if task.Times <= 2 {
 		// If panic times <= 2, try to proof the task.
@@ -153,44 +166,37 @@ func (r *Prover) proveAndSubmit() error {
 		}
 
 		log.Info("start to prove task", "task-type", task.Task.Type, "task-id", task.Task.ID)
-		proofMsg = r.prove(task)
-	} else {
-		// when the prover has more than 3 times panic,
-		// it will omit to prove the task, submit StatusProofError and then Delete the task.
-		proofMsg = &message.ProofDetail{
-			Status: message.StatusProofError,
-			Error:  "zk proving panic",
-			ID:     task.Task.ID,
-			Type:   task.Task.Type,
+		proofMsg, err = r.prove(task)
+		if err != nil { // handling error from prove
+			return fmt.Errorf("failed to prove task, task-type: %v, err: %v", task.Task.Type, err)
 		}
+
+		return r.submitProof(proofMsg)
 	}
 
-	defer func() {
-		err = r.stack.Delete(task.Task.ID)
-		if err != nil {
-			log.Error("prover stack pop failed!", "err", err)
-		}
-	}()
-
-	return r.submitProof(proofMsg)
+	// when the prover has more than 3 times panic,
+	// it will omit to prove the task, submit StatusProofError and then Delete the task.
+	return fmt.Errorf("zk proving panic for task, task-type: %v, task-id: %v", task.Task.Type, task.Task.ID)
 }
 
 // fetchTaskFromCoordinator fetches a new task from the server
 func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
-	// get the latest confirmed block number
-	latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, r.cfg.L2Geth.Confirmations)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
-	}
-
-	if latestBlockNumber == 0 {
-		return nil, fmt.Errorf("omit to prove task of the genesis block, latestBlockNumber: %v", latestBlockNumber)
-	}
-
 	// prepare the request
 	req := &client.GetTaskRequest{
-		ProverHeight: latestBlockNumber,
-		TaskType:     r.Type(),
+		TaskType: r.Type(),
+	}
+
+	if req.TaskType == message.ProofTypeChunk {
+		// get the latest confirmed block number
+		latestBlockNumber, err := putils.GetLatestConfirmedBlockNumber(r.ctx, r.l2GethClient, r.cfg.L2Geth.Confirmations)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch latest confirmed block number: %v", err)
+		}
+
+		if latestBlockNumber == 0 {
+			return nil, fmt.Errorf("omit to prove task of the genesis block, latestBlockNumber: %v", latestBlockNumber)
+		}
+		req.ProverHeight = latestBlockNumber
 	}
 
 	// send the request
@@ -238,8 +244,9 @@ func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 	return provingTask, nil
 }
 
-func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
-	detail = &message.ProofDetail{
+// prove function tries to prove a task. It returns an error if the proof fails.
+func (r *Prover) prove(task *store.ProvingTask) (*message.ProofDetail, error) {
+	detail := &message.ProofDetail{
 		ID:     task.Task.ID,
 		Type:   task.Task.Type,
 		Status: message.StatusOk,
@@ -249,30 +256,28 @@ func (r *Prover) prove(task *store.ProvingTask) (detail *message.ProofDetail) {
 	case message.ProofTypeChunk:
 		proof, err := r.proveChunk(task)
 		if err != nil {
-			log.Error("prove chunk failed!", "task-id", task.Task.ID, "err", err)
 			detail.Status = message.StatusProofError
 			detail.Error = err.Error()
-			return
+			return detail, err
 		}
 		detail.ChunkProof = proof
-		log.Info("prove chunk successfully!", "task-id", task.Task.ID)
-		return
+		log.Info("prove chunk success", "task-id", task.Task.ID)
+		return detail, nil
 
 	case message.ProofTypeBatch:
 		proof, err := r.proveBatch(task)
 		if err != nil {
-			log.Error("prove batch failed!", "task-id", task.Task.ID, "err", err)
 			detail.Status = message.StatusProofError
 			detail.Error = err.Error()
-			return
+			return detail, err
 		}
 		detail.BatchProof = proof
-		log.Info("prove batch successfully!", "task-id", task.Task.ID)
-		return
+		log.Info("prove batch success", "task-id", task.Task.ID)
+		return detail, nil
 
 	default:
-		log.Error("invalid task type", "task-id", task.Task.ID, "task-type", task.Task.Type)
-		return
+		err := fmt.Errorf("invalid task type: %v", task.Task.Type)
+		return detail, err
 	}
 }
 
@@ -282,7 +287,7 @@ func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error
 	}
 	traces, err := r.getSortedTracesByHashes(task.Task.ChunkTaskDetail.BlockHashes)
 	if err != nil {
-		return nil, fmt.Errorf("get traces from eth node failed, block hashes: %v", task.Task.ChunkTaskDetail.BlockHashes)
+		return nil, fmt.Errorf("get traces from eth node failed, block hashes: %v, err: %v", task.Task.ChunkTaskDetail.BlockHashes, err)
 	}
 	return r.proverCore.ProveChunk(task.Task.ID, traces)
 }

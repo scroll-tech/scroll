@@ -343,8 +343,11 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 
 // UpdateUnassignedChunkReturning update the unassigned batch which end_block_number <= height and return the update record
 func (o *Chunk) UpdateUnassignedChunkReturning(ctx context.Context, height, limit int) ([]*Chunk, error) {
+	if height <= 0 {
+		return nil, errors.New("Chunk.UpdateUnassignedBatchReturning error: height must be larger than zero")
+	}
 	if limit < 0 {
-		return nil, errors.New("limit must not be smaller than zero")
+		return nil, errors.New("Chunk.UpdateUnassignedBatchReturning error: limit must not be smaller than zero")
 	}
 	if limit == 0 {
 		return nil, nil

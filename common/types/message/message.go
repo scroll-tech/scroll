@@ -33,7 +33,7 @@ func (r ProofType) String() string {
 	case ProofTypeBatch:
 		return "proof type batch"
 	default:
-		return "illegal proof type"
+		return fmt.Sprintf("illegal proof type: %d", r)
 	}
 }
 

@@ -21,7 +21,7 @@
   },
   "auth": {
     "secret": "prover secret key",
-    "challenge_expire_duration_sec": 3600,
-    "login_expire_duration_sec": 10
+    "challenge_expire_duration_sec": 10,
+    "login_expire_duration_sec": 3600
   }
 }

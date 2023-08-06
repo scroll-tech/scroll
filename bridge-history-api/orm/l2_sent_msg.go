@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -102,6 +103,9 @@ func (l *L2SentMsg) GetLatestL2SentMsgBatchIndex(ctx context.Context) (int64, er
 		Select("batch_index").
 		First(&result).
 		Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return -1, nil
+	}
 	if err != nil {
 		return -1, fmt.Errorf("L2SentMsg.GetLatestL2SentMsgBatchIndex error: %w", err)
 	}

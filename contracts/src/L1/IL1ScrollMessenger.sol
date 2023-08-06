@@ -10,8 +10,9 @@ interface IL1ScrollMessenger is IScrollMessenger {
      **********/
 
     /// @notice Emitted when the maximum number of times each message can be replayed is updated.
-    /// @param maxReplayTimes The new maximum number of times each message can be replayed.
-    event UpdateMaxReplayTimes(uint256 maxReplayTimes);
+    /// @param oldMaxReplayTimes The old maximum number of times each message can be replayed.
+    /// @param newMaxReplayTimes The new maximum number of times each message can be replayed.
+    event UpdateMaxReplayTimes(uint256 oldMaxReplayTimes, uint256 newMaxReplayTimes);
 
     /***********
      * Structs *

@@ -19,13 +19,13 @@ type Config struct {
 	Core             *ProverCoreConfig  `json:"core"`
 	DBPath           string             `json:"db_path"`
 	Coordinator      *CoordinatorConfig `json:"coordinator"`
-	L2Geth           *L2GethConfig      `json:"l2geth"`
+	L2Geth           *L2GethConfig      `json:"l2geth,omitempty"` // only for chunk_prover
 }
 
 // ProverCoreConfig load zk prover config.
 type ProverCoreConfig struct {
 	ParamsPath string            `json:"params_path"`
-	ProofType  message.ProofType `json:"prove_type,omitempty"` // 0: chunk prover (default type), 1: batch prover
+	ProofType  message.ProofType `json:"proof_type,omitempty"` // 1: chunk prover (default type), 2: batch prover
 	DumpDir    string            `json:"dump_dir,omitempty"`
 }
 
