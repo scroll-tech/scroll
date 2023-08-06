@@ -33,4 +33,11 @@ func TestGetBatchRangeFromCalldataV2(t *testing.T) {
 	assert.Equal(t, start, uint64(10))
 	assert.Equal(t, finish, uint64(20))
 	assert.Equal(t, batchIndex, uint64(2))
+
+	// genesis batch
+	batchIndex, start, finish, err = utils.GetBatchRangeFromCalldataV2(common.Hex2Bytes("3fdeecb200000000000000000000000000000000000000000000000000000000000000402dcb5308098d24a37fc1487a229fcedb09fa4343ede39cbad365bc925535bb09000000000000000000000000000000000000000000000000000000000000005900000000000000000000000000000000000000000000000000c252bc9780c4d83cf11f14b8cd03c92c4d18ce07710ba836d31d12da216c8330000000000000000000000000000000000000000000000000000000000000000000000000000000"))
+	assert.NoError(t, err)
+	assert.Equal(t, start, uint64(0))
+	assert.Equal(t, finish, uint64(0))
+	assert.Equal(t, batchIndex, uint64(0))
 }
