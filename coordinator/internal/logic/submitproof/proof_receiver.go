@@ -146,6 +146,9 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return verifyErr
 	}
 
+	log.Info("proof verified and valid", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
+		"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec)
+
 	if err := m.closeProofTask(ctx, proofMsg.ID, pk, proofMsg); err != nil {
 		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg.Type)
 		return err
