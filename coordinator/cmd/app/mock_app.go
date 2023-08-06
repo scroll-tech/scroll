@@ -89,6 +89,8 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	}
 	cfg.DB.DSN = base.DBImg.Endpoint()
 	cfg.L2.ChainID = 111
+	cfg.Auth.ChallengeExpireDurationSec = 1
+	cfg.Auth.LoginExpireDurationSec = 1
 	c.Config = cfg
 
 	if !store {
