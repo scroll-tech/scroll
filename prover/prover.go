@@ -62,6 +62,9 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 
 	var l2GethClient *ethclient.Client
 	if cfg.Core.ProofType == message.ProofTypeChunk {
+		if cfg.L2Geth == nil || cfg.L2Geth.Endpoint == "" {
+			return nil, errors.New("Missing l2geth config for chunk prover")
+		}
 		// Connect l2geth node. Only applicable for a chunk_prover.
 		l2GethClient, err = ethclient.DialContext(ctx, cfg.L2Geth.Endpoint)
 		if err != nil {
