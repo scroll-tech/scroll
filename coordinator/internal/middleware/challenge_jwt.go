@@ -29,7 +29,6 @@ func ChallengeMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 				"random": base64.URLEncoding.EncodeToString(b),
 			}
 		},
-		Unauthorized:  unauthorized,
 		Key:           []byte(conf.Auth.Secret),
 		Timeout:       time.Second * time.Duration(conf.Auth.ChallengeExpireDurationSec),
 		TokenLookup:   "header: Authorization, query: token, cookie: jwt",
