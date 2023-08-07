@@ -60,7 +60,7 @@ for file in "tmp"/*.json; do
     contract=$(echo "$file" | sed 's#.*/##; s/\..*//')
     # shellcheck disable=SC2001
     pkg=$(echo "$dest" | sed 's#.*/##; s/\..*//')
-    abigen --tmpl "./metrics.tmpl" --abi "tmp/${contract}.json" --pkg "${pkg}" --type "${contract}" --out scroll/$dest/"${contract}".go
+    go run github.com/scroll-tech/go-ethereum/cmd/abigen --tmpl "./metrics.tmpl" --abi "tmp/${contract}.json" --pkg "${pkg}" --type "${contract}" --out scroll/$dest/"${contract}".go
   fi
 done
 

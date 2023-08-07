@@ -3,10 +3,10 @@
 all: erc20 greeter scroll
 
 erc20:
-	abigen --combined-json ./erc20/ERC20Mock.json --pkg erc20 --out ./erc20/ERC20Mock.go
+	go run github.com/scroll-tech/go-ethereum/cmd/abigen --combined-json ./erc20/ERC20Mock.json --pkg erc20 --out ./erc20/ERC20Mock.go
 
 greeter:
-	abigen --combined-json ./greeter/Greeter.json --pkg greeter --out ./greeter/Greeter.go
+	go run github.com/scroll-tech/go-ethereum/cmd/abigen --combined-json ./greeter/Greeter.json --pkg greeter --out ./greeter/Greeter.go
 
 scroll:
 	# L1
