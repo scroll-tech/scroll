@@ -424,7 +424,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		return
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
-		success := false
 
 		var parentBatchStateRoot string
 		if batch.Index > 0 {
@@ -438,24 +437,14 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			parentBatchStateRoot = parentBatch.StateRoot
 		}
 
-		defer func() {
-			// TODO: need to revisit this and have a more fine-grained error handling
-			if !success {
-				log.Info("Failed to upload the proof, change rollup status to RollupFinalizeFailed", "hash", hash)
-				if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizeFailed); err != nil {
-					log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
-				}
-			}
-		}()
-
 		aggProof, err := r.batchOrm.GetVerifiedProofByHash(r.ctx, hash)
 		if err != nil {
-			log.Warn("get verified proof by hash failed", "hash", hash, "err", err)
+			log.Error("get verified proof by hash failed", "hash", hash, "err", err)
 			return
 		}
 
 		if err = aggProof.SanityCheck(); err != nil {
-			log.Warn("agg_proof sanity check fails", "hash", hash, "error", err)
+			log.Error("agg_proof sanity check fails", "hash", hash, "error", err)
 			return
 		}
 
@@ -478,8 +467,18 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		finalizeTxHash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-				log.Error("finalizeBatchWithProof in layer1 failed",
-					"index", batch.Index, "hash", batch.Hash, "err", err)
+				// This can happen normally if we try to finalize 2 or more
+				// batches around the same time. The 2nd tx might fail since
+				// the client does not see the 1st tx's updates at this point.
+				// TODO: add more fine-grained error handling
+				log.Error(
+					"finalizeBatchWithProof in layer1 failed",
+					"index", batch.Index,
+					"hash", batch.Hash,
+					"RollupContractAddress", r.cfg.RollupContractAddress,
+					"calldata", common.Bytes2Hex(data),
+					"err", err,
+				)
 			}
 			return
 		}
@@ -489,11 +488,10 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		// record and sync with db, @todo handle db error
 		err = r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, hash, finalizeTxHash.String(), types.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed",
+			log.Error("UpdateFinalizeTxHashAndRollupStatus failed",
 				"index", batch.Index, "batch hash", batch.Hash,
 				"tx hash", finalizeTxHash.String(), "err", err)
 		}
-		success = true
 		r.processingFinalization.Store(txID, hash)
 
 	case types.ProvingTaskFailed:
