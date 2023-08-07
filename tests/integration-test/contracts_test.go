@@ -19,6 +19,7 @@ var (
 )
 
 func TestERC20(t *testing.T) {
+	base.L2gethImg.OpenLog(true)
 	base.RunL2Geth(t)
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
