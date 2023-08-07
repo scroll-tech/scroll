@@ -9,7 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 
-	bridgeAbi "scroll-tech/bridge/abi"
+	"scroll-tech/common/bytecode/scroll/L2"
 )
 
 // Keccak2 compute the keccack256 of two concatenations of bytes32
@@ -25,7 +25,7 @@ func ComputeMessageHash(
 	messageNonce *big.Int,
 	message []byte,
 ) common.Hash {
-	data, _ := bridgeAbi.L2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
+	data, _ := L2.L2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
 	return common.BytesToHash(crypto.Keccak256(data))
 }
 

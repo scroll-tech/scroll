@@ -17,10 +17,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/bytecode/scroll/L1/rollup"
 	"scroll-tech/common/database"
 	commonTypes "scroll-tech/common/types"
 
-	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/orm"
 	"scroll-tech/bridge/internal/utils"
 )
@@ -264,7 +264,7 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 
 	logs := []types.Log{
 		{
-			Topics:      []common.Hash{bridgeAbi.L1QueueTransactionEventSignature},
+			Topics:      []common.Hash{rollup.L1MessageQueueQueueTransactionEventSignature},
 			BlockNumber: 100,
 			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		},
@@ -285,7 +285,7 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 
 	convey.Convey("L1QueueTransactionEventSignature success", t, func() {
 		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
-			tmpOut := out.(*bridgeAbi.L1QueueTransactionEvent)
+			tmpOut := out.(*rollup.L1MessageQueueQueueTransactionEvent)
 			tmpOut.QueueIndex = 100
 			tmpOut.Data = []byte("test data")
 			tmpOut.Sender = common.HexToAddress("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30")
@@ -309,7 +309,7 @@ func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
 	defer database.CloseDB(db)
 	logs := []types.Log{
 		{
-			Topics:      []common.Hash{bridgeAbi.L1CommitBatchEventSignature},
+			Topics:      []common.Hash{rollup.ScrollChainCommitBatchEventSignature},
 			BlockNumber: 100,
 			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		},
@@ -331,7 +331,7 @@ func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
 	convey.Convey("L1CommitBatchEventSignature success", t, func() {
 		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
 		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
-			tmpOut := out.(*bridgeAbi.L1CommitBatchEvent)
+			tmpOut := out.(*rollup.ScrollChainCommitBatchEvent)
 			tmpOut.BatchHash = msgHash
 			return nil
 		})
@@ -351,7 +351,7 @@ func testParseBridgeEventLogsL1FinalizeBatchEventSignature(t *testing.T) {
 	defer database.CloseDB(db)
 	logs := []types.Log{
 		{
-			Topics:      []common.Hash{bridgeAbi.L1FinalizeBatchEventSignature},
+			Topics:      []common.Hash{rollup.ScrollChainFinalizeBatchEventSignature},
 			BlockNumber: 100,
 			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		},
@@ -373,7 +373,7 @@ func testParseBridgeEventLogsL1FinalizeBatchEventSignature(t *testing.T) {
 	convey.Convey("L1FinalizeBatchEventSignature success", t, func() {
 		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
 		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
-			tmpOut := out.(*bridgeAbi.L1FinalizeBatchEvent)
+			tmpOut := out.(*rollup.ScrollChainFinalizeBatchEvent)
 			tmpOut.BatchHash = msgHash
 			return nil
 		})

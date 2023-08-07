@@ -17,10 +17,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/bytecode/scroll/L1"
+	"scroll-tech/common/bytecode/scroll/L2"
+	"scroll-tech/common/bytecode/scroll/L2/predeploys"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 
-	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/orm"
 	"scroll-tech/bridge/internal/utils"
 )
@@ -86,10 +88,10 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		confirmations:      confirmations,
 
 		messengerAddress: messengerAddress,
-		messengerABI:     bridgeAbi.L2ScrollMessengerABI,
+		messengerABI:     L2.L2ScrollMessengerABI,
 
 		messageQueueAddress:  messageQueueAddress,
-		messageQueueABI:      bridgeAbi.L2MessageQueueABI,
+		messageQueueABI:      predeploys.L2MessageQueueABI,
 		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
 		stopped: 0,
@@ -226,10 +228,10 @@ func (w *L2WatcherClient) FetchContractEvent() {
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 4)
-		query.Topics[0][0] = bridgeAbi.L2SentMessageEventSignature
-		query.Topics[0][1] = bridgeAbi.L2RelayedMessageEventSignature
-		query.Topics[0][2] = bridgeAbi.L2FailedRelayedMessageEventSignature
-		query.Topics[0][3] = bridgeAbi.L2AppendMessageEventSignature
+		query.Topics[0][0] = L2.L2ScrollMessengerSentMessageEventSignature
+		query.Topics[0][1] = L2.L2ScrollMessengerRelayedMessageEventSignature
+		query.Topics[0][2] = L2.L2ScrollMessengerFailedRelayedMessageEventSignature
+		query.Topics[0][3] = predeploys.L2MessageQueueAppendMessageEventSignature
 
 		logs, err := w.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -280,8 +282,8 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]relayedM
 	var relayedMessages []relayedMessage
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case bridgeAbi.L2RelayedMessageEventSignature:
-			event := bridgeAbi.L2RelayedMessageEvent{}
+		case L2.L2ScrollMessengerRelayedMessageEventSignature:
+			event := L2.L2ScrollMessengerRelayedMessageEvent{}
 			err := utils.UnpackLog(w.messengerABI, &event, "RelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 RelayedMessage event", "err", err)
@@ -293,8 +295,8 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]relayedM
 				txHash:       vLog.TxHash,
 				isSuccessful: true,
 			})
-		case bridgeAbi.L2FailedRelayedMessageEventSignature:
-			event := bridgeAbi.L2FailedRelayedMessageEvent{}
+		case L2.L2ScrollMessengerFailedRelayedMessageEventSignature:
+			event := L1.L1ScrollMessengerFailedRelayedMessageEvent{}
 			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 FailedRelayedMessage event", "err", err)

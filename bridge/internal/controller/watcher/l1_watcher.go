@@ -15,10 +15,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/bytecode/scroll/L1"
+	"scroll-tech/common/bytecode/scroll/L1/rollup"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 
-	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/orm"
 	"scroll-tech/bridge/internal/utils"
 )
@@ -92,13 +93,13 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		confirmations: confirmations,
 
 		messengerAddress: messengerAddress,
-		messengerABI:     bridgeAbi.L1ScrollMessengerABI,
+		messengerABI:     L1.L1ScrollMessengerABI,
 
 		messageQueueAddress: messageQueueAddress,
-		messageQueueABI:     bridgeAbi.L1MessageQueueABI,
+		messageQueueABI:     rollup.L1MessageQueueABI,
 
 		scrollChainAddress: scrollChainAddress,
-		scrollChainABI:     bridgeAbi.ScrollChainABI,
+		scrollChainABI:     rollup.ScrollChainABI,
 
 		processedMsgHeight:   uint64(savedHeight),
 		processedBlockHeight: savedL1BlockHeight,
@@ -207,11 +208,11 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 			Topics: make([][]common.Hash, 1),
 		}
 		query.Topics[0] = make([]common.Hash, 5)
-		query.Topics[0][0] = bridgeAbi.L1QueueTransactionEventSignature
-		query.Topics[0][1] = bridgeAbi.L1RelayedMessageEventSignature
-		query.Topics[0][2] = bridgeAbi.L1FailedRelayedMessageEventSignature
-		query.Topics[0][3] = bridgeAbi.L1CommitBatchEventSignature
-		query.Topics[0][4] = bridgeAbi.L1FinalizeBatchEventSignature
+		query.Topics[0][0] = rollup.L1MessageQueueQueueTransactionEventSignature
+		query.Topics[0][1] = L1.L1ScrollMessengerRelayedMessageEventSignature
+		query.Topics[0][2] = L1.L1ScrollMessengerFailedRelayedMessageEventSignature
+		query.Topics[0][3] = rollup.ScrollChainCommitBatchEventSignature
+		query.Topics[0][4] = rollup.ScrollChainFinalizeBatchEventSignature
 
 		logs, err := w.client.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -286,8 +287,8 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case bridgeAbi.L1QueueTransactionEventSignature:
-			event := bridgeAbi.L1QueueTransactionEvent{}
+		case rollup.L1MessageQueueQueueTransactionEventSignature:
+			event := rollup.L1MessageQueueQueueTransactionEvent{}
 			err := utils.UnpackLog(w.messageQueueABI, &event, "QueueTransaction", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 QueueTransaction event", "err", err)
@@ -307,8 +308,8 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 				GasLimit:   event.GasLimit.Uint64(),
 				Layer1Hash: vLog.TxHash.Hex(),
 			})
-		case bridgeAbi.L1CommitBatchEventSignature:
-			event := bridgeAbi.L1CommitBatchEvent{}
+		case rollup.ScrollChainCommitBatchEventSignature:
+			event := rollup.ScrollChainCommitBatchEvent{}
 			err := utils.UnpackLog(w.scrollChainABI, &event, "CommitBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 CommitBatch event", "err", err)
@@ -320,8 +321,8 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]*orm.L1M
 				txHash:    vLog.TxHash,
 				status:    types.RollupCommitted,
 			})
-		case bridgeAbi.L1FinalizeBatchEventSignature:
-			event := bridgeAbi.L1FinalizeBatchEvent{}
+		case rollup.ScrollChainFinalizeBatchEventSignature:
+			event := rollup.ScrollChainFinalizeBatchEvent{}
 			err := utils.UnpackLog(w.scrollChainABI, &event, "FinalizeBatch", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer1 FinalizeBatch event", "err", err)

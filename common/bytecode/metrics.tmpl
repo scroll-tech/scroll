@@ -1,0 +1,72 @@
+// Code generated - DO NOT EDIT.
+// This file is a generated binding and any manual changes will be lost.
+
+package {{.Package}}
+
+import (
+	"math/big"
+
+    "github.com/scroll-tech/go-ethereum/accounts/abi"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/common"
+)
+
+// Reference imports to suppress errors if they are not otherwise used.
+var (
+	_ = big.NewInt
+	_ = bind.Bind
+	_ = common.Big1
+	_ = abi.MakeTopics
+)
+
+{{$structs := .Structs}}
+{{range $structs}}
+	// {{.Name}} is an auto generated low-level Go binding around an user-defined struct.
+	type {{.Name}} struct {
+	{{range $field := .Fields}}
+	{{$field.Name}} {{$field.Type}}{{end}}
+	}
+{{end}}
+
+{{range $contract := .Contracts}}
+	// {{.Type}}MetaData contains all meta data concerning the {{.Type}} contract.
+	var (
+	    {{.Type}}MetaData = &bind.MetaData{
+            ABI: "{{.InputABI}}",
+            {{if $contract.FuncSigs -}}
+            Sigs: map[string]string{
+                {{range $strsig, $binsig := .FuncSigs}}"{{$binsig}}": "{{$strsig}}",
+                {{end}}
+            },
+            {{end -}}
+            {{if .InputBin -}}
+            Bin: "0x{{.InputBin}}",
+            {{end}}
+        }
+        // {{.Type}}ABI is the input ABI used to generate the binding from.
+        {{.Type}}ABI *abi.ABI
+        {{range .Events}}
+            // {{.Original.Name}} event
+            {{$contract.Type}}{{.Original.Name}}EventSignature common.Hash
+        {{end}}
+	)
+
+	func init() {
+	    sigAbi, err := {{.Type}}MetaData.GetAbi()
+	    if err != nil {
+            panic(err)
+	    }
+        {{.Type}}ABI = sigAbi
+	    {{range .Events}}
+            // {{.Original.Name}} event
+            {{$contract.Type}}{{.Original.Name}}EventSignature = sigAbi.Events["{{.Original.Name}}"].ID
+        {{end}}
+	}
+
+	{{range .Events}}
+		// {{.Normalized.Name}} represents a {{.Normalized.Name}} event raised by the {{$contract.Type}} contract.
+		type {{$contract.Type}}{{.Normalized.Name}}Event struct {
+            {{range .Normalized.Inputs}}{{capitalise .Name}} {{if .Indexed}} {{bindtopictype .Type $structs}}{{else}}{{bindtype .Type $structs}}{{end}};{{end}}
+		}
+ 	{{end}}
+{{end}}

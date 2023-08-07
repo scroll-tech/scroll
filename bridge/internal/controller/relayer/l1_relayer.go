@@ -13,10 +13,11 @@ import (
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/bytecode/scroll/L2"
+	"scroll-tech/common/bytecode/scroll/L2/predeploys"
 	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 
-	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
@@ -93,10 +94,10 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 		l1BlockOrm:   orm.NewL1Block(db),
 
 		messageSender:  messageSender,
-		l2MessengerABI: bridgeAbi.L2ScrollMessengerABI,
+		l2MessengerABI: L2.L2ScrollMessengerABI,
 
 		gasOracleSender: gasOracleSender,
-		l1GasOracleABI:  bridgeAbi.L1GasPriceOracleABI,
+		l1GasOracleABI:  predeploys.L1GasPriceOracleABI,
 
 		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 

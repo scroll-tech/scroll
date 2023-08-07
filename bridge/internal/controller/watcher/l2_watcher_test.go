@@ -21,10 +21,10 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/bytecode/scroll/L2"
 	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
-	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
 	"scroll-tech/bridge/internal/utils"
@@ -119,7 +119,7 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 
 	logs := []gethTypes.Log{
 		{
-			Topics:      []common.Hash{bridgeAbi.L2RelayedMessageEventSignature},
+			Topics:      []common.Hash{L2.L2ScrollMessengerRelayedMessageEventSignature},
 			BlockNumber: 100,
 			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		},
@@ -140,7 +140,7 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 	convey.Convey("L2RelayedMessageEventSignature success", t, func() {
 		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
 		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
-			tmpOut := out.(*bridgeAbi.L2RelayedMessageEvent)
+			tmpOut := out.(*L2.L2ScrollMessengerRelayedMessageEvent)
 			tmpOut.MessageHash = msgHash
 			return nil
 		})
@@ -159,7 +159,7 @@ func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) 
 
 	logs := []gethTypes.Log{
 		{
-			Topics:      []common.Hash{bridgeAbi.L2FailedRelayedMessageEventSignature},
+			Topics:      []common.Hash{L2.L2ScrollMessengerFailedRelayedMessageEventSignature},
 			BlockNumber: 100,
 			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
 		},
@@ -180,7 +180,7 @@ func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) 
 	convey.Convey("L2FailedRelayedMessageEventSignature success", t, func() {
 		msgHash := common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
 		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log gethTypes.Log) error {
-			tmpOut := out.(*bridgeAbi.L2FailedRelayedMessageEvent)
+			tmpOut := out.(*L2.L2ScrollMessengerFailedRelayedMessageEvent)
 			tmpOut.MessageHash = msgHash
 			return nil
 		})
