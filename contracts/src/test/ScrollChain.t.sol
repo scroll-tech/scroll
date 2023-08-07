@@ -106,6 +106,17 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("invalid chunk length");
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
 
+        // num txs less than num L1 msgs, revert
+        chunk0 = new bytes(1 + 60);
+        bytes memory bitmap = new bytes(32);
+        chunk0[0] = bytes1(uint8(1)); // one block in this chunk
+        chunk0[58] = bytes1(uint8(1)); // numTransactions = 1
+        chunk0[60] = bytes1(uint8(3)); // numL1Messages = 3
+        bitmap[31] = bytes1(uint8(7));
+        chunks[0] = chunk0;
+        hevm.expectRevert("num txs less than num L1 msgs");
+        rollup.commitBatch(0, batchHeader0, chunks, bitmap);
+
         // incomplete l2 transaction data, revert
         chunk0 = new bytes(1 + 60 + 1);
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
