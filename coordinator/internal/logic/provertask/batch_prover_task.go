@@ -64,7 +64,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	batchTask := batchTasks[0]
-	log.Info("start batch proof generation session", "id", batchTask.Hash)
+	log.Info("start batch proof generation session", "id", batchTask.Hash, "public key", publicKey, "prover name", proverName)
 
 	if !bp.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
 		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)

@@ -364,6 +364,7 @@ func (o *Chunk) UpdateUnassignedChunkReturning(ctx context.Context, height, limi
 	var chunks []*Chunk
 	db = db.Model(&chunks).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
+	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
 	if err := db.Update("proving_status", types.ProvingTaskAssigned).Error; err != nil {
 		return nil, fmt.Errorf("Chunk.UpdateUnassignedBatchReturning error: %w", err)
 	}
