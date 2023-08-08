@@ -8,7 +8,7 @@ create table prover_task
 -- prover
     prover_public_key   VARCHAR        NOT NULL,
     prover_name         VARCHAR        NOT NULL,
-    real_ip             VARCHAR        NOT NULL,
+    real_ip             VARCHAR        DEFAULT NULL,
 
 -- task
     task_id             VARCHAR        NOT NULL,
