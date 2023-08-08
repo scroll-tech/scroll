@@ -50,7 +50,7 @@ func (b *BaseProverTask) checkAttemptsExceeded(hash string, taskType message.Pro
 	if len(proverTasks) >= int(b.cfg.ProverManager.SessionAttempts) {
 		coordinatorSessionsTimeoutTotalCounter.Inc(1)
 
-		log.Warn("proof generation prover task %s ended because reach the max attempts", hash)
+		log.Warn("proof generation prover task reach the max attempts", "hash", hash)
 
 		transErr := b.db.Transaction(func(tx *gorm.DB) error {
 			switch message.ProofType(proverTasks[0].TaskType) {

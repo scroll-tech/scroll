@@ -66,7 +66,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	chunkTask := chunkTasks[0]
 
-	log.Info("start chunk generation session", "id", chunkTask.Hash)
+	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", publicKey, "prover name", proverName)
 
 	if !cp.checkAttemptsExceeded(chunkTask.Hash, message.ProofTypeChunk) {
 		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
