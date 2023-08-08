@@ -22,6 +22,7 @@ contract InitializeL1BridgeContracts is Script {
 
     uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
     uint256 MAX_L2_TX_IN_CHUNK = vm.envUint("MAX_L2_TX_IN_CHUNK");
+    uint256 MAX_L1_MESSAGE_GAS_LIMIT = vm.envUint("MAX_L1_MESSAGE_GAS_LIMIT");
     address L1_ROLLUP_OPERATOR_ADDR = vm.envAddress("L1_ROLLUP_OPERATOR_ADDR");
     address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
@@ -84,7 +85,7 @@ contract InitializeL1BridgeContracts is Script {
             L1_SCROLL_CHAIN_PROXY_ADDR,
             L1_ENFORCED_TX_GATEWAY_PROXY_ADDR,
             L2_GAS_PRICE_ORACLE_PROXY_ADDR,
-            10000000
+            MAX_L1_MESSAGE_GAS_LIMIT
         );
 
         // initialize L1ScrollMessenger
