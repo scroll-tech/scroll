@@ -49,8 +49,7 @@ pub unsafe extern "C" fn gen_batch_proof(
     assert_eq!(chunk_hashes.len(), chunk_proofs.len());
 
     log::error!("gupeng - rust - 1 - chunk_hashes = {chunk_hashes:#?}");
-
-    log::error!("gupeng - rust - 1 - chunk_proofs = {chunk_proofs:#?}");
+    log::error!("gupeng - rust - 1 - chunk_proofs = {chunk_proofs:?}");
 
     let chunk_hashes_proofs = chunk_hashes
         .into_iter()
