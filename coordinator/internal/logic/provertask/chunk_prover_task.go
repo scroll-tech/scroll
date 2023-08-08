@@ -50,6 +50,15 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("get prover name from contex failed")
 	}
 
+	isAssigned, err := cp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if prover is assigned a task: %w", err)
+	}
+
+	if isAssigned {
+		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
+	}
+
 	// load and send chunk tasks
 	chunkTasks, err := cp.chunkOrm.UpdateUnassignedChunkReturning(ctx, getTaskParameter.ProverHeight, 1)
 	if err != nil {
@@ -72,11 +81,17 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
+	realIP := ctx.GetHeader("X-Real-IP")
+	if realIP == "" {
+		realIP = ctx.ClientIP()
+	}
+
 	proverTask := orm.ProverTask{
 		TaskID:          chunkTask.Hash,
 		ProverPublicKey: publicKey.(string),
 		TaskType:        int16(message.ProofTypeChunk),
 		ProverName:      proverName.(string),
+		RealIP:          realIP,
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 		// here why need use UTC time. see scroll/common/databased/db.go

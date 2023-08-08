@@ -22,6 +22,7 @@ type ProverTask struct {
 	// prover
 	ProverPublicKey string `json:"prover_public_key" gorm:"column:prover_public_key"`
 	ProverName      string `json:"prover_name" gorm:"column:prover_name"`
+	RealIP          string `json:"real_ip" gorm:"column:real_ip"`
 
 	// task
 	TaskID   string `json:"task_id" gorm:"column:task_id"`
@@ -48,6 +49,20 @@ func NewProverTask(db *gorm.DB) *ProverTask {
 // TableName returns the name of the "prover_task" table.
 func (*ProverTask) TableName() string {
 	return "prover_task"
+}
+
+// IsProverAssigned checks if a prover with the given public key has been assigned a task.
+func (o *ProverTask) IsProverAssigned(ctx context.Context, publicKey string) (bool, error) {
+	db := o.db.WithContext(ctx)
+	var task ProverTask
+	err := db.Where("prover_public_key = ? AND proving_status = ?", publicKey, types.ProverAssigned).First(&task).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // GetProverTasks get prover tasks

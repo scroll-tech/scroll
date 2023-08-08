@@ -50,6 +50,15 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("get prover name from contex failed")
 	}
 
+	isAssigned, err := bp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if prover is assigned a task: %w", err)
+	}
+
+	if isAssigned {
+		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
+	}
+
 	batchTasks, err := bp.batchOrm.UpdateUnassignedBatchReturning(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
@@ -70,11 +79,17 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
 	}
 
+	realIP := ctx.GetHeader("X-Real-IP")
+	if realIP == "" {
+		realIP = ctx.ClientIP()
+	}
+
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
 		ProverPublicKey: publicKey.(string),
 		TaskType:        int16(message.ProofTypeBatch),
 		ProverName:      proverName.(string),
+		RealIP:          realIP,
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 		// here why need use UTC time. see scroll/common/databased/db.go
