@@ -40,7 +40,6 @@ func TestFFI(t *testing.T) {
 
 	// gupeng
 	batchDetail := readBatchDetail(*batchDetailPath, as)
-	t.Logf("gupeng - batch-detail = %+v", batchDetail)
 	chunkInfos := batchDetail.ChunkInfos
 	chunkProofs := batchDetail.ChunkProofs
 
