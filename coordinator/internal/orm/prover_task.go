@@ -112,6 +112,20 @@ func (o *ProverTask) GetProverTaskByTaskIDAndPubKey(ctx context.Context, taskID,
 	return &proverTask, nil
 }
 
+// GetProvingStatusByTaskID retrieves the proving status of a prover task
+func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string) (types.ProverProveStatus, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Select("proving_status")
+	db = db.Where("task_id = ?", taskID)
+
+	var proverTask ProverTask
+	if err := db.Find(&proverTask).Error; err != nil {
+		return types.ProverProofInvalid, fmt.Errorf("ProverTask.GetProvingStatusByTaskID error: %w, taskID: %v", err, taskID)
+	}
+	return types.ProverProveStatus(proverTask.ProvingStatus), nil
+}
+
 // GetAssignedProverTasks get the assigned prover task
 func (o *ProverTask) GetAssignedProverTasks(ctx context.Context, limit int) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
