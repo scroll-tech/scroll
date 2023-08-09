@@ -138,7 +138,7 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, 
 	// TODO:
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"proving_status", "failure_type", "assigned_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"prover_version", "proving_status", "failure_type", "assigned_at"}),
 	})
 
 	if err := db.Create(&proverTask).Error; err != nil {
