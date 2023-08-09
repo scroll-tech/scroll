@@ -126,7 +126,7 @@ const (
 	ProvingTaskUnassigned
 	// ProvingTaskAssigned : proving_task is assigned to be proved
 	ProvingTaskAssigned
-	// ProvingTaskProved : proof has been returned by prover
+	// DEPRECATED: ProvingTaskProved : proof has been returned by prover
 	ProvingTaskProved
 	// ProvingTaskVerified : proof is valid
 	ProvingTaskVerified
