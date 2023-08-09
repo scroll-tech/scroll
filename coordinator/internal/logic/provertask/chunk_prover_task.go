@@ -55,7 +55,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-	if !version.CheckScrollProverVersion(proverVersion) {
+	if !version.CheckScrollProverVersion(proverVersion.(string)) {
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover")
 	}
 
