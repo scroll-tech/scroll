@@ -27,3 +27,7 @@ var ZkVersion string
 
 // Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, prover, contracts and etc.
 var Version = fmt.Sprintf("%s-%s-%s", tag, commit, ZkVersion)
+
+func CheckZkevmVersion(proverVersion string) bool {
+	return true
+}
