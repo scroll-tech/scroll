@@ -23,7 +23,7 @@ var commit = func() string {
 	return ""
 }()
 
-// ZkVersion is commit-id of common/libzkp/impl/cargo.lock/scroll-prover and halo2, cancated by a "-"
+// ZkVersion is commit-id of common/libzkp/impl/cargo.lock/scroll-prover and halo2, concated by a "-"
 var ZkVersion string
 
 // Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, prover, contracts and etc.
@@ -41,6 +41,6 @@ func CheckScrollProverVersion(proverVersion string) bool {
 	if len(local) != 4 {
 		return false
 	}
-	// compre the `scroll_prover` version
+	// compare the `scroll_prover` version
 	return remote[2] == local[2]
 }
