@@ -59,11 +59,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover")
 	}
 
-	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
-	if !proverVersionExist {
-		return nil, fmt.Errorf("get prover version from contex failed")
-	}
-
 	// load and send chunk tasks
 	chunkTasks, err := cp.chunkOrm.UpdateUnassignedChunkReturning(ctx, getTaskParameter.ProverHeight, 1)
 	if err != nil {
