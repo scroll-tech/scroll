@@ -50,6 +50,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("get prover name from contex failed")
 	}
 
+	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
+	if !proverVersionExist {
+		return nil, fmt.Errorf("get prover version from contex failed")
+	}
+	if !version.CheckZkevmVersion(proverVersion) {
+		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover")
+	}
+
 	batchTasks, err := bp.batchOrm.UpdateUnassignedBatchReturning(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
