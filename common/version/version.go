@@ -3,6 +3,7 @@ package version
 import (
 	"fmt"
 	"runtime/debug"
+	"strings"
 )
 
 var tag = "v4.1.24"
@@ -40,5 +41,6 @@ func CheckScrollProverVersion(proverVersion string) bool {
 	if len(local) != 4 {
 		return false
 	}
-	return remote[3] == local[3]
+	// compre the `scroll_prover` version
+	return remote[2] == local[2]
 }
