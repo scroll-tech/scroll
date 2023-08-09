@@ -14,6 +14,7 @@ import (
 
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/types"
@@ -78,7 +79,7 @@ func (r *mockProver) login(t *testing.T, challengeString string) string {
 		Identity: &message.Identity{
 			Challenge:     challengeString,
 			ProverName:    "test",
-			ProverVersion: "v1.0.0-aaa-bbb-ccc",
+			ProverVersion: version.Version,
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(r.privKey))
