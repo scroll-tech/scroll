@@ -16,7 +16,7 @@ import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 
 contract L1ScrollMessengerTest is L1GatewayTestBase {
     event OnDropMessageCalled(bytes);
-    event UpdateMaxReplayTimes(uint256 maxReplayTimes);
+    event UpdateMaxReplayTimes(uint256 oldMaxReplayTimes, uint256 newMaxReplayTimes);
 
     function setUp() public {
         L1GatewayTestBase.setUpBase();
@@ -159,7 +159,7 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         hevm.stopPrank();
 
         hevm.expectEmit(false, false, false, true);
-        emit UpdateMaxReplayTimes(_maxReplayTimes);
+        emit UpdateMaxReplayTimes(0, _maxReplayTimes);
 
         assertEq(l1Messenger.maxReplayTimes(), 0);
         l1Messenger.updateMaxReplayTimes(_maxReplayTimes);

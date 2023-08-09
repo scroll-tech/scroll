@@ -2,9 +2,11 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -13,6 +15,31 @@ import (
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
 )
+
+// chunkRowConsumption is map(sub-circuit name => sub-circuit row count)
+type chunkRowConsumption map[string]uint64
+
+// add accumulates row consumption per sub-circuit
+func (crc *chunkRowConsumption) add(rowConsumption *gethTypes.RowConsumption) error {
+	if rowConsumption == nil {
+		return errors.New("rowConsumption is <nil>")
+	}
+	for _, subCircuit := range *rowConsumption {
+		(*crc)[subCircuit.Name] += subCircuit.RowNumber
+	}
+	return nil
+}
+
+// max finds the maximum row consumption among all sub-circuits
+func (crc *chunkRowConsumption) max() uint64 {
+	var max uint64
+	for _, value := range *crc {
+		if value > max {
+			max = value
+		}
+	}
+	return max
+}
 
 // ChunkProposer proposes chunks based on available unchunked blocks.
 type ChunkProposer struct {
@@ -27,6 +54,7 @@ type ChunkProposer struct {
 	maxL1CommitGasPerChunk          uint64
 	maxL1CommitCalldataSizePerChunk uint64
 	minL1CommitCalldataSizePerChunk uint64
+	maxRowConsumptionPerChunk       uint64
 	chunkTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 }
@@ -43,6 +71,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
 		minL1CommitCalldataSizePerChunk: cfg.MinL1CommitCalldataSizePerChunk,
+		maxRowConsumptionPerChunk:       cfg.MaxRowConsumptionPerChunk,
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 	}
@@ -95,7 +124,12 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	totalTxGasUsed := firstBlock.Header.GasUsed
 	totalL2TxNum := firstBlock.L2TxsNum()
 	totalL1CommitCalldataSize := firstBlock.EstimateL1CommitCalldataSize()
+	crc := chunkRowConsumption{}
 	totalL1CommitGas := chunk.EstimateL1CommitGas()
+
+	if err := crc.add(firstBlock.RowConsumption); err != nil {
+		return nil, fmt.Errorf("chunk-proposer failed to update chunk row consumption: %v", err)
+	}
 
 	// Check if the first block breaks hard limits.
 	// If so, it indicates there are bugs in sequencer, manual fix is needed.
@@ -135,6 +169,15 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			"max gas limit", p.maxTxGasPerChunk,
 		)
 	}
+	if max := crc.max(); max > p.maxRowConsumptionPerChunk {
+		return nil, fmt.Errorf(
+			"the first block exceeds row consumption limit; block number: %v, row consumption: %v, max: %v, limit: %v",
+			firstBlock.Header.Number,
+			crc,
+			max,
+			p.maxRowConsumptionPerChunk,
+		)
+	}
 
 	for _, block := range blocks[1:] {
 		chunk.Blocks = append(chunk.Blocks, block)
@@ -142,10 +185,16 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas = chunk.EstimateL1CommitGas()
+
+		if err := crc.add(block.RowConsumption); err != nil {
+			return nil, fmt.Errorf("chunk-proposer failed to update chunk row consumption: %v", err)
+		}
+
 		if totalTxGasUsed > p.maxTxGasPerChunk ||
 			totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
-			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerChunk) {
+			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerChunk) ||
+			crc.max() > p.maxRowConsumptionPerChunk {
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1] // remove the last block from chunk
 			break
 		}

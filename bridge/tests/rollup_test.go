@@ -45,9 +45,10 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			BaseFee:    big.NewInt(0),
 		}
 		wrappedBlocks = append(wrappedBlocks, &types.WrappedBlock{
-			Header:       &header,
-			Transactions: nil,
-			WithdrawRoot: common.Hash{},
+			Header:         &header,
+			Transactions:   nil,
+			WithdrawRoot:   common.Hash{},
+			RowConsumption: &gethTypes.RowConsumption{},
 		})
 	}
 
@@ -61,6 +62,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MinL1CommitCalldataSizePerChunk: 0,
+		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
 	}, db)
 	cp.TryProposeChunk()
@@ -84,6 +86,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	batchOrm := orm.NewBatch(db)
 	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	batchHash := batch.Hash
 	assert.NotEmpty(t, batch.CommitTxHash)
 	assert.Equal(t, types.RollupCommitting, types.RollupStatus(batch.RollupStatus))
@@ -105,8 +108,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// add dummy proof
 	proof := &message.BatchProof{
-		Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		FinalPair: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		Proof: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
 	}
 	err = batchOrm.UpdateProofByHash(context.Background(), batchHash, proof, 100)
 	assert.NoError(t, err)
@@ -123,6 +125,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	batch, err = batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	assert.NotEmpty(t, batch.FinalizeTxHash)
 
 	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batch.FinalizeTxHash))

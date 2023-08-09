@@ -3,6 +3,7 @@
 pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import {IL1MessageQueue} from "./IL1MessageQueue.sol";
 import {IScrollChain} from "./IScrollChain.sol";
@@ -15,7 +16,7 @@ import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 
 /// @title ScrollChain
 /// @notice This contract maintains data for the Scroll rollup.
-contract ScrollChain is OwnableUpgradeable, IScrollChain {
+contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /**********
      * Events *
      **********/
@@ -33,7 +34,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @notice Emitted when the address of rollup verifier is updated.
     /// @param oldVerifier The address of old rollup verifier.
     /// @param newVerifier The address of new rollup verifier.
-    event UpdateVerifier(address oldVerifier, address newVerifier);
+    event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
 
     /// @notice Emitted when the value of `maxNumL2TxInChunk` is updated.
     /// @param oldMaxNumL2TxInChunk The old value of `maxNumL2TxInChunk`.
@@ -165,7 +166,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes calldata _parentBatchHeader,
         bytes[] memory _chunks,
         bytes calldata _skippedL1MessageBitmap
-    ) external override OnlySequencer {
+    ) external override OnlySequencer whenNotPaused {
         require(_version == 0, "invalid version");
 
         // check whether the batch is empty
@@ -291,7 +292,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _postStateRoot,
         bytes32 _withdrawRoot,
         bytes calldata _aggrProof
-    ) external override OnlyProver {
+    ) external override OnlyProver whenNotPaused {
         require(_prevStateRoot != bytes32(0), "previous state root is zero");
         require(_postStateRoot != bytes32(0), "new state root is zero");
 
@@ -355,24 +356,36 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      * Restricted Functions *
      ************************/
 
-    /// @notice Update the status of sequencer.
-    /// @dev This function can only called by contract owner.
-    /// @param _account The address of account to update.
-    /// @param _status The status of the account to update.
-    function updateSequencer(address _account, bool _status) external onlyOwner {
-        isSequencer[_account] = _status;
+    /// @notice Add an account to the sequencer list.
+    /// @param _account The address of account to add.
+    function addSequencer(address _account) external onlyOwner {
+        isSequencer[_account] = true;
 
-        emit UpdateSequencer(_account, _status);
+        emit UpdateSequencer(_account, true);
     }
 
-    /// @notice Update the status of prover.
-    /// @dev This function can only called by contract owner.
-    /// @param _account The address of account to update.
-    /// @param _status The status of the account to update.
-    function updateProver(address _account, bool _status) external onlyOwner {
-        isProver[_account] = _status;
+    /// @notice Remove an account from the sequencer list.
+    /// @param _account The address of account to remove.
+    function removeSequencer(address _account) external onlyOwner {
+        isSequencer[_account] = false;
 
-        emit UpdateProver(_account, _status);
+        emit UpdateSequencer(_account, false);
+    }
+
+    /// @notice Add an account to the prover list.
+    /// @param _account The address of account to add.
+    function addProver(address _account) external onlyOwner {
+        isProver[_account] = true;
+
+        emit UpdateProver(_account, true);
+    }
+
+    /// @notice Add an account from the prover list.
+    /// @param _account The address of account to remove.
+    function removeProver(address _account) external onlyOwner {
+        isProver[_account] = false;
+
+        emit UpdateProver(_account, false);
     }
 
     /// @notice Update the address verifier contract.
@@ -391,6 +404,16 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         maxNumL2TxInChunk = _maxNumL2TxInChunk;
 
         emit UpdateMaxNumL2TxInChunk(_oldMaxNumL2TxInChunk, _maxNumL2TxInChunk);
+    }
+
+    /// @notice Pause the contract
+    /// @param _status The pause status to update.
+    function setPause(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 
     /**********************
@@ -469,6 +492,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
             // concatenate l2 transaction hashes
             uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+            require(_numTransactionsInBlock >= _numL1MessagesInBlock, "num txs less than num L1 msgs");
             for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
                 bytes32 txHash;
                 (txHash, l2TxPtr) = ChunkCodec.loadL2TxHash(l2TxPtr);

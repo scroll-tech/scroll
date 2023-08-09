@@ -2,14 +2,12 @@
 
 pragma solidity =0.8.16;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IERC721Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import {ERC721HolderUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
 
 import {IL2ERC721Gateway} from "./IL2ERC721Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL1ERC721Gateway} from "../../L1/gateways/IL1ERC721Gateway.sol";
-import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {IScrollERC721} from "../../libraries/token/IScrollERC721.sol";
 
 /// @title L2ERC721Gateway
@@ -19,15 +17,16 @@ import {IScrollERC721} from "../../libraries/token/IScrollERC721.sol";
 /// NFT will be minted and transfered to the recipient.
 ///
 /// This will be changed if we have more specific scenarios.
-contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollGatewayBase, IL2ERC721Gateway {
+contract L2ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL2ERC721Gateway {
     /**********
      * Events *
      **********/
 
     /// @notice Emitted when token mapping for ERC721 token is updated.
-    /// @param _l2Token The address of corresponding ERC721 token on layer 2.
-    /// @param _l1Token The address of ERC721 token on layer 1.
-    event UpdateTokenMapping(address _l2Token, address _l1Token);
+    /// @param l2Token The address of corresponding ERC721 token in layer 2.
+    /// @param oldL1Token The address of the old corresponding ERC721 token in layer 1.
+    /// @param newL1Token The address of the new corresponding ERC721 token in layer 1.
+    event UpdateTokenMapping(address indexed l2Token, address indexed oldL1Token, address indexed newL1Token);
 
     /*************
      * Variables *
@@ -45,7 +44,6 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     }
 
     function initialize(address _counterpart, address _messenger) external initializer {
-        OwnableUpgradeable.__Ownable_init();
         ERC721HolderUpgradeable.__ERC721Holder_init();
 
         ScrollGatewayBase._initialize(_counterpart, address(0), _messenger);
@@ -137,9 +135,10 @@ contract L2ERC721Gateway is OwnableUpgradeable, ERC721HolderUpgradeable, ScrollG
     function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
         require(_l1Token != address(0), "token address cannot be 0");
 
+        address _oldL1Token = tokenMapping[_l2Token];
         tokenMapping[_l2Token] = _l1Token;
 
-        emit UpdateTokenMapping(_l2Token, _l1Token);
+        emit UpdateTokenMapping(_l2Token, _oldL1Token, _l1Token);
     }
 
     /**********************

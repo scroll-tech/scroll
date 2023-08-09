@@ -2,8 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-
 import {IL1ETHGateway} from "../../L1/gateways/IL1ETHGateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL2ETHGateway} from "./IL2ETHGateway.sol";

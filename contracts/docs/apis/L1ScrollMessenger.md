@@ -440,7 +440,7 @@ Update fee vault contract.
 ### updateMaxReplayTimes
 
 ```solidity
-function updateMaxReplayTimes(uint256 _maxReplayTimes) external nonpayable
+function updateMaxReplayTimes(uint256 _newMaxReplayTimes) external nonpayable
 ```
 
 Update max replay times.
@@ -451,7 +451,7 @@ Update max replay times.
 
 | Name | Type | Description |
 |---|---|---|
-| _maxReplayTimes | uint256 | The new max replay times. |
+| _newMaxReplayTimes | uint256 | The new max replay times. |
 
 ### updateRateLimiter
 
@@ -628,7 +628,7 @@ Emitted when owner updates fee vault contract.
 ### UpdateMaxReplayTimes
 
 ```solidity
-event UpdateMaxReplayTimes(uint256 maxReplayTimes)
+event UpdateMaxReplayTimes(uint256 oldMaxReplayTimes, uint256 newMaxReplayTimes)
 ```
 
 Emitted when the maximum number of times each message can be replayed is updated.
@@ -639,7 +639,8 @@ Emitted when the maximum number of times each message can be replayed is updated
 
 | Name | Type | Description |
 |---|---|---|
-| maxReplayTimes  | uint256 | undefined |
+| oldMaxReplayTimes  | uint256 | undefined |
+| newMaxReplayTimes  | uint256 | undefined |
 
 ### UpdateRateLimiter
 
