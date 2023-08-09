@@ -54,7 +54,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from contex failed")
 	}
-	if !version.CheckZkevmVersion(proverVersion) {
+	if !version.CheckScrollProverVersion(proverVersion) {
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover")
 	}
 
