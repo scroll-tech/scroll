@@ -78,7 +78,7 @@ func (r *mockProver) login(t *testing.T, challengeString string) string {
 		Identity: &message.Identity{
 			Challenge:     challengeString,
 			ProverName:    "test",
-			ProverVersion: "v1.0.0",
+			ProverVersion: "v1.0.0-aaa-bbb-ccc",
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(r.privKey))
