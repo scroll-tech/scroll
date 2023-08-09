@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"scroll-tech/common/version"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -47,7 +48,8 @@ type ProofReceiverLogic struct {
 	db  *gorm.DB
 	cfg *config.ProverManager
 
-	verifier *verifier.Verifier
+	verifier    *verifier.Verifier
+	oldVerifier *verifier.OldVerifier
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
@@ -55,6 +57,10 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB) *ProofR
 	vf, err := verifier.NewVerifier(cfg.Verifier)
 	if err != nil {
 		panic("proof receiver new verifier failure")
+	}
+	oldVf, err := verifier.NewOldVerifier(cfg.OldVerifier)
+	if err != nil {
+		panic("proof receiver new OldVerifier failure")
 	}
 	return &ProofReceiverLogic{
 		chunkOrm:      orm.NewChunk(db),
@@ -64,7 +70,8 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB) *ProofR
 		cfg: cfg,
 		db:  db,
 
-		verifier: vf,
+		verifier:    vf,
+		oldVerifier: oldVf,
 	}
 }
 
@@ -128,9 +135,9 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	var success bool
 	var verifyErr error
 	if proofMsg.Type == message.ProofTypeChunk {
-		success, verifyErr = m.verifier.VerifyChunkProof(proofMsg.ChunkProof)
+		success, verifyErr = m.verifyChunkProof(ctx, proofMsg.ChunkProof)
 	} else if proofMsg.Type == message.ProofTypeBatch {
-		success, verifyErr = m.verifier.VerifyBatchProof(proofMsg.BatchProof)
+		success, verifyErr = m.verifyBatchProof(ctx, proofMsg.BatchProof)
 	}
 
 	if verifyErr != nil || !success {
@@ -312,4 +319,28 @@ func (m *ProofReceiverLogic) checkIsTimeoutFailure(ctx context.Context, hash, pr
 		return true
 	}
 	return false
+}
+
+var ProverVersionInvalid = errors.New("prover version invalid")
+
+func (m *ProofReceiverLogic) verifyChunkProof(c *gin.Context, proof *message.ChunkProof) (bool, error) {
+	proverVersion := c.GetString(coordinatorType.ProverVersion)
+	switch proverVersion {
+	case version.ZkVersion:
+		return m.verifier.VerifyChunkProof(proof)
+	case version.OldZkVersion:
+		return m.oldVerifier.VerifyChunkProof(proof)
+	}
+	return false, ProverVersionInvalid
+}
+
+func (m *ProofReceiverLogic) verifyBatchProof(c *gin.Context, proof *message.BatchProof) (bool, error) {
+	proverVersion := c.GetString(coordinatorType.ProverVersion)
+	switch proverVersion {
+	case version.ZkVersion:
+		return m.verifier.VerifyBatchProof(proof)
+	case version.OldZkVersion:
+		return m.oldVerifier.VerifyBatchProof(proof)
+	}
+	return false, ProverVersionInvalid
 }

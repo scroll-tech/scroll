@@ -8,6 +8,11 @@
       "params_path": "",
       "assets_path": ""
     },
+    "old_verifier": {
+      "mock_mode": true,
+      "params_path": "",
+      "assets_path": ""
+    },
     "max_verifier_workers": 4
   },
   "db": {

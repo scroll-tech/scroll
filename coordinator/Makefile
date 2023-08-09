@@ -14,16 +14,20 @@ endif
 
 ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
 
+pre-upgrade-zk:
+	cd ./internal/logic/verifier/lib && mv libzkp.so liboldzkp.so && mv libzktrie.so liboldzktrie.so
+	OLD_ZK_VERSION=$(ZK_VERSION)
+
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
-libzkp:
+libzkp: pre-upgrade-zk
 	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./internal/logic/verifier/lib && cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/verifier/lib
 
 coordinator: libzkp ## Builds the Coordinator instance.
-	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
+	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION} -X scroll-tech/common/version.OldZkVersion=${OLD_ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
 
 mock_coordinator: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator ./cmd
