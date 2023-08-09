@@ -18,7 +18,7 @@ pre-upgrade-zk:
 	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/liboldzkp.so
 	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/verifier/lib/liboldzktrie.so
-	OLD_ZK_VERSION=$(ZK_VERSION)
+	OLD_ZK_VERSION=${ZK_VERSION}
 
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
