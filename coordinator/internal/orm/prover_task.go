@@ -22,6 +22,7 @@ type ProverTask struct {
 	// prover
 	ProverPublicKey string `json:"prover_public_key" gorm:"column:prover_public_key"`
 	ProverName      string `json:"prover_name" gorm:"column:prover_name"`
+	ProverVersion   string `json:"prover_version" gorm:"column:prover_version"`
 
 	// task
 	TaskID   string `json:"task_id" gorm:"column:task_id"`
@@ -134,6 +135,7 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, 
 	}
 
 	db = db.Model(&ProverTask{})
+	// TODO:
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},
 		DoUpdates: clause.AssignmentColumns([]string{"proving_status", "failure_type", "assigned_at"}),

@@ -8,6 +8,8 @@ create table prover_task
 -- prover
     prover_public_key   VARCHAR        NOT NULL,
     prover_name         VARCHAR        NOT NULL,
+    -- added in 
+    -- prover_version         VARCHAR        NOT NULL,
 
 -- task
     task_id             VARCHAR        NOT NULL,
