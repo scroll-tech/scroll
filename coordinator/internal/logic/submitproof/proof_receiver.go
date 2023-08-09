@@ -37,6 +37,8 @@ var (
 	ErrValidatorFailureProverTaskEmpty = errors.New("validator failure get none prover task for the proof")
 	// ErrValidatorFailureProverInfoHasProofValid proof is vaild
 	ErrValidatorFailureProverInfoHasProofValid = errors.New("validator failure prover task info has proof valid")
+	// ErrInvalidProverVersion means prover version is invalid.
+	ErrInvalidProverVersion = errors.New("prover version invalid")
 )
 
 // ProofReceiverLogic the proof receiver logic
@@ -321,8 +323,6 @@ func (m *ProofReceiverLogic) checkIsTimeoutFailure(ctx context.Context, hash, pr
 	return false
 }
 
-var ProverVersionInvalid = errors.New("prover version invalid")
-
 func (m *ProofReceiverLogic) verifyChunkProof(c *gin.Context, proof *message.ChunkProof) (bool, error) {
 	proverVersion := c.GetString(coordinatorType.ProverVersion)
 	switch proverVersion {
@@ -331,7 +331,7 @@ func (m *ProofReceiverLogic) verifyChunkProof(c *gin.Context, proof *message.Chu
 	case version.OldZkVersion:
 		return m.oldVerifier.VerifyChunkProof(proof)
 	}
-	return false, ProverVersionInvalid
+	return false, ErrInvalidProverVersion
 }
 
 func (m *ProofReceiverLogic) verifyBatchProof(c *gin.Context, proof *message.BatchProof) (bool, error) {
@@ -342,5 +342,5 @@ func (m *ProofReceiverLogic) verifyBatchProof(c *gin.Context, proof *message.Bat
 	case version.OldZkVersion:
 		return m.oldVerifier.VerifyBatchProof(proof)
 	}
-	return false, ProverVersionInvalid
+	return false, ErrInvalidProverVersion
 }
