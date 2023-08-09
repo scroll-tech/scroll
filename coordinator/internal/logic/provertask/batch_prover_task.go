@@ -59,6 +59,11 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover")
 	}
 
+	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
+	if !proverVersionExist {
+		return nil, fmt.Errorf("get prover version from contex failed")
+	}
+
 	batchTasks, err := bp.batchOrm.UpdateUnassignedBatchReturning(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
@@ -84,6 +89,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		ProverPublicKey: publicKey.(string),
 		TaskType:        int16(message.ProofTypeBatch),
 		ProverName:      proverName.(string),
+		ProverVersion:   proverVersion.(string),
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 		// here why need use UTC time. see scroll/common/databased/db.go
