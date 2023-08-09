@@ -50,6 +50,11 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("get prover name from contex failed")
 	}
 
+	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
+	if !proverVersionExist {
+		return nil, fmt.Errorf("get prover version from contex failed")
+	}
+
 	// load and send chunk tasks
 	chunkTasks, err := cp.chunkOrm.UpdateUnassignedChunkReturning(ctx, getTaskParameter.ProverHeight, 1)
 	if err != nil {
@@ -77,6 +82,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		ProverPublicKey: publicKey.(string),
 		TaskType:        int16(message.ProofTypeChunk),
 		ProverName:      proverName.(string),
+		ProverVersion:   proverVersion.(string),
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 		// here why need use UTC time. see scroll/common/databased/db.go
