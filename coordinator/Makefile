@@ -1,4 +1,4 @@
-.PHONY: lint docker clean coordinator mock_coordinator
+.PHONY: lint docker clean coordinator coordinator_skip_libzkp mock_coordinator
 
 IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
@@ -34,6 +34,9 @@ libzkp: pre-upgrade-zk
 
 coordinator: libzkp ## Builds the Coordinator instance.
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION} -X scroll-tech/common/version.OldZkVersion=${OLD_ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
+
+coordinator_skip_libzkp:
+	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
 
 mock_coordinator: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator ./cmd
