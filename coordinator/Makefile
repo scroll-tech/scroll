@@ -5,20 +5,24 @@ IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
-	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock.new | cut -d "#" -f2 | cut -c-7)
+	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock.new | cut -d "#" -f2 | cut -c-7)
+	OLD_ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+    OLD_HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
-	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock.new | cut -d "\#" -f2 | cut -c-7)
+	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock.new | cut -d "\#" -f2 | cut -c-7)
+	OLD_ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+    OLD_HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
 ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
+OLD_ZK_VERSION=${OLD_ZKEVM_VERSION}-${OLD_HALO2_VERSION}
 
 pre-upgrade-zk:
 	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/liboldzkp.so
 	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/verifier/lib/liboldzktrie.so
-	export OLD_ZK_VERSION=${ZK_VERSION}
 
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
