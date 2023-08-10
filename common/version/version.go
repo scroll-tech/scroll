@@ -20,12 +20,13 @@ var commit = func() string {
 			}
 		}
 	}
-	// mock a default commit hash.
+	// Set default value for integration test.
 	return "000000"
 }()
 
-// ZkVersion is commit-id of common/libzkp/impl/cargo.lock/scroll-prover and halo2, concated by a "-"
-var ZkVersion = "zk-mock_version"
+// ZkVersion is commit-id of common/libzkp/impl/cargo.lock/scroll-prover and halo2, contacted by a "-"
+// The default `zk-000000` is set for integration test.
+var ZkVersion = "zk-000000"
 
 // Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, prover, contracts and etc.
 var Version = fmt.Sprintf("%s-%s-%s", tag, commit, ZkVersion)
