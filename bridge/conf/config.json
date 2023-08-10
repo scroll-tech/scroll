@@ -68,8 +68,11 @@
       "gas_oracle_sender_private_keys": [
         "1313131313131313131313131313131313131313131313131313131313131313"
       ],
-      "rollup_sender_private_keys": [
+      "commit_sender_private_keys": [
         "1414141414141414141414141414141414141414141414141414141414141414"
+      ],
+      "finalize_sender_private_keys": [
+        "1515151515151515151515151515151515151515151515151515151515151515"
       ]
     },
     "chunk_proposer_config": {

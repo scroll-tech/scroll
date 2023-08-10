@@ -17,7 +17,8 @@ func TestConfig(t *testing.T) {
 
 		assert.Len(t, cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys, 1)
 		assert.Len(t, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys, 1)
-		assert.Len(t, cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys, 1)
+		assert.Len(t, cfg.L2Config.RelayerConfig.CommitSenderPrivateKeys, 1)
+		assert.Len(t, cfg.L2Config.RelayerConfig.FinalizeSenderPrivateKeys, 1)
 
 		data, err := json.Marshal(cfg)
 		assert.NoError(t, err)
