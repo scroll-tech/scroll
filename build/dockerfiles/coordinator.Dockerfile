@@ -37,7 +37,7 @@ COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/logic/verifier/lib/
 COPY --from=zkp-builder /app/target/release/libzktrie.so ./coordinator/internal/logic/verifier/lib/
-RUN cd ./coordinator && go build -v -p 4 -o /bin/coordinator ./cmd && mv internal/logic/verifier/lib /bin/
+RUN cd ./coordinator && make coordinator_skip_libzkp && mv ./build/bin/coordinator /bin/coordinator && mv internal/logic/verifier/lib /bin/
 
 # Pull coordinator into a second stage deploy alpine container
 FROM ubuntu:20.04
@@ -46,6 +46,6 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/li
 RUN mkdir -p /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/lib /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/coordinator /bin/
-
+RUN /bin/coordinator --version
 
 ENTRYPOINT ["/bin/coordinator"]

@@ -24,6 +24,7 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
 
 	bcmd "scroll-tech/bridge/cmd"
 )
@@ -37,6 +38,8 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	version.Version = "v1.2.3-aaa-bbb-ccc"
+
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
 	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")

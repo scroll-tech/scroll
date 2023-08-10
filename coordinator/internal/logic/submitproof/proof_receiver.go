@@ -79,7 +79,7 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB) *ProofR
 func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.ProofMsg) error {
 	pk := ctx.GetString(coordinatorType.PublicKey)
 	if len(pk) == 0 {
-		return fmt.Errorf("get public key from contex failed")
+		return fmt.Errorf("get public key from context failed")
 	}
 
 	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndPubKey(ctx, proofMsg.ID, pk)
