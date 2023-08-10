@@ -1,4 +1,4 @@
-go 1.18
+go 1.19
 
 use (
 	./bridge
@@ -6,6 +6,7 @@ use (
 	./common
 	./coordinator
 	./database
-	./roller
+	./prover
+	./prover-stats-api
 	./tests/integration-test
 )

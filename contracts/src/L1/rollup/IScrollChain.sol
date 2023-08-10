@@ -1,104 +1,83 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 interface IScrollChain {
     /**********
      * Events *
      **********/
 
-    /// @notice Emitted when a new batch is commited.
-    /// @param batchHash The hash of the batch
-    event CommitBatch(bytes32 indexed batchHash);
+    /// @notice Emitted when a new batch is committed.
+    /// @param batchIndex The index of the batch.
+    /// @param batchHash The hash of the batch.
+    event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
 
-    /// @notice Emitted when a batch is reverted.
-    /// @param batchHash The identification of the batch.
-    event RevertBatch(bytes32 indexed batchHash);
+    /// @notice revert a pending batch.
+    /// @param batchIndex The index of the batch.
+    /// @param batchHash The hash of the batch
+    event RevertBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
 
     /// @notice Emitted when a batch is finalized.
+    /// @param batchIndex The index of the batch.
     /// @param batchHash The hash of the batch
-    event FinalizeBatch(bytes32 indexed batchHash);
-
-    /***********
-     * Structs *
-     ***********/
-
-    struct BlockContext {
-        // The hash of this block.
-        bytes32 blockHash;
-        // The parent hash of this block.
-        bytes32 parentHash;
-        // The height of this block.
-        uint64 blockNumber;
-        // The timestamp of this block.
-        uint64 timestamp;
-        // The base fee of this block.
-        // Currently, it is not used, because we disable EIP-1559.
-        // We keep it for future proof.
-        uint256 baseFee;
-        // The gas limit of this block.
-        uint64 gasLimit;
-        // The number of transactions in this block, both L1 & L2 txs.
-        uint16 numTransactions;
-        // The number of l1 messages in this block.
-        uint16 numL1Messages;
-    }
-
-    struct Batch {
-        // The list of blocks in this batch
-        BlockContext[] blocks; // MAX_NUM_BLOCKS = 100, about 5 min
-        // The state root of previous batch.
-        // The first batch will use 0x0 for prevStateRoot
-        bytes32 prevStateRoot;
-        // The state root of the last block in this batch.
-        bytes32 newStateRoot;
-        // The withdraw trie root of the last block in this batch.
-        bytes32 withdrawTrieRoot;
-        // The index of the batch.
-        uint64 batchIndex;
-        // The parent batch hash.
-        bytes32 parentBatchHash;
-        // Concatenated raw data of RLP encoded L2 txs
-        bytes l2Transactions;
-    }
+    /// @param stateRoot The state root on layer 2 after this batch.
+    /// @param withdrawRoot The merkle root on layer2 after this batch.
+    event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
 
     /*************************
      * Public View Functions *
      *************************/
 
-    /// @notice Return whether the batch is finalized by batch hash.
-    /// @param batchHash The hash of the batch to query.
-    function isBatchFinalized(bytes32 batchHash) external view returns (bool);
+    /// @notice Return the batch hash of a committed batch.
+    /// @param batchIndex The index of the batch.
+    function committedBatches(uint256 batchIndex) external view returns (bytes32);
 
-    /// @notice Return the merkle root of L2 message tree.
-    /// @param batchHash The hash of the batch to query.
-    function getL2MessageRoot(bytes32 batchHash) external view returns (bytes32);
+    /// @notice Return the state root of a committed batch.
+    /// @param batchIndex The index of the batch.
+    function finalizedStateRoots(uint256 batchIndex) external view returns (bytes32);
+
+    /// @notice Return the message root of a committed batch.
+    /// @param batchIndex The index of the batch.
+    function withdrawRoots(uint256 batchIndex) external view returns (bytes32);
+
+    /// @notice Return whether the batch is finalized by batch index.
+    /// @param batchIndex The index of the batch.
+    function isBatchFinalized(uint256 batchIndex) external view returns (bool);
 
     /*****************************
      * Public Mutating Functions *
      *****************************/
 
-    /// @notice commit a batch in layer 1
-    /// @param batch The layer2 batch to commit.
-    function commitBatch(Batch memory batch) external;
+    /// @notice Commit a batch of transactions on layer 1.
+    ///
+    /// @param version The version of current batch.
+    /// @param parentBatchHeader The header of parent batch, see the comments of `BatchHeaderV0Codec`.
+    /// @param chunks The list of encoded chunks, see the comments of `ChunkCodec`.
+    /// @param skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
+    function commitBatch(
+        uint8 version,
+        bytes calldata parentBatchHeader,
+        bytes[] memory chunks,
+        bytes calldata skippedL1MessageBitmap
+    ) external;
 
-    /// @notice commit a list of batches in layer 1
-    /// @param batches The list of layer2 batches to commit.
-    function commitBatches(Batch[] memory batches) external;
-
-    /// @notice revert a pending batch.
+    /// @notice Revert a pending batch.
     /// @dev one can only revert unfinalized batches.
-    /// @param batchId The identification of the batch.
-    function revertBatch(bytes32 batchId) external;
+    /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch`.
+    /// @param count The number of subsequent batches to revert, including current batch.
+    function revertBatch(bytes calldata batchHeader, uint256 count) external;
 
-    /// @notice finalize commited batch in layer 1
-    /// @dev will add more parameters if needed.
-    /// @param batchId The identification of the commited batch.
-    /// @param proof The corresponding proof of the commited batch.
-    /// @param instances Instance used to verify, generated from batch.
+    /// @notice Finalize a committed batch on layer 1.
+    /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch.
+    /// @param prevStateRoot The state root of parent batch.
+    /// @param postStateRoot The state root of current batch.
+    /// @param withdrawRoot The withdraw trie root of current batch.
+    /// @param aggrProof The aggregation proof for current batch.
     function finalizeBatchWithProof(
-        bytes32 batchId,
-        uint256[] memory proof,
-        uint256[] memory instances
+        bytes calldata batchHeader,
+        bytes32 prevStateRoot,
+        bytes32 postStateRoot,
+        bytes32 withdrawRoot,
+        bytes calldata aggrProof
     ) external;
 }

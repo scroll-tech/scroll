@@ -6,6 +6,12 @@ import (
 	"path/filepath"
 )
 
+// BatchInfoFetcherConfig is the configuration of BatchInfoFetcher
+type BatchInfoFetcherConfig struct {
+	BatchIndexStartBlock uint64 `json:"batchIndexStartBlock"`
+	ScrollChainAddr      string `json:"ScrollChainAddr"`
+}
+
 // DBConfig db config
 type DBConfig struct {
 	// data source name
@@ -16,6 +22,7 @@ type DBConfig struct {
 	MaxIdleNum int `json:"maxIdleNum"`
 }
 
+// LayerConfig is the configuration of Layer1/Layer2
 type LayerConfig struct {
 	Confirmation           uint64 `json:"confirmation"`
 	Endpoint               string `json:"endpoint"`
@@ -30,6 +37,11 @@ type LayerConfig struct {
 	CustomERC20GatewayAddr string `json:"CustomERC20GatewayAddr"`
 }
 
+// ServerConfig is the configuration of the bridge history backend server port
+type ServerConfig struct {
+	HostPort string `json:"hostPort"`
+}
+
 // Config is the configuration of the bridge history backend
 type Config struct {
 	// chain config
@@ -37,7 +49,9 @@ type Config struct {
 	L2 *LayerConfig `json:"l2"`
 
 	// data source name
-	DB *DBConfig `json:"db"`
+	DB               *DBConfig               `json:"db"`
+	Server           *ServerConfig           `json:"server"`
+	BatchInfoFetcher *BatchInfoFetcherConfig `json:"batchInfoFetcher"`
 }
 
 // NewConfig returns a new instance of Config.

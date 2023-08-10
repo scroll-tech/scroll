@@ -1,35 +1,30 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import {IWhitelist} from "./common/IWhitelist.sol";
 import {ScrollConstants} from "./constants/ScrollConstants.sol";
 import {IScrollMessenger} from "./IScrollMessenger.sol";
 
-abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
+// solhint-disable var-name-mixedcase
+
+abstract contract ScrollMessengerBase is
+    OwnableUpgradeable,
+    PausableUpgradeable,
+    ReentrancyGuardUpgradeable,
+    IScrollMessenger
+{
     /**********
      * Events *
      **********/
-
-    /// @notice Emitted when owner updates whitelist contract.
-    /// @param _oldWhitelist The address of old whitelist contract.
-    /// @param _newWhitelist The address of new whitelist contract.
-    event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
 
     /// @notice Emitted when owner updates fee vault contract.
     /// @param _oldFeeVault The address of old fee vault contract.
     /// @param _newFeeVault The address of new fee vault contract.
     event UpdateFeeVault(address _oldFeeVault, address _newFeeVault);
-
-    /*************
-     * Constants *
-     *************/
-
-    // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v4.5.0/contracts/security/ReentrancyGuard.sol
-    uint256 internal constant _NOT_ENTERED = 1;
-    uint256 internal constant _ENTERED = 2;
 
     /*************
      * Variables *
@@ -38,22 +33,24 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
     /// @notice See {IScrollMessenger-xDomainMessageSender}
     address public override xDomainMessageSender;
 
-    /// @notice The whitelist contract to track the sender who can call `sendMessage` in ScrollMessenger.
-    address public whitelist;
-
     /// @notice The address of counterpart ScrollMessenger contract in L1/L2.
     address public counterpart;
 
     /// @notice The address of fee vault, collecting cross domain messaging fee.
     address public feeVault;
 
+    /// @dev The storage slots for future usage.
+    uint256[47] private __gap;
+
     /**********************
      * Function Modifiers *
      **********************/
 
-    modifier onlyWhitelistedSender(address _sender) {
-        address _whitelist = whitelist;
-        require(_whitelist == address(0) || IWhitelist(_whitelist).isSenderAllowed(_sender), "sender not whitelisted");
+    modifier notInExecution() {
+        require(
+            xDomainMessageSender == ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER,
+            "Message is already in execution"
+        );
         _;
     }
 
@@ -61,41 +58,46 @@ abstract contract ScrollMessengerBase is OwnableUpgradeable, IScrollMessenger {
      * Constructor *
      ***************/
 
-    function _initialize(address _counterpart, address _feeVault) internal {
+    function __ScrollMessengerBase_init(address _counterpart, address _feeVault) internal onlyInitializing {
         OwnableUpgradeable.__Ownable_init();
+        PausableUpgradeable.__Pausable_init();
+        ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
 
         // initialize to a nonzero value
         xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
         counterpart = _counterpart;
-        feeVault = _feeVault;
+        if (_feeVault != address(0)) {
+            feeVault = _feeVault;
+        }
     }
 
-    // allow others to send ether to messenger
-    receive() external payable {}
+    // make sure only owner can send ether to messenger to avoid possible user fund loss.
+    receive() external payable onlyOwner {}
 
     /************************
      * Restricted Functions *
      ************************/
 
-    /// @notice Update whitelist contract.
-    /// @dev This function can only called by contract owner.
-    /// @param _newWhitelist The address of new whitelist contract.
-    function updateWhitelist(address _newWhitelist) external onlyOwner {
-        address _oldWhitelist = whitelist;
-
-        whitelist = _newWhitelist;
-        emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
-    }
-
     /// @notice Update fee vault contract.
     /// @dev This function can only called by contract owner.
     /// @param _newFeeVault The address of new fee vault contract.
     function updateFeeVault(address _newFeeVault) external onlyOwner {
-        address _oldFeeVault = whitelist;
+        address _oldFeeVault = feeVault;
 
         feeVault = _newFeeVault;
         emit UpdateFeeVault(_oldFeeVault, _newFeeVault);
+    }
+
+    /// @notice Pause the contract
+    /// @dev This function can only called by contract owner.
+    /// @param _status The pause status to update.
+    function setPause(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 
     /**********************

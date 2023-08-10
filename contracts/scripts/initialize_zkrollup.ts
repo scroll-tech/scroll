@@ -18,7 +18,7 @@ async function main() {
   const ScrollChain = await ethers.getContractAt("ScrollChain", addressFile.get("ScrollChain.proxy"), deployer);
 
   if ((await ScrollChain.owner()) === constants.AddressZero) {
-    const tx = await ScrollChain.initialize(L1_MESSAGE_QUEUE);
+    const tx = await ScrollChain.initialize(L1_MESSAGE_QUEUE, constants.AddressZero);
     console.log("initialize ScrollChain, hash:", tx.hash);
     const receipt = await tx.wait();
     console.log(`✅ Done, gas used: ${receipt.gasUsed}`);

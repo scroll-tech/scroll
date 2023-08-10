@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 abstract contract AppendOnlyMerkleTree {
     /// @dev The maximum height of the withdraw merkle tree.
@@ -29,10 +29,12 @@ abstract contract AppendOnlyMerkleTree {
     }
 
     function _appendMessageHash(bytes32 _messageHash) internal returns (uint256, bytes32) {
+        require(zeroHashes[1] != bytes32(0), "call before initialization");
+
         uint256 _currentMessageIndex = nextMessageIndex;
         bytes32 _hash = _messageHash;
         uint256 _height = 0;
-        // @todo it can be optimized, since we only need the newly added branch.
+
         while (_currentMessageIndex != 0) {
             if (_currentMessageIndex % 2 == 0) {
                 // it may be used in next round.

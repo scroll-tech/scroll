@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {ScrollChain} from "./ScrollChain.sol";
 import {ZkTrieVerifier} from "../../libraries/verifier/ZkTrieVerifier.sol";
@@ -38,22 +38,22 @@ contract ScrollChainCommitmentVerifier {
     }
 
     /// @notice Verifies a batch inclusion proof.
-    /// @param batchHash The hash of the batch.
+    /// @param batchIndex The index of the batch.
     /// @param account The address of the contract in L2.
     /// @param storageKey The storage key inside the contract in L2.
     /// @param proof The rlp encoding result of eth_getProof.
     /// @return storageValue The value of `storageKey`.
     function verifyStateCommitment(
-        bytes32 batchHash,
+        uint256 batchIndex,
         address account,
         bytes32 storageKey,
         bytes calldata proof
     ) external view returns (bytes32 storageValue) {
-        require(ScrollChain(rollup).isBatchFinalized(batchHash), "Batch not finalized");
+        require(ScrollChain(rollup).isBatchFinalized(batchIndex), "Batch not finalized");
 
         bytes32 computedStateRoot;
         (computedStateRoot, storageValue) = ZkTrieVerifier.verifyZkTrieProof(poseidon, account, storageKey, proof);
-        (bytes32 expectedStateRoot, , , , , , , ) = ScrollChain(rollup).batches(batchHash);
+        bytes32 expectedStateRoot = ScrollChain(rollup).finalizedStateRoots(batchIndex);
         require(computedStateRoot == expectedStateRoot, "Invalid inclusion proof");
     }
 }

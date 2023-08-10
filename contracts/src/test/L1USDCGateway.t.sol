@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {IL1ERC20Gateway, L1USDCGateway} from "../L1/gateways/usdc/L1USDCGateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
@@ -49,8 +51,8 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         l2USDC = new MockERC20("USDC", "USDC", 6);
 
         // Deploy L1 contracts
-        gateway = new L1USDCGateway(address(l1USDC), address(l2USDC));
-        router = new L1GatewayRouter();
+        gateway = _deployGateway();
+        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
 
         // Deploy L2 contracts
         counterpartGateway = new L2USDCGateway(address(l1USDC), address(l2USDC));
@@ -62,6 +64,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         // Prepare token balances
         l1USDC.mint(address(this), type(uint128).max);
         l1USDC.approve(address(gateway), type(uint256).max);
+        l1USDC.approve(address(router), type(uint256).max);
     }
 
     function testInitialized() public {
@@ -124,16 +127,6 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         _depositERC20WithRecipient(false, amount, recipient, gasLimit, feePerGas);
     }
 
-    function testDepositERC20WithRecipientAndCalldata(
-        uint256 amount,
-        address recipient,
-        bytes memory dataToCall,
-        uint256 gasLimit,
-        uint256 feePerGas
-    ) public {
-        _depositERC20WithRecipientAndCalldata(false, amount, recipient, dataToCall, gasLimit, feePerGas);
-    }
-
     function testRouterDepositERC20(
         uint256 amount,
         uint256 gasLimit,
@@ -151,16 +144,6 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         _depositERC20WithRecipient(true, amount, recipient, gasLimit, feePerGas);
     }
 
-    function testRouterDepositERC20WithRecipientAndCalldata(
-        uint256 amount,
-        address recipient,
-        bytes memory dataToCall,
-        uint256 gasLimit,
-        uint256 feePerGas
-    ) public {
-        _depositERC20WithRecipientAndCalldata(true, amount, recipient, dataToCall, gasLimit, feePerGas);
-    }
-
     function testFinalizeWithdrawERC20FailedMocking(
         address sender,
         address recipient,
@@ -174,11 +157,11 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         gateway.finalizeWithdrawERC20(address(l1USDC), address(l2USDC), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1USDCGateway(address(l1USDC), address(l2USDC));
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by conterpart
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -271,7 +254,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         // deposit some USDC to L1ScrollMessenger
         gateway.depositERC20(address(l1USDC), amount, 0);
 
-        // do finalize withdraw eth
+        // do finalize withdraw usdc
         bytes memory message = abi.encodeWithSelector(
             IL1ERC20Gateway.finalizeWithdrawERC20.selector,
             address(l1USDC),
@@ -293,7 +276,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // conterpart is not L2USDCGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
@@ -328,7 +311,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         // deposit some USDC to gateway
         gateway.depositERC20(address(l1USDC), amount, 0);
 
-        // do finalize withdraw eth
+        // do finalize withdraw usdc
         bytes memory message = abi.encodeWithSelector(
             IL1ERC20Gateway.finalizeWithdrawERC20.selector,
             address(l1USDC),
@@ -350,7 +333,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         prepareL2MessageRoot(keccak256(xDomainCalldata));
 
         IL1ScrollMessenger.L2MessageProof memory proof;
-        proof.batchHash = rollup.lastFinalizedBatchHash();
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
         // emit FinalizeWithdrawERC20 from L1USDCGateway
         {
@@ -529,103 +512,10 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         }
     }
 
-    function _depositERC20WithRecipientAndCalldata(
-        bool useRouter,
-        uint256 amount,
-        address recipient,
-        bytes memory dataToCall,
-        uint256 gasLimit,
-        uint256 feePerGas
-    ) private {
-        amount = bound(amount, 0, l1USDC.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 0, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
-
-        gasOracle.setL2BaseFee(feePerGas);
-
-        uint256 feeToPay = feePerGas * gasLimit;
-        bytes memory message = abi.encodeWithSelector(
-            IL2ERC20Gateway.finalizeDepositERC20.selector,
-            address(l1USDC),
-            address(l2USDC),
-            address(this),
-            recipient,
-            amount,
-            dataToCall
-        );
-        bytes memory xDomainCalldata = abi.encodeWithSignature(
-            "relayMessage(address,address,uint256,uint256,bytes)",
-            address(gateway),
-            address(counterpartGateway),
-            0,
-            0,
-            message
-        );
-
-        if (amount == 0) {
-            hevm.expectRevert("deposit zero amount");
-            if (useRouter) {
-                router.depositERC20AndCall{value: feeToPay + extraValue}(
-                    address(l1USDC),
-                    recipient,
-                    amount,
-                    dataToCall,
-                    gasLimit
-                );
-            } else {
-                gateway.depositERC20AndCall{value: feeToPay + extraValue}(
-                    address(l1USDC),
-                    recipient,
-                    amount,
-                    dataToCall,
-                    gasLimit
-                );
-            }
-        } else {
-            // token is not l1USDC
-            hevm.expectRevert("only USDC is allowed");
-            gateway.depositERC20AndCall(address(l2USDC), recipient, amount, dataToCall, gasLimit);
-
-            // emit QueueTransaction from L1MessageQueue
-            {
-                hevm.expectEmit(true, true, false, true);
-                address sender = AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger));
-                emit QueueTransaction(sender, address(l2Messenger), 0, 0, gasLimit, xDomainCalldata);
-            }
-
-            // emit SentMessage from L1ScrollMessenger
-            {
-                hevm.expectEmit(true, true, false, true);
-                emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
-            }
-
-            // emit DepositERC20 from L1USDCGateway
-            hevm.expectEmit(true, true, true, true);
-            emit DepositERC20(address(l1USDC), address(l2USDC), address(this), recipient, amount, dataToCall);
-
-            uint256 gatewayBalance = l1USDC.balanceOf(address(gateway));
-            uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
-            if (useRouter) {
-                router.depositERC20AndCall{value: feeToPay + extraValue}(
-                    address(l1USDC),
-                    recipient,
-                    amount,
-                    dataToCall,
-                    gasLimit
-                );
-            } else {
-                gateway.depositERC20AndCall{value: feeToPay + extraValue}(
-                    address(l1USDC),
-                    recipient,
-                    amount,
-                    dataToCall,
-                    gasLimit
-                );
-            }
-            assertEq(amount + gatewayBalance, l1USDC.balanceOf(address(gateway)));
-            assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
-        }
+    function _deployGateway() internal returns (L1USDCGateway) {
+        return
+            L1USDCGateway(
+                payable(new ERC1967Proxy(address(new L1USDCGateway(address(l1USDC), address(l2USDC))), new bytes(0)))
+            );
     }
 }

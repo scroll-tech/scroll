@@ -18,7 +18,7 @@ import {L1ERC20Gateway} from "../L1ERC20Gateway.sol";
 /// @title L1USDCGatewayCCTP
 /// @notice The `L1USDCGateway` contract is used to deposit `USDC` token in layer 1 and
 /// finalize withdraw `USDC` from layer 2, after USDC become native in layer 2.
-contract L1USDCGatewayCCTP is OwnableUpgradeable, CCTPGatewayBase, L1ERC20Gateway {
+contract L1USDCGatewayCCTP is CCTPGatewayBase, L1ERC20Gateway {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /***************
@@ -128,6 +128,25 @@ contract L1USDCGatewayCCTP is OwnableUpgradeable, CCTPGatewayBase, L1ERC20Gatewa
      **********************/
 
     /// @inheritdoc L1ERC20Gateway
+    function _beforeFinalizeWithdrawERC20(
+        address,
+        address,
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) internal virtual override {}
+
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeDropMessage(
+        address,
+        address,
+        uint256
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+    }
+
+    /// @inheritdoc L1ERC20Gateway
     function _deposit(
         address _token,
         address _to,
@@ -139,15 +158,10 @@ contract L1USDCGatewayCCTP is OwnableUpgradeable, CCTPGatewayBase, L1ERC20Gatewa
         require(_token == l1USDC, "only USDC is allowed");
 
         // 1. Extract real sender if this call is from L1GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
-            (_from, _data) = abi.decode(_data, (address, bytes));
-        }
+        address _from;
+        (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
 
-        // 2. Transfer token into this contract.
-        IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
-
-        // 3. Burn token through CCTP TokenMessenger
+        // 2. Burn token through CCTP TokenMessenger
         uint256 _nonce = ITokenMessenger(cctpMessenger).depositForBurnWithCaller(
             _amount,
             destinationDomain,
@@ -156,15 +170,10 @@ contract L1USDCGatewayCCTP is OwnableUpgradeable, CCTPGatewayBase, L1ERC20Gatewa
             bytes32(uint256(uint160(counterpart)))
         );
 
-        // 4. Generate message passed to L2USDCGatewayCCTP.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC20Gateway.finalizeDepositERC20.selector,
-            _token,
-            l2USDC,
-            _from,
-            _to,
-            _amount,
-            abi.encode(_nonce, _data)
+        // 3. Generate message passed to L2USDCGatewayCCTP.
+        bytes memory _message = abi.encodeCall(
+            IL2ERC20Gateway.finalizeDepositERC20,
+            (_token, l2USDC, _from, _to, _amount, abi.encode(_nonce, _data))
         );
 
         // 4. Send message to L1ScrollMessenger.

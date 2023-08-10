@@ -119,10 +119,16 @@ describe("L1BlockContainer", async () => {
         const [deployer] = await ethers.getSigners();
         const L1BlockContainer = await ethers.getContractFactory("L1BlockContainer", deployer);
         container = await L1BlockContainer.deploy(deployer.address);
+
+        const Whitelist = await ethers.getContractFactory("Whitelist", deployer);
+        const whitelist = await Whitelist.deploy(deployer.address);
+        await whitelist.updateWhitelistStatus([deployer.address], true);
+
+        await container.updateWhitelist(whitelist.address);
       });
 
       it("should revert, when sender not allowed", async () => {
-        const [deployer] = await ethers.getSigners();
+        const [, signer] = await ethers.getSigners();
         await container.initialize(
           test.parentHash,
           test.blockHeight - 1,
@@ -130,11 +136,8 @@ describe("L1BlockContainer", async () => {
           test.baseFee,
           test.stateRoot
         );
-        const Whitelist = await ethers.getContractFactory("Whitelist", deployer);
-        const whitelist = await Whitelist.deploy(deployer.address);
-        await container.updateWhitelist(whitelist.address);
 
-        await expect(container.importBlockHeader(constants.HashZero, [], false)).to.revertedWith(
+        await expect(container.connect(signer).importBlockHeader(constants.HashZero, [], false)).to.revertedWith(
           "Not whitelisted sender"
         );
       });

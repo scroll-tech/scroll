@@ -11,60 +11,53 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/database"
-
+	"scroll-tech/common/database"
 	"scroll-tech/common/metrics"
+	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	"scroll-tech/bridge/config"
-	"scroll-tech/bridge/relayer"
-	"scroll-tech/bridge/utils"
-	"scroll-tech/bridge/watcher"
-
-	cutils "scroll-tech/common/utils"
+	"scroll-tech/bridge/internal/config"
+	"scroll-tech/bridge/internal/controller/relayer"
+	"scroll-tech/bridge/internal/controller/watcher"
+	butils "scroll-tech/bridge/internal/utils"
 )
 
-var (
-	app *cli.App
-)
+var app *cli.App
 
 func init() {
 	// Set up rollup-relayer app info.
 	app = cli.NewApp()
-
 	app.Action = action
 	app.Name = "rollup-relayer"
 	app.Usage = "The Scroll Rollup Relayer"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, cutils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.RollupRelayerFlags...)
 	app.Commands = []*cli.Command{}
-
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		return utils.LogSetup(ctx)
 	}
 	// Register `rollup-relayer-test` app for integration-test.
-	cutils.RegisterSimulation(app, cutils.RollupRelayerApp)
+	utils.RegisterSimulation(app, utils.RollupRelayerApp)
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
-
-	// init db connection
-	var ormFactory database.OrmFactory
-	if ormFactory, err = database.NewOrmFactory(cfg.DBConfig); err != nil {
+	// Init db connection
+	db, err := database.InitDB(cfg.DBConfig)
+	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 	defer func() {
 		cancel()
-		err = ormFactory.Close()
-		if err != nil {
+		if err = database.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
@@ -79,37 +72,45 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, ormFactory, cfg.L2Config.RelayerConfig)
+	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis)
 	if err != nil {
 		log.Error("failed to create l2 relayer", "config file", cfgFile, "error", err)
 		return err
 	}
 
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, l2relayer, ormFactory)
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db)
+	if err != nil {
+		log.Error("failed to create chunkProposer", "config file", cfgFile, "error", err)
+		return err
+	}
+
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, db)
 	if err != nil {
 		log.Error("failed to create batchProposer", "config file", cfgFile, "error", err)
 		return err
 	}
 
-	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, ormFactory)
+	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress,
+		cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db)
 
 	// Watcher loop to fetch missing blocks
-	go cutils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
-		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
+	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
+		number, loopErr := butils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
 			return
 		}
-		l2watcher.TryFetchRunningMissingBlocks(ctx, number)
+		l2watcher.TryFetchRunningMissingBlocks(number)
 	})
 
-	// Batch proposer loop
-	go cutils.Loop(subCtx, 2*time.Second, func() {
-		batchProposer.TryProposeBatch()
-		batchProposer.TryCommitBatches()
-	})
+	go utils.Loop(subCtx, 2*time.Second, chunkProposer.TryProposeChunk)
 
-	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessCommittedBatches)
+	go utils.Loop(subCtx, 2*time.Second, batchProposer.TryProposeBatch)
+
+	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
+
+	go utils.Loop(subCtx, 60*time.Second, l2relayer.ProcessCommittedBatches)
 
 	// Finish start all rollup relayer functions.
 	log.Info("Start rollup-relayer successfully")

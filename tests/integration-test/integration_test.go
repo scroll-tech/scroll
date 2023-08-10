@@ -1,124 +1,157 @@
 package integration_test
 
 import (
-	"crypto/rand"
-	"io/ioutil"
+	"context"
+	"log"
 	"math/big"
-	"net/http"
-	"strconv"
-	"strings"
 	"testing"
+	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	bcmd "scroll-tech/bridge/cmd"
-	_ "scroll-tech/bridge/cmd/event_watcher/app"
-	_ "scroll-tech/bridge/cmd/gas_oracle/app"
-	_ "scroll-tech/bridge/cmd/msg_relayer/app"
-	_ "scroll-tech/bridge/cmd/rollup_relayer/app"
+	"scroll-tech/integration-test/orm"
 
-	"scroll-tech/common/docker"
-	"scroll-tech/common/utils"
-
-	rapp "scroll-tech/roller/cmd/app"
+	rapp "scroll-tech/prover/cmd/app"
 
 	"scroll-tech/database/migrate"
 
 	capp "scroll-tech/coordinator/cmd/app"
+
+	"scroll-tech/common/database"
+	"scroll-tech/common/docker"
+	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
+
+	bcmd "scroll-tech/bridge/cmd"
 )
 
 var (
 	base           *docker.App
 	bridgeApp      *bcmd.MockApp
 	coordinatorApp *capp.CoordinatorApp
-	rollerApp      *rapp.RollerApp
+	chunkProverApp *rapp.ProverApp
+	batchProverApp *rapp.ProverApp
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
-	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/config.json")
-	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/config.json")
-	rollerApp = rapp.NewRollerApp(base, "../../roller/config.json", coordinatorApp.WSEndpoint())
+	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
+	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
+	chunkProverApp = rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
+	batchProverApp = rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	m.Run()
 	bridgeApp.Free()
 	coordinatorApp.Free()
-	rollerApp.Free()
+	chunkProverApp.Free()
+	batchProverApp.Free()
 	base.Free()
 }
 
-func TestStartProcess(t *testing.T) {
-	// Start l1geth l2geth and postgres docker containers.
-	base.RunImages(t)
-	// Reset db.
-	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
+func TestCoordinatorProverInteraction(t *testing.T) {
+	// Start postgres docker containers.
+	base.RunL2Geth(t)
+	base.RunDBImage(t)
 
-	// Run bridge apps.
-	bridgeApp.RunApp(t, utils.EventWatcherApp)
-	bridgeApp.RunApp(t, utils.GasOracleApp)
-	bridgeApp.RunApp(t, utils.MessageRelayerApp)
-	bridgeApp.RunApp(t, utils.RollupRelayerApp)
+	// Init data
+	dbCfg := &database.Config{
+		DSN:        base.DBConfig.DSN,
+		DriverName: base.DBConfig.DriverName,
+		MaxOpenNum: base.DBConfig.MaxOpenNum,
+		MaxIdleNum: base.DBConfig.MaxIdleNum,
+	}
+
+	db, err := database.InitDB(dbCfg)
+	assert.NoError(t, err)
+
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	batchOrm := orm.NewBatch(db)
+	chunkOrm := orm.NewChunk(db)
+	l2BlockOrm := orm.NewL2Block(db)
+
+	// Connect to l2geth client
+	l2Client, err := base.L2Client()
+	if err != nil {
+		log.Fatalf("Failed to connect to the l2geth client: %v", err)
+	}
+
+	var header *gethTypes.Header
+	success := utils.TryTimes(10, func() bool {
+		header, err = l2Client.HeaderByNumber(context.Background(), big.NewInt(1))
+		if err != nil {
+			log.Printf("Failed to retrieve L2 genesis header: %v. Retrying...", err)
+			return false
+		}
+		return true
+	})
+
+	if !success {
+		log.Fatalf("Failed to retrieve L2 genesis header after multiple attempts: %v", err)
+	}
+
+	wrappedBlock := &types.WrappedBlock{
+		Header:         header,
+		Transactions:   nil,
+		WithdrawRoot:   common.Hash{},
+		RowConsumption: &gethTypes.RowConsumption{},
+	}
+	chunk := &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock}}
+
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock})
+	assert.NoError(t, err)
+	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
+	assert.NoError(t, err)
+	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
+	assert.NoError(t, err)
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	assert.NoError(t, err)
+	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
+	assert.NoError(t, err)
+	t.Log(version.Version)
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
-	// Run roller app.
-	rollerApp.RunApp(t)
+
+	// Run prover app.
+	chunkProverApp.ExpectWithTimeout(t, true, time.Second*40, "proof submitted successfully") // chunk prover login -> get task -> submit proof.
+	batchProverApp.ExpectWithTimeout(t, true, time.Second*40, "proof submitted successfully") // batch prover login -> get task -> submit proof.
+
+	// All task has been proven, coordinator would not return any task.
+	chunkProverApp.ExpectWithTimeout(t, true, 60*time.Second, "get empty prover task")
+	batchProverApp.ExpectWithTimeout(t, true, 60*time.Second, "get empty prover task")
+
+	chunkProverApp.RunApp(t)
+	batchProverApp.RunApp(t)
 
 	// Free apps.
-	bridgeApp.WaitExit()
-	rollerApp.WaitExit()
+	chunkProverApp.WaitExit()
+	batchProverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
 
-func TestMonitorMetrics(t *testing.T) {
-	// Start l1geth l2geth and postgres docker containers.
-	base.RunImages(t)
-	// Reset db.
+func TestProverReLogin(t *testing.T) {
+	// Start postgres docker containers.
+	base.RunL2Geth(t)
+	base.RunDBImage(t)
+
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
-	port1, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	svrPort1 := strconv.FormatInt(port1.Int64()+50000, 10)
-	bridgeApp.RunApp(t, utils.EventWatcherApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort1)
+	// Run coordinator app.
+	coordinatorApp.RunApp(t) // login timeout: 1 sec
+	chunkProverApp.RunApp(t)
+	batchProverApp.RunApp(t)
 
-	port2, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	svrPort2 := strconv.FormatInt(port2.Int64()+50000, 10)
-	bridgeApp.RunApp(t, utils.GasOracleApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort2)
+	// Run prover app.
+	chunkProverApp.WaitResult(t, time.Second*40, "re-login success") // chunk prover login.
+	batchProverApp.WaitResult(t, time.Second*40, "re-login success") // batch prover login.
 
-	port3, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	svrPort3 := strconv.FormatInt(port3.Int64()+50000, 10)
-	bridgeApp.RunApp(t, utils.MessageRelayerApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort3)
-
-	port4, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	svrPort4 := strconv.FormatInt(port4.Int64()+50000, 10)
-	bridgeApp.RunApp(t, utils.RollupRelayerApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort4)
-
-	// Start coordinator process with metrics server.
-	port5, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	svrPort5 := strconv.FormatInt(port5.Int64()+52000, 10)
-	coordinatorApp.RunApp(t, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort5)
-
-	// Get bridge monitor metrics.
-	resp, err := http.Get("http://localhost:" + svrPort1)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	bodyStr := string(body)
-	assert.Equal(t, 200, resp.StatusCode)
-	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l1_msgs_sync_height"))
-	assert.Equal(t, true, strings.Contains(bodyStr, "bridge_l2_msgs_sync_height"))
-
-	// Get coordinator monitor metrics.
-	resp, err = http.Get("http://localhost:" + svrPort5)
-	assert.NoError(t, err)
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
-	assert.NoError(t, err)
-	bodyStr = string(body)
-	assert.Equal(t, 200, resp.StatusCode)
-	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_sessions_timeout_total"))
-	assert.Equal(t, true, strings.Contains(bodyStr, "coordinator_rollers_disconnects_total"))
-
-	// Exit.
-	bridgeApp.WaitExit()
+	// Free apps.
+	chunkProverApp.WaitExit()
+	batchProverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }

@@ -3,7 +3,7 @@ set -uex
 
 profile_name=$1
 
-exclude_dirs=("scroll-tech/bridge/cmd" "scroll-tech/bridge/tests" "scroll-tech/bridge/mock_bridge" "scroll-tech/coordinator/cmd")
+exclude_dirs=("scroll-tech/bridge/cmd" "scroll-tech/bridge/tests" "scroll-tech/bridge/mock_bridge" "scroll-tech/coordinator/cmd" "scroll-tech/coordinator/internal/logic/verifier")
 
 all_packages=$(go list ./... | grep -v "^scroll-tech/${profile_name}$")
 coverpkg="scroll-tech/${profile_name}"

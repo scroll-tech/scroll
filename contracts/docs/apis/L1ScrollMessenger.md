@@ -27,6 +27,26 @@ The address of counterpart ScrollMessenger contract in L1/L2.
 |---|---|---|
 | _0 | address | undefined |
 
+### dropMessage
+
+```solidity
+function dropMessage(address _from, address _to, uint256 _value, uint256 _messageNonce, bytes _message) external nonpayable
+```
+
+Drop a skipped message.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _from | address | undefined |
+| _to | address | undefined |
+| _value | uint256 | undefined |
+| _messageNonce | uint256 | undefined |
+| _message | bytes | undefined |
+
 ### feeVault
 
 ```solidity
@@ -63,13 +83,13 @@ Initialize the storage of L1ScrollMessenger.
 | _rollup | address | The address of ScrollChain contract. |
 | _messageQueue | address | The address of L1MessageQueue contract. |
 
-### isL1MessageRelayed
+### isL1MessageDropped
 
 ```solidity
-function isL1MessageRelayed(bytes32) external view returns (bool)
+function isL1MessageDropped(bytes32) external view returns (bool)
 ```
 
-Mapping from relay id to relay status.
+Mapping from L1 message hash to drop status.
 
 
 
@@ -129,6 +149,23 @@ Mapping from L2 message hash to a boolean value indicating if the message has be
 |---|---|---|
 | _0 | bool | undefined |
 
+### maxReplayTimes
+
+```solidity
+function maxReplayTimes() external view returns (uint256)
+```
+
+The maximum number of times each L1 message can be replayed.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
 ### messageQueue
 
 ```solidity
@@ -180,6 +217,28 @@ function paused() external view returns (bool)
 |---|---|---|
 | _0 | bool | undefined |
 
+### prevReplayIndex
+
+```solidity
+function prevReplayIndex(uint256) external view returns (uint256)
+```
+
+Mapping from queue index to previous replay queue index.
+
+*If a message `x` was replayed 3 times with index `q1`, `q2` and `q3`, the value of `prevReplayIndex` and `replayStates` will be `replayStates[hash(x)].lastIndex = q3`, `replayStates[hash(x)].times = 3`, `prevReplayIndex[q3] = q2`, `prevReplayIndex[q2] = q1`, `prevReplayIndex[q1] = x` and `prevReplayIndex[x]=nil`.The index `x` that `prevReplayIndex[x]=nil` is used as the termination of the list. Usually we use `0` to represent `nil`, but we cannot distinguish it with the first message with index zero. So a nonzero offset `1` is added to the value of `prevReplayIndex[x]` to avoid such situation.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
 ### relayMessageWithProof
 
 ```solidity
@@ -209,16 +268,16 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### replayMessage
 
 ```solidity
-function replayMessage(address _from, address _to, uint256 _value, uint256 _queueIndex, bytes _message, uint32 _oldGasLimit, uint32 _newGasLimit) external nonpayable
+function replayMessage(address _from, address _to, uint256 _value, uint256 _messageNonce, bytes _message, uint32 _newGasLimit, address _refundAddress) external payable
 ```
 
-Replay an exsisting message.
+Replay an existing message.
 
 
 
@@ -229,10 +288,33 @@ Replay an exsisting message.
 | _from | address | undefined |
 | _to | address | undefined |
 | _value | uint256 | undefined |
-| _queueIndex | uint256 | undefined |
+| _messageNonce | uint256 | undefined |
 | _message | bytes | undefined |
-| _oldGasLimit | uint32 | undefined |
 | _newGasLimit | uint32 | undefined |
+| _refundAddress | address | undefined |
+
+### replayStates
+
+```solidity
+function replayStates(bytes32) external view returns (uint128 times, uint128 lastIndex)
+```
+
+Mapping from L1 message hash to replay state.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| times | uint128 | undefined |
+| lastIndex | uint128 | undefined |
 
 ### rollup
 
@@ -338,13 +420,13 @@ Update fee vault contract.
 |---|---|---|
 | _newFeeVault | address | The address of new fee vault contract. |
 
-### updateWhitelist
+### updateMaxReplayTimes
 
 ```solidity
-function updateWhitelist(address _newWhitelist) external nonpayable
+function updateMaxReplayTimes(uint256 _newMaxReplayTimes) external nonpayable
 ```
 
-Update whitelist contract.
+Update max replay times.
 
 *This function can only called by contract owner.*
 
@@ -352,24 +434,7 @@ Update whitelist contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _newWhitelist | address | The address of new whitelist contract. |
-
-### whitelist
-
-```solidity
-function whitelist() external view returns (address)
-```
-
-The whitelist contract to track the sender who can call `sendMessage` in ScrollMessenger.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
+| _newMaxReplayTimes | uint256 | The new max replay times. |
 
 ### xDomainMessageSender
 
@@ -407,6 +472,22 @@ Emitted when a cross domain message is failed to relay.
 | Name | Type | Description |
 |---|---|---|
 | messageHash `indexed` | bytes32 | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 
@@ -511,13 +592,13 @@ Emitted when owner updates fee vault contract.
 | _oldFeeVault  | address | undefined |
 | _newFeeVault  | address | undefined |
 
-### UpdateWhitelist
+### UpdateMaxReplayTimes
 
 ```solidity
-event UpdateWhitelist(address _oldWhitelist, address _newWhitelist)
+event UpdateMaxReplayTimes(uint256 oldMaxReplayTimes, uint256 newMaxReplayTimes)
 ```
 
-Emitted when owner updates whitelist contract.
+Emitted when the maximum number of times each message can be replayed is updated.
 
 
 
@@ -525,8 +606,8 @@ Emitted when owner updates whitelist contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _oldWhitelist  | address | undefined |
-| _newWhitelist  | address | undefined |
+| oldMaxReplayTimes  | uint256 | undefined |
+| newMaxReplayTimes  | uint256 | undefined |
 
 
 

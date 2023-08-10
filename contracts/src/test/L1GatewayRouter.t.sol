@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
@@ -14,11 +16,13 @@ import {ScrollStandardERC20Factory} from "../libraries/token/ScrollStandardERC20
 
 import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 
+import {TransferReentrantToken} from "./mocks/tokens/TransferReentrantToken.sol";
+
 contract L1GatewayRouterTest is L1GatewayTestBase {
     // from L1GatewayRouter
-    event SetETHGateway(address indexed ethGateway);
-    event SetDefaultERC20Gateway(address indexed defaultERC20Gateway);
-    event SetERC20Gateway(address indexed token, address indexed gateway);
+    event SetETHGateway(address indexed oldETHGateway, address indexed newEthGateway);
+    event SetDefaultERC20Gateway(address indexed oldDefaultERC20Gateway, address indexed newDefaultERC20Gateway);
+    event SetERC20Gateway(address indexed token, address indexed oldGateway, address indexed newGateway);
 
     ScrollStandardERC20 private template;
     ScrollStandardERC20Factory private factory;
@@ -39,9 +43,11 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
         l1Token = new MockERC20("Mock", "M", 18);
 
         // Deploy L1 contracts
-        l1StandardERC20Gateway = new L1StandardERC20Gateway();
-        l1ETHGateway = new L1ETHGateway();
-        router = new L1GatewayRouter();
+        l1StandardERC20Gateway = L1StandardERC20Gateway(
+            address(new ERC1967Proxy(address(new L1StandardERC20Gateway()), new bytes(0)))
+        );
+        l1ETHGateway = L1ETHGateway(address(new ERC1967Proxy(address(new L1ETHGateway()), new bytes(0))));
+        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
 
         // Deploy L2 contracts
         l2StandardERC20Gateway = new L2StandardERC20Gateway();
@@ -88,8 +94,8 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
         hevm.stopPrank();
 
         // set by owner, should succeed
-        hevm.expectEmit(true, false, false, true);
-        emit SetDefaultERC20Gateway(address(l1StandardERC20Gateway));
+        hevm.expectEmit(true, true, false, true);
+        emit SetDefaultERC20Gateway(address(0), address(l1StandardERC20Gateway));
 
         assertEq(address(0), router.getERC20Gateway(address(l1Token)));
         assertEq(address(0), router.defaultERC20Gateway());
@@ -115,8 +121,8 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
         _tokens[0] = address(l1Token);
         _gateways[0] = address(l1StandardERC20Gateway);
 
-        hevm.expectEmit(true, true, false, true);
-        emit SetERC20Gateway(address(l1Token), address(l1StandardERC20Gateway));
+        hevm.expectEmit(true, true, true, true);
+        emit SetERC20Gateway(address(l1Token), address(0), address(l1StandardERC20Gateway));
 
         assertEq(address(0), router.getERC20Gateway(address(l1Token)));
         router.setERC20Gateway(_tokens, _gateways);
@@ -131,5 +137,52 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
     function testFinalizeWithdrawETH() public {
         hevm.expectRevert("should never be called");
         router.finalizeWithdrawETH(address(0), address(0), 0, "");
+    }
+
+    function testRequestERC20(
+        address _sender,
+        address _token,
+        uint256 _amount
+    ) public {
+        hevm.expectRevert("Only in deposit context");
+        router.requestERC20(_sender, _token, _amount);
+    }
+
+    function testReentrant() public {
+        TransferReentrantToken reentrantToken = new TransferReentrantToken("Reentrant", "R", 18);
+        reentrantToken.mint(address(this), type(uint128).max);
+        reentrantToken.approve(address(router), type(uint256).max);
+
+        reentrantToken.setReentrantCall(
+            address(router),
+            0,
+            abi.encodeWithSelector(
+                router.depositERC20AndCall.selector,
+                address(reentrantToken),
+                address(this),
+                0,
+                new bytes(0),
+                0
+            ),
+            true
+        );
+        hevm.expectRevert("Only not in context");
+        router.depositERC20(address(reentrantToken), 1, 0);
+
+        reentrantToken.setReentrantCall(
+            address(router),
+            0,
+            abi.encodeWithSelector(
+                router.depositERC20AndCall.selector,
+                address(reentrantToken),
+                address(this),
+                0,
+                new bytes(0),
+                0
+            ),
+            false
+        );
+        hevm.expectRevert("Only not in context");
+        router.depositERC20(address(reentrantToken), 1, 0);
     }
 }

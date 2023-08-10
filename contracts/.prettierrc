@@ -13,6 +13,16 @@
         "singleQuote": false,
         "bracketSpacing": false
       }
-    }
+    },
+    {
+        "files": "scripts/**/*.sol",
+        "options": {
+          "printWidth": 120,
+          "tabWidth": 4,
+          "useTabs": false,
+          "singleQuote": false,
+          "bracketSpacing": false
+        }
+      }
   ]
 }

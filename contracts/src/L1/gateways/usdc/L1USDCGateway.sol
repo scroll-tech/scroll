@@ -7,6 +7,7 @@ import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import {IFiatToken} from "../../../interfaces/IFiatToken.sol";
+import {IUSDCBurnableSourceBridge} from "../../../interfaces/IUSDCBurnableSourceBridge.sol";
 import {IL2ERC20Gateway} from "../../../L2/gateways/IL2ERC20Gateway.sol";
 import {IL1ScrollMessenger} from "../../IL1ScrollMessenger.sol";
 import {IL1ERC20Gateway} from "../IL1ERC20Gateway.sol";
@@ -17,7 +18,7 @@ import {L1ERC20Gateway} from "../L1ERC20Gateway.sol";
 /// @title L1USDCGateway
 /// @notice The `L1USDCGateway` contract is used to deposit `USDC` token in layer 1 and
 /// finalize withdraw `USDC` from layer 2, before USDC become native in layer 2.
-contract L1USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway {
+contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /*************
@@ -46,6 +47,8 @@ contract L1USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway 
      ***************/
 
     constructor(address _l1USDC, address _l2USDC) {
+        _disableInitializers();
+
         l1USDC = _l1USDC;
         l2USDC = _l2USDC;
     }
@@ -61,7 +64,6 @@ contract L1USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway 
     ) external initializer {
         require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
-        OwnableUpgradeable.__Ownable_init();
     }
 
     /*************************
@@ -73,38 +75,12 @@ contract L1USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway 
         return l2USDC;
     }
 
-    /*****************************
-     * Public Mutating Functions *
-     *****************************/
-
-    /// @inheritdoc IL1ERC20Gateway
-    function finalizeWithdrawERC20(
-        address _l1Token,
-        address _l2Token,
-        address _from,
-        address _to,
-        uint256 _amount,
-        bytes calldata _data
-    ) external payable override onlyCallByCounterpart {
-        require(msg.value == 0, "nonzero msg.value");
-        require(_l1Token == l1USDC, "l1 token not USDC");
-        require(_l2Token == l2USDC, "l2 token not USDC");
-        require(!withdrawPaused, "withdraw paused");
-
-        IERC20Upgradeable(_l1Token).safeTransfer(_to, _amount);
-
-        _doCallback(_to, _data);
-
-        emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
-    }
-
     /*******************************
      * Public Restricted Functions *
      *******************************/
 
-    /// @notice Burn all USDC in this contract.
-    /// @dev The function should only be called by a EOA controlled by Circle.
-    function burnAllHeldUsdc() external {
+    /// @inheritdoc IUSDCBurnableSourceBridge
+    function burnAllLockedUSDC() external override {
         require(msg.sender == circleCaller, "only circle caller");
 
         uint256 _balance = IERC20Upgradeable(l1USDC).balanceOf(address(this));
@@ -134,6 +110,30 @@ contract L1USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway 
      **********************/
 
     /// @inheritdoc L1ERC20Gateway
+    function _beforeFinalizeWithdrawERC20(
+        address _l1Token,
+        address _l2Token,
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+        require(_l1Token == l1USDC, "l1 token not USDC");
+        require(_l2Token == l2USDC, "l2 token not USDC");
+        require(!withdrawPaused, "withdraw paused");
+    }
+
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeDropMessage(
+        address,
+        address,
+        uint256
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+    }
+
+    /// @inheritdoc L1ERC20Gateway
     function _deposit(
         address _token,
         address _to,
@@ -145,28 +145,19 @@ contract L1USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L1ERC20Gateway 
         require(_token == l1USDC, "only USDC is allowed");
         require(!depositPaused, "deposit paused");
 
-        // 1. Extract real sender if this call is from L1GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
-            (_from, _data) = abi.decode(_data, (address, bytes));
-        }
+        // 1. Transfer token into this contract.
+        address _from;
+        (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
+        require(_data.length == 0, "call is not allowed");
 
-        // 2. Transfer token into this contract.
-        IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
-
-        // 3. Generate message passed to L2USDCGateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC20Gateway.finalizeDepositERC20.selector,
-            _token,
-            l2USDC,
-            _from,
-            _to,
-            _amount,
-            _data
+        // 2. Generate message passed to L2USDCGateway.
+        bytes memory _message = abi.encodeCall(
+            IL2ERC20Gateway.finalizeDepositERC20,
+            (_token, l2USDC, _from, _to, _amount, _data)
         );
 
-        // 4. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        // 3. Send message to L1ScrollMessenger.
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _from);
 
         emit DepositERC20(_token, l2USDC, _from, _to, _amount, _data);
     }

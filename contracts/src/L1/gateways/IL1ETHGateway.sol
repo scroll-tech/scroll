@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 interface IL1ETHGateway {
     /**********
@@ -20,6 +20,11 @@ interface IL1ETHGateway {
     /// @param amount The amount of ETH will be deposited from L1 to L2.
     /// @param data The optional calldata passed to recipient in L2.
     event DepositETH(address indexed from, address indexed to, uint256 amount, bytes data);
+
+    /// @notice Emitted when some ETH is refunded.
+    /// @param recipient The address of receiver in L1.
+    /// @param amount The amount of ETH refunded to receiver.
+    event RefundETH(address indexed recipient, uint256 amount);
 
     /*****************************
      * Public Mutating Functions *

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 interface IL1MessageQueue {
     /**********
@@ -9,7 +9,7 @@ interface IL1MessageQueue {
 
     /// @notice Emitted when a new L1 => L2 transaction is appended to the queue.
     /// @param sender The address of account who initiates the transaction.
-    /// @param target The address of account who will recieve the transaction.
+    /// @param target The address of account who will receive the transaction.
     /// @param value The value passed with the transaction.
     /// @param queueIndex The index of this transaction in the queue.
     /// @param gasLimit Gas limit required to complete the message relay on L2.
@@ -18,14 +18,27 @@ interface IL1MessageQueue {
         address indexed sender,
         address indexed target,
         uint256 value,
-        uint256 queueIndex,
+        uint64 queueIndex,
         uint256 gasLimit,
         bytes data
     );
 
+    /// @notice Emitted when some L1 => L2 transactions are included in L1.
+    /// @param startIndex The start index of messages popped.
+    /// @param count The number of messages popped.
+    /// @param skippedBitmap A bitmap indicates whether a message is skipped.
+    event DequeueTransaction(uint256 startIndex, uint256 count, uint256 skippedBitmap);
+
+    /// @notice Emitted when a message is dropped from L1.
+    /// @param index The index of message dropped.
+    event DropTransaction(uint256 index);
+
     /*************************
      * Public View Functions *
      *************************/
+
+    /// @notice The start index of all pending inclusion messages.
+    function pendingQueueIndex() external view returns (uint256);
 
     /// @notice Return the index of next appended message.
     /// @dev Also the total number of appended messages.
@@ -38,6 +51,10 @@ interface IL1MessageQueue {
     /// @notice Return the amount of ETH should pay for cross domain message.
     /// @param gasLimit Gas limit required to complete the message relay on L2.
     function estimateCrossDomainMessageFee(uint256 gasLimit) external view returns (uint256);
+
+    /// @notice Return the amount of intrinsic gas fee should pay for cross domain message.
+    /// @param _calldata The calldata of L1-initiated transaction.
+    function calculateIntrinsicGasFee(bytes memory _calldata) external view returns (uint256);
 
     /// @notice Return the hash of a L1 message.
     /// @param sender The address of sender.
@@ -83,4 +100,21 @@ interface IL1MessageQueue {
         uint256 gasLimit,
         bytes calldata data
     ) external;
+
+    /// @notice Pop finalized messages from queue.
+    ///
+    /// @dev We can pop at most 256 messages each time. And if the message is not skipped,
+    ///      the corresponding entry will be cleared.
+    ///
+    /// @param startIndex The start index to pop.
+    /// @param count The number of messages to pop.
+    /// @param skippedBitmap A bitmap indicates whether a message is skipped.
+    function popCrossDomainMessage(
+        uint256 startIndex,
+        uint256 count,
+        uint256 skippedBitmap
+    ) external;
+
+    /// @notice Drop a skipped message from the queue.
+    function dropCrossDomainMessage(uint256 index) external;
 }

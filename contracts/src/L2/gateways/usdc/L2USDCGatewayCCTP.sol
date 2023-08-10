@@ -18,7 +18,7 @@ import {L2ERC20Gateway} from "../L2ERC20Gateway.sol";
 /// @title L2USDCGatewayCCTP
 /// @notice The `L2USDCGatewayCCTP` contract is used to withdraw `USDC` token in layer 2 and
 /// finalize deposit `USDC` from layer 1.
-contract L2USDCGatewayCCTP is OwnableUpgradeable, CCTPGatewayBase, L2ERC20Gateway {
+contract L2USDCGatewayCCTP is CCTPGatewayBase, L2ERC20Gateway {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /***************

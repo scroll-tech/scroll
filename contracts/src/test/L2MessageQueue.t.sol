@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
@@ -11,8 +11,7 @@ contract L2MessageQueueTest is DSTestPlus {
 
     function setUp() public {
         queue = new L2MessageQueue(address(this));
-        queue.initialize();
-        queue.updateMessenger(address(this));
+        queue.initialize(address(this));
     }
 
     function testConstructor() external {

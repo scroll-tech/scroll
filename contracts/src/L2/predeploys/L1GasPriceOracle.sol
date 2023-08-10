@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableBase} from "../../libraries/common/OwnableBase.sol";
 import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
 
-import {IL1BlockContainer} from "./IL1BlockContainer.sol";
 import {IL1GasPriceOracle} from "./IL1GasPriceOracle.sol";
 
 contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
@@ -69,8 +68,8 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
     }
 
     /// @inheritdoc IL1GasPriceOracle
-    /// @dev See the comments in `OVM_GasPriceOracle1` for more details
-    ///      https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts/contracts/L2/predeploys/OVM_GasPriceOracle.sol
+    /// @dev The `_data` is the RLP-encoded transaction with signature. And we also reserve additional
+    ///      4 bytes in the non-zero bytes to store the number of bytes in the RLP-encoded transaction.
     function getL1GasUsed(bytes memory _data) public view override returns (uint256) {
         uint256 _total = 0;
         uint256 _length = _data.length;
@@ -82,8 +81,7 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
                     _total += 16;
                 }
             }
-            uint256 _unsigned = _total + overhead;
-            return _unsigned + (68 * 16);
+            return _total + overhead + (4 * 16);
         }
     }
 

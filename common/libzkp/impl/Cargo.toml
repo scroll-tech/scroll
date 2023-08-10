@@ -5,18 +5,24 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
-crate-type = ["staticlib"]
+crate-type = ["cdylib"]
 
+[patch.crates-io]
+ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v0.17.0" }
 [patch."https://github.com/privacy-scaling-explorations/halo2.git"]
-halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "scroll-dev-0220"  }
+halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "develop" }
 [patch."https://github.com/privacy-scaling-explorations/poseidon.git"]
 poseidon = { git = "https://github.com/scroll-tech/poseidon.git", branch = "scroll-dev-0220" }
-[patch."https://github.com/scroll-tech/zktrie.git"]
-zktrie = { git = "https://github.com/lispc/zktrie", branch = "scroll-dev-0215" }
+[patch."https://github.com/privacy-scaling-explorations/halo2wrong.git"]
+halo2wrong = { git = "https://github.com/scroll-tech/halo2wrong.git", branch = "halo2-ecc-snark-verifier-0323" }
+maingate = { git = "https://github.com/scroll-tech/halo2wrong", branch = "halo2-ecc-snark-verifier-0323" }
+[patch."https://github.com/privacy-scaling-explorations/halo2curves.git"]
+halo2curves = { git = "https://github.com/scroll-tech/halo2curves.git", branch = "0.3.1-derive-serde" }
 
 [dependencies]
-zkevm = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="goerli-0215" }
-types = { git = "https://github.com/scroll-tech/scroll-zkevm", branch="goerli-0215" }
+prover = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.5.12" }
+types = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.5.12" }
+halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "develop" }
 
 log = "0.4"
 env_logger = "0.9.0"
@@ -29,8 +35,6 @@ once_cell = "1.8.0"
 
 [profile.test]
 opt-level = 3
-debug-assertions = true
 
 [profile.release]
 opt-level = 3
-debug-assertions = true

@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {MockERC721} from "solmate/test/utils/mocks/MockERC721.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1ERC721Gateway} from "../L1/gateways/L1ERC721Gateway.sol";
 import {L2ERC721Gateway} from "../L2/gateways/L2ERC721Gateway.sol";
@@ -25,7 +27,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
         messenger = new MockScrollMessenger();
 
         counterpart = new L1ERC721Gateway();
-        gateway = new L2ERC721Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpart), address(messenger));
 
         token = new MockERC721("Mock", "M");
@@ -50,7 +52,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
         hevm.stopPrank();
 
         // l1 token is zero, should revert
-        hevm.expectRevert("map to zero address");
+        hevm.expectRevert("token address cannot be 0");
         gateway.updateTokenMapping(token1, address(0));
     }
 
@@ -65,7 +67,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
     /// @dev failed to withdraw erc721
     function testWithdrawERC721WithGatewayFailed(address to) public {
         // token not support
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l1 token");
         if (to == address(0)) {
             gateway.withdrawERC721(address(token), 0, 0);
         } else {
@@ -111,7 +113,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
     /// @dev failed to batch withdraw erc721
     function testBatchWithdrawERC721WithGatewayFailed(address to) public {
         // token not support
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l1 token");
         if (to == address(0)) {
             gateway.batchWithdrawERC721(address(token), new uint256[](1), 0);
         } else {
@@ -185,7 +187,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
         gateway.finalizeDepositERC721(address(0), address(0), address(0), address(0), 0);
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -200,7 +202,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -224,6 +226,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
         hevm.assume(to.code.length == 0);
 
         tokenId = bound(tokenId, NOT_OWNED_TOKEN_ID + 1, type(uint256).max);
+        gateway.updateTokenMapping(address(token), address(token));
 
         // finalize deposit
         messenger.setXDomainMessageSender(address(counterpart));
@@ -249,7 +252,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
         gateway.finalizeBatchDepositERC721(address(0), address(0), address(0), address(0), new uint256[](0));
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -264,7 +267,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -314,5 +317,9 @@ contract L2ERC721GatewayTest is DSTestPlus {
         for (uint256 i = 0; i < count; i++) {
             assertEq(token.ownerOf(_tokenIds[i]), to);
         }
+    }
+
+    function _deployGateway() internal returns (L2ERC721Gateway) {
+        return L2ERC721Gateway(address(new ERC1967Proxy(address(new L2ERC721Gateway()), new bytes(0))));
     }
 }

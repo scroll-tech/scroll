@@ -1,17 +1,24 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
-import {IScrollStandardERC20} from "./IScrollStandardERC20.sol";
+import {IScrollERC20Upgradeable} from "./IScrollERC20Upgradeable.sol";
 import {IERC677Receiver} from "../callbacks/IERC677Receiver.sol";
 
-contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollStandardERC20 {
-    /// @inheritdoc IScrollStandardERC20
+/// @notice The `ScrollStandardERC20` is the ERC20 token contract created by
+/// `L2StandardERC20Gateway` when the first time the L1 ERC20 is bridged via
+/// `L1StandardERC20Gateway`.
+/// @dev The reason that `ScrollStandardERC20` inherits `IScrollERC20Upgradeable` is because we need
+/// to use the `initialize` function from the `ERC20PermitUpgradeable` to initialize the ERC20
+/// token. However, the token contract is NOT upgradable afterwards because
+/// `ScrollStandardERC20Factory` uses `Clones` to deploy the `ScrollStandardERC20` contract.
+contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollERC20Upgradeable {
+    /// @inheritdoc IScrollERC20Upgradeable
     address public override gateway;
 
-    /// @inheritdoc IScrollStandardERC20
+    /// @inheritdoc IScrollERC20Upgradeable
     address public override counterpart;
 
     uint8 private decimals_;
@@ -19,6 +26,10 @@ contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollStandardERC20 {
     modifier onlyGateway() {
         require(gateway == msg.sender, "Only Gateway");
         _;
+    }
+
+    constructor() {
+        _disableInitializers();
     }
 
     function initialize(
@@ -65,26 +76,15 @@ contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollStandardERC20 {
     }
 
     function isContract(address _addr) private view returns (bool hasCode) {
-        uint256 length;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            length := extcodesize(_addr)
-        }
-        return length > 0;
+        hasCode = _addr.code.length > 0;
     }
 
-    /// @notice Mint some token to recipient's account.
-    /// @dev Gateway Utilities, only gateway contract can call
-    /// @param _to The address of recipient.
-    /// @param _amount The amount of token to mint.
+    /// @inheritdoc IScrollERC20Upgradeable
     function mint(address _to, uint256 _amount) external onlyGateway {
         _mint(_to, _amount);
     }
 
-    /// @notice Mint some token from account.
-    /// @dev Gateway Utilities, only gateway contract can call
-    /// @param _from The address of account to burn token.
-    /// @param _amount The amount of token to mint.
+    /// @inheritdoc IScrollERC20Upgradeable
     function burn(address _from, uint256 _amount) external onlyGateway {
         _burn(_from, _amount);
     }

@@ -4,7 +4,7 @@
 
 > L2ERC1155Gateway
 
-The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs in layer 2 and finalize deposit the NFTs from layer 1.
+The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs on layer 2 and finalize deposit the NFTs from layer 1.
 
 *The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding NFT will be minted and transfered to the recipient. This will be changed if we have more specific scenarios.*
 
@@ -72,9 +72,9 @@ The address of corresponding L1/L2 Gateway contract.
 function finalizeBatchDepositERC1155(address _l1Token, address _l2Token, address _from, address _to, uint256[] _tokenIds, uint256[] _amounts) external nonpayable
 ```
 
-Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account in layer 2.
+Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account on layer 2.
 
-*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC1155Gateway in layer 1.*
+*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC1155Gateway on layer 1.*
 
 #### Parameters
 
@@ -93,9 +93,9 @@ Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s
 function finalizeDepositERC1155(address _l1Token, address _l2Token, address _from, address _to, uint256 _tokenId, uint256 _amount) external nonpayable
 ```
 
-Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account in layer 2.
+Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s account on layer 2.
 
-*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC1155Gateway in layer 1.*
+*Requirements:  - The function should only be called by L2ScrollMessenger.  - The function should also only be called by L1ERC1155Gateway on layer 1.*
 
 #### Parameters
 
@@ -219,7 +219,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### router
@@ -313,8 +313,8 @@ Update layer 2 to layer 1 token mapping.
 
 | Name | Type | Description |
 |---|---|---|
-| _l2Token | address | undefined |
-| _l1Token | address | The address of ERC1155 token in layer 1. |
+| _l2Token | address | The address of corresponding ERC1155 token on layer 2. |
+| _l1Token | address | The address of ERC1155 token on layer 1. |
 
 ### withdrawERC1155
 
@@ -365,7 +365,7 @@ Withdraw some ERC1155 NFT to caller&#39;s account on layer 1.
 event BatchWithdrawERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds, uint256[] amounts)
 ```
 
-Emitted when the ERC1155 NFT is batch transfered to gateway in layer 2.
+Emitted when the ERC1155 NFT is batch transfered to gateway on layer 2.
 
 
 
@@ -386,7 +386,7 @@ Emitted when the ERC1155 NFT is batch transfered to gateway in layer 2.
 event FinalizeBatchDepositERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds, uint256[] amounts)
 ```
 
-Emitted when the ERC1155 NFT is batch transfered to recipient in layer 2.
+Emitted when the ERC1155 NFT is batch transfered to recipient on layer 2.
 
 
 
@@ -407,7 +407,7 @@ Emitted when the ERC1155 NFT is batch transfered to recipient in layer 2.
 event FinalizeDepositERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId, uint256 amount)
 ```
 
-Emitted when the ERC1155 NFT is transfered to recipient in layer 2.
+Emitted when the ERC1155 NFT is transfered to recipient on layer 2.
 
 
 
@@ -421,6 +421,22 @@ Emitted when the ERC1155 NFT is transfered to recipient in layer 2.
 | to  | address | undefined |
 | tokenId  | uint256 | undefined |
 | amount  | uint256 | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 
@@ -442,7 +458,7 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 ### UpdateTokenMapping
 
 ```solidity
-event UpdateTokenMapping(address _l2Token, address _l1Token)
+event UpdateTokenMapping(address indexed l2Token, address indexed oldL1Token, address indexed newL1Token)
 ```
 
 Emitted when token mapping for ERC1155 token is updated.
@@ -453,8 +469,9 @@ Emitted when token mapping for ERC1155 token is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| _l2Token  | address | undefined |
-| _l1Token  | address | The address of ERC1155 token in layer 1. |
+| l2Token `indexed` | address | The address of corresponding ERC1155 token in layer 2. |
+| oldL1Token `indexed` | address | The address of the old corresponding ERC1155 token in layer 1. |
+| newL1Token `indexed` | address | The address of the new corresponding ERC1155 token in layer 1. |
 
 ### WithdrawERC1155
 
@@ -462,7 +479,7 @@ Emitted when token mapping for ERC1155 token is updated.
 event WithdrawERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId, uint256 amount)
 ```
 
-Emitted when the ERC1155 NFT is transfered to gateway in layer 2.
+Emitted when the ERC1155 NFT is transfered to gateway on layer 2.
 
 
 

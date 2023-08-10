@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {MockERC1155} from "solmate/test/utils/mocks/MockERC1155.sol";
 import {ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1ERC1155Gateway} from "../L1/gateways/L1ERC1155Gateway.sol";
 import {L2ERC1155Gateway} from "../L2/gateways/L2ERC1155Gateway.sol";
@@ -25,7 +27,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         messenger = new MockScrollMessenger();
 
         counterpart = new L1ERC1155Gateway();
-        gateway = new L2ERC1155Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpart), address(messenger));
 
         token = new MockERC1155();
@@ -50,7 +52,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         hevm.stopPrank();
 
         // l2 token is zero, should revert
-        hevm.expectRevert("map to zero address");
+        hevm.expectRevert("token address cannot be 0");
         gateway.updateTokenMapping(token1, address(0));
     }
 
@@ -65,7 +67,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
     /// @dev failed to withdraw erc1155
     function testWithdrawERC1155WithGatewayFailed(address to) public {
         // token not support
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l1 token");
         if (to == address(0)) {
             gateway.withdrawERC1155(address(token), 0, 1, 0);
         } else {
@@ -140,7 +142,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
 
         // token not support
         amounts[0] = 1;
-        hevm.expectRevert("token not supported");
+        hevm.expectRevert("no corresponding l1 token");
         if (to == address(0)) {
             gateway.batchWithdrawERC1155(address(token), new uint256[](1), amounts, 0);
         } else {
@@ -203,7 +205,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         gateway.finalizeDepositERC1155(address(0), address(0), address(0), address(0), 0, 1);
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -219,7 +221,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -279,7 +281,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         );
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -295,7 +297,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by conterpart");
+        hevm.expectRevert("only call by counterpart");
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -346,5 +348,9 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         for (uint256 i = 0; i < count; i++) {
             assertEq(token.balanceOf(to, i), _amounts[i]);
         }
+    }
+
+    function _deployGateway() internal returns (L2ERC1155Gateway) {
+        return L2ERC1155Gateway(address(new ERC1967Proxy(address(new L2ERC1155Gateway()), new bytes(0))));
     }
 }

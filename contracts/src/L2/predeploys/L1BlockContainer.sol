@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {IL1BlockContainer} from "./IL1BlockContainer.sol";
 import {IL1GasPriceOracle} from "./IL1GasPriceOracle.sol";
@@ -41,8 +41,6 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
 
     /// @notice The address of whitelist contract.
     IWhitelist public whitelist;
-
-    // @todo change to ring buffer to save gas usage.
 
     /// @inheritdoc IL1BlockContainer
     bytes32 public override latestBlockHash;
@@ -117,14 +115,7 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
         bytes calldata _blockHeaderRLP,
         bool _updateGasPriceOracle
     ) external {
-        // @todo remove this when ETH 2.0 signature verification is ready.
-        {
-            IWhitelist _whitelist = whitelist;
-            require(
-                address(_whitelist) == address(0) || _whitelist.isSenderAllowed(msg.sender),
-                "Not whitelisted sender"
-            );
-        }
+        require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
 
         // The encoding order in block header is
         // 1. ParentHash: 32 bytes
