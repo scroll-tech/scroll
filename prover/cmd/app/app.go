@@ -31,7 +31,8 @@ func init() {
 	}
 
 	// Register `prover-test` app for integration-test.
-	utils.RegisterSimulation(app, utils.ProverApp)
+	utils.RegisterSimulation(app, utils.ChunkProverApp)
+	utils.RegisterSimulation(app, utils.BatchProverApp)
 }
 
 func action(ctx *cli.Context) error {
