@@ -56,7 +56,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
 	if !version.CheckScrollProverVersion(proverVersion.(string)) {
-		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover")
+		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", proverVersion.(string), version.Version)
 	}
 
 	batchTasks, err := bp.batchOrm.UpdateUnassignedBatchReturning(ctx, 1)
