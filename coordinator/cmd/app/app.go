@@ -13,6 +13,7 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -58,7 +59,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	proofCollector := cron.NewCollector(subCtx, db, cfg)
+	proofCollector := cron.NewCollector(subCtx, db, cfg, prometheus.DefaultRegisterer)
 	defer func() {
 		proofCollector.Stop()
 		cancel()

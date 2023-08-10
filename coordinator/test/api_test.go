@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -88,11 +89,11 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		},
 	}
 
-	proofCollector := cron.NewCollector(context.Background(), db, conf)
+	proofCollector := cron.NewCollector(context.Background(), db, conf, prometheus.DefaultRegisterer)
 
 	router := gin.Default()
 	api.InitController(conf, db)
-	route.Route(router, conf)
+	route.Route(router, conf, prometheus.DefaultRegisterer)
 	srv := &http.Server{
 		Addr:    coordinatorURL,
 		Handler: router,

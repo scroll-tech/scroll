@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -26,10 +28,13 @@ type Collector struct {
 	proverTaskOrm *orm.ProverTask
 	chunkOrm      *orm.Chunk
 	batchOrm      *orm.Batch
+
+	timeoutCheckerRunTotal prometheus.Counter
+	proverTaskTimeoutTotal prometheus.Counter
 }
 
 // NewCollector create a collector to cron collect the data to send to prover
-func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collector {
+func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config, reg prometheus.Registerer) *Collector {
 	c := &Collector{
 		cfg:             cfg,
 		db:              db,
@@ -38,6 +43,15 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config) *Collect
 		proverTaskOrm:   orm.NewProverTask(db),
 		chunkOrm:        orm.NewChunk(db),
 		batchOrm:        orm.NewBatch(db),
+
+		timeoutCheckerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_timeout_checker_run_total",
+			Help: "Total number of timeout checker run.",
+		}),
+		proverTaskTimeoutTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_prover_task_timeout_total",
+			Help: "Total number of timeout prover task.",
+		}),
 	}
 
 	go c.timeoutProofTask()
@@ -66,6 +80,7 @@ func (c *Collector) timeoutProofTask() {
 	for {
 		select {
 		case <-ticker.C:
+			c.timeoutCheckerRunTotal.Inc()
 			assignedProverTasks, err := c.proverTaskOrm.GetAssignedProverTasks(c.ctx, 10)
 			if err != nil {
 				log.Error("get unassigned session info failure", "error", err)
@@ -77,6 +92,7 @@ func (c *Collector) timeoutProofTask() {
 				// here not update the block batch proving status failed, because the collector loop will check
 				// the attempt times. if reach the times, the collector will set the block batch proving status.
 				if time.Since(assignedProverTask.AssignedAt) >= timeoutDuration {
+					c.proverTaskTimeoutTotal.Inc()
 					log.Warn("proof task have reach the timeout", "task id", assignedProverTask.TaskID,
 						"prover public key", assignedProverTask.ProverPublicKey, "prover name", assignedProverTask.ProverName, "task type", assignedProverTask.TaskType)
 					err = c.db.Transaction(func(tx *gorm.DB) error {

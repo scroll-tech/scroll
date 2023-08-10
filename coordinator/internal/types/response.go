@@ -24,5 +24,6 @@ func RenderJSON(ctx *gin.Context, errCode int, err error, data interface{}) {
 		ErrMsg:  errMsg,
 		Data:    data,
 	}
+	ctx.Set("errcode", errCode)
 	ctx.JSON(http.StatusOK, renderData)
 }
