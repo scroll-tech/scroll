@@ -38,8 +38,6 @@ var (
 	ErrValidatorFailureProofMsgStatusNotOk = errors.New("validator failure proof msg status not ok")
 	// ErrValidatorFailureProverTaskEmpty get none prover task
 	ErrValidatorFailureProverTaskEmpty = errors.New("validator failure get none prover task for the proof")
-	// ErrValidatorFailureProverInfoHasProofValid proof is vaild
-	ErrValidatorFailureProverInfoHasProofValid = errors.New("validator failure prover task info has proof valid")
 	// ErrInvalidProverVersion means prover version is invalid.
 	ErrInvalidProverVersion = errors.New("prover version invalid")
 	// ErrValidatorFailureProverTaskCannotSubmitTwice prove task can not submit proof twice
