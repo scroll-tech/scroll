@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	jwt "github.com/appleboy/gin-jwt/v2"
 	"scroll-tech/common/version"
 	"time"
 
@@ -324,7 +325,8 @@ func (m *ProofReceiverLogic) checkIsTimeoutFailure(ctx context.Context, hash, pr
 }
 
 func (m *ProofReceiverLogic) verifyChunkProof(c *gin.Context, proof *message.ChunkProof) (bool, error) {
-	proverVersion := c.GetString(coordinatorType.ProverVersion)
+	claims := jwt.ExtractClaims(c)
+	proverVersion := claims[coordinatorType.ProverVersion]
 	switch proverVersion {
 	case version.ZkVersion:
 		return m.verifier.VerifyChunkProof(proof)
@@ -335,7 +337,8 @@ func (m *ProofReceiverLogic) verifyChunkProof(c *gin.Context, proof *message.Chu
 }
 
 func (m *ProofReceiverLogic) verifyBatchProof(c *gin.Context, proof *message.BatchProof) (bool, error) {
-	proverVersion := c.GetString(coordinatorType.ProverVersion)
+	claims := jwt.ExtractClaims(c)
+	proverVersion := claims[coordinatorType.ProverVersion]
 	switch proverVersion {
 	case version.ZkVersion:
 		return m.verifier.VerifyBatchProof(proof)

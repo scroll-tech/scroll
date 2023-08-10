@@ -108,7 +108,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 }
 
 func setEnv(t *testing.T) {
-	version.Version = "v1.2.3-aaa-bbb-ccc"
+	version.Version = "v1.2.3-commit-prover-halo2"
+	version.OldZkVersion = "prover_old"
 
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
