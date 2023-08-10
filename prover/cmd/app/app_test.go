@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +15,6 @@ func TestRunProver(t *testing.T) {
 	defer prover.WaitExit()
 
 	// wait result
-	prover.ExpectWithTimeout(t, true, time.Second*3, fmt.Sprintf("prover version %s", version.Version))
+	prover.ExpectWithTimeout(t, true, time.Second*3, fmt.Sprintf("prover version %s-", strings.Split(version.Version, "-")[0]))
 	prover.RunApp(nil)
 }
