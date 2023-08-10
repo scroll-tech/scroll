@@ -7,6 +7,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/bytecode/erc20"
@@ -25,8 +26,8 @@ func TestERC20(t *testing.T) {
 
 	token, err := erc20.NewERC20Mock(erc20Address, l2Cli)
 	assert.NoError(t, err)
-
-	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.RollupSenderPrivateKeys[0], base.L2gethImg.ChainID())
+	privKey, _ := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	auth, err := bind.NewKeyedTransactorWithChainID(privKey, base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	authBls0, err := token.BalanceOf(nil, auth.From)
