@@ -20,11 +20,13 @@ var commit = func() string {
 			}
 		}
 	}
-	return ""
+	// Set default value for integration test.
+	return "000000"
 }()
 
-// ZkVersion is commit-id of common/libzkp/impl/cargo.lock/scroll-prover and halo2, concated by a "-"
-var ZkVersion string
+// ZkVersion is commit-id of common/libzkp/impl/cargo.lock/scroll-prover and halo2, contacted by a "-"
+// The default `000000-000000` is set for integration test, and will be overwritten by coordinator's & prover's actual compilations (see their Makefiles).
+var ZkVersion = "000000-000000"
 
 // OldZkVersion is the last version of ZkVersion.
 var OldZkVersion string
