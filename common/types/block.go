@@ -10,15 +10,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
-const nonZeroByteGas uint64 = 16
-const zeroByteGas uint64 = 4
-
 // WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
-	Transactions     []*types.TransactionData `json:"transactions"`
-	WithdrawTrieRoot common.Hash              `json:"withdraw_trie_root,omitempty"`
+	Transactions   []*types.TransactionData `json:"transactions"`
+	WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
+	RowConsumption *types.RowConsumption    `json:"row_consumption"`
 }
 
 // NumL1Messages returns the number of L1 messages in this block.
@@ -38,6 +36,17 @@ func (w *WrappedBlock) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 	return *lastQueueIndex - totalL1MessagePoppedBefore + 1
 }
 
+// NumL2Transactions returns the number of L2 transactions in this block.
+func (w *WrappedBlock) NumL2Transactions() uint64 {
+	var count uint64
+	for _, txData := range w.Transactions {
+		if txData.Type != types.L1MessageTxType {
+			count++
+		}
+	}
+	return count
+}
+
 // Encode encodes the WrappedBlock into RollupV2 BlockContext Encoding.
 func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 	bytes := make([]byte, 60)
@@ -45,20 +54,25 @@ func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error)
 	if !w.Header.Number.IsUint64() {
 		return nil, errors.New("block number is not uint64")
 	}
-	if len(w.Transactions) > math.MaxUint16 {
-		return nil, errors.New("number of transactions exceeds max uint16")
-	}
 
+	// note: numL1Messages includes skipped messages
 	numL1Messages := w.NumL1Messages(totalL1MessagePoppedBefore)
 	if numL1Messages > math.MaxUint16 {
 		return nil, errors.New("number of L1 messages exceeds max uint16")
+	}
+
+	// note: numTransactions includes skipped messages
+	numL2Transactions := w.NumL2Transactions()
+	numTransactions := numL1Messages + numL2Transactions
+	if numTransactions > math.MaxUint16 {
+		return nil, errors.New("number of transactions exceeds max uint16")
 	}
 
 	binary.BigEndian.PutUint64(bytes[0:], w.Header.Number.Uint64())
 	binary.BigEndian.PutUint64(bytes[8:], w.Header.Time)
 	// TODO: [16:47] Currently, baseFee is 0, because we disable EIP-1559.
 	binary.BigEndian.PutUint64(bytes[48:], w.Header.GasLimit)
-	binary.BigEndian.PutUint16(bytes[56:], uint16(len(w.Transactions)))
+	binary.BigEndian.PutUint16(bytes[56:], uint16(numTransactions))
 	binary.BigEndian.PutUint16(bytes[58:], uint16(numL1Messages))
 
 	return bytes, nil
@@ -78,16 +92,20 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 	return size
 }
 
-// EstimateL1CommitGas calculates the calldata gas in l1 commit approximately.
-// TODO: This will need to be adjusted.
-// The part added here is only the calldata cost,
-// but we have execution cost for verifying blocks / chunks / batches and storing the batch hash.
+// EstimateL1CommitGas calculates the total L1 commit gas for this block approximately.
 func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
+	getKeccakGas := func(size uint64) uint64 {
+		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+	}
+
 	var total uint64
+	var numL1Messages uint64
 	for _, txData := range w.Transactions {
 		if txData.Type == types.L1MessageTxType {
+			numL1Messages++
 			continue
 		}
+
 		data, _ := hexutil.Decode(txData.Data)
 		tx := types.NewTx(&types.LegacyTx{
 			Nonce:    txData.Nonce,
@@ -101,26 +119,19 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 			S:        txData.S.ToInt(),
 		})
 		rlpTxData, _ := tx.MarshalBinary()
-
-		for _, b := range rlpTxData {
-			if b == 0 {
-				total += zeroByteGas
-			} else {
-				total += nonZeroByteGas
-			}
-		}
-
-		var txLen [4]byte
-		binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
-
-		for _, b := range txLen {
-			if b == 0 {
-				total += zeroByteGas
-			} else {
-				total += nonZeroByteGas
-			}
-		}
+		txPayloadLength := uint64(len(rlpTxData))
+		total += 16 * txPayloadLength          // an over-estimate: treat each byte as non-zero
+		total += 16 * 4                        // size of a uint32 field
+		total += getKeccakGas(txPayloadLength) // l2 tx hash
 	}
+
+	// sload
+	total += 2100 * numL1Messages // numL1Messages times cold sload in L1MessageQueue
+
+	// staticcall
+	total += 100 * numL1Messages // numL1Messages times call to L1MessageQueue
+	total += 100 * numL1Messages // numL1Messages times warm address access to L1MessageQueue
+
 	return total
 }
 

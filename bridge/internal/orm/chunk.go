@@ -26,6 +26,10 @@ type Chunk struct {
 	StartBlockTime               uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
 	TotalL1MessagesPoppedInChunk uint32 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
+	ParentChunkHash              string `json:"parent_chunk_hash" gorm:"column:parent_chunk_hash"`
+	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
+	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
+	WithdrawRoot                 string `json:"withdraw_root" gorm:"column:withdraw_root"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -118,6 +122,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 
 	var chunkIndex uint64
 	var totalL1MessagePoppedBefore uint64
+	var parentChunkHash string
+	var parentChunkStateRoot string
 	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get latest chunk", "err", err)
@@ -130,6 +136,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	if parentChunk != nil {
 		chunkIndex = parentChunk.Index + 1
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
+		parentChunkHash = parentChunk.Hash
+		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
@@ -141,12 +149,10 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	var totalL2TxGas uint64
 	var totalL2TxNum uint64
 	var totalL1CommitCalldataSize uint64
-	var totalL1CommitGas uint64
 	for _, block := range chunk.Blocks {
 		totalL2TxGas += block.Header.GasUsed
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
-		totalL1CommitGas += block.EstimateL1CommitGas()
 	}
 
 	numBlocks := len(chunk.Blocks)
@@ -160,10 +166,14 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		TotalL2TxGas:                 totalL2TxGas,
 		TotalL2TxNum:                 uint32(totalL2TxNum),
 		TotalL1CommitCalldataSize:    uint32(totalL1CommitCalldataSize),
-		TotalL1CommitGas:             totalL1CommitGas,
+		TotalL1CommitGas:             chunk.EstimateL1CommitGas(),
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
 		TotalL1MessagesPoppedInChunk: uint32(chunk.NumL1Messages(totalL1MessagePoppedBefore)),
+		ParentChunkHash:              parentChunkHash,
+		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
+		ParentChunkStateRoot:         parentChunkStateRoot,
+		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 

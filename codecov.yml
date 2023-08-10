@@ -31,7 +31,7 @@ flag_management:
         - type: project
           target: auto
           threshold: 1%
-    - name: roller
+    - name: prover
       statuses:
         - type: project
           target: auto

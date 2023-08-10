@@ -13,7 +13,7 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// ProverTask is assigned rollers info of chunk/batch proof prover task
+// ProverTask is assigned provers info of chunk/batch proof prover task
 type ProverTask struct {
 	db *gorm.DB `gorm:"column:-"`
 
@@ -22,6 +22,7 @@ type ProverTask struct {
 	// prover
 	ProverPublicKey string `json:"prover_public_key" gorm:"column:prover_public_key"`
 	ProverName      string `json:"prover_name" gorm:"column:prover_name"`
+	ProverVersion   string `json:"prover_version" gorm:"column:prover_version"`
 
 	// task
 	TaskID   string `json:"task_id" gorm:"column:task_id"`
@@ -111,11 +112,25 @@ func (o *ProverTask) GetProverTaskByTaskIDAndPubKey(ctx context.Context, taskID,
 	return &proverTask, nil
 }
 
+// GetProvingStatusByTaskID retrieves the proving status of a prover task
+func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string) (types.ProverProveStatus, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Select("proving_status")
+	db = db.Where("task_id = ?", taskID)
+
+	var proverTask ProverTask
+	if err := db.Find(&proverTask).Error; err != nil {
+		return types.ProverProofInvalid, fmt.Errorf("ProverTask.GetProvingStatusByTaskID error: %w, taskID: %v", err, taskID)
+	}
+	return types.ProverProveStatus(proverTask.ProvingStatus), nil
+}
+
 // GetAssignedProverTasks get the assigned prover task
 func (o *ProverTask) GetAssignedProverTasks(ctx context.Context, limit int) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("proving_status", int(types.RollerAssigned))
+	db = db.Where("proving_status", int(types.ProverAssigned))
 	db = db.Limit(limit)
 
 	var proverTasks []ProverTask
@@ -136,7 +151,7 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, 
 	db = db.Model(&ProverTask{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"proving_status", "failure_type", "assigned_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"prover_version", "proving_status", "failure_type", "assigned_at"}),
 	})
 
 	if err := db.Create(&proverTask).Error; err != nil {
@@ -145,8 +160,21 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, 
 	return nil
 }
 
+// UpdateProverTaskProof update the prover task's proof
+func (o *ProverTask) UpdateProverTaskProof(ctx context.Context, proofType message.ProofType, taskID string, pk string, proof []byte) error {
+	db := o.db
+	db = db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", int(proofType), taskID, pk)
+
+	if err := db.Update("proof", proof).Error; err != nil {
+		return fmt.Errorf("ProverTask.UpdateProverTaskProof error: %w, proof type: %v, taskID: %v, prover public key: %v", err, proofType.String(), taskID, pk)
+	}
+	return nil
+}
+
 // UpdateProverTaskProvingStatus updates the proving_status of a specific ProverTask record.
-func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.RollerProveStatus, dbTX ...*gorm.DB) error {
+func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -162,7 +190,7 @@ func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofTyp
 }
 
 // UpdateAllProverTaskProvingStatusOfTaskID updates all the proving_status of a specific task id.
-func (o *ProverTask) UpdateAllProverTaskProvingStatusOfTaskID(ctx context.Context, proofType message.ProofType, taskID string, status types.RollerProveStatus, dbTX ...*gorm.DB) error {
+func (o *ProverTask) UpdateAllProverTaskProvingStatusOfTaskID(ctx context.Context, proofType message.ProofType, taskID string, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

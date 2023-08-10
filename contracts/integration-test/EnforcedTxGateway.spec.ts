@@ -95,16 +95,16 @@ describe("EnforcedTxGateway.spec", async () => {
       });
     });
 
-    context("#setPaused", async () => {
+    context("#setPause", async () => {
       it("should revert, when non-owner call", async () => {
-        await expect(gateway.connect(signer).setPaused(false)).to.revertedWith("Ownable: caller is not the owner");
+        await expect(gateway.connect(signer).setPause(false)).to.revertedWith("Ownable: caller is not the owner");
       });
 
       it("should succeed", async () => {
         expect(await gateway.paused()).to.eq(false);
-        await expect(gateway.setPaused(true)).to.emit(gateway, "Paused").withArgs(deployer.address);
+        await expect(gateway.setPause(true)).to.emit(gateway, "Paused").withArgs(deployer.address);
         expect(await gateway.paused()).to.eq(true);
-        await expect(gateway.setPaused(false)).to.emit(gateway, "Unpaused").withArgs(deployer.address);
+        await expect(gateway.setPause(false)).to.emit(gateway, "Unpaused").withArgs(deployer.address);
         expect(await gateway.paused()).to.eq(false);
       });
     });
@@ -112,7 +112,7 @@ describe("EnforcedTxGateway.spec", async () => {
 
   context("#sendTransaction, by EOA", async () => {
     it("should revert, when contract is paused", async () => {
-      await gateway.setPaused(true);
+      await gateway.setPause(true);
       await expect(
         gateway.connect(signer)["sendTransaction(address,uint256,uint256,bytes)"](signer.address, 0, 0, "0x")
       ).to.revertedWith("Pausable: paused");
@@ -246,7 +246,7 @@ describe("EnforcedTxGateway.spec", async () => {
     };
 
     it("should revert, when contract is paused", async () => {
-      await gateway.setPaused(true);
+      await gateway.setPause(true);
       await expect(
         gateway
           .connect(deployer)

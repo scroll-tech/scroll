@@ -2,7 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import {ERC1155HolderUpgradeable, ERC1155ReceiverUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 
@@ -14,27 +13,22 @@ import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallba
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L1ERC1155Gateway
-/// @notice The `L1ERC1155Gateway` is used to deposit ERC1155 compatible NFT in layer 1 and
+/// @notice The `L1ERC1155Gateway` is used to deposit ERC1155 compatible NFT on layer 1 and
 /// finalize withdraw the NFTs from layer 2.
 /// @dev The deposited NFTs are held in this gateway. On finalizing withdraw, the corresponding
 /// NFT will be transfer to the recipient directly.
 ///
 /// This will be changed if we have more specific scenarios.
-contract L1ERC1155Gateway is
-    OwnableUpgradeable,
-    ERC1155HolderUpgradeable,
-    ScrollGatewayBase,
-    IL1ERC1155Gateway,
-    IMessageDropCallback
-{
+contract L1ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL1ERC1155Gateway, IMessageDropCallback {
     /**********
      * Events *
      **********/
 
     /// @notice Emitted when token mapping for ERC1155 token is updated.
-    /// @param _l1Token The address of ERC1155 token in layer 1.
-    /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
-    event UpdateTokenMapping(address _l1Token, address _l2Token);
+    /// @param l1Token The address of ERC1155 token in layer 1.
+    /// @param oldL2Token The address of the old corresponding ERC1155 token in layer 2.
+    /// @param newL2Token The address of the new corresponding ERC1155 token in layer 2.
+    event UpdateTokenMapping(address indexed l1Token, address indexed oldL2Token, address indexed newL2Token);
 
     /*************
      * Variables *
@@ -55,7 +49,6 @@ contract L1ERC1155Gateway is
     /// @param _counterpart The address of L2ERC1155Gateway in L2.
     /// @param _messenger The address of L1ScrollMessenger.
     function initialize(address _counterpart, address _messenger) external initializer {
-        OwnableUpgradeable.__Ownable_init();
         ERC1155HolderUpgradeable.__ERC1155Holder_init();
         ERC1155ReceiverUpgradeable.__ERC1155Receiver_init();
 
@@ -172,14 +165,15 @@ contract L1ERC1155Gateway is
      ************************/
 
     /// @notice Update layer 2 to layer 2 token mapping.
-    /// @param _l1Token The address of ERC1155 token in layer 1.
-    /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
+    /// @param _l1Token The address of ERC1155 token on layer 1.
+    /// @param _l2Token The address of corresponding ERC1155 token on layer 2.
     function updateTokenMapping(address _l1Token, address _l2Token) external onlyOwner {
         require(_l2Token != address(0), "token address cannot be 0");
 
+        address _oldL2Token = tokenMapping[_l1Token];
         tokenMapping[_l1Token] = _l2Token;
 
-        emit UpdateTokenMapping(_l1Token, _l2Token);
+        emit UpdateTokenMapping(_l1Token, _oldL2Token, _l2Token);
     }
 
     /**********************
@@ -187,8 +181,8 @@ contract L1ERC1155Gateway is
      **********************/
 
     /// @dev Internal function to deposit ERC1155 NFT to layer 2.
-    /// @param _token The address of ERC1155 NFT in layer 1.
-    /// @param _to The address of recipient in layer 2.
+    /// @param _token The address of ERC1155 NFT on layer 1.
+    /// @param _to The address of recipient on layer 2.
     /// @param _tokenId The token id to deposit.
     /// @param _amount The amount of token to deposit.
     /// @param _gasLimit Estimated gas limit required to complete the deposit on layer 2.
@@ -220,8 +214,8 @@ contract L1ERC1155Gateway is
     }
 
     /// @dev Internal function to batch deposit ERC1155 NFT to layer 2.
-    /// @param _token The address of ERC1155 NFT in layer 1.
-    /// @param _to The address of recipient in layer 2.
+    /// @param _token The address of ERC1155 NFT on layer 1.
+    /// @param _to The address of recipient on layer 2.
     /// @param _tokenIds The list of token ids to deposit.
     /// @param _amounts The list of corresponding number of token to deposit.
     /// @param _gasLimit Estimated gas limit required to complete the deposit on layer 2.

@@ -2,8 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-
 import {IL2ETHGateway} from "../../L2/gateways/IL2ETHGateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ETHGateway} from "./IL1ETHGateway.sol";
@@ -14,11 +12,11 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 // solhint-disable avoid-low-level-calls
 
 /// @title L1ETHGateway
-/// @notice The `L1ETHGateway` is used to deposit ETH in layer 1 and
+/// @notice The `L1ETHGateway` is used to deposit ETH on layer 1 and
 /// finalize withdraw ETH from layer 2.
 /// @dev The deposited ETH tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// ETH will be transfer to the recipient directly.
-contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback {
+contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback {
     /***************
      * Constructor *
      ***************/

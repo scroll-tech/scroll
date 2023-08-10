@@ -4,9 +4,11 @@ pragma solidity ^0.8.16;
 
 import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
 
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
+
 // solhint-disable no-empty-blocks
 
-abstract contract L2ERC20Gateway is IL2ERC20Gateway {
+abstract contract L2ERC20Gateway is ScrollGatewayBase, IL2ERC20Gateway {
     /*************
      * Variables *
      *************/

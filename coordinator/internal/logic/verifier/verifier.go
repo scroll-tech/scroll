@@ -35,19 +35,45 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		return &Verifier{cfg: cfg}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
-	aggVkPathStr := C.CString(cfg.AggVkPath)
+	assetsPathStr := C.CString(cfg.AssetsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
-		C.free(unsafe.Pointer(aggVkPathStr))
+		C.free(unsafe.Pointer(assetsPathStr))
 	}()
 
-	C.init_verifier(paramsPathStr, aggVkPathStr)
+	C.init_batch_verifier(paramsPathStr, assetsPathStr)
+	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
 
 	return &Verifier{cfg: cfg}, nil
 }
 
-// VerifyProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
+// VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
+	if v.cfg.MockMode {
+		log.Info("Mock mode, batch verifier disabled")
+		if string(proof.Proof) == InvalidTestProof {
+			return false, nil
+		}
+		return true, nil
+
+	}
+	buf, err := json.Marshal(proof)
+	if err != nil {
+		return false, err
+	}
+
+	proofStr := C.CString(string(buf))
+	defer func() {
+		C.free(unsafe.Pointer(proofStr))
+	}()
+
+	log.Info("Start to verify batch proof ...")
+	verified := C.verify_batch_proof(proofStr)
+	return verified != 0, nil
+}
+
+// VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
+func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -61,12 +87,12 @@ func (v *Verifier) VerifyProof(proof *message.AggProof) (bool, error) {
 		return false, err
 	}
 
-	aggProofStr := C.CString(string(buf))
+	proofStr := C.CString(string(buf))
 	defer func() {
-		C.free(unsafe.Pointer(aggProofStr))
+		C.free(unsafe.Pointer(proofStr))
 	}()
 
-	log.Info("Start to verify proof ...")
-	verified := C.verify_agg_proof(aggProofStr)
+	log.Info("Start to verify chunk proof ...")
+	verified := C.verify_chunk_proof(proofStr)
 	return verified != 0, nil
 }

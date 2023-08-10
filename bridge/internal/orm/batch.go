@@ -30,6 +30,7 @@ type Batch struct {
 	EndChunkHash    string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
 	StateRoot       string `json:"state_root" gorm:"column:state_root"`
 	WithdrawRoot    string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
 	// proof
@@ -107,7 +108,7 @@ func (o *Batch) GetBatchCount(ctx context.Context) (uint64, error) {
 }
 
 // GetVerifiedProofByHash retrieves the verified aggregate proof for a batch with the given hash.
-func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.AggProof, error) {
+func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.BatchProof, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Select("proof")
@@ -118,7 +119,7 @@ func (o *Batch) GetVerifiedProofByHash(ctx context.Context, hash string) (*messa
 		return nil, fmt.Errorf("Batch.GetVerifiedProofByHash error: %w, batch hash: %v", err, hash)
 	}
 
-	var proof message.AggProof
+	var proof message.BatchProof
 	if err := json.Unmarshal(batch.Proof, &proof); err != nil {
 		return nil, fmt.Errorf("Batch.GetVerifiedProofByHash error: %w, batch hash: %v", err, hash)
 	}
@@ -133,6 +134,9 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 
 	var latestBatch Batch
 	if err := db.First(&latestBatch).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("Batch.GetLatestBatch error: %w", err)
 	}
 	return &latestBatch, nil
@@ -211,7 +215,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	}
 
 	parentBatch, err := o.GetLatestBatch(ctx)
-	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+	if err != nil {
 		log.Error("failed to get the latest batch", "err", err)
 		return nil, err
 	}
@@ -258,7 +262,8 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		EndChunkHash:      endChunkHash,
 		EndChunkIndex:     endChunkIndex,
 		StateRoot:         chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawTrieRoot.Hex(),
+		WithdrawRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawRoot.Hex(),
+		ParentBatchHash:   parentBatchHash.Hex(),
 		BatchHeader:       batchHeader.Encode(),
 		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),
@@ -390,7 +395,7 @@ func (o *Batch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash st
 
 // UpdateProofByHash updates the batch proof by hash.
 // for unit test.
-func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.AggProof, proofTimeSec uint64) error {
+func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.BatchProof, proofTimeSec uint64) error {
 	proofBytes, err := json.Marshal(proof)
 	if err != nil {
 		return fmt.Errorf("Batch.UpdateProofByHash error: %w, batch hash: %v", err, hash)

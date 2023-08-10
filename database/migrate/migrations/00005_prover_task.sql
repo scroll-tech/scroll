@@ -8,6 +8,7 @@ create table prover_task
 -- prover
     prover_public_key   VARCHAR        NOT NULL,
     prover_name         VARCHAR        NOT NULL,
+    prover_version      VARCHAR        NOT NULL,
 
 -- task
     task_id             VARCHAR        NOT NULL,
@@ -32,7 +33,7 @@ comment
 on column prover_task.task_type is 'undefined, chunk, batch';
 
 comment
-on column prover_task.proving_status is 'undefined, roller assigned, roller proof valid, roller proof invalid';
+on column prover_task.proving_status is 'undefined, prover assigned, prover proof valid, prover proof invalid';
 
 comment
 on column prover_task.failure_type is 'undefined';

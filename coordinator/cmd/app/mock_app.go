@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	wsStartPort int64 = 40000
+	httpStartPort int64 = 40000
 )
 
 // CoordinatorApp coordinator-test client manager.
@@ -29,7 +29,7 @@ type CoordinatorApp struct {
 
 	originFile      string
 	coordinatorFile string
-	WSPort          int64
+	HTTPPort        int64
 
 	args []string
 	docker.AppAPI
@@ -39,13 +39,13 @@ type CoordinatorApp struct {
 func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", base.Timestamp)
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
-	wsPort := port.Int64() + wsStartPort
+	httpPort := port.Int64() + httpStartPort
 	coordinatorApp := &CoordinatorApp{
 		base:            base,
 		originFile:      file,
 		coordinatorFile: coordinatorFile,
-		WSPort:          wsPort,
-		args:            []string{"--log.debug", "--config", coordinatorFile, "--ws", "--ws.port", strconv.Itoa(int(wsPort))},
+		HTTPPort:        httpPort,
+		args:            []string{"--log.debug", "--config", coordinatorFile, "--http", "--http.port", strconv.Itoa(int(httpPort))},
 	}
 	if err := coordinatorApp.MockConfig(true); err != nil {
 		panic(err)
@@ -67,9 +67,9 @@ func (c *CoordinatorApp) Free() {
 	_ = os.Remove(c.coordinatorFile)
 }
 
-// WSEndpoint returns ws endpoint.
-func (c *CoordinatorApp) WSEndpoint() string {
-	return fmt.Sprintf("ws://localhost:%d", c.WSPort)
+// HTTPEndpoint returns ws endpoint.
+func (c *CoordinatorApp) HTTPEndpoint() string {
+	return fmt.Sprintf("http://localhost:%d", c.HTTPPort)
 }
 
 // MockConfig creates a new coordinator config.
@@ -79,15 +79,18 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	if err != nil {
 		return err
 	}
-	// Reset roller manager config for manager test cases.
-	cfg.RollerManagerConfig = &coordinatorConfig.RollerManagerConfig{
-		RollersPerSession: 1,
-		Verifier:          &coordinatorConfig.VerifierConfig{MockMode: true},
-		CollectionTime:    1,
-		TokenTimeToLive:   1,
+	// Reset prover manager config for manager test cases.
+	cfg.ProverManager = &coordinatorConfig.ProverManager{
+		ProversPerSession:  1,
+		Verifier:           &coordinatorConfig.VerifierConfig{MockMode: true},
+		CollectionTimeSec:  60,
+		SessionAttempts:    10,
+		MaxVerifierWorkers: 4,
 	}
-	cfg.DBConfig.DSN = base.DBImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
+	cfg.DB.DSN = base.DBImg.Endpoint()
+	cfg.L2.ChainID = 111
+	cfg.Auth.ChallengeExpireDurationSec = 1
+	cfg.Auth.LoginExpireDurationSec = 1
 	c.Config = cfg
 
 	if !store {

@@ -18,7 +18,7 @@ contract ScrollChainTest is DSTestPlus {
     // from ScrollChain
     event UpdateSequencer(address indexed account, bool status);
     event UpdateProver(address indexed account, bool status);
-    event UpdateVerifier(address oldVerifier, address newVerifier);
+    event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
     event UpdateMaxNumL2TxInChunk(uint256 oldMaxNumL2TxInChunk, uint256 newMaxNumL2TxInChunk);
 
     event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
@@ -62,7 +62,7 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("caller not sequencer");
         rollup.commitBatch(0, batchHeader0, new bytes[](0), new bytes(0));
 
-        rollup.updateSequencer(address(this), true);
+        rollup.addSequencer(address(this));
 
         // invalid version, revert
         hevm.expectRevert("invalid version");
@@ -106,6 +106,17 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("invalid chunk length");
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
 
+        // num txs less than num L1 msgs, revert
+        chunk0 = new bytes(1 + 60);
+        bytes memory bitmap = new bytes(32);
+        chunk0[0] = bytes1(uint8(1)); // one block in this chunk
+        chunk0[58] = bytes1(uint8(1)); // numTransactions = 1
+        chunk0[60] = bytes1(uint8(3)); // numL1Messages = 3
+        bitmap[31] = bytes1(uint8(7));
+        chunks[0] = chunk0;
+        hevm.expectRevert("num txs less than num L1 msgs");
+        rollup.commitBatch(0, batchHeader0, chunks, bitmap);
+
         // incomplete l2 transaction data, revert
         chunk0 = new bytes(1 + 60 + 1);
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
@@ -130,8 +141,8 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("caller not prover");
         rollup.finalizeBatchWithProof(new bytes(0), bytes32(0), bytes32(0), bytes32(0), new bytes(0));
 
-        rollup.updateProver(address(this), true);
-        rollup.updateSequencer(address(this), true);
+        rollup.addProver(address(this));
+        rollup.addSequencer(address(this));
 
         bytes memory batchHeader0 = new bytes(89);
 
@@ -218,8 +229,8 @@ contract ScrollChainTest is DSTestPlus {
     }
 
     function testCommitAndFinalizeWithL1Messages() public {
-        rollup.updateSequencer(address(this), true);
-        rollup.updateProver(address(this), true);
+        rollup.addSequencer(address(this));
+        rollup.addProver(address(this));
 
         // import 300 L1 messages
         for (uint256 i = 0; i < 300; i++) {
@@ -453,7 +464,7 @@ contract ScrollChainTest is DSTestPlus {
         rollup.revertBatch(new bytes(89), 1);
         hevm.stopPrank();
 
-        rollup.updateSequencer(address(this), true);
+        rollup.addSequencer(address(this));
 
         bytes memory batchHeader0 = new bytes(89);
 
@@ -518,11 +529,13 @@ contract ScrollChainTest is DSTestPlus {
         assertEq(uint256(rollup.committedBatches(2)), 0);
     }
 
-    function testUpdateSequencer(address _sequencer) public {
+    function testAddAndRemoveSequencer(address _sequencer) public {
         // set by non-owner, should revert
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
-        rollup.updateSequencer(_sequencer, true);
+        rollup.addSequencer(_sequencer);
+        hevm.expectRevert("Ownable: caller is not the owner");
+        rollup.removeSequencer(_sequencer);
         hevm.stopPrank();
 
         // change to random operator
@@ -530,20 +543,22 @@ contract ScrollChainTest is DSTestPlus {
         emit UpdateSequencer(_sequencer, true);
 
         assertBoolEq(rollup.isSequencer(_sequencer), false);
-        rollup.updateSequencer(_sequencer, true);
+        rollup.addSequencer(_sequencer);
         assertBoolEq(rollup.isSequencer(_sequencer), true);
 
         hevm.expectEmit(true, false, false, true);
         emit UpdateSequencer(_sequencer, false);
-        rollup.updateSequencer(_sequencer, false);
+        rollup.removeSequencer(_sequencer);
         assertBoolEq(rollup.isSequencer(_sequencer), false);
     }
 
-    function testUpdateProver(address _prover) public {
+    function testAddAndRemoveProver(address _prover) public {
         // set by non-owner, should revert
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
-        rollup.updateProver(_prover, true);
+        rollup.addProver(_prover);
+        hevm.expectRevert("Ownable: caller is not the owner");
+        rollup.removeProver(_prover);
         hevm.stopPrank();
 
         // change to random operator
@@ -551,13 +566,37 @@ contract ScrollChainTest is DSTestPlus {
         emit UpdateProver(_prover, true);
 
         assertBoolEq(rollup.isProver(_prover), false);
-        rollup.updateProver(_prover, true);
+        rollup.addProver(_prover);
         assertBoolEq(rollup.isProver(_prover), true);
 
         hevm.expectEmit(true, false, false, true);
         emit UpdateProver(_prover, false);
-        rollup.updateProver(_prover, false);
+        rollup.removeProver(_prover);
         assertBoolEq(rollup.isProver(_prover), false);
+    }
+
+    function testSetPause() external {
+        rollup.addSequencer(address(this));
+        rollup.addProver(address(this));
+
+        // not owner, revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("Ownable: caller is not the owner");
+        rollup.setPause(false);
+        hevm.stopPrank();
+
+        // pause
+        rollup.setPause(true);
+        assertBoolEq(true, rollup.paused());
+
+        hevm.expectRevert("Pausable: paused");
+        rollup.commitBatch(0, new bytes(0), new bytes[](0), new bytes(0));
+        hevm.expectRevert("Pausable: paused");
+        rollup.finalizeBatchWithProof(new bytes(0), bytes32(0), bytes32(0), bytes32(0), new bytes(0));
+
+        // unpause
+        rollup.setPause(false);
+        assertBoolEq(false, rollup.paused());
     }
 
     function testUpdateVerifier(address _newVerifier) public {
@@ -568,7 +607,7 @@ contract ScrollChainTest is DSTestPlus {
         hevm.stopPrank();
 
         // change to random operator
-        hevm.expectEmit(false, false, false, true);
+        hevm.expectEmit(true, true, false, true);
         emit UpdateVerifier(address(verifier), _newVerifier);
 
         assertEq(rollup.verifier(), address(verifier));

@@ -2,32 +2,31 @@
 
 pragma solidity =0.8.16;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IERC1155Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 import {ERC1155HolderUpgradeable, ERC1155ReceiverUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 
 import {IL2ERC1155Gateway} from "./IL2ERC1155Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL1ERC1155Gateway} from "../../L1/gateways/IL1ERC1155Gateway.sol";
-import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {IScrollERC1155} from "../../libraries/token/IScrollERC1155.sol";
 
 /// @title L2ERC1155Gateway
-/// @notice The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs in layer 2 and
+/// @notice The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs on layer 2 and
 /// finalize deposit the NFTs from layer 1.
 /// @dev The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding
 /// NFT will be minted and transfered to the recipient.
 ///
 /// This will be changed if we have more specific scenarios.
-contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {
+contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {
     /**********
      * Events *
      **********/
 
     /// @notice Emitted when token mapping for ERC1155 token is updated.
-    /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
-    /// @param _l1Token The address of ERC1155 token in layer 1.
-    event UpdateTokenMapping(address _l2Token, address _l1Token);
+    /// @param l2Token The address of corresponding ERC1155 token in layer 2.
+    /// @param oldL1Token The address of the old corresponding ERC1155 token in layer 1.
+    /// @param newL1Token The address of the new corresponding ERC1155 token in layer 1.
+    event UpdateTokenMapping(address indexed l2Token, address indexed oldL1Token, address indexed newL1Token);
 
     /*************
      * Variables *
@@ -45,7 +44,6 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     }
 
     function initialize(address _counterpart, address _messenger) external initializer {
-        OwnableUpgradeable.__Ownable_init();
         ERC1155HolderUpgradeable.__ERC1155Holder_init();
         ERC1155ReceiverUpgradeable.__ERC1155Receiver_init();
 
@@ -137,14 +135,15 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
      ************************/
 
     /// @notice Update layer 2 to layer 1 token mapping.
-    /// @param _l1Token The address of corresponding ERC1155 token in layer 2.
-    /// @param _l1Token The address of ERC1155 token in layer 1.
+    /// @param _l2Token The address of corresponding ERC1155 token on layer 2.
+    /// @param _l1Token The address of ERC1155 token on layer 1.
     function updateTokenMapping(address _l2Token, address _l1Token) external onlyOwner {
         require(_l1Token != address(0), "token address cannot be 0");
 
+        address _oldL1Token = tokenMapping[_l2Token];
         tokenMapping[_l2Token] = _l1Token;
 
-        emit UpdateTokenMapping(_l2Token, _l1Token);
+        emit UpdateTokenMapping(_l2Token, _oldL1Token, _l1Token);
     }
 
     /**********************
@@ -152,8 +151,8 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
      **********************/
 
     /// @dev Internal function to withdraw ERC1155 NFT to layer 2.
-    /// @param _token The address of ERC1155 NFT in layer 1.
-    /// @param _to The address of recipient in layer 2.
+    /// @param _token The address of ERC1155 NFT on layer 1.
+    /// @param _to The address of recipient on layer 2.
     /// @param _tokenId The token id to withdraw.
     /// @param _amount The amount of token to withdraw.
     /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 2.
@@ -185,8 +184,8 @@ contract L2ERC1155Gateway is OwnableUpgradeable, ERC1155HolderUpgradeable, Scrol
     }
 
     /// @dev Internal function to batch withdraw ERC1155 NFT to layer 2.
-    /// @param _token The address of ERC1155 NFT in layer 1.
-    /// @param _to The address of recipient in layer 2.
+    /// @param _token The address of ERC1155 NFT on layer 1.
+    /// @param _to The address of recipient on layer 2.
     /// @param _tokenIds The list of token ids to withdraw.
     /// @param _amounts The list of corresponding number of token to withdraw.
     /// @param _gasLimit Estimated gas limit required to complete the withdraw on layer 1.

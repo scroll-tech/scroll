@@ -8,8 +8,6 @@ import (
 	"bridge-history-api/config"
 	"bridge-history-api/orm/migrate"
 	"bridge-history-api/utils"
-
-	"scroll-tech/common/database"
 )
 
 func getConfig(ctx *cli.Context) (*config.Config, error) {
@@ -22,13 +20,7 @@ func getConfig(ctx *cli.Context) (*config.Config, error) {
 }
 
 func initDB(dbCfg *config.DBConfig) (*gorm.DB, error) {
-	cfg := &database.Config{
-		DriverName: dbCfg.DriverName,
-		DSN:        dbCfg.DSN,
-		MaxOpenNum: dbCfg.MaxOpenNum,
-		MaxIdleNum: dbCfg.MaxIdleNum,
-	}
-	return database.InitDB(cfg)
+	return utils.InitDB(dbCfg)
 }
 
 // resetDB clean or reset database.

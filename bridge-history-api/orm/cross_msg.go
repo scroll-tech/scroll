@@ -204,7 +204,7 @@ func (c *CrossMsg) DeleteL1CrossMsgAfterHeight(ctx context.Context, height uint6
 // GetL2CrossMsgByHash returns layer2 cross message by given hash
 func (c *CrossMsg) GetL2CrossMsgByHash(ctx context.Context, l2Hash common.Hash) (*CrossMsg, error) {
 	var result CrossMsg
-	err := c.db.WithContext(ctx).Model(&CrossMsg{}).Where("layer2_hash = ? AND msg_type = ?", l2Hash.String(), Layer1Msg).First(&result).Error
+	err := c.db.WithContext(ctx).Model(&CrossMsg{}).Where("layer2_hash = ? AND msg_type = ?", l2Hash.String(), Layer2Msg).First(&result).Error
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil

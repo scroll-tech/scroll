@@ -20,12 +20,17 @@ var (
 	MessageRelayerApp MockAppName = "message-relayer-test"
 	// RollupRelayerApp the name of mock rollup-relayer app.
 	RollupRelayerApp MockAppName = "rollup-relayer-test"
-	// CoordinatorApp the name of mock coordinator app.
-	CoordinatorApp MockAppName = "coordinator-test"
+
 	// DBCliApp the name of mock database app.
 	DBCliApp MockAppName = "db_cli-test"
-	// RollerApp the name of mock roller app.
-	RollerApp MockAppName = "roller-test"
+
+	// CoordinatorApp the name of mock coordinator app.
+	CoordinatorApp MockAppName = "coordinator-test"
+
+	// ChunkProverApp the name of mock chunk prover app.
+	ChunkProverApp MockAppName = "chunkProver-test"
+	// BatchProverApp the name of mock batch prover app.
+	BatchProverApp MockAppName = "batchProver-test"
 )
 
 // RegisterSimulation register initializer function for integration-test.

@@ -2,13 +2,17 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
 	// enable the pprof
 	_ "net/http/pprof"
 
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -20,7 +24,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/controller/cron"
-	"scroll-tech/coordinator/internal/logic/rollermanager"
+	"scroll-tech/coordinator/internal/route"
 )
 
 var app *cli.App
@@ -49,15 +53,12 @@ func action(ctx *cli.Context) error {
 	}
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
-	db, err := database.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
 	proofCollector := cron.NewCollector(subCtx, db, cfg)
-
-	rollermanager.InitRollerManager(db)
-
 	defer func() {
 		proofCollector.Stop()
 		cancel()
@@ -66,34 +67,24 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
+	router := gin.Default()
+	api.InitController(cfg, db)
+	route.Route(router, cfg)
+	port := ctx.String(httpPortFlag.Name)
+	srv := &http.Server{
+		Addr:              fmt.Sprintf(":%s", port),
+		Handler:           router,
+		ReadHeaderTimeout: time.Minute,
+	}
+
 	// Start metrics server.
 	metrics.Serve(subCtx, ctx)
 
-	apis := api.RegisterAPIs(cfg, db)
-	// Register api and start rpc service.
-	if ctx.Bool(httpEnabledFlag.Name) {
-		handler, addr, err := utils.StartHTTPEndpoint(fmt.Sprintf("%s:%d", ctx.String(httpListenAddrFlag.Name), ctx.Int(httpPortFlag.Name)), apis)
-		if err != nil {
-			log.Crit("Could not start RPC api", "error", err)
+	go func() {
+		if runServerErr := srv.ListenAndServe(); err != nil && !errors.Is(runServerErr, http.ErrServerClosed) {
+			log.Crit("run coordinator http server failure", "error", runServerErr)
 		}
-		defer func() {
-			_ = handler.Shutdown(ctx.Context)
-			log.Info("HTTP endpoint closed", "url", fmt.Sprintf("http://%v/", addr))
-		}()
-		log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%v/", addr))
-	}
-	// Register api and start ws service.
-	if ctx.Bool(wsEnabledFlag.Name) {
-		handler, addr, err := utils.StartWSEndpoint(fmt.Sprintf("%s:%d", ctx.String(wsListenAddrFlag.Name), ctx.Int(wsPortFlag.Name)), apis, cfg.RollerManagerConfig.CompressionLevel)
-		if err != nil {
-			log.Crit("Could not start WS api", "error", err)
-		}
-		defer func() {
-			_ = handler.Shutdown(ctx.Context)
-			log.Info("WS endpoint closed", "url", fmt.Sprintf("ws://%v/", addr))
-		}()
-		log.Info("WS endpoint opened", "url", fmt.Sprintf("ws://%v/", addr))
-	}
+	}()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -101,7 +92,17 @@ func action(ctx *cli.Context) error {
 
 	// Wait until the interrupt signal is received from an OS signal.
 	<-interrupt
+	log.Info("start shutdown coordinator server ...")
 
+	closeCtx, cancelExit := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelExit()
+	if err = srv.Shutdown(closeCtx); err != nil {
+		log.Warn("shutdown coordinator server failure", "error", err)
+		return nil
+	}
+
+	<-closeCtx.Done()
+	log.Info("coordinator server exiting success")
 	return nil
 }
 
