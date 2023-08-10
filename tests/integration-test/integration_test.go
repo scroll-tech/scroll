@@ -22,8 +22,8 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
 
 	bcmd "scroll-tech/bridge/cmd"
 )
@@ -40,8 +40,8 @@ func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
 	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
-	chunkProverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.HTTPEndpoint(), message.ProofTypeChunk)
-	batchProverApp = rapp.NewProverApp(base, "../../prover/config.json", coordinatorApp.HTTPEndpoint(), message.ProofTypeBatch)
+	chunkProverApp = rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
+	batchProverApp = rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	m.Run()
 	bridgeApp.Free()
 	coordinatorApp.Free()
@@ -112,17 +112,21 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	assert.NoError(t, err)
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
 	assert.NoError(t, err)
+	t.Log(version.Version)
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
 
 	// Run prover app.
-	chunkProverApp.RunAppWithExpectedResult(t, "proof submitted successfully") // chunk prover login -> get task -> submit proof.
-	batchProverApp.RunAppWithExpectedResult(t, "proof submitted successfully") // batch prover login -> get task -> submit proof.
+	chunkProverApp.ExpectWithTimeout(t, true, time.Second*40, "proof submitted successfully") // chunk prover login -> get task -> submit proof.
+	batchProverApp.ExpectWithTimeout(t, true, time.Second*40, "proof submitted successfully") // batch prover login -> get task -> submit proof.
 
 	// All task has been proven, coordinator would not return any task.
-	chunkProverApp.ExpectWithTimeout(t, false, 60*time.Second, "get empty prover task")
-	batchProverApp.ExpectWithTimeout(t, false, 60*time.Second, "get empty prover task")
+	chunkProverApp.ExpectWithTimeout(t, true, 60*time.Second, "get empty prover task")
+	batchProverApp.ExpectWithTimeout(t, true, 60*time.Second, "get empty prover task")
+
+	chunkProverApp.RunApp(t)
+	batchProverApp.RunApp(t)
 
 	// Free apps.
 	chunkProverApp.WaitExit()
@@ -139,10 +143,12 @@ func TestProverReLogin(t *testing.T) {
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t) // login timeout: 1 sec
+	chunkProverApp.RunApp(t)
+	batchProverApp.RunApp(t)
 
 	// Run prover app.
-	chunkProverApp.RunAppWithExpectedResult(t, "re-login success") // chunk prover login.
-	batchProverApp.RunAppWithExpectedResult(t, "re-login success") // batch prover login.
+	chunkProverApp.WaitResult(t, time.Second*40, "re-login success") // chunk prover login.
+	batchProverApp.WaitResult(t, time.Second*40, "re-login success") // batch prover login.
 
 	// Free apps.
 	chunkProverApp.WaitExit()

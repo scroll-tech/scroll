@@ -294,6 +294,7 @@ func (o *Batch) UpdateUnassignedBatchReturning(ctx context.Context, limit int) (
 	var batches []*Batch
 	db = db.Model(&batches).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
+	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
 	if err := db.Update("proving_status", types.ProvingTaskAssigned).Error; err != nil {
 		return nil, fmt.Errorf("Batch.UpdateUnassignedBatchReturning error: %w", err)
 	}

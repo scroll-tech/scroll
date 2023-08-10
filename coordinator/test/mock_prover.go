@@ -14,6 +14,7 @@ import (
 
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/types"
@@ -78,7 +79,7 @@ func (r *mockProver) login(t *testing.T, challengeString string) string {
 		Identity: &message.Identity{
 			Challenge:     challengeString,
 			ProverName:    "test",
-			ProverVersion: "v1.0.0",
+			ProverVersion: version.Version,
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(r.privKey))
@@ -162,11 +163,16 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *t
 }
 
 func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus, errCode int) {
+	proofMsgStatus := message.StatusOk
+	if proofStatus == generatedFailed {
+		proofMsgStatus = message.StatusProofError
+	}
+
 	proof := &message.ProofMsg{
 		ProofDetail: &message.ProofDetail{
 			ID:         proverTaskSchema.TaskID,
 			Type:       message.ProofType(proverTaskSchema.TaskType),
-			Status:     message.RespStatus(proofStatus),
+			Status:     proofMsgStatus,
 			ChunkProof: &message.ChunkProof{},
 			BatchProof: &message.BatchProof{},
 		},
