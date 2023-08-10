@@ -1,16 +1,16 @@
 {
-  "ProxyAdmin": null,
+  "ProxyAdmin": "0x95ec888F34b23063aeaB47c8E229B3a25DBF8e4F",
   "ZKRollup": {
     "implementation": null,
     "proxy": null
   },
   "L1ScrollMessenger": {
-    "implementation": null,
-    "proxy": null
+    "implementation": "0xC71532468A74084cfd824c0445E96f9A2dc3Bd7E",
+    "proxy": "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A"
   },
   "L1GatewayRouter": {
-    "implementation": null,
-    "proxy": null
+    "implementation": "0x5431937CF9cb638df5e3587Ae0a2F62130CEE27e",
+    "proxy": "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a"
   },
   "L1StandardERC20Gateway": {
     "implementation": null,
@@ -19,5 +19,9 @@
   "L1WETHGateway": {
     "implementation": null,
     "proxy": null
+  },
+  "L1USDCGateway": {
+    "implementation": "0x2Cf090069Bc47CA931f350fe1D0a160dba4c7C53",
+    "proxy": "0xeED47C513265cefe6846Dd51B624F1102A9a89d3"
   }
 }

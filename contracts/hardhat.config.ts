@@ -60,14 +60,10 @@ const config: HardhatUserConfig = {
     },
     l1geth: {
       url: SCROLL_L1_RPC,
-      gasPrice: 20000000000,
-      gasMultiplier: 1.1,
       accounts: [L1_DEPLOYER_PRIVATE_KEY],
     },
     l2geth: {
       url: SCROLL_L2_RPC,
-      gasPrice: 20000000000,
-      gasMultiplier: 1.1,
       accounts: [L2_DEPLOYER_PRIVATE_KEY],
     },
   },
@@ -83,6 +79,16 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
+    customChains: [
+      {
+        network: "l2geth",
+        chainId: 534351,
+        urls: {
+          apiURL: "https://sepolia-blockscout.scroll.io/api",
+          browserURL: "https://sepolia-blockscout.scroll.io",
+        },
+      },
+    ],
   },
   dodoc: {
     runOnCompile: true,
