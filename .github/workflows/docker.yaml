@@ -172,3 +172,5 @@ jobs:
         file: ./build/dockerfiles/prover-stats-api.Dockerfile
         push: true
         tags: scrolltech/prover-stats-api:${{github.ref_name}}
+        # cache-from: type=gha,scope=${{ github.workflow }}
+        # cache-to: type=gha,scope=${{ github.workflow }}
