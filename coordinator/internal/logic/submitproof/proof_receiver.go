@@ -40,12 +40,8 @@ var (
 	// ErrValidatorFailureProverInfoHasProofValid proof is vaild
 	ErrValidatorFailureProverInfoHasProofValid = errors.New("validator failure prover task info has proof valid")
 	// ErrInvalidProverVersion means prover version is invalid.
-	// ErrInvalidProverVersion = errors.New("prover version invalid")
+	ErrInvalidProverVersion = errors.New("prover version invalid")
 )
-
-func InvalidProverVersion(v string) error {
-	return errors.New(fmt.Sprintf("prover version invalid %s", v))
-}
 
 // ProofReceiverLogic the proof receiver logic
 type ProofReceiverLogic struct {
@@ -338,7 +334,7 @@ func (m *ProofReceiverLogic) verifyChunkProof(c *gin.Context, proof *message.Chu
 	case version.OldZkVersion:
 		return m.oldVerifier.VerifyChunkProof(proof)
 	}
-	return false, InvalidProverVersion(proverVersion.(string))
+	return false, ErrInvalidProverVersion
 }
 
 func (m *ProofReceiverLogic) verifyBatchProof(c *gin.Context, proof *message.BatchProof) (bool, error) {
@@ -350,5 +346,5 @@ func (m *ProofReceiverLogic) verifyBatchProof(c *gin.Context, proof *message.Bat
 	case version.OldZkVersion:
 		return m.oldVerifier.VerifyBatchProof(proof)
 	}
-	return false, InvalidProverVersion(proverVersion.(string))
+	return false, ErrInvalidProverVersion
 }
