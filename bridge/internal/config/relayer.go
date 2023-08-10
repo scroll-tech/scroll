@@ -31,8 +31,6 @@ type SenderConfig struct {
 	TxType string `json:"tx_type"`
 	// The min balance set for check and set balance for sender's accounts.
 	MinBalance *big.Int `json:"min_balance"`
-	// The interval (in seconds) to check balance and top up sender's accounts
-	CheckBalanceTime uint64 `json:"check_balance_time"`
 	// The sender's pending count limit.
 	PendingLimit int `json:"pending_limit,omitempty"`
 }
@@ -55,10 +53,10 @@ type RelayerConfig struct {
 	// MessageRelayMinGasLimit to avoid OutOfGas error
 	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit,omitempty"`
 	// The private key of the relayer
-	MessageSenderPrivateKeys   []*ecdsa.PrivateKey `json:"-"`
-	GasOracleSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`
-	CommitSenderPrivateKeys    []*ecdsa.PrivateKey `json:"-"`
-	FinalizeSenderPrivateKeys  []*ecdsa.PrivateKey `json:"-"`
+	MessageSenderPrivateKey   *ecdsa.PrivateKey `json:"-"`
+	GasOracleSenderPrivateKey *ecdsa.PrivateKey `json:"-"`
+	CommitSenderPrivateKey    *ecdsa.PrivateKey `json:"-"`
+	FinalizeSenderPrivateKey  *ecdsa.PrivateKey `json:"-"`
 }
 
 // GasOracleConfig The config for updating gas price oracle.
@@ -72,56 +70,61 @@ type GasOracleConfig struct {
 // relayerConfigAlias RelayerConfig alias name
 type relayerConfigAlias RelayerConfig
 
-// UnmarshalJSON unmarshal relayer_config struct.
 func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
-	var jsonConfig struct {
+	var c struct {
 		relayerConfigAlias
 		// The private key of the relayer
-		MessageSenderPrivateKeys   []string `json:"message_sender_private_keys"`
-		GasOracleSenderPrivateKeys []string `json:"gas_oracle_sender_private_keys"`
-		CommitSenderPrivateKeys    []string `json:"commit_sender_private_keys"`
-		FinalizeSenderPrivateKeys  []string `json:"finalize_sender_private_keys"`
+		MessageSenderPrivateKey   string `json:"message_sender_private_key"`
+		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
+		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
+		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
 	}
-	if err := json.Unmarshal(input, &jsonConfig); err != nil {
+	var err error
+	if err = json.Unmarshal(input, &c); err != nil {
 		return err
 	}
 
-	*r = RelayerConfig(jsonConfig.relayerConfigAlias)
+	*r = RelayerConfig(c.relayerConfigAlias)
 
-	// Get messenger private key list.
-	for _, privStr := range jsonConfig.MessageSenderPrivateKeys {
-		priv, err := crypto.ToECDSA(common.FromHex(privStr))
-		if err != nil {
-			return fmt.Errorf("incorrect private_key_list format, err: %v", err)
+	privKeys := make(map[string]bool)
+
+	// Helper function to convert and check private key uniqueness
+	convertAndCheck := func(hexStr string) (*ecdsa.PrivateKey, error) {
+		// CommitSenderPrivateKey and FinalizeSenderPrivateKey are empty for l1 relayer.
+		if hexStr == "" {
+			return nil, nil
 		}
-		r.MessageSenderPrivateKeys = append(r.MessageSenderPrivateKeys, priv)
+
+		if _, exists := privKeys[hexStr]; exists {
+			// DO NOT print private key here since it's confidential.
+			return nil, fmt.Errorf("duplicate private key detected")
+		}
+		privKey, err := crypto.ToECDSA(common.FromHex(hexStr))
+		if err != nil {
+			return nil, fmt.Errorf("incorrect private_key format, err: %w", err)
+		}
+		privKeys[hexStr] = true
+		return privKey, nil
 	}
 
-	// Get gas oracle private key list.
-	for _, privStr := range jsonConfig.GasOracleSenderPrivateKeys {
-		priv, err := crypto.ToECDSA(common.FromHex(privStr))
-		if err != nil {
-			return fmt.Errorf("incorrect private_key_list format, err: %v", err)
-		}
-		r.GasOracleSenderPrivateKeys = append(r.GasOracleSenderPrivateKeys, priv)
+	r.MessageSenderPrivateKey, err = convertAndCheck(c.MessageSenderPrivateKey)
+	if err != nil {
+		return err
 	}
 
-	// Get commit sender private key list.
-	for _, privStr := range jsonConfig.CommitSenderPrivateKeys {
-		priv, err := crypto.ToECDSA(common.FromHex(privStr))
-		if err != nil {
-			return fmt.Errorf("incorrect prover_private_key format, err: %v", err)
-		}
-		r.CommitSenderPrivateKeys = append(r.CommitSenderPrivateKeys, priv)
+	r.GasOracleSenderPrivateKey, err = convertAndCheck(c.GasOracleSenderPrivateKey)
+	if err != nil {
+		return err
 	}
 
-	// Get finalize sender private key list.
-	for _, privStr := range jsonConfig.FinalizeSenderPrivateKeys {
-		priv, err := crypto.ToECDSA(common.FromHex(privStr))
-		if err != nil {
-			return fmt.Errorf("incorrect prover_private_key format, err: %v", err)
-		}
-		r.FinalizeSenderPrivateKeys = append(r.FinalizeSenderPrivateKeys, priv)
+	r.CommitSenderPrivateKey, err = convertAndCheck(c.CommitSenderPrivateKey)
+	if err != nil {
+		return err
+	}
+
+	r.FinalizeSenderPrivateKey, err = convertAndCheck(c.FinalizeSenderPrivateKey)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -129,34 +132,19 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 
 // MarshalJSON marshal RelayerConfig config, transfer private keys.
 func (r *RelayerConfig) MarshalJSON() ([]byte, error) {
-	jsonConfig := struct {
+	c := struct {
 		relayerConfigAlias
 		// The private key of the relayer
-		MessageSenderPrivateKeys   []string `json:"message_sender_private_keys"`
-		GasOracleSenderPrivateKeys []string `json:"gas_oracle_sender_private_keys"`
-		CommitSenderPrivateKeys    []string `json:"commit_sender_private_keys"`
-		FinalizeSenderPrivateKeys  []string `json:"finalize_sender_private_keys"`
-	}{relayerConfigAlias(*r), nil, nil, nil, nil}
+		MessageSenderPrivateKey   string `json:"message_sender_private_key"`
+		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
+		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
+		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
+	}{relayerConfigAlias(*r), "", "", "", ""}
 
-	// Transfer message sender private keys to hex type.
-	for _, priv := range r.MessageSenderPrivateKeys {
-		jsonConfig.MessageSenderPrivateKeys = append(jsonConfig.MessageSenderPrivateKeys, common.Bytes2Hex(crypto.FromECDSA(priv)))
-	}
+	c.MessageSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.MessageSenderPrivateKey))
+	c.GasOracleSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.GasOracleSenderPrivateKey))
+	c.CommitSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.CommitSenderPrivateKey))
+	c.FinalizeSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.FinalizeSenderPrivateKey))
 
-	// Transfer gas oracle sender private keys to hex type.
-	for _, priv := range r.GasOracleSenderPrivateKeys {
-		jsonConfig.GasOracleSenderPrivateKeys = append(jsonConfig.GasOracleSenderPrivateKeys, common.Bytes2Hex(crypto.FromECDSA(priv)))
-	}
-
-	// Transfer commit sender private keys to hex type.
-	for _, priv := range r.CommitSenderPrivateKeys {
-		jsonConfig.CommitSenderPrivateKeys = append(jsonConfig.CommitSenderPrivateKeys, common.Bytes2Hex(crypto.FromECDSA(priv)))
-	}
-
-	// Transfer finalize sender private keys to hex type.
-	for _, priv := range r.FinalizeSenderPrivateKeys {
-		jsonConfig.FinalizeSenderPrivateKeys = append(jsonConfig.FinalizeSenderPrivateKeys, common.Bytes2Hex(crypto.FromECDSA(priv)))
-	}
-
-	return json.Marshal(&jsonConfig)
+	return json.Marshal(&c)
 }

@@ -12,7 +12,6 @@
       "sender_config": {
         "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
         "check_pending_time": 2,
-        "check_balance_time": 100,
         "escalate_blocks": 100,
         "confirmations": "0x1",
         "escalate_multiple_num": 11,
@@ -27,12 +26,8 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
-      "message_sender_private_keys": [
-        "1212121212121212121212121212121212121212121212121212121212121212"
-      ],
-      "gas_oracle_sender_private_keys": [
-        "1313131313131313131313131313131313131313131313131313131313131313"
-      ]
+      "message_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
+      "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }
   },
   "l2_config": {
@@ -47,7 +42,6 @@
       "sender_config": {
         "endpoint": "DUMMY_ENDPOINT",
         "check_pending_time": 10,
-        "check_balance_time": 100,
         "escalate_blocks": 100,
         "confirmations": "0x6",
         "escalate_multiple_num": 11,
@@ -62,18 +56,10 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
-      "message_sender_private_keys": [
-        "1212121212121212121212121212121212121212121212121212121212121212"
-      ],
-      "gas_oracle_sender_private_keys": [
-        "1313131313131313131313131313131313131313131313131313131313131313"
-      ],
-      "commit_sender_private_keys": [
-        "1414141414141414141414141414141414141414141414141414141414141414"
-      ],
-      "finalize_sender_private_keys": [
-        "1515151515151515151515151515151515151515151515151515151515151515"
-      ]
+      "message_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
+      "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
+      "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
+      "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515"
     },
     "chunk_proposer_config": {
       "max_tx_gas_per_chunk": 1123456,

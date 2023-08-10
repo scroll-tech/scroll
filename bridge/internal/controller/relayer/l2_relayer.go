@@ -81,25 +81,25 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool) (*Layer2Relayer, error) {
-	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
+	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKey)
 	if err != nil {
 		log.Error("Failed to create messenger sender", "err", err)
 		return nil, err
 	}
 
-	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKeys)
+	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey)
 	if err != nil {
 		log.Error("Failed to create commit sender", "err", err)
 		return nil, err
 	}
 
-	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKeys)
+	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey)
 	if err != nil {
 		log.Error("Failed to create finalize sender", "err", err)
 		return nil, err
 	}
 
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKeys)
+	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey)
 	if err != nil {
 		log.Error("Failed to create gas oracle sender", "err", err)
 		return nil, err
@@ -252,7 +252,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 		select {
 		// print progress
 		case <-ticker.C:
-			log.Info("Waiting for confirmation", "pending count", r.commitSender.PendingCount())
+			log.Info("Waiting for confirmation")
 
 		// timeout
 		case <-time.After(5 * time.Minute):
