@@ -7,7 +7,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -32,10 +31,6 @@ var (
 	// auth
 	l1Auth *bind.TransactOpts
 	l2Auth *bind.TransactOpts
-
-	// l1 messenger contract
-	l1MessengerInstance *mock_bridge.MockBridgeL1
-	l1MessengerAddress  common.Address
 
 	// l1 rollup contract
 	scrollChainInstance *mock_bridge.MockBridgeL1
@@ -84,23 +79,16 @@ func setupEnv(t *testing.T) {
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
-	privKey, _ := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
-	l1Auth, err = bind.NewKeyedTransactorWithChainID(privKey, base.L1gethImg.ChainID())
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.RollupSenderPrivateKeys[0], base.L1gethImg.ChainID())
 	assert.NoError(t, err)
 
-	l2Auth, err = bind.NewKeyedTransactorWithChainID(privKey, base.L2gethImg.ChainID())
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.RollupSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 }
 
 func prepareContracts(t *testing.T) {
 	var err error
 	var tx *types.Transaction
-
-	// L1 messenger contract
-	_, tx, l1MessengerInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
-	assert.NoError(t, err)
-	l1MessengerAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
-	assert.NoError(t, err)
 
 	// L1 ScrolChain contract
 	_, tx, scrollChainInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
@@ -115,15 +103,10 @@ func prepareContracts(t *testing.T) {
 	assert.NoError(t, err)
 
 	l1Config, l2Config := bridgeApp.Config.L1Config, bridgeApp.Config.L2Config
-	l1Config.L1MessengerAddress = l1MessengerAddress
-	l1Config.L1MessageQueueAddress = l1MessengerAddress
 	l1Config.ScrollChainContractAddress = scrollChainAddress
-	l1Config.RelayerConfig.MessengerContractAddress = l2MessengerAddress
-	l1Config.RelayerConfig.GasPriceOracleContractAddress = l1MessengerAddress
 
 	l2Config.L2MessengerAddress = l2MessengerAddress
 	l2Config.L2MessageQueueAddress = l2MessengerAddress
-	l2Config.RelayerConfig.MessengerContractAddress = l1MessengerAddress
 	l2Config.RelayerConfig.RollupContractAddress = scrollChainAddress
 	l2Config.RelayerConfig.GasPriceOracleContractAddress = l2MessengerAddress
 }

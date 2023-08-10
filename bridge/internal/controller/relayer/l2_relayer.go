@@ -56,8 +56,6 @@ type Layer2Relayer struct {
 	gasOracleSender *sender.Sender
 	l2GasOracleABI  *abi.ABI
 
-	minGasLimitForMessageRelay uint64
-
 	lastGasPrice uint64
 	minGasPrice  uint64
 	gasPriceDiff uint64
@@ -99,11 +97,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
-	minGasLimitForMessageRelay := uint64(defaultL2MessageRelayMinGasLimit)
-	if cfg.MessageRelayMinGasLimit != 0 {
-		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
-	}
-
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
@@ -119,8 +112,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 		gasOracleSender: gasOracleSender,
 		l2GasOracleABI:  bridgeAbi.L2GasPriceOracleABI,
-
-		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,

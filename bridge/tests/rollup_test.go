@@ -33,7 +33,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L1Watcher
 	l1Cfg := bridgeApp.Config.L1Config
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.ScrollChainContractAddress, db)
 
 	// add some blocks to db
 	var wrappedBlocks []*types.WrappedBlock

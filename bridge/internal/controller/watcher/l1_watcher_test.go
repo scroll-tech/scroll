@@ -30,7 +30,7 @@ func setupL1Watcher(t *testing.T) (*L1WatcherClient, *gorm.DB) {
 	client, err := ethclient.Dial(base.L1gethImg.Endpoint())
 	assert.NoError(t, err)
 	l1Cfg := cfg.L1Config
-	watcher := NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
+	watcher := NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.RelayerConfig.RollupContractAddress, db)
 	assert.NoError(t, watcher.FetchContractEvent())
 	return watcher, db
 }
@@ -241,50 +241,6 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	convey.Convey("FetchContractEvent success", t, func() {
 		err := watcher.FetchContractEvent()
 		assert.NoError(t, err)
-	})
-}
-
-func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
-	watcher, db := setupL1Watcher(t)
-	defer database.CloseDB(db)
-
-	logs := []types.Log{
-		{
-			Topics:      []common.Hash{bridgeAbi.L1QueueTransactionEventSignature},
-			BlockNumber: 100,
-			TxHash:      common.HexToHash("0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347"),
-		},
-	}
-
-	convey.Convey("unpack QueueTransaction log failure", t, func() {
-		targetErr := errors.New("UnpackLog QueueTransaction failure")
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
-			return targetErr
-		})
-		defer patchGuard.Reset()
-
-		rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		// Will not fail here because L1QueueTransactionEventSignature ignored
-		assert.NoError(t, err)
-		assert.Empty(t, rollupEvents)
-	})
-
-	convey.Convey("L1QueueTransactionEventSignature success", t, func() {
-		patchGuard := gomonkey.ApplyFunc(utils.UnpackLog, func(c *abi.ABI, out interface{}, event string, log types.Log) error {
-			tmpOut := out.(*bridgeAbi.L1QueueTransactionEvent)
-			tmpOut.QueueIndex = 100
-			tmpOut.Data = []byte("test data")
-			tmpOut.Sender = common.HexToAddress("0xb4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30")
-			tmpOut.Value = big.NewInt(1000)
-			tmpOut.Target = common.HexToAddress("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
-			tmpOut.GasLimit = big.NewInt(10)
-			return nil
-		})
-		defer patchGuard.Reset()
-
-		rollupEvents, err := watcher.parseBridgeEventLogs(logs)
-		assert.NoError(t, err)
-		assert.Empty(t, rollupEvents)
 	})
 }
 

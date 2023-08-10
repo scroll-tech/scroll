@@ -43,8 +43,6 @@ type SenderConfig struct {
 type RelayerConfig struct {
 	// RollupContractAddress store the rollup contract address.
 	RollupContractAddress common.Address `json:"rollup_contract_address,omitempty"`
-	// MessengerContractAddress store the scroll messenger contract address.
-	MessengerContractAddress common.Address `json:"messenger_contract_address"`
 	// GasPriceOracleContractAddress store the scroll messenger contract address.
 	GasPriceOracleContractAddress common.Address `json:"gas_price_oracle_contract_address"`
 	// sender config
@@ -53,8 +51,6 @@ type RelayerConfig struct {
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
 	// The interval in which we send finalize batch transactions.
 	FinalizeBatchIntervalSec uint64 `json:"finalize_batch_interval_sec"`
-	// MessageRelayMinGasLimit to avoid OutOfGas error
-	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit,omitempty"`
 	// The private key of the relayer
 	GasOracleSenderPrivateKeys []*ecdsa.PrivateKey `json:"-"`
 	RollupSenderPrivateKeys    []*ecdsa.PrivateKey `json:"-"`

@@ -11,10 +11,6 @@ import (
 var (
 	// ScrollChainABI holds information about ScrollChain's context and available invokable methods.
 	ScrollChainABI *abi.ABI
-	// L1ScrollMessengerABI holds information about L1ScrollMessenger's context and available invokable methods.
-	L1ScrollMessengerABI *abi.ABI
-	// L1MessageQueueABI holds information about L1MessageQueue contract's context and available invokable methods.
-	L1MessageQueueABI *abi.ABI
 	// L2GasPriceOracleABI holds information about L2GasPriceOracle's context and available invokable methods.
 	L2GasPriceOracleABI *abi.ABI
 
@@ -39,9 +35,6 @@ var (
 	// L1FinalizeBatchEventSignature = keccak256("FinalizeBatch(uint256,bytes32,bytes32,bytes32)")
 	L1FinalizeBatchEventSignature common.Hash
 
-	// L1QueueTransactionEventSignature = keccak256("QueueTransaction(address,address,uint256,uint64,uint256,bytes)")
-	L1QueueTransactionEventSignature common.Hash
-
 	// L2SentMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes,uint256,uint256)")
 	L2SentMessageEventSignature common.Hash
 	// L2RelayedMessageEventSignature = keccak256("RelayedMessage(bytes32)")
@@ -58,8 +51,6 @@ var (
 
 func init() {
 	ScrollChainABI, _ = ScrollChainMetaData.GetAbi()
-	L1ScrollMessengerABI, _ = L1ScrollMessengerMetaData.GetAbi()
-	L1MessageQueueABI, _ = L1MessageQueueMetaData.GetAbi()
 	L2GasPriceOracleABI, _ = L2GasPriceOracleMetaData.GetAbi()
 
 	L2ScrollMessengerABI, _ = L2ScrollMessengerMetaData.GetAbi()
@@ -67,14 +58,8 @@ func init() {
 	L2MessageQueueABI, _ = L2MessageQueueMetaData.GetAbi()
 	L1GasPriceOracleABI, _ = L1GasPriceOracleMetaData.GetAbi()
 
-	L1SentMessageEventSignature = L1ScrollMessengerABI.Events["SentMessage"].ID
-	L1RelayedMessageEventSignature = L1ScrollMessengerABI.Events["RelayedMessage"].ID
-	L1FailedRelayedMessageEventSignature = L1ScrollMessengerABI.Events["FailedRelayedMessage"].ID
-
 	L1CommitBatchEventSignature = ScrollChainABI.Events["CommitBatch"].ID
 	L1FinalizeBatchEventSignature = ScrollChainABI.Events["FinalizeBatch"].ID
-
-	L1QueueTransactionEventSignature = L1MessageQueueABI.Events["QueueTransaction"].ID
 
 	L2SentMessageEventSignature = L2ScrollMessengerABI.Events["SentMessage"].ID
 	L2RelayedMessageEventSignature = L2ScrollMessengerABI.Events["RelayedMessage"].ID

@@ -4,22 +4,18 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"math/big"
-	"strconv"
 	"testing"
 
 	"gorm.io/gorm"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
-	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
 	"scroll-tech/bridge/mock_bridge"
 )
@@ -31,42 +27,11 @@ func setupL2Watcher(t *testing.T) (*L2WatcherClient, *gorm.DB) {
 	return watcher, db
 }
 
-func testCreateNewWatcherAndStop(t *testing.T) {
-	wc, db := setupL2Watcher(t)
-	subCtx, cancel := context.WithCancel(context.Background())
-	defer func() {
-		cancel()
-		defer database.CloseDB(db)
-	}()
-
-	loopToFetchEvent(subCtx, wc)
-
-	l1cfg := cfg.L1Config
-	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
-	privKey, _ := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
-	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, []*ecdsa.PrivateKey{privKey})
-	assert.NoError(t, err)
-
-	// Create several transactions and commit to block
-	numTransactions := 3
-	toAddress := common.HexToAddress("0x4592d8f8d7b001e72cb26a73e4fa1806a51ac79d")
-	for i := 0; i < numTransactions; i++ {
-		_, err = newSender.SendTransaction(strconv.Itoa(1000+i), &toAddress, big.NewInt(1000000000), nil, 0)
-		assert.NoError(t, err)
-		<-newSender.ConfirmChan()
-	}
-
-	blockNum, err := l2Cli.BlockNumber(context.Background())
-	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, blockNum, uint64(numTransactions))
-}
-
 func testFetchRunningMissingBlocks(t *testing.T) {
 	_, db := setupL2Watcher(t)
 	defer database.CloseDB(db)
 
-	privKey, _ := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
-	auth := prepareAuth(t, l2Cli, privKey)
+	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys[0])
 
 	// deploy mock bridge
 	_, tx, _, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
@@ -101,8 +66,4 @@ func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.Privat
 	assert.NoError(t, err)
 	auth.GasLimit = 500000
 	return auth
-}
-
-func loopToFetchEvent(subCtx context.Context, watcher *L2WatcherClient) {
-	// go cutils.Loop(subCtx, 2*time.Second, watcher.FetchContractEvent)
 }

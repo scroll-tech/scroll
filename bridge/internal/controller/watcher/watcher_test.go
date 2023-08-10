@@ -100,15 +100,11 @@ func TestFunction(t *testing.T) {
 	t.Run("TestStartWatcher", testFetchContractEvent)
 	t.Run("TestL1WatcherClientFetchBlockHeader", testL1WatcherClientFetchBlockHeader)
 	t.Run("TestL1WatcherClientFetchContractEvent", testL1WatcherClientFetchContractEvent)
-	t.Run("TestParseBridgeEventLogsL1QueueTransactionEventSignature", testParseBridgeEventLogsL1QueueTransactionEventSignature)
 	t.Run("TestParseBridgeEventLogsL1CommitBatchEventSignature", testParseBridgeEventLogsL1CommitBatchEventSignature)
 	t.Run("TestParseBridgeEventLogsL1FinalizeBatchEventSignature", testParseBridgeEventLogsL1FinalizeBatchEventSignature)
 
 	// Run l2 watcher test cases.
-	t.Run("TestCreateNewWatcherAndStop", testCreateNewWatcherAndStop)
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
-	// t.Run("TestParseBridgeEventLogsL2RelayedMessageEventSignature", testParseBridgeEventLogsL2RelayedMessageEventSignature)
-	// t.Run("TestParseBridgeEventLogsL2FailedRelayedMessageEventSignature", testParseBridgeEventLogsL2FailedRelayedMessageEventSignature)
 
 	// Run chunk-proposer test cases.
 	t.Run("TestChunkProposer", testChunkProposer)

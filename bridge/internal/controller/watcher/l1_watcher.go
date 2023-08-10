@@ -43,11 +43,6 @@ type L1WatcherClient struct {
 	// The number of new blocks to wait for a block to be confirmed
 	confirmations rpc.BlockNumber
 
-	messengerAddress common.Address
-
-	messageQueueAddress common.Address
-	messageQueueABI     *abi.ABI
-
 	scrollChainAddress common.Address
 	scrollChainABI     *abi.ABI
 
@@ -58,7 +53,7 @@ type L1WatcherClient struct {
 }
 
 // NewL1WatcherClient returns a new instance of L1WatcherClient.
-func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db *gorm.DB) *L1WatcherClient {
+func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, scrollChainAddress common.Address, db *gorm.DB) *L1WatcherClient {
 
 	savedHeight := 0
 
@@ -78,11 +73,6 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		l1BlockOrm:    l1BlockOrm,
 		batchOrm:      orm.NewBatch(db),
 		confirmations: confirmations,
-
-		messengerAddress: messengerAddress,
-
-		messageQueueAddress: messageQueueAddress,
-		messageQueueABI:     bridgeAbi.L1MessageQueueABI,
 
 		scrollChainAddress: scrollChainAddress,
 		scrollChainABI:     bridgeAbi.ScrollChainABI,
@@ -187,18 +177,13 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 			FromBlock: big.NewInt(from), // inclusive
 			ToBlock:   big.NewInt(to),   // inclusive
 			Addresses: []common.Address{
-				w.messengerAddress,
 				w.scrollChainAddress,
-				w.messageQueueAddress,
 			},
 			Topics: make([][]common.Hash, 1),
 		}
-		query.Topics[0] = make([]common.Hash, 5)
-		query.Topics[0][0] = bridgeAbi.L1QueueTransactionEventSignature
-		query.Topics[0][1] = bridgeAbi.L1RelayedMessageEventSignature
-		query.Topics[0][2] = bridgeAbi.L1FailedRelayedMessageEventSignature
-		query.Topics[0][3] = bridgeAbi.L1CommitBatchEventSignature
-		query.Topics[0][4] = bridgeAbi.L1FinalizeBatchEventSignature
+		query.Topics[0] = make([]common.Hash, 2)
+		query.Topics[0][0] = bridgeAbi.L1CommitBatchEventSignature
+		query.Topics[0][1] = bridgeAbi.L1FinalizeBatchEventSignature
 
 		logs, err := w.client.FilterLogs(w.ctx, query)
 		if err != nil {
@@ -266,27 +251,6 @@ func (w *L1WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]rollupEv
 	var rollupEvents []rollupEvent
 	for _, vLog := range logs {
 		switch vLog.Topics[0] {
-		case bridgeAbi.L1QueueTransactionEventSignature:
-			// event := bridgeAbi.L1QueueTransactionEvent{}
-			// err := utils.UnpackLog(w.messageQueueABI, &event, "QueueTransaction", vLog)
-			// if err != nil {
-			// 	log.Warn("Failed to unpack layer1 QueueTransaction event", "err", err)
-			// 	return rollupEvents, err
-			// }
-
-			// msgHash := common.BytesToHash(crypto.Keccak256(event.Data))
-
-			// l1Messages = append(l1Messages, &orm.L1Message{
-			// 	QueueIndex: event.QueueIndex,
-			// 	MsgHash:    msgHash.String(),
-			// 	Height:     vLog.BlockNumber,
-			// 	Sender:     event.Sender.String(),
-			// 	Value:      event.Value.String(),
-			// 	Target:     event.Target.String(),
-			// 	Calldata:   common.Bytes2Hex(event.Data),
-			// 	GasLimit:   event.GasLimit.Uint64(),
-			// 	Layer1Hash: vLog.TxHash.Hex(),
-			// })
 		case bridgeAbi.L1CommitBatchEventSignature:
 			event := bridgeAbi.L1CommitBatchEvent{}
 			err := utils.UnpackLog(w.scrollChainABI, &event, "CommitBatch", vLog)
