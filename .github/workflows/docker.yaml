@@ -153,7 +153,6 @@ jobs:
         tags: scrolltech/coordinator:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
-
   prover-stats-api:
     runs-on: ubuntu-latest
     steps:
