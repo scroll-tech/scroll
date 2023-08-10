@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/rpc"
-	proverConfig "scroll-tech/prover/config"
+
+	"scroll-tech/prover/config"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
@@ -27,7 +28,7 @@ func getIndex() int {
 
 // ProverApp prover-test client manager.
 type ProverApp struct {
-	Config *proverConfig.Config
+	Config *config.Config
 
 	base *docker.App
 
