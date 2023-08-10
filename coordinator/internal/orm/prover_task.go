@@ -112,6 +112,20 @@ func (o *ProverTask) GetProverTaskByTaskIDAndPubKey(ctx context.Context, taskID,
 	return &proverTask, nil
 }
 
+// GetProvingStatusByTaskID retrieves the proving status of a prover task
+func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string) (types.ProverProveStatus, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Select("proving_status")
+	db = db.Where("task_id = ?", taskID)
+
+	var proverTask ProverTask
+	if err := db.Find(&proverTask).Error; err != nil {
+		return types.ProverProofInvalid, fmt.Errorf("ProverTask.GetProvingStatusByTaskID error: %w, taskID: %v", err, taskID)
+	}
+	return types.ProverProveStatus(proverTask.ProvingStatus), nil
+}
+
 // GetAssignedProverTasks get the assigned prover task
 func (o *ProverTask) GetAssignedProverTasks(ctx context.Context, limit int) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
@@ -142,6 +156,19 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, 
 
 	if err := db.Create(&proverTask).Error; err != nil {
 		return fmt.Errorf("ProverTask.SetProverTask error: %w, prover task: %v", err, proverTask)
+	}
+	return nil
+}
+
+// UpdateProverTaskProof update the prover task's proof
+func (o *ProverTask) UpdateProverTaskProof(ctx context.Context, proofType message.ProofType, taskID string, pk string, proof []byte) error {
+	db := o.db
+	db = db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", int(proofType), taskID, pk)
+
+	if err := db.Update("proof", proof).Error; err != nil {
+		return fmt.Errorf("ProverTask.UpdateProverTaskProof error: %w, proof type: %v, taskID: %v, prover public key: %v", err, proofType.String(), taskID, pk)
 	}
 	return nil
 }
