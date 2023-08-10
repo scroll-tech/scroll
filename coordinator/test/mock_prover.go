@@ -163,11 +163,16 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *t
 }
 
 func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus, errCode int) {
+	proofMsgStatus := message.StatusOk
+	if proofStatus == generatedFailed {
+		proofMsgStatus = message.StatusProofError
+	}
+
 	proof := &message.ProofMsg{
 		ProofDetail: &message.ProofDetail{
 			ID:         proverTaskSchema.TaskID,
 			Type:       message.ProofType(proverTaskSchema.TaskType),
-			Status:     message.RespStatus(proofStatus),
+			Status:     proofMsgStatus,
 			ChunkProof: &message.ChunkProof{},
 			BatchProof: &message.BatchProof{},
 		},
