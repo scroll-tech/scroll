@@ -180,7 +180,7 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	}
 
 	for i, key := range processingKeys {
-		l2Relayer.processingFinalization.Store(key, batchHashes[i+2])
+		l2Relayer.processingFinalization.Store(key, batchHashes[i])
 		l2Relayer.finalizeSender.SendConfirmation(&sender.Confirmation{
 			ID:           key,
 			IsSuccessful: isSuccessful[i],
