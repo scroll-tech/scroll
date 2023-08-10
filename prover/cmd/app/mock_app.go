@@ -86,7 +86,7 @@ func (r *ProverApp) Free() {
 
 // MockConfig creates a new prover config.
 func (r *ProverApp) MockConfig(store bool, httpURL string, proofType message.ProofType) error {
-	cfg, err := proverConfig.NewConfig(r.originFile)
+	cfg, err := config.NewConfig(r.originFile)
 	if err != nil {
 		return err
 	}
