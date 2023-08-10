@@ -70,6 +70,7 @@ type GasOracleConfig struct {
 // relayerConfigAlias RelayerConfig alias name
 type relayerConfigAlias RelayerConfig
 
+// UnmarshalJSON unmarshal relayer_config struct.
 func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	var c struct {
 		relayerConfigAlias
@@ -79,8 +80,7 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
 		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
 	}
-	var err error
-	if err = json.Unmarshal(input, &c); err != nil {
+	if err := json.Unmarshal(input, &c); err != nil {
 		return err
 	}
 
@@ -107,6 +107,7 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 		return privKey, nil
 	}
 
+	var err error
 	r.MessageSenderPrivateKey, err = convertAndCheck(c.MessageSenderPrivateKey)
 	if err != nil {
 		return err
