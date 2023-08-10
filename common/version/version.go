@@ -29,8 +29,12 @@ var ZkVersion string
 // OldZkVersion is the last version of ZkVersion.
 var OldZkVersion string
 
-// Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, prover, contracts and etc.
-var Version = fmt.Sprintf("%s-%s-%s", tag, commit, ZkVersion)
+var (
+	// Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, prover, contracts and etc.
+	Version = fmt.Sprintf("%s-%s-%s", tag, commit, ZkVersion)
+	// OldVersion is the last version of Version.
+	OldVersion = fmt.Sprintf("%s-%s-%s", tag, commit, OldZkVersion)
+)
 
 // CheckScrollProverVersion check the "scroll-prover" version, if it's different from the local one, return false
 func CheckScrollProverVersion(proverVersion string) bool {

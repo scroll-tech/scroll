@@ -329,9 +329,9 @@ func (m *ProofReceiverLogic) verifyChunkProof(c *gin.Context, proof *message.Chu
 	claims := jwt.ExtractClaims(c)
 	proverVersion := claims[coordinatorType.ProverVersion]
 	switch proverVersion.(string) {
-	case version.ZkVersion:
+	case version.Version:
 		return m.verifier.VerifyChunkProof(proof)
-	case version.OldZkVersion:
+	case version.OldVersion:
 		return m.oldVerifier.VerifyChunkProof(proof)
 	}
 	return false, ErrInvalidProverVersion
@@ -341,9 +341,9 @@ func (m *ProofReceiverLogic) verifyBatchProof(c *gin.Context, proof *message.Bat
 	claims := jwt.ExtractClaims(c)
 	proverVersion := claims[coordinatorType.ProverVersion]
 	switch proverVersion.(string) {
-	case version.ZkVersion:
+	case version.Version:
 		return m.verifier.VerifyBatchProof(proof)
-	case version.OldZkVersion:
+	case version.OldVersion:
 		return m.oldVerifier.VerifyBatchProof(proof)
 	}
 	return false, ErrInvalidProverVersion
