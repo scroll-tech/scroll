@@ -23,6 +23,7 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
@@ -107,6 +108,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 }
 
 func setEnv(t *testing.T) {
+	version.Version = "v1.2.3-aaa-bbb-ccc"
+
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
 
