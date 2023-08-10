@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	jwt "github.com/appleboy/gin-jwt/v2"
 	"scroll-tech/common/version"
 	"time"
+
+	jwt "github.com/appleboy/gin-jwt/v2"
 
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
