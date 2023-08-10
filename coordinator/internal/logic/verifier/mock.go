@@ -39,7 +39,7 @@ type OldVerifier struct{}
 
 // NewVerifier Sets up a mock verifier.
 func NewOldVerifier(_ *config.VerifierConfig) (*OldVerifier, error) {
-	return &Verifier{}, nil
+	return &OldVerifier{}, nil
 }
 
 // VerifyChunkProof return a mock verification result for a ChunkProof.
