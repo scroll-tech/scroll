@@ -26,7 +26,7 @@ func TestERC20(t *testing.T) {
 	token, err := erc20.NewERC20Mock(erc20Address, l2Cli)
 	assert.NoError(t, err)
 
-	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.RollupSenderPrivateKeys[0], base.L2gethImg.ChainID())
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.RollupSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	authBls0, err := token.BalanceOf(nil, auth.From)
@@ -57,7 +57,7 @@ func TestGreeter(t *testing.T) {
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
 
-	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.RollupSenderPrivateKeys[0], base.L2gethImg.ChainID())
+	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.RollupSenderPrivateKeys[0], base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	token, err := greeter.NewGreeter(greeterAddress, l2Cli)
