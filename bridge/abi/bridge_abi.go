@@ -23,13 +23,6 @@ var (
 	// L2MessageQueueABI holds information about L2MessageQueue contract's context and available invokable methods.
 	L2MessageQueueABI *abi.ABI
 
-	// L1SentMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes)")
-	L1SentMessageEventSignature common.Hash
-	// L1RelayedMessageEventSignature = keccak256("RelayedMessage(bytes32)")
-	L1RelayedMessageEventSignature common.Hash
-	// L1FailedRelayedMessageEventSignature = keccak256("FailedRelayedMessage(bytes32)")
-	L1FailedRelayedMessageEventSignature common.Hash
-
 	// L1CommitBatchEventSignature = keccak256("CommitBatch(uint256,bytes32)")
 	L1CommitBatchEventSignature common.Hash
 	// L1FinalizeBatchEventSignature = keccak256("FinalizeBatch(uint256,bytes32,bytes32,bytes32)")

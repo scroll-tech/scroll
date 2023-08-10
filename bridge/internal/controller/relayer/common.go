@@ -6,8 +6,6 @@ const (
 	gasPriceDiffPrecision = 1000000
 
 	defaultGasPriceDiff = 50000 // 5%
-
-	defaultL2MessageRelayMinGasLimit = 200000
 )
 
 var (
