@@ -328,7 +328,7 @@ func (m *ProofReceiverLogic) checkIsTimeoutFailure(ctx context.Context, hash, pr
 func (m *ProofReceiverLogic) verifyChunkProof(c *gin.Context, proof *message.ChunkProof) (bool, error) {
 	claims := jwt.ExtractClaims(c)
 	proverVersion := claims[coordinatorType.ProverVersion]
-	switch proverVersion {
+	switch proverVersion.(string) {
 	case version.ZkVersion:
 		return m.verifier.VerifyChunkProof(proof)
 	case version.OldZkVersion:
@@ -340,7 +340,7 @@ func (m *ProofReceiverLogic) verifyChunkProof(c *gin.Context, proof *message.Chu
 func (m *ProofReceiverLogic) verifyBatchProof(c *gin.Context, proof *message.BatchProof) (bool, error) {
 	claims := jwt.ExtractClaims(c)
 	proverVersion := claims[coordinatorType.ProverVersion]
-	switch proverVersion {
+	switch proverVersion.(string) {
 	case version.ZkVersion:
 		return m.verifier.VerifyBatchProof(proof)
 	case version.OldZkVersion:
