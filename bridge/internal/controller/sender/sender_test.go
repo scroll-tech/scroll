@@ -57,7 +57,7 @@ func TestSender(t *testing.T) {
 	setupEnv(t)
 
 	t.Run("test new sender", testNewSender)
-
+	t.Run("test pending limit", testPendLimit)
 	t.Run("test min gas limit", testMinGasLimit)
 	t.Run("test resubmit transaction", testResubmitTransaction)
 	t.Run("test resubmit transaction with rising base fee", testResubmitTransactionWithRisingBaseFee)
