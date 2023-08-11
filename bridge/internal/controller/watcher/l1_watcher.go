@@ -55,7 +55,14 @@ type L1WatcherClient struct {
 // NewL1WatcherClient returns a new instance of L1WatcherClient.
 func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, scrollChainAddress common.Address, db *gorm.DB) *L1WatcherClient {
 
-	savedHeight := 0
+	var savedHeight uint64 = 0
+	batchOrm := orm.NewBatch(db)
+	latestFinalizedBatch, _ := batchOrm.GetLatestFinalizedBatch(ctx)
+	if latestFinalizedBatch != nil {
+		if receipt, err := client.TransactionReceipt(ctx, common.HexToHash(latestFinalizedBatch.CommitTxHash)); err != nil {
+			savedHeight = receipt.BlockNumber.Uint64()
+		}
+	}
 
 	l1BlockOrm := orm.NewL1Block(db)
 	savedL1BlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(ctx)
@@ -77,7 +84,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		scrollChainAddress: scrollChainAddress,
 		scrollChainABI:     bridgeAbi.ScrollChainABI,
 
-		processedMsgHeight:   uint64(savedHeight),
+		processedMsgHeight:   savedHeight,
 		processedBlockHeight: savedL1BlockHeight,
 	}
 }

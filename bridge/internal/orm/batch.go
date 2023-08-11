@@ -142,6 +142,22 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	return &latestBatch, nil
 }
 
+// GetLatestFinalizedBatch retrieves the latest batch from the database where rollup_status is RollupFinalized
+func (o *Batch) GetLatestFinalizedBatch(ctx context.Context) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("rollup_status", types.RollupFinalized)
+	db = db.Order("index desc")
+	var latestBatch Batch
+	if err := db.First(&latestBatch).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Batch.GetLatestBatch error: %w", err)
+	}
+	return &latestBatch, nil
+}
+
 // GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
 func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) ([]types.RollupStatus, error) {
 	if len(hashes) == 0 {
