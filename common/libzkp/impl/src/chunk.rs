@@ -17,9 +17,12 @@ pub unsafe extern "C" fn init_chunk_prover(params_dir: *const c_char) {
     init_env_and_log("ffi_chunk_prove");
 
     let params_dir = c_char_to_str(params_dir);
-    let prover = Prover::from_params_dir(params_dir);
 
-    PROVER.set(prover).unwrap();
+    let result = panic::catch_unwind(|| Prover::from_params_dir(params_dir));
+    match result {
+        Ok(prover) => PROVER.set(prover).unwrap(),
+        Err(err) => log::error!("Failed to init chunk-prover: {err:?}"),
+    }
 }
 
 /// # Safety
@@ -30,9 +33,11 @@ pub unsafe extern "C" fn init_chunk_verifier(params_dir: *const c_char, assets_d
     let params_dir = c_char_to_str(params_dir);
     let assets_dir = c_char_to_str(assets_dir);
 
-    let verifier = Verifier::from_dirs(params_dir, assets_dir);
-
-    VERIFIER.set(verifier).unwrap();
+    let result = panic::catch_unwind(|| Verifier::from_dirs(params_dir, assets_dir));
+    match result {
+        Ok(verifier) => VERIFIER.set(verifier).unwrap(),
+        Err(err) => log::error!("Failed to init chunk-verifier: {err:?}"),
+    }
 }
 
 /// # Safety
@@ -41,7 +46,7 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
     let block_traces = c_char_to_vec(block_traces);
     let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces).unwrap();
 
-    let proof_result = panic::catch_unwind(|| {
+    let result = panic::catch_unwind(|| {
         let proof = PROVER
             .get_mut()
             .unwrap()
@@ -51,7 +56,13 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
         serde_json::to_vec(&proof).unwrap()
     });
 
-    proof_result.map_or(null(), vec_to_c_char)
+    match result {
+        Ok(result) => vec_to_c_char(result),
+        Err(err) => {
+            log::error!("Failed to gen chunk-proof: {err:?}");
+            null()
+        }
+    }
 }
 
 /// # Safety
@@ -60,6 +71,14 @@ pub unsafe extern "C" fn verify_chunk_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<ChunkProof>(proof.as_slice()).unwrap();
 
-    let verified = panic::catch_unwind(|| VERIFIER.get().unwrap().verify_chunk_proof(proof));
-    verified.unwrap_or(false) as c_char
+    let result = panic::catch_unwind(|| VERIFIER.get().unwrap().verify_chunk_proof(proof));
+    let verified = match result {
+        Ok(verified) => verified,
+        Err(err) => {
+            log::error!("Failed to verify chunk-proof: {err:?}");
+            false
+        }
+    };
+
+    verified as c_char
 }
