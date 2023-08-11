@@ -12,6 +12,7 @@
       "sender_config": {
         "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
         "check_pending_time": 2,
+        "check_balance_time": 100,
         "escalate_blocks": 100,
         "confirmations": "0x1",
         "escalate_multiple_num": 11,
@@ -42,6 +43,7 @@
       "sender_config": {
         "endpoint": "DUMMY_ENDPOINT",
         "check_pending_time": 10,
+        "check_balance_time": 100,
         "escalate_blocks": 100,
         "confirmations": "0x6",
         "escalate_multiple_num": 11,

@@ -50,6 +50,7 @@ func setupEnv(t *testing.T) {
 	privateKey = priv
 
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.CheckBalanceTime = 1
 }
 
 func TestSender(t *testing.T) {

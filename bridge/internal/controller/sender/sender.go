@@ -71,7 +71,8 @@ type Sender struct {
 	chainID *big.Int          // The chain id of the endpoint
 	ctx     context.Context
 
-	auth *bind.TransactOpts
+	auth       *bind.TransactOpts
+	minBalance *big.Int
 
 	blockNumber   uint64                                            // Current block number on chain.
 	baseFeePerGas uint64                                            // Current base fee per gas on chain
@@ -128,6 +129,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 		client:        client,
 		chainID:       chainID,
 		auth:          auth,
+		minBalance:    config.MinBalance,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
 		baseFeePerGas: baseFeePerGas,
@@ -436,10 +438,28 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 	}
 }
 
+// checkBalance checks balance and print error log if balance is under a threshold.
+func (s *Sender) checkBalance(ctx context.Context) error {
+	bls, err := s.client.BalanceAt(ctx, s.auth.From, nil)
+	if err != nil {
+		log.Warn("failed to get balance", "address", s.auth.From.String(), "err", err)
+		return err
+	}
+
+	if bls.Cmp(s.minBalance) < 0 {
+		return fmt.Errorf("insufficient account balance - actual balance: %s, minimum required balance: %s", bls.String(), s.minBalance.String())
+	}
+
+	return nil
+}
+
 // Loop is the main event loop
 func (s *Sender) loop(ctx context.Context) {
 	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
 	defer checkTick.Stop()
+
+	checkBalanceTicker := time.NewTicker(time.Duration(s.config.CheckBalanceTime) * time.Second)
+	defer checkBalanceTicker.Stop()
 
 	for {
 		select {
@@ -457,6 +477,11 @@ func (s *Sender) loop(ctx context.Context) {
 			}
 
 			s.checkPendingTransaction(header, confirmed)
+		case <-checkBalanceTicker.C:
+			// Check and set balance.
+			if err := s.checkBalance(ctx); err != nil {
+				log.Error("checkBalance returns error: %w", err)
+			}
 		case <-ctx.Done():
 			return
 		case <-s.stopCh:
