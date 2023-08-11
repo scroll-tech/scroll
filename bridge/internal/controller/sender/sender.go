@@ -140,6 +140,21 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	return sender, nil
 }
 
+// PendingCount returns the current number of pending txs.
+func (s *Sender) PendingCount() int {
+	return s.pendingTxs.Count()
+}
+
+// PendingLimit returns the maximum number of pending txs the sender can handle.
+func (s *Sender) PendingLimit() int {
+	return s.config.PendingLimit
+}
+
+// IsFull returns true if the sender's pending tx pool is full.
+func (s *Sender) IsFull() bool {
+	return s.pendingTxs.Count() >= s.config.PendingLimit
+}
+
 // Stop stop the sender module.
 func (s *Sender) Stop() {
 	close(s.stopCh)
@@ -166,6 +181,9 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (common.Hash, error) {
+	if s.IsFull() {
+		return common.Hash{}, ErrFullPending
+	}
 	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
 		return common.Hash{}, fmt.Errorf("repeat transaction ID: %s", ID)
 	}

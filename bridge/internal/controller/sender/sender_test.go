@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"math/big"
+	"strconv"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
@@ -79,6 +80,24 @@ func testNewSender(t *testing.T) {
 		_, err = NewSender(subCtx, &cfgCopy2, privateKey)
 		assert.NoError(t, err)
 		cancel()
+	}
+}
+
+func testPendLimit(t *testing.T) {
+	for _, txType := range txTypes {
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy.TxType = txType
+		cfgCopy.Confirmations = rpc.LatestBlockNumber
+		cfgCopy.PendingLimit = 2
+		newSender, err := NewSender(context.Background(), &cfgCopy, privateKey)
+		assert.NoError(t, err)
+
+		for i := 0; i < 2*newSender.PendingLimit(); i++ {
+			_, err = newSender.SendTransaction(strconv.Itoa(i), &common.Address{}, big.NewInt(1), nil, 0)
+			assert.True(t, err == nil || (err != nil && err.Error() == "sender's pending pool is full"))
+		}
+		assert.True(t, newSender.PendingCount() <= newSender.PendingLimit())
+		newSender.Stop()
 	}
 }
 
