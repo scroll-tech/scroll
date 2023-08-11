@@ -87,31 +87,31 @@ type Sender struct {
 func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey) (*Sender, error) {
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("failed to dial eth client: %w", err)
+		return nil, fmt.Errorf("failed to dial eth client, err: %w", err)
 	}
 
 	// get chainID from client
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get chain ID: %w", err)
+		return nil, fmt.Errorf("failed to get chain ID, err: %w", err)
 	}
 
 	auth, err := bind.NewKeyedTransactorWithChainID(priv, chainID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create transactor with chain ID %v: %w", chainID, err)
+		return nil, fmt.Errorf("failed to create transactor with chain ID %v, err: %w", chainID, err)
 	}
 
 	// Set pending nonce
 	nonce, err := client.PendingNonceAt(ctx, auth.From)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get pending nonce for address %s: %w", auth.From.Hex(), err)
+		return nil, fmt.Errorf("failed to get pending nonce for address %s, err: %w", auth.From.Hex(), err)
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 
 	// get header by number
 	header, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get header by number: %w", err)
+		return nil, fmt.Errorf("failed to get header by number, err: %w", err)
 	}
 
 	var baseFeePerGas uint64
@@ -196,10 +196,10 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		err     error
 	)
 	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
-		return common.Hash{}, fmt.Errorf("failed to get fee data: %w", err)
+		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 	if tx, err = s.createAndSendTx(s.auth, feeData, target, value, data, nil); err != nil {
-		return common.Hash{}, fmt.Errorf("failed to create and send transaction: %w", err)
+		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
 	}
 
 	// add pending transaction
@@ -447,7 +447,8 @@ func (s *Sender) checkBalance(ctx context.Context) error {
 	}
 
 	if bls.Cmp(s.minBalance) < 0 {
-		return fmt.Errorf("insufficient account balance - actual balance: %s, minimum required balance: %s", bls.String(), s.minBalance.String())
+		return fmt.Errorf("insufficient account balance - actual balance: %s, minimum required balance: %s",
+			bls.String(), s.minBalance.String())
 	}
 
 	return nil
@@ -480,7 +481,7 @@ func (s *Sender) loop(ctx context.Context) {
 		case <-checkBalanceTicker.C:
 			// Check and set balance.
 			if err := s.checkBalance(ctx); err != nil {
-				log.Error("checkBalance returns error: %w", err)
+				log.Error("check balance, err: %w", err)
 			}
 		case <-ctx.Done():
 			return
