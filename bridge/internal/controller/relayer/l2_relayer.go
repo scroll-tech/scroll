@@ -339,6 +339,12 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				log.Error("Failed to get parent batch header", "index", batch.Index-1, "error", err)
 				return
 			}
+			if types.RollupStatus(parentBatch.RollupStatus) != types.RollupCommitted {
+				log.Warn("Parent batch has not committed",
+					"index", parentBatch.Index, "hash", parentBatch.Hash,
+					"rollup status", parentBatch.RollupStatus)
+				return
+			}
 		}
 
 		// get the chunks for the batch
@@ -445,6 +451,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			// handle unexpected db error
 			if err != nil {
 				log.Error("Failed to get batch", "index", batch.Index-1, "err", err)
+				return
+			}
+			if types.RollupStatus(parentBatch.RollupStatus) != types.RollupFinalized {
+				log.Warn("Parent batch has not finalized",
+					"index", parentBatch.Index, "hash", parentBatch.Hash,
+					"rollup status", parentBatch.RollupStatus)
 				return
 			}
 			parentBatchStateRoot = parentBatch.StateRoot
