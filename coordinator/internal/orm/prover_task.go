@@ -11,6 +11,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 )
 
 // ProverTask is assigned provers info of chunk/batch proof prover task
@@ -22,7 +23,7 @@ type ProverTask struct {
 	// prover
 	ProverPublicKey string `json:"prover_public_key" gorm:"column:prover_public_key"`
 	ProverName      string `json:"prover_name" gorm:"column:prover_name"`
-	RealIP          string `json:"real_ip" gorm:"column:real_ip"`
+	ProverVersion   string `json:"prover_version" gorm:"column:prover_version"`
 
 	// task
 	TaskID   string `json:"task_id" gorm:"column:task_id"`
@@ -126,11 +127,26 @@ func (o *ProverTask) GetProverTaskByTaskIDAndPubKey(ctx context.Context, taskID,
 	return &proverTask, nil
 }
 
-// GetAssignedProverTasks get the assigned prover task
-func (o *ProverTask) GetAssignedProverTasks(ctx context.Context, limit int) ([]ProverTask, error) {
+// GetProvingStatusByTaskID retrieves the proving status of a prover task
+func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string) (types.ProverProveStatus, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Select("proving_status")
+	db = db.Where("task_id = ?", taskID)
+
+	var proverTask ProverTask
+	if err := db.Find(&proverTask).Error; err != nil {
+		return types.ProverProofInvalid, fmt.Errorf("ProverTask.GetProvingStatusByTaskID error: %w, taskID: %v", err, taskID)
+	}
+	return types.ProverProveStatus(proverTask.ProvingStatus), nil
+}
+
+// GetTimeoutAssignedProverTasks get the timeout and assigned proving_status prover task
+func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit int, timeout time.Duration) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("proving_status", int(types.ProverAssigned))
+	db = db.Where("assigned_at < ?", utils.NowUTC().Add(-timeout))
 	db = db.Limit(limit)
 
 	var proverTasks []ProverTask
@@ -151,11 +167,24 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, 
 	db = db.Model(&ProverTask{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"proving_status", "failure_type", "assigned_at"}),
+		DoUpdates: clause.AssignmentColumns([]string{"prover_version", "proving_status", "failure_type", "assigned_at"}),
 	})
 
 	if err := db.Create(&proverTask).Error; err != nil {
 		return fmt.Errorf("ProverTask.SetProverTask error: %w, prover task: %v", err, proverTask)
+	}
+	return nil
+}
+
+// UpdateProverTaskProof update the prover task's proof
+func (o *ProverTask) UpdateProverTaskProof(ctx context.Context, proofType message.ProofType, taskID string, pk string, proof []byte) error {
+	db := o.db
+	db = db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", int(proofType), taskID, pk)
+
+	if err := db.Update("proof", proof).Error; err != nil {
+		return fmt.Errorf("ProverTask.UpdateProverTaskProof error: %w, proof type: %v, taskID: %v, prover public key: %v", err, proofType.String(), taskID, pk)
 	}
 	return nil
 }

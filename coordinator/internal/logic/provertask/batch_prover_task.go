@@ -13,6 +13,7 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
@@ -42,12 +43,20 @@ func NewBatchProverTask(cfg *config.Config, db *gorm.DB) *BatchProverTask {
 func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
-		return nil, fmt.Errorf("get public key from contex failed")
+		return nil, fmt.Errorf("get public key from context failed")
 	}
 
 	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
 	if !proverNameExist {
-		return nil, fmt.Errorf("get prover name from contex failed")
+		return nil, fmt.Errorf("get prover name from context failed")
+	}
+
+	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
+	if !proverVersionExist {
+		return nil, fmt.Errorf("get prover version from context failed")
+	}
+	if !version.CheckScrollProverVersion(proverVersion.(string)) {
+		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", proverVersion.(string), version.Version)
 	}
 
 	isAssigned, err := bp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
@@ -89,7 +98,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		ProverPublicKey: publicKey.(string),
 		TaskType:        int16(message.ProofTypeBatch),
 		ProverName:      proverName.(string),
-		RealIP:          realIP,
+		ProverVersion:   proverVersion.(string),
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 		// here why need use UTC time. see scroll/common/databased/db.go
