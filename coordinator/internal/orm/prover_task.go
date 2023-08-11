@@ -11,6 +11,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 )
 
 // ProverTask is assigned provers info of chunk/batch proof prover task
@@ -126,11 +127,12 @@ func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string
 	return types.ProverProveStatus(proverTask.ProvingStatus), nil
 }
 
-// GetAssignedProverTasks get the assigned prover task
-func (o *ProverTask) GetAssignedProverTasks(ctx context.Context, limit int) ([]ProverTask, error) {
+// GetTimeoutAssignedProverTasks get the timeout and assigned proving_status prover task
+func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit int, timeout time.Duration) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("proving_status", int(types.ProverAssigned))
+	db = db.Where("assigned_at < ?", utils.NowUTC().Add(-timeout))
 	db = db.Limit(limit)
 
 	var proverTasks []ProverTask
