@@ -37,11 +37,11 @@ func NewCoordinatorClient(cfg *config.CoordinatorConfig, proverName string, priv
 		SetBaseURL(cfg.BaseURL).
 		AddRetryCondition(func(r *resty.Response, _ error) bool {
 			// Check for HTTP 5xx errors, e.g., coordinator is restarting.
-			log.Warn("Received HTTP response. Retrying...", "status code", r.StatusCode())
+			log.Warn("Received unexpected HTTP response. Retrying...", "status code", r.StatusCode())
 			return r.StatusCode() >= http.StatusInternalServerError
 		})
 
-	log.Info("initialize client success",
+	log.Info("successfully initialized prover client",
 		"base url", cfg.BaseURL,
 		"connection timeout (second)", cfg.ConnectionTimeoutSec,
 		"retry count", cfg.RetryCount,
