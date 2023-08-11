@@ -82,41 +82,28 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool) (*Layer2Relayer, error) {
-	messageSenderAddr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKey.PublicKey)
-	commitSenderAddr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
-	finalizeSenderAddr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
-	gasOracleSenderAddr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
-
-	addrs := map[string]struct{}{
-		messageSenderAddr.Hex():   {},
-		commitSenderAddr.Hex():    {},
-		finalizeSenderAddr.Hex():  {},
-		gasOracleSenderAddr.Hex(): {},
-	}
-
-	if len(addrs) != 4 {
-		return nil, fmt.Errorf("duplicate address found among senders: message sender: %s, commit sender: %s, finalize sender: %s, gas oracle sender: %s",
-			messageSenderAddr.Hex(), commitSenderAddr.Hex(), finalizeSenderAddr.Hex(), gasOracleSenderAddr.Hex())
-	}
-
 	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("new message sender failed for address %s, err: %w", messageSenderAddr.Hex(), err)
+		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new message sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
 	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", commitSenderAddr.Hex(), err)
+		addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
 	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", finalizeSenderAddr.Hex(), err)
+		addr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
 	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", gasOracleSenderAddr.Hex(), err)
+		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
 	var minGasPrice uint64

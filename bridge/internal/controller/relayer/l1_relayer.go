@@ -58,23 +58,16 @@ type Layer1Relayer struct {
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
 func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
-	messageSenderAddr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKey.PublicKey)
-	gasOracleSenderAddr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
-
-	if messageSenderAddr == gasOracleSenderAddr {
-		return nil, fmt.Errorf("duplicated sender address, message sender: %s, gas oracle sender: %s",
-			messageSenderAddr.Hex(), gasOracleSenderAddr.Hex())
-	}
-
 	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("new message sender failed for address %s, err: %v", messageSenderAddr.Hex(), err)
+		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new message sender failed for address %s, err: %v", addr.Hex(), err)
 	}
 
-	// @todo make sure only one sender is available
 	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey)
 	if err != nil {
-		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", gasOracleSenderAddr.Hex(), err)
+		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
 	}
 
 	var minGasPrice uint64
