@@ -81,8 +81,8 @@ func convertAndCheck(key string, uniqueAddressesSet map[string]struct{}) (*ecdsa
 	if err != nil {
 		return nil, err
 	}
-	addr := crypto.PubkeyToAddress(privKey.PublicKey).Hex()
 
+	addr := crypto.PubkeyToAddress(privKey.PublicKey).Hex()
 	if _, exists := uniqueAddressesSet[addr]; exists {
 		return nil, fmt.Errorf("detected duplicated address for private key: %s", addr)
 	}
