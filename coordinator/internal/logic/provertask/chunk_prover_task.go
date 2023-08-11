@@ -90,11 +90,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
-	realIP := ctx.GetHeader("X-Real-IP")
-	if realIP == "" {
-		realIP = ctx.ClientIP()
-	}
-
 	proverTask := orm.ProverTask{
 		TaskID:          chunkTask.Hash,
 		ProverPublicKey: publicKey.(string),

@@ -88,11 +88,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
 	}
 
-	realIP := ctx.GetHeader("X-Real-IP")
-	if realIP == "" {
-		realIP = ctx.ClientIP()
-	}
-
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
 		ProverPublicKey: publicKey.(string),
