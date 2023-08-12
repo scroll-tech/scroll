@@ -23,7 +23,8 @@ contract InitializeL1BridgeContracts is Script {
     uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
     uint256 MAX_L2_TX_IN_CHUNK = vm.envUint("MAX_L2_TX_IN_CHUNK");
     uint256 MAX_L1_MESSAGE_GAS_LIMIT = vm.envUint("MAX_L1_MESSAGE_GAS_LIMIT");
-    address L1_ROLLUP_OPERATOR_ADDR = vm.envAddress("L1_ROLLUP_OPERATOR_ADDR");
+    address L1_COMMIT_SENDER_ADDRESS = vm.envAddress("L1_COMMIT_SENDER_ADDRESS");
+    address L1_FINALIZE_SENDER_ADDRESS = vm.envAddress("L1_FINALIZE_SENDER_ADDRESS");
     address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
 
@@ -67,8 +68,8 @@ contract InitializeL1BridgeContracts is Script {
             L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR,
             MAX_L2_TX_IN_CHUNK
         );
-        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addSequencer(L1_ROLLUP_OPERATOR_ADDR);
-        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addProver(L1_ROLLUP_OPERATOR_ADDR);
+        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addSequencer(L1_COMMIT_SENDER_ADDRESS);
+        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addProver(L1_FINALIZE_SENDER_ADDRESS);
 
         // initialize L2GasPriceOracle
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize(
