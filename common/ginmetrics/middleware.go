@@ -125,7 +125,7 @@ func (m *Monitor) ginMetricHandle(ctx *gin.Context, start time.Time) {
 		_ = m.GetMetric(metricRequestUVTotal).Inc(nil)
 	}
 
-	errCode := ctx.GetString("errcode")
+	errCode := strconv.Itoa(ctx.GetInt("errcode"))
 	if len(errCode) == 0 {
 		errCode = strconv.Itoa(w.Status())
 	}
