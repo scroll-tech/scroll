@@ -31,7 +31,7 @@ var (
 	defaultDuration = []float64{0.1, 0.3, 1.2, 5, 10}
 	monitor         *Monitor
 
-	promTypeHandler = map[MetricType]func(metric *Metric, reg prometheus.Registerer) error{
+	promTypeHandler = map[MetricType]func(metric *Metric, reg prometheus.Registerer){
 		Counter:   counterHandler,
 		Gauge:     gaugeHandler,
 		Histogram: histogramHandler,
@@ -120,49 +120,39 @@ func (m *Monitor) AddMetric(metric *Metric) error {
 	if metric.Name == "" {
 		return errors.New("metric name cannot be empty")
 	}
+
 	if f, ok := promTypeHandler[metric.Type]; ok {
-		if err := f(metric, m.register); err == nil {
-			m.metrics[metric.Name] = metric
-			return nil
-		}
+		f(metric, m.register)
+		m.metrics[metric.Name] = metric
 	}
-	return fmt.Errorf("metric type %d not existed", metric.Type)
+
+	return nil
 }
 
-func counterHandler(metric *Metric, register prometheus.Registerer) error {
+func counterHandler(metric *Metric, register prometheus.Registerer) {
 	metric.vec = promauto.With(register).NewCounterVec(
 		prometheus.CounterOpts{Name: metric.Name, Help: metric.Description},
 		metric.Labels,
 	)
-	return nil
 }
 
-func gaugeHandler(metric *Metric, register prometheus.Registerer) error {
+func gaugeHandler(metric *Metric, register prometheus.Registerer) {
 	metric.vec = promauto.With(register).NewGaugeVec(
 		prometheus.GaugeOpts{Name: metric.Name, Help: metric.Description},
 		metric.Labels,
 	)
-	return nil
 }
 
-func histogramHandler(metric *Metric, register prometheus.Registerer) error {
-	if len(metric.Buckets) == 0 {
-		return fmt.Errorf("metric %s is histogram type, cannot lose bucket param", metric.Name)
-	}
+func histogramHandler(metric *Metric, register prometheus.Registerer) {
 	metric.vec = promauto.With(register).NewHistogramVec(
 		prometheus.HistogramOpts{Name: metric.Name, Help: metric.Description, Buckets: metric.Buckets},
 		metric.Labels,
 	)
-	return nil
 }
 
-func summaryHandler(metric *Metric, register prometheus.Registerer) error {
-	if len(metric.Objectives) == 0 {
-		return fmt.Errorf("metric %s is summary type, cannot lose objectives param", metric.Name)
-	}
+func summaryHandler(metric *Metric, register prometheus.Registerer) {
 	promauto.With(register).NewSummaryVec(
 		prometheus.SummaryOpts{Name: metric.Name, Help: metric.Description, Objectives: metric.Objectives},
 		metric.Labels,
 	)
-	return nil
 }
