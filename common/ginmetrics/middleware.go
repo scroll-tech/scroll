@@ -7,8 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/penglongli/gin-metrics/bloom"
 )
 
 var (
@@ -20,7 +18,7 @@ var (
 	metricRequestDuration = "request_duration"
 	metricSlowRequest     = "slow_request_total"
 
-	bloomFilter *bloom.BloomFilter
+	bloomFilter *BloomFilter
 )
 
 // Use set gin metrics middleware
@@ -52,7 +50,7 @@ func (m *Monitor) Expose(r gin.IRoutes) {
 
 // initGinMetrics used to init gin metrics
 func (m *Monitor) initGinMetrics() {
-	bloomFilter = bloom.NewBloomFilter()
+	bloomFilter = NewBloomFilter()
 
 	_ = monitor.AddMetric(&Metric{
 		Type:        Counter,

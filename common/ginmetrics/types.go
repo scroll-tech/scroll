@@ -8,13 +8,19 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+// MetricType define metric type
 type MetricType int
 
 const (
+	// None unknown metric type
 	None MetricType = iota
+	// Counter MetricType
 	Counter
+	// Gauge MetricType
 	Gauge
+	// Histogram MetricType
 	Histogram
+	// Summary MetricType
 	Summary
 
 	defaultMetricPath = "/debug/metrics"
@@ -40,8 +46,6 @@ type Monitor struct {
 	reqDuration []float64
 	metrics     map[string]*Metric
 	register    prometheus.Registerer
-
-	requestTotal prometheus.Counter
 }
 
 // GetMonitor used to get global Monitor object,
@@ -85,6 +89,7 @@ func (m *Monitor) SetDuration(duration []float64) {
 	m.reqDuration = duration
 }
 
+// SetMetricPrefix set the metric prefix
 func (m *Monitor) SetMetricPrefix(prefix string) {
 	metricRequestTotal = prefix + metricRequestTotal
 	metricRequestUVTotal = prefix + metricRequestUVTotal
@@ -95,6 +100,7 @@ func (m *Monitor) SetMetricPrefix(prefix string) {
 	metricSlowRequest = prefix + metricSlowRequest
 }
 
+// SetMetricSuffix set the metric suffix
 func (m *Monitor) SetMetricSuffix(suffix string) {
 	metricRequestTotal += suffix
 	metricRequestUVTotal += suffix

@@ -45,10 +45,8 @@ func (m *Metric) Inc(labelValues []string) error {
 	switch m.Type {
 	case Counter:
 		m.vec.(*prometheus.CounterVec).WithLabelValues(labelValues...).Inc()
-		break
 	case Gauge:
 		m.vec.(*prometheus.GaugeVec).WithLabelValues(labelValues...).Inc()
-		break
 	}
 	return nil
 }
@@ -66,10 +64,8 @@ func (m *Metric) Add(labelValues []string, value float64) error {
 	switch m.Type {
 	case Counter:
 		m.vec.(*prometheus.CounterVec).WithLabelValues(labelValues...).Add(value)
-		break
 	case Gauge:
 		m.vec.(*prometheus.GaugeVec).WithLabelValues(labelValues...).Add(value)
-		break
 	}
 	return nil
 }
@@ -86,10 +82,8 @@ func (m *Metric) Observe(labelValues []string, value float64) error {
 	switch m.Type {
 	case Histogram:
 		m.vec.(*prometheus.HistogramVec).WithLabelValues(labelValues...).Observe(value)
-		break
 	case Summary:
 		m.vec.(*prometheus.SummaryVec).WithLabelValues(labelValues...).Observe(value)
-		break
 	}
 	return nil
 }
