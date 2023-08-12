@@ -70,7 +70,16 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
 	if !version.CheckScrollProverVersion(proverVersion.(string)) {
-		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover")
+		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+	}
+
+	isAssigned, err := cp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if prover is assigned a task: %w", err)
+	}
+
+	if isAssigned {
+		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
 	}
 
 	// load and send chunk tasks

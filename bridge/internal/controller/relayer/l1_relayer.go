@@ -3,6 +3,7 @@ package relayer
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math/big"
 
 	// not sure if this will make problems when relay with l1geth
@@ -57,19 +58,16 @@ type Layer1Relayer struct {
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
 func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
-	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
+	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKey)
 	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKeys[0].PublicKey)
-		log.Error("new MessageSender failed", "main address", addr.String(), "err", err)
-		return nil, err
+		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new message sender failed for address %s, err: %v", addr.Hex(), err)
 	}
 
-	// @todo make sure only one sender is available
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKeys)
+	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey)
 	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKeys[0].PublicKey)
-		log.Error("new GasOracleSender failed", "main address", addr.String(), "err", err)
-		return nil, err
+		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
 	}
 
 	var minGasPrice uint64
