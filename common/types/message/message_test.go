@@ -73,6 +73,7 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 				Proof:        []byte("testProof"),
 				Instances:    []byte("testInstance"),
 				Vk:           []byte("testVk"),
+				ChunkInfo:    nil,
 			},
 			Error: "testError",
 		},
@@ -101,6 +102,7 @@ func TestProofDetailHash(t *testing.T) {
 			Proof:        []byte("testProof"),
 			Instances:    []byte("testInstance"),
 			Vk:           []byte("testVk"),
+			ChunkInfo:    nil,
 		},
 		Error: "testError",
 	}
@@ -136,6 +138,7 @@ func TestProofMsgPublicKey(t *testing.T) {
 				Proof:        []byte("testProof"),
 				Instances:    []byte("testInstance"),
 				Vk:           []byte("testVk"),
+				ChunkInfo:    nil,
 			},
 			Error: "testError",
 		},
