@@ -22,9 +22,9 @@ type SubmitProofController struct {
 }
 
 // NewSubmitProofController create the submit proof api controller instance
-func NewSubmitProofController(cfg *config.Config, db *gorm.DB) *SubmitProofController {
+func NewSubmitProofController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *SubmitProofController {
 	return &SubmitProofController{
-		submitProofReceiverLogic: submitproof.NewSubmitProofReceiverLogic(cfg.ProverManager, db, prometheus.DefaultRegisterer),
+		submitProofReceiverLogic: submitproof.NewSubmitProofReceiverLogic(cfg.ProverManager, db, reg),
 	}
 }
 

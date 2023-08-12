@@ -92,7 +92,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	proofCollector := cron.NewCollector(context.Background(), db, conf, prometheus.DefaultRegisterer)
 
 	router := gin.Default()
-	api.InitController(conf, db)
+	api.InitController(conf, db, prometheus.DefaultRegisterer)
 	route.Route(router, conf, prometheus.DefaultRegisterer)
 	srv := &http.Server{
 		Addr:    coordinatorURL,

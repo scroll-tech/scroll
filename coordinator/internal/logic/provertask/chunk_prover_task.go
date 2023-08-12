@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -23,10 +25,13 @@ import (
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
 	BaseProverTask
+
+	chunkAttemptsExceedTotal prometheus.Counter
+	chunkTaskGetTaskTotal    prometheus.Counter
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, db *gorm.DB) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *ChunkProverTask {
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			db:            db,
@@ -35,6 +40,15 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB) *ChunkProverTask {
 			blockOrm:      orm.NewL2Block(db),
 			proverTaskOrm: orm.NewProverTask(db),
 		},
+
+		chunkAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_chunk_attempts_exceed_total",
+			Help: "Total number of chunk attempts exceed.",
+		}),
+		chunkTaskGetTaskTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_chunk_get_task_total",
+			Help: "Total number of chunk get task.",
+		}),
 	}
 	return cp
 }
@@ -78,6 +92,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", publicKey, "prover name", proverName)
 
 	if !cp.checkAttemptsExceeded(chunkTask.Hash, message.ProofTypeChunk) {
+		cp.chunkAttemptsExceedTotal.Inc()
 		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
@@ -102,6 +117,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		cp.recoverProvingStatus(ctx, chunkTask)
 		return nil, fmt.Errorf("format prover task failure, id:%s error:%w", chunkTask.Hash, err)
 	}
+
+	cp.chunkTaskGetTaskTotal.Inc()
 
 	return taskMsg, nil
 }

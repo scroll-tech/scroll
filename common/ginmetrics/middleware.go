@@ -118,7 +118,7 @@ func (m *Monitor) ginMetricHandle(ctx *gin.Context, start time.Time) {
 	r := ctx.Request
 	w := ctx.Writer
 
-	// set request total
+	//set request total
 	_ = m.GetMetric(metricRequestTotal).Inc(nil)
 
 	// set uv

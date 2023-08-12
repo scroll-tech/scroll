@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"sync"
 
 	"gorm.io/gorm"
@@ -22,11 +23,11 @@ var (
 )
 
 // InitController inits Controller with database
-func InitController(cfg *config.Config, db *gorm.DB) {
+func InitController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) {
 	initControllerOnce.Do(func() {
 		Auth = NewAuthController(db)
 		HealthCheck = NewHealthCheckController()
 		GetTask = NewGetTaskController(cfg, db)
-		SubmitProof = NewSubmitProofController(cfg, db)
+		SubmitProof = NewSubmitProofController(cfg, db, reg)
 	})
 }
