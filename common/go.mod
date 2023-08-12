@@ -12,7 +12,6 @@ require (
 	github.com/mattn/go-isatty v0.0.19
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/orcaman/concurrent-map v1.0.0
-	github.com/penglongli/gin-metrics v0.1.10
 	github.com/prometheus/client_golang v1.14.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230804022247-26eeb40ea3ca
 	github.com/stretchr/testify v1.8.3
@@ -43,6 +42,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
+	github.com/go-kit/kit v0.9.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
