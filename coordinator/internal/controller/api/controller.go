@@ -1,9 +1,9 @@
 package api
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"gorm.io/gorm"
 
 	"scroll-tech/coordinator/internal/config"

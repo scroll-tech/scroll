@@ -3,6 +3,7 @@ package route
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
+
 	"scroll-tech/common/ginmetrics"
 
 	"scroll-tech/coordinator/internal/config"

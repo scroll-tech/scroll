@@ -3,9 +3,9 @@ package ginmetrics
 import (
 	"errors"
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 type MetricType int
