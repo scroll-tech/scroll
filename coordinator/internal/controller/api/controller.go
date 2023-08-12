@@ -27,7 +27,7 @@ func InitController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) 
 	initControllerOnce.Do(func() {
 		Auth = NewAuthController(db)
 		HealthCheck = NewHealthCheckController()
-		GetTask = NewGetTaskController(cfg, db)
+		GetTask = NewGetTaskController(cfg, db, reg)
 		SubmitProof = NewSubmitProofController(cfg, db, reg)
 	})
 }
