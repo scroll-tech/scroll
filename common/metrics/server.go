@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -24,9 +25,14 @@ func Server(c *cli.Context, reg *prometheus.Registry) {
 
 	log.Info("Starting metrics server", "address", address)
 
-	http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
+	server := &http.Server{
+		Addr:              address,
+		Handler:           promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}),
+		ReadHeaderTimeout: time.Minute,
+	}
+
 	go func() {
-		if runServerErr := http.ListenAndServe(address, nil); runServerErr != nil && !errors.Is(runServerErr, http.ErrServerClosed) {
+		if runServerErr := server.ListenAndServe(); runServerErr != nil && !errors.Is(runServerErr, http.ErrServerClosed) {
 			log.Crit("run metrics http server failure", "error", runServerErr)
 		}
 	}()
