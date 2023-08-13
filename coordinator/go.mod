@@ -7,11 +7,11 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/prometheus/client_golang v1.14.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230804022247-26eeb40ea3ca
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230812030736-25fe3ba69a28
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
+	golang.org/x/arch v0.4.0 // indirect
 	gorm.io/gorm v1.25.2
 )
 
@@ -42,11 +42,12 @@ require (
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	golang.org/x/arch v0.4.0 // indirect
 	golang.org/x/net v0.12.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
 )
+
+require github.com/prometheus/client_golang v1.14.0
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -67,7 +68,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	golang.org/x/crypto v0.11.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/crypto v0.12.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
