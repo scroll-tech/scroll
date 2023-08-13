@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"scroll-tech/common/ginmetrics"
+	"scroll-tech/common/metrics"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
@@ -15,20 +15,11 @@ import (
 func Route(router *gin.Engine, cfg *config.Config, reg prometheus.Registerer) {
 	router.Use(gin.Recovery())
 
-	apiMetric(router, reg)
+	metrics.Use(router, "coordinator", reg)
 
 	r := router.Group("coordinator")
 
 	v1(r, cfg)
-}
-
-func apiMetric(r *gin.Engine, reg prometheus.Registerer) {
-	m := ginmetrics.GetMonitor(reg)
-	m.SetMetricPath("/metrics")
-	m.SetMetricPrefix("coordinator_")
-	m.SetSlowTime(1)
-	m.SetDuration([]float64{0.025, .05, .1, .5, 1, 5, 10})
-	m.Use(r)
 }
 
 func v1(router *gin.RouterGroup, conf *config.Config) {
