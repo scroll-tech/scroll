@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/log"
-	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 
@@ -20,14 +20,6 @@ import (
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
-)
-
-var (
-	coordinatorProofsGeneratedFailedTimeTimer = gethMetrics.NewRegisteredTimer("coordinator/proofs/generated/failed/time", metrics.ScrollRegistry)
-	coordinatorProofsReceivedTotalCounter     = gethMetrics.NewRegisteredCounter("coordinator/proofs/received/total", metrics.ScrollRegistry)
-	coordinatorProofsVerifiedSuccessTimeTimer = gethMetrics.NewRegisteredTimer("coordinator/proofs/verified/success/time", metrics.ScrollRegistry)
-	coordinatorProofsVerifiedFailedTimeTimer  = gethMetrics.NewRegisteredTimer("coordinator/proofs/verified/failed/time", metrics.ScrollRegistry)
-	coordinatorSessionsFailedTotalCounter     = gethMetrics.NewRegisteredCounter("coordinator/sessions/failed/total", metrics.ScrollRegistry)
 )
 
 var (
@@ -53,10 +45,21 @@ type ProofReceiverLogic struct {
 	cfg *config.ProverManager
 
 	verifier *verifier.Verifier
+
+	proofReceivedTotal                    prometheus.Counter
+	proofSubmitFailure                    prometheus.Counter
+	verifierTotal                         *prometheus.CounterVec
+	verifierFailureTotal                  *prometheus.CounterVec
+	proverTaskProveDuration               prometheus.Histogram
+	validateFailureTotal                  prometheus.Counter
+	validateFailureProverTaskSubmitTwice  prometheus.Counter
+	validateFailureProverTaskStatusNotOk  prometheus.Counter
+	validateFailureProverTaskTimeout      prometheus.Counter
+	validateFailureProverTaskHaveVerifier prometheus.Counter
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
-func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB) *ProofReceiverLogic {
+func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, reg prometheus.Registerer) *ProofReceiverLogic {
 	vf, err := verifier.NewVerifier(cfg.Verifier)
 	if err != nil {
 		panic("proof receiver new verifier failure")
@@ -70,6 +73,48 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB) *ProofR
 		db:  db,
 
 		verifier: vf,
+
+		proofReceivedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_submit_proof_total",
+			Help: "Total number of submit proof.",
+		}),
+		proofSubmitFailure: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_submit_proof_failure_total",
+			Help: "Total number of submit proof failure.",
+		}),
+		verifierTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "coordinator_verifier_total",
+			Help: "Total number of verifier.",
+		}, []string{"version"}),
+		verifierFailureTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "coordinator_verifier_failure_total",
+			Help: "Total number of verifier failure.",
+		}, []string{"version"}),
+		proverTaskProveDuration: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
+			Name:    "coordinator_task_prove_duration_seconds",
+			Help:    "Time spend by prover prove task.",
+			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 20, 30, 60},
+		}),
+		validateFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_validate_failure_total",
+			Help: "Total number of submit proof validate failure.",
+		}),
+		validateFailureProverTaskSubmitTwice: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_validate_failure_submit_twice_total",
+			Help: "Total number of submit proof validate failure submit twice.",
+		}),
+		validateFailureProverTaskStatusNotOk: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_validate_failure_submit_status_not_ok",
+			Help: "Total number of submit proof validate failure proof status not ok.",
+		}),
+		validateFailureProverTaskTimeout: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_validate_failure_submit_timeout",
+			Help: "Total number of submit proof validate failure timeout.",
+		}),
+		validateFailureProverTaskHaveVerifier: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_validate_failure_submit_have_been_verifier",
+			Help: "Total number of submit proof validate failure proof have been verifier.",
+		}),
 	}
 }
 
@@ -77,6 +122,7 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB) *ProofR
 // For now only proving/verifying error will lead to setting status as skipped.
 // db/unmarshal errors will not because they are errors on the business logic side.
 func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.ProofMsg) error {
+	m.proofReceivedTotal.Inc()
 	pk := ctx.GetString(coordinatorType.PublicKey)
 	if len(pk) == 0 {
 		return fmt.Errorf("get public key from context failed")
@@ -98,6 +144,9 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return err
 	}
 
+	proverVersion := ctx.GetString(coordinatorType.ProverVersion)
+	m.verifierTotal.WithLabelValues(proverVersion).Inc()
+
 	var success bool
 	var verifyErr error
 	if proofMsg.Type == message.ProofTypeChunk {
@@ -107,8 +156,8 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	}
 
 	if verifyErr != nil || !success {
+		m.verifierFailureTotal.WithLabelValues(proverVersion).Inc()
 		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg)
-		coordinatorProofsVerifiedFailedTimeTimer.Update(proofTime)
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
@@ -119,17 +168,16 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return verifyErr
 	}
 
+	m.proverTaskProveDuration.Observe(time.Since(proverTask.CreatedAt).Seconds())
+
 	log.Info("proof verified and valid", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 		"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec)
 
-	coordinatorProofsReceivedTotalCounter.Inc(1)
-
 	if err := m.closeProofTask(ctx, proofMsg.ID, pk, proofMsg, proofTimeSec); err != nil {
+		m.proofSubmitFailure.Inc()
 		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg)
 		return err
 	}
-
-	coordinatorProofsVerifiedSuccessTimeTimer.Update(proofTime)
 
 	return nil
 }
@@ -154,8 +202,10 @@ func (m *ProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Context, ch
 }
 
 func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg) error {
+	m.validateFailureTotal.Inc()
 	// Ensure this prover is eligible to participate in the prover task.
 	if types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofValid {
+		m.validateFailureProverTaskSubmitTwice.Inc()
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
 		// (i) slash the prover for each submission of invalid proof
@@ -169,9 +219,10 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 	proofTimeSec := uint64(proofTime.Seconds())
 
 	if proofMsg.Status != message.StatusOk {
-		coordinatorProofsGeneratedFailedTimeTimer.Update(proofTime)
+		m.validateFailureProverTaskStatusNotOk.Inc()
 		log.Info("proof generated by prover failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "prove type", proofMsg.Type, "error", proofMsg.Error)
+
 		if updateErr := m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, proofMsg.Type, proofMsg.ID, pk, types.ProverProofInvalid); updateErr != nil {
 			log.Error("proof generated by prover failed update prover task proving status failure", "proof id", proofMsg.ID,
 				"prover name", proverTask.ProverName, "prover pk", pk, "prove type", proofMsg.Type, "error", proofMsg.Error)
@@ -181,6 +232,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 
 	// if prover task FailureType is SessionInfoFailureTimeout, the submit proof is timeout, need skip it
 	if types.ProverTaskFailureType(proverTask.FailureType) == types.ProverTaskFailureTypeTimeout {
+		m.validateFailureProverTaskTimeout.Inc()
 		log.Info("proof submit proof have timeout, skip this submit proof", "hash", proofMsg.ID, "proof type", proverTask.TaskType,
 			"prover name", proverTask.ProverName, "prover public key", pk, "proof time", proofTimeSec)
 		return ErrValidatorFailureProofTimeout
@@ -194,6 +246,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 
 	// if the batch/chunk have proved and verifier success, need skip this submit proof
 	if m.checkIsTaskSuccess(ctx, proofMsg.ID, proofMsg.Type) {
+		m.validateFailureProverTaskHaveVerifier.Inc()
 		log.Info("the prove task have proved and verifier success, skip this submit proof", "hash", proofMsg.ID,
 			"proof type", proverTask.TaskType, "prover name", proverTask.ProverName, "prover public key", pk)
 		return ErrValidatorFailureTaskHaveVerifiedSuccess
@@ -208,7 +261,6 @@ func (m *ProofReceiverLogic) proofFailure(ctx context.Context, hash string, pubK
 	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsg, types.ProvingTaskFailed, 0); err != nil {
 		log.Error("failed to updated proof status ProvingTaskFailed", "hash", hash, "pubKey", pubKey, "error", err)
 	}
-	coordinatorSessionsFailedTotalCounter.Inc(1)
 }
 
 func (m *ProofReceiverLogic) proofRecover(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) {
