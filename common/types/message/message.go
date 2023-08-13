@@ -255,7 +255,7 @@ type ChunkProof struct {
 	Proof        []byte     `json:"proof"`
 	Instances    []byte     `json:"instances"`
 	Vk           []byte     `json:"vk"`
-	ChunkInfo    *ChunkInfo `json:"chunk_info"`
+	ChunkInfo    *ChunkInfo `json:"chunk_info,omitempty"` // cross-reference between cooridinator computation and prover compution
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
