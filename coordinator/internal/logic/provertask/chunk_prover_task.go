@@ -53,6 +53,18 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Register
 	return cp
 }
 
+// TODO: change to use publickey
+func isChunkProverWhitelisted(proverName string) bool {
+	whitelist := os.Getenv("WHITELISTED_CHUNK_PROVERS")
+	wProvers := strings.Split(whitelist, ";")
+	for wProver := range wProvers {
+		if proverName == wProver{
+			return true
+		}
+	}
+	return false
+}
+
 // Assign the chunk proof which need to prove
 func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
@@ -69,7 +81,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-	if !version.CheckScrollProverVersion(proverVersion.(string)) {
+	if !version.CheckScrollProverVersion(proverVersion.(string)) || isChunkProverWhitelisted(proverName) {
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
 	}
 
