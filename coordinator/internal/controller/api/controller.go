@@ -3,6 +3,7 @@ package api
 import (
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"gorm.io/gorm"
 
 	"scroll-tech/coordinator/internal/config"
@@ -22,11 +23,11 @@ var (
 )
 
 // InitController inits Controller with database
-func InitController(cfg *config.Config, db *gorm.DB) {
+func InitController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) {
 	initControllerOnce.Do(func() {
 		Auth = NewAuthController(db)
 		HealthCheck = NewHealthCheckController()
-		GetTask = NewGetTaskController(cfg, db)
-		SubmitProof = NewSubmitProofController(cfg, db)
+		GetTask = NewGetTaskController(cfg, db, reg)
+		SubmitProof = NewSubmitProofController(cfg, db, reg)
 	})
 }

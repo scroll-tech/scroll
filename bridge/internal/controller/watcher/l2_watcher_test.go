@@ -31,7 +31,7 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 	_, db := setupL2Watcher(t)
 	defer database.CloseDB(db)
 
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys[0])
+	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.CommitSenderPrivateKey)
 
 	// deploy mock bridge
 	_, tx, _, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)

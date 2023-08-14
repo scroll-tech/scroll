@@ -250,11 +250,12 @@ type ChunkInfo struct {
 
 // ChunkProof includes the proof info that are required for chunk verification and rollup.
 type ChunkProof struct {
-	StorageTrace []byte `json:"storage_trace"`
-	Protocol     []byte `json:"protocol"`
-	Proof        []byte `json:"proof"`
-	Instances    []byte `json:"instances"`
-	Vk           []byte `json:"vk"`
+	StorageTrace []byte     `json:"storage_trace"`
+	Protocol     []byte     `json:"protocol"`
+	Proof        []byte     `json:"proof"`
+	Instances    []byte     `json:"instances"`
+	Vk           []byte     `json:"vk"`
+	ChunkInfo    *ChunkInfo `json:"chunk_info,omitempty"` // cross-reference between cooridinator computation and prover compution
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.

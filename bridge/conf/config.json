@@ -25,9 +25,7 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
-      "gas_oracle_sender_private_keys": [
-        "1313131313131313131313131313131313131313131313131313131313131313"
-      ]
+      "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }
   },
   "l2_config": {
@@ -56,12 +54,9 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
-      "gas_oracle_sender_private_keys": [
-        "1313131313131313131313131313131313131313131313131313131313131313"
-      ],
-      "rollup_sender_private_keys": [
-        "1414141414141414141414141414141414141414141414141414141414141414"
-      ]
+      "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
+      "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
+      "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515"
     },
     "chunk_proposer_config": {
       "max_tx_gas_per_chunk": 1123456,

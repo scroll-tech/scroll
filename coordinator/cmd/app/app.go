@@ -9,12 +9,11 @@ import (
 	"os/signal"
 	"time"
 
-	// enable the pprof
-	_ "net/http/pprof"
-
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/metrics"
@@ -58,7 +57,10 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	proofCollector := cron.NewCollector(subCtx, db, cfg)
+	registry := prometheus.DefaultRegisterer
+	metrics.Server(ctx, registry.(*prometheus.Registry))
+
+	proofCollector := cron.NewCollector(subCtx, db, cfg, registry)
 	defer func() {
 		proofCollector.Stop()
 		cancel()
@@ -67,24 +69,7 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	router := gin.Default()
-	api.InitController(cfg, db)
-	route.Route(router, cfg)
-	port := ctx.String(httpPortFlag.Name)
-	srv := &http.Server{
-		Addr:              fmt.Sprintf(":%s", port),
-		Handler:           router,
-		ReadHeaderTimeout: time.Minute,
-	}
-
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
-
-	go func() {
-		if runServerErr := srv.ListenAndServe(); err != nil && !errors.Is(runServerErr, http.ErrServerClosed) {
-			log.Crit("run coordinator http server failure", "error", runServerErr)
-		}
-	}()
+	apiSrv := apiServer(ctx, cfg, db, registry)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -96,7 +81,7 @@ func action(ctx *cli.Context) error {
 
 	closeCtx, cancelExit := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelExit()
-	if err = srv.Shutdown(closeCtx); err != nil {
+	if err = apiSrv.Shutdown(closeCtx); err != nil {
 		log.Warn("shutdown coordinator server failure", "error", err)
 		return nil
 	}
@@ -106,7 +91,26 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run coordinator.
+func apiServer(ctx *cli.Context, cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *http.Server {
+	router := gin.New()
+	api.InitController(cfg, db, reg)
+	route.Route(router, cfg, reg)
+	port := ctx.String(httpPortFlag.Name)
+	srv := &http.Server{
+		Addr:              fmt.Sprintf(":%s", port),
+		Handler:           router,
+		ReadHeaderTimeout: time.Minute,
+	}
+
+	go func() {
+		if runServerErr := srv.ListenAndServe(); runServerErr != nil && !errors.Is(runServerErr, http.ErrServerClosed) {
+			log.Crit("run coordinator http server failure", "error", runServerErr)
+		}
+	}()
+	return srv
+}
+
+// Run coordinator.
 func Run() {
 	// RunApp the coordinator.
 	if err := app.Run(os.Args); err != nil {

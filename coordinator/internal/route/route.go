@@ -2,6 +2,9 @@ package route
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+
+	"scroll-tech/common/metrics"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
@@ -9,8 +12,13 @@ import (
 )
 
 // Route register route for coordinator
-func Route(router *gin.Engine, cfg *config.Config) {
+func Route(router *gin.Engine, cfg *config.Config, reg prometheus.Registerer) {
+	router.Use(gin.Recovery())
+
+	metrics.Use(router, "coordinator", reg)
+
 	r := router.Group("coordinator")
+
 	v1(r, cfg)
 }
 

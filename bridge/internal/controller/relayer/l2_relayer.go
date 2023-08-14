@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -50,8 +51,9 @@ type Layer2Relayer struct {
 
 	cfg *config.RelayerConfig
 
-	rollupSender *sender.Sender
-	l1RollupABI  *abi.ABI
+	commitSender   *sender.Sender
+	finalizeSender *sender.Sender
+	l1RollupABI    *abi.ABI
 
 	gasOracleSender *sender.Sender
 	l2GasOracleABI  *abi.ABI
@@ -75,16 +77,22 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool) (*Layer2Relayer, error) {
-	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.RollupSenderPrivateKeys)
+	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey)
 	if err != nil {
-		log.Error("Failed to create rollup sender", "err", err)
-		return nil, err
+		addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKeys)
+	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey)
 	if err != nil {
-		log.Error("Failed to create gas oracle sender", "err", err)
-		return nil, err
+		addr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
+	}
+
+	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey)
+	if err != nil {
+		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
 	var minGasPrice uint64
@@ -107,8 +115,9 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 		l2Client: l2Client,
 
-		rollupSender: rollupSender,
-		l1RollupABI:  bridgeAbi.ScrollChainABI,
+		commitSender:   commitSender,
+		finalizeSender: finalizeSender,
+		l1RollupABI:    bridgeAbi.ScrollChainABI,
 
 		gasOracleSender: gasOracleSender,
 		l2GasOracleABI:  bridgeAbi.L2GasPriceOracleABI,
@@ -208,7 +217,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 	}
 
 	// submit genesis batch to L1 rollup contract
-	txHash, err := r.rollupSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+	txHash, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 	if err != nil {
 		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
@@ -223,14 +232,14 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 		select {
 		// print progress
 		case <-ticker.C:
-			log.Info("Waiting for confirmation", "pending count", r.rollupSender.PendingCount())
+			log.Info("Waiting for confirmation")
 
 		// timeout
 		case <-time.After(5 * time.Minute):
 			return fmt.Errorf("import genesis timeout after 5 minutes, original txHash: %v", txHash.String())
 
 		// handle confirmation
-		case confirmation := <-r.rollupSender.ConfirmChan():
+		case confirmation := <-r.commitSender.ConfirmChan():
 			if confirmation.ID != batchHash {
 				return fmt.Errorf("unexpected import genesis confirmation id, expected: %v, got: %v", batchHash, confirmation.ID)
 			}
@@ -352,7 +361,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		// send transaction
 		txID := batch.Hash + "-commit"
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 		if err != nil {
 			log.Error(
 				"Failed to send commitBatch tx to layer1",
@@ -446,7 +455,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		txID := hash + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
+		txHash, err := r.finalizeSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
 		finalizeTxHash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
@@ -553,7 +562,9 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case confirmation := <-r.rollupSender.ConfirmChan():
+		case confirmation := <-r.commitSender.ConfirmChan():
+			r.handleConfirmation(confirmation)
+		case confirmation := <-r.finalizeSender.ConfirmChan():
 			r.handleConfirmation(confirmation)
 		case cfm := <-r.gasOracleSender.ConfirmChan():
 			if !cfm.IsSuccessful {
