@@ -4,7 +4,6 @@ pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import {IFiatToken} from "../../../interfaces/IFiatToken.sol";
 import {IUSDCBurnableSourceBridge} from "../../../interfaces/IUSDCBurnableSourceBridge.sol";
@@ -19,8 +18,6 @@ import {L1ERC20Gateway} from "../L1ERC20Gateway.sol";
 /// @notice The `L1USDCGateway` contract is used to deposit `USDC` token in layer 1 and
 /// finalize withdraw `USDC` from layer 2, before USDC become native in layer 2.
 contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
     /*************
      * Constants *
      *************/

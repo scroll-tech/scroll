@@ -3,8 +3,6 @@
 pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import {ITokenMessenger} from "../../../interfaces/ITokenMessenger.sol";
 import {IL2ERC20Gateway} from "../../../L2/gateways/IL2ERC20Gateway.sol";
@@ -19,8 +17,6 @@ import {L1ERC20Gateway} from "../L1ERC20Gateway.sol";
 /// @notice The `L1USDCGateway` contract is used to deposit `USDC` token in layer 1 and
 /// finalize withdraw `USDC` from layer 2, after USDC become native in layer 2.
 contract L1USDCGatewayCCTP is CCTPGatewayBase, L1ERC20Gateway {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
-
     /***************
      * Constructor *
      ***************/
@@ -29,7 +25,9 @@ contract L1USDCGatewayCCTP is CCTPGatewayBase, L1ERC20Gateway {
         address _l1USDC,
         address _l2USDC,
         uint32 _destinationDomain
-    ) CCTPGatewayBase(_l1USDC, _l2USDC, _destinationDomain) {}
+    ) CCTPGatewayBase(_l1USDC, _l2USDC, _destinationDomain) {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L1USDCGatewayCCTP.
     /// @param _counterpart The address of L2USDCGatewayCCTP in L2.
@@ -47,8 +45,6 @@ contract L1USDCGatewayCCTP is CCTPGatewayBase, L1ERC20Gateway {
         require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
         CCTPGatewayBase._initialize(_cctpMessenger, _cctpTransmitter);
-
-        OwnableUpgradeable.__Ownable_init();
     }
 
     /*************************
