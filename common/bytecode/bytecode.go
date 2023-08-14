@@ -80,18 +80,21 @@ func (c *ContractsFilter) ParseLogs(ctx context.Context, client *ethclient.Clien
 
 // RegisterSig register event handler.
 func (c *ContractsFilter) RegisterSig(sigHash common.Hash, handle func(vLog *types.Log, value interface{}) error) error {
+	if _, exist := c.handlers[sigHash]; exist {
+		return nil
+	}
+	if _, exist := c.parsers[sigHash]; !exist {
+		return fmt.Errorf("can't parse this event, event ID: %s", sigHash.String())
+	}
 	for _, api := range c.contractAPIs {
 		addr := api.GetAddress()
 		for _, val := range api.GetABI().Events {
-			if _, exist := c.parsers[sigHash]; !exist {
-				return fmt.Errorf("can't parse this event, event ID: %s", sigHash.String())
-			}
 			if val.ID == sigHash {
 				if c.queries[addr] == nil {
 					c.queries[addr] = []common.Hash{}
 				}
-				c.queries[addr] = append(c.queries[addr], val.ID)
-				c.handlers[val.ID] = handle
+				c.queries[addr] = append(c.queries[addr], sigHash)
+				c.handlers[sigHash] = handle
 				return nil
 			}
 		}
