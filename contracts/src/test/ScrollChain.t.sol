@@ -52,6 +52,11 @@ contract ScrollChainTest is DSTestPlus {
     function testCommitBatch() public {
         bytes memory batchHeader0 = new bytes(89);
 
+        // import 10 L1 messages
+        for (uint256 i = 0; i < 10; i++) {
+            messageQueue.appendCrossDomainMessage(address(this), 1000000, new bytes(0));
+        }
+
         // import genesis batch first
         assembly {
             mstore(add(batchHeader0, add(0x20, 25)), 1)
@@ -106,13 +111,24 @@ contract ScrollChainTest is DSTestPlus {
         hevm.expectRevert("invalid chunk length");
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
 
-        // num txs less than num L1 msgs, revert
+        // cannot skip last L1 message, revert
         chunk0 = new bytes(1 + 60);
         bytes memory bitmap = new bytes(32);
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunk0[58] = bytes1(uint8(1)); // numTransactions = 1
+        chunk0[60] = bytes1(uint8(1)); // numL1Messages = 1
+        bitmap[31] = bytes1(uint8(1));
+        chunks[0] = chunk0;
+        hevm.expectRevert("cannot skip last L1 message");
+        rollup.commitBatch(0, batchHeader0, chunks, bitmap);
+
+        // num txs less than num L1 msgs, revert
+        chunk0 = new bytes(1 + 60);
+        bitmap = new bytes(32);
+        chunk0[0] = bytes1(uint8(1)); // one block in this chunk
+        chunk0[58] = bytes1(uint8(1)); // numTransactions = 1
         chunk0[60] = bytes1(uint8(3)); // numL1Messages = 3
-        bitmap[31] = bytes1(uint8(7));
+        bitmap[31] = bytes1(uint8(3));
         chunks[0] = chunk0;
         hevm.expectRevert("num txs less than num L1 msgs");
         rollup.commitBatch(0, batchHeader0, chunks, bitmap);
@@ -328,8 +344,8 @@ contract ScrollChainTest is DSTestPlus {
         //    2ac1dad3f3696e5581dfc10f2c7a7a8fc5b344285f7d332c7895a8825fca609a
         // 2. chunk1 has three blocks
         //   2.1 block0 has 5 tx, 3 L1 messages, no skips
-        //   2.2 block1 has 10 tx, 5 L1 messages, even is skipped.
-        //   2.2 block1 has 300 tx, 256 L1 messages, odd position is skipped.
+        //   2.2 block1 has 10 tx, 5 L1 messages, even is skipped, last is not skipped
+        //   2.2 block1 has 300 tx, 256 L1 messages, odd position is skipped, last is not skipped
         //   => payload for chunk1
         //    0000000000000000
         //    0000000000000000
@@ -348,32 +364,32 @@ contract ScrollChainTest is DSTestPlus {
         //    012c
         //    ... (some tx hashes)
         //   => data hash for chunk2
-        //    0520f1fbe159af97fdf1d6cfcfe7605f99f7bfe3ed876e87b64250b1810df00b
+        //    e1276f58354ab2372050bde30d8c970ccc3728c76e97f37deebeee83ecbf5705
         // => data hash for all chunks
-        //   f52343299f6379fd15b20b23d51fc61b9b357b124be112686626b6278bcffa83
+        //   3c71d155351642d15f1542a1543ce423abeca1f8939100a0a34cdc3127b95f69
         // => payload for batch header
         //  00
         //  0000000000000002
         //  0000000000000108
         //  0000000000000109
-        //  f52343299f6379fd15b20b23d51fc61b9b357b124be112686626b6278bcffa83
+        //  3c71d155351642d15f1542a1543ce423abeca1f8939100a0a34cdc3127b95f69
         //  cef70bf80683c4d9b8b2813e90c314e8c56648e231300b8cfed9d666b0caf14e
         //  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa800000000000000000000000000000000000000000000000000000000000000aa
         // => hash for batch header
-        //  2231cf185a5c07931584f970738b4cd2ae4fb39e2d90853b26746c7616ea71b9
+        //  03a9cdcb9d582251acf60937db006ec99f3505fd4751b7c1f92c9a8ef413e873
         bytes memory batchHeader2 = new bytes(89 + 32 + 32);
         assembly {
             mstore(add(batchHeader2, 0x20), 0) // version
             mstore(add(batchHeader2, add(0x20, 1)), shl(192, 2)) // batchIndex = 2
             mstore(add(batchHeader2, add(0x20, 9)), shl(192, 264)) // l1MessagePopped = 264
             mstore(add(batchHeader2, add(0x20, 17)), shl(192, 265)) // totalL1MessagePopped = 265
-            mstore(add(batchHeader2, add(0x20, 25)), 0xf52343299f6379fd15b20b23d51fc61b9b357b124be112686626b6278bcffa83) // dataHash
+            mstore(add(batchHeader2, add(0x20, 25)), 0x3c71d155351642d15f1542a1543ce423abeca1f8939100a0a34cdc3127b95f69) // dataHash
             mstore(add(batchHeader2, add(0x20, 57)), batchHash1) // parentBatchHash
             mstore(
                 add(batchHeader2, add(0x20, 89)),
-                77194726158210796949047323339125271902179989777093709359638389338608753093288
+                77194726158210796949047323339125271902179989777093709359638389338608753093160
             ) // bitmap0
-            mstore(add(batchHeader2, add(0x20, 121)), 170) // bitmap1
+            mstore(add(batchHeader2, add(0x20, 121)), 42) // bitmap1
         }
         chunk0 = new bytes(1 + 60 + 3 * 5);
         assembly {
@@ -408,17 +424,17 @@ contract ScrollChainTest is DSTestPlus {
         assembly {
             mstore(
                 add(bitmap, add(0x20, 0)),
-                77194726158210796949047323339125271902179989777093709359638389338608753093288
+                77194726158210796949047323339125271902179989777093709359638389338608753093160
             ) // bitmap0
-            mstore(add(bitmap, add(0x20, 32)), 170) // bitmap1
+            mstore(add(bitmap, add(0x20, 32)), 42) // bitmap1
         }
 
         hevm.expectEmit(true, true, false, true);
-        emit CommitBatch(2, bytes32(0x2231cf185a5c07931584f970738b4cd2ae4fb39e2d90853b26746c7616ea71b9));
+        emit CommitBatch(2, bytes32(0x03a9cdcb9d582251acf60937db006ec99f3505fd4751b7c1f92c9a8ef413e873));
         rollup.commitBatch(0, batchHeader1, chunks, bitmap);
         assertBoolEq(rollup.isBatchFinalized(2), false);
         bytes32 batchHash2 = rollup.committedBatches(2);
-        assertEq(batchHash2, bytes32(0x2231cf185a5c07931584f970738b4cd2ae4fb39e2d90853b26746c7616ea71b9));
+        assertEq(batchHash2, bytes32(0x03a9cdcb9d582251acf60937db006ec99f3505fd4751b7c1f92c9a8ef413e873));
 
         // verify committed batch correctly
         hevm.expectEmit(true, true, false, true);
@@ -441,7 +457,7 @@ contract ScrollChainTest is DSTestPlus {
         }
         // 4 ~ 9, even is nonzero, odd is zero
         for (uint256 i = 4; i < 9; i++) {
-            if (i % 2 == 1) {
+            if (i % 2 == 1 || i == 8) {
                 assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
             } else {
                 assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
@@ -449,7 +465,7 @@ contract ScrollChainTest is DSTestPlus {
         }
         // 9 ~ 265, even is nonzero, odd is zero
         for (uint256 i = 9; i < 265; i++) {
-            if (i % 2 == 1) {
+            if (i % 2 == 1 || i == 264) {
                 assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
             } else {
                 assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
