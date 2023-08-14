@@ -5,10 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
-	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 
@@ -16,8 +14,6 @@ import (
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
-
-var coordinatorSessionsTimeoutTotalCounter = gethMetrics.NewRegisteredCounter("coordinator/sessions/timeout/total", metrics.ScrollRegistry)
 
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
@@ -48,8 +44,6 @@ func (b *BaseProverTask) checkAttemptsExceeded(hash string, taskType message.Pro
 	}
 
 	if len(proverTasks) >= int(b.cfg.ProverManager.SessionAttempts) {
-		coordinatorSessionsTimeoutTotalCounter.Inc(1)
-
 		log.Warn("proof generation prover task reach the max attempts", "hash", hash)
 
 		transErr := b.db.Transaction(func(tx *gorm.DB) error {
