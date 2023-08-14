@@ -29,7 +29,7 @@ var commit = func() string {
 var ZkVersion = "000000-000000"
 
 // OldZkVersion is the last version of ZkVersion.
-var OldZkVersion string
+var OldZkVersion = "000000-000000"
 
 var (
 	// Version denote the version of scroll protocol, including the l2geth, relayer, coordinator, prover, contracts and etc.
