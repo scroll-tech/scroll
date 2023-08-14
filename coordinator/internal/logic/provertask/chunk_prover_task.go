@@ -73,7 +73,7 @@ func isChunkWhitelisted(index uint64) bool {
 	whitelist := os.Getenv("WHITELISTED_INDEXES")
 	wIndexes := strings.Split(whitelist, ";")
 	for _, wIndex := range wIndexes {
-		if strconv.Itoa(index) == wIndex {
+		if strconv.FormatUint(index, 10) == wIndex {
 			return true
 		}
 	}
