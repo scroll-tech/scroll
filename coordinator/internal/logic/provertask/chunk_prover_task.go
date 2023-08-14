@@ -58,7 +58,19 @@ func isChunkProverWhitelisted(proverName string) bool {
 	whitelist := os.Getenv("WHITELISTED_CHUNK_PROVERS")
 	wProvers := strings.Split(whitelist, ";")
 	for wProver := range wProvers {
-		if proverName == wProver{
+		if proverName == wProver {
+			return true
+		}
+	}
+	return false
+}
+
+// TODO: change to use chunk hash
+func isChunkWhitelisted(index uint64) bool {
+	whitelist := os.Getenv("WHITELISTED_INDEXES")
+	wIndexes := strings.Split(whitelist, ";")
+	for wIndex := range wIndexes {
+		if strconv.Itoa(index) == wIndex {
 			return true
 		}
 	}
@@ -81,7 +93,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-	if !version.CheckScrollProverVersion(proverVersion.(string)) || isChunkProverWhitelisted(proverName) {
+	if !version.CheckScrollProverVersion(proverVersion.(string)) && !isChunkProverWhitelisted(proverName) {
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
 	}
 
@@ -109,6 +121,10 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	chunkTask := chunkTasks[0]
+
+	if !isChunkWhitelisted(chunkTask.Index) {
+		return nil, fmt.Errorf("get empty chunk proving task list")
+	}
 
 	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", publicKey, "prover name", proverName)
 
