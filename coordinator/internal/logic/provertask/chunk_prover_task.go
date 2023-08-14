@@ -4,8 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -13,6 +18,7 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
@@ -22,10 +28,13 @@ import (
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
 	BaseProverTask
+
+	chunkAttemptsExceedTotal prometheus.Counter
+	chunkTaskGetTaskTotal    prometheus.Counter
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, db *gorm.DB) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *ChunkProverTask {
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			db:            db,
@@ -34,25 +43,70 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB) *ChunkProverTask {
 			blockOrm:      orm.NewL2Block(db),
 			proverTaskOrm: orm.NewProverTask(db),
 		},
+
+		chunkAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_chunk_attempts_exceed_total",
+			Help: "Total number of chunk attempts exceed.",
+		}),
+		chunkTaskGetTaskTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_chunk_get_task_total",
+			Help: "Total number of chunk get task.",
+		}),
 	}
 	return cp
+}
+
+// TODO: change to use publickey
+func isChunkProverWhitelisted(proverName string) bool {
+	whitelist := os.Getenv("WHITELISTED_CHUNK_PROVERS")
+	wProvers := strings.Split(whitelist, ";")
+	for _, wProver := range wProvers {
+		if proverName == wProver {
+			return true
+		}
+	}
+	return false
+}
+
+// TODO: change to use chunk hash
+func isChunkWhitelisted(index uint64) bool {
+	whitelist := os.Getenv("WHITELISTED_INDEXES")
+	wIndexes := strings.Split(whitelist, ";")
+	for _, wIndex := range wIndexes {
+		if strconv.FormatUint(index, 10) == wIndex {
+			return true
+		}
+	}
+	return false
 }
 
 // Assign the chunk proof which need to prove
 func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
-		return nil, fmt.Errorf("get public key from contex failed")
+		return nil, fmt.Errorf("get public key from context failed")
 	}
 
 	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
 	if !proverNameExist {
-		return nil, fmt.Errorf("get prover name from contex failed")
+		return nil, fmt.Errorf("get prover name from context failed")
 	}
 
 	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
 	if !proverVersionExist {
-		return nil, fmt.Errorf("get prover version from contex failed")
+		return nil, fmt.Errorf("get prover version from context failed")
+	}
+	if !version.CheckScrollProverVersion(proverVersion.(string)) && !isChunkProverWhitelisted(proverName.(string)) {
+		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+	}
+
+	isAssigned, err := cp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if prover is assigned a task: %w", err)
+	}
+
+	if isAssigned {
+		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
 	}
 
 	// load and send chunk tasks
@@ -71,9 +125,15 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	chunkTask := chunkTasks[0]
 
+	// only whitelisted provers can prove whitelisted chunk
+	if !isChunkProverWhitelisted(proverName.(string)) && isChunkWhitelisted(chunkTask.Index) {
+		return nil, fmt.Errorf("get empty chunk proving task list")
+	}
+
 	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", publicKey, "prover name", proverName)
 
 	if !cp.checkAttemptsExceeded(chunkTask.Hash, message.ProofTypeChunk) {
+		cp.chunkAttemptsExceedTotal.Inc()
 		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
@@ -98,6 +158,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		cp.recoverProvingStatus(ctx, chunkTask)
 		return nil, fmt.Errorf("format prover task failure, id:%s error:%w", chunkTask.Hash, err)
 	}
+
+	cp.chunkTaskGetTaskTotal.Inc()
 
 	return taskMsg, nil
 }

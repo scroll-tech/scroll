@@ -23,6 +23,7 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
@@ -37,10 +38,11 @@ var (
 
 	base *docker.App
 
-	db         *gorm.DB
-	l2BlockOrm *orm.L2Block
-	chunkOrm   *orm.Chunk
-	batchOrm   *orm.Batch
+	db            *gorm.DB
+	l2BlockOrm    *orm.L2Block
+	chunkOrm      *orm.Chunk
+	batchOrm      *orm.Batch
+	proverTaskOrm *orm.ProverTask
 
 	wrappedBlock1 *types.WrappedBlock
 	wrappedBlock2 *types.WrappedBlock
@@ -86,11 +88,11 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		},
 	}
 
-	proofCollector := cron.NewCollector(context.Background(), db, conf)
+	proofCollector := cron.NewCollector(context.Background(), db, conf, nil)
 
-	router := gin.Default()
-	api.InitController(conf, db)
-	route.Route(router, conf)
+	router := gin.New()
+	api.InitController(conf, db, nil)
+	route.Route(router, conf, nil)
 	srv := &http.Server{
 		Addr:    coordinatorURL,
 		Handler: router,
@@ -107,6 +109,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 }
 
 func setEnv(t *testing.T) {
+	version.Version = "v1.2.3-aaa-bbb-ccc"
+
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
 
@@ -127,6 +131,7 @@ func setEnv(t *testing.T) {
 	batchOrm = orm.NewBatch(db)
 	chunkOrm = orm.NewChunk(db)
 	l2BlockOrm = orm.NewL2Block(db)
+	proverTaskOrm = orm.NewProverTask(db)
 
 	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
@@ -362,8 +367,12 @@ func testProofGeneratedFailed(t *testing.T) {
 		tickStop = time.Tick(time.Minute)
 	)
 
-	var chunkProofStatus types.ProvingStatus
-	var batchProofStatus types.ProvingStatus
+	var (
+		chunkProofStatus             types.ProvingStatus
+		batchProofStatus             types.ProvingStatus
+		chunkProverTaskProvingStatus types.ProverProveStatus
+		batchProverTaskProvingStatus types.ProverProveStatus
+	)
 
 	for {
 		select {
@@ -372,7 +381,15 @@ func testProofGeneratedFailed(t *testing.T) {
 			assert.NoError(t, err)
 			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
-			if chunkProofStatus == types.ProvingTaskFailed && batchProofStatus == types.ProvingTaskFailed {
+			if chunkProofStatus == types.ProvingTaskAssigned && batchProofStatus == types.ProvingTaskAssigned {
+				return
+			}
+
+			chunkProverTaskProvingStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), dbChunk.Hash)
+			assert.NoError(t, err)
+			batchProverTaskProvingStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+			if chunkProverTaskProvingStatus == types.ProverProofInvalid && batchProverTaskProvingStatus == types.ProverProofInvalid {
 				return
 			}
 		case <-tickStop:
