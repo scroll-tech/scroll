@@ -12,17 +12,14 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 )
 
+// ContractAPI it's common for contract.
 type ContractAPI interface {
 	GetAddress() common.Address
 	GetParsers() map[common.Hash]func(log *types.Log) (interface{}, error)
 	GetABI() *abi.ABI
 }
 
-type Event struct {
-	Name string
-	ID   common.Hash
-}
-
+// ContractsFilter contracts filter struct.
 type ContractsFilter struct {
 	contractAPIs []ContractAPI
 	parsers      map[common.Hash]func(log *types.Log) (interface{}, error)
@@ -30,6 +27,7 @@ type ContractsFilter struct {
 	handlers     map[common.Hash]func(vLog *types.Log, value interface{}) error
 }
 
+// NewContractsFilter return a contracts filter instance.
 func NewContractsFilter(cAPIs ...ContractAPI) *ContractsFilter {
 	parsers := make(map[common.Hash]func(log *types.Log) (interface{}, error))
 	for _, cABI := range cAPIs {
@@ -45,6 +43,7 @@ func NewContractsFilter(cAPIs ...ContractAPI) *ContractsFilter {
 	}
 }
 
+// ParseLogs parse logs.
 func (c *ContractsFilter) ParseLogs(ctx context.Context, client *ethclient.Client, start, end uint64) error {
 	query := &geth.FilterQuery{
 		FromBlock: big.NewInt(0).SetUint64(start),
@@ -77,6 +76,7 @@ func (c *ContractsFilter) ParseLogs(ctx context.Context, client *ethclient.Clien
 	return nil
 }
 
+// RegisterSig register event handler.
 func (c *ContractsFilter) RegisterSig(sigHash common.Hash, handle func(vLog *types.Log, value interface{}) error) error {
 	for _, api := range c.contractAPIs {
 		addr := api.GetAddress()
