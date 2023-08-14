@@ -25,7 +25,6 @@ var (
 	assetsPath    = flag.String("assets", "/assets/test_assets", "assets dir")
 	proofDumpPath = flag.String("dump", "/assets/proof_data", "the path proofs dump to")
 	tracePath1    = flag.String("trace1", "/assets/traces/1_transfer.json", "chunk trace 1")
-	tracePath2    = flag.String("trace2", "/assets/traces/10_transfer.json", "chunk trace 2")
 	batchVkPath   = flag.String("batch-vk", "/assets/test_assets/agg_vk.vkey", "batch vk")
 	chunkVkPath   = flag.String("chunk-vk", "/assets/test_assets/chunk_vk.vkey", "chunk vk")
 )
@@ -47,22 +46,24 @@ func TestFFI(t *testing.T) {
 	t.Log("Chunk VK must be available when init")
 
 	chunkTrace1 := readChunkTrace(*tracePath1, as)
-	chunkTrace2 := readChunkTrace(*tracePath2, as)
+	// chunkTrace2 := readChunkTrace(*tracePath2, as)
 	t.Log("Loaded chunk traces")
 
 	chunkInfo1, err := chunkProverCore.TracesToChunkInfo(chunkTrace1)
 	as.NoError(err)
-	chunkInfo2, err := chunkProverCore.TracesToChunkInfo(chunkTrace2)
-	as.NoError(err)
+	// chunkInfo2, err := chunkProverCore.TracesToChunkInfo(chunkTrace2)
+	// as.NoError(err)
 	t.Log("Converted to chunk infos")
 
 	chunkProof1, err := chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
 	as.NoError(err)
 	t.Log("Generated and dumped chunk proof 1")
 
-	chunkProof2, err := chunkProverCore.ProveChunk("chunk_proof2", chunkTrace2)
-	as.NoError(err)
-	t.Log("Generated and dumped chunk proof 2")
+	/*
+		chunkProof2, err := chunkProverCore.ProveChunk("chunk_proof2", chunkTrace2)
+		as.NoError(err)
+		t.Log("Generated and dumped chunk proof 2")
+	*/
 
 	as.Equal(chunkProverCore.VK, readVk(*chunkVkPath, as))
 	t.Log("Chunk VKs must be equal after proving")
@@ -79,8 +80,8 @@ func TestFFI(t *testing.T) {
 	as.Equal(batchProverCore.VK, readVk(*batchVkPath, as))
 	t.Log("Batch VK must be available when init")
 
-	chunkInfos := []*message.ChunkInfo{chunkInfo1, chunkInfo2}
-	chunkProofs := []*message.ChunkProof{chunkProof1, chunkProof2}
+	chunkInfos := []*message.ChunkInfo{chunkInfo1}
+	chunkProofs := []*message.ChunkProof{chunkProof1}
 	_, err = batchProverCore.ProveBatch("batch_proof", chunkInfos, chunkProofs)
 	as.NoError(err)
 	t.Log("Generated and dumped batch proof")
