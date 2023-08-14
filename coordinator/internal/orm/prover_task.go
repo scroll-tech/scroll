@@ -11,6 +11,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 )
 
 // ProverTask is assigned provers info of chunk/batch proof prover task
@@ -49,6 +50,20 @@ func NewProverTask(db *gorm.DB) *ProverTask {
 // TableName returns the name of the "prover_task" table.
 func (*ProverTask) TableName() string {
 	return "prover_task"
+}
+
+// IsProverAssigned checks if a prover with the given public key has been assigned a task.
+func (o *ProverTask) IsProverAssigned(ctx context.Context, publicKey string) (bool, error) {
+	db := o.db.WithContext(ctx)
+	var task ProverTask
+	err := db.Where("prover_public_key = ? AND proving_status = ?", publicKey, types.ProverAssigned).First(&task).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // GetProverTasks get prover tasks
@@ -126,11 +141,12 @@ func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string
 	return types.ProverProveStatus(proverTask.ProvingStatus), nil
 }
 
-// GetAssignedProverTasks get the assigned prover task
-func (o *ProverTask) GetAssignedProverTasks(ctx context.Context, limit int) ([]ProverTask, error) {
+// GetTimeoutAssignedProverTasks get the timeout and assigned proving_status prover task
+func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit int, timeout time.Duration) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("proving_status", int(types.ProverAssigned))
+	db = db.Where("assigned_at < ?", utils.NowUTC().Add(-timeout))
 	db = db.Limit(limit)
 
 	var proverTasks []ProverTask

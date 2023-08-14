@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -21,9 +22,9 @@ type GetTaskController struct {
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.Config, db *gorm.DB) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, db)
-	batchProverTask := provertask.NewBatchProverTask(cfg, db)
+func NewGetTaskController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *GetTaskController {
+	chunkProverTask := provertask.NewChunkProverTask(cfg, db, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, db, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),

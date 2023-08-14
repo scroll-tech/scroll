@@ -73,6 +73,7 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 				Proof:        []byte("testProof"),
 				Instances:    []byte("testInstance"),
 				Vk:           []byte("testVk"),
+				ChunkInfo:    nil,
 			},
 			Error: "testError",
 		},
@@ -101,12 +102,13 @@ func TestProofDetailHash(t *testing.T) {
 			Proof:        []byte("testProof"),
 			Instances:    []byte("testInstance"),
 			Vk:           []byte("testVk"),
+			ChunkInfo:    nil,
 		},
 		Error: "testError",
 	}
 	hash, err := proofDetail.Hash()
 	assert.NoError(t, err)
-	expectedHash := "4165f5ab3399001002a5b8e4062914249a2deb72f6133d647b586f53e236802d"
+	expectedHash := "72a00232c1fcb100b1b67e6d12cd449e5d2d890e3a66e50f4c23499d4990766f"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
@@ -136,6 +138,7 @@ func TestProofMsgPublicKey(t *testing.T) {
 				Proof:        []byte("testProof"),
 				Instances:    []byte("testInstance"),
 				Vk:           []byte("testVk"),
+				ChunkInfo:    nil,
 			},
 			Error: "testError",
 		},
