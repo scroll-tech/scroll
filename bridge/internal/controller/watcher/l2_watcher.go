@@ -17,7 +17,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/bytecode/scroll/L1"
 	"scroll-tech/common/bytecode/scroll/L2"
 	"scroll-tech/common/bytecode/scroll/L2/predeploys"
 	"scroll-tech/common/metrics"
@@ -296,7 +295,7 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]relayedM
 				isSuccessful: true,
 			})
 		case L2.L2ScrollMessengerFailedRelayedMessageEventSignature:
-			event := L1.L1ScrollMessengerFailedRelayedMessageEvent{}
+			event := L2.L2ScrollMessengerFailedRelayedMessageEvent{}
 			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 FailedRelayedMessage event", "err", err)
