@@ -268,12 +268,10 @@ func (_L2MessageQueue *L2MessageQueueTransactor) TransferOwnership(opts *bind.Tr
 type L2MessageQueueAppendMessageEvent struct {
 	Index       *big.Int
 	MessageHash [32]byte
-	raw         *types.Log // Blockchain specific contextual infos
 }
 
 // L2MessageQueueOwnershipTransferred represents a OwnershipTransferred event raised by the L2MessageQueue contract.
 type L2MessageQueueOwnershipTransferredEvent struct {
 	OldOwner common.Address
 	NewOwner common.Address
-	raw      *types.Log // Blockchain specific contextual infos
 }

@@ -323,7 +323,6 @@ type L1ETHGatewayDepositETHEvent struct {
 	To     common.Address
 	Amount *big.Int
 	Data   []byte
-	raw    *types.Log // Blockchain specific contextual infos
 }
 
 // L1ETHGatewayFinalizeWithdrawETH represents a FinalizeWithdrawETH event raised by the L1ETHGateway contract.
@@ -332,25 +331,21 @@ type L1ETHGatewayFinalizeWithdrawETHEvent struct {
 	To     common.Address
 	Amount *big.Int
 	Data   []byte
-	raw    *types.Log // Blockchain specific contextual infos
 }
 
 // L1ETHGatewayInitialized represents a Initialized event raised by the L1ETHGateway contract.
 type L1ETHGatewayInitializedEvent struct {
 	Version uint8
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1ETHGatewayOwnershipTransferred represents a OwnershipTransferred event raised by the L1ETHGateway contract.
 type L1ETHGatewayOwnershipTransferredEvent struct {
 	PreviousOwner common.Address
 	NewOwner      common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // L1ETHGatewayRefundETH represents a RefundETH event raised by the L1ETHGateway contract.
 type L1ETHGatewayRefundETHEvent struct {
 	Recipient common.Address
 	Amount    *big.Int
-	raw       *types.Log // Blockchain specific contextual infos
 }

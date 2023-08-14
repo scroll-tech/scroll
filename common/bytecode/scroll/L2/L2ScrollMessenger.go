@@ -492,32 +492,27 @@ func (_L2ScrollMessenger *L2ScrollMessengerTransactor) Receive(opts *bind.Transa
 // L2ScrollMessengerFailedRelayedMessage represents a FailedRelayedMessage event raised by the L2ScrollMessenger contract.
 type L2ScrollMessengerFailedRelayedMessageEvent struct {
 	MessageHash [32]byte
-	raw         *types.Log // Blockchain specific contextual infos
 }
 
 // L2ScrollMessengerInitialized represents a Initialized event raised by the L2ScrollMessenger contract.
 type L2ScrollMessengerInitializedEvent struct {
 	Version uint8
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L2ScrollMessengerOwnershipTransferred represents a OwnershipTransferred event raised by the L2ScrollMessenger contract.
 type L2ScrollMessengerOwnershipTransferredEvent struct {
 	PreviousOwner common.Address
 	NewOwner      common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // L2ScrollMessengerPaused represents a Paused event raised by the L2ScrollMessenger contract.
 type L2ScrollMessengerPausedEvent struct {
 	Account common.Address
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L2ScrollMessengerRelayedMessage represents a RelayedMessage event raised by the L2ScrollMessenger contract.
 type L2ScrollMessengerRelayedMessageEvent struct {
 	MessageHash [32]byte
-	raw         *types.Log // Blockchain specific contextual infos
 }
 
 // L2ScrollMessengerSentMessage represents a SentMessage event raised by the L2ScrollMessenger contract.
@@ -528,25 +523,21 @@ type L2ScrollMessengerSentMessageEvent struct {
 	MessageNonce *big.Int
 	GasLimit     *big.Int
 	Message      []byte
-	raw          *types.Log // Blockchain specific contextual infos
 }
 
 // L2ScrollMessengerUnpaused represents a Unpaused event raised by the L2ScrollMessenger contract.
 type L2ScrollMessengerUnpausedEvent struct {
 	Account common.Address
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L2ScrollMessengerUpdateFeeVault represents a UpdateFeeVault event raised by the L2ScrollMessenger contract.
 type L2ScrollMessengerUpdateFeeVaultEvent struct {
 	OldFeeVault common.Address
 	NewFeeVault common.Address
-	raw         *types.Log // Blockchain specific contextual infos
 }
 
 // L2ScrollMessengerUpdateMaxFailedExecutionTimes represents a UpdateMaxFailedExecutionTimes event raised by the L2ScrollMessenger contract.
 type L2ScrollMessengerUpdateMaxFailedExecutionTimesEvent struct {
 	OldMaxFailedExecutionTimes *big.Int
 	NewMaxFailedExecutionTimes *big.Int
-	raw                        *types.Log // Blockchain specific contextual infos
 }

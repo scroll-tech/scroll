@@ -357,31 +357,26 @@ func (_L1GasPriceOracle *L1GasPriceOracleTransactor) UpdateWhitelist(opts *bind.
 // L1GasPriceOracleL1BaseFeeUpdated represents a L1BaseFeeUpdated event raised by the L1GasPriceOracle contract.
 type L1GasPriceOracleL1BaseFeeUpdatedEvent struct {
 	L1BaseFee *big.Int
-	raw       *types.Log // Blockchain specific contextual infos
 }
 
 // L1GasPriceOracleOverheadUpdated represents a OverheadUpdated event raised by the L1GasPriceOracle contract.
 type L1GasPriceOracleOverheadUpdatedEvent struct {
 	Overhead *big.Int
-	raw      *types.Log // Blockchain specific contextual infos
 }
 
 // L1GasPriceOracleOwnershipTransferred represents a OwnershipTransferred event raised by the L1GasPriceOracle contract.
 type L1GasPriceOracleOwnershipTransferredEvent struct {
 	OldOwner common.Address
 	NewOwner common.Address
-	raw      *types.Log // Blockchain specific contextual infos
 }
 
 // L1GasPriceOracleScalarUpdated represents a ScalarUpdated event raised by the L1GasPriceOracle contract.
 type L1GasPriceOracleScalarUpdatedEvent struct {
 	Scalar *big.Int
-	raw    *types.Log // Blockchain specific contextual infos
 }
 
 // L1GasPriceOracleUpdateWhitelist represents a UpdateWhitelist event raised by the L1GasPriceOracle contract.
 type L1GasPriceOracleUpdateWhitelistEvent struct {
 	OldWhitelist common.Address
 	NewWhitelist common.Address
-	raw          *types.Log // Blockchain specific contextual infos
 }

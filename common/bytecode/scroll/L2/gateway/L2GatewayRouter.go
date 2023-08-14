@@ -474,7 +474,6 @@ type L2GatewayRouterFinalizeDepositERC20Event struct {
 	To      common.Address
 	Amount  *big.Int
 	Data    []byte
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L2GatewayRouterFinalizeDepositETH represents a FinalizeDepositETH event raised by the L2GatewayRouter contract.
@@ -483,27 +482,23 @@ type L2GatewayRouterFinalizeDepositETHEvent struct {
 	To     common.Address
 	Amount *big.Int
 	Data   []byte
-	raw    *types.Log // Blockchain specific contextual infos
 }
 
 // L2GatewayRouterInitialized represents a Initialized event raised by the L2GatewayRouter contract.
 type L2GatewayRouterInitializedEvent struct {
 	Version uint8
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L2GatewayRouterOwnershipTransferred represents a OwnershipTransferred event raised by the L2GatewayRouter contract.
 type L2GatewayRouterOwnershipTransferredEvent struct {
 	PreviousOwner common.Address
 	NewOwner      common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // L2GatewayRouterSetDefaultERC20Gateway represents a SetDefaultERC20Gateway event raised by the L2GatewayRouter contract.
 type L2GatewayRouterSetDefaultERC20GatewayEvent struct {
 	OldDefaultERC20Gateway common.Address
 	NewDefaultERC20Gateway common.Address
-	raw                    *types.Log // Blockchain specific contextual infos
 }
 
 // L2GatewayRouterSetERC20Gateway represents a SetERC20Gateway event raised by the L2GatewayRouter contract.
@@ -511,14 +506,12 @@ type L2GatewayRouterSetERC20GatewayEvent struct {
 	Token      common.Address
 	OldGateway common.Address
 	NewGateway common.Address
-	raw        *types.Log // Blockchain specific contextual infos
 }
 
 // L2GatewayRouterSetETHGateway represents a SetETHGateway event raised by the L2GatewayRouter contract.
 type L2GatewayRouterSetETHGatewayEvent struct {
 	OldETHGateway common.Address
 	NewEthGateway common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // L2GatewayRouterWithdrawERC20 represents a WithdrawERC20 event raised by the L2GatewayRouter contract.
@@ -529,7 +522,6 @@ type L2GatewayRouterWithdrawERC20Event struct {
 	To      common.Address
 	Amount  *big.Int
 	Data    []byte
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L2GatewayRouterWithdrawETH represents a WithdrawETH event raised by the L2GatewayRouter contract.
@@ -538,5 +530,4 @@ type L2GatewayRouterWithdrawETHEvent struct {
 	To     common.Address
 	Amount *big.Int
 	Data   []byte
-	raw    *types.Log // Blockchain specific contextual infos
 }

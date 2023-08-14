@@ -531,26 +531,22 @@ type L1MessageQueueDequeueTransactionEvent struct {
 	StartIndex    *big.Int
 	Count         *big.Int
 	SkippedBitmap *big.Int
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // L1MessageQueueDropTransaction represents a DropTransaction event raised by the L1MessageQueue contract.
 type L1MessageQueueDropTransactionEvent struct {
 	Index *big.Int
-	raw   *types.Log // Blockchain specific contextual infos
 }
 
 // L1MessageQueueInitialized represents a Initialized event raised by the L1MessageQueue contract.
 type L1MessageQueueInitializedEvent struct {
 	Version uint8
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1MessageQueueOwnershipTransferred represents a OwnershipTransferred event raised by the L1MessageQueue contract.
 type L1MessageQueueOwnershipTransferredEvent struct {
 	PreviousOwner common.Address
 	NewOwner      common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // L1MessageQueueQueueTransaction represents a QueueTransaction event raised by the L1MessageQueue contract.
@@ -561,26 +557,22 @@ type L1MessageQueueQueueTransactionEvent struct {
 	QueueIndex uint64
 	GasLimit   *big.Int
 	Data       []byte
-	raw        *types.Log // Blockchain specific contextual infos
 }
 
 // L1MessageQueueUpdateEnforcedTxGateway represents a UpdateEnforcedTxGateway event raised by the L1MessageQueue contract.
 type L1MessageQueueUpdateEnforcedTxGatewayEvent struct {
 	OldGateway common.Address
 	NewGateway common.Address
-	raw        *types.Log // Blockchain specific contextual infos
 }
 
 // L1MessageQueueUpdateGasOracle represents a UpdateGasOracle event raised by the L1MessageQueue contract.
 type L1MessageQueueUpdateGasOracleEvent struct {
 	OldGasOracle common.Address
 	NewGasOracle common.Address
-	raw          *types.Log // Blockchain specific contextual infos
 }
 
 // L1MessageQueueUpdateMaxGasLimit represents a UpdateMaxGasLimit event raised by the L1MessageQueue contract.
 type L1MessageQueueUpdateMaxGasLimitEvent struct {
 	OldMaxGasLimit *big.Int
 	NewMaxGasLimit *big.Int
-	raw            *types.Log // Blockchain specific contextual infos
 }

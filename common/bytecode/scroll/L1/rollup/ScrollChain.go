@@ -600,7 +600,6 @@ func (_ScrollChain *ScrollChainTransactor) UpdateVerifier(opts *bind.TransactOpt
 type ScrollChainCommitBatchEvent struct {
 	BatchIndex *big.Int
 	BatchHash  [32]byte
-	raw        *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainFinalizeBatch represents a FinalizeBatch event raised by the ScrollChain contract.
@@ -609,65 +608,55 @@ type ScrollChainFinalizeBatchEvent struct {
 	BatchHash    [32]byte
 	StateRoot    [32]byte
 	WithdrawRoot [32]byte
-	raw          *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainInitialized represents a Initialized event raised by the ScrollChain contract.
 type ScrollChainInitializedEvent struct {
 	Version uint8
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainOwnershipTransferred represents a OwnershipTransferred event raised by the ScrollChain contract.
 type ScrollChainOwnershipTransferredEvent struct {
 	PreviousOwner common.Address
 	NewOwner      common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainPaused represents a Paused event raised by the ScrollChain contract.
 type ScrollChainPausedEvent struct {
 	Account common.Address
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainRevertBatch represents a RevertBatch event raised by the ScrollChain contract.
 type ScrollChainRevertBatchEvent struct {
 	BatchIndex *big.Int
 	BatchHash  [32]byte
-	raw        *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainUnpaused represents a Unpaused event raised by the ScrollChain contract.
 type ScrollChainUnpausedEvent struct {
 	Account common.Address
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainUpdateMaxNumL2TxInChunk represents a UpdateMaxNumL2TxInChunk event raised by the ScrollChain contract.
 type ScrollChainUpdateMaxNumL2TxInChunkEvent struct {
 	OldMaxNumL2TxInChunk *big.Int
 	NewMaxNumL2TxInChunk *big.Int
-	raw                  *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainUpdateProver represents a UpdateProver event raised by the ScrollChain contract.
 type ScrollChainUpdateProverEvent struct {
 	Account common.Address
 	Status  bool
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainUpdateSequencer represents a UpdateSequencer event raised by the ScrollChain contract.
 type ScrollChainUpdateSequencerEvent struct {
 	Account common.Address
 	Status  bool
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // ScrollChainUpdateVerifier represents a UpdateVerifier event raised by the ScrollChain contract.
 type ScrollChainUpdateVerifierEvent struct {
 	OldVerifier common.Address
 	NewVerifier common.Address
-	raw         *types.Log // Blockchain specific contextual infos
 }

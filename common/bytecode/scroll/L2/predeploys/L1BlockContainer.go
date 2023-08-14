@@ -388,19 +388,16 @@ type L1BlockContainerImportBlockEvent struct {
 	BlockTimestamp *big.Int
 	BaseFee        *big.Int
 	StateRoot      [32]byte
-	raw            *types.Log // Blockchain specific contextual infos
 }
 
 // L1BlockContainerOwnershipTransferred represents a OwnershipTransferred event raised by the L1BlockContainer contract.
 type L1BlockContainerOwnershipTransferredEvent struct {
 	OldOwner common.Address
 	NewOwner common.Address
-	raw      *types.Log // Blockchain specific contextual infos
 }
 
 // L1BlockContainerUpdateWhitelist represents a UpdateWhitelist event raised by the L1BlockContainer contract.
 type L1BlockContainerUpdateWhitelistEvent struct {
 	OldWhitelist common.Address
 	NewWhitelist common.Address
-	raw          *types.Log // Blockchain specific contextual infos
 }

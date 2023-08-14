@@ -509,7 +509,6 @@ type L1GatewayRouterDepositERC20Event struct {
 	To      common.Address
 	Amount  *big.Int
 	Data    []byte
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterDepositETH represents a DepositETH event raised by the L1GatewayRouter contract.
@@ -518,7 +517,6 @@ type L1GatewayRouterDepositETHEvent struct {
 	To     common.Address
 	Amount *big.Int
 	Data   []byte
-	raw    *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterFinalizeWithdrawERC20 represents a FinalizeWithdrawERC20 event raised by the L1GatewayRouter contract.
@@ -529,7 +527,6 @@ type L1GatewayRouterFinalizeWithdrawERC20Event struct {
 	To      common.Address
 	Amount  *big.Int
 	Data    []byte
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterFinalizeWithdrawETH represents a FinalizeWithdrawETH event raised by the L1GatewayRouter contract.
@@ -538,20 +535,17 @@ type L1GatewayRouterFinalizeWithdrawETHEvent struct {
 	To     common.Address
 	Amount *big.Int
 	Data   []byte
-	raw    *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterInitialized represents a Initialized event raised by the L1GatewayRouter contract.
 type L1GatewayRouterInitializedEvent struct {
 	Version uint8
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterOwnershipTransferred represents a OwnershipTransferred event raised by the L1GatewayRouter contract.
 type L1GatewayRouterOwnershipTransferredEvent struct {
 	PreviousOwner common.Address
 	NewOwner      common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterRefundERC20 represents a RefundERC20 event raised by the L1GatewayRouter contract.
@@ -559,21 +553,18 @@ type L1GatewayRouterRefundERC20Event struct {
 	Token     common.Address
 	Recipient common.Address
 	Amount    *big.Int
-	raw       *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterRefundETH represents a RefundETH event raised by the L1GatewayRouter contract.
 type L1GatewayRouterRefundETHEvent struct {
 	Recipient common.Address
 	Amount    *big.Int
-	raw       *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterSetDefaultERC20Gateway represents a SetDefaultERC20Gateway event raised by the L1GatewayRouter contract.
 type L1GatewayRouterSetDefaultERC20GatewayEvent struct {
 	OldDefaultERC20Gateway common.Address
 	NewDefaultERC20Gateway common.Address
-	raw                    *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterSetERC20Gateway represents a SetERC20Gateway event raised by the L1GatewayRouter contract.
@@ -581,12 +572,10 @@ type L1GatewayRouterSetERC20GatewayEvent struct {
 	Token      common.Address
 	OldGateway common.Address
 	NewGateway common.Address
-	raw        *types.Log // Blockchain specific contextual infos
 }
 
 // L1GatewayRouterSetETHGateway represents a SetETHGateway event raised by the L1GatewayRouter contract.
 type L1GatewayRouterSetETHGatewayEvent struct {
 	OldETHGateway common.Address
 	NewEthGateway common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }

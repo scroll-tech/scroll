@@ -383,7 +383,6 @@ type L1WETHGatewayDepositERC20Event struct {
 	To      common.Address
 	Amount  *big.Int
 	Data    []byte
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1WETHGatewayFinalizeWithdrawERC20 represents a FinalizeWithdrawERC20 event raised by the L1WETHGateway contract.
@@ -394,20 +393,17 @@ type L1WETHGatewayFinalizeWithdrawERC20Event struct {
 	To      common.Address
 	Amount  *big.Int
 	Data    []byte
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1WETHGatewayInitialized represents a Initialized event raised by the L1WETHGateway contract.
 type L1WETHGatewayInitializedEvent struct {
 	Version uint8
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1WETHGatewayOwnershipTransferred represents a OwnershipTransferred event raised by the L1WETHGateway contract.
 type L1WETHGatewayOwnershipTransferredEvent struct {
 	PreviousOwner common.Address
 	NewOwner      common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // L1WETHGatewayRefundERC20 represents a RefundERC20 event raised by the L1WETHGateway contract.
@@ -415,5 +411,4 @@ type L1WETHGatewayRefundERC20Event struct {
 	Token     common.Address
 	Recipient common.Address
 	Amount    *big.Int
-	raw       *types.Log // Blockchain specific contextual infos
 }

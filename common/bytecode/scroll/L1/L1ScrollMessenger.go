@@ -571,32 +571,27 @@ func (_L1ScrollMessenger *L1ScrollMessengerTransactor) Receive(opts *bind.Transa
 // L1ScrollMessengerFailedRelayedMessage represents a FailedRelayedMessage event raised by the L1ScrollMessenger contract.
 type L1ScrollMessengerFailedRelayedMessageEvent struct {
 	MessageHash [32]byte
-	raw         *types.Log // Blockchain specific contextual infos
 }
 
 // L1ScrollMessengerInitialized represents a Initialized event raised by the L1ScrollMessenger contract.
 type L1ScrollMessengerInitializedEvent struct {
 	Version uint8
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1ScrollMessengerOwnershipTransferred represents a OwnershipTransferred event raised by the L1ScrollMessenger contract.
 type L1ScrollMessengerOwnershipTransferredEvent struct {
 	PreviousOwner common.Address
 	NewOwner      common.Address
-	raw           *types.Log // Blockchain specific contextual infos
 }
 
 // L1ScrollMessengerPaused represents a Paused event raised by the L1ScrollMessenger contract.
 type L1ScrollMessengerPausedEvent struct {
 	Account common.Address
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1ScrollMessengerRelayedMessage represents a RelayedMessage event raised by the L1ScrollMessenger contract.
 type L1ScrollMessengerRelayedMessageEvent struct {
 	MessageHash [32]byte
-	raw         *types.Log // Blockchain specific contextual infos
 }
 
 // L1ScrollMessengerSentMessage represents a SentMessage event raised by the L1ScrollMessenger contract.
@@ -607,25 +602,21 @@ type L1ScrollMessengerSentMessageEvent struct {
 	MessageNonce *big.Int
 	GasLimit     *big.Int
 	Message      []byte
-	raw          *types.Log // Blockchain specific contextual infos
 }
 
 // L1ScrollMessengerUnpaused represents a Unpaused event raised by the L1ScrollMessenger contract.
 type L1ScrollMessengerUnpausedEvent struct {
 	Account common.Address
-	raw     *types.Log // Blockchain specific contextual infos
 }
 
 // L1ScrollMessengerUpdateFeeVault represents a UpdateFeeVault event raised by the L1ScrollMessenger contract.
 type L1ScrollMessengerUpdateFeeVaultEvent struct {
 	OldFeeVault common.Address
 	NewFeeVault common.Address
-	raw         *types.Log // Blockchain specific contextual infos
 }
 
 // L1ScrollMessengerUpdateMaxReplayTimes represents a UpdateMaxReplayTimes event raised by the L1ScrollMessenger contract.
 type L1ScrollMessengerUpdateMaxReplayTimesEvent struct {
 	OldMaxReplayTimes *big.Int
 	NewMaxReplayTimes *big.Int
-	raw               *types.Log // Blockchain specific contextual infos
 }
