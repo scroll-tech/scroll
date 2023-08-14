@@ -53,11 +53,13 @@ func (c *Cmd) WaitExit() {
 
 	// Send interrupt signal.
 	c.mu.Lock()
-	_ = c.cmd.Process.Signal(os.Interrupt)
-	// should use `_ = c.cmd.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
-	// so we use `Kill` as a temp workaround. And since `WaitExit` is only used in integration tests, so
-	// it won't really affect our functionalities.
-	_ = c.cmd.Process.Kill()
+	if c.cmd != nil {
+		_ = c.cmd.Process.Signal(os.Interrupt)
+		// should use `_ = c.cmd.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
+		// so we use `Kill` as a temp workaround. And since `WaitExit` is only used in integration tests, so
+		// it won't really affect our functionalities.
+		_ = c.cmd.Process.Kill()
+	}
 	c.mu.Unlock()
 }
 
