@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -58,6 +59,10 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Register
 
 // TODO: change to use publickey
 func isChunkProverWhitelisted(proverName string) bool {
+	if err := godotenv.Load(); err != nil {
+		return false
+	}
+
 	whitelist := os.Getenv("WHITELISTED_CHUNK_PROVERS")
 	wProvers := strings.Split(whitelist, ";")
 	for _, wProver := range wProvers {
@@ -70,6 +75,10 @@ func isChunkProverWhitelisted(proverName string) bool {
 
 // TODO: change to use chunk hash
 func isChunkWhitelisted(index uint64) bool {
+	if err := godotenv.Load(); err != nil {
+		return false
+	}
+
 	whitelist := os.Getenv("WHITELISTED_INDEXES")
 	wIndexes := strings.Split(whitelist, ";")
 	for _, wIndex := range wIndexes {
