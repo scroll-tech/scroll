@@ -64,10 +64,12 @@ func (c *ContractsFilter) ParseLogs(ctx context.Context, client *ethclient.Clien
 		vLog := &logs[i]
 		_id := vLog.Topics[0]
 		if _, exist := c.handlers[_id]; exist {
+			// parse event result.
 			val, err := c.parsers[_id](vLog)
 			if err != nil {
 				return err
 			}
+			// handle event result.
 			if err = c.handlers[_id](vLog, val); err != nil {
 				return err
 			}
