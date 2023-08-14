@@ -29,7 +29,7 @@ test:
 
 libzkp: pre-upgrade-zk
 	cd ../common/libzkp/impl && cp Cargo.lock.new Cargo.lock && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
-	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
+	cp -r ../common/libzkp/interface/*.so ./internal/logic/verifier/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/verifier/lib
 
 coordinator: libzkp ## Builds the Coordinator instance.
