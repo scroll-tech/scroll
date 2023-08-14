@@ -8,12 +8,12 @@ ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
 	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock.new | cut -d "#" -f2 | cut -c-7)
 	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock.new | cut -d "#" -f2 | cut -c-7)
 	OLD_ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock.old | cut -d "#" -f2 | cut -c-7)
-    OLD_HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock.old | cut -d "#" -f2 | cut -c-7)
+	OLD_HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock.old | cut -d "#" -f2 | cut -c-7)
 else
 	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock.new | cut -d "\#" -f2 | cut -c-7)
 	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock.new | cut -d "\#" -f2 | cut -c-7)
 	OLD_ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock.old | cut -d "\#" -f2 | cut -c-7)
-    OLD_HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock.old | cut -d "\#" -f2 | cut -c-7)
+	OLD_HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock.old | cut -d "\#" -f2 | cut -c-7)
 endif
 
 ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
