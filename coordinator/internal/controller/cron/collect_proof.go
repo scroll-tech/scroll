@@ -95,30 +95,40 @@ func (c *Collector) timeoutProofTask() {
 				c.proverTaskTimeoutTotal.Inc()
 				log.Warn("proof task have reach the timeout", "task id", assignedProverTask.TaskID,
 					"prover public key", assignedProverTask.ProverPublicKey, "prover name", assignedProverTask.ProverName, "task type", assignedProverTask.TaskType)
-				err = c.db.Transaction(func(tx *gorm.DB) error {
+				err = c.db.Transaction(func(dbTX *gorm.DB) error {
 					// update prover task proving status as ProverProofInvalid
 					if err = c.proverTaskOrm.UpdateProverTaskProvingStatus(c.ctx, message.ProofType(assignedProverTask.TaskType),
-						assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverProofInvalid, tx); err != nil {
+						assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverProofInvalid, dbTX); err != nil {
 						log.Error("update prover task proving status failure", "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 						return err
 					}
 
 					// update prover task failure type
 					if err = c.proverTaskOrm.UpdateProverTaskFailureType(c.ctx, message.ProofType(assignedProverTask.TaskType),
-						assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverTaskFailureTypeTimeout, tx); err != nil {
+						assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverTaskFailureTypeTimeout, dbTX); err != nil {
 						log.Error("update prover task failure type failure", "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 						return err
 					}
 
-					// update the task to unassigned, let collector restart it
-					if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeChunk {
-						if err = c.chunkOrm.UpdateProvingStatus(c.ctx, assignedProverTask.TaskID, types.ProvingTaskUnassigned, tx); err != nil {
-							log.Error("update chunk proving status to unassigned to restart it failure", "hash", assignedProverTask.TaskID, "err", err)
-						}
+					var failedAssignmentCount uint64
+					failedAssignmentCount, err = c.proverTaskOrm.GetTaskFailedAssignmentCount(c.ctx, assignedProverTask.TaskID, dbTX)
+					if err != nil {
+						log.Error("failed to get task assignment count", "taskID", assignedProverTask.TaskID, "error", err)
+						return err
 					}
-					if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeBatch {
-						if err = c.batchOrm.UpdateProvingStatus(c.ctx, assignedProverTask.TaskID, types.ProvingTaskUnassigned, tx); err != nil {
-							log.Error("update batch proving status to unassigned to restart it failure", "hash", assignedProverTask.TaskID, "err", err)
+
+					if failedAssignmentCount >= uint64(c.cfg.ProverManager.SessionAttempts) {
+						if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeChunk {
+							if err = c.chunkOrm.UpdateProvingStatus(c.ctx, assignedProverTask.TaskID, types.ProvingTaskFailed, dbTX); err != nil {
+								log.Error("update chunk proving status to unassigned to restart it failure", "hash", assignedProverTask.TaskID, "err", err)
+								return err
+							}
+						}
+						if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeBatch {
+							if err = c.batchOrm.UpdateProvingStatus(c.ctx, assignedProverTask.TaskID, types.ProvingTaskFailed, dbTX); err != nil {
+								log.Error("update batch proving status to unassigned to restart it failure", "hash", assignedProverTask.TaskID, "err", err)
+								return err
+							}
 						}
 					}
 					return nil

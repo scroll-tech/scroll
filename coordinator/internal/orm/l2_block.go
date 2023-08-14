@@ -52,8 +52,12 @@ func (*L2Block) TableName() string {
 
 // GetL2BlocksByChunkHash retrieves the L2 blocks associated with the specified chunk hash.
 // The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) ([]*types.WrappedBlock, error) {
-	db := o.db.WithContext(ctx)
+func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string, dbTX ...*gorm.DB) ([]*types.WrappedBlock, error) {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("header, transactions, withdraw_root, row_consumption")
 	db = db.Where("chunk_hash = ?", chunkHash)

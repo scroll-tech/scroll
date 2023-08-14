@@ -9,7 +9,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
@@ -89,8 +88,12 @@ func (o *Chunk) GetUnassignedChunks(ctx context.Context, limit int) ([]*Chunk, e
 
 // GetChunksByBatchHash retrieves the chunks associated with a specific batch hash.
 // The returned chunks are sorted in ascending order by their associated chunk index.
-func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*Chunk, error) {
-	db := o.db.WithContext(ctx)
+func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string, dbTX ...*gorm.DB) ([]*Chunk, error) {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("batch_hash", batchHash)
 	db = db.Order("index ASC")
@@ -339,34 +342,4 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 		return fmt.Errorf("Chunk.UpdateBatchHashInRange error: %w, start index: %v, end index: %v, batch hash: %v", err, startIndex, endIndex, batchHash)
 	}
 	return nil
-}
-
-// UpdateUnassignedChunkReturning update the unassigned batch which end_block_number <= height and return the update record
-func (o *Chunk) UpdateUnassignedChunkReturning(ctx context.Context, height, limit int) ([]*Chunk, error) {
-	if height <= 0 {
-		return nil, errors.New("Chunk.UpdateUnassignedBatchReturning error: height must be larger than zero")
-	}
-	if limit < 0 {
-		return nil, errors.New("Chunk.UpdateUnassignedBatchReturning error: limit must not be smaller than zero")
-	}
-	if limit == 0 {
-		return nil, nil
-	}
-
-	db := o.db.WithContext(ctx)
-
-	subQueryDB := db.Model(&Chunk{}).Select("index")
-	subQueryDB = subQueryDB.Where("proving_status = ?", types.ProvingTaskUnassigned)
-	subQueryDB = subQueryDB.Where("end_block_number <= ?", height)
-	subQueryDB = subQueryDB.Order("index ASC")
-	subQueryDB = subQueryDB.Limit(limit)
-
-	var chunks []*Chunk
-	db = db.Model(&chunks).Clauses(clause.Returning{})
-	db = db.Where("index = (?)", subQueryDB)
-	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
-	if err := db.Update("proving_status", types.ProvingTaskAssigned).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.UpdateUnassignedBatchReturning error: %w", err)
-	}
-	return chunks, nil
 }

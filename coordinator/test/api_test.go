@@ -428,15 +428,6 @@ func testTimeoutProof(t *testing.T) {
 	proverBatchTask := batchProver1.getProverTask(t, message.ProofTypeBatch)
 	assert.NotNil(t, proverBatchTask)
 
-	// verify proof status, it should be assigned, because prover didn't send any proof
-	chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
-	assert.NoError(t, err)
-	assert.Equal(t, chunkProofStatus, types.ProvingTaskAssigned)
-
-	batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
-	assert.NoError(t, err)
-	assert.Equal(t, batchProofStatus, types.ProvingTaskAssigned)
-
 	// wait coordinator to reset the prover task proving status
 	time.Sleep(time.Duration(conf.ProverManager.CollectionTimeSec*2) * time.Second)
 

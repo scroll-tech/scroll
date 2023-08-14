@@ -94,6 +94,22 @@ func (o *ProverTask) GetProverTasks(ctx context.Context, fields map[string]inter
 	return proverTasks, nil
 }
 
+// GetTaskFailedAssignmentCount returns the number of times a task with the specified TaskID has been assigned and failed.
+func (o *ProverTask) GetTaskFailedAssignmentCount(ctx context.Context, taskID string, dbTX ...*gorm.DB) (uint64, error) {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	var count int64
+	err := db.Model(&ProverTask{}).Where("task_id = ? AND proving_status = ?",
+		taskID, types.ProverProofInvalid).Count(&count).Error
+	if err != nil {
+		return 0, fmt.Errorf("ProverTask.GetTaskAssignmentCount error: %w, taskID: %v", err, taskID)
+	}
+	return uint64(count), nil
+}
+
 // GetProverTasksByHashes retrieves the ProverTask records associated with the specified hashes.
 // The returned prover task objects are sorted in ascending order by their ids.
 func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string) ([]*ProverTask, error) {
@@ -159,11 +175,12 @@ func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit in
 
 // SetProverTask updates or inserts a ProverTask record.
 func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, dbTX ...*gorm.DB) error {
-	db := o.db.WithContext(ctx)
+	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
 
+	db = db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},

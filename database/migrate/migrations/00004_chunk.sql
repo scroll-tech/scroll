@@ -21,7 +21,7 @@ create table chunk
 -- proof
     proving_status                    SMALLINT        NOT NULL DEFAULT 1,
     proof                             BYTEA           DEFAULT NULL,
-    prover_assigned_at                TIMESTAMP(0)    DEFAULT NULL,
+    prover_assigned_at                TIMESTAMP(0)    DEFAULT NULL, -- DEPRECATED
     proved_at                         TIMESTAMP(0)    DEFAULT NULL,
     proof_time_sec                    INTEGER         DEFAULT NULL,
 
