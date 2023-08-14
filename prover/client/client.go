@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
@@ -33,7 +34,18 @@ func NewCoordinatorClient(cfg *config.CoordinatorConfig, proverName string, priv
 		SetTimeout(time.Duration(cfg.ConnectionTimeoutSec) * time.Second).
 		SetRetryCount(cfg.RetryCount).
 		SetRetryWaitTime(time.Duration(cfg.RetryWaitTimeSec) * time.Second).
-		SetBaseURL(cfg.BaseURL)
+		SetBaseURL(cfg.BaseURL).
+		AddRetryCondition(func(r *resty.Response, _ error) bool {
+			// Check for HTTP 5xx errors, e.g., coordinator is restarting.
+			log.Warn("Received unexpected HTTP response. Retrying...", "status code", r.StatusCode())
+			return r.StatusCode() >= http.StatusInternalServerError
+		})
+
+	log.Info("successfully initialized prover client",
+		"base url", cfg.BaseURL,
+		"connection timeout (second)", cfg.ConnectionTimeoutSec,
+		"retry count", cfg.RetryCount,
+		"retry wait time (second)", cfg.RetryWaitTimeSec)
 
 	return &CoordinatorClient{
 		client:     client,

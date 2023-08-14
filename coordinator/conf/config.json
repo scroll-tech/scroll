@@ -17,7 +17,7 @@
   },
   "db": {
     "driver_name": "postgres",
-    "dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
+    "dsn": "postgres://localhost/scroll?sslmode=disable",
     "maxOpenNum": 200,
     "maxIdleNum": 20
   },

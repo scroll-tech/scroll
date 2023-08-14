@@ -88,11 +88,11 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		},
 	}
 
-	proofCollector := cron.NewCollector(context.Background(), db, conf)
+	proofCollector := cron.NewCollector(context.Background(), db, conf, nil)
 
-	router := gin.Default()
-	api.InitController(conf, db)
-	route.Route(router, conf)
+	router := gin.New()
+	api.InitController(conf, db, nil)
+	route.Route(router, conf, nil)
 	srv := &http.Server{
 		Addr:    coordinatorURL,
 		Handler: router,

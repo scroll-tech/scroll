@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -23,10 +25,13 @@ import (
 // BatchProverTask is prover task implement for batch proof
 type BatchProverTask struct {
 	BaseProverTask
+
+	batchAttemptsExceedTotal prometheus.Counter
+	batchTaskGetTaskTotal    prometheus.Counter
 }
 
 // NewBatchProverTask new a batch collector
-func NewBatchProverTask(cfg *config.Config, db *gorm.DB) *BatchProverTask {
+func NewBatchProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *BatchProverTask {
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
 			db:            db,
@@ -35,6 +40,14 @@ func NewBatchProverTask(cfg *config.Config, db *gorm.DB) *BatchProverTask {
 			batchOrm:      orm.NewBatch(db),
 			proverTaskOrm: orm.NewProverTask(db),
 		},
+		batchAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_batch_attempts_exceed_total",
+			Help: "Total number of batch attempts exceed.",
+		}),
+		batchTaskGetTaskTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_batch_get_task_total",
+			Help: "Total number of batch get task.",
+		}),
 	}
 	return bp
 }
@@ -59,6 +72,15 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", proverVersion.(string), version.Version)
 	}
 
+	isAssigned, err := bp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if prover is assigned a task: %w", err)
+	}
+
+	if isAssigned {
+		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
+	}
+
 	batchTasks, err := bp.batchOrm.UpdateUnassignedBatchReturning(ctx, 1)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
@@ -76,6 +98,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	log.Info("start batch proof generation session", "id", batchTask.Hash, "public key", publicKey, "prover name", proverName)
 
 	if !bp.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
+		bp.batchAttemptsExceedTotal.Inc()
 		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
 	}
 
@@ -102,6 +125,8 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		bp.recoverProvingStatus(ctx, batchTask)
 		return nil, fmt.Errorf("format prover failure, id:%s error:%w", batchTask.Hash, err)
 	}
+
+	bp.batchTaskGetTaskTotal.Inc()
 
 	return taskMsg, nil
 }

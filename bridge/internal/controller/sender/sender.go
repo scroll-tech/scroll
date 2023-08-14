@@ -39,10 +39,6 @@ var (
 	ErrFullPending = errors.New("sender's pending pool is full")
 )
 
-var (
-	defaultPendingLimit = 10
-)
-
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
 	ID           string
@@ -75,8 +71,8 @@ type Sender struct {
 	chainID *big.Int          // The chain id of the endpoint
 	ctx     context.Context
 
-	// account fields.
-	auths *accountPool
+	auth       *bind.TransactOpts
+	minBalance *big.Int
 
 	blockNumber   uint64                                            // Current block number on chain.
 	baseFeePerGas uint64                                            // Current base fee per gas on chain
@@ -88,27 +84,34 @@ type Sender struct {
 
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
-func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.PrivateKey) (*Sender, error) {
+func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey) (*Sender, error) {
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to dial eth client, err: %w", err)
 	}
 
 	// get chainID from client
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get chain ID, err: %w", err)
 	}
 
-	auths, err := newAccountPool(ctx, config.MinBalance, client, privs)
+	auth, err := bind.NewKeyedTransactorWithChainID(priv, chainID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create account pool, err: %v", err)
+		return nil, fmt.Errorf("failed to create transactor with chain ID %v, err: %w", chainID, err)
 	}
+
+	// Set pending nonce
+	nonce, err := client.PendingNonceAt(ctx, auth.From)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pending nonce for address %s, err: %w", auth.From.Hex(), err)
+	}
+	auth.Nonce = big.NewInt(int64(nonce))
 
 	// get header by number
 	header, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get header by number, err: %w", err)
 	}
 
 	var baseFeePerGas uint64
@@ -116,13 +119,8 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		if header.BaseFee != nil {
 			baseFeePerGas = header.BaseFee.Uint64()
 		} else {
-			return nil, errors.New("DynamicFeeTxType not supported, header.BaseFee nil")
+			return nil, errors.New("dynamic fee tx type not supported: header.BaseFee is nil")
 		}
-	}
-
-	// initialize pending limit with a default value
-	if config.PendingLimit == 0 {
-		config.PendingLimit = defaultPendingLimit
 	}
 
 	sender := &Sender{
@@ -130,7 +128,8 @@ func NewSender(ctx context.Context, config *config.SenderConfig, privs []*ecdsa.
 		config:        config,
 		client:        client,
 		chainID:       chainID,
-		auths:         auths,
+		auth:          auth,
+		minBalance:    config.MinBalance,
 		confirmCh:     make(chan *Confirmation, 128),
 		blockNumber:   header.Number.Uint64(),
 		baseFeePerGas: baseFeePerGas,
@@ -175,11 +174,6 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
-// NumberOfAccounts return the count of accounts.
-func (s *Sender) NumberOfAccounts() int {
-	return len(s.auths.accounts)
-}
-
 func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (*FeeData, error) {
 	if s.config.TxType == DynamicFeeTxType {
 		return s.estimateDynamicGas(auth, target, value, data, minGasLimit)
@@ -188,53 +182,39 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (common.Hash, error) {
 	if s.IsFull() {
 		return common.Hash{}, ErrFullPending
 	}
-	// We occupy the ID, in case some other threads call with the same ID in the same time
 	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
-		return common.Hash{}, fmt.Errorf("has the repeat tx ID, ID: %s", ID)
+		return common.Hash{}, fmt.Errorf("repeat transaction ID: %s", ID)
 	}
-	// get
-	auth := s.auths.getAccount()
-	if auth == nil {
-		s.pendingTxs.Remove(ID) // release the ID on failure
-		return common.Hash{}, ErrNoAvailableAccount
-	}
-
-	defer s.auths.releaseAccount(auth)
-	defer func() {
-		if err != nil {
-			s.pendingTxs.Remove(ID) // release the ID on failure
-		}
-	}()
 
 	var (
 		feeData *FeeData
 		tx      *types.Transaction
+		err     error
 	)
-	// estimate gas fee
-	if feeData, err = s.getFeeData(auth, target, value, data, minGasLimit); err != nil {
-		return
+	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
+		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
-	if tx, err = s.createAndSendTx(auth, feeData, target, value, data, nil); err == nil {
-		// add pending transaction to queue
-		pending := &PendingTransaction{
-			tx:       tx,
-			id:       ID,
-			signer:   auth,
-			submitAt: atomic.LoadUint64(&s.blockNumber),
-			feeData:  feeData,
-		}
-		s.pendingTxs.Set(ID, pending)
-		return tx.Hash(), nil
+	if tx, err = s.createAndSendTx(s.auth, feeData, target, value, data, nil); err != nil {
+		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
 	}
 
-	return
+	// add pending transaction
+	pending := &PendingTransaction{
+		tx:       tx,
+		id:       ID,
+		signer:   s.auth,
+		submitAt: atomic.LoadUint64(&s.blockNumber),
+		feeData:  feeData,
+	}
+	s.pendingTxs.Set(ID, pending)
+	return tx.Hash(), nil
 }
 
-func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (tx *types.Transaction, err error) {
+func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (*types.Transaction, error) {
 	var (
 		nonce  = auth.Nonce.Uint64()
 		txData types.TxData
@@ -292,26 +272,36 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	}
 
 	// sign and send
-	tx, err = auth.Signer(auth.From, types.NewTx(txData))
+	tx, err := auth.Signer(auth.From, types.NewTx(txData))
 	if err != nil {
 		log.Error("failed to sign tx", "err", err)
-		return
+		return nil, err
 	}
 	if err = s.client.SendTransaction(s.ctx, tx); err != nil {
 		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "err", err)
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
 		if strings.Contains(err.Error(), "nonce") && overrideNonce == nil {
-			s.auths.resetNonce(context.Background(), auth)
+			s.resetNonce(context.Background())
 		}
-		return
+		return nil, err
 	}
 
 	// update nonce when it is not from resubmit
 	if overrideNonce == nil {
 		auth.Nonce = big.NewInt(int64(nonce + 1))
 	}
-	return
+	return tx, nil
+}
+
+// reSetNonce reset nonce if send signed tx failed.
+func (s *Sender) resetNonce(ctx context.Context) {
+	nonce, err := s.client.PendingNonceAt(ctx, s.auth.From)
+	if err != nil {
+		log.Warn("failed to reset nonce", "address", s.auth.From.String(), "err", err)
+		return
+	}
+	s.auth.Nonce = big.NewInt(int64(nonce))
 }
 
 func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
@@ -448,6 +438,22 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 	}
 }
 
+// checkBalance checks balance and print error log if balance is under a threshold.
+func (s *Sender) checkBalance(ctx context.Context) error {
+	bls, err := s.client.BalanceAt(ctx, s.auth.From, nil)
+	if err != nil {
+		log.Warn("failed to get balance", "address", s.auth.From.String(), "err", err)
+		return err
+	}
+
+	if bls.Cmp(s.minBalance) < 0 {
+		return fmt.Errorf("insufficient account balance - actual balance: %s, minimum required balance: %s",
+			bls.String(), s.minBalance.String())
+	}
+
+	return nil
+}
+
 // Loop is the main event loop
 func (s *Sender) loop(ctx context.Context) {
 	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
@@ -474,7 +480,9 @@ func (s *Sender) loop(ctx context.Context) {
 			s.checkPendingTransaction(header, confirmed)
 		case <-checkBalanceTicker.C:
 			// Check and set balance.
-			_ = s.auths.checkAndSetBalances(ctx)
+			if err := s.checkBalance(ctx); err != nil {
+				log.Error("check balance, err: %w", err)
+			}
 		case <-ctx.Done():
 			return
 		case <-s.stopCh:
