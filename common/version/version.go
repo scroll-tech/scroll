@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var tag = "v4.1.41"
+var tag = "v4.1.42"
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
