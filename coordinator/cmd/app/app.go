@@ -9,9 +9,6 @@ import (
 	"os/signal"
 	"time"
 
-	// enable the pprof
-	_ "net/http/pprof"
-
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
