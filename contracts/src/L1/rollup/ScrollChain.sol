@@ -571,6 +571,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedInBatch += 1;
                 _totalL1MessagesPoppedOverall += 1;
             }
+
+            // check last L1 message is not skipped, _totalL1MessagesPoppedInBatch must > 0
+            uint256 rem = (_totalL1MessagesPoppedInBatch - 1) & 0xff;
+            require(((_bitmap >> rem) & 1) == 0, "cannot skip last L1 message");
         }
 
         return _ptr;
