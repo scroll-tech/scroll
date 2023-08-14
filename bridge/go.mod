@@ -4,13 +4,11 @@ go 1.19
 
 require (
 	github.com/agiledragon/gomonkey/v2 v2.9.0
-	github.com/orcaman/concurrent-map v1.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230804022247-26eeb40ea3ca
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230812030736-25fe3ba69a28
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
-	golang.org/x/sync v0.3.0
 	gorm.io/gorm v1.25.2
 )
 
@@ -53,6 +51,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
+	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect

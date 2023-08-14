@@ -13,11 +13,11 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/metrics"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -58,7 +58,9 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	proofCollector := cron.NewCollector(subCtx, db, cfg)
+	registry := prometheus.DefaultRegisterer
+
+	proofCollector := cron.NewCollector(subCtx, db, cfg, registry)
 	defer func() {
 		proofCollector.Stop()
 		cancel()
@@ -67,18 +69,15 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	router := gin.Default()
-	api.InitController(cfg, db)
-	route.Route(router, cfg)
+	router := gin.New()
+	api.InitController(cfg, db, registry)
+	route.Route(router, cfg, registry)
 	port := ctx.String(httpPortFlag.Name)
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%s", port),
 		Handler:           router,
 		ReadHeaderTimeout: time.Minute,
 	}
-
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
 
 	go func() {
 		if runServerErr := srv.ListenAndServe(); err != nil && !errors.Is(runServerErr, http.ErrServerClosed) {
@@ -106,7 +105,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run run coordinator.
+// Run coordinator.
 func Run() {
 	// RunApp the coordinator.
 	if err := app.Run(os.Args); err != nil {
