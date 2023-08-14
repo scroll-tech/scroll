@@ -60,7 +60,7 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Register
 func isChunkProverWhitelisted(proverName string) bool {
 	whitelist := os.Getenv("WHITELISTED_CHUNK_PROVERS")
 	wProvers := strings.Split(whitelist, ";")
-	for wProver := range wProvers {
+	for _, wProver := range wProvers {
 		if proverName == wProver {
 			return true
 		}
@@ -72,7 +72,7 @@ func isChunkProverWhitelisted(proverName string) bool {
 func isChunkWhitelisted(index uint64) bool {
 	whitelist := os.Getenv("WHITELISTED_INDEXES")
 	wIndexes := strings.Split(whitelist, ";")
-	for wIndex := range wIndexes {
+	for _, wIndex := range wIndexes {
 		if strconv.Itoa(index) == wIndex {
 			return true
 		}
@@ -96,7 +96,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-	if !version.CheckScrollProverVersion(proverVersion.(string)) && !isChunkProverWhitelisted(proverName) {
+	if !version.CheckScrollProverVersion(proverVersion.(string)) && !isChunkProverWhitelisted(proverName.(string)) {
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
 	}
 
@@ -126,7 +126,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	chunkTask := chunkTasks[0]
 
 	// only whitelisted provers can prove whitelisted chunk
-	if !isChunkProverWhitelisted(proverName) && isChunkWhitelisted(chunkTask.Index) {
+	if !isChunkProverWhitelisted(proverName.(string)) && isChunkWhitelisted(chunkTask.Index) {
 		return nil, fmt.Errorf("get empty chunk proving task list")
 	}
 
