@@ -122,7 +122,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	chunkTask := chunkTasks[0]
 
-	if !isChunkWhitelisted(chunkTask.Index) {
+	// only whitelisted provers can prove whitelisted chunk
+	if !isChunkProverWhitelisted(proverName) && isChunkWhitelisted(chunkTask.Index) {
 		return nil, fmt.Errorf("get empty chunk proving task list")
 	}
 
