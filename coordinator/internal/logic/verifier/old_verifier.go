@@ -37,6 +37,8 @@ func NewOldVerifier(cfg *config.VerifierConfig) (*OldVerifier, error) {
 		C.free(unsafe.Pointer(assetsPathStr))
 	}()
 
+	log.Info("Init old verifier!")
+
 	C.init_batch_verifier(paramsPathStr, assetsPathStr)
 	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
 
