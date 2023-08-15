@@ -195,6 +195,13 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		tx      *types.Transaction
 		err     error
 	)
+
+	defer func() {
+		if err != nil {
+			s.pendingTxs.Remove(ID) // release the ID on failure
+		}
+	}()
+
 	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
