@@ -320,7 +320,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
-	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 10)
+	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 1)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -337,12 +337,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			parentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
 			if err != nil {
 				log.Error("Failed to get parent batch header", "index", batch.Index-1, "error", err)
-				return
-			}
-			if types.RollupStatus(parentBatch.RollupStatus) != types.RollupCommitted {
-				log.Warn("Parent batch has not committed",
-					"index", parentBatch.Index, "hash", parentBatch.Hash,
-					"rollup status", parentBatch.RollupStatus)
 				return
 			}
 		}
@@ -451,12 +445,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			// handle unexpected db error
 			if err != nil {
 				log.Error("Failed to get batch", "index", batch.Index-1, "err", err)
-				return
-			}
-			if types.RollupStatus(parentBatch.RollupStatus) != types.RollupFinalized {
-				log.Warn("Parent batch has not finalized",
-					"index", parentBatch.Index, "hash", parentBatch.Hash,
-					"rollup status", parentBatch.RollupStatus)
 				return
 			}
 			parentBatchStateRoot = parentBatch.StateRoot
