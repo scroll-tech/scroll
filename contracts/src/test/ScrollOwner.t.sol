@@ -32,44 +32,13 @@ contract ScrollOwnerTest is DSTestPlus {
         assertEq(0, _roles.length);
         _selectors = new bytes4[](1);
         _selectors[0] = ScrollOwnerTest.revertOnCall.selector;
-        owner.updateAccess(address(this), _selectors, owner.OWNER_ROLE(), true);
+        owner.updateAccess(address(this), _selectors, bytes32(uint256(1)), true);
         _roles = owner.callable(address(this), ScrollOwnerTest.revertOnCall.selector);
         assertEq(1, _roles.length);
-        assertEq(_roles[0], owner.OWNER_ROLE());
-        owner.updateAccess(address(this), _selectors, owner.OWNER_ROLE(), false);
+        assertEq(_roles[0], bytes32(uint256(1)));
+        owner.updateAccess(address(this), _selectors, bytes32(uint256(1)), false);
         _roles = owner.callable(address(this), ScrollOwnerTest.revertOnCall.selector);
         assertEq(0, _roles.length);
-    }
-
-    function testOwnerExecute() external {
-        bytes4[] memory _selectors = new bytes4[](2);
-        _selectors[0] = ScrollOwnerTest.revertOnCall.selector;
-        _selectors[1] = ScrollOwnerTest.emitOnCall.selector;
-
-        // not owner, revert
-        hevm.startPrank(address(1));
-        hevm.expectRevert(
-            "AccessControl: account 0x0000000000000000000000000000000000000001 is missing role 0x929f3fd6848015f83b9210c89f7744e3941acae1195c8bf9f5798c090dc8f497"
-        );
-        owner.ownerExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.revertOnCall.selector));
-        hevm.stopPrank();
-
-        owner.grantRole(owner.OWNER_ROLE(), address(this));
-
-        // no access, revert
-        hevm.expectRevert("no access");
-        owner.ownerExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.revertOnCall.selector));
-
-        owner.updateAccess(address(this), _selectors, owner.OWNER_ROLE(), true);
-
-        // call with revert
-        hevm.expectRevert("Called");
-        owner.ownerExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.revertOnCall.selector));
-
-        // call with emit
-        hevm.expectEmit(false, false, false, true);
-        emit Call();
-        owner.ownerExecute(address(this), 0, abi.encodeWithSelector(ScrollOwnerTest.emitOnCall.selector));
     }
 
     function testAdminExecute() external {

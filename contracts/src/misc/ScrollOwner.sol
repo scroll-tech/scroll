@@ -11,13 +11,6 @@ contract ScrollOwner is AccessControlEnumerable {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     /*************
-     * Constants *
-     *************/
-
-    /// @notice The role for owner.
-    bytes32 public constant OWNER_ROLE = keccak256("Owner");
-
-    /*************
      * Variables *
      *************/
 
@@ -65,18 +58,6 @@ contract ScrollOwner is AccessControlEnumerable {
     /*****************************
      * Public Mutating Functions *
      *****************************/
-
-    /// @notice Owner perform a function call.
-    /// @param _target The address of target contract.
-    /// @param _value The value passing to target contract.
-    /// @param _data The calldata passing to target contract.
-    function ownerExecute(
-        address _target,
-        uint256 _value,
-        bytes calldata _data
-    ) external payable {
-        execute(_target, _value, _data, OWNER_ROLE);
-    }
 
     /// @notice Perform a function call from arbitrary role.
     /// @param _target The address of target contract.
