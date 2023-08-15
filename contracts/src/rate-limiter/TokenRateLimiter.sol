@@ -3,6 +3,7 @@
 pragma solidity =0.8.16;
 
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import {ITokenRateLimiter} from "./ITokenRateLimiter.sol";
 
@@ -15,10 +16,12 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
      ***********/
 
     struct TokenAmount {
+        // The timestamp when the amount is updated.
+        uint64 lastUpdateTs;
         // The token limit.
-        uint128 limit;
+        uint96 limit;
         // The amount of token in current period.
-        uint128 currentPeriodAmount;
+        uint96 amount;
     }
 
     /*************
@@ -29,23 +32,21 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
     bytes32 public constant TOKEN_SPENDER_ROLE = keccak256("TOKEN_SPENDER_ROLE");
 
     /// @notice The period length in seconds.
+    /// @dev The time frame for the `k`-th period is `[periodDuration * k, periodDuration * (k + 1))`.
     uint256 public immutable periodDuration;
 
     /*************
      * Variables *
      *************/
 
-    /// @notice Mapping from token address to the time at which the current period ends at.
-    mapping(address => uint256) public currentPeriodEnd;
-
     /// @notice Mapping from token address to the total amounts used in current period and total token amount limit.
-    mapping(address => TokenAmount) public totalAmount;
+    mapping(address => TokenAmount) public currentPeriod;
 
     /// @notice Mapping from token address to the default token amount limit per user.
     mapping(address => uint256) public defaultUserLimit;
 
     /// @notice Mapping from token address to user address to the amounts used in current period and custom token amount limit.
-    mapping(address => mapping(address => TokenAmount)) public userAmount;
+    mapping(address => mapping(address => TokenAmount)) public userCurrentPeriod;
 
     /// @dev The storage slots for future usage.
     uint256[45] private __gap;
@@ -73,9 +74,9 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
     /// @param _account The address of the user to query.
     function getUserCustomLimit(address _token, address _account) external view returns (uint256) {
         uint256 _userLimit = defaultUserLimit[_token];
-        TokenAmount memory _userAmount = userAmount[_token][_account];
-        if (_userAmount.limit != 0) {
-            _userLimit = _userAmount.limit;
+        TokenAmount memory _userCurrentPeriod = userCurrentPeriod[_token][_account];
+        if (_userCurrentPeriod.limit != 0) {
+            _userLimit = _userCurrentPeriod.limit;
         }
         return _userLimit;
     }
@@ -92,37 +93,45 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
     ) external override onlyRole(TOKEN_SPENDER_ROLE) {
         if (_amount == 0) return;
 
-        uint256 _currentTotal;
-        uint256 _currentUser;
-
-        TokenAmount memory _totalAmount = totalAmount[_token];
-        TokenAmount memory _userAmount = userAmount[_token][_sender];
-        // @note The value of `currentPeriodEnd[_token]` is also initialized on the first call to this token.
-        if (currentPeriodEnd[_token] < block.timestamp) {
-            currentPeriodEnd[_token] = block.timestamp + periodDuration;
-            _currentTotal = _amount;
-            _currentUser = _amount;
-        } else {
-            _currentTotal = _totalAmount.currentPeriodAmount + _amount;
-            _currentUser = _userAmount.currentPeriodAmount + _amount;
-        }
+        uint256 _currentPeriodStart = (block.timestamp / periodDuration) * periodDuration;
 
         // check total limit, `0` means no limit at all.
-        if (_totalAmount.limit != 0 && _currentTotal > _totalAmount.limit) {
+        uint256 _currentTotal;
+        TokenAmount memory _currentPeriod = currentPeriod[_token];
+        if (_currentPeriod.lastUpdateTs < _currentPeriodStart) {
+            _currentTotal = _amount;
+        } else {
+            _currentTotal = _currentPeriod.amount + _amount;
+        }
+        if (_currentPeriod.limit != 0 && _currentTotal > _currentPeriod.limit) {
             revert ExceedTotalLimit(_token);
         }
 
         // check user limit, `0` means no limit at all.
+        uint256 _currentUser;
+        TokenAmount memory _userCurrentPeriod = userCurrentPeriod[_token][_sender];
+        if (_userCurrentPeriod.lastUpdateTs < _currentPeriodStart) {
+            _currentUser = _amount;
+        } else {
+            _currentUser = _userCurrentPeriod.amount + _amount;
+        }
+
         uint256 _userLimit = defaultUserLimit[_token];
-        if (_userAmount.limit != 0) {
-            _userLimit = _userAmount.limit;
+        if (_userCurrentPeriod.limit != 0) {
+            _userLimit = _userCurrentPeriod.limit;
         }
         if (_userLimit != 0 && _currentUser > _userLimit) {
             revert ExceedUserLimit(_token);
         }
 
-        totalAmount[_token] = _totalAmount;
-        userAmount[_token][_sender] = _userAmount;
+        _currentPeriod.lastUpdateTs = uint48(block.timestamp);
+        _currentPeriod.amount = SafeCast.toUint96(_currentTotal);
+
+        _userCurrentPeriod.lastUpdateTs = uint48(block.timestamp);
+        _userCurrentPeriod.amount = SafeCast.toUint96(_currentUser);
+
+        currentPeriod[_token] = _currentPeriod;
+        userCurrentPeriod[_token][_sender] = _userCurrentPeriod;
     }
 
     /************************
@@ -131,13 +140,13 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
 
     /// @notice Update the total token amount limit.
     /// @param _newTotalLimit The new total limit.
-    function updateTotalLimit(address _token, uint128 _newTotalLimit) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateTotalLimit(address _token, uint96 _newTotalLimit) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_newTotalLimit == 0) {
             revert TotalLimitIsZero(_token);
         }
 
-        uint256 _oldTotalLimit = totalAmount[_token].limit;
-        totalAmount[_token].limit = _newTotalLimit;
+        uint256 _oldTotalLimit = currentPeriod[_token].limit;
+        currentPeriod[_token].limit = _newTotalLimit;
 
         emit UpdateTotalLimit(_token, _oldTotalLimit, _newTotalLimit);
     }
@@ -167,10 +176,10 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
     function updateCustomUserLimit(
         address _token,
         address _account,
-        uint128 _newLimit
+        uint96 _newLimit
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        uint256 _oldLimit = userAmount[_token][_account].limit;
-        userAmount[_token][_account].limit = _newLimit;
+        uint256 _oldLimit = userCurrentPeriod[_token][_account].limit;
+        userCurrentPeriod[_token][_account].limit = _newLimit;
 
         emit UpdateCustomUserLimit(_token, _account, _oldLimit, _newLimit);
     }

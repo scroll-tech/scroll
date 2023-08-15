@@ -16,10 +16,12 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
      ***********/
 
     struct TokenAmount {
+        // The timestamp when the amount is updated.
+        uint64 lastUpdateTs;
         // The ETH limit in wei.
-        uint128 limit;
+        uint96 limit;
         // The amount of ETH in current period.
-        uint128 currentPeriodAmount;
+        uint96 amount;
     }
 
     /*************
@@ -27,6 +29,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
      *************/
 
     /// @notice The period length in seconds.
+    /// @dev The time frame for the `k`-th period is `[periodDuration * k, periodDuration * (k + 1))`.
     uint256 public immutable periodDuration;
 
     /// @notice The address of ETH spender.
@@ -36,20 +39,14 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
      * Variables *
      *************/
 
-    /// @notice The time at which the current period ends at.
-    uint256 public currentPeriodEnd;
-
-    /// @notice The total token amount limit.
-    uint256 public totalLimit;
-
-    /// @notice The total amounts used in current period.
-    uint256 public currentPeriodAmount;
+    /// @notice The token amount used in current period.
+    TokenAmount public currentPeriod;
 
     /// @notice The default token amount limit per user.
     uint256 public defaultUserLimit;
 
     /// @notice Mapping from user address to the amounts used in current period and custom token amount limit.
-    mapping(address => TokenAmount) public userAmount;
+    mapping(address => TokenAmount) public userCurrentPeriod;
 
     /***************
      * Constructor *
@@ -58,7 +55,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
     constructor(
         uint256 _periodDuration,
         address _spender,
-        uint256 _totalLimit,
+        uint96 _totalLimit,
         uint256 _defaultUserLimit
     ) {
         if (_periodDuration == 0) {
@@ -76,9 +73,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
         periodDuration = _periodDuration;
         spender = _spender;
 
-        currentPeriodEnd = block.timestamp + _periodDuration;
-
-        totalLimit = _totalLimit;
+        currentPeriod.limit = _totalLimit;
         defaultUserLimit = _defaultUserLimit;
     }
 
@@ -90,9 +85,9 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
     /// @param _account The address of the user to query.
     function getUserCustomLimit(address _account) external view returns (uint256) {
         uint256 _userLimit = defaultUserLimit;
-        TokenAmount memory _userAmount = userAmount[_account];
-        if (_userAmount.limit != 0) {
-            _userLimit = _userAmount.limit;
+        TokenAmount memory _userCurrentPeriod = userCurrentPeriod[_account];
+        if (_userCurrentPeriod.limit != 0) {
+            _userLimit = _userCurrentPeriod.limit;
         }
         return _userLimit;
     }
@@ -106,40 +101,48 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
         if (msg.sender != spender) {
             revert CallerNotSpender();
         }
-
         if (_amount == 0) return;
 
-        uint256 _currentTotal;
-        uint256 _currentUser;
-
-        TokenAmount memory _userAmount = userAmount[_sender];
-        if (currentPeriodEnd < block.timestamp) {
-            currentPeriodEnd = block.timestamp + periodDuration;
-            _currentTotal = _amount;
-            _currentUser = _amount;
-        } else {
-            _currentTotal = currentPeriodAmount + _amount;
-            _currentUser = _userAmount.currentPeriodAmount + _amount;
-        }
+        uint256 _currentPeriodStart = (block.timestamp / periodDuration) * periodDuration;
 
         // check total limit
-        if (_currentTotal > totalLimit) {
+        uint256 _currentTotal;
+        TokenAmount memory _currentPeriod = currentPeriod;
+
+        if (_currentPeriod.lastUpdateTs < _currentPeriodStart) {
+            _currentTotal = _amount;
+        } else {
+            _currentTotal = _currentPeriod.amount + _amount;
+        }
+        if (_currentTotal > _currentPeriod.limit) {
             revert ExceedTotalLimit();
         }
 
         // check user limit
+        uint256 _currentUser;
+        TokenAmount memory _userCurrentPeriod = userCurrentPeriod[_sender];
+        if (_userCurrentPeriod.lastUpdateTs < _currentPeriodStart) {
+            _currentUser = _amount;
+        } else {
+            _currentUser = _userCurrentPeriod.amount + _amount;
+        }
+
         uint256 _userLimit = defaultUserLimit;
-        if (_userAmount.limit != 0) {
-            _userLimit = _userAmount.limit;
+        if (_userCurrentPeriod.limit != 0) {
+            _userLimit = _userCurrentPeriod.limit;
         }
         if (_currentUser > _userLimit) {
             revert ExceedUserLimit();
         }
 
-        _userAmount.currentPeriodAmount = SafeCast.toUint128(_currentUser);
+        _currentPeriod.lastUpdateTs = uint48(block.timestamp);
+        _currentPeriod.amount = SafeCast.toUint96(_currentTotal);
 
-        currentPeriodAmount = _currentTotal;
-        userAmount[_sender] = _userAmount;
+        _userCurrentPeriod.lastUpdateTs = uint48(block.timestamp);
+        _userCurrentPeriod.amount = SafeCast.toUint96(_currentUser);
+
+        currentPeriod = _currentPeriod;
+        userCurrentPeriod[_sender] = _userCurrentPeriod;
     }
 
     /************************
@@ -148,13 +151,13 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
 
     /// @notice Update the total token amount limit.
     /// @param _newTotalLimit The new total limit.
-    function updateTotalLimit(uint128 _newTotalLimit) external onlyOwner {
+    function updateTotalLimit(uint96 _newTotalLimit) external onlyOwner {
         if (_newTotalLimit == 0) {
             revert TotalLimitIsZero();
         }
 
-        uint256 _oldTotalLimit = totalLimit;
-        totalLimit = _newTotalLimit;
+        uint256 _oldTotalLimit = currentPeriod.limit;
+        currentPeriod.limit = _newTotalLimit;
 
         emit UpdateTotalLimit(_oldTotalLimit, _newTotalLimit);
     }
@@ -178,9 +181,9 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
     ///
     /// @param _account The address of the user.
     /// @param _newLimit The new custom limit for the user.
-    function updateCustomUserLimit(address _account, uint128 _newLimit) external onlyOwner {
-        uint256 _oldLimit = userAmount[_account].limit;
-        userAmount[_account].limit = _newLimit;
+    function updateCustomUserLimit(address _account, uint96 _newLimit) external onlyOwner {
+        uint256 _oldLimit = userCurrentPeriod[_account].limit;
+        userCurrentPeriod[_account].limit = _newLimit;
 
         emit UpdateCustomUserLimit(_account, _oldLimit, _newLimit);
     }
