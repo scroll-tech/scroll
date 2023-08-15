@@ -266,6 +266,9 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
         // As we are getting close to sunsetting the Alpha testnet,
         // we now auto-finalize every batch to enable withdrawals.
+        lastFinalizedBatchHash = publicInputHash;
+        finalizedBatches[_batch.batchIndex] = publicInputHash;
+        _batchInStorage.finalized = true;
         emit FinalizeBatch(publicInputHash);
 
         return publicInputHash;
