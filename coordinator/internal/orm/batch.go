@@ -41,6 +41,8 @@ type Batch struct {
 	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt          *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
 	ProofTimeSec      int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	TotalAttempts     int16      `json:"total_attempts" gorm:"column:total_attempts;default:0"`
+	ActiveAttempts    int16      `json:"active_attempts" gorm:"column:active_attempts;default:0"`
 
 	// rollup
 	RollupStatus   int16      `json:"rollup_status" gorm:"column:rollup_status;default:1"`
@@ -191,6 +193,8 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		BatchHeader:       batchHeader.Encode(),
 		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),
+		TotalAttempts:     0,
+		ActiveAttempts:    0,
 		RollupStatus:      int16(types.RollupPending),
 		OracleStatus:      int16(types.GasOraclePending),
 	}
@@ -275,28 +279,46 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	return nil
 }
 
-// UpdateUnassignedBatchReturning update the unassigned batch and return the update record
-func (o *Batch) UpdateUnassignedBatchReturning(ctx context.Context, limit int) ([]*Batch, error) {
-	if limit < 0 {
-		return nil, errors.New("limit must not be smaller than zero")
-	}
-	if limit == 0 {
-		return nil, nil
-	}
-
+// UpdateEarliestAvailableBatch atomically increments the attempts count for the earliest available chunk that meets the conditions.
+func (o *Batch) UpdateEarliestAvailableBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
-
-	subQueryDB := db.Model(&Batch{}).Select("index")
-	subQueryDB = subQueryDB.Where("proving_status = ? AND chunk_proofs_status = ?", types.ProvingTaskUnassigned, types.ChunkProofsStatusReady)
-	subQueryDB = subQueryDB.Order("index ASC")
-	subQueryDB = subQueryDB.Limit(limit)
-
 	var batches []*Batch
+	subQueryDB := db.Model(&Batch{})
+	subQueryDB = subQueryDB.Select("index")
+	// Lock the selected row to ensure atomic updates
+	subQueryDB = subQueryDB.Clauses(clause.Locking{Strength: "UPDATE"})
+	subQueryDB = subQueryDB.Where("total_attempts < ?", maxTotalAttempts)
+	subQueryDB = subQueryDB.Where("active_attempts < ?", maxActiveAttempts)
+	subQueryDB = subQueryDB.Where("chunk_proofs_status = ?", types.ChunkProofsStatusReady)
+	subQueryDB = subQueryDB.Order("index ASC")
+	subQueryDB = subQueryDB.Limit(1)
+
+	// Perform the update and return the modified chunk
 	db = db.Model(&batches).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
-	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
-	if err := db.Update("proving_status", types.ProvingTaskAssigned).Error; err != nil {
-		return nil, fmt.Errorf("Batch.UpdateUnassignedBatchReturning error: %w", err)
+	if err := db.Updates(map[string]interface{}{
+		"total_attempts":  gorm.Expr("total_attempts + ?", 1),
+		"active_attempts": gorm.Expr("active_attempts + ?", 1),
+	}).Error; err != nil {
+		return nil, fmt.Errorf("failed to select and update batch, max active attempts: %v, max total attempts: %v, err: %w",
+			maxActiveAttempts, maxTotalAttempts, err)
 	}
 	return batches, nil
+}
+
+// DecreaseActiveAttemptsByHash decrements the active_attempts of a batch given its hash.
+func (o *Batch) DecreaseActiveAttemptsByHash(ctx context.Context, batchHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash = ?", batchHash)
+
+	if err := db.UpdateColumn("active_attempts", gorm.Expr("active_attempts - ?", 1)).Error; err != nil {
+		return fmt.Errorf("Batch.DecreaseActiveAttemptsByHash error: %w, batch hash: %v", err, batchHash)
+	}
+
+	return nil
 }

@@ -37,6 +37,8 @@ type Chunk struct {
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
 	ProofTimeSec     int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	TotalAttempts    int16      `json:"total_attempts" gorm:"column:total_attempts;default:0"`
+	ActiveAttempts   int16      `json:"active_attempts" gorm:"column:active_attempts;default:0"`
 
 	// batch
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
@@ -175,6 +177,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		ParentChunkStateRoot:         parentChunkStateRoot,
 		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
+		TotalAttempts:                0,
+		ActiveAttempts:               0,
 	}
 
 	db := o.db

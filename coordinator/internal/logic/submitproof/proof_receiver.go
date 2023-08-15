@@ -157,7 +157,14 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 
 	if verifyErr != nil || !success {
 		m.verifierFailureTotal.WithLabelValues(proverVersion).Inc()
-		m.proofFailure(ctx, proofMsg.ID, pk, proofMsg)
+
+		if err = m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, message.ProofType(proverTask.TaskType),
+			proverTask.TaskID, proverTask.ProverPublicKey, types.ProverProofInvalid); err != nil {
+			log.Error("update prover task proving status failure",
+				"hash", proverTask.TaskID, "pubKey", proverTask.ProverPublicKey,
+				"prover proving status", types.ProverProofInvalid, "err", err)
+			return err
+		}
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
@@ -252,15 +259,6 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 		return ErrValidatorFailureTaskHaveVerifiedSuccess
 	}
 	return nil
-}
-
-func (m *ProofReceiverLogic) proofFailure(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) {
-	log.Info("proof failure update proof status", "hash", hash, "public key", pubKey,
-		"proof type", proofMsg.Type.String(), "status", types.ProvingTaskFailed.String())
-
-	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsg, types.ProvingTaskFailed, 0); err != nil {
-		log.Error("failed to updated proof status ProvingTaskFailed", "hash", hash, "pubKey", pubKey, "error", err)
-	}
 }
 
 func (m *ProofReceiverLogic) proofRecover(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) {

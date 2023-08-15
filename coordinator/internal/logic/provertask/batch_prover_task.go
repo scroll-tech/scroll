@@ -81,7 +81,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
 	}
 
-	batchTasks, err := bp.batchOrm.UpdateUnassignedBatchReturning(ctx, 1)
+	// load and send a batch task
+	batchTasks, err := bp.batchOrm.UpdateEarliestAvailableBatch(
+		ctx, bp.cfg.ProverManager.ProversPerSession, bp.cfg.ProverManager.SessionAttempts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
 	}
@@ -96,11 +98,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	batchTask := batchTasks[0]
 	log.Info("start batch proof generation session", "id", batchTask.Hash, "public key", publicKey, "prover name", proverName)
-
-	if !bp.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
-		bp.batchAttemptsExceedTotal.Inc()
-		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
-	}
 
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,

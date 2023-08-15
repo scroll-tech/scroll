@@ -306,17 +306,17 @@ func testInvalidProof(t *testing.T) {
 		tickStop = time.Tick(time.Minute)
 	)
 
-	var chunkProofStatus types.ProvingStatus
-	var batchProofStatus types.ProvingStatus
+	var chunkProofStatus types.ProverProveStatus
+	var batchProofStatus types.ProverProveStatus
 
 	for {
 		select {
 		case <-tick:
-			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
+			chunkProofStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
-			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
+			batchProofStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), batch.Hash)
 			assert.NoError(t, err)
-			if chunkProofStatus == types.ProvingTaskFailed && batchProofStatus == types.ProvingTaskFailed {
+			if chunkProofStatus == types.ProverProofInvalid && batchProofStatus == types.ProverProofInvalid {
 				return
 			}
 		case <-tickStop:
@@ -427,15 +427,6 @@ func testTimeoutProof(t *testing.T) {
 	batchProver1 := newMockProver(t, "prover_test"+strconv.Itoa(1), coordinatorURL, message.ProofTypeBatch)
 	proverBatchTask := batchProver1.getProverTask(t, message.ProofTypeBatch)
 	assert.NotNil(t, proverBatchTask)
-
-	// verify proof status, it should be assigned, because prover didn't send any proof
-	chunkProofStatus, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
-	assert.NoError(t, err)
-	assert.Equal(t, chunkProofStatus, types.ProvingTaskAssigned)
-
-	batchProofStatus, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
-	assert.NoError(t, err)
-	assert.Equal(t, batchProofStatus, types.ProvingTaskAssigned)
 
 	// wait coordinator to reset the prover task proving status
 	time.Sleep(time.Duration(conf.ProverManager.CollectionTimeSec*2) * time.Second)

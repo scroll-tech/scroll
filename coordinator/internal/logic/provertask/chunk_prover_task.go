@@ -82,8 +82,9 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
 	}
 
-	// load and send chunk tasks
-	chunkTasks, err := cp.chunkOrm.UpdateUnassignedChunkReturning(ctx, getTaskParameter.ProverHeight, 1)
+	// load and send a chunk task
+	chunkTasks, err := cp.chunkOrm.UpdateEarliestAvailableChunk(
+		ctx, getTaskParameter.ProverHeight, cp.cfg.ProverManager.ProversPerSession, cp.cfg.ProverManager.SessionAttempts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned chunk proving tasks, error:%w", err)
 	}
@@ -99,11 +100,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	chunkTask := chunkTasks[0]
 
 	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", publicKey, "prover name", proverName)
-
-	if !cp.checkAttemptsExceeded(chunkTask.Hash, message.ProofTypeChunk) {
-		cp.chunkAttemptsExceedTotal.Inc()
-		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
-	}
 
 	proverTask := orm.ProverTask{
 		TaskID:          chunkTask.Hash,

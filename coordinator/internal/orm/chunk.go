@@ -40,6 +40,8 @@ type Chunk struct {
 	ProverAssignedAt *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt         *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
 	ProofTimeSec     int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	TotalAttempts    int16      `json:"total_attempts" gorm:"column:total_attempts;default:0"`
+	ActiveAttempts   int16      `json:"active_attempts" gorm:"column:active_attempts;default:0"`
 
 	// batch
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
@@ -259,6 +261,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		ParentChunkStateRoot:         parentChunkStateRoot,
 		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
+		TotalAttempts:                0,
+		ActiveAttempts:               0,
 	}
 
 	db := o.db
@@ -341,32 +345,46 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 	return nil
 }
 
-// UpdateUnassignedChunkReturning update the unassigned batch which end_block_number <= height and return the update record
-func (o *Chunk) UpdateUnassignedChunkReturning(ctx context.Context, height, limit int) ([]*Chunk, error) {
-	if height <= 0 {
-		return nil, errors.New("Chunk.UpdateUnassignedBatchReturning error: height must be larger than zero")
-	}
-	if limit < 0 {
-		return nil, errors.New("Chunk.UpdateUnassignedBatchReturning error: limit must not be smaller than zero")
-	}
-	if limit == 0 {
-		return nil, nil
-	}
-
+// UpdateEarliestAvailableChunk atomically increments the attempts count for the earliest available chunk that meets the conditions.
+func (o *Chunk) UpdateEarliestAvailableChunk(ctx context.Context, proverBlockHeight int, maxActiveAttempts, maxTotalAttempts uint8) ([]*Chunk, error) {
 	db := o.db.WithContext(ctx)
-
-	subQueryDB := db.Model(&Chunk{}).Select("index")
-	subQueryDB = subQueryDB.Where("proving_status = ?", types.ProvingTaskUnassigned)
-	subQueryDB = subQueryDB.Where("end_block_number <= ?", height)
-	subQueryDB = subQueryDB.Order("index ASC")
-	subQueryDB = subQueryDB.Limit(limit)
-
 	var chunks []*Chunk
+	subQueryDB := db.Model(&Chunk{})
+	subQueryDB = subQueryDB.Select("index")
+	// Lock the selected row to ensure atomic updates
+	subQueryDB = subQueryDB.Clauses(clause.Locking{Strength: "UPDATE"})
+	subQueryDB = subQueryDB.Where("total_attempts < ?", maxTotalAttempts)
+	subQueryDB = subQueryDB.Where("active_attempts < ?", maxActiveAttempts)
+	subQueryDB = subQueryDB.Where("end_block_number < ?", proverBlockHeight)
+	subQueryDB = subQueryDB.Order("index ASC")
+	subQueryDB = subQueryDB.Limit(1)
+
+	// Perform the update and return the modified chunk
 	db = db.Model(&chunks).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
-	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
-	if err := db.Update("proving_status", types.ProvingTaskAssigned).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.UpdateUnassignedBatchReturning error: %w", err)
+	if err := db.Updates(map[string]interface{}{
+		"total_attempts":  gorm.Expr("total_attempts + ?", 1),
+		"active_attempts": gorm.Expr("active_attempts + ?", 1),
+	}).Error; err != nil {
+		return nil, fmt.Errorf("failed to update chunk, prover height: %v, max attempts: %v/%v, err: %w",
+			proverBlockHeight, maxActiveAttempts, maxTotalAttempts, err)
 	}
 	return chunks, nil
+}
+
+// DecreaseActiveAttemptsByHash decrements the active_attempts of a chunk given its hash.
+func (o *Chunk) DecreaseActiveAttemptsByHash(ctx context.Context, chunkHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash = ?", chunkHash)
+
+	if err := db.UpdateColumn("active_attempts", gorm.Expr("active_attempts - ?", 1)).Error; err != nil {
+		return fmt.Errorf("Chunk.DecreaseActiveAttemptsByHash error: %w, chunk hash: %v", err, chunkHash)
+	}
+
+	return nil
 }

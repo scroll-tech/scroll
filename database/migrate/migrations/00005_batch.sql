@@ -22,6 +22,8 @@ create table batch
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
     proof_time_sec          INTEGER         DEFAULT NULL,
+    total_attempts          SMALLINT        NOT NULL DEFAULT 0,
+    active_attempts         SMALLINT        NOT NULL DEFAULT 0,
 
 -- rollup
     rollup_status           SMALLINT        NOT NULL DEFAULT 1,
@@ -54,6 +56,12 @@ on column batch.proving_status is 'undefined, unassigned, assigned, proved, veri
 
 comment
 on column batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, commit_failed, finalize_failed';
+
+create index batch_proving_task_total_attempts_index
+on batch (total_attempts) where deleted_at IS NULL;
+
+create index batch_proving_task_active_attempts_index
+on batch (active_attempts) where deleted_at IS NULL;
 
 -- +goose StatementEnd
 

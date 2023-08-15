@@ -24,6 +24,8 @@ create table chunk
     prover_assigned_at                TIMESTAMP(0)    DEFAULT NULL,
     proved_at                         TIMESTAMP(0)    DEFAULT NULL,
     proof_time_sec                    INTEGER         DEFAULT NULL,
+    total_attempts                    SMALLINT        NOT NULL DEFAULT 0,
+    active_attempts                   SMALLINT        NOT NULL DEFAULT 0,
 
 -- batch
     batch_hash                        VARCHAR         DEFAULT NULL,
@@ -49,6 +51,12 @@ on chunk (hash) where deleted_at IS NULL;
 
 create index batch_hash_index
 on chunk (batch_hash) where deleted_at IS NULL;
+
+create index chunk_proving_task_total_attempts_index
+on chunk (total_attempts) where deleted_at IS NULL;
+
+create index chunk_proving_task_active_attempts_index
+on chunk (active_attempts) where deleted_at IS NULL;
 
 -- +goose StatementEnd
 
