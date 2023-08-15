@@ -3,7 +3,6 @@ package message
 import (
 	"encoding/hex"
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -16,10 +15,9 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 	authMsg := &AuthMsg{
 		Identity: &Identity{
-			Name:      "testName",
-			Timestamp: uint32(time.Now().Unix()),
-			Version:   "testVersion",
-			Token:     "testToken",
+			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzgxNzUsIm9yaWdfaWF0IjoxNjkxMDM0NTc1fQ.HybBMsEJFhyZqtIa2iVcHUP7CEFttf708jmTMAImAWA",
+			ProverName:    "test",
+			ProverVersion: "v1.0.0",
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(privkey))
@@ -48,16 +46,15 @@ func TestGenerateToken(t *testing.T) {
 
 func TestIdentityHash(t *testing.T) {
 	identity := &Identity{
-		Name:       "testName",
-		RollerType: BasicProve,
-		Timestamp:  uint32(1622428800),
-		Version:    "testVersion",
-		Token:      "testToken",
+		Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2OTEwMzM0MTksIm9yaWdfaWF0IjoxNjkxMDI5ODE5fQ.EhkLZsj__rNPVC3ZDYBtvdh0nB8mmM_Hl82hObaIWOs",
+		ProverName:    "test",
+		ProverVersion: "v1.0.0",
 	}
+
 	hash, err := identity.Hash()
 	assert.NoError(t, err)
 
-	expectedHash := "b3f152958dc881446fc131a250526139d909710c6b91b4d3281ceded28ce2e32"
+	expectedHash := "83f5e0ad023e9c1de639ab07b9b4cb972ec9dbbd2524794c533a420a5b137721"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
@@ -68,14 +65,15 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 	proofMsg := &ProofMsg{
 		ProofDetail: &ProofDetail{
 			ID:     "testID",
-			Type:   BasicProve,
+			Type:   ProofTypeChunk,
 			Status: StatusOk,
-			Proof: &AggProof{
-				Proof:      []byte("testProof"),
-				Instance:   []byte("testInstance"),
-				FinalPair:  []byte("testFinalPair"),
-				Vk:         []byte("testVk"),
-				BlockCount: 1,
+			ChunkProof: &ChunkProof{
+				StorageTrace: []byte("testStorageTrace"),
+				Protocol:     []byte("testProtocol"),
+				Proof:        []byte("testProof"),
+				Instances:    []byte("testInstance"),
+				Vk:           []byte("testVk"),
+				ChunkInfo:    nil,
 			},
 			Error: "testError",
 		},
@@ -96,32 +94,33 @@ func TestProofMessageSignVerifyPublicKey(t *testing.T) {
 func TestProofDetailHash(t *testing.T) {
 	proofDetail := &ProofDetail{
 		ID:     "testID",
-		Type:   BasicProve,
+		Type:   ProofTypeChunk,
 		Status: StatusOk,
-		Proof: &AggProof{
-			Proof:      []byte("testProof"),
-			Instance:   []byte("testInstance"),
-			FinalPair:  []byte("testFinalPair"),
-			Vk:         []byte("testVk"),
-			BlockCount: 1,
+		ChunkProof: &ChunkProof{
+			StorageTrace: []byte("testStorageTrace"),
+			Protocol:     []byte("testProtocol"),
+			Proof:        []byte("testProof"),
+			Instances:    []byte("testInstance"),
+			Vk:           []byte("testVk"),
+			ChunkInfo:    nil,
 		},
 		Error: "testError",
 	}
 	hash, err := proofDetail.Hash()
 	assert.NoError(t, err)
-	expectedHash := "fdfaae752d6fd72a7fdd2ad034ef504d3acda9e691a799323cfa6e371684ba2b"
+	expectedHash := "72a00232c1fcb100b1b67e6d12cd449e5d2d890e3a66e50f4c23499d4990766f"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
 func TestProveTypeString(t *testing.T) {
-	basicProve := ProveType(0)
-	assert.Equal(t, "Basic Prove", basicProve.String())
+	proofTypeChunk := ProofType(1)
+	assert.Equal(t, "proof type chunk", proofTypeChunk.String())
 
-	aggregatorProve := ProveType(1)
-	assert.Equal(t, "Aggregator Prove", aggregatorProve.String())
+	proofTypeBatch := ProofType(2)
+	assert.Equal(t, "proof type batch", proofTypeBatch.String())
 
-	illegalProve := ProveType(3)
-	assert.Equal(t, "Illegal Prove type", illegalProve.String())
+	illegalProof := ProofType(3)
+	assert.Equal(t, "illegal proof type: 3", illegalProof.String())
 }
 
 func TestProofMsgPublicKey(t *testing.T) {
@@ -131,14 +130,15 @@ func TestProofMsgPublicKey(t *testing.T) {
 	proofMsg := &ProofMsg{
 		ProofDetail: &ProofDetail{
 			ID:     "testID",
-			Type:   BasicProve,
+			Type:   ProofTypeChunk,
 			Status: StatusOk,
-			Proof: &AggProof{
-				Proof:      []byte("testProof"),
-				Instance:   []byte("testInstance"),
-				FinalPair:  []byte("testFinalPair"),
-				Vk:         []byte("testVk"),
-				BlockCount: 1,
+			ChunkProof: &ChunkProof{
+				StorageTrace: []byte("testStorageTrace"),
+				Protocol:     []byte("testProtocol"),
+				Proof:        []byte("testProof"),
+				Instances:    []byte("testInstance"),
+				Vk:           []byte("testVk"),
+				ChunkInfo:    nil,
 			},
 			Error: "testError",
 		},

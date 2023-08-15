@@ -15,8 +15,8 @@ func TestEventSignature(t *testing.T) {
 	assert.Equal(L1RelayedMessageEventSignature, common.HexToHash("4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"))
 	assert.Equal(L1FailedRelayedMessageEventSignature, common.HexToHash("99d0e048484baa1b1540b1367cb128acd7ab2946d1ed91ec10e3c85e4bf51b8f"))
 
-	assert.Equal(L1CommitBatchEventSignature, common.HexToHash("2cdc615c74452778c0fb6184735e014c13aad2b62774fe0b09bd1dcc2cc14a62"))
-	assert.Equal(L1FinalizeBatchEventSignature, common.HexToHash("9d3058a3cb9739a2527f22dd9a4138065844037d3004254952e2458d808cc364"))
+	assert.Equal(L1CommitBatchEventSignature, common.HexToHash("2c32d4ae151744d0bf0b9464a3e897a1d17ed2f1af71f7c9a75f12ce0d28238f"))
+	assert.Equal(L1FinalizeBatchEventSignature, common.HexToHash("26ba82f907317eedc97d0cbef23de76a43dd6edb563bdb6e9407645b950a7a2d"))
 
 	assert.Equal(L1QueueTransactionEventSignature, common.HexToHash("69cfcb8e6d4192b8aba9902243912587f37e550d75c1fa801491fce26717f37e"))
 

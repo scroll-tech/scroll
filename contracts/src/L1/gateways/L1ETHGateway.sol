@@ -1,24 +1,29 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
-
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+pragma solidity =0.8.16;
 
 import {IL2ETHGateway} from "../../L2/gateways/IL2ETHGateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ETHGateway} from "./IL1ETHGateway.sol";
 
+import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallback.sol";
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
+// solhint-disable avoid-low-level-calls
+
 /// @title L1ETHGateway
-/// @notice The `L1ETHGateway` is used to deposit ETH in layer 1 and
+/// @notice The `L1ETHGateway` is used to deposit ETH on layer 1 and
 /// finalize withdraw ETH from layer 2.
 /// @dev The deposited ETH tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// ETH will be transfer to the recipient directly.
-contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway {
+contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback {
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L1ETHGateway.
     /// @param _counterpart The address of L2ETHGateway in L2.
@@ -72,13 +77,28 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway {
 
         // @note can possible trigger reentrant call to messenger,
         // but it seems not a big problem.
-        // solhint-disable-next-line avoid-low-level-calls
         (bool _success, ) = _to.call{value: _amount}("");
         require(_success, "ETH transfer failed");
 
         _doCallback(_to, _data);
 
         emit FinalizeWithdrawETH(_from, _to, _amount, _data);
+    }
+
+    /// @inheritdoc IMessageDropCallback
+    function onDropMessage(bytes calldata _message) external payable virtual onlyInDropContext nonReentrant {
+        // _message should start with 0x232e8748  =>  finalizeDepositETH(address,address,uint256,bytes)
+        require(bytes4(_message[0:4]) == IL2ETHGateway.finalizeDepositETH.selector, "invalid selector");
+
+        // decode (receiver, amount)
+        (address _receiver, , uint256 _amount, ) = abi.decode(_message[4:], (address, address, uint256, bytes));
+
+        require(_amount == msg.value, "msg.value mismatch");
+
+        (bool _success, ) = _receiver.call{value: _amount}("");
+        require(_success, "ETH transfer failed");
+
+        emit RefundETH(_receiver, _amount);
     }
 
     /**********************
@@ -105,15 +125,9 @@ contract L1ETHGateway is Initializable, ScrollGatewayBase, IL1ETHGateway {
         }
 
         // 2. Generate message passed to L1ScrollMessenger.
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ETHGateway.finalizeDepositETH.selector,
-            _from,
-            _to,
-            _amount,
-            _data
-        );
+        bytes memory _message = abi.encodeCall(IL2ETHGateway.finalizeDepositETH, (_from, _to, _amount, _data));
 
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit, _from);
 
         emit DepositETH(_from, _to, _amount, _data);
     }

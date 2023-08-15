@@ -25,20 +25,20 @@ defaults:
     working-directory: 'bridge-history-api'
 
 jobs:
-  # check:
-  #   if: github.event.pull_request.draft == false
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Install Go
-  #     uses: actions/setup-go@v2
-  #     with:
-  #       go-version: 1.19.x
-  #   - name: Checkout code
-  #     uses: actions/checkout@v2
-  #   - name: Lint
-  #     run: |
-  #       rm -rf $HOME/.cache/golangci-lint
-  #       make lint
+  check:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.19.x
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Lint
+      run: |
+        rm -rf $HOME/.cache/golangci-lint
+        make lint
   test:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
@@ -51,7 +51,6 @@ jobs:
       uses: actions/checkout@v2
     - name: Test
       run: |
-        go get ./...
         make test
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3

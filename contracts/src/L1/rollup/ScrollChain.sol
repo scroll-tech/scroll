@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 import {IL1MessageQueue} from "./IL1MessageQueue.sol";
 import {IScrollChain} from "./IScrollChain.sol";
@@ -15,7 +16,7 @@ import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 
 /// @title ScrollChain
 /// @notice This contract maintains data for the Scroll rollup.
-contract ScrollChain is OwnableUpgradeable, IScrollChain {
+contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /**********
      * Events *
      **********/
@@ -33,7 +34,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
     /// @notice Emitted when the address of rollup verifier is updated.
     /// @param oldVerifier The address of old rollup verifier.
     /// @param newVerifier The address of new rollup verifier.
-    event UpdateVerifier(address oldVerifier, address newVerifier);
+    event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
 
     /// @notice Emitted when the value of `maxNumL2TxInChunk` is updated.
     /// @param oldMaxNumL2TxInChunk The old value of `maxNumL2TxInChunk`.
@@ -98,6 +99,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
      ***************/
 
     constructor(uint64 _chainId) {
+        _disableInitializers();
+
         layer2ChainId = _chainId;
     }
 
@@ -153,8 +156,8 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         committedBatches[0] = _batchHash;
         finalizedStateRoots[0] = _stateRoot;
 
-        emit CommitBatch(_batchHash);
-        emit FinalizeBatch(_batchHash, _stateRoot, bytes32(0));
+        emit CommitBatch(0, _batchHash);
+        emit FinalizeBatch(0, _batchHash, _stateRoot, bytes32(0));
     }
 
     /// @inheritdoc IScrollChain
@@ -163,7 +166,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes calldata _parentBatchHeader,
         bytes[] memory _chunks,
         bytes calldata _skippedL1MessageBitmap
-    ) external override OnlySequencer {
+    ) external override OnlySequencer whenNotPaused {
         require(_version == 0, "invalid version");
 
         // check whether the batch is empty
@@ -248,10 +251,12 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89 + _skippedL1MessageBitmap.length);
 
         committedBatches[_batchIndex] = _batchHash;
-        emit CommitBatch(_batchHash);
+        emit CommitBatch(_batchIndex, _batchHash);
     }
 
     /// @inheritdoc IScrollChain
+    /// @dev If the owner want to revert a sequence of batches by sending multiple transactions,
+    ///      make sure to revert recent batches first.
     function revertBatch(bytes calldata _batchHeader, uint256 _count) external onlyOwner {
         require(_count > 0, "count must be nonzero");
 
@@ -260,18 +265,20 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         // check batch hash
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
         require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
+        // make sure no gap is left when reverting from the ending to the beginning.
+        require(committedBatches[_batchIndex + _count] == bytes32(0), "reverting must start from the ending");
 
         // check finalization
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
 
         while (_count > 0) {
+            emit RevertBatch(_batchIndex, _batchHash);
+
             committedBatches[_batchIndex] = bytes32(0);
             unchecked {
                 _batchIndex += 1;
                 _count -= 1;
             }
-
-            emit RevertBatch(_batchHash);
 
             _batchHash = committedBatches[_batchIndex];
             if (_batchHash == bytes32(0)) break;
@@ -285,7 +292,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         bytes32 _postStateRoot,
         bytes32 _withdrawRoot,
         bytes calldata _aggrProof
-    ) external override OnlyProver {
+    ) external override OnlyProver whenNotPaused {
         require(_prevStateRoot != bytes32(0), "previous state root is zero");
         require(_postStateRoot != bytes32(0), "new state root is zero");
 
@@ -342,31 +349,43 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
             }
         }
 
-        emit FinalizeBatch(_batchHash, _postStateRoot, _withdrawRoot);
+        emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
     }
 
     /************************
      * Restricted Functions *
      ************************/
 
-    /// @notice Update the status of sequencer.
-    /// @dev This function can only called by contract owner.
-    /// @param _account The address of account to update.
-    /// @param _status The status of the account to update.
-    function updateSequencer(address _account, bool _status) external onlyOwner {
-        isSequencer[_account] = _status;
+    /// @notice Add an account to the sequencer list.
+    /// @param _account The address of account to add.
+    function addSequencer(address _account) external onlyOwner {
+        isSequencer[_account] = true;
 
-        emit UpdateSequencer(_account, _status);
+        emit UpdateSequencer(_account, true);
     }
 
-    /// @notice Update the status of prover.
-    /// @dev This function can only called by contract owner.
-    /// @param _account The address of account to update.
-    /// @param _status The status of the account to update.
-    function updateProver(address _account, bool _status) external onlyOwner {
-        isProver[_account] = _status;
+    /// @notice Remove an account from the sequencer list.
+    /// @param _account The address of account to remove.
+    function removeSequencer(address _account) external onlyOwner {
+        isSequencer[_account] = false;
 
-        emit UpdateProver(_account, _status);
+        emit UpdateSequencer(_account, false);
+    }
+
+    /// @notice Add an account to the prover list.
+    /// @param _account The address of account to add.
+    function addProver(address _account) external onlyOwner {
+        isProver[_account] = true;
+
+        emit UpdateProver(_account, true);
+    }
+
+    /// @notice Add an account from the prover list.
+    /// @param _account The address of account to remove.
+    function removeProver(address _account) external onlyOwner {
+        isProver[_account] = false;
+
+        emit UpdateProver(_account, false);
     }
 
     /// @notice Update the address verifier contract.
@@ -385,6 +404,16 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
         maxNumL2TxInChunk = _maxNumL2TxInChunk;
 
         emit UpdateMaxNumL2TxInChunk(_oldMaxNumL2TxInChunk, _maxNumL2TxInChunk);
+    }
+
+    /// @notice Pause the contract
+    /// @param _status The pause status to update.
+    function setPause(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 
     /**********************
@@ -463,6 +492,7 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
 
             // concatenate l2 transaction hashes
             uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+            require(_numTransactionsInBlock >= _numL1MessagesInBlock, "num txs less than num L1 msgs");
             for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
                 bytes32 txHash;
                 (txHash, l2TxPtr) = ChunkCodec.loadL2TxHash(l2TxPtr);
@@ -541,6 +571,10 @@ contract ScrollChain is OwnableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedInBatch += 1;
                 _totalL1MessagesPoppedOverall += 1;
             }
+
+            // check last L1 message is not skipped, _totalL1MessagesPoppedInBatch must > 0
+            uint256 rem = (_totalL1MessagesPoppedInBatch - 1) & 0xff;
+            require(((_bitmap >> rem) & 1) == 0, "cannot skip last L1 message");
         }
 
         return _ptr;

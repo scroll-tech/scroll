@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
-
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+pragma solidity =0.8.16;
 
 import {IL1ETHGateway} from "../../L1/gateways/IL1ETHGateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
@@ -11,14 +9,17 @@ import {IL2ETHGateway} from "./IL2ETHGateway.sol";
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L2ETHGateway
-/// @notice The `L2ETHGateway` contract is used to withdraw ETH token in layer 2 and
+/// @notice The `L2ETHGateway` contract is used to withdraw ETH token on layer 2 and
 /// finalize deposit ETH from layer 1.
 /// @dev The ETH are not held in the gateway. The ETH will be sent to the `L2ScrollMessenger` contract.
 /// On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then transfer to recipient.
-contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
+contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L2ETHGateway.
     /// @param _counterpart The address of L1ETHGateway in L2.
@@ -97,13 +98,7 @@ contract L2ETHGateway is Initializable, ScrollGatewayBase, IL2ETHGateway {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
 
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ETHGateway.finalizeWithdrawETH.selector,
-            _from,
-            _to,
-            _amount,
-            _data
-        );
+        bytes memory _message = abi.encodeCall(IL1ETHGateway.finalizeWithdrawETH, (_from, _to, _amount, _data));
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit);
 
         emit WithdrawETH(_from, _to, _amount, _data);

@@ -2,16 +2,7 @@
 /* eslint-disable node/no-missing-import */
 import { expect } from "chai";
 import { BigNumber, constants } from "ethers";
-import {
-  concat,
-  getAddress,
-  hexlify,
-  keccak256,
-  randomBytes,
-  RLP,
-  stripZeros,
-  TransactionTypes,
-} from "ethers/lib/utils";
+import { concat, getAddress, hexlify, keccak256, randomBytes, RLP, stripZeros } from "ethers/lib/utils";
 import { ethers } from "hardhat";
 import { L1MessageQueue, L2GasPriceOracle } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
@@ -26,15 +17,30 @@ describe("L1MessageQueue", async () => {
   let oracle: L2GasPriceOracle;
   let queue: L1MessageQueue;
 
+  const deployProxy = async (name: string, admin: string): Promise<string> => {
+    const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
+    const Factory = await ethers.getContractFactory(name, deployer);
+    const impl = await Factory.deploy();
+    await impl.deployed();
+    const proxy = await TransparentUpgradeableProxy.deploy(impl.address, admin, "0x");
+    await proxy.deployed();
+    return proxy.address;
+  };
+
   beforeEach(async () => {
     [deployer, scrollChain, messenger, gateway, signer] = await ethers.getSigners();
 
-    const L1MessageQueue = await ethers.getContractFactory("L1MessageQueue", deployer);
-    queue = await L1MessageQueue.deploy();
-    await queue.deployed();
+    const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin", deployer);
+    const admin = await ProxyAdmin.deploy();
+    await admin.deployed();
 
-    const L2GasPriceOracle = await ethers.getContractFactory("L2GasPriceOracle", deployer);
-    oracle = await L2GasPriceOracle.deploy();
+    queue = await ethers.getContractAt("L1MessageQueue", await deployProxy("L1MessageQueue", admin.address), deployer);
+
+    oracle = await ethers.getContractAt(
+      "L2GasPriceOracle",
+      await deployProxy("L2GasPriceOracle", admin.address),
+      deployer
+    );
 
     await oracle.initialize(21000, 0, 8, 16);
     await queue.initialize(messenger.address, scrollChain.address, gateway.address, oracle.address, 10000000);
@@ -290,6 +296,57 @@ describe("L1MessageQueue", async () => {
         expect(BigNumber.from(await queue.getCrossDomainMessage(i))).to.gt(constants.Zero);
       }
       for (let i = 65; i < 80; i++) {
+        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+      }
+    });
+  });
+
+  context("#dropCrossDomainMessage", async () => {
+    it("should revert, when non-messenger call", async () => {
+      await expect(queue.connect(signer).dropCrossDomainMessage(0)).to.revertedWith(
+        "Only callable by the L1ScrollMessenger"
+      );
+    });
+
+    it("should revert, when drop executed message", async () => {
+      // append 10 messages
+      for (let i = 0; i < 10; i++) {
+        await queue.connect(messenger).appendCrossDomainMessage(constants.AddressZero, 1000000, "0x");
+      }
+      // pop 5 messages with no skip
+      await expect(queue.connect(scrollChain).popCrossDomainMessage(0, 5, 0))
+        .to.emit(queue, "DequeueTransaction")
+        .withArgs(0, 5, 0);
+      for (let i = 0; i < 5; i++) {
+        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+      }
+      expect(await queue.pendingQueueIndex()).to.eq(5);
+
+      for (let i = 0; i < 5; i++) {
+        await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.revertedWith(
+          "message already dropped or executed"
+        );
+      }
+
+      // drop pending message
+      for (let i = 6; i < 10; i++) {
+        await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.revertedWith("cannot drop pending message");
+      }
+    });
+
+    it("should succeed", async () => {
+      // append 10 messages
+      for (let i = 0; i < 10; i++) {
+        await queue.connect(messenger).appendCrossDomainMessage(constants.AddressZero, 1000000, "0x");
+      }
+      // pop 10 messages, all skipped
+      await expect(queue.connect(scrollChain).popCrossDomainMessage(0, 10, 0x3ff))
+        .to.emit(queue, "DequeueTransaction")
+        .withArgs(0, 10, 0x3ff);
+
+      for (let i = 0; i < 10; i++) {
+        expect(BigNumber.from(await queue.getCrossDomainMessage(i))).to.gt(constants.Zero);
+        await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.emit(queue, "DropTransaction").withArgs(i);
         expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
       }
     });

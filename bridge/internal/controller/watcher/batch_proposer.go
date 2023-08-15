@@ -8,9 +8,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/types"
+
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 // BatchProposer proposes batches based on available unbatched chunks.
@@ -18,15 +19,16 @@ type BatchProposer struct {
 	ctx context.Context
 	db  *gorm.DB
 
-	batchOrm *orm.Batch
-	chunkOrm *orm.Chunk
-	l2Block  *orm.L2Block
+	batchOrm   *orm.Batch
+	chunkOrm   *orm.Chunk
+	l2BlockOrm *orm.L2Block
 
 	maxChunkNumPerBatch             uint64
 	maxL1CommitGasPerBatch          uint64
-	maxL1CommitCalldataSizePerBatch uint64
+	maxL1CommitCalldataSizePerBatch uint32
 	minChunkNumPerBatch             uint64
 	batchTimeoutSec                 uint64
+	gasCostIncreaseMultiplier       float64
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
@@ -36,12 +38,13 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		db:                              db,
 		batchOrm:                        orm.NewBatch(db),
 		chunkOrm:                        orm.NewChunk(db),
-		l2Block:                         orm.NewL2Block(db),
+		l2BlockOrm:                      orm.NewL2Block(db),
 		maxChunkNumPerBatch:             cfg.MaxChunkNumPerBatch,
 		maxL1CommitGasPerBatch:          cfg.MaxL1CommitGasPerBatch,
 		maxL1CommitCalldataSizePerBatch: cfg.MaxL1CommitCalldataSizePerBatch,
 		minChunkNumPerBatch:             cfg.MinChunkNumPerBatch,
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
+		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 	}
 }
 
@@ -92,18 +95,46 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	if len(dbChunks) == 0 {
-		log.Warn("No Unbatched Chunks")
 		return nil, nil
 	}
 
 	firstChunk := dbChunks[0]
 	totalL1CommitCalldataSize := firstChunk.TotalL1CommitCalldataSize
 	totalL1CommitGas := firstChunk.TotalL1CommitGas
-	var totalChunks uint64 = 1
+	totalChunks := uint64(1)
+	totalL1MessagePopped := firstChunk.TotalL1MessagesPoppedBefore + uint64(firstChunk.TotalL1MessagesPoppedInChunk)
+
+	parentBatch, err := p.batchOrm.GetLatestBatch(p.ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	getKeccakGas := func(size uint64) uint64 {
+		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+	}
+
+	// Add extra gas costs
+	totalL1CommitGas += 4 * 2100                                       // 4 one-time cold sload for commitBatch
+	totalL1CommitGas += 20000                                          // 1 time sstore
+	totalL1CommitGas += 16                                             // version in calldata
+	totalL1CommitGas += 16 * (32 * (totalL1MessagePopped + 255) / 256) // _skippedL1MessageBitmap in calldata
+
+	// adjusting gas:
+	// add 1 time cold sload (2100 gas) for L1MessageQueue
+	// add 1 time cold address access (2600 gas) for L1MessageQueue
+	// minus 1 time warm sload (100 gas) & 1 time warm address access (100 gas)
+	totalL1CommitGas += (2100 + 2600 - 100 - 100)
+	totalL1CommitGas += getKeccakGas(32 * totalChunks) // batch data hash
+	if parentBatch != nil {
+		totalL1CommitGas += getKeccakGas(uint64(len(parentBatch.BatchHeader))) // parent batch header hash
+		totalL1CommitGas += 16 * uint64(len(parentBatch.BatchHeader))          // parent batch header in calldata
+	}
+	// batch header size: 89 + 32 * ceil(l1MessagePopped / 256)
+	totalL1CommitGas += getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
 
 	// Check if the first chunk breaks hard limits.
 	// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
-	if totalL1CommitGas > p.maxL1CommitGasPerBatch {
+	if p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
 		return nil, fmt.Errorf(
 			"the first chunk exceeds l1 commit gas limit; start block number: %v, end block number: %v, commit gas: %v, max commit gas limit: %v",
 			firstChunk.StartBlockNumber,
@@ -124,12 +155,21 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	for i, chunk := range dbChunks[1:] {
-		totalChunks++
 		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
 		totalL1CommitGas += chunk.TotalL1CommitGas
+		// adjust batch data hash gas cost
+		totalL1CommitGas -= getKeccakGas(32 * totalChunks)
+		totalChunks++
+		totalL1CommitGas += getKeccakGas(32 * totalChunks)
+		// adjust batch header hash gas cost
+		totalL1CommitGas -= getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
+		totalL1CommitGas -= 16 * (32 * (totalL1MessagePopped + 255) / 256)
+		totalL1MessagePopped += uint64(chunk.TotalL1MessagesPoppedInChunk)
+		totalL1CommitGas += 16 * (32 * (totalL1MessagePopped + 255) / 256)
+		totalL1CommitGas += getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
 		if totalChunks > p.maxChunkNumPerBatch ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
-			totalL1CommitGas > p.maxL1CommitGasPerBatch {
+			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
 			return dbChunks[:i+1], nil
 		}
 	}
@@ -146,7 +186,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	if !hasChunkTimeout && uint64(len(dbChunks)) < p.minChunkNumPerBatch {
-		log.Warn("The payload size of the batch is less than the minimum limit",
+		log.Warn("The chunk number of the batch is less than the minimum limit",
 			"chunk num", len(dbChunks), "minChunkNumPerBatch", p.minChunkNumPerBatch,
 		)
 		return nil, nil
@@ -154,16 +194,16 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	return dbChunks, nil
 }
 
-func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*bridgeTypes.Chunk, error) {
-	chunks := make([]*bridgeTypes.Chunk, len(dbChunks))
+func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*types.Chunk, error) {
+	chunks := make([]*types.Chunk, len(dbChunks))
 	for i, c := range dbChunks {
-		wrappedBlocks, err := p.l2Block.GetL2BlocksInRange(p.ctx, c.StartBlockNumber, c.EndBlockNumber)
+		wrappedBlocks, err := p.l2BlockOrm.GetL2BlocksInRange(p.ctx, c.StartBlockNumber, c.EndBlockNumber)
 		if err != nil {
 			log.Error("Failed to fetch wrapped blocks",
 				"start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
 			return nil, err
 		}
-		chunks[i] = &bridgeTypes.Chunk{
+		chunks[i] = &types.Chunk{
 			Blocks: wrappedBlocks,
 		}
 	}

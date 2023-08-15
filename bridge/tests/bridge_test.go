@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 
+	"scroll-tech/database/migrate"
+
 	bcmd "scroll-tech/bridge/cmd"
-	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/orm/migrate"
-	"scroll-tech/bridge/internal/utils"
 	"scroll-tech/bridge/mock_bridge"
 )
 
@@ -46,13 +46,13 @@ var (
 )
 
 func setupDB(t *testing.T) *gorm.DB {
-	cfg := &config.DBConfig{
+	cfg := &database.Config{
 		DSN:        base.DBConfig.DSN,
 		DriverName: base.DBConfig.DriverName,
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
 		MaxIdleNum: base.DBConfig.MaxIdleNum,
 	}
-	db, err := utils.InitDB(cfg)
+	db, err := database.InitDB(cfg)
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -83,10 +83,10 @@ func setupEnv(t *testing.T) {
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
-	l1Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L1gethImg.ChainID())
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKey, base.L1gethImg.ChainID())
 	assert.NoError(t, err)
 
-	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.MessageSenderPrivateKeys[0], base.L2gethImg.ChainID())
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.MessageSenderPrivateKey, base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 }
 

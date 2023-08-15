@@ -1,29 +1,25 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {AddressUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
 import {IL2ERC20Gateway, L2ERC20Gateway} from "./L2ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
-import {IScrollERC20} from "../../libraries/token/IScrollERC20.sol";
+import {IScrollERC20Upgradeable} from "../../libraries/token/IScrollERC20Upgradeable.sol";
 import {ScrollStandardERC20} from "../../libraries/token/ScrollStandardERC20.sol";
 import {IScrollStandardERC20Factory} from "../../libraries/token/IScrollStandardERC20Factory.sol";
-import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L2StandardERC20Gateway
-/// @notice The `L2StandardERC20Gateway` is used to withdraw standard ERC20 tokens in layer 2 and
+/// @notice The `L2StandardERC20Gateway` is used to withdraw standard ERC20 tokens on layer 2 and
 /// finalize deposit the tokens from layer 1.
 /// @dev The withdrawn ERC20 tokens will be burned directly. On finalizing deposit, the corresponding
 /// token will be minted and transfered to the recipient. Any ERC20 that requires non-standard functionality
 /// should use a separate gateway.
-contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
-    using SafeERC20 for IERC20;
-    using Address for address;
+contract L2StandardERC20Gateway is L2ERC20Gateway {
+    using AddressUpgradeable for address;
 
     /*************
      * Variables *
@@ -38,6 +34,9 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
     /***************
      * Constructor *
      ***************/
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(
         address _counterpart,
@@ -77,7 +76,7 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         address _from,
         address _to,
         uint256 _amount,
-        bytes calldata _data
+        bytes memory _data
     ) external payable override onlyCallByCounterpart nonReentrant {
         require(msg.value == 0, "nonzero msg.value");
         require(_l1Token != address(0), "token address cannot be 0");
@@ -91,12 +90,13 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
             require(_l2Token == _expectedL2Token, "l2 token mismatch");
         }
 
+        bool _hasMetadata;
+        (_hasMetadata, _data) = abi.decode(_data, (bool, bytes));
+
         bytes memory _deployData;
         bytes memory _callData;
 
-        if (tokenMapping[_l2Token] == address(0)) {
-            // first deposit, update mapping
-            tokenMapping[_l2Token] = _l1Token;
+        if (_hasMetadata) {
             (_callData, _deployData) = abi.decode(_data, (bytes, bytes));
         } else {
             require(tokenMapping[_l2Token] == _l1Token, "token mapping mismatch");
@@ -104,10 +104,13 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         }
 
         if (!_l2Token.isContract()) {
+            // first deposit, update mapping
+            tokenMapping[_l2Token] = _l1Token;
+
             _deployL2Token(_deployData, _l1Token);
         }
 
-        IScrollERC20(_l2Token).mint(_to, _amount);
+        IScrollERC20Upgradeable(_l2Token).mint(_to, _amount);
 
         _doCallback(_to, _callData);
 
@@ -138,17 +141,12 @@ contract L2StandardERC20Gateway is Initializable, ScrollGatewayBase, L2ERC20Gate
         require(_l1Token != address(0), "no corresponding l1 token");
 
         // 2. Burn token.
-        IScrollERC20(_token).burn(_from, _amount);
+        IScrollERC20Upgradeable(_token).burn(_from, _amount);
 
         // 3. Generate message passed to L1StandardERC20Gateway.
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ERC20Gateway.finalizeWithdrawERC20.selector,
-            _l1Token,
-            _token,
-            _from,
-            _to,
-            _amount,
-            _data
+        bytes memory _message = abi.encodeCall(
+            IL1ERC20Gateway.finalizeWithdrawERC20,
+            (_l1Token, _token, _from, _to, _amount, _data)
         );
 
         // 4. send message to L2ScrollMessenger

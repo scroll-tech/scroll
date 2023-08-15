@@ -22,7 +22,6 @@ import (
 
 	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 	"scroll-tech/bridge/internal/utils"
 )
 
@@ -110,7 +109,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 	}
 
 	// Fetch and store block traces for missing blocks
-	for from := uint64(heightInDB) + 1; from <= blockHeight; from += blockTracesFetchLimit {
+	for from := heightInDB + 1; from <= blockHeight; from += blockTracesFetchLimit {
 		to := from + blockTracesFetchLimit - 1
 
 		if to > blockHeight {
@@ -160,25 +159,28 @@ func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
 }
 
 func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var blocks []*bridgeTypes.WrappedBlock
+	var blocks []*types.WrappedBlock
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)
-		block, err2 := w.BlockByNumber(ctx, big.NewInt(int64(number)))
-		if err2 != nil {
-			return fmt.Errorf("failed to GetBlockByNumber: %v. number: %v", err2, number)
+		block, err := w.GetBlockByNumberOrHash(ctx, rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(number)))
+		if err != nil {
+			return fmt.Errorf("failed to GetBlockByNumberOrHash: %v. number: %v", err, number)
+		}
+		if block.RowConsumption == nil {
+			return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
 		}
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
 
-		withdrawTrieRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
+		withdrawRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
 		if err3 != nil {
-			return fmt.Errorf("failed to get withdrawTrieRoot: %v. number: %v", err3, number)
+			return fmt.Errorf("failed to get withdrawRoot: %v. number: %v", err3, number)
 		}
-
-		blocks = append(blocks, &bridgeTypes.WrappedBlock{
-			Header:           block.Header(),
-			Transactions:     txsToTxsData(block.Transactions()),
-			WithdrawTrieRoot: common.BytesToHash(withdrawTrieRoot),
+		blocks = append(blocks, &types.WrappedBlock{
+			Header:         block.Header(),
+			Transactions:   txsToTxsData(block.Transactions()),
+			WithdrawRoot:   common.BytesToHash(withdrawRoot),
+			RowConsumption: block.RowConsumption,
 		})
 	}
 

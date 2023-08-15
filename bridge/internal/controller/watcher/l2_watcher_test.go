@@ -21,6 +21,7 @@ import (
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
 	bridgeAbi "scroll-tech/bridge/abi"
@@ -42,14 +43,14 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 	subCtx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		defer utils.CloseDB(db)
+		defer database.CloseDB(db)
 	}()
 
 	loopToFetchEvent(subCtx, wc)
 
 	l1cfg := cfg.L1Config
 	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
-	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKeys)
+	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKey)
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
@@ -68,9 +69,9 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 func testFetchRunningMissingBlocks(t *testing.T) {
 	_, db := setupL2Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys[0])
+	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKey)
 
 	// deploy mock bridge
 	_, tx, _, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)
@@ -87,7 +88,7 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 		wc := prepareWatcherClient(l2Cli, db, address)
 		wc.TryFetchRunningMissingBlocks(latestHeight)
 		fetchedHeight, err := l2BlockOrm.GetL2BlocksLatestHeight(context.Background())
-		return err == nil && uint64(fetchedHeight) == latestHeight
+		return err == nil && fetchedHeight == latestHeight
 	})
 	assert.True(t, ok)
 }
@@ -114,7 +115,7 @@ func loopToFetchEvent(subCtx context.Context, watcher *L2WatcherClient) {
 
 func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 	watcher, db := setupL2Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	logs := []gethTypes.Log{
 		{
@@ -154,7 +155,7 @@ func testParseBridgeEventLogsL2RelayedMessageEventSignature(t *testing.T) {
 
 func testParseBridgeEventLogsL2FailedRelayedMessageEventSignature(t *testing.T) {
 	watcher, db := setupL2Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	logs := []gethTypes.Log{
 		{

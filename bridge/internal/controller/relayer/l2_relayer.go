@@ -10,6 +10,8 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
@@ -22,7 +24,6 @@ import (
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/sender"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
 )
 
 var (
@@ -30,7 +31,6 @@ var (
 	bridgeL2BatchesCommittedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesFinalizedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
 	bridgeL2BatchesCommittedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
-	bridgeL2BatchesSkippedTotalCounter            = gethMetrics.NewRegisteredCounter("bridge/l2/batches/skipped/total", metrics.ScrollRegistry)
 )
 
 // Layer2Relayer is responsible for
@@ -54,8 +54,9 @@ type Layer2Relayer struct {
 	messageSender  *sender.Sender
 	l1MessengerABI *abi.ABI
 
-	rollupSender *sender.Sender
-	l1RollupABI  *abi.ABI
+	commitSender   *sender.Sender
+	finalizeSender *sender.Sender
+	l1RollupABI    *abi.ABI
 
 	gasOracleSender *sender.Sender
 	l2GasOracleABI  *abi.ABI
@@ -81,23 +82,28 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool) (*Layer2Relayer, error) {
-	// @todo use different sender for relayer, block commit and proof finalize
-	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKeys)
+	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKey)
 	if err != nil {
-		log.Error("Failed to create messenger sender", "err", err)
-		return nil, err
+		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new message sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
-	rollupSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.RollupSenderPrivateKeys)
+	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey)
 	if err != nil {
-		log.Error("Failed to create rollup sender", "err", err)
-		return nil, err
+		addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKeys)
+	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey)
 	if err != nil {
-		log.Error("Failed to create gas oracle sender", "err", err)
-		return nil, err
+		addr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
+	}
+
+	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey)
+	if err != nil {
+		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
+		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
 	var minGasPrice uint64
@@ -128,8 +134,9 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		messageSender:  messageSender,
 		l1MessengerABI: bridgeAbi.L1ScrollMessengerABI,
 
-		rollupSender: rollupSender,
-		l1RollupABI:  bridgeAbi.ScrollChainABI,
+		commitSender:   commitSender,
+		finalizeSender: finalizeSender,
+		l1RollupABI:    bridgeAbi.ScrollChainABI,
 
 		gasOracleSender: gasOracleSender,
 		l2GasOracleABI:  bridgeAbi.L2GasPriceOracleABI,
@@ -171,11 +178,12 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	chunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{{
-			Header:           genesis,
-			Transactions:     nil,
-			WithdrawTrieRoot: common.Hash{},
+	chunk := &types.Chunk{
+		Blocks: []*types.WrappedBlock{{
+			Header:         genesis,
+			Transactions:   nil,
+			WithdrawRoot:   common.Hash{},
+			RowConsumption: &gethTypes.RowConsumption{},
 		}},
 	}
 
@@ -191,7 +199,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		}
 
 		var batch *orm.Batch
-		batch, err = r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*bridgeTypes.Chunk{chunk}, dbTX)
+		batch, err = r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk}, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
@@ -230,7 +238,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 	}
 
 	// submit genesis batch to L1 rollup contract
-	txHash, err := r.rollupSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+	txHash, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 	if err != nil {
 		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
@@ -245,14 +253,14 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 		select {
 		// print progress
 		case <-ticker.C:
-			log.Info("Waiting for confirmation", "pending count", r.rollupSender.PendingCount())
+			log.Info("Waiting for confirmation")
 
 		// timeout
 		case <-time.After(5 * time.Minute):
 			return fmt.Errorf("import genesis timeout after 5 minutes, original txHash: %v", txHash.String())
 
 		// handle confirmation
-		case confirmation := <-r.rollupSender.ConfirmChan():
+		case confirmation := <-r.commitSender.ConfirmChan():
 			if confirmation.ID != batchHash {
 				return fmt.Errorf("unexpected import genesis confirmation id, expected: %v, got: %v", batchHash, confirmation.ID)
 			}
@@ -268,8 +276,8 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 // ProcessGasPriceOracle imports gas price to layer1
 func (r *Layer2Relayer) ProcessGasPriceOracle() {
 	batch, err := r.batchOrm.GetLatestBatch(r.ctx)
-	if err != nil {
-		log.Error("Failed to GetLatestBatch", "err", err)
+	if batch == nil || err != nil {
+		log.Error("Failed to GetLatestBatch", "batch", batch, "err", err)
 		return
 	}
 
@@ -319,7 +327,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 	for _, batch := range pendingBatches {
 		// get current header and parent header.
-		currentBatchHeader, err := bridgeTypes.DecodeBatchHeader(batch.BatchHeader)
+		currentBatchHeader, err := types.DecodeBatchHeader(batch.BatchHeader)
 		if err != nil {
 			log.Error("Failed to decode batch header", "index", batch.Index, "error", err)
 			return
@@ -346,7 +354,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
-			var wrappedBlocks []*bridgeTypes.WrappedBlock
+			var wrappedBlocks []*types.WrappedBlock
 			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				log.Error("Failed to fetch wrapped blocks",
@@ -354,7 +362,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 					"end number", c.EndBlockNumber, "error", err)
 				return
 			}
-			chunk := &bridgeTypes.Chunk{
+			chunk := &types.Chunk{
 				Blocks: wrappedBlocks,
 			}
 			var chunkBytes []byte
@@ -374,11 +382,16 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		// send transaction
 		txID := batch.Hash + "-commit"
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
 		if err != nil {
-			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-				log.Error("Failed to send commitBatch tx to layer1 ", "err", err)
-			}
+			log.Error(
+				"Failed to send commitBatch tx to layer1",
+				"index", batch.Index,
+				"hash", batch.Hash,
+				"RollupContractAddress", r.cfg.RollupContractAddress,
+				"calldata", common.Bytes2Hex(calldata),
+				"err", err,
+			)
 			return
 		}
 
@@ -395,15 +408,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessCommittedBatches() {
-	// set skipped batches in a single db operation
-	if count, err := r.batchOrm.UpdateSkippedBatches(r.ctx); err != nil {
-		log.Error("UpdateSkippedBatches failed", "err", err)
-		// continue anyway
-	} else if count > 0 {
-		bridgeL2BatchesSkippedTotalCounter.Inc(int64(count))
-		log.Info("Skipping batches", "count", count)
-	}
-
 	// retrieves the earliest batch whose rollup status is 'committed'
 	fields := map[string]interface{}{
 		"rollup_status": types.RollupCommitted,
@@ -428,17 +432,11 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		// The proof for this block is not ready yet.
 		return
 	case types.ProvingTaskProved:
-		// It's an intermediate state. The roller manager received the proof but has not verified
+		// It's an intermediate state. The prover manager received the proof but has not verified
 		// the proof yet. We don't roll up the proof until it's verified.
 		return
-	case types.ProvingTaskFailed, types.ProvingTaskSkipped:
-		// note: this is covered by UpdateSkippedBatches, but we keep it for completeness's sake
-		if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
-			log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
-		}
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
-		success := false
 
 		var parentBatchStateRoot string
 		if batch.Index > 0 {
@@ -452,24 +450,14 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			parentBatchStateRoot = parentBatch.StateRoot
 		}
 
-		defer func() {
-			// TODO: need to revisit this and have a more fine-grained error handling
-			if !success {
-				log.Info("Failed to upload the proof, change rollup status to FinalizationSkipped", "hash", hash)
-				if err = r.batchOrm.UpdateRollupStatus(r.ctx, hash, types.RollupFinalizationSkipped); err != nil {
-					log.Warn("UpdateRollupStatus failed", "hash", hash, "err", err)
-				}
-			}
-		}()
-
 		aggProof, err := r.batchOrm.GetVerifiedProofByHash(r.ctx, hash)
 		if err != nil {
-			log.Warn("get verified proof by hash failed", "hash", hash, "err", err)
+			log.Error("get verified proof by hash failed", "hash", hash, "err", err)
 			return
 		}
 
 		if err = aggProof.SanityCheck(); err != nil {
-			log.Warn("agg_proof sanity check fails", "hash", hash, "error", err)
+			log.Error("agg_proof sanity check fails", "hash", hash, "error", err)
 			return
 		}
 
@@ -488,12 +476,22 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		txID := hash + "-finalize"
 		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.rollupSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
+		txHash, err := r.finalizeSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
 		finalizeTxHash := &txHash
 		if err != nil {
 			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-				log.Error("finalizeBatchWithProof in layer1 failed",
-					"index", batch.Index, "hash", batch.Hash, "err", err)
+				// This can happen normally if we try to finalize 2 or more
+				// batches around the same time. The 2nd tx might fail since
+				// the client does not see the 1st tx's updates at this point.
+				// TODO: add more fine-grained error handling
+				log.Error(
+					"finalizeBatchWithProof in layer1 failed",
+					"index", batch.Index,
+					"hash", batch.Hash,
+					"RollupContractAddress", r.cfg.RollupContractAddress,
+					"calldata", common.Bytes2Hex(data),
+					"err", err,
+				)
 			}
 			return
 		}
@@ -503,17 +501,33 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		// record and sync with db, @todo handle db error
 		err = r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, hash, finalizeTxHash.String(), types.RollupFinalizing)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed",
+			log.Error("UpdateFinalizeTxHashAndRollupStatus failed",
 				"index", batch.Index, "batch hash", batch.Hash,
 				"tx hash", finalizeTxHash.String(), "err", err)
 		}
-		success = true
 		r.processingFinalization.Store(txID, hash)
 
-	default:
-		log.Error("encounter unreachable case in ProcessCommittedBatches",
-			"block_status", status,
+	case types.ProvingTaskFailed:
+		// We were unable to prove this batch. There are two possibilities:
+		// (a) Prover bug. In this case, we should fix and redeploy the prover.
+		//     In the meantime, we continue to commit batches to L1 as well as
+		//     proposing and proving chunks and batches.
+		// (b) Unprovable batch, e.g. proof overflow. In this case we need to
+		//     stop the ledger, fix the limit, revert all the violating blocks,
+		//     chunks and batches and all subsequent ones, and resume, i.e. this
+		//     case requires manual resolution.
+		log.Error(
+			"batch proving failed",
+			"Index", batch.Index,
+			"Hash", batch.Hash,
+			"ProverAssignedAt", batch.ProverAssignedAt,
+			"ProvedAt", batch.ProvedAt,
+			"ProofTimeSec", batch.ProofTimeSec,
 		)
+		return
+
+	default:
+		log.Error("encounter unreachable case in ProcessCommittedBatches", "proving status", status)
 	}
 }
 
@@ -571,7 +585,9 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 			return
 		case confirmation := <-r.messageSender.ConfirmChan():
 			r.handleConfirmation(confirmation)
-		case confirmation := <-r.rollupSender.ConfirmChan():
+		case confirmation := <-r.commitSender.ConfirmChan():
+			r.handleConfirmation(confirmation)
+		case confirmation := <-r.finalizeSender.ConfirmChan():
 			r.handleConfirmation(confirmation)
 		case cfm := <-r.gasOracleSender.ConfirmChan():
 			if !cfm.IsSuccessful {

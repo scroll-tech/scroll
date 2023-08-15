@@ -70,7 +70,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install Solc
@@ -81,6 +81,8 @@ jobs:
         version: '0.8.16'
     - name: Install Geth Tools
       uses: gacts/install-geth-tools@v1
+      with:
+        version: 1.10.19
     - name: Build prerequisites
       run: |
         make dev_docker

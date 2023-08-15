@@ -9,18 +9,17 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/controller/watcher"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
-	"scroll-tech/bridge/internal/utils"
 )
 
 func testImportL1GasPrice(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	prepareContracts(t)
 
@@ -44,10 +43,10 @@ func testImportL1GasPrice(t *testing.T) {
 
 	l1BlockOrm := orm.NewL1Block(db)
 	// check db status
-	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight()
+	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, number, latestBlockHeight)
-	blocks, err := l1BlockOrm.GetL1Blocks(map[string]interface{}{"number": latestBlockHeight})
+	blocks, err := l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
 	assert.Empty(t, blocks[0].OracleTxHash)
@@ -55,7 +54,7 @@ func testImportL1GasPrice(t *testing.T) {
 
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
-	blocks, err = l1BlockOrm.GetL1Blocks(map[string]interface{}{"number": latestBlockHeight})
+	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
 	assert.NotEmpty(t, blocks[0].OracleTxHash)
@@ -64,7 +63,7 @@ func testImportL1GasPrice(t *testing.T) {
 
 func testImportL2GasPrice(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 	prepareContracts(t)
 
 	l2Cfg := bridgeApp.Config.L2Config
@@ -72,8 +71,8 @@ func testImportL2GasPrice(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add fake chunk
-	chunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{
+	chunk := &types.Chunk{
+		Blocks: []*types.WrappedBlock{
 			{
 				Header: &gethTypes.Header{
 					Number:     big.NewInt(1),
@@ -81,8 +80,9 @@ func testImportL2GasPrice(t *testing.T) {
 					Difficulty: big.NewInt(0),
 					BaseFee:    big.NewInt(0),
 				},
-				Transactions:     nil,
-				WithdrawTrieRoot: common.Hash{},
+				Transactions:   nil,
+				WithdrawRoot:   common.Hash{},
+				RowConsumption: &gethTypes.RowConsumption{},
 			},
 		},
 	}
@@ -90,12 +90,13 @@ func testImportL2GasPrice(t *testing.T) {
 	assert.NoError(t, err)
 
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*bridgeTypes.Chunk{chunk})
+	_, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*types.Chunk{chunk})
 	assert.NoError(t, err)
 
 	// check db status
 	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	assert.Empty(t, batch.OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOraclePending)
 
@@ -103,6 +104,7 @@ func testImportL2GasPrice(t *testing.T) {
 	l2Relayer.ProcessGasPriceOracle()
 	batch, err = batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	assert.NotEmpty(t, batch.OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOracleImporting)
 }

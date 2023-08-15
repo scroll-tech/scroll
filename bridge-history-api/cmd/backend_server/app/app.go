@@ -3,48 +3,21 @@ package app
 import (
 	"fmt"
 	"os"
+	"os/signal"
 
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/iris-contrib/middleware/cors"
-	"github.com/kataras/iris/v12"
-	"github.com/kataras/iris/v12/mvc"
+	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli/v2"
 
 	"bridge-history-api/config"
-	"bridge-history-api/controller"
-	"bridge-history-api/db"
-	"bridge-history-api/service"
-	cutils "bridge-history-api/utils"
+	"bridge-history-api/internal/controller"
+	"bridge-history-api/internal/route"
+	"bridge-history-api/utils"
 )
 
 var (
 	app *cli.App
 )
-
-var database db.OrmFactory
-
-func pong(ctx iris.Context) {
-	ctx.WriteString("pong")
-}
-
-func setupQueryByAddressHandler(backend_app *mvc.Application) {
-	// Register Dependencies.
-	backend_app.Register(
-		database,
-		service.NewHistoryService,
-	)
-
-	// Register Controllers.
-	backend_app.Handle(new(controller.QueryAddressController))
-}
-
-func setupQueryByHashHandler(backend_app *mvc.Application) {
-	backend_app.Register(
-		database,
-		service.NewHistoryService,
-	)
-	backend_app.Handle(new(controller.QueryHashController))
-}
 
 func init() {
 	app = cli.NewApp()
@@ -52,43 +25,48 @@ func init() {
 	app.Action = action
 	app.Name = "Scroll Bridge History Web Service"
 	app.Usage = "The Scroll Bridge History Web Service"
-	app.Flags = append(app.Flags, cutils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		return utils.LogSetup(ctx)
 	}
 }
 
 func action(ctx *cli.Context) error {
-	corsOptions := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
-		AllowCredentials: true,
-	})
 	// Load config file.
-	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	database, err = db.NewOrmFactory(cfg)
+	db, err := utils.InitDB(cfg.DB)
 	if err != nil {
-		log.Crit("can not connect to database", "err", err)
+		log.Crit("failed to init db", "err", err)
 	}
-	defer database.Close()
-	bridgeApp := iris.New()
-	bridgeApp.UseRouter(corsOptions)
-	bridgeApp.Get("/ping", pong).Describe("healthcheck")
+	defer func() {
+		if deferErr := utils.CloseDB(db); deferErr != nil {
+			log.Error("failed to close db", "err", err)
+		}
+	}()
+	// init Prover Stats API
+	port := cfg.Server.HostPort
 
-	mvc.Configure(bridgeApp.Party("/api/txs"), setupQueryByAddressHandler)
-	mvc.Configure(bridgeApp.Party("/api/txsbyhashes"), setupQueryByHashHandler)
+	router := gin.Default()
+	controller.InitController(db)
+	route.Route(router, cfg)
 
-	// TODO: make debug mode configurable
-	err = bridgeApp.Listen(cfg.Server.HostPort, iris.WithLogLevel("debug"))
-	if err != nil {
-		log.Crit("can not start server", "err", err)
-	}
+	go func() {
+		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
+			log.Crit("run http server failure", "error", runServerErr)
+		}
+	}()
+	// Catch CTRL-C to ensure a graceful shutdown.
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+
+	// Wait until the interrupt signal is received from an OS signal.
+	<-interrupt
 
 	return nil
 }

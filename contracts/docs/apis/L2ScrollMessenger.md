@@ -6,26 +6,9 @@
 
 The `L2ScrollMessenger` contract can: 1. send messages from layer 2 to layer 1; 2. relay messages from layer 1 layer 2; 3. drop expired message due to sequencer problems.
 
-*It should be a predeployed contract in layer 2 and should hold infinite amount of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.*
+*It should be a predeployed contract on layer 2 and should hold infinite amount of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.*
 
 ## Methods
-
-### blockContainer
-
-```solidity
-function blockContainer() external view returns (address)
-```
-
-The contract contains the list of L1 blocks.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### counterpart
 
@@ -61,27 +44,10 @@ The address of fee vault, collecting cross domain messaging fee.
 |---|---|---|
 | _0 | address | undefined |
 
-### gasOracle
-
-```solidity
-function gasOracle() external view returns (address)
-```
-
-The address of L2MessageQueue.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
 ### initialize
 
 ```solidity
-function initialize(address _counterpart, address _feeVault) external nonpayable
+function initialize(address _counterpart) external nonpayable
 ```
 
 
@@ -93,7 +59,6 @@ function initialize(address _counterpart, address _feeVault) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | _counterpart | address | undefined |
-| _feeVault | address | undefined |
 
 ### isL1MessageExecuted
 
@@ -257,29 +222,8 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
-
-### retryMessageWithProof
-
-```solidity
-function retryMessageWithProof(address _from, address _to, uint256 _value, uint256 _nonce, bytes _message, IL2ScrollMessenger.L1MessageProof _proof) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _from | address | undefined |
-| _to | address | undefined |
-| _value | uint256 | undefined |
-| _nonce | uint256 | undefined |
-| _message | bytes | undefined |
-| _proof | IL2ScrollMessenger.L1MessageProof | undefined |
 
 ### sendMessage
 
@@ -371,7 +315,7 @@ Update fee vault contract.
 ### updateMaxFailedExecutionTimes
 
 ```solidity
-function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external nonpayable
+function updateMaxFailedExecutionTimes(uint256 _newMaxFailedExecutionTimes) external nonpayable
 ```
 
 Update max failed execution times.
@@ -382,55 +326,7 @@ Update max failed execution times.
 
 | Name | Type | Description |
 |---|---|---|
-| _maxFailedExecutionTimes | uint256 | The new max failed execution times. |
-
-### verifyMessageExecutionStatus
-
-```solidity
-function verifyMessageExecutionStatus(bytes32 _blockHash, bytes32 _msgHash, bytes _proof) external view returns (bool)
-```
-
-Check whether the message is executed in the corresponding L1 block.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _blockHash | bytes32 | The block hash where the message should in. |
-| _msgHash | bytes32 | The hash of the message to check. |
-| _proof | bytes | The encoded storage proof from eth_getProof. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | bool Return true is the message is executed in L1, otherwise return false. |
-
-### verifyMessageInclusionStatus
-
-```solidity
-function verifyMessageInclusionStatus(bytes32 _blockHash, bytes32 _msgHash, bytes _proof) external view returns (bool)
-```
-
-Check whether the l1 message is included in the corresponding L1 block.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _blockHash | bytes32 | The block hash where the message should in. |
-| _msgHash | bytes32 | The hash of the message to check. |
-| _proof | bytes | The encoded storage proof from eth_getProof. |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | bool Return true is the message is included in L1, otherwise return false. |
+| _newMaxFailedExecutionTimes | uint256 | The new max failed execution times. |
 
 ### xDomainMessageSender
 
@@ -468,6 +364,22 @@ Emitted when a cross domain message is failed to relay.
 | Name | Type | Description |
 |---|---|---|
 | messageHash `indexed` | bytes32 | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 
@@ -575,7 +487,7 @@ Emitted when owner updates fee vault contract.
 ### UpdateMaxFailedExecutionTimes
 
 ```solidity
-event UpdateMaxFailedExecutionTimes(uint256 maxFailedExecutionTimes)
+event UpdateMaxFailedExecutionTimes(uint256 oldMaxFailedExecutionTimes, uint256 newMaxFailedExecutionTimes)
 ```
 
 Emitted when the maximum number of times each message can fail in L2 is updated.
@@ -586,7 +498,8 @@ Emitted when the maximum number of times each message can fail in L2 is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| maxFailedExecutionTimes  | uint256 | The new maximum number of times each message can fail in L2. |
+| oldMaxFailedExecutionTimes  | uint256 | undefined |
+| newMaxFailedExecutionTimes  | uint256 | undefined |
 
 
 

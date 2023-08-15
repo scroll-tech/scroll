@@ -1,0 +1,27 @@
+{
+  "prover_manager": {
+    "provers_per_session": 1,
+    "session_attempts": 5,
+    "collection_time_sec": 180,
+    "verifier": {
+      "mock_mode": true,
+      "params_path": "",
+      "assets_path": ""
+    },
+    "max_verifier_workers": 4
+  },
+  "db": {
+    "driver_name": "postgres",
+    "dsn": "postgres://localhost/scroll?sslmode=disable",
+    "maxOpenNum": 200,
+    "maxIdleNum": 20
+  },
+  "l2": {
+    "chain_id": 111
+  },
+  "auth": {
+    "secret": "prover secret key",
+    "challenge_expire_duration_sec": 10,
+    "login_expire_duration_sec": 3600
+  }
+}

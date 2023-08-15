@@ -12,10 +12,10 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"bridge-history-api/config"
-	"bridge-history-api/cross_msg"
-	"bridge-history-api/cross_msg/message_proof"
-	"bridge-history-api/db"
-	cutils "bridge-history-api/utils"
+	"bridge-history-api/crossmsg"
+	"bridge-history-api/crossmsg/messageproof"
+	"bridge-history-api/orm"
+	"bridge-history-api/utils"
 )
 
 var (
@@ -28,17 +28,17 @@ func init() {
 	app.Action = action
 	app.Name = "Scroll Bridge History API"
 	app.Usage = "The Scroll Bridge Web Backend"
-	app.Flags = append(app.Flags, cutils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		return utils.LogSetup(ctx)
 	}
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
@@ -54,15 +54,23 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
-	db, err := db.NewOrmFactory(cfg)
-	defer db.Close()
+
+	db, err := utils.InitDB(cfg.DB)
+	if err != nil {
+		log.Crit("failed to init db", "err", err)
+	}
+	defer func() {
+		if deferErr := utils.CloseDB(db); deferErr != nil {
+			log.Error("failed to close db", "err", err)
+		}
+	}()
 	if err != nil {
 		log.Crit("failed to connect to db", "config file", cfgFile, "error", err)
 	}
 
-	l1worker := &cross_msg.FetchEventWorker{F: cross_msg.L1FetchAndSaveEvents, G: cross_msg.GetLatestL1ProcessedHeight, Name: "L1 events fetch Worker"}
+	l1worker := &crossmsg.FetchEventWorker{F: crossmsg.L1FetchAndSaveEvents, G: crossmsg.GetLatestL1ProcessedHeight, Name: "L1 events fetch Worker"}
 
-	l2worker := &cross_msg.FetchEventWorker{F: cross_msg.L2FetchAndSaveEvents, G: cross_msg.GetLatestL2ProcessedHeight, Name: "L2 events fetch Worker"}
+	l2worker := &crossmsg.FetchEventWorker{F: crossmsg.L2FetchAndSaveEvents, G: crossmsg.GetLatestL2ProcessedHeight, Name: "L2 events fetch Worker"}
 
 	l1AddressList := []common.Address{
 		common.HexToAddress(cfg.L1.CustomERC20GatewayAddr),
@@ -84,7 +92,7 @@ func action(ctx *cli.Context) error {
 		common.HexToAddress(cfg.L2.WETHGatewayAddr),
 	}
 
-	l1crossMsgFetcher, err := cross_msg.NewCrossMsgFetcher(subCtx, cfg.L1, db, l1client, l1worker, l1AddressList, cross_msg.L1ReorgHandling)
+	l1crossMsgFetcher, err := crossmsg.NewMsgFetcher(subCtx, cfg.L1, db, l1client, l1worker, l1AddressList, crossmsg.L1ReorgHandling)
 	if err != nil {
 		log.Crit("failed to create l1 cross message fetcher", "error", err)
 	}
@@ -92,7 +100,7 @@ func action(ctx *cli.Context) error {
 	go l1crossMsgFetcher.Start()
 	defer l1crossMsgFetcher.Stop()
 
-	l2crossMsgFetcher, err := cross_msg.NewCrossMsgFetcher(subCtx, cfg.L2, db, l2client, l2worker, l2AddressList, cross_msg.L2ReorgHandling)
+	l2crossMsgFetcher, err := crossmsg.NewMsgFetcher(subCtx, cfg.L2, db, l2client, l2worker, l2AddressList, crossmsg.L2ReorgHandling)
 	if err != nil {
 		log.Crit("failed to create l2 cross message fetcher", "error", err)
 	}
@@ -100,18 +108,20 @@ func action(ctx *cli.Context) error {
 	go l2crossMsgFetcher.Start()
 	defer l2crossMsgFetcher.Stop()
 
+	CrossMsgOrm := orm.NewCrossMsg(db)
+
 	// BlockTimestamp fetcher for l1 and l2
-	l1BlockTimeFetcher := cross_msg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db.UpdateL1BlockTimestamp, db.GetL1EarliestNoBlockTimestampHeight)
+	l1BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, CrossMsgOrm.UpdateL1BlockTimestamp, CrossMsgOrm.GetL1EarliestNoBlockTimestampHeight)
 	go l1BlockTimeFetcher.Start()
 	defer l1BlockTimeFetcher.Stop()
 
-	l2BlockTimeFetcher := cross_msg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, db.UpdateL2BlockTimestamp, db.GetL2EarliestNoBlockTimestampHeight)
+	l2BlockTimeFetcher := crossmsg.NewBlockTimestampFetcher(subCtx, cfg.L2.Confirmation, int(cfg.L2.BlockTime), l2client, CrossMsgOrm.UpdateL2BlockTimestamp, CrossMsgOrm.GetL2EarliestNoBlockTimestampHeight)
 	go l2BlockTimeFetcher.Start()
 	defer l2BlockTimeFetcher.Stop()
 
 	// Proof updater and batch fetcher
-	l2msgProofUpdater := message_proof.NewMsgProofUpdater(subCtx, cfg.L1.Confirmation, cfg.BatchInfoFetcher.BatchIndexStartBlock, db)
-	batchFetcher := cross_msg.NewBatchInfoFetcher(subCtx, common.HexToAddress(cfg.BatchInfoFetcher.ScrollChainAddr), cfg.BatchInfoFetcher.BatchIndexStartBlock, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db, l2msgProofUpdater)
+	l2msgProofUpdater := messageproof.NewMsgProofUpdater(subCtx, cfg.L1.Confirmation, cfg.BatchInfoFetcher.BatchIndexStartBlock, db)
+	batchFetcher := crossmsg.NewBatchInfoFetcher(subCtx, common.HexToAddress(cfg.BatchInfoFetcher.ScrollChainAddr), cfg.BatchInfoFetcher.BatchIndexStartBlock, cfg.L1.Confirmation, int(cfg.L1.BlockTime), l1client, db, l2msgProofUpdater)
 	go batchFetcher.Start()
 	defer batchFetcher.Stop()
 

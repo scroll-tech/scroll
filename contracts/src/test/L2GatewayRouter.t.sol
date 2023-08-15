@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
 import {L1StandardERC20Gateway} from "../L1/gateways/L1StandardERC20Gateway.sol";
@@ -17,10 +19,10 @@ import {ScrollStandardERC20Factory} from "../libraries/token/ScrollStandardERC20
 import {L2GatewayTestBase} from "./L2GatewayTestBase.t.sol";
 
 contract L2GatewayRouterTest is L2GatewayTestBase {
-    // from L1GatewayRouter
-    event SetETHGateway(address indexed ethGateway);
-    event SetDefaultERC20Gateway(address indexed defaultERC20Gateway);
-    event SetERC20Gateway(address indexed token, address indexed gateway);
+    // from L2GatewayRouter
+    event SetETHGateway(address indexed oldETHGateway, address indexed newEthGateway);
+    event SetDefaultERC20Gateway(address indexed oldDefaultERC20Gateway, address indexed newDefaultERC20Gateway);
+    event SetERC20Gateway(address indexed token, address indexed oldGateway, address indexed newGateway);
 
     ScrollStandardERC20 private template;
     ScrollStandardERC20Factory private factory;
@@ -45,11 +47,13 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
         l1ETHGateway = new L1ETHGateway();
 
         // Deploy L2 contracts
-        l2StandardERC20Gateway = new L2StandardERC20Gateway();
-        l2ETHGateway = new L2ETHGateway();
+        l2StandardERC20Gateway = L2StandardERC20Gateway(
+            address(new ERC1967Proxy(address(new L2StandardERC20Gateway()), new bytes(0)))
+        );
+        l2ETHGateway = L2ETHGateway(address(new ERC1967Proxy(address(new L2ETHGateway()), new bytes(0))));
+        router = L2GatewayRouter(address(new ERC1967Proxy(address(new L2GatewayRouter()), new bytes(0))));
         template = new ScrollStandardERC20();
         factory = new ScrollStandardERC20Factory(address(template));
-        router = new L2GatewayRouter();
 
         // Initialize L2 contracts
         l2StandardERC20Gateway.initialize(
@@ -85,8 +89,8 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
         hevm.stopPrank();
 
         // set by owner, should succeed
-        hevm.expectEmit(true, false, false, true);
-        emit SetDefaultERC20Gateway(address(l2StandardERC20Gateway));
+        hevm.expectEmit(true, true, false, true);
+        emit SetDefaultERC20Gateway(address(0), address(l2StandardERC20Gateway));
 
         assertEq(address(0), router.getERC20Gateway(address(l1Token)));
         assertEq(address(0), router.defaultERC20Gateway());
@@ -112,8 +116,8 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
         _tokens[0] = address(l1Token);
         _gateways[0] = address(l2StandardERC20Gateway);
 
-        hevm.expectEmit(true, true, false, true);
-        emit SetERC20Gateway(address(l1Token), address(l2StandardERC20Gateway));
+        hevm.expectEmit(true, true, true, true);
+        emit SetERC20Gateway(address(l1Token), address(0), address(l2StandardERC20Gateway));
 
         assertEq(address(0), router.getERC20Gateway(address(l1Token)));
         router.setERC20Gateway(_tokens, _gateways);
