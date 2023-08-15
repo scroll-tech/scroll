@@ -82,7 +82,7 @@ func setupEnv(t *testing.T) {
 	l1Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L1gethImg.ChainID())
 	assert.NoError(t, err)
 
-	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.CommitSenderPrivateKey, base.L2gethImg.ChainID())
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKey, base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 }
 
@@ -122,7 +122,6 @@ func TestFunction(t *testing.T) {
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
 	// l1 message
-	// t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
 
 	// l2 message
 	// TODO: add a "user relay l2msg Succeed" test
