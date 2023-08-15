@@ -4,6 +4,7 @@ package old_verifier
 
 import (
 	"scroll-tech/common/types/message"
+
 	"scroll-tech/coordinator/internal/config"
 )
 
