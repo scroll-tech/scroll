@@ -21,15 +21,15 @@ OLD_ZK_VERSION=${OLD_ZKEVM_VERSION}-${OLD_HALO2_VERSION}
 
 pre-upgrade-zk:
 	cd ../common/libzkp/impl && cp Cargo.lock.old Cargo.lock && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/liboldzkp.so
-	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
-	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/verifier/lib/liboldzktrie.so
+	cp -r ../common/libzkp/interface ./internal/logic/old_verifier/lib && rm ../common/libzkp/interface/liboldzkp.so
+	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/old_verifier/lib/liboldzktrie.so
 
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
 libzkp: pre-upgrade-zk
 	cd ../common/libzkp/impl && cp Cargo.lock.new Cargo.lock && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
-	cp -r ../common/libzkp/interface/*.so ./internal/logic/verifier/lib
+	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/verifier/lib
 
 coordinator: libzkp ## Builds the Coordinator instance.

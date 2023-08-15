@@ -1,6 +1,6 @@
 //go:build !mock_verifier
 
-package verifier
+package old_verifier
 
 /*
 #cgo LDFLAGS: -loldzkp -lm -ldl -loldzktrie -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
@@ -13,6 +13,7 @@ import "C" //nolint:typecheck
 import (
 	"encoding/json"
 	"scroll-tech/common/types/message"
+	"scroll-tech/coordinator/internal/logic/verifier"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -49,7 +50,7 @@ func NewOldVerifier(cfg *config.VerifierConfig) (*OldVerifier, error) {
 func (v *OldVerifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, batch verifier disabled")
-		if string(proof.Proof) == InvalidTestProof {
+		if string(proof.Proof) == verifier.InvalidTestProof {
 			return false, nil
 		}
 		return true, nil
@@ -74,7 +75,7 @@ func (v *OldVerifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) 
 func (v *OldVerifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
-		if string(proof.Proof) == InvalidTestProof {
+		if string(proof.Proof) == verifier.InvalidTestProof {
 			return false, nil
 		}
 		return true, nil

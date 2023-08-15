@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"scroll-tech/common/version"
+	"scroll-tech/coordinator/internal/logic/old_verifier"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -50,7 +51,7 @@ type ProofReceiverLogic struct {
 	cfg *config.ProverManager
 
 	verifier    *verifier.Verifier
-	oldVerifier *verifier.OldVerifier
+	oldVerifier *old_verifier.OldVerifier
 
 	proofReceivedTotal                    prometheus.Counter
 	proofSubmitFailure                    prometheus.Counter
@@ -70,7 +71,7 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, reg pro
 	if err != nil {
 		panic("proof receiver new verifier failure")
 	}
-	oldVf, err := verifier.NewOldVerifier(cfg.OldVerifier)
+	oldVf, err := old_verifier.NewOldVerifier(cfg.OldVerifier)
 	if err != nil {
 		panic("proof receiver new OldVerifier failure")
 	}
