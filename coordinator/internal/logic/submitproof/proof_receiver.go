@@ -6,8 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"scroll-tech/common/version"
-	"scroll-tech/coordinator/internal/logic/old_verifier"
 	"time"
+
+	"scroll-tech/coordinator/internal/logic/old_verifier"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 

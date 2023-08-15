@@ -13,8 +13,9 @@ import "C" //nolint:typecheck
 import (
 	"encoding/json"
 	"scroll-tech/common/types/message"
-	"scroll-tech/coordinator/internal/logic/verifier"
 	"unsafe"
+
+	"scroll-tech/coordinator/internal/logic/verifier"
 
 	"github.com/scroll-tech/go-ethereum/log"
 
