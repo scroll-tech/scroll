@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-var tag = "v4.1.44"
+var tag = "v4.1.46"
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
@@ -44,5 +44,5 @@ func CheckScrollProverVersion(proverVersion string) bool {
 		return false
 	}
 	// compare the `scroll_prover` version
-	return remote[2] == local[2] || remote[2] == "7653cd6" || remote[2] == "0756ac6"
+	return remote[2] == local[2]
 }
