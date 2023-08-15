@@ -5,8 +5,8 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
 	"bridge-history-api/config"

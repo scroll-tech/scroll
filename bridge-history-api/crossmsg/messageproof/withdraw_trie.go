@@ -1,7 +1,7 @@
 package messageproof
 
 import (
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common"
 
 	"bridge-history-api/utils"
 )

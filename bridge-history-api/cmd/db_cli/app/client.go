@@ -1,7 +1,7 @@
 package app
 
 import (
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 	"gorm.io/gorm"
 

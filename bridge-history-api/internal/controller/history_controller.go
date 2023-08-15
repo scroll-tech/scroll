@@ -1,8 +1,8 @@
 package controller
 
 import (
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/go-ethereum/common"
 	"gorm.io/gorm"
 
 	"bridge-history-api/internal/logic"

@@ -4,10 +4,10 @@ import (
 	"context"
 	"math/big"
 
-	geth "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/log"
+	geth "github.com/scroll-tech/go-ethereum"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	backendabi "bridge-history-api/abi"
@@ -18,7 +18,7 @@ import (
 // Todo : read from config
 var (
 	// the number of blocks fetch per round
-	fetchLimit = uint64(3000)
+	fetchLimit = uint64(300)
 )
 
 // FetchAndSave is a function type that fetches events from blockchain and saves them to database

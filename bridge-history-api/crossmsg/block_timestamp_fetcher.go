@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // GetEarliestNoBlockTimestampHeightFunc is a function type that gets the earliest record without block timestamp from database
