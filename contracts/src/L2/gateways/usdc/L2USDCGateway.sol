@@ -2,6 +2,7 @@
 
 pragma solidity =0.8.16;
 
+import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
@@ -108,7 +109,7 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
     function transferUSDCRoles(address _owner) external {
         require(msg.sender == circleCaller, "only circle caller");
 
-        _transferOwnership(_owner);
+        OwnableUpgradeable(l2USDC).transferOwnership(_owner);
     }
 
     /// @notice Update the Circle EOA address.
