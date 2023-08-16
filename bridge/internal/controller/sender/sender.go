@@ -575,7 +575,7 @@ func (s *Sender) loop(ctx context.Context) {
 			s.senderCheckBalancerTotal.WithLabelValues(s.service, s.name).Inc()
 			// Check and set balance.
 			if err := s.checkBalance(ctx); err != nil {
-				log.Error("check balance, err: %w", err)
+				log.Error("check balance error", "err", err)
 			}
 		case <-ctx.Done():
 			return
