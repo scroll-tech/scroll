@@ -73,8 +73,7 @@ func action(ctx *cli.Context) error {
 
 	log.Info(
 		"coordinator start successfully",
-		"name", cfg.ProverName, "type", cfg.Core.ProofType,
-		"publickey", r.PublicKey(), "version", version.Version,
+		"version", version.Version,
 	)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
