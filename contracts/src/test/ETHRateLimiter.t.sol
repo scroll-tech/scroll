@@ -21,7 +21,7 @@ contract ETHRateLimiterTest is DSTestPlus {
         limiter = new ETHRateLimiter(86400, address(this), 100 ether, 100 ether);
     }
 
-    function testUpdateTotalLimit(uint96 _newTotalLimit) external {
+    function testUpdateTotalLimit(uint104 _newTotalLimit) external {
         hevm.assume(_newTotalLimit > 0);
 
         // not owner, revert
@@ -38,7 +38,7 @@ contract ETHRateLimiterTest is DSTestPlus {
         hevm.expectEmit(false, false, false, true);
         emit UpdateTotalLimit(100 ether, _newTotalLimit);
         limiter.updateTotalLimit(_newTotalLimit);
-        (, uint96 _totalLimit, ) = limiter.currentPeriod();
+        (, uint104 _totalLimit, ) = limiter.currentPeriod();
         assertEq(_totalLimit, _newTotalLimit);
     }
 
@@ -62,7 +62,7 @@ contract ETHRateLimiterTest is DSTestPlus {
         assertEq(limiter.defaultUserLimit(), _newDefaultUserLimit);
     }
 
-    function testUpdateCustomUserLimit(address _account, uint96 _newLimit) external {
+    function testUpdateCustomUserLimit(address _account, uint104 _newLimit) external {
         // not owner, revert
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");

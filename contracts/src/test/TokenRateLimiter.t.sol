@@ -26,7 +26,7 @@ contract TokenRateLimiterTest is DSTestPlus {
         limiter = new TokenRateLimiter(86400);
     }
 
-    function testUpdateTotalLimit(address _token, uint96 _newTotalLimit) external {
+    function testUpdateTotalLimit(address _token, uint104 _newTotalLimit) external {
         hevm.assume(_newTotalLimit > 0);
 
         // not admin, revert
@@ -45,7 +45,7 @@ contract TokenRateLimiterTest is DSTestPlus {
         hevm.expectEmit(true, false, false, true);
         emit UpdateTotalLimit(_token, 0 ether, _newTotalLimit);
         limiter.updateTotalLimit(_token, _newTotalLimit);
-        (, uint96 _totalLimit, ) = limiter.currentPeriod(_token);
+        (, uint104 _totalLimit, ) = limiter.currentPeriod(_token);
         assertEq(_totalLimit, _newTotalLimit);
     }
 
@@ -74,7 +74,7 @@ contract TokenRateLimiterTest is DSTestPlus {
     function testUpdateCustomUserLimit(
         address _token,
         address _account,
-        uint96 _newLimit
+        uint104 _newLimit
     ) external {
         // not owner, revert
         hevm.startPrank(address(1));

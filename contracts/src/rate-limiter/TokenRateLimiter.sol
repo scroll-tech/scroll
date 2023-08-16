@@ -17,11 +17,11 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
 
     struct TokenAmount {
         // The timestamp when the amount is updated.
-        uint64 lastUpdateTs;
+        uint48 lastUpdateTs;
         // The token limit.
-        uint96 limit;
+        uint104 limit;
         // The amount of token in current period.
-        uint96 amount;
+        uint104 amount;
     }
 
     /*************
@@ -125,10 +125,10 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
         }
 
         _currentPeriod.lastUpdateTs = uint48(block.timestamp);
-        _currentPeriod.amount = SafeCast.toUint96(_currentTotal);
+        _currentPeriod.amount = SafeCast.toUint104(_currentTotal);
 
         _userCurrentPeriod.lastUpdateTs = uint48(block.timestamp);
-        _userCurrentPeriod.amount = SafeCast.toUint96(_currentUser);
+        _userCurrentPeriod.amount = SafeCast.toUint104(_currentUser);
 
         currentPeriod[_token] = _currentPeriod;
         userCurrentPeriod[_token][_sender] = _userCurrentPeriod;
@@ -140,7 +140,7 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
 
     /// @notice Update the total token amount limit.
     /// @param _newTotalLimit The new total limit.
-    function updateTotalLimit(address _token, uint96 _newTotalLimit) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function updateTotalLimit(address _token, uint104 _newTotalLimit) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (_newTotalLimit == 0) {
             revert TotalLimitIsZero(_token);
         }
@@ -176,7 +176,7 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
     function updateCustomUserLimit(
         address _token,
         address _account,
-        uint96 _newLimit
+        uint104 _newLimit
     ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 _oldLimit = userCurrentPeriod[_token][_account].limit;
         userCurrentPeriod[_token][_account].limit = _newLimit;

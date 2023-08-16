@@ -17,11 +17,11 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
 
     struct TokenAmount {
         // The timestamp when the amount is updated.
-        uint64 lastUpdateTs;
+        uint48 lastUpdateTs;
         // The ETH limit in wei.
-        uint96 limit;
+        uint104 limit;
         // The amount of ETH in current period.
-        uint96 amount;
+        uint104 amount;
     }
 
     /*************
@@ -55,7 +55,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
     constructor(
         uint256 _periodDuration,
         address _spender,
-        uint96 _totalLimit,
+        uint104 _totalLimit,
         uint256 _defaultUserLimit
     ) {
         if (_periodDuration == 0) {
@@ -136,10 +136,10 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
         }
 
         _currentPeriod.lastUpdateTs = uint48(block.timestamp);
-        _currentPeriod.amount = SafeCast.toUint96(_currentTotal);
+        _currentPeriod.amount = SafeCast.toUint104(_currentTotal);
 
         _userCurrentPeriod.lastUpdateTs = uint48(block.timestamp);
-        _userCurrentPeriod.amount = SafeCast.toUint96(_currentUser);
+        _userCurrentPeriod.amount = SafeCast.toUint104(_currentUser);
 
         currentPeriod = _currentPeriod;
         userCurrentPeriod[_sender] = _userCurrentPeriod;
@@ -151,7 +151,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
 
     /// @notice Update the total token amount limit.
     /// @param _newTotalLimit The new total limit.
-    function updateTotalLimit(uint96 _newTotalLimit) external onlyOwner {
+    function updateTotalLimit(uint104 _newTotalLimit) external onlyOwner {
         if (_newTotalLimit == 0) {
             revert TotalLimitIsZero();
         }
@@ -181,7 +181,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
     ///
     /// @param _account The address of the user.
     /// @param _newLimit The new custom limit for the user.
-    function updateCustomUserLimit(address _account, uint96 _newLimit) external onlyOwner {
+    function updateCustomUserLimit(address _account, uint104 _newLimit) external onlyOwner {
         uint256 _oldLimit = userCurrentPeriod[_account].limit;
         userCurrentPeriod[_account].limit = _newLimit;
 
