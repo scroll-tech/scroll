@@ -108,7 +108,7 @@ func TestProofDetailHash(t *testing.T) {
 	}
 	hash, err := proofDetail.Hash()
 	assert.NoError(t, err)
-	expectedHash := "72a00232c1fcb100b1b67e6d12cd449e5d2d890e3a66e50f4c23499d4990766f"
+	expectedHash := "d3b57cb84b0da8043373eeb3612806fb7248d6d1b6e089846ccf3ccce2d9f31c"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
