@@ -47,7 +47,7 @@ contract ScrollOwner is AccessControlEnumerable {
     /// @param _target The address of target contract.
     /// @param _selector The function selector to query.
     /// @return _roles The list of roles.
-    function callable(address _target, bytes4 _selector) external view returns (bytes32[] memory _roles) {
+    function callableRoles(address _target, bytes4 _selector) external view returns (bytes32[] memory _roles) {
         EnumerableSet.Bytes32Set storage _lists = targetAccess[_target][_selector];
         _roles = new bytes32[](_lists.length());
         for (uint256 i = 0; i < _roles.length; i++) {

@@ -28,16 +28,16 @@ contract ScrollOwnerTest is DSTestPlus {
         bytes32[] memory _roles;
 
         // add access then remove access
-        _roles = owner.callable(address(this), ScrollOwnerTest.revertOnCall.selector);
+        _roles = owner.callableRoles(address(this), ScrollOwnerTest.revertOnCall.selector);
         assertEq(0, _roles.length);
         _selectors = new bytes4[](1);
         _selectors[0] = ScrollOwnerTest.revertOnCall.selector;
         owner.updateAccess(address(this), _selectors, bytes32(uint256(1)), true);
-        _roles = owner.callable(address(this), ScrollOwnerTest.revertOnCall.selector);
+        _roles = owner.callableRoles(address(this), ScrollOwnerTest.revertOnCall.selector);
         assertEq(1, _roles.length);
         assertEq(_roles[0], bytes32(uint256(1)));
         owner.updateAccess(address(this), _selectors, bytes32(uint256(1)), false);
-        _roles = owner.callable(address(this), ScrollOwnerTest.revertOnCall.selector);
+        _roles = owner.callableRoles(address(this), ScrollOwnerTest.revertOnCall.selector);
         assertEq(0, _roles.length);
     }
 
