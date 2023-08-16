@@ -52,6 +52,10 @@ on chunk (hash) where deleted_at IS NULL;
 create index batch_hash_index
 on chunk (batch_hash) where deleted_at IS NULL;
 
+create index chunk_idx_end_block_number_and_total_attempts_and_active_attempts
+on chunk (end_block_number, total_attempts, active_attempts)
+where deleted_at IS NULL;
+
 -- +goose StatementEnd
 
 -- +goose Down

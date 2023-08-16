@@ -48,6 +48,10 @@ on batch (index) where deleted_at IS NULL;
 create unique index batch_hash_uindex
 on batch (hash) where deleted_at IS NULL;
 
+create index batch_idx_chunk_proofs_status_and_total_attempts_and_active_attempts
+on batch (chunk_proofs_status, total_attempts, active_attempts)
+where deleted_at IS NULL;
+
 comment
 on column batch.chunk_proofs_status is 'undefined, pending, ready';
 
