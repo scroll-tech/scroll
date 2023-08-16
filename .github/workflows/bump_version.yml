@@ -10,15 +10,13 @@ on:
       - ready_for_review
 
 jobs:
-  check:
+  try-to-bump:
     runs-on: ubuntu-latest
-    outputs:
-      check-result: ${{ steps.check-diff.outputs.result }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
       - name: check diff
-        id: check-diff
+        id: check_diff
         run: |
           set -euo pipefail
 
@@ -43,19 +41,15 @@ jobs:
             echo '> yes'
             echo "result=bump" >> "$GITHUB_OUTPUT"
           fi
-  bump:
-    runs-on: ubuntu-latest
-    needs: check
-    if: needs.check.outputs.check-result == 'bump'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
       - name: Install Node.js 16
+        if: steps.check_diff.outputs.result == 'bump'
         uses: actions/setup-node@v3
         with:
           node-version: 16
       - name: bump version in common/version/version.go
+        if: steps.check_diff.outputs.result == 'bump'
         run: node .github/scripts/bump_version_dot_go.mjs
       - uses: stefanzweifel/git-auto-commit-action@3ea6ae190baf489ba007f7c92608f33ce20ef04a
+        if: steps.check_diff.outputs.result == 'bump'
         with:
           commit_message: "chore: auto version bump [bot]"
