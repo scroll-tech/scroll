@@ -257,9 +257,9 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	if s.IsFull() {
 		s.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(1)
 		return common.Hash{}, ErrFullPending
-	} else {
-		s.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(0)
 	}
+
+	s.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(0)
 	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
 		s.sendTransactionFailureRepeatTransaction.WithLabelValues(s.service, s.name).Inc()
 		return common.Hash{}, fmt.Errorf("repeat transaction ID: %s", ID)

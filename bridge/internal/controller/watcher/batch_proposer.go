@@ -90,6 +90,10 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 			Name: "bridge_propose_batch_first_chunk_timeout_reached_total",
 			Help: "Total times of batch's first chunk timeout reached",
 		}),
+		batchChunksSuperposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_propose_batch_chunks_superpose_not_enough_total",
+			Help: "Total number of batch chunk superpose not enough",
+		}),
 	}
 }
 
@@ -245,6 +249,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		log.Warn("The chunk number of the batch is less than the minimum limit",
 			"chunk num", len(dbChunks), "minChunkNumPerBatch", p.minChunkNumPerBatch,
 		)
+		p.batchChunksSuperposeNotEnoughTotal.Inc()
 		return nil, nil
 	}
 	return dbChunks, nil
