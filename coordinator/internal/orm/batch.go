@@ -279,10 +279,9 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	return nil
 }
 
-// UpdateEarliestAvailableBatch atomically increments the attempts count for the earliest available chunk that meets the conditions.
-func (o *Batch) UpdateEarliestAvailableBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) ([]*Batch, error) {
+// UpdateBatchAttemptsReturning atomically increments the attempts count for the earliest available chunk that meets the conditions.
+func (o *Batch) UpdateBatchAttemptsReturning(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	db := o.db.WithContext(ctx)
-	var batches []*Batch
 	subQueryDB := db.Model(&Batch{})
 	subQueryDB = subQueryDB.Select("index")
 	// Lock the selected row to ensure atomic updates
@@ -294,16 +293,20 @@ func (o *Batch) UpdateEarliestAvailableBatch(ctx context.Context, maxActiveAttem
 	subQueryDB = subQueryDB.Limit(1)
 
 	// Perform the update and return the modified chunk
-	db = db.Model(&batches).Clauses(clause.Returning{})
+	var updatedBatch Batch
+	db = db.Model(&updatedBatch).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
 	if err := db.Updates(map[string]interface{}{
 		"total_attempts":  gorm.Expr("total_attempts + ?", 1),
 		"active_attempts": gorm.Expr("active_attempts + ?", 1),
 	}).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to select and update batch, max active attempts: %v, max total attempts: %v, err: %w",
 			maxActiveAttempts, maxTotalAttempts, err)
 	}
-	return batches, nil
+	return &updatedBatch, nil
 }
 
 // DecreaseActiveAttemptsByHash decrements the active_attempts of a batch given its hash.

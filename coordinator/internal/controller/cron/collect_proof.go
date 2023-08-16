@@ -102,7 +102,7 @@ func (c *Collector) timeoutProofTask() {
 						return err
 					}
 
-					// update prover task failure type
+					// update prover task failure type as ProverTaskFailureTypeTimeout
 					if err = c.proverTaskOrm.UpdateProverTaskFailureType(c.ctx, message.ProofType(assignedProverTask.TaskType),
 						assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverTaskFailureTypeTimeout, tx); err != nil {
 						log.Error("update prover task failure type failure",
@@ -112,16 +112,14 @@ func (c *Collector) timeoutProofTask() {
 					}
 
 					if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeChunk {
-						if err = c.chunkOrm.DecreaseActiveAttemptsByHash(
-							c.ctx, assignedProverTask.TaskID, tx); err != nil {
+						if err = c.chunkOrm.DecreaseActiveAttemptsByHash(c.ctx, assignedProverTask.TaskID, tx); err != nil {
 							log.Error("decrease active attempts of chunk failure",
 								"hash", assignedProverTask.TaskID, "err", err)
 							return err
 						}
 					}
 					if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeBatch {
-						if err = c.batchOrm.DecreaseActiveAttemptsByHash(
-							c.ctx, assignedProverTask.TaskID, tx); err != nil {
+						if err = c.batchOrm.DecreaseActiveAttemptsByHash(c.ctx, assignedProverTask.TaskID, tx); err != nil {
 							log.Error("decrease active attempts of batch failure",
 								"hash", assignedProverTask.TaskID, "err", err)
 							return err
@@ -129,8 +127,7 @@ func (c *Collector) timeoutProofTask() {
 					}
 
 					var failedAssignmentCount uint64
-					failedAssignmentCount, err = c.proverTaskOrm.GetFailedTaskAssignmentCount(
-						c.ctx, assignedProverTask.TaskID, tx)
+					failedAssignmentCount, err = c.proverTaskOrm.GetFailedTaskAssignmentCount(c.ctx, assignedProverTask.TaskID, tx)
 					if err != nil {
 						log.Error("get failed task assignment count failure",
 							"taskID", assignedProverTask.TaskID, "err", err)
@@ -139,16 +136,14 @@ func (c *Collector) timeoutProofTask() {
 
 					if failedAssignmentCount >= uint64(c.cfg.ProverManager.SessionAttempts) {
 						if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeChunk {
-							if err = c.chunkOrm.UpdateProvingStatus(
-								c.ctx, assignedProverTask.TaskID, types.ProvingTaskFailed, tx); err != nil {
+							if err = c.chunkOrm.UpdateProvingStatus(c.ctx, assignedProverTask.TaskID, types.ProvingTaskFailed, tx); err != nil {
 								log.Error("update chunk proving status failure", "hash", assignedProverTask.TaskID,
 									"status", types.ProvingTaskFailed, "err", err)
 								return err
 							}
 						}
 						if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeBatch {
-							if err = c.batchOrm.UpdateProvingStatus(
-								c.ctx, assignedProverTask.TaskID, types.ProvingTaskFailed, tx); err != nil {
+							if err = c.batchOrm.UpdateProvingStatus(c.ctx, assignedProverTask.TaskID, types.ProvingTaskFailed, tx); err != nil {
 								log.Error("update batch proving status failure", "hash", assignedProverTask.TaskID,
 									"status", types.ProvingTaskFailed, "err", err)
 								return err

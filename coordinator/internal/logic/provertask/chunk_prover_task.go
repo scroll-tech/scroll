@@ -24,7 +24,12 @@ import (
 
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
-	BaseProverTask
+	cfg *config.Config
+	db  *gorm.DB
+
+	chunkOrm      *orm.Chunk
+	blockOrm      *orm.L2Block
+	proverTaskOrm *orm.ProverTask
 
 	chunkAttemptsExceedTotal prometheus.Counter
 	chunkTaskGetTaskTotal    prometheus.Counter
@@ -33,14 +38,11 @@ type ChunkProverTask struct {
 // NewChunkProverTask new a chunk prover task
 func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *ChunkProverTask {
 	cp := &ChunkProverTask{
-		BaseProverTask: BaseProverTask{
-			db:            db,
-			cfg:           cfg,
-			chunkOrm:      orm.NewChunk(db),
-			blockOrm:      orm.NewL2Block(db),
-			proverTaskOrm: orm.NewProverTask(db),
-		},
-
+		db:            db,
+		cfg:           cfg,
+		chunkOrm:      orm.NewChunk(db),
+		blockOrm:      orm.NewL2Block(db),
+		proverTaskOrm: orm.NewProverTask(db),
 		chunkAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_chunk_attempts_exceed_total",
 			Help: "Total number of chunk attempts exceed.",
@@ -83,21 +85,14 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	// load and send a chunk task
-	chunkTasks, err := cp.chunkOrm.UpdateEarliestAvailableChunk(
-		ctx, getTaskParameter.ProverHeight, cp.cfg.ProverManager.ProversPerSession, cp.cfg.ProverManager.SessionAttempts)
+	chunkTask, err := cp.chunkOrm.UpdateChunkAttemptsReturning(ctx, getTaskParameter.ProverHeight, cp.cfg.ProverManager.ProversPerSession, cp.cfg.ProverManager.SessionAttempts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned chunk proving tasks, error:%w", err)
 	}
 
-	if len(chunkTasks) == 0 {
+	if chunkTask == nil {
 		return nil, nil
 	}
-
-	if len(chunkTasks) != 1 {
-		return nil, fmt.Errorf("get unassigned chunk proving task len not 1, chunk tasks:%v", chunkTasks)
-	}
-
-	chunkTask := chunkTasks[0]
 
 	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", publicKey, "prover name", proverName)
 

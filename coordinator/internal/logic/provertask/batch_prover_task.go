@@ -24,7 +24,12 @@ import (
 
 // BatchProverTask is prover task implement for batch proof
 type BatchProverTask struct {
-	BaseProverTask
+	cfg *config.Config
+	db  *gorm.DB
+
+	batchOrm      *orm.Batch
+	chunkOrm      *orm.Chunk
+	proverTaskOrm *orm.ProverTask
 
 	batchAttemptsExceedTotal prometheus.Counter
 	batchTaskGetTaskTotal    prometheus.Counter
@@ -33,13 +38,11 @@ type BatchProverTask struct {
 // NewBatchProverTask new a batch collector
 func NewBatchProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *BatchProverTask {
 	bp := &BatchProverTask{
-		BaseProverTask: BaseProverTask{
-			db:            db,
-			cfg:           cfg,
-			chunkOrm:      orm.NewChunk(db),
-			batchOrm:      orm.NewBatch(db),
-			proverTaskOrm: orm.NewProverTask(db),
-		},
+		db:            db,
+		cfg:           cfg,
+		chunkOrm:      orm.NewChunk(db),
+		batchOrm:      orm.NewBatch(db),
+		proverTaskOrm: orm.NewProverTask(db),
 		batchAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_batch_attempts_exceed_total",
 			Help: "Total number of batch attempts exceed.",
@@ -82,21 +85,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	// load and send a batch task
-	batchTasks, err := bp.batchOrm.UpdateEarliestAvailableBatch(
-		ctx, bp.cfg.ProverManager.ProversPerSession, bp.cfg.ProverManager.SessionAttempts)
+	batchTask, err := bp.batchOrm.UpdateBatchAttemptsReturning(ctx, bp.cfg.ProverManager.ProversPerSession, bp.cfg.ProverManager.SessionAttempts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
 	}
 
-	if len(batchTasks) == 0 {
+	if batchTask == nil {
 		return nil, nil
 	}
-
-	if len(batchTasks) != 1 {
-		return nil, fmt.Errorf("get unassigned batch proving task len not 1, batch tasks:%v", batchTasks)
-	}
-
-	batchTask := batchTasks[0]
 	log.Info("start batch proof generation session", "id", batchTask.Hash, "public key", publicKey, "prover name", proverName)
 
 	proverTask := orm.ProverTask{

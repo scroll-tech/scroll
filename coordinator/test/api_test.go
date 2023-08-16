@@ -306,17 +306,28 @@ func testInvalidProof(t *testing.T) {
 		tickStop = time.Tick(time.Minute)
 	)
 
-	var chunkProofStatus types.ProverProveStatus
-	var batchProofStatus types.ProverProveStatus
+	var (
+		chunkProofStatus types.ProverProveStatus
+		batchProofStatus types.ProverProveStatus
+		chunkFailureType types.ProverTaskFailureType
+		batchFailureType types.ProverTaskFailureType
+	)
 
 	for {
 		select {
 		case <-tick:
 			chunkProofStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), dbChunk.Hash)
 			assert.NoError(t, err)
+			chunkFailureType, err = proverTaskOrm.GetFailureTypeByTaskID(context.Background(), dbChunk.Hash)
+			assert.NoError(t, err)
 			batchProofStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), batch.Hash)
 			assert.NoError(t, err)
-			if chunkProofStatus == types.ProverProofInvalid && batchProofStatus == types.ProverProofInvalid {
+			batchFailureType, err = proverTaskOrm.GetFailureTypeByTaskID(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+
+			if chunkProofStatus == types.ProverProofInvalid && batchProofStatus == types.ProverProofInvalid &&
+				chunkFailureType == types.ProverTaskFailureTypeVerifiedFailed &&
+				batchFailureType == types.ProverTaskFailureTypeVerifiedFailed {
 				return
 			}
 		case <-tickStop:

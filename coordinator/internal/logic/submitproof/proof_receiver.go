@@ -158,12 +158,26 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if verifyErr != nil || !success {
 		m.verifierFailureTotal.WithLabelValues(proverVersion).Inc()
 
-		if err = m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, message.ProofType(proverTask.TaskType),
-			proverTask.TaskID, proverTask.ProverPublicKey, types.ProverProofInvalid); err != nil {
-			log.Error("update prover task proving status failure",
-				"hash", proverTask.TaskID, "pubKey", proverTask.ProverPublicKey,
-				"prover proving status", types.ProverProofInvalid, "err", err)
-			return err
+		err = m.db.Transaction(func(tx *gorm.DB) error {
+			// update prover task proving status as ProverProofInvalid
+			if err = m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, message.ProofType(proverTask.TaskType),
+				proverTask.TaskID, proverTask.ProverPublicKey, types.ProverProofInvalid); err != nil {
+				log.Error("update prover task proving status failure", "hash", proverTask.TaskID, "pubKey", proverTask.ProverPublicKey,
+					"prover proving status", types.ProverProofInvalid, "err", err)
+				return err
+			}
+
+			// update prover task failure type as ProverTaskFailureTypeVerifiedFailed
+			if err = m.proverTaskOrm.UpdateProverTaskFailureType(ctx, message.ProofType(proverTask.TaskType),
+				proverTask.TaskID, proverTask.ProverPublicKey, types.ProverTaskFailureTypeVerifiedFailed, tx); err != nil {
+				log.Error("update prover task failure type failure", "hash", proverTask.TaskID, "pubKey", proverTask.ProverPublicKey,
+					"prover failure type", types.ProverTaskFailureTypeVerifiedFailed, "err", err)
+				return err
+			}
+			return nil
+		})
+		if err != nil {
+			log.Error("check task proof is timeout failure", "error", err)
 		}
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,

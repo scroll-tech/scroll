@@ -159,6 +159,20 @@ func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string
 	return types.ProverProveStatus(proverTask.ProvingStatus), nil
 }
 
+// GetFailureTypeByTaskID retrieves the failure type of a prover task
+func (o *ProverTask) GetFailureTypeByTaskID(ctx context.Context, taskID string) (types.ProverTaskFailureType, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Select("failure_type")
+	db = db.Where("task_id = ?", taskID)
+
+	var proverTask ProverTask
+	if err := db.Find(&proverTask).Error; err != nil {
+		return types.ProverTaskFailureTypeUndefined, fmt.Errorf("ProverTask.GetFailureTypeByTaskID error: %w, taskID: %v", err, taskID)
+	}
+	return types.ProverTaskFailureType(proverTask.FailureType), nil
+}
+
 // GetTimeoutAssignedProverTasks get the timeout and assigned proving_status prover task
 func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit int, timeout time.Duration) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)

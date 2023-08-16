@@ -345,31 +345,34 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 	return nil
 }
 
-// UpdateEarliestAvailableChunk atomically increments the attempts count for the earliest available chunk that meets the conditions.
-func (o *Chunk) UpdateEarliestAvailableChunk(ctx context.Context, proverBlockHeight int, maxActiveAttempts, maxTotalAttempts uint8) ([]*Chunk, error) {
+// UpdateChunkAttemptsReturning atomically increments the attempts count for the earliest available chunk that meets the conditions.
+func (o *Chunk) UpdateChunkAttemptsReturning(ctx context.Context, proverBlockHeight int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
-	var chunks []*Chunk
 	subQueryDB := db.Model(&Chunk{})
 	subQueryDB = subQueryDB.Select("index")
 	// Lock the selected row to ensure atomic updates
 	subQueryDB = subQueryDB.Clauses(clause.Locking{Strength: "UPDATE"})
 	subQueryDB = subQueryDB.Where("total_attempts < ?", maxTotalAttempts)
 	subQueryDB = subQueryDB.Where("active_attempts < ?", maxActiveAttempts)
-	subQueryDB = subQueryDB.Where("end_block_number < ?", proverBlockHeight)
+	subQueryDB = subQueryDB.Where("end_block_number <= ?", proverBlockHeight)
 	subQueryDB = subQueryDB.Order("index ASC")
 	subQueryDB = subQueryDB.Limit(1)
 
 	// Perform the update and return the modified chunk
-	db = db.Model(&chunks).Clauses(clause.Returning{})
+	var updatedChunk Chunk
+	db = db.Model(&updatedChunk).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
 	if err := db.Updates(map[string]interface{}{
 		"total_attempts":  gorm.Expr("total_attempts + ?", 1),
 		"active_attempts": gorm.Expr("active_attempts + ?", 1),
 	}).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("failed to update chunk, prover height: %v, max attempts: %v/%v, err: %w",
 			proverBlockHeight, maxActiveAttempts, maxTotalAttempts, err)
 	}
-	return chunks, nil
+	return &updatedChunk, nil
 }
 
 // DecreaseActiveAttemptsByHash decrements the active_attempts of a chunk given its hash.
