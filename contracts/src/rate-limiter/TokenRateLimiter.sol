@@ -96,39 +96,39 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
         uint256 _currentPeriodStart = (block.timestamp / periodDuration) * periodDuration;
 
         // check total limit, `0` means no limit at all.
-        uint256 _currentTotal;
+        uint256 _currentTotalAmount;
         TokenAmount memory _currentPeriod = currentPeriod[_token];
         if (_currentPeriod.lastUpdateTs < _currentPeriodStart) {
-            _currentTotal = _amount;
+            _currentTotalAmount = _amount;
         } else {
-            _currentTotal = _currentPeriod.amount + _amount;
+            _currentTotalAmount = _currentPeriod.amount + _amount;
         }
-        if (_currentPeriod.limit != 0 && _currentTotal > _currentPeriod.limit) {
+        if (_currentPeriod.limit != 0 && _currentTotalAmount > _currentPeriod.limit) {
             revert ExceedTotalLimit(_token);
         }
 
         // check user limit, `0` means no limit at all.
-        uint256 _currentUser;
+        uint256 _currentUserAmount;
         TokenAmount memory _userCurrentPeriod = userCurrentPeriod[_token][_sender];
         if (_userCurrentPeriod.lastUpdateTs < _currentPeriodStart) {
-            _currentUser = _amount;
+            _currentUserAmount = _amount;
         } else {
-            _currentUser = _userCurrentPeriod.amount + _amount;
+            _currentUserAmount = _userCurrentPeriod.amount + _amount;
         }
 
         uint256 _userLimit = defaultUserLimit[_token];
         if (_userCurrentPeriod.limit != 0) {
             _userLimit = _userCurrentPeriod.limit;
         }
-        if (_userLimit != 0 && _currentUser > _userLimit) {
+        if (_userLimit != 0 && _currentUserAmount > _userLimit) {
             revert ExceedUserLimit(_token);
         }
 
         _currentPeriod.lastUpdateTs = uint48(block.timestamp);
-        _currentPeriod.amount = SafeCast.toUint104(_currentTotal);
+        _currentPeriod.amount = SafeCast.toUint104(_currentTotalAmount);
 
         _userCurrentPeriod.lastUpdateTs = uint48(block.timestamp);
-        _userCurrentPeriod.amount = SafeCast.toUint104(_currentUser);
+        _userCurrentPeriod.amount = SafeCast.toUint104(_currentUserAmount);
 
         currentPeriod[_token] = _currentPeriod;
         userCurrentPeriod[_token][_sender] = _userCurrentPeriod;
