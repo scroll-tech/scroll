@@ -39,13 +39,13 @@ pub unsafe extern "C" fn init_batch_verifier(params_dir: *const c_char, assets_d
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn check_chunk_protocol(chunk_proofs: *const c_char) -> c_char {
+pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> c_char {
     let chunk_proofs = c_char_to_vec(chunk_proofs);
     let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs).unwrap();
     assert!(!chunk_proofs.is_empty());
 
-    let matched = panic::catch_unwind(|| PROVER.get().unwrap().check_chunk_protocol(&chunk_proofs));
-    matched.unwrap_or(false) as c_char
+    let valid = panic::catch_unwind(|| PROVER.get().unwrap().check_chunk_proofs(&chunk_proofs));
+    valid.unwrap_or(false) as c_char
 }
 
 /// # Safety

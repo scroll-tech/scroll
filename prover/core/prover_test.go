@@ -22,6 +22,7 @@ import (
 
 var (
 	paramsPath    = flag.String("params", "/assets/test_params", "params dir")
+	assetsPath    = flag.String("assets", "/assets/test_assets", "assets dir")
 	proofDumpPath = flag.String("dump", "/assets/proof_data", "the path proofs dump to")
 	tracePath1    = flag.String("trace1", "/assets/traces/1_transfer.json", "chunk trace 1")
 	tracePath2    = flag.String("trace2", "/assets/traces/10_transfer.json", "chunk trace 2")
@@ -86,6 +87,7 @@ func TestFFI(t *testing.T) {
 	batchProverConfig := &config.ProverCoreConfig{
 		DumpDir:    *proofDumpPath,
 		ParamsPath: *paramsPath,
+		AssetsPath: *assetsPath,
 		ProofType:  message.ProofTypeBatch,
 	}
 	batchProverCore, err := core.NewProverCore(batchProverConfig)
