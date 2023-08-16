@@ -1,0 +1,56 @@
+name: Bump Version
+
+on:
+  pull_request:
+    branches: [develop]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      check-result: ${{ steps.check-diff.outputs.result }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: check diff
+        id: check-diff
+        run: |
+          set -euo pipefail
+
+          # fetch develop branch so that we can diff against later
+          git fetch origin develop
+
+          echo 'checking verion changes in diff...'
+
+          # check if version changed in version.go
+          # note: the grep will fail if use \d instead of [0-9]
+          git diff HEAD..origin/develop --text --no-ext-diff --unified=0 --no-prefix common/version/version.go | grep -E '^\+var tag = "v[0-9]+\.[0-9]+\.[0-9]+"$' && true
+
+          exit_code=$?
+
+          # auto bump if version is not bumped manually
+          echo '> require auto version bump?'
+
+          if [ $exit_code -eq 0 ]; then
+            echo '> no, already bumped'
+            echo "result=no-bump" >> "$GITHUB_OUTPUT"
+          else
+            echo '> yes'
+            echo "result=bump" >> "$GITHUB_OUTPUT"
+          fi
+  bump:
+    runs-on: ubuntu-latest
+    needs: check
+    if: needs.check.outputs.check-result == 'bump'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install Node.js 16
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: bump version in common/version/version.go
+        run: node .github/scripts/bump_version_dot_go.mjs
+      - uses: stefanzweifel/git-auto-commit-action@3ea6ae190baf489ba007f7c92608f33ce20ef04a
+        with:
+          commit_message: "chore: auto version bump [bot]"
