@@ -141,7 +141,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		"prover pk", pk, "prove type", proverTask.TaskType, "proof time", proofTimeSec)
 
 	if err = m.validator(ctx, proverTask, pk, proofMsg); err != nil {
-		m.proofFailure(ctx, proverTask)
+		m.proofFailure(ctx, proverTask, types.ProverTaskFailureTypeValidatedFailed)
 		return err
 	}
 
@@ -159,7 +159,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if verifyErr != nil || !success {
 		m.verifierFailureTotal.WithLabelValues(proverVersion).Inc()
 
-		m.proofFailure(ctx, proverTask)
+		m.proofFailure(ctx, proverTask, types.ProverTaskFailureTypeVerifiedFailed)
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
@@ -256,7 +256,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 	return nil
 }
 
-func (m *ProofReceiverLogic) proofFailure(ctx context.Context, proverTask *orm.ProverTask) {
+func (m *ProofReceiverLogic) proofFailure(ctx context.Context, proverTask *orm.ProverTask, failedType types.ProverTaskFailureType) {
 	err := m.db.Transaction(func(tx *gorm.DB) error {
 		// update prover task proving status as ProverProofInvalid
 		if err := m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, message.ProofType(proverTask.TaskType),
@@ -268,9 +268,9 @@ func (m *ProofReceiverLogic) proofFailure(ctx context.Context, proverTask *orm.P
 
 		// update prover task failure type as ProverTaskFailureTypeVerifiedFailed
 		if err := m.proverTaskOrm.UpdateProverTaskFailureType(ctx, message.ProofType(proverTask.TaskType),
-			proverTask.TaskID, proverTask.ProverPublicKey, types.ProverTaskFailureTypeVerifiedFailed, tx); err != nil {
+			proverTask.TaskID, proverTask.ProverPublicKey, failedType, tx); err != nil {
 			log.Error("update prover task failure type failure", "hash", proverTask.TaskID, "pubKey", proverTask.ProverPublicKey,
-				"prover failure type", types.ProverTaskFailureTypeVerifiedFailed, "err", err)
+				"prover failure type", failedType, "err", err)
 			return err
 		}
 

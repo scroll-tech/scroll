@@ -103,6 +103,8 @@ const (
 	ProverTaskFailureTypeUndefined ProverTaskFailureType = iota
 	// ProverTaskFailureTypeTimeout prover task failure of timeout
 	ProverTaskFailureTypeTimeout
+	// ProverTaskFailureTypeValidatedFailed prover task failure of validated failed by coordinator
+	ProverTaskFailureTypeValidatedFailed
 	// ProverTaskFailureTypeVerifiedFailed prover task failure of verified failed by coordinator
 	ProverTaskFailureTypeVerifiedFailed
 )
@@ -113,6 +115,8 @@ func (r ProverTaskFailureType) String() string {
 		return "prover task failure undefined"
 	case ProverTaskFailureTypeTimeout:
 		return "prover task failure timeout"
+	case ProverTaskFailureTypeValidatedFailed:
+		return "prover task failure validated failed"
 	case ProverTaskFailureTypeVerifiedFailed:
 		return "prover task failure verified failed"
 	default:
