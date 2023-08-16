@@ -2755,7 +2755,7 @@ dependencies = [
 [[package]]
 name = "prover"
 version = "0.6.4"
-source = "git+https://github.com/scroll-tech/scroll-prover?tag=v0.6.5#ccb3cd457080dcfdf8ae59416eb47ae9b6b6ddd6"
+source = "git+https://github.com/scroll-tech/scroll-prover?branch=cmp-chunk-protocol-when-gen-batch-proof#1609c24a17bb51b77a310d1f4de1fb83fd52f95b"
 dependencies = [
  "aggregator",
  "anyhow",
@@ -3624,7 +3624,7 @@ checksum = "62bb4feee49fdd9f707ef802e22365a35de4b7b299de4763d44bfea899442ff9"
 [[package]]
 name = "snark-verifier"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech//snark-verifier?tag=v0.1.1#11a09d4a37c31c659b29e2dac0ceb544a776ad7b"
+source = "git+https://github.com/scroll-tech/snark-verifier?tag=v0.1.2#4466059ce9a6dfaf26455e4ffb61d72af775cf52"
 dependencies = [
  "bytes",
  "ethereum-types 0.14.1",
@@ -3648,7 +3648,7 @@ dependencies = [
 [[package]]
 name = "snark-verifier-sdk"
 version = "0.0.1"
-source = "git+https://github.com/scroll-tech//snark-verifier?tag=v0.1.1#11a09d4a37c31c659b29e2dac0ceb544a776ad7b"
+source = "git+https://github.com/scroll-tech/snark-verifier?tag=v0.1.2#4466059ce9a6dfaf26455e4ffb61d72af775cf52"
 dependencies = [
  "bincode",
  "env_logger 0.10.0",
@@ -4040,7 +4040,7 @@ checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
 [[package]]
 name = "types"
 version = "0.6.4"
-source = "git+https://github.com/scroll-tech/scroll-prover?tag=v0.6.5#ccb3cd457080dcfdf8ae59416eb47ae9b6b6ddd6"
+source = "git+https://github.com/scroll-tech/scroll-prover?branch=cmp-chunk-protocol-when-gen-batch-proof#1609c24a17bb51b77a310d1f4de1fb83fd52f95b"
 dependencies = [
  "base64 0.13.1",
  "blake2",

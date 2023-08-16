@@ -13,11 +13,13 @@ static mut VERIFIER: OnceCell<Verifier> = OnceCell::new();
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn init_batch_prover(params_dir: *const c_char) {
+pub unsafe extern "C" fn init_batch_prover(params_dir: *const c_char, assets_dir: *const c_char) {
     init_env_and_log("ffi_batch_prove");
 
     let params_dir = c_char_to_str(params_dir);
-    let prover = Prover::from_params_dir(params_dir);
+    let assets_dir = c_char_to_str(assets_dir);
+
+    let prover = Prover::from_dirs(params_dir, assets_dir);
 
     PROVER.set(prover).unwrap();
 }
@@ -33,6 +35,17 @@ pub unsafe extern "C" fn init_batch_verifier(params_dir: *const c_char, assets_d
     let verifier = Verifier::from_dirs(params_dir, assets_dir);
 
     VERIFIER.set(verifier).unwrap();
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn check_chunk_protocol(chunk_proofs: *const c_char) -> c_char {
+    let chunk_proofs = c_char_to_vec(chunk_proofs);
+    let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs).unwrap();
+    assert!(!chunk_proofs.is_empty());
+
+    let matched = panic::catch_unwind(|| PROVER.get().unwrap().check_chunk_protocol(&chunk_proofs));
+    matched.unwrap_or(false) as c_char
 }
 
 /// # Safety
