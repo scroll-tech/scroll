@@ -113,16 +113,18 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string
 	return proverTasks, nil
 }
 
-// GetProverTaskByTaskIDAndPubKey get prover task taskID and public key
-func (o *ProverTask) GetProverTaskByTaskIDAndPubKey(ctx context.Context, taskID, proverPublicKey string) (*ProverTask, error) {
+// GetProverTaskByTaskIDAndProver get prover task taskID and public key
+func (o *ProverTask) GetProverTaskByTaskIDAndProver(ctx context.Context, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("task_id", taskID).Where("prover_public_key", proverPublicKey)
+	db = db.Where("task_id", taskID)
+	db = db.Where("prover_public_key", proverPublicKey)
+	db = db.Where("prover_version", proverVersion)
 
 	var proverTask ProverTask
 	err := db.First(&proverTask).Error
 	if err != nil {
-		return nil, fmt.Errorf("ProverTask.GetProverTaskByTaskIDAndPubKey err:%w, taskID:%s, pubukey:%s", err, taskID, proverPublicKey)
+		return nil, fmt.Errorf("ProverTask.GetProverTaskByTaskIDAndProver err:%w, taskID:%s, pubkey:%s, prover_version:%s", err, taskID, proverPublicKey, proverVersion)
 	}
 	return &proverTask, nil
 }
