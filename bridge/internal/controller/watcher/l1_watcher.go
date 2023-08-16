@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -11,22 +13,14 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 
 	bridgeAbi "scroll-tech/bridge/abi"
 	"scroll-tech/bridge/internal/orm"
 	"scroll-tech/bridge/internal/utils"
-)
-
-var (
-	bridgeL1MsgsSyncHeightGauge          = gethMetrics.NewRegisteredGauge("bridge/l1/msgs/sync/height", metrics.ScrollRegistry)
-	bridgeL1MsgsSentEventsTotalCounter   = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/sent/events/total", metrics.ScrollRegistry)
-	bridgeL1MsgsRollupEventsTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l1/msgs/rollup/events/total", metrics.ScrollRegistry)
 )
 
 type rollupEvent struct {
@@ -59,10 +53,18 @@ type L1WatcherClient struct {
 	processedMsgHeight uint64
 	// The height of the block that the watcher has retrieved header rlp
 	processedBlockHeight uint64
+
+	l1WatcherFetchBlockHeaderTotal                  prometheus.Counter
+	l1WatcherFetchBlockHeaderProcessedBlockHeight   prometheus.Gauge
+	l1WatcherFetchContractEventTotal                prometheus.Counter
+	l1WatcherFetchContractEventSuccessTotal         prometheus.Counter
+	l1WatcherFetchContractEventProcessedBlockHeight prometheus.Gauge
+	l1WatcherFetchContractEventSentEventsTotal      prometheus.Counter
+	l1WatcherFetchContractEventRollupEventsTotal    prometheus.Counter
 }
 
 // NewL1WatcherClient returns a new instance of L1WatcherClient.
-func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db *gorm.DB) *L1WatcherClient {
+func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db *gorm.DB, reg prometheus.Registerer) *L1WatcherClient {
 	l1MessageOrm := orm.NewL1Message(db)
 	savedHeight, err := l1MessageOrm.GetLayer1LatestWatchedHeight()
 	if err != nil {
@@ -102,6 +104,34 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 
 		processedMsgHeight:   uint64(savedHeight),
 		processedBlockHeight: savedL1BlockHeight,
+		l1WatcherFetchBlockHeaderTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_l1_watcher_fetch_block_header_total",
+			Help: "The total number of l1 watcher fetch block header total",
+		}),
+		l1WatcherFetchBlockHeaderProcessedBlockHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "bridge_l1_watcher_fetch_block_header_processed_block_height",
+			Help: "The current processed block height of l1 watcher fetch block header",
+		}),
+		l1WatcherFetchContractEventTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_l1_watcher_fetch_block_contract_event_total",
+			Help: "The total number of l1 watcher fetch contract event total",
+		}),
+		l1WatcherFetchContractEventSuccessTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_l1_watcher_fetch_block_contract_event_success_total",
+			Help: "The total number of l1 watcher fetch contract event success total",
+		}),
+		l1WatcherFetchContractEventProcessedBlockHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "bridge_l1_watcher_fetch_block_contract_event_processed_block_height",
+			Help: "The current processed block height of l1 watcher fetch contract event",
+		}),
+		l1WatcherFetchContractEventSentEventsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_l1_watcher_fetch_block_contract_event_sent_event_total",
+			Help: "The current processed block height of l1 watcher fetch contract sent event",
+		}),
+		l1WatcherFetchContractEventRollupEventsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_l1_watcher_fetch_block_contract_event_rollup_event_total",
+			Help: "The current processed block height of l1 watcher fetch contract rollup event",
+		}),
 	}
 }
 
@@ -125,6 +155,7 @@ func (w *L1WatcherClient) SetConfirmations(confirmations rpc.BlockNumber) {
 
 // FetchBlockHeader pull latest L1 blocks and save in DB
 func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
+	w.l1WatcherFetchBlockHeaderTotal.Inc()
 	fromBlock := int64(w.processedBlockHeight) + 1
 	toBlock := int64(blockHeight)
 	if toBlock < fromBlock {
@@ -171,6 +202,7 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 
 	// update processed height
 	w.processedBlockHeight = uint64(toBlock)
+	w.l1WatcherFetchBlockHeaderProcessedBlockHeight.Set(float64(w.processedBlockHeight))
 	return nil
 }
 
@@ -189,6 +221,7 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 	toBlock := int64(blockHeight)
 
 	for from := fromBlock; from <= toBlock; from += contractEventsBlocksFetchLimit {
+		w.l1WatcherFetchContractEventTotal.Inc()
 		to := from + contractEventsBlocksFetchLimit - 1
 
 		if to > toBlock {
@@ -220,9 +253,10 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
-			bridgeL1MsgsSyncHeightGauge.Update(to)
+			w.l1WatcherFetchContractEventProcessedBlockHeight.Set(float64(to))
 			continue
 		}
+
 		log.Info("Received new L1 events", "fromBlock", from, "toBlock", to, "cnt", len(logs))
 
 		sentMessageEvents, rollupEvents, err := w.parseBridgeEventLogs(logs)
@@ -232,8 +266,8 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 		}
 		sentMessageCount := int64(len(sentMessageEvents))
 		rollupEventCount := int64(len(rollupEvents))
-		bridgeL1MsgsSentEventsTotalCounter.Inc(sentMessageCount)
-		bridgeL1MsgsRollupEventsTotalCounter.Inc(rollupEventCount)
+		w.l1WatcherFetchContractEventSentEventsTotal.Add(float64(sentMessageCount))
+		w.l1WatcherFetchContractEventRollupEventsTotal.Add(float64(rollupEventCount))
 		log.Info("L1 events types", "SentMessageCount", sentMessageCount, "RollupEventCount", rollupEventCount)
 
 		// use rollup event to update rollup results db status
@@ -273,7 +307,8 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 		}
 
 		w.processedMsgHeight = uint64(to)
-		bridgeL1MsgsSyncHeightGauge.Update(to)
+		w.l1WatcherFetchContractEventSuccessTotal.Inc()
+		w.l1WatcherFetchContractEventProcessedBlockHeight.Set(float64(w.processedMsgHeight))
 	}
 
 	return nil

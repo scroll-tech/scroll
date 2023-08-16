@@ -93,7 +93,7 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, reg pro
 		proverTaskProveDuration: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
 			Name:    "coordinator_task_prove_duration_seconds",
 			Help:    "Time spend by prover prove task.",
-			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 20, 30, 60},
+			Buckets: []float64{180, 300, 480, 600, 900, 1200, 1800},
 		}),
 		validateFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_validate_failure_total",

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"math/big"
 	"sync"
 	"time"
@@ -14,10 +16,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 
 	bridgeAbi "scroll-tech/bridge/abi"
@@ -26,12 +26,13 @@ import (
 	"scroll-tech/bridge/internal/orm"
 )
 
-var (
-	bridgeL2BatchesFinalizedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/total", metrics.ScrollRegistry)
-	bridgeL2BatchesCommittedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/total", metrics.ScrollRegistry)
-	bridgeL2BatchesFinalizedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
-	bridgeL2BatchesCommittedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
-)
+//
+//var (
+//	bridgeL2BatchesFinalizedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/total", metrics.ScrollRegistry)
+//	bridgeL2BatchesCommittedTotalCounter          = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/total", metrics.ScrollRegistry)
+//	bridgeL2BatchesFinalizedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/finalized/confirmed/total", metrics.ScrollRegistry)
+//	bridgeL2BatchesCommittedConfirmedTotalCounter = gethMetrics.NewRegisteredCounter("bridge/l2/batches/committed/confirmed/total", metrics.ScrollRegistry)
+//)
 
 // Layer2Relayer is responsible for
 //  1. Committing and finalizing L2 blocks on L1
@@ -78,29 +79,40 @@ type Layer2Relayer struct {
 	// A list of processing batch finalization.
 	// key(string): confirmation ID, value(string): batch hash.
 	processingFinalization sync.Map
+
+	bridgeL2RelayerProcessPendingBatchTotal                     prometheus.Counter
+	bridgeL2RelayerProcessPendingBatchSuccessTotal              prometheus.Counter
+	bridgeL2RelayerGasPriceOraclerRunTotal                      prometheus.Counter
+	bridgeL2RelayerLastGasPrice                                 prometheus.Gauge
+	bridgeL2RelayerProcessCommittedBatchesTotal                 prometheus.Counter
+	bridgeL2RelayerProcessCommittedBatchesFinalizedTotal        prometheus.Counter
+	bridgeL2RelayerProcessCommittedBatchesFinalizedSuccessTotal prometheus.Counter
+	bridgeL2BatchesCommittedConfirmedTotal                      prometheus.Counter
+	bridgeL2BatchesFinalizedConfirmedTotal                      prometheus.Counter
+	bridgeL2BatchesGasOraclerConfirmedTotal                     prometheus.Counter
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool) (*Layer2Relayer, error) {
-	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKey)
+func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool, reg prometheus.Registerer) (*Layer2Relayer, error) {
+	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKey, "l2_relayer", "message_sender", reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new message sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
-	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey)
+	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey, "l2_relayer", "commit_sender", reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
-	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey)
+	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey, "l2_relayer", "finalize_sender", reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey)
+	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l2_relayer", "gas_oracle_sender", reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
@@ -150,6 +162,47 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		processingMessage:      sync.Map{},
 		processingCommitment:   sync.Map{},
 		processingFinalization: sync.Map{},
+
+		bridgeL2RelayerProcessPendingBatchTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_layer2_process_pending_batch_total",
+			Help: "The total number of layer2 process pending batch",
+		}),
+		bridgeL2RelayerProcessPendingBatchSuccessTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_layer2_process_pending_batch_success_total",
+			Help: "The total number of layer2 process pending success batch",
+		}),
+		bridgeL2RelayerGasPriceOraclerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_layer2_gas_price_oracler_total",
+			Help: "The total number of layer2 gas price oracler run total",
+		}),
+		bridgeL2RelayerLastGasPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "bridge_layer2_gas_price_latest_gas_price",
+			Help: "The latest gas price of bridge relayer l2",
+		}),
+		bridgeL2RelayerProcessCommittedBatchesTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_layer2_process_committed_batches_total",
+			Help: "The total number of layer2 process committed batches run total",
+		}),
+		bridgeL2RelayerProcessCommittedBatchesFinalizedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_layer2_process_committed_batches_finalized_total",
+			Help: "The total number of layer2 process committed batches finalized total",
+		}),
+		bridgeL2RelayerProcessCommittedBatchesFinalizedSuccessTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_layer2_process_committed_batches_finalized_success_total",
+			Help: "The total number of layer2 process committed batches finalized success total",
+		}),
+		bridgeL2BatchesCommittedConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_layer2_process_committed_batches_confirmed_total",
+			Help: "The total number of layer2 process committed batches confirmed total",
+		}),
+		bridgeL2BatchesFinalizedConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_layer2_process_finalized_batches_confirmed_total",
+			Help: "The total number of layer2 process finalized batches confirmed total",
+		}),
+		bridgeL2BatchesGasOraclerConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_layer2_process_finalized_batches_confirmed_total",
+			Help: "The total number of layer2 process finalized batches confirmed total",
+		}),
 	}
 
 	// Initialize genesis before we do anything else
@@ -275,6 +328,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 
 // ProcessGasPriceOracle imports gas price to layer1
 func (r *Layer2Relayer) ProcessGasPriceOracle() {
+	r.bridgeL2RelayerGasPriceOraclerRunTotal.Inc()
 	batch, err := r.batchOrm.GetLatestBatch(r.ctx)
 	if batch == nil || err != nil {
 		log.Error("Failed to GetLatestBatch", "batch", batch, "err", err)
@@ -312,6 +366,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 			r.lastGasPrice = suggestGasPriceUint64
+			r.bridgeL2RelayerLastGasPrice.Set(float64(r.lastGasPrice))
 			log.Info("Update l2 gas price", "txHash", hash.String(), "GasPrice", suggestGasPrice)
 		}
 	}
@@ -326,6 +381,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 	for _, batch := range pendingBatches {
+		r.bridgeL2RelayerProcessPendingBatchTotal.Inc()
 		// get current header and parent header.
 		currentBatchHeader, err := types.DecodeBatchHeader(batch.BatchHeader)
 		if err != nil {
@@ -400,7 +456,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", batch.Hash, "index", batch.Index, "err", err)
 			return
 		}
-		bridgeL2BatchesCommittedTotalCounter.Inc(1)
+		r.bridgeL2RelayerProcessPendingBatchSuccessTotal.Inc()
 		r.processingCommitment.Store(txID, batch.Hash)
 		log.Info("Sent the commitBatch tx to layer1", "batch index", batch.Index, "batch hash", batch.Hash, "tx hash", txHash.Hex())
 	}
@@ -424,6 +480,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		return
 	}
 
+	r.bridgeL2RelayerProcessCommittedBatchesTotal.Inc()
+
 	batch := batches[0]
 	hash := batch.Hash
 	status := types.ProvingStatus(batch.ProvingStatus)
@@ -437,6 +495,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		return
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
+		r.bridgeL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 
 		var parentBatchStateRoot string
 		if batch.Index > 0 {
@@ -495,7 +554,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			return
 		}
-		bridgeL2BatchesFinalizedTotalCounter.Inc(1)
 		log.Info("finalizeBatchWithProof in layer1", "index", batch.Index, "batch hash", batch.Hash, "tx hash", hash)
 
 		// record and sync with db, @todo handle db error
@@ -506,6 +564,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 				"tx hash", finalizeTxHash.String(), "err", err)
 		}
 		r.processingFinalization.Store(txID, hash)
+		r.bridgeL2RelayerProcessCommittedBatchesFinalizedSuccessTotal.Inc()
 
 	case types.ProvingTaskFailed:
 		// We were unable to prove this batch. There are two possibilities:
@@ -550,7 +609,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 				"batch hash", batchHash.(string),
 				"tx hash", confirmation.TxHash.String(), "err", err)
 		}
-		bridgeL2BatchesCommittedConfirmedTotalCounter.Inc(1)
+		r.bridgeL2BatchesCommittedConfirmedTotal.Inc()
 		r.processingCommitment.Delete(confirmation.ID)
 	}
 
@@ -572,7 +631,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 				"batch hash", batchHash.(string),
 				"tx hash", confirmation.TxHash.String(), "err", err)
 		}
-		bridgeL2BatchesFinalizedConfirmedTotalCounter.Inc(1)
+		r.bridgeL2BatchesFinalizedConfirmedTotal.Inc()
 		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
@@ -590,6 +649,7 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		case confirmation := <-r.finalizeSender.ConfirmChan():
 			r.handleConfirmation(confirmation)
 		case cfm := <-r.gasOracleSender.ConfirmChan():
+			r.bridgeL2BatchesGasOraclerConfirmedTotal.Inc()
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
 				err := r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())

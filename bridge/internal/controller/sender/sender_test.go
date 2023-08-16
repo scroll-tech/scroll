@@ -70,7 +70,7 @@ func testNewSender(t *testing.T) {
 		// exit by Stop()
 		cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy1.TxType = txType
-		newSender1, err := NewSender(context.Background(), &cfgCopy1, privateKey)
+		newSender1, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", nil)
 		assert.NoError(t, err)
 		newSender1.Stop()
 
@@ -78,7 +78,7 @@ func testNewSender(t *testing.T) {
 		cfgCopy2 := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy2.TxType = txType
 		subCtx, cancel := context.WithCancel(context.Background())
-		_, err = NewSender(subCtx, &cfgCopy2, privateKey)
+		_, err = NewSender(subCtx, &cfgCopy2, privateKey, "test", "test", nil)
 		assert.NoError(t, err)
 		cancel()
 	}
@@ -90,7 +90,7 @@ func testPendLimit(t *testing.T) {
 		cfgCopy.TxType = txType
 		cfgCopy.Confirmations = rpc.LatestBlockNumber
 		cfgCopy.PendingLimit = 2
-		newSender, err := NewSender(context.Background(), &cfgCopy, privateKey)
+		newSender, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
 		assert.NoError(t, err)
 
 		for i := 0; i < 2*newSender.PendingLimit(); i++ {
@@ -107,7 +107,7 @@ func testMinGasLimit(t *testing.T) {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.Confirmations = rpc.LatestBlockNumber
-		newSender, err := NewSender(context.Background(), &cfgCopy, privateKey)
+		newSender, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
 		assert.NoError(t, err)
 
 		client, err := ethclient.Dial(cfgCopy.Endpoint)
@@ -135,7 +135,7 @@ func testResubmitTransaction(t *testing.T) {
 	for _, txType := range txTypes {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy, privateKey)
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
 		assert.NoError(t, err)
 		tx := types.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
 		feeData, err := s.getFeeData(s.auth, &common.Address{}, big.NewInt(0), nil, 0)
@@ -151,7 +151,7 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 
 	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 	cfgCopy.TxType = txType
-	s, err := NewSender(context.Background(), &cfgCopy, privateKey)
+	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
 	assert.NoError(t, err)
 	tx := types.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
 	s.baseFeePerGas = 1000
@@ -186,7 +186,7 @@ func testCheckPendingTransaction(t *testing.T) {
 	for _, txType := range txTypes {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy, privateKey)
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
 		assert.NoError(t, err)
 
 		header := &types.Header{Number: big.NewInt(100), BaseFee: big.NewInt(100)}

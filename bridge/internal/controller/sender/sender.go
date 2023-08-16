@@ -11,6 +11,8 @@ import (
 	"time"
 
 	cmapV2 "github.com/orcaman/concurrent-map/v2"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -70,6 +72,8 @@ type Sender struct {
 	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
 	chainID *big.Int          // The chain id of the endpoint
 	ctx     context.Context
+	service string
+	name    string
 
 	auth       *bind.TransactOpts
 	minBalance *big.Int
@@ -80,11 +84,26 @@ type Sender struct {
 	confirmCh     chan *Confirmation
 
 	stopCh chan struct{}
+
+	senderCheckBalancerTotal                *prometheus.CounterVec
+	senderCheckPendingTransactionTotal      *prometheus.CounterVec
+	sendTransactionTotal                    *prometheus.CounterVec
+	sendTransactionFailureFullTx            *prometheus.GaugeVec
+	sendTransactionFailureRepeatTransaction *prometheus.CounterVec
+	sendTransactionFailureGetFee            *prometheus.CounterVec
+	sendTransactionFailureSendTx            *prometheus.CounterVec
+	resubmitTransactionTotal                *prometheus.CounterVec
+	currentPendingTxsNum                    *prometheus.GaugeVec
+	currentGasFeeCap                        *prometheus.GaugeVec
+	currentGasTipCap                        *prometheus.GaugeVec
+	currentGasPrice                         *prometheus.GaugeVec
+	currentGasLimit                         *prometheus.GaugeVec
+	currentNonce                            *prometheus.GaugeVec
 }
 
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
-func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey) (*Sender, error) {
+func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey, service, name string, reg prometheus.Registerer) (*Sender, error) {
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial eth client, err: %w", err)
@@ -135,6 +154,57 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 		baseFeePerGas: baseFeePerGas,
 		pendingTxs:    cmapV2.New[*PendingTransaction](),
 		stopCh:        make(chan struct{}),
+		name:          name,
+		service:       service,
+
+		sendTransactionTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "bridge_sender_send_transaction_total",
+			Help: "The total number of sending transaction.",
+		}, []string{"service", "name"}),
+		sendTransactionFailureFullTx: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bridge_sender_send_transaction_full_tx_failure_total",
+			Help: "The total number of sending transaction failure for full size tx.",
+		}, []string{"service", "name"}),
+		sendTransactionFailureRepeatTransaction: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "bridge_sender_send_transaction_repeat_transaction_failure_total",
+			Help: "The total number of sending transaction failure for repeat transaction.",
+		}, []string{"service", "name"}),
+		sendTransactionFailureGetFee: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "bridge_sender_send_transaction_get_fee_failure_total",
+			Help: "The total number of sending transaction failure for getting fee.",
+		}, []string{"service", "name"}),
+		sendTransactionFailureSendTx: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "bridge_sender_send_transaction_send_tx_failure_total",
+			Help: "The total number of sending transaction failure for sending tx.",
+		}, []string{"service", "name"}),
+		resubmitTransactionTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "bridge_sender_send_transaction_resubmit_send_transaction_total",
+			Help: "The total number of resubmit transaction.",
+		}, []string{"service", "name"}),
+		currentPendingTxsNum: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bridge_sender_pending_tx_count",
+			Help: "The pending tx count in the sender.",
+		}, []string{"service", "name"}),
+		currentGasFeeCap: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bridge_sender_gas_fee_cap",
+			Help: "The gas fee of current transaction.",
+		}, []string{"service", "name"}),
+		currentGasTipCap: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bridge_sender_gas_tip_cap",
+			Help: "The gas tip of current transaction.",
+		}, []string{"service", "name"}),
+		currentGasPrice: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bridge_sender_gas_price_cap",
+			Help: "The gas price of current transaction.",
+		}, []string{"service", "name"}),
+		currentGasLimit: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bridge_sender_gas_limit",
+			Help: "The gas limit of current transaction.",
+		}, []string{"service", "name"}),
+		currentNonce: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bridge_sender_nonce",
+			Help: "The nonce of current transaction.",
+		}, []string{"service", "name"}),
 	}
 
 	go sender.loop(ctx)
@@ -183,10 +253,15 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (common.Hash, error) {
+	s.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	if s.IsFull() {
+		s.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(1)
 		return common.Hash{}, ErrFullPending
+	} else {
+		s.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(0)
 	}
 	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
+		s.sendTransactionFailureRepeatTransaction.WithLabelValues(s.service, s.name).Inc()
 		return common.Hash{}, fmt.Errorf("repeat transaction ID: %s", ID)
 	}
 
@@ -203,9 +278,12 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	}()
 
 	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
+		s.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
+
 	if tx, err = s.createAndSendTx(s.auth, feeData, target, value, data, nil); err != nil {
+		s.sendTransactionFailureSendTx.WithLabelValues(s.service, s.name).Inc()
 		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
 	}
 
@@ -294,6 +372,12 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 		return nil, err
 	}
 
+	s.currentGasTipCap.WithLabelValues(s.service, s.name).Set(float64(feeData.gasTipCap.Uint64()))
+	s.currentGasFeeCap.WithLabelValues(s.service, s.name).Set(float64(feeData.gasFeeCap.Uint64()))
+	s.currentGasPrice.WithLabelValues(s.service, s.name).Set(float64(feeData.gasPrice.Uint64()))
+	s.currentGasLimit.WithLabelValues(s.service, s.name).Set(float64(feeData.gasLimit))
+	s.currentNonce.WithLabelValues(s.service, s.name).Set(float64(auth.Nonce.Uint64()))
+
 	// update nonce when it is not from resubmit
 	if overrideNonce == nil {
 		auth.Nonce = big.NewInt(int64(nonce + 1))
@@ -362,6 +446,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	}
 
 	nonce := tx.Nonce()
+	s.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	return s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
 }
 
@@ -472,6 +557,7 @@ func (s *Sender) loop(ctx context.Context) {
 	for {
 		select {
 		case <-checkTick.C:
+			s.senderCheckPendingTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 			header, err := s.client.HeaderByNumber(s.ctx, nil)
 			if err != nil {
 				log.Error("failed to get latest head", "err", err)
@@ -486,6 +572,7 @@ func (s *Sender) loop(ctx context.Context) {
 
 			s.checkPendingTransaction(header, confirmed)
 		case <-checkBalanceTicker.C:
+			s.senderCheckBalancerTotal.WithLabelValues(s.service, s.name).Inc()
 			// Check and set balance.
 			if err := s.checkBalance(ctx); err != nil {
 				log.Error("check balance, err: %w", err)

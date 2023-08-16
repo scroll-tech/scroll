@@ -34,7 +34,8 @@ import (
 func setupL2Watcher(t *testing.T) (*L2WatcherClient, *gorm.DB) {
 	db := setupDB(t)
 	l2cfg := cfg.L2Config
-	watcher := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db)
+	watcher := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessengerAddress,
+		l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db, nil)
 	return watcher, db
 }
 
@@ -50,7 +51,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 	l1cfg := cfg.L1Config
 	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
-	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKey)
+	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKey, "test", "test", nil)
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
@@ -95,7 +96,7 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 
 func prepareWatcherClient(l2Cli *ethclient.Client, db *gorm.DB, contractAddr common.Address) *L2WatcherClient {
 	confirmations := rpc.LatestBlockNumber
-	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db)
+	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, contractAddr, contractAddr, common.Hash{}, db, nil)
 }
 
 func prepareAuth(t *testing.T, l2Cli *ethclient.Client, privateKey *ecdsa.PrivateKey) *bind.TransactOpts {

@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -61,8 +62,8 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
+	registry := prometheus.DefaultRegisterer
+	metrics.Server(ctx, registry.(*prometheus.Registry))
 
 	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
@@ -78,14 +79,14 @@ func action(ctx *cli.Context) error {
 	}
 
 	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations,
-		cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db)
+		cfg.L1Config.L1MessengerAddress, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db, registry)
 
-	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig)
+	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, registry)
 	if err != nil {
 		log.Error("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 		return err
 	}
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, false /* initGenesis */)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, false, registry)
 	if err != nil {
 		log.Error("failed to create new l2 relayer", "config file", cfgFile, "error", err)
 		return err
