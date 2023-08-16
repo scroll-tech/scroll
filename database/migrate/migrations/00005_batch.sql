@@ -57,12 +57,6 @@ on column batch.proving_status is 'undefined, unassigned, assigned, proved, veri
 comment
 on column batch.rollup_status is 'undefined, pending, committing, committed, finalizing, finalized, commit_failed, finalize_failed';
 
-create index batch_proving_task_total_attempts_index
-on batch (total_attempts) where deleted_at IS NULL;
-
-create index batch_proving_task_active_attempts_index
-on batch (active_attempts) where deleted_at IS NULL;
-
 -- +goose StatementEnd
 
 -- +goose Down

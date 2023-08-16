@@ -52,12 +52,6 @@ on chunk (hash) where deleted_at IS NULL;
 create index batch_hash_index
 on chunk (batch_hash) where deleted_at IS NULL;
 
-create index chunk_proving_task_total_attempts_index
-on chunk (total_attempts) where deleted_at IS NULL;
-
-create index chunk_proving_task_active_attempts_index
-on chunk (active_attempts) where deleted_at IS NULL;
-
 -- +goose StatementEnd
 
 -- +goose Down

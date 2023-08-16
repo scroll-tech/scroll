@@ -113,15 +113,13 @@ func (c *Collector) timeoutProofTask() {
 
 					if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeChunk {
 						if err = c.chunkOrm.DecreaseActiveAttemptsByHash(c.ctx, assignedProverTask.TaskID, tx); err != nil {
-							log.Error("decrease active attempts of chunk failure",
-								"hash", assignedProverTask.TaskID, "err", err)
+							log.Error("decrease active attempts of chunk failure", "hash", assignedProverTask.TaskID, "err", err)
 							return err
 						}
 					}
 					if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeBatch {
 						if err = c.batchOrm.DecreaseActiveAttemptsByHash(c.ctx, assignedProverTask.TaskID, tx); err != nil {
-							log.Error("decrease active attempts of batch failure",
-								"hash", assignedProverTask.TaskID, "err", err)
+							log.Error("decrease active attempts of batch failure", "hash", assignedProverTask.TaskID, "err", err)
 							return err
 						}
 					}

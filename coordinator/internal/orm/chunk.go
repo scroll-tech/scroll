@@ -362,15 +362,18 @@ func (o *Chunk) UpdateChunkAttemptsReturning(ctx context.Context, proverBlockHei
 	var updatedChunk Chunk
 	db = db.Model(&updatedChunk).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
-	if err := db.Updates(map[string]interface{}{
+	result := db.Updates(map[string]interface{}{
 		"total_attempts":  gorm.Expr("total_attempts + ?", 1),
 		"active_attempts": gorm.Expr("active_attempts + ?", 1),
-	}).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("failed to update chunk, prover height: %v, max attempts: %v/%v, err: %w",
-			proverBlockHeight, maxActiveAttempts, maxTotalAttempts, err)
+	})
+
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to select and update batch, max active attempts: %v, max total attempts: %v, err: %w",
+			maxActiveAttempts, maxTotalAttempts, result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		return nil, nil
 	}
 	return &updatedChunk, nil
 }
