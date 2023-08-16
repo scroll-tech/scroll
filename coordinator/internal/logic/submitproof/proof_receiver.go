@@ -127,8 +127,12 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if len(pk) == 0 {
 		return fmt.Errorf("get public key from context failed")
 	}
+	pv := ctx.GetString(coordinatorType.ProverVersion)
+	if len(pk) == 0 {
+		return fmt.Errorf("get ProverVersion from context failed")
+	}
 
-	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndPubKey(ctx, proofMsg.ID, pk)
+	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndProver(ctx, proofMsg.ID, pk, pv)
 	if proverTask == nil || err != nil {
 		log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
 		return ErrValidatorFailureProverTaskEmpty
