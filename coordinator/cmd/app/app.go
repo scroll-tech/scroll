@@ -71,6 +71,12 @@ func action(ctx *cli.Context) error {
 
 	apiSrv := apiServer(ctx, cfg, db, registry)
 
+	log.Info(
+		"coordinator start successfully",
+		"name", cfg.ProverName, "type", cfg.Core.ProofType,
+		"publickey", r.PublicKey(), "version", version.Version,
+	)
+
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
