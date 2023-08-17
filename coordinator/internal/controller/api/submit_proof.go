@@ -64,7 +64,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 		proofMsg.BatchProof = &tmpBatchProof
 	}
 
-	if err := spc.submitProofReceiverLogic.HandleZkProof(ctx, &proofMsg); err != nil {
+	if err := spc.submitProofReceiverLogic.HandleZkProof(ctx, &proofMsg, spp); err != nil {
 		nerr := fmt.Errorf("handle zk proof failure, err:%w", err)
 		coodinatorType.RenderJSON(ctx, types.ErrCoordinatorHandleZkProofFailure, nerr, nil)
 		return
