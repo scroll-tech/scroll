@@ -160,8 +160,8 @@ func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit in
 	return proverTasks, nil
 }
 
-// TaskTimeoutTwice get the timeout twice task. a temp design
-func (o *ProverTask) TaskTimeoutTwice(ctx context.Context, taskID string) bool {
+// TaskTimeoutMoreThanOnce get the timeout twice task. a temp design
+func (o *ProverTask) TaskTimeoutMoreThanOnce(ctx context.Context, taskID string) bool {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("task_id", taskID)
