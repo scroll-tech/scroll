@@ -346,8 +346,8 @@ func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.Pro
 	}
 
 	// send the submit request
-	if err := r.coordinatorClient.SubmitProof(r.ctx, req); err != nil {
-		return fmt.Errorf("error submitting proof: %v", err)
+	if submitErr := r.coordinatorClient.SubmitProof(r.ctx, req); submitErr != nil {
+		return fmt.Errorf("error submitting proof: %v", submitErr)
 	}
 
 	log.Info("proof submitted report failure successfully", "task-id", task.Task.ID, "task-type",
