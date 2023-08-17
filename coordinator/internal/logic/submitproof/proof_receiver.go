@@ -271,14 +271,14 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 	return nil
 }
 
-func (m *ProofReceiverLogic) proofFailure(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) {
-	log.Info("proof failure update proof status", "hash", hash, "public key", pubKey,
-		"proof type", proofMsg.Type.String(), "status", types.ProvingTaskFailed.String())
-
-	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsg, types.ProvingTaskFailed, 0); err != nil {
-		log.Error("failed to updated proof status ProvingTaskFailed", "hash", hash, "pubKey", pubKey, "error", err)
-	}
-}
+//func (m *ProofReceiverLogic) proofFailure(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) {
+//	log.Info("proof failure update proof status", "hash", hash, "public key", pubKey,
+//		"proof type", proofMsg.Type.String(), "status", types.ProvingTaskFailed.String())
+//
+//	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsg, types.ProvingTaskFailed, 0); err != nil {
+//		log.Error("failed to updated proof status ProvingTaskFailed", "hash", hash, "pubKey", pubKey, "error", err)
+//	}
+//}
 
 func (m *ProofReceiverLogic) proofRecover(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) {
 	log.Info("proof recover update proof status", "hash", hash, "public key", pubKey,
