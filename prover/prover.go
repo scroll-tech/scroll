@@ -162,7 +162,7 @@ func (r *Prover) proveAndSubmit() error {
 		proofMsg, err = r.prove(task)
 		if err != nil { // handling error from prove
 			log.Error("failed to prove task", "task_type", task.Task.Type, "task-id", task.Task.ID, "err", err)
-			return r.submitErr(err)
+			return r.submitErr(task, message.ProofFailureNoPanic, err)
 		}
 
 		return r.submitProof(proofMsg)
@@ -174,7 +174,7 @@ func (r *Prover) proveAndSubmit() error {
 		log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", err)
 	}
 	log.Error("zk proving panic for task", "task-type", task.Task.Type, "task-id", task.Task.ID)
-	return r.submitErr(err)
+	return r.submitErr(task, message.ProofFailurePanic, err)
 }
 
 // fetchTaskFromCoordinator fetches a new task from the server
@@ -331,6 +331,27 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 	}
 
 	log.Info("proof submitted successfully", "task-id", msg.ID, "task-type", msg.Type, "task-status", msg.Status, "err", msg.Error)
+	return nil
+}
+
+func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.ProofFailureType, err error) error {
+	// prepare the submit request
+	req := &client.SubmitProofRequest{
+		TaskID:      task.Task.ID,
+		TaskType:    int(task.Task.Type),
+		Status:      int(message.StatusProofError),
+		Proof:       "",
+		FailureType: int(proofFailureType),
+		FailureMsg:  err.Error(),
+	}
+
+	// send the submit request
+	if err := r.coordinatorClient.SubmitProof(r.ctx, req); err != nil {
+		return fmt.Errorf("error submitting proof: %v", err)
+	}
+
+	log.Info("proof submitted report failure successfully", "task-id", task.Task.ID, "task-type",
+		task.Task.Type, "task-status", message.StatusProofError, "err", err)
 	return nil
 }
 
