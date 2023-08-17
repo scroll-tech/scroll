@@ -144,10 +144,11 @@ func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string
 }
 
 // GetTimeoutAssignedProverTasks get the timeout and assigned proving_status prover task
-func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit int, timeout time.Duration) ([]ProverTask, error) {
+func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit int, taskType message.ProofType, timeout time.Duration) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("proving_status", int(types.ProverAssigned))
+	db = db.Where("task_type", int(taskType))
 	db = db.Where("assigned_at < ?", utils.NowUTC().Add(-timeout))
 	db = db.Limit(limit)
 
