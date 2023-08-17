@@ -158,4 +158,16 @@ abstract contract ScrollMessengerBase is
             IETHRateLimiter(_rateLimiter).addUsedAmount(_amount);
         }
     }
+
+    /// @dev Internal function to check whether the `_target` address is blacklisted.
+    /// @param _target The address of target address to check.
+    function _validateTargetAddress(address _target) internal view {
+        // @note check more `_target` address to avoid attack in the future when we add more external contracts.
+
+        address _rateLimiter = rateLimiter;
+        if (_rateLimiter != address(0)) {
+            require(_target != _rateLimiter, "Forbid to call rate limiter");
+        }
+        require(_target != address(this), "Forbid to call self");
+    }
 }
