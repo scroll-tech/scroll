@@ -15,6 +15,7 @@ func Route(router *gin.Engine, conf *config.Config) {
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
@@ -23,4 +24,5 @@ func Route(router *gin.Engine, conf *config.Config) {
 	r.GET("/txs", controller.HistoryCtrler.GetAllTxsByAddr)
 	r.POST("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHash)
 	r.GET("/claimable", controller.HistoryCtrler.GetAllClaimableTxsByAddr)
+	r.GET("/withdraw_root", controller.BatchCtrler.GetWithdrawRootByBatchIndex)
 }

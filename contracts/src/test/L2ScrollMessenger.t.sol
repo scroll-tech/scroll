@@ -40,7 +40,7 @@ contract L2ScrollMessengerTest is DSTestPlus {
         );
 
         // Initialize L2 contracts
-        l2Messenger.initialize(address(l1Messenger), feeVault);
+        l2Messenger.initialize(address(l1Messenger));
         l2MessageQueue.initialize(address(l2Messenger));
         l1GasOracle.updateWhitelist(address(whitelist));
     }

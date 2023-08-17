@@ -6,8 +6,6 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import {IScrollGateway} from "../../libraries/gateway/IScrollGateway.sol";
-import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ETHGateway} from "./IL1ETHGateway.sol";
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
 import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
@@ -68,13 +66,13 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         // it can be zero during initialization
         if (_defaultERC20Gateway != address(0)) {
             defaultERC20Gateway = _defaultERC20Gateway;
-            emit SetDefaultERC20Gateway(_defaultERC20Gateway);
+            emit SetDefaultERC20Gateway(address(0), _defaultERC20Gateway);
         }
 
         // it can be zero during initialization
         if (_ethGateway != address(0)) {
             ethGateway = _ethGateway;
-            emit SetETHGateway(_ethGateway);
+            emit SetETHGateway(address(0), _ethGateway);
         }
     }
 
@@ -225,17 +223,19 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
      ************************/
 
     /// @inheritdoc IL1GatewayRouter
-    function setETHGateway(address _ethGateway) external onlyOwner {
-        ethGateway = _ethGateway;
+    function setETHGateway(address _newEthGateway) external onlyOwner {
+        address _oldETHGateway = ethGateway;
+        ethGateway = _newEthGateway;
 
-        emit SetETHGateway(_ethGateway);
+        emit SetETHGateway(_oldETHGateway, _newEthGateway);
     }
 
     /// @inheritdoc IL1GatewayRouter
-    function setDefaultERC20Gateway(address _defaultERC20Gateway) external onlyOwner {
-        defaultERC20Gateway = _defaultERC20Gateway;
+    function setDefaultERC20Gateway(address _newDefaultERC20Gateway) external onlyOwner {
+        address _oldDefaultERC20Gateway = defaultERC20Gateway;
+        defaultERC20Gateway = _newDefaultERC20Gateway;
 
-        emit SetDefaultERC20Gateway(_defaultERC20Gateway);
+        emit SetDefaultERC20Gateway(_oldDefaultERC20Gateway, _newDefaultERC20Gateway);
     }
 
     /// @inheritdoc IL1GatewayRouter
@@ -243,9 +243,10 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         require(_tokens.length == _gateways.length, "length mismatch");
 
         for (uint256 i = 0; i < _tokens.length; i++) {
+            address _oldGateway = ERC20Gateway[_tokens[i]];
             ERC20Gateway[_tokens[i]] = _gateways[i];
 
-            emit SetERC20Gateway(_tokens[i], _gateways[i]);
+            emit SetERC20Gateway(_tokens[i], _oldGateway, _gateways[i]);
         }
     }
 }

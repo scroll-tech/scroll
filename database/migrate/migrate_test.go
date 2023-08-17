@@ -63,7 +63,7 @@ func testResetDB(t *testing.T) {
 	cur, err := Current(pgDB.DB)
 	assert.NoError(t, err)
 	// total number of tables.
-	assert.Equal(t, 6, int(cur))
+	assert.Equal(t, 7, int(cur))
 }
 
 func testMigrate(t *testing.T) {

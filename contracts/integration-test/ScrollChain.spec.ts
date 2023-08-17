@@ -1,7 +1,6 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
 import { constants } from "ethers";
-import { concat } from "ethers/lib/utils";
 import { ethers } from "hardhat";
 import { ScrollChain, L1MessageQueue } from "../typechain";
 
@@ -33,7 +32,7 @@ describe("ScrollChain", async () => {
     chain = await ethers.getContractAt("ScrollChain", chainProxy.address, deployer);
 
     await chain.initialize(queue.address, constants.AddressZero, 44);
-    await chain.updateSequencer(deployer.address, true);
+    await chain.addSequencer(deployer.address);
     await queue.initialize(
       constants.AddressZero,
       chain.address,

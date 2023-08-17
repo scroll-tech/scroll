@@ -112,6 +112,8 @@ func (h *HistoryLogic) GetClaimableTxsByAddress(ctx context.Context, address com
 			txInfo.To = crossMsg.Target
 			txInfo.BlockTimestamp = crossMsg.Timestamp
 			txInfo.CreatedAt = crossMsg.CreatedAt
+			txInfo.L1Token = crossMsg.Layer1Token
+			txInfo.L2Token = crossMsg.Layer2Token
 		}
 		txHistories = append(txHistories, txInfo)
 	}
@@ -136,6 +138,8 @@ func (h *HistoryLogic) GetTxsByAddress(ctx context.Context, address common.Addre
 			Hash:           msg.Layer1Hash + msg.Layer2Hash,
 			Amount:         msg.Amount,
 			To:             msg.Target,
+			L1Token:        msg.Layer1Token,
+			L2Token:        msg.Layer2Token,
 			IsL1:           msg.MsgType == int(orm.Layer1Msg),
 			BlockNumber:    msg.Height,
 			BlockTimestamp: msg.Timestamp,
@@ -166,6 +170,8 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, hashes []string) ([]*
 				Amount:         l1result.Amount,
 				To:             l1result.Target,
 				IsL1:           true,
+				L1Token:        l1result.Layer1Token,
+				L2Token:        l1result.Layer2Token,
 				BlockNumber:    l1result.Height,
 				BlockTimestamp: l1result.Timestamp,
 				CreatedAt:      l1result.CreatedAt,
@@ -187,6 +193,8 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, hashes []string) ([]*
 				Amount:         l2result.Amount,
 				To:             l2result.Target,
 				IsL1:           false,
+				L1Token:        l2result.Layer1Token,
+				L2Token:        l2result.Layer2Token,
 				BlockNumber:    l2result.Height,
 				BlockTimestamp: l2result.Timestamp,
 				CreatedAt:      l2result.CreatedAt,

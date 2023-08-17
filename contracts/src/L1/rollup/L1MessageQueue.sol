@@ -24,12 +24,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @notice Emitted when owner updates gas oracle contract.
     /// @param _oldGasOracle The address of old gas oracle contract.
     /// @param _newGasOracle The address of new gas oracle contract.
-    event UpdateGasOracle(address _oldGasOracle, address _newGasOracle);
+    event UpdateGasOracle(address indexed _oldGasOracle, address indexed _newGasOracle);
 
     /// @notice Emitted when owner updates EnforcedTxGateway contract.
     /// @param _oldGateway The address of old EnforcedTxGateway contract.
     /// @param _newGateway The address of new EnforcedTxGateway contract.
-    event UpdateEnforcedTxGateway(address _oldGateway, address _newGateway);
+    event UpdateEnforcedTxGateway(address indexed _oldGateway, address indexed _newGateway);
 
     /// @notice Emitted when owner updates max gas limit.
     /// @param _oldMaxGasLimit The old max gas limit.

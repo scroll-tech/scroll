@@ -57,6 +57,7 @@ func (m *MsgProofUpdater) Start() {
 					log.Error("MsgProofUpdater: Can not get latest L2SentMsgBatchIndex: ", "err", err)
 					continue
 				}
+				log.Info("latest batch with proof", "batch_index", latestBatchIndexWithProof)
 				var start uint64
 				if latestBatchIndexWithProof < 0 {
 					start = 1

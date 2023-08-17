@@ -90,10 +90,9 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupFinalizeFailed, statuses[0])
+	// no valid proof, rollup status remains the same
+	assert.Equal(t, types.RollupCommitted, statuses[0])
 
-	err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, types.RollupCommitted)
-	assert.NoError(t, err)
 	proof := &message.BatchProof{
 		Proof: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
 	}
@@ -107,7 +106,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.Equal(t, types.RollupFinalizing, statuses[0])
 }
 
-func testL2RelayerRollupConfirm(t *testing.T) {
+func testL2RelayerCommitConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
@@ -119,8 +118,8 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
-	processingKeys := []string{"committed-1", "committed-2", "finalized-1", "finalized-2"}
-	isSuccessful := []bool{true, false, true, false}
+	processingKeys := []string{"committed-1", "committed-2"}
+	isSuccessful := []bool{true, false}
 
 	batchOrm := orm.NewBatch(db)
 	batchHashes := make([]string, len(processingKeys))
@@ -130,20 +129,11 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 		batchHashes[i] = batch.Hash
 	}
 
-	for i, key := range processingKeys[:2] {
+	for i, key := range processingKeys {
 		l2Relayer.processingCommitment.Store(key, batchHashes[i])
-		l2Relayer.rollupSender.SendConfirmation(&sender.Confirmation{
+		l2Relayer.commitSender.SendConfirmation(&sender.Confirmation{
 			ID:           key,
 			IsSuccessful: isSuccessful[i],
-			TxHash:       common.HexToHash("0x123456789abcdef"),
-		})
-	}
-
-	for i, key := range processingKeys[2:] {
-		l2Relayer.processingFinalization.Store(key, batchHashes[i+2])
-		l2Relayer.rollupSender.SendConfirmation(&sender.Confirmation{
-			ID:           key,
-			IsSuccessful: isSuccessful[i+2],
 			TxHash:       common.HexToHash("0x123456789abcdef"),
 		})
 	}
@@ -153,6 +143,54 @@ func testL2RelayerRollupConfirm(t *testing.T) {
 		expectedStatuses := []types.RollupStatus{
 			types.RollupCommitted,
 			types.RollupCommitFailed,
+		}
+
+		for i, batchHash := range batchHashes {
+			batchInDB, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": batchHash}, nil, 0)
+			if err != nil || len(batchInDB) != 1 || types.RollupStatus(batchInDB[0].RollupStatus) != expectedStatuses[i] {
+				return false
+			}
+		}
+		return true
+	})
+	assert.True(t, ok)
+}
+
+func testL2RelayerFinalizeConfirm(t *testing.T) {
+	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
+
+	// Create and set up the Layer2 Relayer.
+	l2Cfg := cfg.L2Config
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false)
+	assert.NoError(t, err)
+
+	// Simulate message confirmations.
+	processingKeys := []string{"finalized-1", "finalized-2"}
+	isSuccessful := []bool{true, false}
+
+	batchOrm := orm.NewBatch(db)
+	batchHashes := make([]string, len(processingKeys))
+	for i := range batchHashes {
+		batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk1, chunk2})
+		assert.NoError(t, err)
+		batchHashes[i] = batch.Hash
+	}
+
+	for i, key := range processingKeys {
+		l2Relayer.processingFinalization.Store(key, batchHashes[i])
+		l2Relayer.finalizeSender.SendConfirmation(&sender.Confirmation{
+			ID:           key,
+			IsSuccessful: isSuccessful[i],
+			TxHash:       common.HexToHash("0x123456789abcdef"),
+		})
+	}
+
+	// Check the database for the updated status using TryTimes.
+	ok := utils.TryTimes(5, func() bool {
+		expectedStatuses := []types.RollupStatus{
 			types.RollupFinalized,
 			types.RollupFinalizeFailed,
 		}

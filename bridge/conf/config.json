@@ -27,12 +27,8 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
-      "message_sender_private_keys": [
-        "1212121212121212121212121212121212121212121212121212121212121212"
-      ],
-      "gas_oracle_sender_private_keys": [
-        "1313131313131313131313131313131313131313131313131313131313131313"
-      ]
+      "message_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
+      "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }
   },
   "l2_config": {
@@ -62,15 +58,10 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
-      "message_sender_private_keys": [
-        "1212121212121212121212121212121212121212121212121212121212121212"
-      ],
-      "gas_oracle_sender_private_keys": [
-        "1313131313131313131313131313131313131313131313131313131313131313"
-      ],
-      "rollup_sender_private_keys": [
-        "1414141414141414141414141414141414141414141414141414141414141414"
-      ]
+      "message_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
+      "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
+      "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
+      "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515"
     },
     "chunk_proposer_config": {
       "max_tx_gas_per_chunk": 1123456,
@@ -79,6 +70,7 @@
       "max_l1_commit_calldata_size_per_chunk": 112345,
       "min_l1_commit_calldata_size_per_chunk": 11234,
       "chunk_timeout_sec": 300,
+      "max_row_consumption_per_chunk": 1048319,
       "gas_cost_increase_multiplier": 1.2
     },
     "batch_proposer_config": {
