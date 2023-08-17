@@ -215,7 +215,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 		// (i) slash the prover for each submission of invalid proof
 		// (ii) set the maximum failure retry times
 		log.Warn(
-			"the prover task cannot submit twice",
+			"cannot submit valid proof for a prover task twice",
 			"proof type", proverTask.TaskType, "hash", proofMsg.ID,
 			"prover name", proverTask.ProverName, "prover version", proverTask.ProverVersion,
 			"prover pk", proverTask.ProverPublicKey,
