@@ -151,13 +151,6 @@ func (r *Prover) proveAndSubmit() error {
 		}
 	}
 
-	defer func() {
-		err = r.stack.Delete(task.Task.ID)
-		if err != nil {
-			log.Error("prover stack pop failed!", "err", err)
-		}
-	}()
-
 	var proofMsg *message.ProofDetail
 	if task.Times <= 2 {
 		// If panic times <= 2, try to proof the task.
@@ -168,7 +161,8 @@ func (r *Prover) proveAndSubmit() error {
 		log.Info("start to prove task", "task-type", task.Task.Type, "task-id", task.Task.ID)
 		proofMsg, err = r.prove(task)
 		if err != nil { // handling error from prove
-			return fmt.Errorf("failed to prove task, task-type: %v, err: %v", task.Task.Type, err)
+			log.Error("failed to prove task", "task_type", task.Task.Type, "task-id", task.Task.ID, "err", err)
+			return r.submitErr(err)
 		}
 
 		return r.submitProof(proofMsg)
@@ -176,7 +170,11 @@ func (r *Prover) proveAndSubmit() error {
 
 	// when the prover has more than 3 times panic,
 	// it will omit to prove the task, submit StatusProofError and then Delete the task.
-	return fmt.Errorf("zk proving panic for task, task-type: %v, task-id: %v", task.Task.Type, task.Task.ID)
+	if err = r.stack.Delete(task.Task.ID); err != nil {
+		log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", err)
+	}
+	log.Error("zk proving panic for task", "task-type", task.Task.Type, "task-id", task.Task.ID)
+	return r.submitErr(err)
 }
 
 // fetchTaskFromCoordinator fetches a new task from the server
