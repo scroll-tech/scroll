@@ -205,6 +205,14 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 			Name: "bridge_sender_nonce",
 			Help: "The nonce of current transaction.",
 		}, []string{"service", "name"}),
+		senderCheckPendingTransactionTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "bridge_sender_check_pending_transaction_total",
+			Help: "The total number of check pending transaction.",
+		}, []string{"service", "name"}),
+		senderCheckBalancerTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "bridge_sender_check_balancer_total",
+			Help: "The total number of check balancer.",
+		}, []string{"service", "name"}),
 	}
 
 	go sender.loop(ctx)
