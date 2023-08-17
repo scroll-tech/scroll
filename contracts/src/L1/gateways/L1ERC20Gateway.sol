@@ -162,7 +162,7 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         require(_amount > 0, "deposit zero amount");
 
         // rate limit
-        _addUsedAmount(_token, _from, _amount);
+        _addUsedAmount(_token, _amount);
 
         return (_from, _amount, _data);
     }

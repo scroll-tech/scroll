@@ -149,14 +149,13 @@ abstract contract ScrollMessengerBase is
     }
 
     /// @dev Internal function to increase ETH usage for the given `_sender`.
-    /// @param _sender The address of sender.
     /// @param _amount The amount of ETH used.
-    function _addUsedAmount(address _sender, uint256 _amount) internal {
+    function _addUsedAmount(uint256 _amount) internal {
         if (_amount == 0) return;
 
         address _rateLimiter = rateLimiter;
         if (_rateLimiter != address(0)) {
-            IETHRateLimiter(_rateLimiter).addUsedAmount(_sender, _amount);
+            IETHRateLimiter(_rateLimiter).addUsedAmount(_amount);
         }
     }
 }

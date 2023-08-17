@@ -114,18 +114,13 @@ abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, OwnableUpgrad
 
     /// @dev Internal function to increase token usage for the given `_sender`.
     /// @param _token The address of token.
-    /// @param _sender The address of sender.
     /// @param _amount The amount of token used.
-    function _addUsedAmount(
-        address _token,
-        address _sender,
-        uint256 _amount
-    ) internal {
+    function _addUsedAmount(address _token, uint256 _amount) internal {
         if (_amount == 0) return;
 
         address _rateLimiter = rateLimiter;
         if (_rateLimiter != address(0)) {
-            ITokenRateLimiter(_rateLimiter).addUsedAmount(_token, _sender, _amount);
+            ITokenRateLimiter(_rateLimiter).addUsedAmount(_token, _amount);
         }
     }
 }

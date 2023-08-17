@@ -117,7 +117,7 @@ contract L2WETHGateway is L2ERC20Gateway {
         }
 
         // rate limit
-        _addUsedAmount(_token, _from, _amount);
+        _addUsedAmount(_token, _amount);
 
         // 2. Transfer token into this contract.
         IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);

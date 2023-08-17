@@ -141,7 +141,7 @@ contract L2StandardERC20Gateway is L2ERC20Gateway {
         require(_l1Token != address(0), "no corresponding l1 token");
 
         // rate limit
-        _addUsedAmount(_token, _from, _amount);
+        _addUsedAmount(_token, _amount);
 
         // 2. Burn token.
         IScrollERC20Upgradeable(_token).burn(_from, _amount);

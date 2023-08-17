@@ -42,12 +42,6 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
     /// @notice The token amount used in current period.
     TokenAmount public currentPeriod;
 
-    /// @notice The default token amount limit per user.
-    uint256 public defaultUserLimit;
-
-    /// @notice Mapping from user address to the amounts used in current period and custom token amount limit.
-    mapping(address => TokenAmount) public userCurrentPeriod;
-
     /***************
      * Constructor *
      ***************/
@@ -55,8 +49,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
     constructor(
         uint256 _periodDuration,
         address _spender,
-        uint104 _totalLimit,
-        uint256 _defaultUserLimit
+        uint104 _totalLimit
     ) {
         if (_periodDuration == 0) {
             revert PeriodIsZero();
@@ -66,30 +59,10 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
             revert TotalLimitIsZero();
         }
 
-        if (_defaultUserLimit == 0) {
-            revert DefaultUserLimitIsZero();
-        }
-
         periodDuration = _periodDuration;
         spender = _spender;
 
         currentPeriod.limit = _totalLimit;
-        defaultUserLimit = _defaultUserLimit;
-    }
-
-    /*************************
-     * Public View Functions *
-     *************************/
-
-    /// @notice Return the token limit for specific user.
-    /// @param _account The address of the user to query.
-    function getUserCustomLimit(address _account) external view returns (uint256) {
-        uint256 _userLimit = defaultUserLimit;
-        TokenAmount memory _userCurrentPeriod = userCurrentPeriod[_account];
-        if (_userCurrentPeriod.limit != 0) {
-            _userLimit = _userCurrentPeriod.limit;
-        }
-        return _userLimit;
     }
 
     /*****************************
@@ -97,7 +70,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
      *****************************/
 
     /// @inheritdoc IETHRateLimiter
-    function addUsedAmount(address _sender, uint256 _amount) external override {
+    function addUsedAmount(uint256 _amount) external override {
         if (msg.sender != spender) {
             revert CallerNotSpender();
         }
@@ -118,31 +91,10 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
             revert ExceedTotalLimit();
         }
 
-        // check user limit
-        uint256 _currentUserAmount;
-        TokenAmount memory _userCurrentPeriod = userCurrentPeriod[_sender];
-        if (_userCurrentPeriod.lastUpdateTs < _currentPeriodStart) {
-            _currentUserAmount = _amount;
-        } else {
-            _currentUserAmount = _userCurrentPeriod.amount + _amount;
-        }
-
-        uint256 _userLimit = defaultUserLimit;
-        if (_userCurrentPeriod.limit != 0) {
-            _userLimit = _userCurrentPeriod.limit;
-        }
-        if (_currentUserAmount > _userLimit) {
-            revert ExceedUserLimit();
-        }
-
         _currentPeriod.lastUpdateTs = uint48(block.timestamp);
         _currentPeriod.amount = SafeCast.toUint104(_currentTotalAmount);
 
-        _userCurrentPeriod.lastUpdateTs = uint48(block.timestamp);
-        _userCurrentPeriod.amount = SafeCast.toUint104(_currentUserAmount);
-
         currentPeriod = _currentPeriod;
-        userCurrentPeriod[_sender] = _userCurrentPeriod;
     }
 
     /************************
@@ -160,31 +112,5 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
         currentPeriod.limit = _newTotalLimit;
 
         emit UpdateTotalLimit(_oldTotalLimit, _newTotalLimit);
-    }
-
-    /// @notice Update the default token amount limit per user.
-    /// @param _newDefaultUserLimit The new default limit per user.
-    function updateDefaultUserLimit(uint256 _newDefaultUserLimit) external onlyOwner {
-        if (_newDefaultUserLimit == 0) {
-            revert DefaultUserLimitIsZero();
-        }
-
-        uint256 _oldDefaultUserLimit = defaultUserLimit;
-        defaultUserLimit = _newDefaultUserLimit;
-
-        emit UpdateDefaultUserLimit(_oldDefaultUserLimit, _newDefaultUserLimit);
-    }
-
-    /// @notice Update the custom limit for specific user.
-    ///
-    /// @dev Use `_newLimit=0` if owner wants to reset the custom limit.
-    ///
-    /// @param _account The address of the user.
-    /// @param _newLimit The new custom limit for the user.
-    function updateCustomUserLimit(address _account, uint104 _newLimit) external onlyOwner {
-        uint256 _oldLimit = userCurrentPeriod[_account].limit;
-        userCurrentPeriod[_account].limit = _newLimit;
-
-        emit UpdateCustomUserLimit(_account, _oldLimit, _newLimit);
     }
 }

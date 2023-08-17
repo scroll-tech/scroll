@@ -127,7 +127,7 @@ contract L2CustomERC20Gateway is L2ERC20Gateway {
         }
 
         // rate limit
-        _addUsedAmount(_token, _from, _amount);
+        _addUsedAmount(_token, _amount);
 
         // 2. Burn token.
         IScrollERC20Upgradeable(_token).burn(_from, _amount);

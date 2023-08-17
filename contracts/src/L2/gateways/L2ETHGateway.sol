@@ -99,7 +99,7 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
         }
 
         // rate limit
-        _addUsedAmount(address(0), _from, _amount);
+        _addUsedAmount(address(0), _amount);
 
         bytes memory _message = abi.encodeCall(IL1ETHGateway.finalizeWithdrawETH, (_from, _to, _amount, _data));
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit);

@@ -125,7 +125,7 @@ contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback 
         }
 
         // rate limit
-        _addUsedAmount(address(0), _from, _amount);
+        _addUsedAmount(address(0), _amount);
 
         // 2. Generate message passed to L1ScrollMessenger.
         bytes memory _message = abi.encodeCall(IL2ETHGateway.finalizeDepositETH, (_from, _to, _amount, _data));
