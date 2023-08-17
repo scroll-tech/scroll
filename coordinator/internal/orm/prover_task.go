@@ -160,6 +160,25 @@ func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit in
 	return proverTasks, nil
 }
 
+// TaskTimeoutTwice get the timeout twice task. a temp design
+func (o *ProverTask) TaskTimeoutTwice(ctx context.Context, taskID string) bool {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("task_id", taskID)
+	db = db.Where("proving_status", int(types.ProverProofInvalid))
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return true
+	}
+
+	if count >= 1 {
+		return true
+	}
+
+	return false
+}
+
 // SetProverTask updates or inserts a ProverTask record.
 func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, dbTX ...*gorm.DB) error {
 	db := o.db.WithContext(ctx)
