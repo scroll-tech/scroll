@@ -174,7 +174,7 @@ func (r *Prover) proveAndSubmit() error {
 		log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", err)
 	}
 	log.Error("zk proving panic for task", "task-type", task.Task.Type, "task-id", task.Task.ID)
-	return r.submitErr(task, message.ProofFailurePanic, err)
+	return r.submitErr(task, message.ProofFailurePanic, errors.New("zk proving panic for task"))
 }
 
 // fetchTaskFromCoordinator fetches a new task from the server
