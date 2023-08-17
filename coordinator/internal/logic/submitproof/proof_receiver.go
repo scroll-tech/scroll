@@ -205,8 +205,13 @@ func (m *ProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Context, ch
 	return nil
 }
 
-func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg) error {
-	m.validateFailureTotal.Inc()
+func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg) (err error) {
+	defer func() {
+		if err != nil {
+			m.validateFailureTotal.Inc()
+		}
+	}()
+
 	// Ensure this prover is eligible to participate in the prover task.
 	if types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofValid {
 		m.validateFailureProverTaskSubmitTwice.Inc()
