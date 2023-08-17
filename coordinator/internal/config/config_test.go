@@ -15,7 +15,8 @@ func TestConfig(t *testing.T) {
 		"prover_manager": {
 			"provers_per_session": 1,
 			"session_attempts": 5,
-			"collection_time_sec": 180,
+			"batch_collection_time_sec": 180,
+			"chunk_collection_time_sec": 180,
 			"verifier": {
 				"mock_mode": true,
 				"params_path": "",
