@@ -76,11 +76,12 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			ChainID: 111,
 		},
 		ProverManager: &config.ProverManager{
-			ProversPerSession:  proversPerSession,
-			Verifier:           &config.VerifierConfig{MockMode: true},
-			CollectionTimeSec:  10,
-			MaxVerifierWorkers: 10,
-			SessionAttempts:    5,
+			ProversPerSession:      proversPerSession,
+			Verifier:               &config.VerifierConfig{MockMode: true},
+			BatchCollectionTimeSec: 10,
+			ChunkCollectionTimeSec: 10,
+			MaxVerifierWorkers:     10,
+			SessionAttempts:        5,
 		},
 		Auth: &config.Auth{
 			ChallengeExpireDurationSec: tokenTimeout,
@@ -440,7 +441,7 @@ func testTimeoutProof(t *testing.T) {
 	assert.NotNil(t, proverBatchTask)
 
 	// wait coordinator to reset the prover task proving status
-	time.Sleep(time.Duration(conf.ProverManager.CollectionTimeSec*2) * time.Second)
+	time.Sleep(time.Duration(conf.ProverManager.BatchCollectionTimeSec*2) * time.Second)
 
 	// create second mock prover, that will send valid proof.
 	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), coordinatorURL, message.ProofTypeChunk)

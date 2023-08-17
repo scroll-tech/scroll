@@ -127,8 +127,12 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if len(pk) == 0 {
 		return fmt.Errorf("get public key from context failed")
 	}
+	pv := ctx.GetString(coordinatorType.ProverVersion)
+	if len(pk) == 0 {
+		return fmt.Errorf("get ProverVersion from context failed")
+	}
 
-	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndPubKey(ctx, proofMsg.ID, pk)
+	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndProver(ctx, proofMsg.ID, pk, pv)
 	if proverTask == nil || err != nil {
 		log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
 		return ErrValidatorFailureProverTaskEmpty
@@ -203,8 +207,13 @@ func (m *ProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Context, ch
 	return nil
 }
 
-func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg) error {
-	m.validateFailureTotal.Inc()
+func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg) (err error) {
+	defer func() {
+		if err != nil {
+			m.validateFailureTotal.Inc()
+		}
+	}()
+
 	// Ensure this prover is eligible to participate in the prover task.
 	if types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofValid {
 		m.validateFailureProverTaskSubmitTwice.Inc()
@@ -212,8 +221,12 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
 		// (i) slash the prover for each submission of invalid proof
 		// (ii) set the maximum failure retry times
-		log.Warn("the prover task cannot submit twice", "hash", proofMsg.ID, "prover pk", proverTask.ProverPublicKey,
-			"prover name", proverTask.ProverName, "proof type", proverTask.TaskType)
+		log.Warn(
+			"cannot submit valid proof for a prover task twice",
+			"proof type", proverTask.TaskType, "hash", proofMsg.ID,
+			"prover name", proverTask.ProverName, "prover version", proverTask.ProverVersion,
+			"prover pk", proverTask.ProverPublicKey,
+		)
 		return ErrValidatorFailureProverTaskCannotSubmitTwice
 	}
 
