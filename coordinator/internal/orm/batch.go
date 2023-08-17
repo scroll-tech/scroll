@@ -213,19 +213,6 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	return &newBatch, nil
 }
 
-// UpdateChunkProofsStatusByBatchHash updates the status of chunk_proofs_status field for a given batch hash.
-// The function will set the chunk_proofs_status to the status provided.
-func (o *Batch) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHash string, status types.ChunkProofsStatus) error {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("hash = ?", batchHash)
-
-	if err := db.Update("chunk_proofs_status", status).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateChunkProofsStatusByBatchHash error: %w, batch hash: %v, status: %v", err, batchHash, status.String())
-	}
-	return nil
-}
-
 // UpdateProvingStatus updates the proving status of a batch.
 func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
 	db := o.db
@@ -283,12 +270,12 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 func (o *Batch) UpdateBatchAttemptsReturning(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	db := o.db.WithContext(ctx)
 	subQueryDB := db.Model(&Batch{})
-	subQueryDB = subQueryDB.Select("index")
+	subQueryDB = subQueryDB.Select("batch.index")
 	// Lock the selected row to ensure atomic updates
 	subQueryDB = subQueryDB.Clauses(clause.Locking{Strength: "UPDATE"})
-	subQueryDB = subQueryDB.Where("total_attempts < ?", maxTotalAttempts)
-	subQueryDB = subQueryDB.Where("active_attempts < ?", maxActiveAttempts)
-	subQueryDB = subQueryDB.Where("chunk_proofs_status = ?", types.ChunkProofsStatusReady)
+	subQueryDB = subQueryDB.Where("batch.total_attempts < ?", maxTotalAttempts)
+	subQueryDB = subQueryDB.Where("batch.active_attempts < ?", maxActiveAttempts)
+	subQueryDB = subQueryDB.Joins("JOIN chunk ON chunk.batch_hash = batch.hash AND chunk.proving_status = ?", types.ProvingTaskVerified)
 	subQueryDB = subQueryDB.Order("index ASC")
 	subQueryDB = subQueryDB.Limit(1)
 

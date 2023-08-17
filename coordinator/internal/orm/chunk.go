@@ -170,19 +170,6 @@ func (o *Chunk) GetAssignedChunks(ctx context.Context) ([]*Chunk, error) {
 	return chunks, nil
 }
 
-// CheckIfBatchChunkProofsAreReady checks if all proofs for all chunks of a given batchHash are collected.
-func (o *Chunk) CheckIfBatchChunkProofsAreReady(ctx context.Context, batchHash string) (bool, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Chunk{})
-	db = db.Where("batch_hash = ? AND proving_status != ?", batchHash, types.ProvingTaskVerified)
-
-	var count int64
-	if err := db.Count(&count).Error; err != nil {
-		return false, fmt.Errorf("Chunk.CheckIfBatchChunkProofsAreReady error: %w, batch hash: %v", err, batchHash)
-	}
-	return count == 0, nil
-}
-
 // GetChunkBatchHash retrieves the batchHash of a given chunk.
 func (o *Chunk) GetChunkBatchHash(ctx context.Context, chunkHash string) (string, error) {
 	db := o.db.WithContext(ctx)

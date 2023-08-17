@@ -283,8 +283,6 @@ func testInvalidProof(t *testing.T) {
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
 	assert.NoError(t, err)
-	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
-	assert.NoError(t, err)
 
 	// create mock provers.
 	provers := make([]*mockProver, 2)
@@ -354,8 +352,6 @@ func testProofGeneratedFailed(t *testing.T) {
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
-	assert.NoError(t, err)
-	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
 	// create mock provers.
@@ -427,8 +423,6 @@ func testTimeoutProof(t *testing.T) {
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
 	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
-	assert.NoError(t, err)
-	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
 	// create first chunk & batch mock prover, that will not send any proof.
