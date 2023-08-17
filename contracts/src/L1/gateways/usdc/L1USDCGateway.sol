@@ -81,7 +81,7 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
         require(msg.sender == circleCaller, "only circle caller");
 
         uint256 _balance = IERC20Upgradeable(l1USDC).balanceOf(address(this));
-        require(IFiatToken(l1USDC).burn(_balance), "burn USDC failed");
+        IFiatToken(l1USDC).burn(_balance);
     }
 
     /// @notice Update the Circle EOA address.

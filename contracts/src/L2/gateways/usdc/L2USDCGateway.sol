@@ -155,7 +155,7 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
 
         // 2. Transfer token into this contract.
         IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
-        require(IFiatToken(_token).burn(_amount), "burn USDC failed");
+        IFiatToken(_token).burn(_amount);
 
         // 3. Generate message passed to L1USDCGateway.
         address _l1USDC = l1USDC;
