@@ -380,11 +380,19 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 		return nil, err
 	}
 
-	s.currentGasTipCap.WithLabelValues(s.service, s.name).Set(float64(feeData.gasTipCap.Int64()))
-	s.currentGasFeeCap.WithLabelValues(s.service, s.name).Set(float64(feeData.gasFeeCap.Int64()))
-	s.currentGasPrice.WithLabelValues(s.service, s.name).Set(float64(feeData.gasPrice.Int64()))
+	if feeData.gasTipCap != nil {
+		s.currentGasTipCap.WithLabelValues(s.service, s.name).Set(float64(feeData.gasTipCap.Uint64()))
+	}
+
+	if feeData.gasFeeCap != nil {
+		s.currentGasFeeCap.WithLabelValues(s.service, s.name).Set(float64(feeData.gasFeeCap.Uint64()))
+	}
+
+	if feeData.gasPrice != nil {
+		s.currentGasPrice.WithLabelValues(s.service, s.name).Set(float64(feeData.gasPrice.Uint64()))
+	}
+
 	s.currentGasLimit.WithLabelValues(s.service, s.name).Set(float64(feeData.gasLimit))
-	s.currentNonce.WithLabelValues(s.service, s.name).Set(float64(auth.Nonce.Int64()))
 
 	// update nonce when it is not from resubmit
 	if overrideNonce == nil {
