@@ -149,6 +149,10 @@ func (c *Collector) check(assignedProverTasks []orm.ProverTask, timeout promethe
 	// here not update the block batch proving status failed, because the collector loop will check
 	// the attempt times. if reach the times, the collector will set the block batch proving status.
 	for _, assignedProverTask := range assignedProverTasks {
+		if c.proverTaskOrm.TaskTimeoutMoreThanOnce(c.ctx, assignedProverTask.TaskID) {
+			log.Warn("Task timeout more than once", "hash", assignedProverTask.TaskID)
+		}
+
 		timeout.Inc()
 		log.Warn("proof task have reach the timeout", "task id", assignedProverTask.TaskID,
 			"prover public key", assignedProverTask.ProverPublicKey, "prover name", assignedProverTask.ProverName, "task type", assignedProverTask.TaskType)
