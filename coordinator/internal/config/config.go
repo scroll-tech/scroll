@@ -17,8 +17,10 @@ type ProverManager struct {
 	SessionAttempts uint8 `json:"session_attempts"`
 	// Zk verifier config.
 	Verifier *VerifierConfig `json:"verifier"`
-	// Proof collection time (in seconds).
-	CollectionTimeSec int `json:"collection_time_sec"`
+	// BatchCollectionTimeSec batch Proof collection time (in seconds).
+	BatchCollectionTimeSec int `json:"batch_collection_time_sec"`
+	// ChunkCollectionTimeSec chunk Proof collection time (in seconds).
+	ChunkCollectionTimeSec int `json:"chunk_collection_time_sec"`
 	// Max number of workers in verifier worker pool
 	MaxVerifierWorkers int `json:"max_verifier_workers"`
 }

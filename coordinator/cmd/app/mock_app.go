@@ -81,11 +81,12 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	}
 	// Reset prover manager config for manager test cases.
 	cfg.ProverManager = &coordinatorConfig.ProverManager{
-		ProversPerSession:  1,
-		Verifier:           &coordinatorConfig.VerifierConfig{MockMode: true},
-		CollectionTimeSec:  60,
-		SessionAttempts:    10,
-		MaxVerifierWorkers: 4,
+		ProversPerSession:      1,
+		Verifier:               &coordinatorConfig.VerifierConfig{MockMode: true},
+		BatchCollectionTimeSec: 60,
+		ChunkCollectionTimeSec: 60,
+		SessionAttempts:        10,
+		MaxVerifierWorkers:     4,
 	}
 	cfg.DB.DSN = base.DBImg.Endpoint()
 	cfg.L2.ChainID = 111
