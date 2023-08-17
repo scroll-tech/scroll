@@ -488,7 +488,7 @@ func (s *Sender) loop(ctx context.Context) {
 		case <-checkBalanceTicker.C:
 			// Check and set balance.
 			if err := s.checkBalance(ctx); err != nil {
-				log.Error("check balance, err: %w", err)
+				log.Error("check balance error", "err", err)
 			}
 		case <-ctx.Done():
 			return
