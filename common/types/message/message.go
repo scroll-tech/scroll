@@ -224,6 +224,7 @@ type ProofDetail struct {
 	Status     RespStatus  `json:"status"`
 	ChunkProof *ChunkProof `json:"chunk_proof,omitempty"`
 	BatchProof *BatchProof `json:"batch_proof,omitempty"`
+	ErrorType  int         `json:"error_type,omitempty"`
 	Error      string      `json:"error,omitempty"`
 }
 
