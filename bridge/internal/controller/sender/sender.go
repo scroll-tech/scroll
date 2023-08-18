@@ -17,6 +17,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/utils"
@@ -68,6 +69,7 @@ type PendingTransaction struct {
 // Sender Transaction sender to send transaction to l1/l2 geth
 type Sender struct {
 	config  *config.SenderConfig
+	rpcCli  *rpc.Client
 	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
 	chainID *big.Int          // The chain id of the endpoint
 	ctx     context.Context
@@ -90,10 +92,11 @@ type Sender struct {
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
 func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey, service, name string, reg prometheus.Registerer) (*Sender, error) {
-	client, err := ethclient.Dial(config.Endpoint)
+	cli, err := rpc.DialContext(ctx, config.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial eth client, err: %w", err)
 	}
+	client := ethclient.NewClient(cli)
 
 	// get chainID from client
 	chainID, err := client.ChainID(ctx)
@@ -131,6 +134,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	sender := &Sender{
 		ctx:           ctx,
 		config:        config,
+		rpcCli:        cli,
 		client:        client,
 		chainID:       chainID,
 		auth:          auth,

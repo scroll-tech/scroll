@@ -7,6 +7,8 @@ import (
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
+
+	"scroll-tech/common/utils"
 )
 
 func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Address, value *big.Int, input []byte, minGasLimit uint64) (*FeeData, error) {
@@ -59,10 +61,12 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 		Value:     value,
 		Data:      input,
 	}
-	gasLimit, err := s.client.EstimateGas(s.ctx, msg)
+	gasLimit, err := utils.EstimateGas(s.rpcCli, msg, s.blockNumber)
 	if err != nil {
 		return 0, err
 	}
+	// Make sure the gas limit is enough to use.
+	gasLimit = gasLimit / 100 * 120
 	if minGasLimit > gasLimit {
 		gasLimit = minGasLimit
 	}
