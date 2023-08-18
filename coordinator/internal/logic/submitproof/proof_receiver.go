@@ -234,9 +234,9 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 
 	if proofMsg.Status != message.StatusOk {
 		failureMsg := strings.Replace(proofParameter.FailureMsg, "panic", "pa-nic", -1)
-		// when receive the error msg, maybe this chunk/batch proving_status have recover by other prover
-		// and assigned to a new prover.if reset the proving status instantly, the proving_status is wrong.
-		// so, need check whether the chunk/batch have assigning to other prover.
+		// when receive the error msg, maybe this chunk/batch's proving_status have recover by other prover
+		// and the chunk/batch have assigned to a new prover. if reset the proving status instantly,
+		// the proving_status is wrong. so, need check whether the chunk/batch have assigning to other prover.
 		if !m.checkIsAssignedToOtherProver(ctx, proofMsg.ID, pk, proofMsg.Type) {
 			m.proofRecover(ctx, proofMsg.ID, pk, proofMsg)
 		}
