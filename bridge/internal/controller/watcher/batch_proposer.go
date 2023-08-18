@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -29,10 +31,20 @@ type BatchProposer struct {
 	minChunkNumPerBatch             uint64
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
+
+	batchProposerCircleTotal           prometheus.Counter
+	proposeBatchFailureTotal           prometheus.Counter
+	proposeBatchUpdateInfoTotal        prometheus.Counter
+	proposeBatchUpdateInfoFailureTotal prometheus.Counter
+	totalL1CommitGas                   prometheus.Gauge
+	totalL1CommitCalldataSize          prometheus.Gauge
+	batchChunksNum                     prometheus.Gauge
+	batchFirstChunkTimeoutReached      prometheus.Counter
+	batchChunksSuperposeNotEnoughTotal prometheus.Counter
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
-func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB) *BatchProposer {
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
 	return &BatchProposer{
 		ctx:                             ctx,
 		db:                              db,
@@ -45,22 +57,63 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		minChunkNumPerBatch:             cfg.MinChunkNumPerBatch,
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
+
+		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_propose_batch_circle_total",
+			Help: "Total number of propose batch total.",
+		}),
+		proposeBatchFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_propose_batch_failure_circle_total",
+			Help: "Total number of propose batch total.",
+		}),
+		proposeBatchUpdateInfoTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_propose_batch_update_info_total",
+			Help: "Total number of propose batch update info total.",
+		}),
+		proposeBatchUpdateInfoFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_propose_batch_update_info_failure_total",
+			Help: "Total number of propose batch update info failure total.",
+		}),
+		totalL1CommitGas: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "bridge_propose_batch_total_l1_commit_gas",
+			Help: "The total l1 commit gas",
+		}),
+		totalL1CommitCalldataSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "bridge_propose_batch_total_l1_call_data_size",
+			Help: "The total l1 call data size",
+		}),
+		batchChunksNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "bridge_propose_batch_chunks_number",
+			Help: "The number of chunks in the batch",
+		}),
+		batchFirstChunkTimeoutReached: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_propose_batch_first_chunk_timeout_reached_total",
+			Help: "Total times of batch's first chunk timeout reached",
+		}),
+		batchChunksSuperposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_propose_batch_chunks_superpose_not_enough_total",
+			Help: "Total number of batch chunk superpose not enough",
+		}),
 	}
 }
 
 // TryProposeBatch tries to propose a new batches.
 func (p *BatchProposer) TryProposeBatch() {
+	p.batchProposerCircleTotal.Inc()
 	dbChunks, err := p.proposeBatchChunks()
 	if err != nil {
+		p.proposeBatchFailureTotal.Inc()
 		log.Error("proposeBatchChunks failed", "err", err)
 		return
 	}
 	if err := p.updateBatchInfoInDB(dbChunks); err != nil {
+		p.proposeBatchUpdateInfoFailureTotal.Inc()
 		log.Error("update batch info in db failed", "err", err)
 	}
 }
 
 func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk) error {
+	p.proposeBatchUpdateInfoTotal.Inc()
 	numChunks := len(dbChunks)
 	if numChunks <= 0 {
 		return nil
@@ -77,10 +130,12 @@ func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk) error {
 	err = p.db.Transaction(func(dbTX *gorm.DB) error {
 		batch, dbErr := p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash, endChunkHash, chunks, dbTX)
 		if dbErr != nil {
+			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "error", "start chunk index", startChunkIndex, "end chunk index", endChunkIndex, dbErr)
 			return dbErr
 		}
 		dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, startChunkIndex, endChunkIndex, batch.Hash, dbTX)
 		if dbErr != nil {
+			log.Warn("BatchProposer.UpdateBatchHashInRange update the chunk's batch hash failure", "hash", batch.Hash, "error", dbErr)
 			return dbErr
 		}
 		return nil
@@ -132,6 +187,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	// batch header size: 89 + 32 * ceil(l1MessagePopped / 256)
 	totalL1CommitGas += getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
 
+	p.totalL1CommitGas.Set(float64(totalL1CommitGas))
 	// Check if the first chunk breaks hard limits.
 	// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
 	if p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
@@ -144,6 +200,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		)
 	}
 
+	p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
 	if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch {
 		return nil, fmt.Errorf(
 			"the first chunk exceeds l1 commit calldata size limit; start block number: %v, end block number %v, calldata size: %v, max calldata size limit: %v",
@@ -174,6 +231,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		}
 	}
 
+	p.batchChunksNum.Set(float64(len(dbChunks)))
+
 	var hasChunkTimeout bool
 	currentTimeSec := uint64(time.Now().Unix())
 	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
@@ -183,12 +242,14 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 			"chunk outdated time threshold", currentTimeSec,
 		)
 		hasChunkTimeout = true
+		p.batchFirstChunkTimeoutReached.Inc()
 	}
 
 	if !hasChunkTimeout && uint64(len(dbChunks)) < p.minChunkNumPerBatch {
 		log.Warn("The chunk number of the batch is less than the minimum limit",
 			"chunk num", len(dbChunks), "minChunkNumPerBatch", p.minChunkNumPerBatch,
 		)
+		p.batchChunksSuperposeNotEnoughTotal.Inc()
 		return nil, nil
 	}
 	return dbChunks, nil

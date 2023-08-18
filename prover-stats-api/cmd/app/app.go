@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -11,7 +10,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/metrics"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -54,14 +52,6 @@ func action(ctx *cli.Context) error {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
-
-	subCtx, cancel := context.WithCancel(ctx.Context)
-	defer func() {
-		cancel()
-	}()
-
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
 
 	// init Prover Stats API
 	port := ctx.String(httpPortFlag.Name)
