@@ -323,8 +323,8 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 	// send the submit request
 	needDeleteTask, err := r.coordinatorClient.SubmitProof(r.ctx, req)
 	if needDeleteTask {
-		if err := r.stack.Delete(msg.ID); err != nil {
-			log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", err)
+		if deleteErr := r.stack.Delete(msg.ID); deleteErr != nil {
+			log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", deleteErr)
 		}
 	}
 
@@ -351,8 +351,8 @@ func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.Pro
 	// send the submit request
 	needDeleteTask, submitErr := r.coordinatorClient.SubmitProof(r.ctx, req)
 	if needDeleteTask {
-		if err = r.stack.Delete(task.Task.ID); err != nil {
-			log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", err)
+		if deleteErr := r.stack.Delete(task.Task.ID); deleteErr != nil {
+			log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", deleteErr)
 		}
 	}
 
