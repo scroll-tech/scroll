@@ -352,7 +352,7 @@ func (r *Prover) submitErr(task *store.ProvingTask, isRetry bool, proofFailureTy
 
 	// send the submit request
 	if submitErr := r.coordinatorClient.SubmitProof(r.ctx, req); submitErr != nil {
-		if !errors.Is(errors.Unwrap(err), client.ConnectErr) {
+		if !isRetry && !errors.Is(errors.Unwrap(err), client.ConnectErr) {
 			if deleteErr := r.stack.Delete(task.Task.ID); deleteErr != nil {
 				log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", deleteErr)
 			}
