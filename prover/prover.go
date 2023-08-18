@@ -328,6 +328,10 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 			}
 		}
 		return fmt.Errorf("error submitting proof: %v", err)
+	} else {
+		if deleteErr := r.stack.Delete(msg.ID); deleteErr != nil {
+			log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", deleteErr)
+		}
 	}
 
 	log.Info("proof submitted successfully", "task-id", msg.ID, "task-type", msg.Type, "task-status", msg.Status, "err", msg.Error)
@@ -354,6 +358,10 @@ func (r *Prover) submitErr(task *store.ProvingTask, isRetry bool, proofFailureTy
 			}
 		}
 		return fmt.Errorf("error submitting proof: %v", submitErr)
+	} else {
+		if deleteErr := r.stack.Delete(task.Task.ID); deleteErr != nil {
+			log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", deleteErr)
+		}
 	}
 
 	log.Info("proof submitted report failure successfully",
