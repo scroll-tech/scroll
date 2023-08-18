@@ -153,7 +153,7 @@ func (r *Prover) proveAndSubmit() error {
 
 	var proofMsg *message.ProofDetail
 	if task.Times <= 2 {
-		// If panic times <= 2, try to proof the task.
+		// If try times <= 2, try to proof the task.
 		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
 			return fmt.Errorf("failed to update times on stack: %v", err)
 		}
@@ -167,6 +167,7 @@ func (r *Prover) proveAndSubmit() error {
 		return r.submitProof(proofMsg)
 	}
 
+	// if try times >= 3, it's probably due to circuit proving panic
 	log.Error("zk proving panic for task", "task-type", task.Task.Type, "task-id", task.Task.ID)
 	return r.submitErr(task, message.ProofFailurePanic, errors.New("zk proving panic for task"))
 }
