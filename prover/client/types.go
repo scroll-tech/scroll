@@ -1,8 +1,12 @@
 package client
 
 import (
+	"errors"
+
 	"scroll-tech/common/types/message"
 )
+
+var ConnectErr = errors.New("connect coordinator error")
 
 // ChallengeResponse defines the response structure for random API
 type ChallengeResponse struct {
