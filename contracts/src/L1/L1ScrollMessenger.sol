@@ -149,7 +149,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
 
         // @note check more `_to` address to avoid attack in the future when we add more gateways.
         require(_to != messageQueue, "Forbid to call message queue");
-        require(_to != address(this), "Forbid to call self");
+        _validateTargetAddress(_to);
 
         // @note This usually will never happen, just in case.
         require(_from != xDomainMessageSender, "Invalid message sender");
@@ -312,6 +312,8 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         uint256 _gasLimit,
         address _refundAddress
     ) internal nonReentrant {
+        _addUsedAmount(_value);
+
         address _messageQueue = messageQueue; // gas saving
         address _counterpart = counterpart; // gas saving
 
