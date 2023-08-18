@@ -244,7 +244,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	if !hasChunkTimeout {
-		log.Warn("pending chunks do not reach one of the constraints and contain a timeout block")
+		log.Warn("pending chunks do not reach one of the constraints or contain a timeout block")
 		p.batchChunksProposeNotEnoughTotal.Inc()
 		return nil, nil
 	}

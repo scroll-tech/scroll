@@ -289,7 +289,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	}
 
 	if !hasBlockTimeout {
-		log.Warn("pending blocks do not reach one of the constraints and contain a timeout block")
+		log.Warn("pending blocks do not reach one of the constraints or contain a timeout block")
 		p.chunkBlocksProposeNotEnoughTotal.Inc()
 		return nil, nil
 	}
