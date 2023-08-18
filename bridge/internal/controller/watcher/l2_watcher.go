@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -49,10 +48,7 @@ type L2WatcherClient struct {
 
 	stopped uint64
 
-	fetchRunningMissingBlocksTotal  prometheus.Counter
-	fetchRunningMissingBlocksHeight prometheus.Gauge
-	fetchContractEventTotal         prometheus.Counter
-	fetchContractEventHeight        prometheus.Gauge
+	metrics *l2WatcherMetrics
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
@@ -90,23 +86,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
 		stopped: 0,
-
-		fetchRunningMissingBlocksTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_l2_watcher_fetch_running_missing_blocks_total",
-			Help: "The total number of l2 watcher fetch running missing blocks",
-		}),
-		fetchRunningMissingBlocksHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_l2_watcher_fetch_running_missing_blocks_height",
-			Help: "The total number of l2 watcher fetch running missing blocks height",
-		}),
-		fetchContractEventTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_l2_watcher_fetch_contract_events_total",
-			Help: "The total number of l2 watcher fetch contract events",
-		}),
-		fetchContractEventHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_l2_watcher_fetch_contract_height",
-			Help: "The total number of l2 watcher fetch contract height",
-		}),
+		metrics: initL2WatcherMetrics(reg),
 	}
 
 	return &w
@@ -116,7 +96,7 @@ const blockTracesFetchLimit = uint64(10)
 
 // TryFetchRunningMissingBlocks attempts to fetch and store block traces for any missing blocks.
 func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
-	w.fetchRunningMissingBlocksTotal.Inc()
+	w.metrics.fetchRunningMissingBlocksTotal.Inc()
 	heightInDB, err := w.l2BlockOrm.GetL2BlocksLatestHeight(w.ctx)
 	if err != nil {
 		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
@@ -135,7 +115,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
-		w.fetchRunningMissingBlocksHeight.Set(float64(to))
+		w.metrics.fetchRunningMissingBlocksHeight.Set(float64(to))
 	}
 }
 
@@ -213,7 +193,7 @@ func (w *L2WatcherClient) FetchContractEvent() {
 		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
 	}()
 
-	w.fetchContractEventTotal.Inc()
+	w.metrics.fetchContractEventTotal.Inc()
 	blockHeight, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.Client, w.confirmations)
 	if err != nil {
 		log.Error("failed to get block number", "err", err)
@@ -253,7 +233,7 @@ func (w *L2WatcherClient) FetchContractEvent() {
 		}
 		if len(logs) == 0 {
 			w.processedMsgHeight = uint64(to)
-			w.fetchContractEventHeight.Set(float64(to))
+			w.metrics.fetchContractEventHeight.Set(float64(to))
 			continue
 		}
 		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
@@ -283,7 +263,7 @@ func (w *L2WatcherClient) FetchContractEvent() {
 		}
 
 		w.processedMsgHeight = uint64(to)
-		w.fetchContractEventHeight.Set(float64(to))
+		w.metrics.fetchContractEventHeight.Set(float64(to))
 	}
 }
 

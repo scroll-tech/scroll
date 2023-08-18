@@ -95,7 +95,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 			Help: "Total number of propose chunk total.",
 		}),
 		proposeChunkFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_chunk_failure_total",
+			Name: "bridge_propose_chunk_failure_circle_total",
 			Help: "Total number of propose chunk failure total.",
 		}),
 		proposeChunkUpdateInfoTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{

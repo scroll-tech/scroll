@@ -7,7 +7,6 @@ import (
 	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -48,13 +47,7 @@ type Layer1Relayer struct {
 
 	l1MessageOrm *orm.L1Message
 	l1BlockOrm   *orm.L1Block
-
-	bridgeL1RelayedMsgsTotal               prometheus.Counter
-	bridgeL1RelayedMsgsFailureTotal        prometheus.Counter
-	bridgeL1RelayerGasPriceOraclerRunTotal prometheus.Counter
-	bridgeL1RelayerLastGasPrice            prometheus.Gauge
-	bridgeL1MsgsRelayedConfirmedTotal      prometheus.Counter
-	bridgeL1GasOraclerConfirmedTotal       prometheus.Counter
+	metrics      *l1RelayerMetrics
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
@@ -102,32 +95,9 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
-
-		bridgeL1RelayedMsgsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_layer1_msg_relayed_total",
-			Help: "The total number of the l1 relayed message.",
-		}),
-		bridgeL1RelayedMsgsFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_layer1_msg_relayed_failure_total",
-			Help: "The total number of the l1 relayed failure message.",
-		}),
-		bridgeL1MsgsRelayedConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_layer1_relayed_confirmed_total",
-			Help: "The total number of layer1 relayed confirmed",
-		}),
-		bridgeL1RelayerGasPriceOraclerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_layer1_gas_price_oracler_total",
-			Help: "The total number of layer1 gas price oracler run total",
-		}),
-		bridgeL1RelayerLastGasPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_layer1_gas_price_latest_gas_price",
-			Help: "The latest gas price of bridge relayer l1",
-		}),
-		bridgeL1GasOraclerConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_layer1_relayed_confirmed_total",
-			Help: "The total number of layer1 relayed confirmed",
-		}),
 	}
+
+	l1Relayer.metrics = initL1RelayerMetrics(reg)
 
 	go l1Relayer.handleConfirmLoop(ctx)
 	return l1Relayer, nil
@@ -148,9 +118,9 @@ func (r *Layer1Relayer) ProcessSavedEvents() {
 
 	for _, msg := range msgs {
 		tmpMsg := msg
-		r.bridgeL1RelayedMsgsTotal.Inc()
+		r.metrics.bridgeL1RelayedMsgsTotal.Inc()
 		if err = r.processSavedEvent(&tmpMsg); err != nil {
-			r.bridgeL1RelayedMsgsFailureTotal.Inc()
+			r.metrics.bridgeL1RelayedMsgsFailureTotal.Inc()
 			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
 				log.Error("failed to process event", "msg.msgHash", msg.MsgHash, "err", err)
 			}
@@ -183,7 +153,7 @@ func (r *Layer1Relayer) processSavedEvent(msg *orm.L1Message) error {
 
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
-	r.bridgeL1RelayerGasPriceOraclerRunTotal.Inc()
+	r.metrics.bridgeL1RelayerGasPriceOraclerRunTotal.Inc()
 	latestBlockHeight, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
 	if err != nil {
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
@@ -228,7 +198,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 			r.lastGasPrice = block.BaseFee
-			r.bridgeL1RelayerLastGasPrice.Set(float64(r.lastGasPrice))
+			r.metrics.bridgeL1RelayerLastGasPrice.Set(float64(r.lastGasPrice))
 			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee)
 		}
 	}
@@ -240,7 +210,7 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case cfm := <-r.messageSender.ConfirmChan():
-			r.bridgeL1MsgsRelayedConfirmedTotal.Inc()
+			r.metrics.bridgeL1MsgsRelayedConfirmedTotal.Inc()
 			if !cfm.IsSuccessful {
 				err := r.l1MessageOrm.UpdateLayer1StatusAndLayer2Hash(r.ctx, cfm.ID, types.MsgRelayFailed, cfm.TxHash.String())
 				if err != nil {
@@ -256,7 +226,7 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 				log.Info("transaction confirmed in layer2", "confirmation", cfm)
 			}
 		case cfm := <-r.gasOracleSender.ConfirmChan():
-			r.bridgeL1MsgsRelayedConfirmedTotal.Inc()
+			r.metrics.bridgeL1MsgsRelayedConfirmedTotal.Inc()
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
 				err := r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())

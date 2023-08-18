@@ -63,7 +63,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 			Help: "Total number of propose batch total.",
 		}),
 		proposeBatchFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_batch_circle_total",
+			Name: "bridge_propose_batch_failure_circle_total",
 			Help: "Total number of propose batch total.",
 		}),
 		proposeBatchUpdateInfoTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
