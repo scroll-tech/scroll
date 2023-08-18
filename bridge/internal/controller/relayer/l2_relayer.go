@@ -98,7 +98,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
 	}
-	log.Info("h555")
 
 	var minGasPrice uint64
 	var gasPriceDiff uint64
@@ -115,7 +114,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}
 
-	log.Info("h6666")
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,

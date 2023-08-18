@@ -116,6 +116,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 			return
 		}
 		w.metrics.fetchRunningMissingBlocksHeight.Set(float64(to))
+		w.metrics.bridgeL2BlocksFetchedGap.Set(float64(blockHeight - to))
 	}
 }
 
@@ -245,6 +246,7 @@ func (w *L2WatcherClient) FetchContractEvent() {
 		}
 
 		relayedMessageCount := int64(len(relayedMessageEvents))
+		w.metrics.bridgeL2MsgsRelayedEventsTotal.Add(float64(relayedMessageCount))
 		log.Info("L2 events types", "RelayedMessageCount", relayedMessageCount)
 
 		// Update relayed message first to make sure we don't forget to update submited message.
