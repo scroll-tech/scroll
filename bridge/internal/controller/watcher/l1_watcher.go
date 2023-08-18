@@ -53,7 +53,11 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 
 	var savedHeight uint64 = 0
 	batchOrm := orm.NewBatch(db)
-	latestFinalizedBatch, _ := batchOrm.GetLatestFinalizedBatch(ctx)
+	latestFinalizedBatch, err := batchOrm.GetLatestFinalizedBatch(ctx)
+	if err != nil {
+		log.Warn("Failed to fetch latest finalized batch from db", "err", err)
+		savedHeight = 0
+	}
 	if latestFinalizedBatch != nil {
 		if receipt, err := client.TransactionReceipt(ctx, common.HexToHash(latestFinalizedBatch.CommitTxHash)); err != nil {
 			savedHeight = receipt.BlockNumber.Uint64()

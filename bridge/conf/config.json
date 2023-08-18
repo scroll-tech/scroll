@@ -5,7 +5,6 @@
     "scroll_chain_address": "0x0000000000000000000000000000000000000000",
     "start_height": 0,
     "relayer_config": {
-      "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
@@ -31,7 +30,6 @@
   "l2_config": {
     "confirmations": "0x1",
     "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
-    "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "l2_message_queue_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
