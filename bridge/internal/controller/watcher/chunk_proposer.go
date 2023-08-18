@@ -191,7 +191,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	var totalL2TxNum uint64
 	var totalL1CommitCalldataSize uint64
 	var totalL1CommitGas uint64
-	var crc chunkRowConsumption
+	crc := chunkRowConsumption{}
 
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)
