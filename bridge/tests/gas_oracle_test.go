@@ -26,13 +26,13 @@ func testImportL1GasPrice(t *testing.T) {
 	l1Cfg := bridgeApp.Config.L1Config
 
 	// Create L1Relayer
-	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, nil)
 	assert.NoError(t, err)
 
 	// Create L1Watcher
 	startHeight, err := l1Client.BlockNumber(context.Background())
 	assert.NoError(t, err)
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, 0, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, 0, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// fetch new blocks
 	number, err := l1Client.BlockNumber(context.Background())
@@ -67,7 +67,7 @@ func testImportL2GasPrice(t *testing.T) {
 	prepareContracts(t)
 
 	l2Cfg := bridgeApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 
 	// add fake chunk

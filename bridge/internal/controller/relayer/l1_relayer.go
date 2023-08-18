@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	// not sure if this will make problems when relay with l1geth
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -39,11 +39,12 @@ type Layer1Relayer struct {
 	gasPriceDiff uint64
 
 	l1BlockOrm *orm.L1Block
+	metrics    *l1RelayerMetrics
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig) (*Layer1Relayer, error) {
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey)
+func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, reg prometheus.Registerer) (*Layer1Relayer, error) {
+	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l1_relayer", "gas_oracle_sender", reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
@@ -60,6 +61,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 	}
 
 	l1Relayer := &Layer1Relayer{
+		cfg:        cfg,
 		ctx:        ctx,
 		l1BlockOrm: orm.NewL1Block(db),
 
@@ -68,9 +70,9 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
-
-		cfg: cfg,
 	}
+
+	l1Relayer.metrics = initL1RelayerMetrics(reg)
 
 	go l1Relayer.handleConfirmLoop(ctx)
 	return l1Relayer, nil
@@ -78,6 +80,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
+	r.metrics.bridgeL1RelayerGasPriceOraclerRunTotal.Inc()
 	latestBlockHeight, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
 	if err != nil {
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
@@ -122,6 +125,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 			r.lastGasPrice = block.BaseFee
+			r.metrics.bridgeL1RelayerLastGasPrice.Set(float64(r.lastGasPrice))
 			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee)
 		}
 	}
@@ -133,6 +137,7 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case cfm := <-r.gasOracleSender.ConfirmChan():
+			r.metrics.bridgeL1MsgsRelayedConfirmedTotal.Inc()
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
 				err := r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())

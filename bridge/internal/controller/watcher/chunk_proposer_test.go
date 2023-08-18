@@ -30,7 +30,7 @@ func testChunkProposer(t *testing.T) {
 		MinL1CommitCalldataSizePerChunk: 0,
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	cp.TryProposeChunk()
 
 	expectedChunk := &types.Chunk{
@@ -62,7 +62,7 @@ func testChunkProposerRowConsumption(t *testing.T) {
 		MinL1CommitCalldataSizePerChunk: 0,
 		MaxRowConsumptionPerChunk:       0, // !
 		ChunkTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	cp.TryProposeChunk()
 
 	chunkOrm := orm.NewChunk(db)

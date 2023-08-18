@@ -5,26 +5,19 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
-	gethMetrics "github.com/scroll-tech/go-ethereum/metrics"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/metrics"
 	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/orm"
-)
-
-// Metrics
-var (
-	bridgeL2BlocksFetchedHeightGauge = gethMetrics.NewRegisteredGauge("bridge/l2/blocks/fetched/height", metrics.ScrollRegistry)
-	bridgeL2BlocksFetchedGapGauge    = gethMetrics.NewRegisteredGauge("bridge/l2/blocks/fetched/gap", metrics.ScrollRegistry)
 )
 
 // L2WatcherClient provide APIs which support others to subscribe to various event from l2geth
@@ -40,10 +33,12 @@ type L2WatcherClient struct {
 	withdrawTrieRootSlot common.Hash
 
 	stopped uint64
+
+	metrics *l2WatcherMetrics
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, db *gorm.DB) *L2WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, db *gorm.DB, reg prometheus.Registerer) *L2WatcherClient {
 	w := L2WatcherClient{
 		ctx:    ctx,
 		Client: client,
@@ -54,6 +49,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, messageQu
 		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
 		stopped: 0,
+		metrics: initL2WatcherMetrics(reg),
 	}
 
 	return &w
@@ -63,6 +59,7 @@ const blockTracesFetchLimit = uint64(10)
 
 // TryFetchRunningMissingBlocks attempts to fetch and store block traces for any missing blocks.
 func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
+	w.metrics.fetchRunningMissingBlocksTotal.Inc()
 	heightInDB, err := w.l2BlockOrm.GetL2BlocksLatestHeight(w.ctx)
 	if err != nil {
 		log.Error("failed to GetL2BlocksLatestHeight", "err", err)
@@ -81,8 +78,8 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
-		bridgeL2BlocksFetchedHeightGauge.Update(int64(to))
-		bridgeL2BlocksFetchedGapGauge.Update(int64(blockHeight - to))
+		w.metrics.fetchRunningMissingBlocksHeight.Set(float64(to))
+		w.metrics.bridgeL2BlocksFetchedGap.Set(float64(blockHeight - to))
 	}
 }
 

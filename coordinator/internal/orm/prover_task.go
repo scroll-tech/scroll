@@ -113,16 +113,18 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string
 	return proverTasks, nil
 }
 
-// GetProverTaskByTaskIDAndPubKey get prover task taskID and public key
-func (o *ProverTask) GetProverTaskByTaskIDAndPubKey(ctx context.Context, taskID, proverPublicKey string) (*ProverTask, error) {
+// GetProverTaskByTaskIDAndProver get prover task taskID and public key
+func (o *ProverTask) GetProverTaskByTaskIDAndProver(ctx context.Context, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("task_id", taskID).Where("prover_public_key", proverPublicKey)
+	db = db.Where("task_id", taskID)
+	db = db.Where("prover_public_key", proverPublicKey)
+	db = db.Where("prover_version", proverVersion)
 
 	var proverTask ProverTask
 	err := db.First(&proverTask).Error
 	if err != nil {
-		return nil, fmt.Errorf("ProverTask.GetProverTaskByTaskIDAndPubKey err:%w, taskID:%s, pubukey:%s", err, taskID, proverPublicKey)
+		return nil, fmt.Errorf("ProverTask.GetProverTaskByTaskIDAndProver err:%w, taskID:%s, pubkey:%s, prover_version:%s", err, taskID, proverPublicKey, proverVersion)
 	}
 	return &proverTask, nil
 }
@@ -142,10 +144,11 @@ func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string
 }
 
 // GetTimeoutAssignedProverTasks get the timeout and assigned proving_status prover task
-func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit int, timeout time.Duration) ([]ProverTask, error) {
+func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit int, taskType message.ProofType, timeout time.Duration) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("proving_status", int(types.ProverAssigned))
+	db = db.Where("task_type", int(taskType))
 	db = db.Where("assigned_at < ?", utils.NowUTC().Add(-timeout))
 	db = db.Limit(limit)
 
@@ -157,6 +160,25 @@ func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit in
 	return proverTasks, nil
 }
 
+// TaskTimeoutMoreThanOnce get the timeout twice task. a temp design
+func (o *ProverTask) TaskTimeoutMoreThanOnce(ctx context.Context, taskID string) bool {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("task_id", taskID)
+	db = db.Where("proving_status", int(types.ProverProofInvalid))
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return true
+	}
+
+	if count >= 1 {
+		return true
+	}
+
+	return false
+}
+
 // SetProverTask updates or inserts a ProverTask record.
 func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, dbTX ...*gorm.DB) error {
 	db := o.db.WithContext(ctx)
@@ -166,8 +188,8 @@ func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, 
 
 	db = db.Model(&ProverTask{})
 	db = db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}},
-		DoUpdates: clause.AssignmentColumns([]string{"prover_version", "proving_status", "failure_type", "assigned_at"}),
+		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}, {Name: "prover_version"}},
+		DoUpdates: clause.AssignmentColumns([]string{"proving_status", "failure_type", "assigned_at"}),
 	})
 
 	if err := db.Create(&proverTask).Error; err != nil {

@@ -13,6 +13,18 @@ import (
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
 
+// ProofFailureType the proof failure type
+type ProofFailureType int
+
+const (
+	// ProofFailureUndefined the undefined type proof failure type
+	ProofFailureUndefined ProofFailureType = iota
+	// ProofFailurePanic proof failure for prover panic
+	ProofFailurePanic
+	// ProofFailureNoPanic proof failure for no prover panic
+	ProofFailureNoPanic
+)
+
 // RespStatus represents status code from prover to scroll
 type RespStatus uint32
 
@@ -250,12 +262,14 @@ type ChunkInfo struct {
 
 // ChunkProof includes the proof info that are required for chunk verification and rollup.
 type ChunkProof struct {
-	StorageTrace []byte     `json:"storage_trace"`
-	Protocol     []byte     `json:"protocol"`
-	Proof        []byte     `json:"proof"`
-	Instances    []byte     `json:"instances"`
-	Vk           []byte     `json:"vk"`
-	ChunkInfo    *ChunkInfo `json:"chunk_info,omitempty"` // cross-reference between cooridinator computation and prover compution
+	StorageTrace []byte `json:"storage_trace"`
+	Protocol     []byte `json:"protocol"`
+	Proof        []byte `json:"proof"`
+	Instances    []byte `json:"instances"`
+	Vk           []byte `json:"vk"`
+	// cross-reference between cooridinator computation and prover compution
+	ChunkInfo  *ChunkInfo `json:"chunk_info,omitempty"`
+	GitVersion string     `json:"git_version,omitempty"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
@@ -263,6 +277,8 @@ type BatchProof struct {
 	Proof     []byte `json:"proof"`
 	Instances []byte `json:"instances"`
 	Vk        []byte `json:"vk"`
+	// cross-reference between cooridinator computation and prover compution
+	GitVersion string `json:"git_version,omitempty"`
 }
 
 // SanityCheck checks whether an BatchProof is in a legal format
