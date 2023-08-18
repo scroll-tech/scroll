@@ -321,17 +321,18 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 	}
 
 	// send the submit request
-	needDeleteTask, err := r.coordinatorClient.SubmitProof(r.ctx, req)
-	if needDeleteTask {
-		if deleteErr := r.stack.Delete(msg.ID); deleteErr != nil {
-			log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", deleteErr)
+	if err := r.coordinatorClient.SubmitProof(r.ctx, req); err != nil {
+		if !errors.Is(errors.Unwrap(err), client.ErrCoordinatorConnect) {
+			if deleteErr := r.stack.Delete(msg.ID); deleteErr != nil {
+				log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", deleteErr)
+			}
 		}
-	}
-
-	if err != nil {
 		return fmt.Errorf("error submitting proof: %v", err)
 	}
 
+	if deleteErr := r.stack.Delete(msg.ID); deleteErr != nil {
+		log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", deleteErr)
+	}
 	log.Info("proof submitted successfully", "task-id", msg.ID, "task-type", msg.Type, "task-status", msg.Status, "err", msg.Error)
 
 	return nil
@@ -349,15 +350,16 @@ func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.Pro
 	}
 
 	// send the submit request
-	needDeleteTask, submitErr := r.coordinatorClient.SubmitProof(r.ctx, req)
-	if needDeleteTask {
-		if deleteErr := r.stack.Delete(task.Task.ID); deleteErr != nil {
-			log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", deleteErr)
+	if submitErr := r.coordinatorClient.SubmitProof(r.ctx, req); submitErr != nil {
+		if !errors.Is(errors.Unwrap(err), client.ErrCoordinatorConnect) {
+			if deleteErr := r.stack.Delete(task.Task.ID); deleteErr != nil {
+				log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", deleteErr)
+			}
 		}
-	}
-
-	if submitErr != nil {
 		return fmt.Errorf("error submitting proof: %v", submitErr)
+	}
+	if deleteErr := r.stack.Delete(task.Task.ID); deleteErr != nil {
+		log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", deleteErr)
 	}
 
 	log.Info("proof submitted report failure successfully",
