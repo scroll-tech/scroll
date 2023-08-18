@@ -326,7 +326,7 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 	}
 
 	log.Info("proof submitted successfully", "task-id", msg.ID, "task-type", msg.Type, "task-status", msg.Status, "err", msg.Error)
-	if err = r.stack.Delete(msg.ID); err != nil {
+	if err := r.stack.Delete(msg.ID); err != nil {
 		log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", err)
 	}
 	return nil
