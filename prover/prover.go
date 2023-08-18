@@ -348,7 +348,7 @@ func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.Pro
 		return fmt.Errorf("error submitting proof: %v", submitErr)
 	}
 
-	log.Info("proof submitted report failure successfully", 
+	log.Info("proof submitted report failure successfully",
 		"task-id", task.Task.ID, "task-type", task.Task.Type,
 		"task-status", message.StatusProofError, "err", err)
 	if err = r.stack.Delete(task.Task.ID); err != nil {
