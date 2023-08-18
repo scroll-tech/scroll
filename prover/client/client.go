@@ -193,6 +193,7 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 		log.Info("re-login success")
 		return c.SubmitProof(ctx, req)
 	}
+
 	if result.ErrCode != types.Success {
 		return fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}

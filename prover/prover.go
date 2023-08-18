@@ -169,7 +169,7 @@ func (r *Prover) proveAndSubmit() error {
 
 	// if tried times >= 3, it's probably due to circuit proving panic
 	log.Error("zk proving panic for task", "task-type", task.Task.Type, "task-id", task.Task.ID)
-	return r.submitErr(task, message.ProofFailurePanic, errors.New("zk proving panic for task"))
+	return r.submitErr(task, false, message.ProofFailurePanic, errors.New("zk proving panic for task"))
 }
 
 // fetchTaskFromCoordinator fetches a new task from the server
