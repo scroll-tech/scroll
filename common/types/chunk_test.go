@@ -38,11 +38,15 @@ func TestChunkEncode(t *testing.T) {
 	wrappedBlock := &WrappedBlock{}
 	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
 	assert.Equal(t, uint64(0), wrappedBlock.NumL1Messages(0))
+	assert.Equal(t, uint64(4), wrappedBlock.EstimateL1CommitCalldataSize())
+	assert.Equal(t, uint64(2), wrappedBlock.L2TxsNum())
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
 			wrappedBlock,
 		},
 	}
+	assert.Equal(t, uint64(0), chunk.NumL1Messages(0))
+	assert.Equal(t, uint64(5046), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString := hex.EncodeToString(bytes)
 	assert.NoError(t, err)
@@ -56,11 +60,15 @@ func TestChunkEncode(t *testing.T) {
 	wrappedBlock2 := &WrappedBlock{}
 	assert.NoError(t, json.Unmarshal(templateBlockTrace2, wrappedBlock2))
 	assert.Equal(t, uint64(11), wrappedBlock2.NumL1Messages(0)) // 0..=9 skipped, 10 included
+	assert.Equal(t, uint64(2), wrappedBlock2.EstimateL1CommitCalldataSize())
+	assert.Equal(t, uint64(1), wrappedBlock2.L2TxsNum())
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
 			wrappedBlock2,
 		},
 	}
+	assert.Equal(t, uint64(11), chunk.NumL1Messages(0))
+	assert.Equal(t, uint64(4042), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
@@ -75,6 +83,8 @@ func TestChunkEncode(t *testing.T) {
 			wrappedBlock2,
 		},
 	}
+	assert.Equal(t, uint64(11), chunk.NumL1Messages(0))
+	assert.Equal(t, uint64(8038), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
@@ -135,4 +145,82 @@ func TestChunkHash(t *testing.T) {
 	hash, err = chunk.Hash(0)
 	assert.NoError(t, err)
 	assert.Equal(t, "0x2eb7dd63bf8fc29a0f8c10d16c2ae6f9da446907c79d50f5c164d30dc8526b60", hash.Hex())
+}
+
+func TestErrorPaths(t *testing.T) {
+	// test 1: Header.Number is not a uint64
+	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_02.json")
+	assert.NoError(t, err)
+
+	wrappedBlock := &WrappedBlock{}
+
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
+	wrappedBlock.Header.Number = wrappedBlock.Header.Number.Lsh(wrappedBlock.Header.Number, 64)
+	bytes, err := wrappedBlock.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "block number is not uint64")
+
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
+	for i := 0; i < 65537; i++ {
+		wrappedBlock.Transactions = append(wrappedBlock.Transactions, wrappedBlock.Transactions[0])
+	}
+
+	bytes, err = wrappedBlock.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of transactions exceeds max uint16")
+
+	chunk := &Chunk{
+		Blocks: []*WrappedBlock{
+			wrappedBlock,
+		},
+	}
+
+	bytes, err = chunk.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of transactions exceeds max uint16")
+
+	wrappedBlock.Transactions = wrappedBlock.Transactions[:1]
+	wrappedBlock.Transactions[0].Data = "not-a-hex"
+	bytes, err = chunk.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "hex string without 0x prefix")
+
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
+	wrappedBlock.Transactions[0].TxHash = "not-a-hex"
+	_, err = chunk.Hash(0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid byte")
+
+	templateBlockTrace2, err := os.ReadFile("../testdata/blockTrace_04.json")
+	assert.NoError(t, err)
+
+	wrappedBlock2 := &WrappedBlock{}
+	assert.NoError(t, json.Unmarshal(templateBlockTrace2, wrappedBlock2))
+	for i := 0; i < 65535; i++ {
+		tx := &wrappedBlock2.Transactions[i]
+		txCopy := *tx
+		txCopy.Nonce = uint64(i + 1)
+		wrappedBlock2.Transactions = append(wrappedBlock2.Transactions, txCopy)
+	}
+
+	bytes, err = wrappedBlock2.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of L1 messages exceeds max uint16")
+
+	chunk = &Chunk{
+		Blocks: []*WrappedBlock{
+			wrappedBlock2,
+		},
+	}
+
+	bytes, err = chunk.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of L1 messages exceeds max uint16")
+
 }
