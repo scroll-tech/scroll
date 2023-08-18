@@ -212,7 +212,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 				if totalL2TxNum > p.maxL2TxNumPerChunk {
 					return nil, fmt.Errorf(
 						"the first block exceeds l2 tx number limit; block number: %v, number of transactions: %v, max transaction number limit: %v",
-						chunk.Blocks[0].Header.Number,
+						block.Header.Number,
 						totalL2TxNum,
 						p.maxL2TxNumPerChunk,
 					)
@@ -221,7 +221,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 				if totalOverEstimateL1CommitGas > p.maxL1CommitGasPerChunk {
 					return nil, fmt.Errorf(
 						"the first block exceeds l1 commit gas limit; block number: %v, commit gas: %v, max commit gas limit: %v",
-						chunk.Blocks[0].Header.Number,
+						block.Header.Number,
 						totalL1CommitGas,
 						p.maxL1CommitGasPerChunk,
 					)
@@ -230,7 +230,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 				if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk {
 					return nil, fmt.Errorf(
 						"the first block exceeds l1 commit calldata size limit; block number: %v, calldata size: %v, max calldata size limit: %v",
-						chunk.Blocks[0].Header.Number,
+						block.Header.Number,
 						totalL1CommitCalldataSize,
 						p.maxL1CommitCalldataSizePerChunk,
 					)
@@ -239,7 +239,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 				if crcMax > p.maxRowConsumptionPerChunk {
 					return nil, fmt.Errorf(
 						"the first block exceeds row consumption limit; block number: %v, row consumption: %v, max: %v, limit: %v",
-						chunk.Blocks[0].Header.Number,
+						block.Header.Number,
 						crc,
 						crcMax,
 						p.maxRowConsumptionPerChunk,

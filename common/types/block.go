@@ -10,7 +10,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
-// CalldataNonZeroGas is the gas consumption per non zero byte in calldata.
+// CalldataNonZeroByteGas is the gas consumption per non zero byte in calldata.
 const CalldataNonZeroByteGas = 16
 
 // GetKeccak256Gas calculates keccak256 hash gas.
