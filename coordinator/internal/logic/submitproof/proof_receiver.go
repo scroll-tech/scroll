@@ -310,8 +310,8 @@ func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, hash string,
 		}
 
 		// if the block batch has proof verified, so the failed status not update block batch proving status
-		if status == types.ProvingTaskFailed && m.checkIsTaskSuccess(ctx, hash, proofMsg.Type) {
-			log.Info("update proof status ProvingTaskFailed skip because other prover have prove success", "hash", hash, "public key", proverPublicKey)
+		if m.checkIsTaskSuccess(ctx, hash, proofMsg.Type) {
+			log.Info("update proof status skip because this chunk / batch has been verified", "hash", hash, "public key", proverPublicKey)
 			return nil
 		}
 
