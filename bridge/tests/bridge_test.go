@@ -35,9 +35,6 @@ var (
 	// l1 rollup contract
 	scrollChainInstance *mock_bridge.MockBridgeL1
 	scrollChainAddress  common.Address
-
-	// l2 messenger contract
-	l2MessengerInstance *mock_bridge.MockBridgeL2
 )
 
 func setupDB(t *testing.T) *gorm.DB {
@@ -94,7 +91,6 @@ func prepareContracts(t *testing.T) {
 	assert.NoError(t, err)
 	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
-
 
 	l1Config, l2Config := bridgeApp.Config.L1Config, bridgeApp.Config.L2Config
 	l1Config.ScrollChainContractAddress = scrollChainAddress

@@ -59,7 +59,7 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		savedHeight = 0
 	}
 	if latestFinalizedBatch != nil {
-		if receipt, err := client.TransactionReceipt(ctx, common.HexToHash(latestFinalizedBatch.CommitTxHash)); err != nil {
+		if receipt, err1 := client.TransactionReceipt(ctx, common.HexToHash(latestFinalizedBatch.CommitTxHash)); err1 != nil {
 			savedHeight = receipt.BlockNumber.Uint64()
 		}
 	}
