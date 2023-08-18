@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
@@ -59,10 +60,10 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
+	registry := prometheus.DefaultRegisterer
+	metrics.Server(ctx, registry.(*prometheus.Registry))
 
-	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig)
+	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, registry)
 	if err != nil {
 		log.Error("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 		return err

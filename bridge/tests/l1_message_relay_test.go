@@ -29,14 +29,16 @@ func testRelayL1MessageSucceed(t *testing.T) {
 	l2Cfg := bridgeApp.Config.L2Config
 
 	// Create L1Relayer
-	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, nil)
 	assert.NoError(t, err)
 	// Create L1Watcher
 	confirmations := rpc.LatestBlockNumber
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, confirmations, l1Cfg.L1MessengerAddress,
+		l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// Create L2Watcher
-	l2Watcher := watcher.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.L2MessengerAddress, l2Cfg.L2MessageQueueAddress, l2Cfg.WithdrawTrieRootSlot, db)
+	l2Watcher := watcher.NewL2WatcherClient(context.Background(), l2Client, confirmations, l2Cfg.L2MessengerAddress,
+		l2Cfg.L2MessageQueueAddress, l2Cfg.WithdrawTrieRootSlot, db, nil)
 
 	// send message through l1 messenger contract
 	nonce, err := l1MessengerInstance.MessageNonce(&bind.CallOpts{})

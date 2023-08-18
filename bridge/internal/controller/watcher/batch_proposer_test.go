@@ -30,7 +30,7 @@ func testBatchProposer(t *testing.T) {
 		MinL1CommitCalldataSizePerChunk: 0,
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	cp.TryProposeChunk()
 
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
@@ -39,7 +39,7 @@ func testBatchProposer(t *testing.T) {
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		MinChunkNumPerBatch:             1,
 		BatchTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	bp.TryProposeBatch()
 
 	chunkOrm := orm.NewChunk(db)
