@@ -38,7 +38,7 @@ type BatchProposer struct {
 	totalL1CommitGas                   prometheus.Gauge
 	totalL1CommitCalldataSize          prometheus.Gauge
 	batchChunksNum                     prometheus.Gauge
-	batchFirstChunkTimeoutReached      prometheus.Counter
+	batchFirstBlockTimeoutReached      prometheus.Counter
 	batchChunksProposeNotEnoughTotal   prometheus.Counter
 }
 
@@ -84,9 +84,9 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 			Name: "bridge_propose_batch_chunks_number",
 			Help: "The number of chunks in the batch",
 		}),
-		batchFirstChunkTimeoutReached: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_batch_first_chunk_timeout_reached_total",
-			Help: "Total times of batch's first chunk timeout reached",
+		batchFirstBlockTimeoutReached: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "bridge_propose_batch_first_block_timeout_reached_total",
+			Help: "Total times of batch's first block timeout reached",
 		}),
 		batchChunksProposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "bridge_propose_batch_chunks_propose_not_enough_total",
@@ -227,11 +227,6 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		}
 	}
 
-	p.totalL1CommitGas.Set(float64(totalL1CommitGas))
-	p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
-	p.batchChunksNum.Set(float64(len(dbChunks)))
-
-	var hasChunkTimeout bool
 	currentTimeSec := uint64(time.Now().Unix())
 	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
 		log.Warn("first block timeout",
@@ -239,16 +234,16 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 			"first block timestamp", dbChunks[0].StartBlockTime,
 			"chunk outdated time threshold", currentTimeSec,
 		)
-		hasChunkTimeout = true
-		p.batchFirstChunkTimeoutReached.Inc()
+		p.batchFirstBlockTimeoutReached.Inc()
+		p.totalL1CommitGas.Set(float64(totalL1CommitGas))
+		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
+		p.batchChunksNum.Set(float64(len(dbChunks)))
+		return dbChunks, nil
 	}
 
-	if !hasChunkTimeout {
-		log.Warn("pending chunks do not reach one of the constraints or contain a timeout block")
-		p.batchChunksProposeNotEnoughTotal.Inc()
-		return nil, nil
-	}
-	return dbChunks, nil
+	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")
+	p.batchChunksProposeNotEnoughTotal.Inc()
+	return nil, nil
 }
 
 func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*types.Chunk, error) {

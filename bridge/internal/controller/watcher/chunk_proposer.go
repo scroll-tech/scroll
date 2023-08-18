@@ -69,7 +69,7 @@ type ChunkProposer struct {
 	totalTxGasUsed                     prometheus.Gauge
 	maxTxConsumption                   prometheus.Gauge
 	chunkBlocksNum                     prometheus.Gauge
-	chunkBlockTimeoutReached           prometheus.Counter
+	chunkFirstBlockTimeoutReached      prometheus.Counter
 	chunkBlocksProposeNotEnoughTotal   prometheus.Counter
 }
 
@@ -128,7 +128,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 			Name: "bridge_propose_chunk_chunk_block_number",
 			Help: "The number of blocks in the chunk",
 		}),
-		chunkBlockTimeoutReached: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		chunkFirstBlockTimeoutReached: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "bridge_propose_chunk_first_block_timeout_reached_total",
 			Help: "Total times of chunk's first block timeout reached",
 		}),
@@ -261,14 +261,6 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		}
 	}
 
-	p.chunkL2TxNum.Set(float64(totalL2TxNum))
-	p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))
-	p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
-	p.maxTxConsumption.Set(float64(crc.max()))
-	p.totalTxGasUsed.Set(float64(totalTxGasUsed))
-	p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
-
-	var hasBlockTimeout bool
 	currentTimeSec := uint64(time.Now().Unix())
 	if blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec {
 		log.Warn("first block timeout",
@@ -276,14 +268,17 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			"block timestamp", blocks[0].Header.Time,
 			"block outdated time threshold", currentTimeSec,
 		)
-		p.chunkBlockTimeoutReached.Inc()
-		hasBlockTimeout = true
+		p.chunkFirstBlockTimeoutReached.Inc()
+		p.chunkL2TxNum.Set(float64(totalL2TxNum))
+		p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))
+		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
+		p.maxTxConsumption.Set(float64(crc.max()))
+		p.totalTxGasUsed.Set(float64(totalTxGasUsed))
+		p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
+		return &chunk, nil
 	}
 
-	if !hasBlockTimeout {
-		log.Warn("pending blocks do not reach one of the constraints or contain a timeout block")
-		p.chunkBlocksProposeNotEnoughTotal.Inc()
-		return nil, nil
-	}
-	return &chunk, nil
+	log.Debug("pending blocks do not reach one of the constraints or contain a timeout block")
+	p.chunkBlocksProposeNotEnoughTotal.Inc()
+	return nil, nil
 }
