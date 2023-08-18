@@ -209,7 +209,6 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		)
 	}
 
-	var reachConstraint bool
 	for i, chunk := range dbChunks[1:] {
 		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
 		totalL1CommitGas += chunk.TotalL1CommitGas
@@ -226,7 +225,6 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		if totalChunks > p.maxChunkNumPerBatch ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
-			reachConstraint = true
 			return dbChunks[:i+1], nil
 		}
 	}
@@ -245,7 +243,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		p.batchFirstChunkTimeoutReached.Inc()
 	}
 
-	if !hasChunkTimeout && !reachConstraint {
+	if !hasChunkTimeout {
 		log.Warn("pending chunks do not reach one of the constraints and contain a timeout block")
 		p.batchChunksProposeNotEnoughTotal.Inc()
 		return nil, nil

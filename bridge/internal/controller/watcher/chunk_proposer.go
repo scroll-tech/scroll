@@ -253,7 +253,6 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		)
 	}
 
-	var reachConstraint bool
 	for _, block := range blocks[1:] {
 		chunk.Blocks = append(chunk.Blocks, block)
 		totalTxGasUsed += block.Header.GasUsed
@@ -271,8 +270,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerChunk) ||
 			crc.max() > p.maxRowConsumptionPerChunk {
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1] // remove the last block from chunk
-			reachConstraint = true
-			break
+			return chunk, nil
 		}
 	}
 
@@ -290,7 +288,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		hasBlockTimeout = true
 	}
 
-	if !hasBlockTimeout && !reachConstraint {
+	if !hasBlockTimeout {
 		log.Warn("pending blocks do not reach one of the constraints and contain a timeout block")
 		p.chunkBlocksProposeNotEnoughTotal.Inc()
 		return nil, nil

@@ -28,7 +28,7 @@ func testBatchProposer(t *testing.T) {
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MaxRowConsumptionPerChunk:       1048319,
-		ChunkTimeoutSec:                 0,
+		ChunkTimeoutSec:                 300,
 	}, db, nil)
 	cp.TryProposeChunk()
 
@@ -36,7 +36,7 @@ func testBatchProposer(t *testing.T) {
 		MaxChunkNumPerBatch:             10,
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
-		BatchTimeoutSec:                 0,
+		BatchTimeoutSec:                 300,
 	}, db, nil)
 	bp.TryProposeBatch()
 
