@@ -7,6 +7,11 @@ import (
 	"github.com/modern-go/reflect2"
 )
 
+// GetKeccak256Gas calculates keccak256 hash gas.
+func GetKeccak256Gas(size uint64) uint64 {
+	return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+}
+
 // TryTimes try run several times until the function return true.
 func TryTimes(times int, run func() bool) bool {
 	for i := 0; i < times; i++ {

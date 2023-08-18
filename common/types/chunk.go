@@ -11,6 +11,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+
+	"scroll-tech/common/utils"
 )
 
 // Chunk contains blocks to be encoded
@@ -150,10 +152,6 @@ func (c *Chunk) EstimateL1CommitGas() uint64 {
 	totalL1CommitGas += 16                  // numBlocks field of chunk encoding in calldata
 	totalL1CommitGas += 16 * 60 * numBlocks // BlockContext in chunk
 
-	getKeccakGas := func(size uint64) uint64 {
-		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
-	}
-
-	totalL1CommitGas += getKeccakGas(58*numBlocks + 32*totalTxNum) // chunk hash
+	totalL1CommitGas += utils.GetKeccak256Gas(58*numBlocks + 32*totalTxNum) // chunk hash
 	return totalL1CommitGas
 }
