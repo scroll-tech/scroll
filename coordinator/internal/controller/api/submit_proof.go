@@ -45,23 +45,25 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 		},
 	}
 
-	switch message.ProofType(spp.TaskType) {
-	case message.ProofTypeChunk:
-		var tmpChunkProof message.ChunkProof
-		if err := json.Unmarshal([]byte(spp.Proof), &tmpChunkProof); err != nil {
-			nerr := fmt.Errorf("unmarshal parameter chunk proof invalid, err:%w", err)
-			coodinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
-			return
+	if spp.Status == int(message.StatusOk) {
+		switch message.ProofType(spp.TaskType) {
+		case message.ProofTypeChunk:
+			var tmpChunkProof message.ChunkProof
+			if err := json.Unmarshal([]byte(spp.Proof), &tmpChunkProof); err != nil {
+				nerr := fmt.Errorf("unmarshal parameter chunk proof invalid, err:%w", err)
+				coodinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+				return
+			}
+			proofMsg.ChunkProof = &tmpChunkProof
+		case message.ProofTypeBatch:
+			var tmpBatchProof message.BatchProof
+			if err := json.Unmarshal([]byte(spp.Proof), &tmpBatchProof); err != nil {
+				nerr := fmt.Errorf("unmarshal parameter batch proof invalid, err:%w", err)
+				coodinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+				return
+			}
+			proofMsg.BatchProof = &tmpBatchProof
 		}
-		proofMsg.ChunkProof = &tmpChunkProof
-	case message.ProofTypeBatch:
-		var tmpBatchProof message.BatchProof
-		if err := json.Unmarshal([]byte(spp.Proof), &tmpBatchProof); err != nil {
-			nerr := fmt.Errorf("unmarshal parameter batch proof invalid, err:%w", err)
-			coodinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
-			return
-		}
-		proofMsg.BatchProof = &tmpBatchProof
 	}
 
 	if err := spc.submitProofReceiverLogic.HandleZkProof(ctx, &proofMsg, spp); err != nil {
