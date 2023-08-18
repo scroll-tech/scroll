@@ -175,21 +175,25 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 		Post("/coordinator/v1/submit_proof")
 
 	if err != nil {
-		return fmt.Errorf("submit proof request failed: %v", err)
+		log.Error("submit proof request failed: %v", err)
+		return fmt.Errorf("submit proof request failed: %w", ErrCoordinatorConnect)
 	}
 
 	if resp.StatusCode() != 200 {
-		return fmt.Errorf("failed to submit proof, status code: %v", resp.StatusCode())
+		log.Error("failed to submit proof, status code: %v", resp.StatusCode())
+		return fmt.Errorf("failed to submit proof, status code not 200: %w", ErrCoordinatorConnect)
 	}
 
 	if result.ErrCode == types.ErrJWTTokenExpired {
 		log.Info("JWT expired, attempting to re-login")
 		if err := c.Login(ctx); err != nil {
-			return fmt.Errorf("JWT expired, re-login failed: %v", err)
+			log.Error("JWT expired, re-login failed: %v", err)
+			return fmt.Errorf("JWT expired, re-login failed: %w", ErrCoordinatorConnect)
 		}
 		log.Info("re-login success")
 		return c.SubmitProof(ctx, req)
 	}
+
 	if result.ErrCode != types.Success {
 		return fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}

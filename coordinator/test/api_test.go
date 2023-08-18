@@ -317,7 +317,7 @@ func testInvalidProof(t *testing.T) {
 			assert.NoError(t, err)
 			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
-			if chunkProofStatus == types.ProvingTaskFailed && batchProofStatus == types.ProvingTaskFailed {
+			if chunkProofStatus == types.ProvingTaskUnassigned && batchProofStatus == types.ProvingTaskUnassigned {
 				return
 			}
 		case <-tickStop:
