@@ -62,9 +62,8 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxL2TxNumPerChunk:              10000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
-		MinL1CommitCalldataSizePerChunk: 0,
 		MaxRowConsumptionPerChunk:       1048319,
-		ChunkTimeoutSec:                 300,
+		ChunkTimeoutSec:                 0,
 	}, db, nil)
 	cp.TryProposeChunk()
 
@@ -77,8 +76,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxChunkNumPerBatch:             10,
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
-		MinChunkNumPerBatch:             1,
-		BatchTimeoutSec:                 300,
+		BatchTimeoutSec:                 0,
 	}, db, nil)
 	bp.TryProposeBatch()
 

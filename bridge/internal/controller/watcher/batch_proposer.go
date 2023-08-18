@@ -28,7 +28,6 @@ type BatchProposer struct {
 	maxChunkNumPerBatch             uint64
 	maxL1CommitGasPerBatch          uint64
 	maxL1CommitCalldataSizePerBatch uint32
-	minChunkNumPerBatch             uint64
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 
@@ -40,7 +39,7 @@ type BatchProposer struct {
 	totalL1CommitCalldataSize          prometheus.Gauge
 	batchChunksNum                     prometheus.Gauge
 	batchFirstChunkTimeoutReached      prometheus.Counter
-	batchChunksSuperposeNotEnoughTotal prometheus.Counter
+	batchChunksProposeNotEnoughTotal   prometheus.Counter
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
@@ -54,7 +53,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		maxChunkNumPerBatch:             cfg.MaxChunkNumPerBatch,
 		maxL1CommitGasPerBatch:          cfg.MaxL1CommitGasPerBatch,
 		maxL1CommitCalldataSizePerBatch: cfg.MaxL1CommitCalldataSizePerBatch,
-		minChunkNumPerBatch:             cfg.MinChunkNumPerBatch,
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 
@@ -90,7 +88,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 			Name: "bridge_propose_batch_first_chunk_timeout_reached_total",
 			Help: "Total times of batch's first chunk timeout reached",
 		}),
-		batchChunksSuperposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		batchChunksProposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "bridge_propose_batch_chunks_superpose_not_enough_total",
 			Help: "Total number of batch chunk superpose not enough",
 		}),
@@ -211,6 +209,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		)
 	}
 
+	var reachConstraint bool
 	for i, chunk := range dbChunks[1:] {
 		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
 		totalL1CommitGas += chunk.TotalL1CommitGas
@@ -227,6 +226,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		if totalChunks > p.maxChunkNumPerBatch ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
+			reachConstraint = true
 			return dbChunks[:i+1], nil
 		}
 	}
@@ -245,11 +245,9 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		p.batchFirstChunkTimeoutReached.Inc()
 	}
 
-	if !hasChunkTimeout && uint64(len(dbChunks)) < p.minChunkNumPerBatch {
-		log.Warn("The chunk number of the batch is less than the minimum limit",
-			"chunk num", len(dbChunks), "minChunkNumPerBatch", p.minChunkNumPerBatch,
-		)
-		p.batchChunksSuperposeNotEnoughTotal.Inc()
+	if !hasChunkTimeout && !reachConstraint {
+		log.Warn("pending chunks do not reach one of the constraints and contain a timeout block")
+		p.batchChunksProposeNotEnoughTotal.Inc()
 		return nil, nil
 	}
 	return dbChunks, nil

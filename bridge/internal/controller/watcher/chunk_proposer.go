@@ -55,7 +55,6 @@ type ChunkProposer struct {
 	maxL2TxNumPerChunk              uint64
 	maxL1CommitGasPerChunk          uint64
 	maxL1CommitCalldataSizePerChunk uint64
-	minL1CommitCalldataSizePerChunk uint64
 	maxRowConsumptionPerChunk       uint64
 	chunkTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
@@ -71,7 +70,7 @@ type ChunkProposer struct {
 	maxTxConsumption                   prometheus.Gauge
 	chunkBlocksNum                     prometheus.Gauge
 	chunkBlockTimeoutReached           prometheus.Counter
-	chunkBlocksSuperposeNotEnoughTotal prometheus.Counter
+	chunkBlocksProposeNotEnoughTotal   prometheus.Counter
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
@@ -85,7 +84,6 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		maxL2TxNumPerChunk:              cfg.MaxL2TxNumPerChunk,
 		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
-		minL1CommitCalldataSizePerChunk: cfg.MinL1CommitCalldataSizePerChunk,
 		maxRowConsumptionPerChunk:       cfg.MaxRowConsumptionPerChunk,
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
@@ -134,7 +132,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 			Name: "bridge_propose_chunk_first_block_timeout_reached_total",
 			Help: "Total times of chunk's first block timeout reached",
 		}),
-		chunkBlocksSuperposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		chunkBlocksProposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "bridge_propose_chunk_blocks_superpose_not_enough_total",
 			Help: "Total number of chunk block superpose not enough",
 		}),
@@ -255,6 +253,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		)
 	}
 
+	var reachConstraint bool
 	for _, block := range blocks[1:] {
 		chunk.Blocks = append(chunk.Blocks, block)
 		totalTxGasUsed += block.Header.GasUsed
@@ -272,6 +271,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerChunk) ||
 			crc.max() > p.maxRowConsumptionPerChunk {
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1] // remove the last block from chunk
+			reachConstraint = true
 			break
 		}
 	}
@@ -290,12 +290,9 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		hasBlockTimeout = true
 	}
 
-	if !hasBlockTimeout && totalL1CommitCalldataSize < p.minL1CommitCalldataSizePerChunk {
-		log.Warn("The calldata size of the chunk is less than the minimum limit",
-			"totalL1CommitCalldataSize", totalL1CommitCalldataSize,
-			"minL1CommitCalldataSizePerChunk", p.minL1CommitCalldataSizePerChunk,
-		)
-		p.chunkBlocksSuperposeNotEnoughTotal.Inc()
+	if !hasBlockTimeout && !reachConstraint {
+		log.Warn("pending blocks do not reach one of the constraints and contain a timeout block")
+		p.chunkBlocksProposeNotEnoughTotal.Inc()
 		return nil, nil
 	}
 	return chunk, nil
