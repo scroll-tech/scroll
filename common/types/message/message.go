@@ -13,6 +13,18 @@ import (
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
 
+// ProofFailureType the proof failure type
+type ProofFailureType int
+
+const (
+	// ProofFailureUndefined the undefined type proof failure type
+	ProofFailureUndefined ProofFailureType = iota
+	// ProofFailurePanic proof failure for prover panic
+	ProofFailurePanic
+	// ProofFailureNoPanic proof failure for no prover panic
+	ProofFailureNoPanic
+)
+
 // RespStatus represents status code from prover to scroll
 type RespStatus uint32
 

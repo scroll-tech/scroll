@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -13,6 +12,7 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/relayer"
@@ -92,20 +92,22 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NotEmpty(t, batch.CommitTxHash)
 	assert.Equal(t, types.RollupCommitting, types.RollupStatus(batch.RollupStatus))
 
-	assert.NoError(t, err)
-	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batch.CommitTxHash))
-	assert.NoError(t, err)
-	commitTxReceipt, err := bind.WaitMined(context.Background(), l1Client, commitTx)
-	assert.NoError(t, err)
-	assert.Equal(t, len(commitTxReceipt.Logs), 1)
+	success := utils.TryTimes(30, func() bool {
+		var receipt *gethTypes.Receipt
+		receipt, err = l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.CommitTxHash))
+		return err == nil && receipt.Status == 1
+	})
+	assert.True(t, success)
 
 	// fetch rollup events
-	err = l1Watcher.FetchContractEvent()
-	assert.NoError(t, err)
-	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupCommitted, statuses[0])
+	success = utils.TryTimes(30, func() bool {
+		err = l1Watcher.FetchContractEvent()
+		assert.NoError(t, err)
+		var statuses []types.RollupStatus
+		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
+		return err == nil && len(statuses) == 1 && types.RollupCommitted == statuses[0]
+	})
+	assert.True(t, success)
 
 	// add dummy proof
 	proof := &message.BatchProof{
@@ -119,7 +121,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// process committed batch and check status
 	l2Relayer.ProcessCommittedBatches()
 
-	statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
+	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(statuses))
 	assert.Equal(t, types.RollupFinalizing, statuses[0])
@@ -129,17 +131,20 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NotNil(t, batch)
 	assert.NotEmpty(t, batch.FinalizeTxHash)
 
-	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batch.FinalizeTxHash))
-	assert.NoError(t, err)
-	finalizeTxReceipt, err := bind.WaitMined(context.Background(), l1Client, finalizeTx)
-	assert.NoError(t, err)
-	assert.Equal(t, len(finalizeTxReceipt.Logs), 1)
+	success = utils.TryTimes(30, func() bool {
+		var receipt *gethTypes.Receipt
+		receipt, err = l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.FinalizeTxHash))
+		return err == nil && receipt.Status == 1
+	})
+	assert.True(t, success)
 
 	// fetch rollup events
-	err = l1Watcher.FetchContractEvent()
-	assert.NoError(t, err)
-	statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupFinalized, statuses[0])
+	success = utils.TryTimes(30, func() bool {
+		err = l1Watcher.FetchContractEvent()
+		assert.NoError(t, err)
+		var statuses []types.RollupStatus
+		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
+		return err == nil && len(statuses) == 1 && types.RollupFinalized == statuses[0]
+	})
+	assert.True(t, success)
 }

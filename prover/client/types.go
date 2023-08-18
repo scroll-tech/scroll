@@ -53,10 +53,12 @@ type GetTaskResponse struct {
 
 // SubmitProofRequest defines the request structure for the SubmitProof API.
 type SubmitProofRequest struct {
-	TaskID   string `json:"task_id"`
-	TaskType int    `json:"task_type"`
-	Status   int    `json:"status"`
-	Proof    string `json:"proof"`
+	TaskID      string `json:"task_id"`
+	TaskType    int    `json:"task_type"`
+	Status      int    `json:"status"`
+	Proof       string `json:"proof"`
+	FailureType int    `json:"failure_type,omitempty"`
+	FailureMsg  string `json:"failure_msg,omitempty"`
 }
 
 // SubmitProofResponse defines the response structure for the SubmitProof API.
