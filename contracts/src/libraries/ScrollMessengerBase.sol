@@ -159,7 +159,7 @@ abstract contract ScrollMessengerBase is
         }
     }
 
-    /// @dev Internal function to check whether the `_target` address is blacklisted.
+    /// @dev Internal function to check whether the `_target` address is allowed to avoid attack.
     /// @param _target The address of target address to check.
     function _validateTargetAddress(address _target) internal view {
         // @note check more `_target` address to avoid attack in the future when we add more external contracts.
