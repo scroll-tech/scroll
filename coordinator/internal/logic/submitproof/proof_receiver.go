@@ -121,14 +121,14 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, reg pro
 // HandleZkProof handle a ZkProof submitted from a prover.
 // For now only proving/verifying error will lead to setting status as skipped.
 // db/unmarshal errors will not because they are errors on the business logic side.
-func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.ProofMsg, proofParameter coordinatorType.SubmitProofParameter) error {
+func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.ProofMsg, proofParameter *coordinatorType.SubmitProofParameter) error {
 	m.proofReceivedTotal.Inc()
 	pk := ctx.GetString(coordinatorType.PublicKey)
 	if len(pk) == 0 {
 		return fmt.Errorf("get public key from context failed")
 	}
 	pv := ctx.GetString(coordinatorType.ProverVersion)
-	if len(pk) == 0 {
+	if len(pv) == 0 {
 		return fmt.Errorf("get ProverVersion from context failed")
 	}
 
@@ -205,7 +205,7 @@ func (m *ProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Context, ch
 	return nil
 }
 
-func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg, proofParameter coordinatorType.SubmitProofParameter) (err error) {
+func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg, proofParameter *coordinatorType.SubmitProofParameter) (err error) {
 	defer func() {
 		if err != nil {
 			m.validateFailureTotal.Inc()

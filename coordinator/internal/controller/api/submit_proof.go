@@ -30,7 +30,7 @@ func NewSubmitProofController(cfg *config.Config, db *gorm.DB, reg prometheus.Re
 
 // SubmitProof prover submit the proof to coordinator
 func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
-	var spp coodinatorType.SubmitProofParameter
+	var spp = &coodinatorType.SubmitProofParameter{}
 	if err := ctx.ShouldBind(&spp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
 		coodinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
