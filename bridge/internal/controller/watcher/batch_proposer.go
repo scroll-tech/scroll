@@ -166,10 +166,9 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	// Add extra gas costs
-	totalL1CommitGas += 4 * 2100                                       // 4 one-time cold sload for commitBatch
-	totalL1CommitGas += 20000                                          // 1 time sstore
-	totalL1CommitGas += 16                                             // version in calldata
-	totalL1CommitGas += 16 * (32 * (totalL1MessagePopped + 255) / 256) // _skippedL1MessageBitmap in calldata
+	totalL1CommitGas += 4 * 2100 // 4 one-time cold sload for commitBatch
+	totalL1CommitGas += 20000    // 1 time sstore
+	totalL1CommitGas += 16       // version in calldata
 
 	// adjusting gas:
 	// add 1 time cold sload (2100 gas) for L1MessageQueue
