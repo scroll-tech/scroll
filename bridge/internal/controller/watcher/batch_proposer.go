@@ -11,7 +11,6 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
@@ -163,9 +162,9 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	// Add extra gas costs
-	totalL1CommitGas += 4 * 2100 // 4 one-time cold sload for commitBatch
-	totalL1CommitGas += 20000    // 1 time sstore
-	totalL1CommitGas += 16       // version in calldata
+	totalL1CommitGas += 4 * 2100                     // 4 one-time cold sload for commitBatch
+	totalL1CommitGas += 20000                        // 1 time sstore
+	totalL1CommitGas += types.CalldataNonZeroByteGas // version in calldata
 
 	// adjusting gas:
 	// add 1 time cold sload (2100 gas) for L1MessageQueue
@@ -173,30 +172,31 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	// minus 1 time warm sload (100 gas) & 1 time warm address access (100 gas)
 	totalL1CommitGas += (2100 + 2600 - 100 - 100)
 	if parentBatch != nil {
-		totalL1CommitGas += utils.GetKeccak256Gas(uint64(len(parentBatch.BatchHeader))) // parent batch header hash
-		totalL1CommitGas += 16 * uint64(len(parentBatch.BatchHeader))                   // parent batch header in calldata
+		totalL1CommitGas += types.GetKeccak256Gas(uint64(len(parentBatch.BatchHeader)))         // parent batch header hash
+		totalL1CommitGas += types.CalldataNonZeroByteGas * uint64(len(parentBatch.BatchHeader)) // parent batch header in calldata
 	}
 
 	for i, chunk := range dbChunks {
 		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
 		totalL1CommitGas += chunk.TotalL1CommitGas
 		// adjust batch data hash gas cost
-		totalL1CommitGas -= utils.GetKeccak256Gas(32 * totalChunks)
+		totalL1CommitGas -= types.GetKeccak256Gas(32 * totalChunks)
 		totalChunks++
-		totalL1CommitGas += utils.GetKeccak256Gas(32 * totalChunks)
+		totalL1CommitGas += types.GetKeccak256Gas(32 * totalChunks)
 		// adjust batch header hash gas cost, batch header size: 89 + 32 * ceil(l1MessagePopped / 256)
-		totalL1CommitGas -= utils.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
-		totalL1CommitGas -= 16 * (32 * (totalL1MessagePopped + 255) / 256)
+		totalL1CommitGas -= types.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
+		totalL1CommitGas -= types.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
 		totalL1MessagePopped += uint64(chunk.TotalL1MessagesPoppedInChunk)
-		totalL1CommitGas += 16 * (32 * (totalL1MessagePopped + 255) / 256)
-		totalL1CommitGas += utils.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
+		totalL1CommitGas += types.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
+		totalL1CommitGas += types.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
+		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
 		if totalChunks > p.maxChunkNumPerBatch ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
-			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
+			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {
 			// Check if the first chunk breaks hard limits.
 			// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
 			if i == 0 {
-				if p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
+				if totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {
 					return nil, fmt.Errorf(
 						"the first chunk exceeds l1 commit gas limit; start block number: %v, end block number: %v, commit gas: %v, max commit gas limit: %v",
 						dbChunks[0].StartBlockNumber,

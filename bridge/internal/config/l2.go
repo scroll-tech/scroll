@@ -28,7 +28,6 @@ type L2Config struct {
 
 // ChunkProposerConfig loads chunk_proposer configuration items.
 type ChunkProposerConfig struct {
-	MaxTxGasPerChunk                uint64  `json:"max_tx_gas_per_chunk"`
 	MaxL2TxNumPerChunk              uint64  `json:"max_l2_tx_num_per_chunk"`
 	MaxL1CommitGasPerChunk          uint64  `json:"max_l1_commit_gas_per_chunk"`
 	MaxL1CommitCalldataSizePerChunk uint64  `json:"max_l1_commit_calldata_size_per_chunk"`

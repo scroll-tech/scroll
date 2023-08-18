@@ -51,7 +51,6 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
-	maxTxGasPerChunk                uint64 // temporarily DEPRECATED
 	maxL2TxNumPerChunk              uint64
 	maxL1CommitGasPerChunk          uint64
 	maxL1CommitCalldataSizePerChunk uint64
@@ -80,7 +79,6 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
-		maxTxGasPerChunk:                cfg.MaxTxGasPerChunk,
 		maxL2TxNumPerChunk:              cfg.MaxL2TxNumPerChunk,
 		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
@@ -194,12 +192,11 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	crc := chunkRowConsumption{}
 
 	for i, block := range blocks {
-		chunk.Blocks = append(chunk.Blocks, block)
 		totalTxGasUsed += block.Header.GasUsed
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas = chunk.EstimateL1CommitGas()
-
+		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
 		if err := crc.add(block.RowConsumption); err != nil {
 			return nil, fmt.Errorf("chunk-proposer failed to update chunk row consumption: %v", err)
 		}
@@ -207,7 +204,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 
 		if totalL2TxNum > p.maxL2TxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
-			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerChunk) ||
+			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerChunk ||
 			crcMax > p.maxRowConsumptionPerChunk {
 			// Check if the first block breaks hard limits.
 			// If so, it indicates there are bugs in sequencer, manual fix is needed.
@@ -221,7 +218,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 					)
 				}
 
-				if p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerChunk) {
+				if totalOverEstimateL1CommitGas > p.maxL1CommitGasPerChunk {
 					return nil, fmt.Errorf(
 						"the first block exceeds l1 commit gas limit; block number: %v, commit gas: %v, max commit gas limit: %v",
 						chunk.Blocks[0].Header.Number,
@@ -256,9 +253,9 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			p.maxTxConsumption.Set(float64(crcMax))
 			p.totalTxGasUsed.Set(float64(totalTxGasUsed))
 			p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
-			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1] // remove the last block from chunk
 			return &chunk, nil
 		}
+		chunk.Blocks = append(chunk.Blocks, block)
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
