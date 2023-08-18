@@ -321,14 +321,19 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 	}
 
 	// send the submit request
-	if err := r.coordinatorClient.SubmitProof(r.ctx, req); err != nil {
+	needDeleteTask, err := r.coordinatorClient.SubmitProof(r.ctx, req)
+	if needDeleteTask {
+		if err := r.stack.Delete(msg.ID); err != nil {
+			log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", err)
+		}
+	}
+
+	if err != nil {
 		return fmt.Errorf("error submitting proof: %v", err)
 	}
 
 	log.Info("proof submitted successfully", "task-id", msg.ID, "task-type", msg.Type, "task-status", msg.Status, "err", msg.Error)
-	if err := r.stack.Delete(msg.ID); err != nil {
-		log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", err)
-	}
+
 	return nil
 }
 
@@ -344,16 +349,20 @@ func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.Pro
 	}
 
 	// send the submit request
-	if submitErr := r.coordinatorClient.SubmitProof(r.ctx, req); submitErr != nil {
+	needDeleteTask, submitErr := r.coordinatorClient.SubmitProof(r.ctx, req)
+	if needDeleteTask {
+		if err = r.stack.Delete(task.Task.ID); err != nil {
+			log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", err)
+		}
+	}
+
+	if submitErr != nil {
 		return fmt.Errorf("error submitting proof: %v", submitErr)
 	}
 
 	log.Info("proof submitted report failure successfully",
 		"task-id", task.Task.ID, "task-type", task.Task.Type,
 		"task-status", message.StatusProofError, "err", err)
-	if err = r.stack.Delete(task.Task.ID); err != nil {
-		log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", err)
-	}
 	return nil
 }
 
