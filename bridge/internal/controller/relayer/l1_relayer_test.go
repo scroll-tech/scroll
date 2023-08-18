@@ -62,7 +62,7 @@ func setupL1RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewL1Relayer(t *testing.T) {
 	db := setupL1RelayerDB(t)
 	defer database.CloseDB(db)
-	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig)
+	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 }
@@ -72,7 +72,7 @@ func testL1RelayerProcessSaveEvents(t *testing.T) {
 	defer database.CloseDB(db)
 	l1MessageOrm := orm.NewL1Message(db)
 	l1Cfg := cfg.L1Config
-	relayer, err := NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
+	relayer, err := NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 	assert.NoError(t, l1MessageOrm.SaveL1Messages(context.Background(), templateL1Message))
@@ -99,7 +99,7 @@ func testL1RelayerMsgConfirm(t *testing.T) {
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
+	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, nil)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
@@ -138,7 +138,7 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
+	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, nil)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
@@ -168,7 +168,7 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig)
+	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, l1Relayer)
 
