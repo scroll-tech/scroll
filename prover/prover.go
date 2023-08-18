@@ -162,14 +162,14 @@ func (r *Prover) proveAndSubmit() error {
 		proofMsg, err = r.prove(task)
 		if err != nil { // handling error from prove
 			log.Error("failed to prove task", "task_type", task.Task.Type, "task-id", task.Task.ID, "err", err)
-			return r.submitErr(task, true, message.ProofFailureNoPanic, err)
+			return r.submitErr(task, message.ProofFailureNoPanic, err)
 		}
 		return r.submitProof(proofMsg)
 	}
 
 	// if tried times >= 3, it's probably due to circuit proving panic
 	log.Error("zk proving panic for task", "task-type", task.Task.Type, "task-id", task.Task.ID)
-	return r.submitErr(task, false, message.ProofFailurePanic, errors.New("zk proving panic for task"))
+	return r.submitErr(task, message.ProofFailurePanic, errors.New("zk proving panic for task"))
 }
 
 // fetchTaskFromCoordinator fetches a new task from the server
@@ -339,7 +339,7 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 	return nil
 }
 
-func (r *Prover) submitErr(task *store.ProvingTask, isRetry bool, proofFailureType message.ProofFailureType, err error) error {
+func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.ProofFailureType, err error) error {
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
 		TaskID:      task.Task.ID,
@@ -352,7 +352,7 @@ func (r *Prover) submitErr(task *store.ProvingTask, isRetry bool, proofFailureTy
 
 	// send the submit request
 	if submitErr := r.coordinatorClient.SubmitProof(r.ctx, req); submitErr != nil {
-		if !isRetry && !errors.Is(errors.Unwrap(err), client.ConnectErr) {
+		if !errors.Is(errors.Unwrap(err), client.ConnectErr) {
 			if deleteErr := r.stack.Delete(task.Task.ID); deleteErr != nil {
 				log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", deleteErr)
 			}
