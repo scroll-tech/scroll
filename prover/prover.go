@@ -153,7 +153,7 @@ func (r *Prover) proveAndSubmit() error {
 
 	var proofMsg *message.ProofDetail
 	if task.Times <= 2 {
-		// If panic times <= 2, try to proof the task.
+		// If tried times <= 2, try to proof the task.
 		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
 			return fmt.Errorf("failed to update times on stack: %v", err)
 		}
@@ -164,15 +164,10 @@ func (r *Prover) proveAndSubmit() error {
 			log.Error("failed to prove task", "task_type", task.Task.Type, "task-id", task.Task.ID, "err", err)
 			return r.submitErr(task, message.ProofFailureNoPanic, err)
 		}
-
 		return r.submitProof(proofMsg)
 	}
 
-	// when the prover has more than 3 times panic,
-	// it will omit to prove the task, submit StatusProofError and then Delete the task.
-	if err = r.stack.Delete(task.Task.ID); err != nil {
-		log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", err)
-	}
+	// if tried times >= 3, it's probably due to circuit proving panic
 	log.Error("zk proving panic for task", "task-type", task.Task.Type, "task-id", task.Task.ID)
 	return r.submitErr(task, message.ProofFailurePanic, errors.New("zk proving panic for task"))
 }
@@ -331,6 +326,9 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 	}
 
 	log.Info("proof submitted successfully", "task-id", msg.ID, "task-type", msg.Type, "task-status", msg.Status, "err", msg.Error)
+	if err := r.stack.Delete(msg.ID); err != nil {
+		log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", err)
+	}
 	return nil
 }
 
@@ -350,8 +348,12 @@ func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.Pro
 		return fmt.Errorf("error submitting proof: %v", submitErr)
 	}
 
-	log.Info("proof submitted report failure successfully", "task-id", task.Task.ID, "task-type",
-		task.Task.Type, "task-status", message.StatusProofError, "err", err)
+	log.Info("proof submitted report failure successfully",
+		"task-id", task.Task.ID, "task-type", task.Task.Type,
+		"task-status", message.StatusProofError, "err", err)
+	if err = r.stack.Delete(task.Task.ID); err != nil {
+		log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", err)
+	}
 	return nil
 }
 
