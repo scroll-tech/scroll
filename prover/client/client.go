@@ -165,7 +165,7 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 }
 
 // SubmitProof sends a request to the coordinator to submit proof.
-func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofRequest) error {
+func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofRequest) (needDelete bool, err error) {
 	var result SubmitProofResponse
 
 	resp, err := c.client.R().
@@ -175,24 +175,24 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 		Post("/coordinator/v1/submit_proof")
 
 	if err != nil {
-		return fmt.Errorf("submit proof request failed: %v", err)
+		return false, fmt.Errorf("submit proof request failed: %v", err)
 	}
 
 	if resp.StatusCode() != 200 {
-		return fmt.Errorf("failed to submit proof, status code: %v", resp.StatusCode())
+		return false, fmt.Errorf("failed to submit proof, status code: %v", resp.StatusCode())
 	}
 
 	if result.ErrCode == types.ErrJWTTokenExpired {
 		log.Info("JWT expired, attempting to re-login")
 		if err := c.Login(ctx); err != nil {
-			return fmt.Errorf("JWT expired, re-login failed: %v", err)
+			return false, fmt.Errorf("JWT expired, re-login failed: %v", err)
 		}
 		log.Info("re-login success")
 		return c.SubmitProof(ctx, req)
 	}
 	if result.ErrCode != types.Success {
-		return fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
+		return true, fmt.Errorf("error code: %v, error message: %v", result.ErrCode, result.ErrMsg)
 	}
 
-	return nil
+	return true, nil
 }
