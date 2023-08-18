@@ -9,8 +9,18 @@ import {IScrollGateway} from "./IScrollGateway.sol";
 import {IScrollMessenger} from "../IScrollMessenger.sol";
 import {IScrollGatewayCallback} from "../callbacks/IScrollGatewayCallback.sol";
 import {ScrollConstants} from "../constants/ScrollConstants.sol";
+import {ITokenRateLimiter} from "../../rate-limiter/ITokenRateLimiter.sol";
 
 abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, OwnableUpgradeable, IScrollGateway {
+    /**********
+     * Events *
+     **********/
+
+    /// @notice Emitted when owner updates rate limiter contract.
+    /// @param _oldRateLimiter The address of old rate limiter contract.
+    /// @param _newRateLimiter The address of new rate limiter contract.
+    event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter);
+
     /*************
      * Variables *
      *************/
@@ -24,8 +34,11 @@ abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, OwnableUpgrad
     /// @inheritdoc IScrollGateway
     address public override messenger;
 
+    /// @notice The address of token rate limiter contract.
+    address public rateLimiter;
+
     /// @dev The storage slots for future usage.
-    uint256[47] private __gap;
+    uint256[46] private __gap;
 
     /**********************
      * Function Modifiers *
@@ -72,6 +85,20 @@ abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, OwnableUpgrad
         }
     }
 
+    /************************
+     * Restricted Functions *
+     ************************/
+
+    /// @notice Update rate limiter contract.
+    /// @dev This function can only called by contract owner.
+    /// @param _newRateLimiter The address of new rate limiter contract.
+    function updateRateLimiter(address _newRateLimiter) external onlyOwner {
+        address _oldRateLimiter = rateLimiter;
+
+        rateLimiter = _newRateLimiter;
+        emit UpdateRateLimiter(_oldRateLimiter, _newRateLimiter);
+    }
+
     /**********************
      * Internal Functions *
      **********************/
@@ -82,6 +109,18 @@ abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, OwnableUpgrad
     function _doCallback(address _to, bytes memory _data) internal {
         if (_data.length > 0 && _to.code.length > 0) {
             IScrollGatewayCallback(_to).onScrollGatewayCallback(_data);
+        }
+    }
+
+    /// @dev Internal function to increase token usage for the given `_sender`.
+    /// @param _token The address of token.
+    /// @param _amount The amount of token used.
+    function _addUsedAmount(address _token, uint256 _amount) internal {
+        if (_amount == 0) return;
+
+        address _rateLimiter = rateLimiter;
+        if (_rateLimiter != address(0)) {
+            ITokenRateLimiter(_rateLimiter).addUsedAmount(_token, _amount);
         }
     }
 }

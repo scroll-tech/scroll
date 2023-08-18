@@ -98,6 +98,8 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
 
+        // @note no rate limit here, since ETH is limited in messenger
+
         bytes memory _message = abi.encodeCall(IL1ETHGateway.finalizeWithdrawETH, (_from, _to, _amount, _data));
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, _amount, _message, _gasLimit);
 
