@@ -89,8 +89,8 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 			Help: "Total times of batch's first chunk timeout reached",
 		}),
 		batchChunksProposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_batch_chunks_superpose_not_enough_total",
-			Help: "Total number of batch chunk superpose not enough",
+			Name: "bridge_propose_batch_chunks_propose_not_enough_total",
+			Help: "Total number of batch chunk propose not enough",
 		}),
 	}
 }
@@ -151,11 +151,10 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		return nil, nil
 	}
 
-	firstChunk := dbChunks[0]
-	totalL1CommitCalldataSize := firstChunk.TotalL1CommitCalldataSize
-	totalL1CommitGas := firstChunk.TotalL1CommitGas
-	totalChunks := uint64(1)
-	totalL1MessagePopped := firstChunk.TotalL1MessagesPoppedBefore + uint64(firstChunk.TotalL1MessagesPoppedInChunk)
+	var totalL1CommitCalldataSize uint32
+	var totalL1CommitGas uint64
+	var totalChunks uint64
+	var totalL1MessagePopped uint64
 
 	parentBatch, err := p.batchOrm.GetLatestBatch(p.ctx)
 	if err != nil {
@@ -177,46 +176,19 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	// add 1 time cold address access (2600 gas) for L1MessageQueue
 	// minus 1 time warm sload (100 gas) & 1 time warm address access (100 gas)
 	totalL1CommitGas += (2100 + 2600 - 100 - 100)
-	totalL1CommitGas += getKeccakGas(32 * totalChunks) // batch data hash
 	if parentBatch != nil {
 		totalL1CommitGas += getKeccakGas(uint64(len(parentBatch.BatchHeader))) // parent batch header hash
 		totalL1CommitGas += 16 * uint64(len(parentBatch.BatchHeader))          // parent batch header in calldata
 	}
-	// batch header size: 89 + 32 * ceil(l1MessagePopped / 256)
-	totalL1CommitGas += getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
 
-	p.totalL1CommitGas.Set(float64(totalL1CommitGas))
-	// Check if the first chunk breaks hard limits.
-	// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
-	if p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
-		return nil, fmt.Errorf(
-			"the first chunk exceeds l1 commit gas limit; start block number: %v, end block number: %v, commit gas: %v, max commit gas limit: %v",
-			firstChunk.StartBlockNumber,
-			firstChunk.EndBlockNumber,
-			totalL1CommitGas,
-			p.maxL1CommitGasPerBatch,
-		)
-	}
-
-	p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
-	if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch {
-		return nil, fmt.Errorf(
-			"the first chunk exceeds l1 commit calldata size limit; start block number: %v, end block number %v, calldata size: %v, max calldata size limit: %v",
-			firstChunk.StartBlockNumber,
-			firstChunk.EndBlockNumber,
-			totalL1CommitCalldataSize,
-			p.maxL1CommitCalldataSizePerBatch,
-		)
-	}
-
-	for i, chunk := range dbChunks[1:] {
+	for i, chunk := range dbChunks {
 		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
 		totalL1CommitGas += chunk.TotalL1CommitGas
 		// adjust batch data hash gas cost
 		totalL1CommitGas -= getKeccakGas(32 * totalChunks)
 		totalChunks++
 		totalL1CommitGas += getKeccakGas(32 * totalChunks)
-		// adjust batch header hash gas cost
+		// adjust batch header hash gas cost, batch header size: 89 + 32 * ceil(l1MessagePopped / 256)
 		totalL1CommitGas -= getKeccakGas(89 + 32*(totalL1MessagePopped+255)/256)
 		totalL1CommitGas -= 16 * (32 * (totalL1MessagePopped + 255) / 256)
 		totalL1MessagePopped += uint64(chunk.TotalL1MessagesPoppedInChunk)
@@ -225,10 +197,38 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		if totalChunks > p.maxChunkNumPerBatch ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
-			return dbChunks[:i+1], nil
+			// Check if the first chunk breaks hard limits.
+			// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
+			if i == 0 {
+				if p.gasCostIncreaseMultiplier*float64(totalL1CommitGas) > float64(p.maxL1CommitGasPerBatch) {
+					return nil, fmt.Errorf(
+						"the first chunk exceeds l1 commit gas limit; start block number: %v, end block number: %v, commit gas: %v, max commit gas limit: %v",
+						dbChunks[0].StartBlockNumber,
+						dbChunks[0].EndBlockNumber,
+						totalL1CommitGas,
+						p.maxL1CommitGasPerBatch,
+					)
+				}
+				if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch {
+					return nil, fmt.Errorf(
+						"the first chunk exceeds l1 commit calldata size limit; start block number: %v, end block number %v, calldata size: %v, max calldata size limit: %v",
+						dbChunks[0].StartBlockNumber,
+						dbChunks[0].EndBlockNumber,
+						totalL1CommitCalldataSize,
+						p.maxL1CommitCalldataSizePerBatch,
+					)
+				}
+			}
+
+			p.totalL1CommitGas.Set(float64(totalL1CommitGas))
+			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
+			p.batchChunksNum.Set(float64(len(dbChunks)))
+			return dbChunks[:i], nil
 		}
 	}
 
+	p.totalL1CommitGas.Set(float64(totalL1CommitGas))
+	p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
 	p.batchChunksNum.Set(float64(len(dbChunks)))
 
 	var hasChunkTimeout bool
