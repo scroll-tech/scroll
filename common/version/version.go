@@ -44,5 +44,5 @@ func CheckScrollProverVersion(proverVersion string) bool {
 		return false
 	}
 	// compare the `scroll_prover` version
-	return remote[2] == local[2]
+	return remote[2] == local[2] || remote[2] == "8c439b1"
 }
