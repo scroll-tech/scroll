@@ -164,7 +164,7 @@ func (r *Prover) proveAndSubmit() error {
 			log.Error("failed to prove task", "task_type", task.Task.Type, "task-id", task.Task.ID, "err", err)
 			return r.submitErr(task, message.ProofFailureNoPanic, err)
 		}
-		return r.submitProof(proofMsg)
+		return r.submitProof(proofMsg, task.Task.UUID)
 	}
 
 	// if tried times >= 3, it's probably due to circuit proving panic
@@ -200,6 +200,7 @@ func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 
 	// create a new TaskMsg
 	taskMsg := message.TaskMsg{
+		UUID: resp.Data.UUID,
 		ID:   resp.Data.TaskID,
 		Type: message.ProofType(resp.Data.TaskType),
 	}
@@ -292,9 +293,10 @@ func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error
 	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.ChunkProofs)
 }
 
-func (r *Prover) submitProof(msg *message.ProofDetail) error {
+func (r *Prover) submitProof(msg *message.ProofDetail, uuid string) error {
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
+		UUID:     uuid,
 		TaskID:   msg.ID,
 		TaskType: int(msg.Type),
 		Status:   int(msg.Status),
@@ -341,6 +343,7 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.ProofFailureType, err error) error {
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
+		UUID:        task.Task.UUID,
 		TaskID:      task.Task.ID,
 		TaskType:    int(task.Task.Type),
 		Status:      int(message.StatusProofError),

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types/message"
@@ -23,9 +24,12 @@ func TestStack(t *testing.T) {
 	defer s.Close()
 
 	for i := 0; i < 3; i++ {
+		taskUUID, err := uuid.NewRandom()
+		assert.NoError(t, err)
 		task := &ProvingTask{
 			Task: &message.TaskMsg{
-				ID: strconv.Itoa(i),
+				UUID: taskUUID.String(),
+				ID:   strconv.Itoa(i),
 			},
 			Times: 0,
 		}
@@ -44,9 +48,12 @@ func TestStack(t *testing.T) {
 	}
 
 	// test times
+	taskUUID, uuidErr := uuid.NewRandom()
+	assert.NoError(t, uuidErr)
 	task := &ProvingTask{
 		Task: &message.TaskMsg{
-			ID: strconv.Itoa(1),
+			UUID: taskUUID.String(),
+			ID:   strconv.Itoa(1),
 		},
 		Times: 0,
 	}

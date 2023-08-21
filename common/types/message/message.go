@@ -211,6 +211,7 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
+	UUID            string           `json:"uuid"`
 	ID              string           `json:"id"`
 	Type            ProofType        `json:"type,omitempty"`
 	BatchTaskDetail *BatchTaskDetail `json:"batch_task_detail,omitempty"`
