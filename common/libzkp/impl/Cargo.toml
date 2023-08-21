@@ -20,10 +20,10 @@ maingate = { git = "https://github.com/scroll-tech/halo2wrong", branch = "halo2-
 halo2curves = { git = "https://github.com/scroll-tech/halo2curves.git", branch = "0.3.1-derive-serde" }
 
 [dependencies]
-# prover = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.6.5" }
-# types = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.6.5" }
-prover = { git = "https://github.com/scroll-tech/scroll-prover", branch = "cmp-chunk-protocol-when-gen-batch-proof" }
-types = { git = "https://github.com/scroll-tech/scroll-prover", branch = "cmp-chunk-protocol-when-gen-batch-proof" }
+# prover = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.6.6" }
+# types = { git = "https://github.com/scroll-tech/scroll-prover", tag = "v0.6.6" }
+prover = { git = "https://github.com/scroll-tech/scroll-prover", branch = "main" }
+types = { git = "https://github.com/scroll-tech/scroll-prover", branch = "main" }
 halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "develop" }
 
 log = "0.4"
