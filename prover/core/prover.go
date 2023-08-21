@@ -56,6 +56,23 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	return &ProverCore{cfg: cfg}, nil
 }
 
+// GetVk get Base64 format of vk.
+func (p *ProverCore) GetVk() string {
+	var raw *C.char
+	if p.cfg.ProofType == message.ProofTypeBatch {
+		raw = C.get_batch_vk()
+	} else if p.cfg.ProofType == message.ProofTypeChunk {
+		raw = C.get_chunk_vk()
+	}
+
+	vk := ""
+	if raw != nil {
+		vk = C.GoString(raw)
+	}
+
+	return vk
+}
+
 // ProveBatch call rust ffi to generate batch proof.
 func (p *ProverCore) ProveBatch(taskID string, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchProof, error) {
 	if p.cfg.ProofType != message.ProofTypeBatch {

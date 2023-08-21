@@ -1,4 +1,4 @@
-use crate::utils::{c_char_to_str, c_char_to_vec, vec_to_c_char, OUTPUT_DIR};
+use crate::utils::{c_char_to_str, c_char_to_vec, string_to_c_char, vec_to_c_char, OUTPUT_DIR};
 use libc::c_char;
 use prover::{
     aggregator::{Prover, Verifier},
@@ -42,7 +42,10 @@ pub unsafe extern "C" fn init_batch_verifier(params_dir: *const c_char, assets_d
 pub unsafe extern "C" fn get_batch_vk() -> *const c_char {
     let vk_result = panic::catch_unwind(|| PROVER.get_mut().unwrap().get_vk());
 
-    vk_result.ok().flatten().map_or(null(), vec_to_c_char)
+    vk_result
+        .ok()
+        .flatten()
+        .map_or(null(), |vk| string_to_c_char(base64::encode(vk)))
 }
 
 /// # Safety
