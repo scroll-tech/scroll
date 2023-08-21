@@ -74,6 +74,13 @@ type ChunkProposer struct {
 
 // NewChunkProposer creates a new ChunkProposer instance.
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
+	log.Debug("new chunk proposer",
+		"maxL2TxNumPerChunk", cfg.MaxL2TxNumPerChunk,
+		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
+		"maxL1CommitCalldataSizePerChunk", cfg.MaxL1CommitCalldataSizePerChunk,
+		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
+		"chunkTimeoutSec", cfg.ChunkTimeoutSec)
+
 	return &ChunkProposer{
 		ctx:                             ctx,
 		db:                              db,
@@ -246,6 +253,17 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 					)
 				}
 			}
+
+			log.Debug("breaking limit condition in chunking",
+				"totalL2TxNum", totalL2TxNum,
+				"maxL2TxNumPerChunk", p.maxL2TxNumPerChunk,
+				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
+				"maxL1CommitGasPerChunk", p.maxL1CommitGasPerChunk,
+				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
+				"maxL1CommitCalldataSizePerChunk", p.maxL1CommitCalldataSizePerChunk,
+				"chunkRowConsumptionMax", crcMax,
+				"chunkRowConsumption", crc,
+				"p.maxRowConsumptionPerChunk", p.maxRowConsumptionPerChunk)
 
 			p.chunkL2TxNum.Set(float64(totalL2TxNum))
 			p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))

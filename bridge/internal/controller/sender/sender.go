@@ -346,8 +346,15 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
 
+	txInfo := map[string]interface{}{
+		"tx_hash": tx.Hash().String(),
+		"tx_type": s.config.TxType,
+		"from":    auth.From.String(),
+	}
+
 	switch s.config.TxType {
 	case LegacyTxType, AccessListTxType: // `LegacyTxType`is for ganache mock node
+		originalGasPrice := feeData.gasPrice
 		gasPrice := escalateMultipleNum.Mul(escalateMultipleNum, big.NewInt(feeData.gasPrice.Int64()))
 		gasPrice = gasPrice.Div(gasPrice, escalateMultipleDen)
 		if gasPrice.Cmp(feeData.gasPrice) < 0 {
@@ -357,7 +364,13 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 			gasPrice = maxGasPrice
 		}
 		feeData.gasPrice = gasPrice
+
+		txInfo["original_gas_price"] = originalGasPrice
+		txInfo["adjusted_gas_price"] = gasPrice
 	default:
+		originalGasTipCap := big.NewInt(feeData.gasTipCap.Int64())
+		originalGasFeeCap := big.NewInt(feeData.gasFeeCap.Int64())
+
 		gasTipCap := big.NewInt(feeData.gasTipCap.Int64())
 		gasTipCap = gasTipCap.Mul(gasTipCap, escalateMultipleNum)
 		gasTipCap = gasTipCap.Div(gasTipCap, escalateMultipleDen)
@@ -389,7 +402,14 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		}
 		feeData.gasFeeCap = gasFeeCap
 		feeData.gasTipCap = gasTipCap
+
+		txInfo["original_gas_tip_cap"] = originalGasTipCap
+		txInfo["adjusted_gas_tip_cap"] = gasTipCap
+		txInfo["original_gas_fee_cap"] = originalGasFeeCap
+		txInfo["adjusted_gas_fee_cap"] = gasFeeCap
 	}
+
+	log.Debug("Transaction gas adjustment details", txInfo)
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
@@ -429,6 +449,12 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 				}
 			}
 		} else if s.config.EscalateBlocks+pending.submitAt < number {
+			log.Debug("resubmit transaction",
+				"tx hash", pending.tx.Hash().String(),
+				"submit block number", pending.submitAt,
+				"current block number", number,
+				"escalateBlocks", s.config.EscalateBlocks)
+
 			var tx *types.Transaction
 			tx, err := s.resubmitTransaction(pending.feeData, pending.signer, pending.tx)
 			if err != nil {
@@ -468,6 +494,11 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 					}
 				}
 			} else {
+				log.Debug("Transaction resubmitted successfully",
+					"original tx hash", pending.tx.Hash().String(),
+					"new tx hash", tx.Hash().String(),
+					"new submit block number", number)
+
 				// flush submitAt
 				pending.tx = tx
 				pending.submitAt = number
