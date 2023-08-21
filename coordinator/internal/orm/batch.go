@@ -260,7 +260,7 @@ func (o *Batch) UpdateProvingStatusFromProverError(ctx context.Context, hash str
 		updateFields["prover_assigned_at"] = time.Now()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskProved, types.ProvingTaskVerified:
+	case types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
 	}
 
