@@ -7,6 +7,7 @@ import (
 
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
