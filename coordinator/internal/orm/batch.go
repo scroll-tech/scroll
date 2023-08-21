@@ -250,6 +250,30 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
+// UpdateProvingStatusFromProverError updates batch proving status when prover prove failed
+func (o *Batch) UpdateProvingStatusFromProverError(ctx context.Context, hash string, status types.ProvingStatus) error {
+	updateFields := make(map[string]interface{})
+	updateFields["proving_status"] = int(status)
+
+	switch status {
+	case types.ProvingTaskAssigned:
+		updateFields["prover_assigned_at"] = time.Now()
+	case types.ProvingTaskUnassigned:
+		updateFields["prover_assigned_at"] = nil
+	case types.ProvingTaskProved, types.ProvingTaskVerified:
+		updateFields["proved_at"] = time.Now()
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash", hash).Where("proving_status", types.ProvingTaskAssigned)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateProvingStatusOptimistic error: %w, batch hash: %v, status: %v", err, hash, status.String())
+	}
+	return nil
+}
+
 // UpdateProofByHash updates the batch proof by hash.
 func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.BatchProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db

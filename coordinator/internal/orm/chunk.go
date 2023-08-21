@@ -302,6 +302,29 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
+// UpdateProvingStatusFromProverError updates chunk proving status when prover prove failed
+func (o *Chunk) UpdateProvingStatusFromProverError(ctx context.Context, hash string, status types.ProvingStatus) error {
+	updateFields := make(map[string]interface{})
+	updateFields["proving_status"] = int(status)
+
+	switch status {
+	case types.ProvingTaskAssigned:
+		updateFields["prover_assigned_at"] = time.Now()
+	case types.ProvingTaskUnassigned:
+		updateFields["prover_assigned_at"] = nil
+	case types.ProvingTaskProved, types.ProvingTaskVerified:
+		updateFields["proved_at"] = time.Now()
+	}
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash", hash).Where("proving_status", types.ProvingTaskAssigned)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Chunk.UpdateProvingStatusOptimistic error: %w, chunk hash: %v, status: %v", err, hash, status.String())
+	}
+	return nil
+}
+
 // UpdateProofByHash updates the chunk proof by hash.
 func (o *Chunk) UpdateProofByHash(ctx context.Context, hash string, proof *message.ChunkProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
