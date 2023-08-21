@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"math/big"
 	"testing"
 
@@ -66,7 +67,11 @@ func TestProverTaskOrm(t *testing.T) {
 	reward := big.NewInt(0)
 	reward.SetString("18446744073709551616", 10) // 1 << 64, uint64 maximum 1<<64 -1
 
+	taskUUID, err := uuid.NewRandom()
+	assert.NoError(t, err)
+
 	proverTask := ProverTask{
+		UUID:            taskUUID.String(),
 		TaskID:          "test-hash",
 		ProverName:      "prover-0",
 		ProverPublicKey: "0",
@@ -75,7 +80,7 @@ func TestProverTaskOrm(t *testing.T) {
 		AssignedAt:      utils.NowUTC(),
 	}
 
-	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
+	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
 	proverTasks, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
@@ -89,7 +94,7 @@ func TestProverTaskOrm(t *testing.T) {
 
 	proverTask.ProvingStatus = int16(types.ProverProofValid)
 	proverTask.AssignedAt = utils.NowUTC()
-	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
+	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
 	proverTasks, err = proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
@@ -105,7 +110,10 @@ func TestProverTaskOrmUint256(t *testing.T) {
 	// test reward for uint256 maximum 1 << 256 -1 :115792089237316195423570985008687907853269984665640564039457584007913129639935
 	rewardUint256 := big.NewInt(0)
 	rewardUint256.SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
+	taskUUID, err := uuid.NewRandom()
+	assert.NoError(t, err)
 	proverTask := ProverTask{
+		UUID:            taskUUID.String(),
 		TaskID:          "test-hash",
 		ProverName:      "prover-0",
 		ProverPublicKey: "0",
@@ -114,7 +122,7 @@ func TestProverTaskOrmUint256(t *testing.T) {
 		AssignedAt:      utils.NowUTC(),
 	}
 
-	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
+	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
 	proverTasksUint256, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
