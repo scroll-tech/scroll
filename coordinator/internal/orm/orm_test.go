@@ -2,7 +2,12 @@ package orm
 
 import (
 	"context"
+	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-isatty"
+	"github.com/scroll-tech/go-ethereum/log"
+	"io"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -60,6 +65,18 @@ func tearDownEnv(t *testing.T) {
 }
 
 func TestProverTaskOrm(t *testing.T) {
+	output := io.Writer(os.Stderr)
+	usecolor := (isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd())) && os.Getenv("TERM") != "dumb"
+	if usecolor {
+		output = colorable.NewColorableStderr()
+	}
+	ostream := log.StreamHandler(output, log.TerminalFormat(usecolor))
+	// show the call file and line number
+	glogger := log.NewGlogHandler(ostream)
+	// Set log level
+	glogger.Verbosity(log.Lvl(4))
+	log.Root().SetHandler(glogger)
+
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
@@ -92,14 +109,13 @@ func TestProverTaskOrm(t *testing.T) {
 	assert.Equal(t, resultReward, reward)
 	assert.Equal(t, resultReward.String(), "18446744073709551616")
 
+	taskUUID2, err2 := uuid.NewRandom()
+	assert.NoError(t, err2)
+	proverTask.UUID = taskUUID2.String()
 	proverTask.ProvingStatus = int16(types.ProverProofValid)
 	proverTask.AssignedAt = utils.NowUTC()
 	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
-	assert.NoError(t, err)
-	proverTasks, err = proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(proverTasks))
-	assert.Equal(t, proverTask.ProvingStatus, proverTasks[0].ProvingStatus)
+	assert.Error(t, err)
 }
 
 func TestProverTaskOrmUint256(t *testing.T) {
