@@ -2,10 +2,10 @@ package orm
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"math/big"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
