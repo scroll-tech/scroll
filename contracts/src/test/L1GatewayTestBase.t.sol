@@ -98,6 +98,9 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         address[] memory _accounts = new address[](1);
         _accounts[0] = address(this);
         whitelist.updateWhitelistStatus(_accounts, true);
+
+        // make nonzero block.timestamp
+        hevm.warp(1);
     }
 
     function prepareL2MessageRoot(bytes32 messageHash) internal {
