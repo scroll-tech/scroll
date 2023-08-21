@@ -10,6 +10,14 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
+// CalldataNonZeroByteGas is the gas consumption per non zero byte in calldata.
+const CalldataNonZeroByteGas = 16
+
+// GetKeccak256Gas calculates keccak256 hash gas.
+func GetKeccak256Gas(size uint64) uint64 {
+	return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+}
+
 // WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
@@ -94,10 +102,6 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 
 // EstimateL1CommitGas calculates the total L1 commit gas for this block approximately.
 func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
-	getKeccakGas := func(size uint64) uint64 {
-		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
-	}
-
 	var total uint64
 	var numL1Messages uint64
 	for _, txData := range w.Transactions {
@@ -120,9 +124,9 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 		})
 		rlpTxData, _ := tx.MarshalBinary()
 		txPayloadLength := uint64(len(rlpTxData))
-		total += 16 * txPayloadLength          // an over-estimate: treat each byte as non-zero
-		total += 16 * 4                        // size of a uint32 field
-		total += getKeccakGas(txPayloadLength) // l2 tx hash
+		total += CalldataNonZeroByteGas * txPayloadLength // an over-estimate: treat each byte as non-zero
+		total += CalldataNonZeroByteGas * 4               // size of a uint32 field
+		total += GetKeccak256Gas(txPayloadLength)         // l2 tx hash
 	}
 
 	// sload
