@@ -132,10 +132,21 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return fmt.Errorf("get ProverVersion from context failed")
 	}
 
-	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndProver(ctx, proofMsg.ID, pk, pv)
-	if proverTask == nil || err != nil {
-		log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
-		return ErrValidatorFailureProverTaskEmpty
+	var proverTask *orm.ProverTask
+	var err error
+	if proofParameter.UUID != "" {
+		proverTask, err = m.proverTaskOrm.GetProverTaskByUUID(ctx, proofParameter.UUID)
+		if proverTask == nil || err != nil {
+			log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
+			return ErrValidatorFailureProverTaskEmpty
+		}
+	} else {
+		// TODO When prover all have upgrade, need delete this logic
+		proverTask, err = m.proverTaskOrm.GetProverTaskByTaskIDAndProver(ctx, proofMsg.ID, pk, pv)
+		if proverTask == nil || err != nil {
+			log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
+			return ErrValidatorFailureProverTaskEmpty
+		}
 	}
 
 	proofTime := time.Since(proverTask.CreatedAt)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -105,7 +106,13 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
+	taskUUID, err := uuid.NewRandom()
+	if err != nil {
+		return nil, fmt.Errorf("generate the chunk hash %s prover task uuid failure", chunkTask.Hash)
+	}
+
 	proverTask := orm.ProverTask{
+		UUID:            taskUUID.String(),
 		TaskID:          chunkTask.Hash,
 		ProverPublicKey: publicKey.(string),
 		TaskType:        int16(message.ProofTypeChunk),
@@ -116,9 +123,10 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// here why need use UTC time. see scroll/common/databased/db.go
 		AssignedAt: utils.NowUTC(),
 	}
-	if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
+
+	if err = cp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
 		cp.recoverProvingStatus(ctx, chunkTask)
-		return nil, fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, publicKey, err)
+		return nil, fmt.Errorf("insert prover task fail, task id:%s , public key:%s, err:%w", chunkTask.Hash, publicKey, err)
 	}
 
 	taskMsg, err := cp.formatProverTask(ctx, chunkTask.Hash)

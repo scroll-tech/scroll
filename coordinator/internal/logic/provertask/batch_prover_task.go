@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -102,7 +103,13 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
 	}
 
+	taskUUID, err := uuid.NewRandom()
+	if err != nil {
+		return nil, fmt.Errorf("generate the chunk hash %s prover task uuid failure", batchTask.Hash)
+	}
+
 	proverTask := orm.ProverTask{
+		UUID:            taskUUID.String(),
 		TaskID:          batchTask.Hash,
 		ProverPublicKey: publicKey.(string),
 		TaskType:        int16(message.ProofTypeBatch),
@@ -115,9 +122,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	// Store session info.
-	if err = bp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
+	if err = bp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
-		return nil, fmt.Errorf("db set session info fail, session id:%s, error:%w", proverTask.TaskID, err)
+		return nil, fmt.Errorf("insert prover task info fail, task id:%s, public key:%s, err:%w", batchTask.Hash, publicKey, err)
 	}
 
 	taskMsg, err := bp.formatProverTask(ctx, batchTask.Hash)
