@@ -107,10 +107,7 @@ func TestFFI(t *testing.T) {
 
 	batchVk1 := batchProverCore.GetVk()
 	batchVk2 := readVk(*batchVkPath, as)
-	t.Logf("gupeng - batchVk1 = %s", batchVk1)
-	t.Logf("gupeng - batchVk2 = %s", batchVk2)
-	// as.Equal(batchProverCore.GetVk(), readVk(*batchVkPath, as))
-	as.Equal(batchVk1, batchVk2)
+	as.Equal(batchProverCore.GetVk(), readVk(*batchVkPath, as))
 	t.Log("Batch VKs are equal")
 }
 
