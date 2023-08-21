@@ -155,11 +155,11 @@ func (o *Chunk) GetProvingStatusByHash(ctx context.Context, hash string) (types.
 	return types.ProvingStatus(chunk.ProvingStatus), nil
 }
 
-// GetAssignedChunks retrieves all chunks whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProvedDEPRECATED.
+// GetAssignedChunks retrieves all chunks whose proving_status is either types.ProvingTaskAssigned.
 func (o *Chunk) GetAssignedChunks(ctx context.Context) ([]*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
-	db = db.Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProvedDEPRECATED)})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
 
 	var chunks []*Chunk
 	if err := db.Find(&chunks).Error; err != nil {
@@ -285,7 +285,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["prover_assigned_at"] = time.Now()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskProvedDEPRECATED, types.ProvingTaskVerified:
+	case types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
 	}
 	db := o.db

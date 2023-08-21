@@ -430,10 +430,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
 		// The proof for this block is not ready yet.
 		return
-	case types.ProvingTaskProvedDEPRECATED:
-		// It's an intermediate state. The prover manager received the proof but has not verified
-		// the proof yet. We don't roll up the proof until it's verified.
-		return
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
 		r.metrics.bridgeL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
