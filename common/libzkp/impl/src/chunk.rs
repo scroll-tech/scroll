@@ -37,6 +37,14 @@ pub unsafe extern "C" fn init_chunk_verifier(params_dir: *const c_char, assets_d
 
 /// # Safety
 #[no_mangle]
+pub unsafe extern "C" fn get_chunk_vk() -> *const c_char {
+    let vk_result = panic::catch_unwind(|| PROVER.get_mut().unwrap().get_vk());
+
+    vk_result.ok().flatten().map_or(null(), vec_to_c_char)
+}
+
+/// # Safety
+#[no_mangle]
 pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const c_char {
     let block_traces = c_char_to_vec(block_traces);
     let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces).unwrap();
