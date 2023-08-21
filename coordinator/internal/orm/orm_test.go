@@ -2,15 +2,15 @@ package orm
 
 import (
 	"context"
-	"github.com/mattn/go-colorable"
-	"github.com/mattn/go-isatty"
-	"github.com/scroll-tech/go-ethereum/log"
 	"io"
 	"math/big"
 	"os"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-isatty"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
