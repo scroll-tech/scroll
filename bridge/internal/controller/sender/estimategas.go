@@ -66,7 +66,7 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 		return 0, err
 	}
 	// Make sure the gas limit is enough to use.
-	gasLimit = gasLimit / 100 * 120
+	gasLimit = (120 * gasLimit) / 100
 	if minGasLimit > gasLimit {
 		gasLimit = minGasLimit
 	}
