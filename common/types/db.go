@@ -140,7 +140,7 @@ func (ps ProvingStatus) String() string {
 		return "unassigned"
 	case ProvingTaskAssigned:
 		return "assigned"
-	case ProvingTaskProved:
+	case ProvingTaskProvedDEPRECATED:
 		return "proved"
 	case ProvingTaskVerified:
 		return "verified"

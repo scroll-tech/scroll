@@ -201,7 +201,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["prover_assigned_at"] = time.Now()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskProved, types.ProvingTaskVerified:
+	case types.ProvingTaskProvedDEPRECATED, types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
 	}
 
