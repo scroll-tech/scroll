@@ -44,6 +44,12 @@ type BatchProposer struct {
 
 // NewBatchProposer creates a new BatchProposer instance.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
+	log.Debug("new batch proposer",
+		"maxChunkNumPerBatch", cfg.MaxChunkNumPerBatch,
+		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
+		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
+		"batchTimeoutSec", cfg.BatchTimeoutSec)
+
 	return &BatchProposer{
 		ctx:                             ctx,
 		db:                              db,
@@ -215,6 +221,14 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 					)
 				}
 			}
+
+			log.Debug("breaking limit condition in batching",
+				"currentTotalChunks", totalChunks,
+				"maxChunkNumPerBatch", p.maxChunkNumPerBatch,
+				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
+				"maxL1CommitCalldataSizePerBatch", p.maxL1CommitCalldataSizePerBatch,
+				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
+				"maxL1CommitGasPerBatch", p.maxL1CommitGasPerBatch)
 
 			p.totalL1CommitGas.Set(float64(totalL1CommitGas))
 			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
