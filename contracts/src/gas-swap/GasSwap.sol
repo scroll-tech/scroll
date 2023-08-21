@@ -104,6 +104,9 @@ contract GasSwap is ERC2771Context, ReentrancyGuard, OwnableBase {
             _permit.s
         );
 
+        // record token balance in this contract
+        uint256 _balance = IERC20(_permit.token).balanceOf(address(this));
+
         // transfer token
         IERC20(_permit.token).safeTransferFrom(_sender, address(this), _permit.value);
 
@@ -128,7 +131,7 @@ contract GasSwap is ERC2771Context, ReentrancyGuard, OwnableBase {
         require(_success, "transfer ETH failed");
 
         // refund rest token
-        uint256 _dust = IERC20(_permit.token).balanceOf(address(this));
+        uint256 _dust = IERC20(_permit.token).balanceOf(address(this)) - _balance;
         if (_dust > 0) {
             IERC20(_permit.token).safeTransfer(_sender, _dust);
         }
