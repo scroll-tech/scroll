@@ -105,7 +105,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	taskUUID, err := uuid.NewRandom()
 	if err != nil {
-		return nil, fmt.Errorf("generate the chunk hash %s prover task uuid failure", batchTask.Hash)
+		return nil, fmt.Errorf("generate the batch hash %s prover task uuid failure", batchTask.Hash)
 	}
 
 	proverTask := orm.ProverTask{
