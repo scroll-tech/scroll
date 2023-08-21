@@ -494,11 +494,6 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 					}
 				}
 			} else {
-				log.Debug("Transaction resubmitted successfully",
-					"original tx hash", pending.tx.Hash().String(),
-					"new tx hash", tx.Hash().String(),
-					"new submit block number", number)
-
 				// flush submitAt
 				pending.tx = tx
 				pending.submitAt = number
