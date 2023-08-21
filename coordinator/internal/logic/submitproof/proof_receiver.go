@@ -129,7 +129,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return fmt.Errorf("get public key from context failed")
 	}
 	pv := ctx.GetString(coordinatorType.ProverVersion)
-	if len(pk) == 0 {
+	if len(pv) == 0 {
 		return fmt.Errorf("get ProverVersion from context failed")
 	}
 
@@ -149,8 +149,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return err
 	}
 
-	proverVersion := ctx.GetString(coordinatorType.ProverVersion)
-	m.verifierTotal.WithLabelValues(proverVersion).Inc()
+	m.verifierTotal.WithLabelValues(pv).Inc()
 
 	var success bool
 	var verifyErr error
@@ -161,7 +160,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	}
 
 	if verifyErr != nil || !success {
-		m.verifierFailureTotal.WithLabelValues(proverVersion).Inc()
+		m.verifierFailureTotal.WithLabelValues(pv).Inc()
 		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg)
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,

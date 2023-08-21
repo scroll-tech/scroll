@@ -485,8 +485,8 @@ func (s *Sender) checkBalance(ctx context.Context) error {
 	}
 
 	if bls.Cmp(s.minBalance) < 0 {
-		return fmt.Errorf("insufficient account balance - actual balance: %s, minimum required balance: %s",
-			bls.String(), s.minBalance.String())
+		return fmt.Errorf("insufficient account balance - actual balance: %s, minimum required balance: %s, address: %s",
+			bls.String(), s.minBalance.String(), s.auth.From.String())
 	}
 
 	return nil
