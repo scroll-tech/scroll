@@ -24,8 +24,8 @@ func TestStack(t *testing.T) {
 	defer s.Close()
 
 	for i := 0; i < 3; i++ {
-		taskUUID, err := uuid.NewRandom()
-		assert.NoError(t, err)
+		taskUUID, uuidErr := uuid.NewRandom()
+		assert.NoError(t, uuidErr)
 		task := &ProvingTask{
 			Task: &message.TaskMsg{
 				UUID: taskUUID.String(),
