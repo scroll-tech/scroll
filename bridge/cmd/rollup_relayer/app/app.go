@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -62,8 +63,8 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
+	registry := prometheus.DefaultRegisterer
+	metrics.Server(ctx, registry.(*prometheus.Registry))
 
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
@@ -73,26 +74,26 @@ func action(ctx *cli.Context) error {
 	}
 
 	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis, registry)
 	if err != nil {
 		log.Error("failed to create l2 relayer", "config file", cfgFile, "error", err)
 		return err
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db)
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db, registry)
 	if err != nil {
 		log.Error("failed to create chunkProposer", "config file", cfgFile, "error", err)
 		return err
 	}
 
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, db)
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, db, registry)
 	if err != nil {
 		log.Error("failed to create batchProposer", "config file", cfgFile, "error", err)
 		return err
 	}
 
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress,
-		cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db)
+		cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db, registry)
 
 	// Watcher loop to fetch missing blocks
 	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {

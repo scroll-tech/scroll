@@ -93,7 +93,7 @@ func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, reg pro
 		proverTaskProveDuration: promauto.With(reg).NewHistogram(prometheus.HistogramOpts{
 			Name:    "coordinator_task_prove_duration_seconds",
 			Help:    "Time spend by prover prove task.",
-			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 20, 30, 60},
+			Buckets: []float64{180, 300, 480, 600, 900, 1200, 1800},
 		}),
 		validateFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_validate_failure_total",
@@ -128,7 +128,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return fmt.Errorf("get public key from context failed")
 	}
 	pv := ctx.GetString(coordinatorType.ProverVersion)
-	if len(pk) == 0 {
+	if len(pv) == 0 {
 		return fmt.Errorf("get ProverVersion from context failed")
 	}
 
@@ -148,8 +148,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return err
 	}
 
-	proverVersion := ctx.GetString(coordinatorType.ProverVersion)
-	m.verifierTotal.WithLabelValues(proverVersion).Inc()
+	m.verifierTotal.WithLabelValues(pv).Inc()
 
 	var success bool
 	var verifyErr error
@@ -160,7 +159,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	}
 
 	if verifyErr != nil || !success {
-		m.verifierFailureTotal.WithLabelValues(proverVersion).Inc()
+		m.verifierFailureTotal.WithLabelValues(pv).Inc()
 		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg)
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
@@ -310,8 +309,8 @@ func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, hash string,
 		}
 
 		// if the block batch has proof verified, so the failed status not update block batch proving status
-		if status == types.ProvingTaskFailed && m.checkIsTaskSuccess(ctx, hash, proofMsg.Type) {
-			log.Info("update proof status ProvingTaskFailed skip because other prover have prove success", "hash", hash, "public key", proverPublicKey)
+		if m.checkIsTaskSuccess(ctx, hash, proofMsg.Type) {
+			log.Info("update proof status skip because this chunk / batch has been verified", "hash", hash, "public key", proverPublicKey)
 			return nil
 		}
 

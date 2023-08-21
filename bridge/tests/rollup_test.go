@@ -28,12 +28,13 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := bridgeApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 
 	// Create L1Watcher
 	l1Cfg := bridgeApp.Config.L1Config
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress,
+		l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// add some blocks to db
 	var wrappedBlocks []*types.WrappedBlock
@@ -57,14 +58,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxTxGasPerChunk:                1000000000,
 		MaxL2TxNumPerChunk:              10000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
-		MinL1CommitCalldataSizePerChunk: 0,
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	cp.TryProposeChunk()
 
 	chunkOrm := orm.NewChunk(db)
@@ -76,9 +75,8 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxChunkNumPerBatch:             10,
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
-		MinChunkNumPerBatch:             1,
 		BatchTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	bp.TryProposeBatch()
 
 	l2Relayer.ProcessPendingBatches()

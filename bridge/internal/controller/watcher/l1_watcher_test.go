@@ -30,7 +30,8 @@ func setupL1Watcher(t *testing.T) (*L1WatcherClient, *gorm.DB) {
 	client, err := ethclient.Dial(base.L1gethImg.Endpoint())
 	assert.NoError(t, err)
 	l1Cfg := cfg.L1Config
-	watcher := NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
+	watcher := NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress,
+		l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db, nil)
 	assert.NoError(t, watcher.FetchContractEvent())
 	return watcher, db
 }
