@@ -250,8 +250,8 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
-// UpdateProvingStatusOptimistic updates the proving status of a batch.
-func (o *Batch) UpdateProvingStatusOptimistic(ctx context.Context, hash string, status types.ProvingStatus) error {
+// UpdateProvingStatusFromProverError updates batch proving status when prover prove failed
+func (o *Batch) UpdateProvingStatusFromProverError(ctx context.Context, hash string, status types.ProvingStatus) error {
 	updateFields := make(map[string]interface{})
 	updateFields["proving_status"] = int(status)
 

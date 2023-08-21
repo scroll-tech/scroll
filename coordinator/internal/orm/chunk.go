@@ -302,8 +302,8 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 	return nil
 }
 
-// UpdateProvingStatusOptimistic updates the proving status of a chunk.
-func (o *Chunk) UpdateProvingStatusOptimistic(ctx context.Context, hash string, status types.ProvingStatus) error {
+// UpdateProvingStatusFromProverError updates chunk proving status when prover prove failed
+func (o *Chunk) UpdateProvingStatusFromProverError(ctx context.Context, hash string, status types.ProvingStatus) error {
 	updateFields := make(map[string]interface{})
 	updateFields["proving_status"] = int(status)
 

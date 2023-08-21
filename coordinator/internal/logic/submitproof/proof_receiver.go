@@ -393,11 +393,11 @@ func (m *ProofReceiverLogic) processProverErr(ctx context.Context, taskID, pk st
 
 	switch taskType {
 	case message.ProofTypeChunk:
-		if err := m.chunkOrm.UpdateProvingStatusOptimistic(ctx, taskID, types.ProvingTaskUnassigned); err != nil {
+		if err := m.chunkOrm.UpdateProvingStatusFromProverError(ctx, taskID, types.ProvingTaskUnassigned); err != nil {
 			log.Error("failed to update chunk proving_status as failed", taskID, "proverPublicKey", pk, "taskType", taskType, "error", err)
 		}
 	case message.ProofTypeBatch:
-		if err := m.batchOrm.UpdateProvingStatusOptimistic(ctx, taskID, types.ProvingTaskUnassigned); err != nil {
+		if err := m.batchOrm.UpdateProvingStatusFromProverError(ctx, taskID, types.ProvingTaskUnassigned); err != nil {
 			log.Error("failed to update batch proving_status as failed", taskID, "proverPublicKey", pk, "taskType", taskType, "error", err)
 		}
 	}
