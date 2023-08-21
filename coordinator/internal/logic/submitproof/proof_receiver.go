@@ -238,7 +238,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 		// Verify if the proving task has already been assigned to another prover.
 		// Upon receiving an error message, it's possible the proving status has been reset by another prover
 		// and the task has been reassigned. In this case, the coordinator should avoid resetting the proving status.
-		if !m.checkIsAssignedToOtherProver(ctx, proofMsg.ID, pk, proofMsg.Type) {
+		if !m.isTaskProvingByOtherProvers(ctx, proofMsg.ID, pk, proofMsg.Type) {
 			m.proofRecover(ctx, proofMsg.ID, pk, proofMsg)
 		}
 		m.validateFailureProverTaskStatusNotOk.Inc()
@@ -377,7 +377,7 @@ func (m *ProofReceiverLogic) checkIsTaskSuccess(ctx context.Context, hash string
 	return provingStatus == types.ProvingTaskVerified
 }
 
-func (m *ProofReceiverLogic) checkIsAssignedToOtherProver(ctx context.Context, taskID, pk string, taskType message.ProofType) bool {
+func (m *ProofReceiverLogic) isTaskProvingByOtherProvers(ctx context.Context, taskID, pk string, taskType message.ProofType) bool {
 	proverTasks, err := m.proverTaskOrm.GetAssignedTaskOfOtherProvers(ctx, taskID, pk, taskType)
 	if err != nil {
 		log.Warn("checkIsAssignedToOtherProver failure", "taskID", taskID, "proverPublicKey", pk, "taskType", taskType, "error", err)
