@@ -67,8 +67,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @notice Whether an account is a prover.
     mapping(address => bool) public isProver;
 
-    /// @notice The latest finalized batch index.
-    uint256 public lastFinalizedBatchIndex;
+    /// @inheritdoc IScrollChain
+    uint256 public override lastFinalizedBatchIndex;
 
     /// @inheritdoc IScrollChain
     mapping(uint256 => bytes32) public override committedBatches;
