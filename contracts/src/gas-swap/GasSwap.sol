@@ -2,18 +2,18 @@
 
 pragma solidity =0.8.16;
 
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
-
-import {OwnableBase} from "../libraries/common/OwnableBase.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 // solhint-disable no-empty-blocks
 
-contract GasSwap is ERC2771Context, ReentrancyGuard, OwnableBase {
+contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /**********
@@ -76,9 +76,7 @@ contract GasSwap is ERC2771Context, ReentrancyGuard, OwnableBase {
      * Constructor *
      ***************/
 
-    constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {
-        owner = msg.sender;
-    }
+    constructor(address trustedForwarder) ERC2771Context(trustedForwarder) {}
 
     /*****************************
      * Public Mutating Functions *
@@ -170,6 +168,16 @@ contract GasSwap is ERC2771Context, ReentrancyGuard, OwnableBase {
     /**********************
      * Internal Functions *
      **********************/
+
+    /// @inheritdoc Context
+    function _msgData() internal view virtual override(Context, ERC2771Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+
+    /// @inheritdoc Context
+    function _msgSender() internal view virtual override(Context, ERC2771Context) returns (address) {
+        return ERC2771Context._msgSender();
+    }
 
     /// @dev Internal function to concat two bytes array.
     function concat(bytes memory a, bytes memory b) internal pure returns (bytes memory) {
