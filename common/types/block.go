@@ -96,13 +96,14 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 			continue
 		}
 		size += uint64(len(txData.Data))
-		// over-estimate constant length of LegacyTx
-		size += 8  // nonce
-		size += 8  // gas
-		size += 32 // gas price
-		size += 32 // value
-		size += 65 // v, r, s
-		size += 20 // to
+		// over-estimate constant length of LegacyTx: one byte field length + field maximum possible length
+		size += 1 + 8  // nonce
+		size += 1 + 8  // gas
+		size += 1 + 32 // gas price
+		size += 1 + 32 // value
+		size += 1 + 65 // v, r, s
+		size += 1 + 20 // to
+		size += 1 + 8  // chain id
 	}
 	return size
 }
