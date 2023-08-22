@@ -143,7 +143,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		}
 	} else {
 		// TODO When prover all have upgrade, need delete this logic
-		proverTask, err = m.proverTaskOrm.GetProverTaskByTaskIDAndProver(ctx, proofMsg.Type, proofMsg.ID, pk, pv)
+		proverTask, err = m.proverTaskOrm.GetAssignedProverTaskByTaskIDAndProver(ctx, proofMsg.Type, proofMsg.ID, pk, pv)
 		if proverTask == nil || err != nil {
 			log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
 			return ErrValidatorFailureProverTaskEmpty

@@ -116,9 +116,9 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, taskType messag
 	return proverTasks, nil
 }
 
-// GetProverTaskByTaskIDAndProver get prover task taskID and public key
+// GetAssignedProverTaskByTaskIDAndProver get prover task taskID and public key
 // TODO: when prover all upgrade need DEPRECATED this function
-func (o *ProverTask) GetProverTaskByTaskIDAndProver(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
+func (o *ProverTask) GetAssignedProverTaskByTaskIDAndProver(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("task_type", int(taskType))
