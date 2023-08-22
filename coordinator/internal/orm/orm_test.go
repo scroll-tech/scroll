@@ -2,14 +2,9 @@ package orm
 
 import (
 	"context"
-	"io"
 	"math/big"
-	"os"
 	"testing"
 
-	"github.com/mattn/go-colorable"
-	"github.com/mattn/go-isatty"
-	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -65,18 +60,6 @@ func tearDownEnv(t *testing.T) {
 }
 
 func TestProverTaskOrm(t *testing.T) {
-	output := io.Writer(os.Stderr)
-	usecolor := (isatty.IsTerminal(os.Stderr.Fd()) || isatty.IsCygwinTerminal(os.Stderr.Fd())) && os.Getenv("TERM") != "dumb"
-	if usecolor {
-		output = colorable.NewColorableStderr()
-	}
-	ostream := log.StreamHandler(output, log.TerminalFormat(usecolor))
-	// show the call file and line number
-	glogger := log.NewGlogHandler(ostream)
-	// Set log level
-	glogger.Verbosity(log.Lvl(4))
-	log.Root().SetHandler(glogger)
-
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
