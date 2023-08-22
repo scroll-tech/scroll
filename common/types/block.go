@@ -140,33 +140,29 @@ func (w *WrappedBlock) L2TxsNum() uint64 {
 	return count
 }
 
-func (w *WrappedBlock) getCacheKey(txData *types.TransactionData) string {
-	return fmt.Sprintf("%s-%d", txData.From.Hex(), txData.Nonce)
-}
-
 func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 {
 	if w.txPayloadLengthCache == nil {
 		w.txPayloadLengthCache = make(map[string]uint64)
 	}
 
-	if length, exists := w.txPayloadLengthCache[w.getCacheKey(txData)]; exists {
+	if length, exists := w.txPayloadLengthCache[txData.TxHash]; exists {
 		return length
 	}
 
 	rlpTxData, err := convertTxDataToRLPEncoding(txData)
 	if err != nil {
-		log.Crit("convertTxDataToRLPEncoding failed, which should not happen", "err", err)
+		log.Crit("convertTxDataToRLPEncoding failed, which should not happen", "hash", txData.TxHash, "err", err)
 		return 0
 	}
 	txPayloadLength := uint64(len(rlpTxData))
-	w.txPayloadLengthCache[w.getCacheKey(txData)] = txPayloadLength
+	w.txPayloadLengthCache[txData.TxHash] = txPayloadLength
 	return txPayloadLength
 }
 
 func convertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
 	data, err := hexutil.Decode(txData.Data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to decode txData.Data: %s, err: %w", txData.Data, err)
 	}
 
 	tx := types.NewTx(&types.LegacyTx{
@@ -183,7 +179,7 @@ func convertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
 
 	rlpTxData, err := tx.MarshalBinary()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to marshal binary of the tx: %+v, err: %w", tx, err)
 	}
 
 	return rlpTxData, nil
