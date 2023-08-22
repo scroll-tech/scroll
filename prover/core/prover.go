@@ -42,7 +42,7 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	if cfg.ProofType == message.ProofTypeBatch {
 		C.init_batch_prover(paramsPathStr, assetsPathStr)
 	} else if cfg.ProofType == message.ProofTypeChunk {
-		C.init_chunk_prover(paramsPathStr)
+		C.init_chunk_prover(paramsPathStr, assetsPathStr)
 	}
 
 	if cfg.DumpDir != "" {

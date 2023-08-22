@@ -5,7 +5,7 @@ use prover::{
     zkevm::{Prover, Verifier},
     ChunkProof,
 };
-use std::{cell::OnceCell, panic, ptr::null};
+use std::{cell::OnceCell, env, panic, ptr::null};
 use types::eth::BlockTrace;
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
@@ -13,10 +13,14 @@ static mut VERIFIER: OnceCell<Verifier> = OnceCell::new();
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn init_chunk_prover(params_dir: *const c_char) {
+pub unsafe extern "C" fn init_chunk_prover(params_dir: *const c_char, assets_dir: *const c_char) {
     init_env_and_log("ffi_chunk_prove");
 
     let params_dir = c_char_to_str(params_dir);
+    let assets_dir = c_char_to_str(assets_dir);
+
+    // TODO: add a settings in scroll-prover.
+    env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
     let prover = Prover::from_params_dir(params_dir);
 
     PROVER.set(prover).unwrap();
@@ -30,6 +34,8 @@ pub unsafe extern "C" fn init_chunk_verifier(params_dir: *const c_char, assets_d
     let params_dir = c_char_to_str(params_dir);
     let assets_dir = c_char_to_str(assets_dir);
 
+    // TODO: add a settings in scroll-prover.
+    env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
     let verifier = Verifier::from_dirs(params_dir, assets_dir);
 
     VERIFIER.set(verifier).unwrap();
