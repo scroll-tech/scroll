@@ -133,7 +133,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return fmt.Errorf("get ProverVersion from context failed")
 	}
 
-	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndProver(ctx, proofMsg.ID, pk, pv)
+	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndProver(ctx, proofMsg.Type, proofMsg.ID, pk, pv)
 	if proverTask == nil || err != nil {
 		log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
 		return ErrValidatorFailureProverTaskEmpty
@@ -381,7 +381,7 @@ func (m *ProofReceiverLogic) processProverErr(ctx context.Context, taskID, pk st
 		log.Error("update prover task proving status failure", "taskID", taskID, "proverPublicKey", pk, "taskType", taskType, "error", updateErr)
 	}
 
-	proverTasks, err := m.proverTaskOrm.GetValidOrAssignedTaskOfOtherProvers(ctx, taskID, pk, taskType)
+	proverTasks, err := m.proverTaskOrm.GetValidOrAssignedTaskOfOtherProvers(ctx, taskType, taskID, pk)
 	if err != nil {
 		log.Warn("checkIsAssignedToOtherProver failure", "taskID", taskID, "proverPublicKey", pk, "taskType", taskType, "error", err)
 		return
