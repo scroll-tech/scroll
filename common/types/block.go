@@ -98,6 +98,7 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 		if txData.Type == types.L1MessageTxType {
 			continue
 		}
+		size += 64 // 60 bytes BlockContext + 4 bytes payload length
 		size += w.getTxPayloadLength(txData)
 	}
 	return size
@@ -115,7 +116,7 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 
 		txPayloadLength := w.getTxPayloadLength(txData)
 		total += CalldataNonZeroByteGas * txPayloadLength // an over-estimate: treat each byte as non-zero
-		total += CalldataNonZeroByteGas * 4               // size of a uint32 field
+		total += CalldataNonZeroByteGas * 64              // 60 bytes BlockContext + 4 bytes payload length
 		total += GetKeccak256Gas(txPayloadLength)         // l2 tx hash
 	}
 
