@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -22,9 +23,10 @@ func GetKeccak256Gas(size uint64) uint64 {
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
-	Transactions   []*types.TransactionData `json:"transactions"`
-	WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
-	RowConsumption *types.RowConsumption    `json:"row_consumption"`
+	Transactions         []*types.TransactionData `json:"transactions"`
+	WithdrawRoot         common.Hash              `json:"withdraw_trie_root,omitempty"`
+	RowConsumption       *types.RowConsumption    `json:"row_consumption"`
+	txPayloadLengthCache map[string]uint64
 }
 
 // NumL1Messages returns the number of L1 messages in this block.
@@ -95,15 +97,7 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 		if txData.Type == types.L1MessageTxType {
 			continue
 		}
-		size += uint64(len(txData.Data))
-		// over-estimate constant length of LegacyTx: one byte field length + field maximum possible length
-		size += 1 + 8  // nonce
-		size += 1 + 8  // gas
-		size += 1 + 32 // gas price
-		size += 1 + 32 // value
-		size += 1 + 65 // v, r, s
-		size += 1 + 20 // to
-		size += 1 + 8  // chain id
+		size += w.getTxPayloadLength(txData)
 	}
 	return size
 }
@@ -118,20 +112,7 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 			continue
 		}
 
-		data, _ := hexutil.Decode(txData.Data)
-		tx := types.NewTx(&types.LegacyTx{
-			Nonce:    txData.Nonce,
-			To:       txData.To,
-			Value:    txData.Value.ToInt(),
-			Gas:      txData.Gas,
-			GasPrice: txData.GasPrice.ToInt(),
-			Data:     data,
-			V:        txData.V.ToInt(),
-			R:        txData.R.ToInt(),
-			S:        txData.S.ToInt(),
-		})
-		rlpTxData, _ := tx.MarshalBinary()
-		txPayloadLength := uint64(len(rlpTxData))
+		txPayloadLength := w.getTxPayloadLength(txData)
 		total += CalldataNonZeroByteGas * txPayloadLength // an over-estimate: treat each byte as non-zero
 		total += CalldataNonZeroByteGas * 4               // size of a uint32 field
 		total += GetKeccak256Gas(txPayloadLength)         // l2 tx hash
@@ -156,4 +137,33 @@ func (w *WrappedBlock) L2TxsNum() uint64 {
 		}
 	}
 	return count
+}
+
+func (w *WrappedBlock) getCacheKey(txData *types.TransactionData) string {
+	return fmt.Sprintf("%s-%d", txData.From.Hex(), txData.Nonce)
+}
+
+func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 {
+	if length, exists := w.txPayloadLengthCache[w.getCacheKey(txData)]; exists {
+		return length
+	}
+
+	data, _ := hexutil.Decode(txData.Data)
+	tx := types.NewTx(&types.LegacyTx{
+		Nonce:    txData.Nonce,
+		To:       txData.To,
+		Value:    txData.Value.ToInt(),
+		Gas:      txData.Gas,
+		GasPrice: txData.GasPrice.ToInt(),
+		Data:     data,
+		V:        txData.V.ToInt(),
+		R:        txData.R.ToInt(),
+		S:        txData.S.ToInt(),
+	})
+
+	rlpTxData, _ := tx.MarshalBinary()
+	txPayloadLength := uint64(len(rlpTxData))
+
+	w.txPayloadLengthCache[w.getCacheKey(txData)] = txPayloadLength
+	return txPayloadLength
 }
