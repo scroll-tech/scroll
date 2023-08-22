@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -103,13 +102,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
 	}
 
-	taskUUID, err := uuid.NewRandom()
-	if err != nil {
-		return nil, fmt.Errorf("generate the batch hash %s prover task uuid failure", batchTask.Hash)
-	}
-
 	proverTask := orm.ProverTask{
-		UUID:            taskUUID.String(),
 		TaskID:          batchTask.Hash,
 		ProverPublicKey: publicKey.(string),
 		TaskType:        int16(message.ProofTypeBatch),
@@ -127,7 +120,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("insert prover task info fail, task id:%s, public key:%s, err:%w", batchTask.Hash, publicKey, err)
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx, batchTask.Hash)
+	taskMsg, err := bp.formatProverTask(ctx, &proverTask)
 	if err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
 		return nil, fmt.Errorf("format prover failure, id:%s error:%w", batchTask.Hash, err)
@@ -138,11 +131,11 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
 	// get chunk from db
-	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, taskID)
+	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, task.TaskID)
 	if err != nil {
-		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", taskID, err)
+		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", task.TaskID, err)
 		return nil, err
 	}
 
@@ -151,7 +144,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 	for _, chunk := range chunks {
 		var proof message.ChunkProof
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, taskID, chunk.Hash)
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
 		}
 		chunkProofs = append(chunkProofs, &proof)
 
@@ -173,11 +166,12 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 
 	chunkProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", taskID, err)
+		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", task.TaskID, err)
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		TaskID:   taskID,
+		UUID:     task.UUID.String(),
+		TaskID:   task.TaskID,
 		TaskType: int(message.ProofTypeBatch),
 		TaskData: string(chunkProofsBytes),
 	}

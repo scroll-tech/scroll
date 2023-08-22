@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -84,11 +83,7 @@ func TestProverTaskOrm(t *testing.T) {
 	reward := big.NewInt(0)
 	reward.SetString("18446744073709551616", 10) // 1 << 64, uint64 maximum 1<<64 -1
 
-	taskUUID, err := uuid.NewRandom()
-	assert.NoError(t, err)
-
 	proverTask := ProverTask{
-		UUID:            taskUUID.String(),
 		TaskID:          "test-hash",
 		ProverName:      "prover-0",
 		ProverPublicKey: "0",
@@ -103,15 +98,13 @@ func TestProverTaskOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(proverTasks))
 	assert.Equal(t, proverTask.ProverName, proverTasks[0].ProverName)
+	assert.NotEqual(t, proverTask.UUID.String(), "00000000-0000-0000-0000-000000000000")
 
 	// test decimal reward, get reward
 	resultReward := proverTasks[0].Reward.BigInt()
 	assert.Equal(t, resultReward, reward)
 	assert.Equal(t, resultReward.String(), "18446744073709551616")
 
-	taskUUID2, err2 := uuid.NewRandom()
-	assert.NoError(t, err2)
-	proverTask.UUID = taskUUID2.String()
 	proverTask.ProvingStatus = int16(types.ProverProofValid)
 	proverTask.AssignedAt = utils.NowUTC()
 	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
@@ -126,10 +119,7 @@ func TestProverTaskOrmUint256(t *testing.T) {
 	// test reward for uint256 maximum 1 << 256 -1 :115792089237316195423570985008687907853269984665640564039457584007913129639935
 	rewardUint256 := big.NewInt(0)
 	rewardUint256.SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
-	taskUUID, err := uuid.NewRandom()
-	assert.NoError(t, err)
 	proverTask := ProverTask{
-		UUID:            taskUUID.String(),
 		TaskID:          "test-hash",
 		ProverName:      "prover-0",
 		ProverPublicKey: "0",
@@ -140,6 +130,7 @@ func TestProverTaskOrmUint256(t *testing.T) {
 
 	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
+	assert.NotEqual(t, proverTask.UUID.String(), "00000000-0000-0000-0000-000000000000")
 	proverTasksUint256, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(proverTasksUint256))

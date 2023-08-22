@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
@@ -17,8 +19,8 @@ import (
 type ProverTask struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	ID   int64  `json:"id" gorm:"column:id"`
-	UUID string `json:"uuid" gorm:"uuid"`
+	ID   int64     `json:"id" gorm:"column:id"`
+	UUID uuid.UUID `json:"uuid" gorm:"column:uuid;type:uuid;default:gen_random_uuid()"`
 
 	// prover
 	ProverPublicKey string `json:"prover_public_key" gorm:"column:prover_public_key"`
@@ -217,8 +219,9 @@ func (o *ProverTask) InsertProverTask(ctx context.Context, proverTask *ProverTas
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
+	db = db.Clauses(clause.Returning{})
 	db = db.Model(&ProverTask{})
-	if err := db.Create(&proverTask).Error; err != nil {
+	if err := db.Create(proverTask).Error; err != nil {
 		return fmt.Errorf("ProverTask.InsertProverTask error: %w, prover task: %v", err, proverTask)
 	}
 	return nil

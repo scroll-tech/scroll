@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -106,13 +105,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
 	}
 
-	taskUUID, err := uuid.NewRandom()
-	if err != nil {
-		return nil, fmt.Errorf("generate the chunk hash %s prover task uuid failure", chunkTask.Hash)
-	}
-
 	proverTask := orm.ProverTask{
-		UUID:            taskUUID.String(),
 		TaskID:          chunkTask.Hash,
 		ProverPublicKey: publicKey.(string),
 		TaskType:        int16(message.ProofTypeChunk),
@@ -129,7 +122,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("insert prover task fail, task id:%s , public key:%s, err:%w", chunkTask.Hash, publicKey, err)
 	}
 
-	taskMsg, err := cp.formatProverTask(ctx, chunkTask.Hash)
+	taskMsg, err := cp.formatProverTask(ctx, &proverTask)
 	if err != nil {
 		cp.recoverProvingStatus(ctx, chunkTask)
 		return nil, fmt.Errorf("format prover task failure, id:%s error:%w", chunkTask.Hash, err)
@@ -140,11 +133,11 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
-	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, hash)
+	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, task.TaskID)
 	if wrappedErr != nil || len(wrappedBlocks) == 0 {
-		return nil, fmt.Errorf("failed to fetch wrapped blocks, batch hash:%s err:%w", hash, wrappedErr)
+		return nil, fmt.Errorf("failed to fetch wrapped blocks, batch hash:%s err:%w", task.TaskID, wrappedErr)
 	}
 
 	blockHashes := make([]common.Hash, len(wrappedBlocks))
@@ -157,11 +150,12 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*
 	}
 	blockHashesBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", hash, err)
+		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
 	}
 
 	proverTaskSchema := &coordinatorType.GetTaskSchema{
-		TaskID:   hash,
+		UUID:     task.UUID.String(),
+		TaskID:   task.TaskID,
 		TaskType: int(message.ProofTypeChunk),
 		TaskData: string(blockHashesBytes),
 	}
