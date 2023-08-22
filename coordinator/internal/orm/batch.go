@@ -91,11 +91,11 @@ func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, 
 	return batches, nil
 }
 
-// GetAssignedBatches retrieves all batches whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProved.
+// GetAssignedBatches retrieves all batches whose proving_status is either types.ProvingTaskAssigned.
 func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
-	db = db.Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
 
 	var assignedBatches []*Batch
 	if err := db.Find(&assignedBatches).Error; err != nil {
@@ -236,7 +236,7 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["prover_assigned_at"] = time.Now()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskProved, types.ProvingTaskVerified:
+	case types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
 	}
 
@@ -246,6 +246,30 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 
 	if err := db.Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("Batch.UpdateProvingStatus error: %w, batch hash: %v, status: %v", err, hash, status.String())
+	}
+	return nil
+}
+
+// UpdateProvingStatusFromProverError updates batch proving status when prover prove failed
+func (o *Batch) UpdateProvingStatusFromProverError(ctx context.Context, hash string, status types.ProvingStatus) error {
+	updateFields := make(map[string]interface{})
+	updateFields["proving_status"] = int(status)
+
+	switch status {
+	case types.ProvingTaskAssigned:
+		updateFields["prover_assigned_at"] = time.Now()
+	case types.ProvingTaskUnassigned:
+		updateFields["prover_assigned_at"] = nil
+	case types.ProvingTaskVerified:
+		updateFields["proved_at"] = time.Now()
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash", hash).Where("proving_status", types.ProvingTaskAssigned)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateProvingStatusOptimistic error: %w, batch hash: %v, status: %v", err, hash, status.String())
 	}
 	return nil
 }
