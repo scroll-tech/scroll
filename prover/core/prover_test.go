@@ -37,6 +37,7 @@ func TestFFI(t *testing.T) {
 	chunkProverConfig := &config.ProverCoreConfig{
 		DumpDir:    *proofDumpPath,
 		ParamsPath: *paramsPath,
+		AssetsPath: *assetsPath,
 		ProofType:  message.ProofTypeChunk,
 	}
 	chunkProverCore, err := core.NewProverCore(chunkProverConfig)
