@@ -145,6 +145,22 @@ func (o *ProverTask) GetProverTaskByUUID(ctx context.Context, uuid string) (*Pro
 	return &proverTask, nil
 }
 
+// GetValidOrAssignedTaskOfOtherProvers get the chunk/batch task assigned other provers
+func (o *ProverTask) GetValidOrAssignedTaskOfOtherProvers(ctx context.Context, taskID, proverPublicKey string, taskType message.ProofType) ([]ProverTask, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("task_id", taskID)
+	db = db.Where("task_type", int(taskType))
+	db = db.Where("prover_public_key != ?", proverPublicKey)
+	db = db.Where("proving_status in (?)", []int{int(types.ProverAssigned), int(types.ProverProofValid)})
+
+	var proverTasks []ProverTask
+	if err := db.Find(&proverTasks).Error; err != nil {
+		return nil, fmt.Errorf("ProverTask.GetAssignedProverTask error: %w, taskID: %v", err, taskID)
+	}
+	return proverTasks, nil
+}
+
 // GetProvingStatusByTaskID retrieves the proving status of a prover task
 func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string) (types.ProverProveStatus, error) {
 	db := o.db.WithContext(ctx)
