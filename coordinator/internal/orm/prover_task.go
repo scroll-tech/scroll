@@ -252,10 +252,26 @@ func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofTyp
 	}
 	db = db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", int(proofType), taskID, pk)
+	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ? AND proving_status = ?", int(proofType), taskID, pk, types.ProverAssigned)
 
 	if err := db.Update("proving_status", status).Error; err != nil {
 		return fmt.Errorf("ProverTask.UpdateProverTaskProvingStatus error: %w, proof type: %v, taskID: %v, prover public key: %v, status: %v", err, proofType.String(), taskID, pk, status.String())
+	}
+	return nil
+}
+
+// UpdateProverTaskProvingStatusByUUID updates the proving_status of a specific ProverTask record.
+func (o *ProverTask) UpdateProverTaskProvingStatusByUUID(ctx context.Context, uuid string, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("uuid = ?", uuid)
+
+	if err := db.Update("proving_status", status).Error; err != nil {
+		return fmt.Errorf("ProverTask.UpdateProverTaskProvingStatus error: %w, uuid:%s, status: %v", err, uuid, status.String())
 	}
 	return nil
 }
