@@ -44,5 +44,7 @@ func CheckScrollProverVersion(proverVersion string) bool {
 		return false
 	}
 	// compare the `scroll_prover` version
-	return remote[2] == local[2] || remote[2] == "8c439b1"
+	return remote[2] == local[2] || // libzkp v0.6.6
+		remote[2] == "ccb3cd4" || // libzkp v0.6.5
+		remote[2] == "8c439b1" // libzkp v0.6.2
 }
