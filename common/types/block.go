@@ -144,6 +144,10 @@ func (w *WrappedBlock) getCacheKey(txData *types.TransactionData) string {
 }
 
 func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 {
+	if w.txPayloadLengthCache == nil {
+		w.txPayloadLengthCache = make(map[string]uint64)
+	}
+
 	if length, exists := w.txPayloadLengthCache[w.getCacheKey(txData)]; exists {
 		return length
 	}
