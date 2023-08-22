@@ -38,7 +38,7 @@ func TestChunkEncode(t *testing.T) {
 	wrappedBlock := &WrappedBlock{}
 	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
 	assert.Equal(t, uint64(0), wrappedBlock.NumL1Messages(0))
-	assert.Equal(t, uint64(4), wrappedBlock.EstimateL1CommitCalldataSize())
+	assert.Equal(t, uint64(358), wrappedBlock.EstimateL1CommitCalldataSize())
 	assert.Equal(t, uint64(2), wrappedBlock.L2TxsNum())
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
@@ -46,7 +46,7 @@ func TestChunkEncode(t *testing.T) {
 		},
 	}
 	assert.Equal(t, uint64(0), chunk.NumL1Messages(0))
-	assert.Equal(t, uint64(5046), chunk.EstimateL1CommitGas())
+	assert.Equal(t, uint64(6966), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString := hex.EncodeToString(bytes)
 	assert.NoError(t, err)
@@ -60,7 +60,7 @@ func TestChunkEncode(t *testing.T) {
 	wrappedBlock2 := &WrappedBlock{}
 	assert.NoError(t, json.Unmarshal(templateBlockTrace2, wrappedBlock2))
 	assert.Equal(t, uint64(11), wrappedBlock2.NumL1Messages(0)) // 0..=9 skipped, 10 included
-	assert.Equal(t, uint64(2), wrappedBlock2.EstimateL1CommitCalldataSize())
+	assert.Equal(t, uint64(96), wrappedBlock2.EstimateL1CommitCalldataSize())
 	assert.Equal(t, uint64(1), wrappedBlock2.L2TxsNum())
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
@@ -68,7 +68,7 @@ func TestChunkEncode(t *testing.T) {
 		},
 	}
 	assert.Equal(t, uint64(11), chunk.NumL1Messages(0))
-	assert.Equal(t, uint64(4042), chunk.EstimateL1CommitGas())
+	assert.Equal(t, uint64(5002), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
@@ -84,7 +84,7 @@ func TestChunkEncode(t *testing.T) {
 		},
 	}
 	assert.Equal(t, uint64(11), chunk.NumL1Messages(0))
-	assert.Equal(t, uint64(8038), chunk.EstimateL1CommitGas())
+	assert.Equal(t, uint64(9958), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
