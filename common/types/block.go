@@ -9,6 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // CalldataNonZeroByteGas is the gas consumption per non zero byte in calldata.
@@ -152,7 +153,22 @@ func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 
 		return length
 	}
 
-	data, _ := hexutil.Decode(txData.Data)
+	rlpTxData, err := convertTxDataToRLPEncoding(txData)
+	if err != nil {
+		log.Crit("convertTxDataToRLPEncoding failed, which should not happen", "err", err)
+		return 0
+	}
+	txPayloadLength := uint64(len(rlpTxData))
+	w.txPayloadLengthCache[w.getCacheKey(txData)] = txPayloadLength
+	return txPayloadLength
+}
+
+func convertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
+	data, err := hexutil.Decode(txData.Data)
+	if err != nil {
+		return nil, err
+	}
+
 	tx := types.NewTx(&types.LegacyTx{
 		Nonce:    txData.Nonce,
 		To:       txData.To,
@@ -165,9 +181,10 @@ func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 
 		S:        txData.S.ToInt(),
 	})
 
-	rlpTxData, _ := tx.MarshalBinary()
-	txPayloadLength := uint64(len(rlpTxData))
+	rlpTxData, err := tx.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
 
-	w.txPayloadLengthCache[w.getCacheKey(txData)] = txPayloadLength
-	return txPayloadLength
+	return rlpTxData, nil
 }
