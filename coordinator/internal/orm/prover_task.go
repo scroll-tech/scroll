@@ -98,13 +98,14 @@ func (o *ProverTask) GetProverTasks(ctx context.Context, fields map[string]inter
 
 // GetProverTasksByHashes retrieves the ProverTask records associated with the specified hashes.
 // The returned prover task objects are sorted in ascending order by their ids.
-func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string) ([]*ProverTask, error) {
+func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, taskType message.ProofType, hashes []string) ([]*ProverTask, error) {
 	if len(hashes) == 0 {
 		return nil, nil
 	}
 
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
+	db = db.Where("task_type", int(taskType))
 	db = db.Where("task_id IN ?", hashes)
 	db = db.Order("id asc")
 
@@ -117,9 +118,10 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, hashes []string
 
 // GetProverTaskByTaskIDAndProver get prover task taskID and public key
 // TODO: when prover all upgrade need DEPRECATED this function
-func (o *ProverTask) GetProverTaskByTaskIDAndProver(ctx context.Context, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
+func (o *ProverTask) GetProverTaskByTaskIDAndProver(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
+	db = db.Where("task_type", int(taskType))
 	db = db.Where("task_id", taskID)
 	db = db.Where("prover_public_key", proverPublicKey)
 	db = db.Where("prover_version", proverVersion)
@@ -148,11 +150,11 @@ func (o *ProverTask) GetProverTaskByUUID(ctx context.Context, uuid string) (*Pro
 }
 
 // GetValidOrAssignedTaskOfOtherProvers get the chunk/batch task assigned other provers
-func (o *ProverTask) GetValidOrAssignedTaskOfOtherProvers(ctx context.Context, taskID, proverPublicKey string, taskType message.ProofType) ([]ProverTask, error) {
+func (o *ProverTask) GetValidOrAssignedTaskOfOtherProvers(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey string) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("task_id", taskID)
 	db = db.Where("task_type", int(taskType))
+	db = db.Where("task_id", taskID)
 	db = db.Where("prover_public_key != ?", proverPublicKey)
 	db = db.Where("proving_status in (?)", []int{int(types.ProverAssigned), int(types.ProverProofValid)})
 
@@ -164,10 +166,11 @@ func (o *ProverTask) GetValidOrAssignedTaskOfOtherProvers(ctx context.Context, t
 }
 
 // GetProvingStatusByTaskID retrieves the proving status of a prover task
-func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskID string) (types.ProverProveStatus, error) {
+func (o *ProverTask) GetProvingStatusByTaskID(ctx context.Context, taskType message.ProofType, taskID string) (types.ProverProveStatus, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Select("proving_status")
+	db = db.Where("task_type", int(taskType))
 	db = db.Where("task_id = ?", taskID)
 
 	var proverTask ProverTask
@@ -195,9 +198,10 @@ func (o *ProverTask) GetTimeoutAssignedProverTasks(ctx context.Context, limit in
 }
 
 // TaskTimeoutMoreThanOnce get the timeout twice task. a temp design
-func (o *ProverTask) TaskTimeoutMoreThanOnce(ctx context.Context, taskID string) bool {
+func (o *ProverTask) TaskTimeoutMoreThanOnce(ctx context.Context, taskType message.ProofType, taskID string) bool {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
+	db = db.Where("task_type", int(taskType))
 	db = db.Where("task_id", taskID)
 	db = db.Where("proving_status", int(types.ProverProofInvalid))
 
