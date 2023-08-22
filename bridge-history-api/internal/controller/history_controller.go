@@ -30,7 +30,7 @@ func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 	}
 	offset := (req.Page - 1) * req.PageSize
 	limit := req.PageSize
-	txs, total, err := c.historyLogic.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
+	txs, total, err := c.historyLogic.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address), req.SafeNumber, offset, limit)
 	if err != nil {
 		types.RenderJSON(ctx, types.ErrGetClaimablesFailure, err, nil)
 		return

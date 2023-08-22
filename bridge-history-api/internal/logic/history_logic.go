@@ -74,15 +74,15 @@ func updateCrossTxHash(ctx context.Context, msgHash string, txInfo *types.TxHist
 }
 
 // GetClaimableTxsByAddress get all claimable txs under given address
-func (h *HistoryLogic) GetClaimableTxsByAddress(ctx context.Context, address common.Address, offset int, limit int) ([]*types.TxHistoryInfo, uint64, error) {
+func (h *HistoryLogic) GetClaimableTxsByAddress(ctx context.Context, address common.Address, safeNumber int, offset int, limit int) ([]*types.TxHistoryInfo, uint64, error) {
 	var txHistories []*types.TxHistoryInfo
 	l2SentMsgOrm := orm.NewL2SentMsg(h.db)
 	l2CrossMsgOrm := orm.NewCrossMsg(h.db)
-	total, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressTotalNum(ctx, address.Hex())
+	total, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressTotalNum(ctx, address.Hex(), safeNumber)
 	if err != nil || total == 0 {
 		return txHistories, 0, err
 	}
-	results, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(ctx, address.Hex(), offset, limit)
+	results, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(ctx, address.Hex(), safeNumber, offset, limit)
 	if err != nil || len(results) == 0 {
 		return txHistories, 0, err
 	}

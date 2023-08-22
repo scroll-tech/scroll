@@ -73,9 +73,9 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, err
 }
 
 // GetClaimableL2SentMsgByAddressWithOffset get claimable l2 sent msg by address with offset
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context, address string, offset int, limit int) ([]*L2SentMsg, error) {
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context, address string, safeNumber int, offset int, limit int) ([]*L2SentMsg, error) {
 	var results []*L2SentMsg
-	err := l.db.WithContext(ctx).Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
+	err := l.db.WithContext(ctx).Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' AND height <= $2 ORDER BY id DESC LIMIT $3 OFFSET $4;`, address, safeNumber, limit, offset).
 		Scan(&results).Error
 	if err != nil {
 		return nil, fmt.Errorf("L2SentMsg.GetClaimableL2SentMsgByAddressWithOffset error: %w", err)
@@ -84,9 +84,9 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context
 }
 
 // GetClaimableL2SentMsgByAddressTotalNum get claimable l2 sent msg by address total num
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(ctx context.Context, address string) (uint64, error) {
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(ctx context.Context, address string, safeNumber int) (uint64, error) {
 	var count uint64
-	err := l.db.WithContext(ctx).Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).
+	err := l.db.WithContext(ctx).Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' AND height <= $2;`, address, safeNumber).
 		Scan(&count).Error
 	if err != nil {
 		return 0, fmt.Errorf("L2SentMsg.GetClaimableL2SentMsgByAddressTotalNum error: %w", err)
