@@ -105,8 +105,6 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Generated and dumped batch proof")
 
-	batchVk1 := batchProverCore.GetVk()
-	batchVk2 := readVk(*batchVkPath, as)
 	as.Equal(batchProverCore.GetVk(), readVk(*batchVkPath, as))
 	t.Log("Batch VKs are equal")
 }
