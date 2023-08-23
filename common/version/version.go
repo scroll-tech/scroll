@@ -3,10 +3,11 @@ package version
 import (
 	"fmt"
 	"runtime/debug"
+	"strconv"
 	"strings"
 )
 
-var tag = "v4.1.96"
+var tag = "v4.1.97"
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
@@ -45,4 +46,40 @@ func CheckScrollProverVersion(proverVersion string) bool {
 	}
 	// compare the `scroll_prover` version
 	return remote[2] == local[2]
+}
+
+// CheckScrollProverVersionTag check the "scroll-prover" version's tag, if it's too old, return false
+func CheckScrollProverVersionTag(proverVersion string) bool {
+	// note the the version is in fact in the format of "tag-commit-scroll_prover-halo2",
+	// so split-by-'-' length should be 4
+	remote := strings.Split(proverVersion, "-")
+	if len(remote) != 4 {
+		return false
+	}
+	remoteTagNums := strings.Split(strings.TrimPrefix(remote[0], "v"), ".")
+	if len(remoteTagNums) != 3 {
+		return false
+	}
+	remoteTagMajor, err := strconv.Atoi(remoteTagNums[0])
+	if err != nil {
+		return false
+	}
+	remoteTagMinor, err := strconv.Atoi(remoteTagNums[1])
+	if err != nil {
+		return false
+	}
+	remoteTagPatch, err := strconv.Atoi(remoteTagNums[2])
+	if err != nil {
+		return false
+	}
+	if remoteTagMajor != 4 {
+		return false
+	}
+	if remoteTagMinor != 1 {
+		return false
+	}
+	if remoteTagPatch < 96 {
+		return false
+	}
+	return true
 }
