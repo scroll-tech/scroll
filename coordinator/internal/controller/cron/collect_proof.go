@@ -159,13 +159,13 @@ func (c *Collector) check(assignedProverTasks []orm.ProverTask, timeout promethe
 		err := c.db.Transaction(func(tx *gorm.DB) error {
 			// update prover task proving status as ProverProofInvalid
 			if err := c.proverTaskOrm.UpdateProverTaskProvingStatus(c.ctx, assignedProverTask.UUID, types.ProverProofInvalid, tx); err != nil {
-				log.Error("update prover task proving status failure", "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+				log.Error("update prover task proving status failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 				return err
 			}
 
 			// update prover task failure type
 			if err := c.proverTaskOrm.UpdateProverTaskFailureType(c.ctx, assignedProverTask.UUID, types.ProverTaskFailureTypeTimeout, tx); err != nil {
-				log.Error("update prover task failure type failure", "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+				log.Error("update prover task failure type failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 				return err
 			}
 
