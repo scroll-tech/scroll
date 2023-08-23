@@ -28,6 +28,7 @@ import (
 // ProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
 type ProverCore struct {
 	cfg *config.ProverCoreConfig
+	vk  string
 }
 
 // NewProverCore inits a ProverCore object.
@@ -58,6 +59,10 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 
 // GetVk get Base64 format of vk.
 func (p *ProverCore) GetVk() string {
+	if p.vk != "" { // cached
+		return p.vk
+	}
+
 	var raw *C.char
 	if p.cfg.ProofType == message.ProofTypeBatch {
 		raw = C.get_batch_vk()
@@ -65,12 +70,11 @@ func (p *ProverCore) GetVk() string {
 		raw = C.get_chunk_vk()
 	}
 
-	vk := ""
 	if raw != nil {
-		vk = C.GoString(raw)
+		p.vk = C.GoString(raw) // cache it
 	}
 
-	return vk
+	return p.vk
 }
 
 // ProveBatch call rust ffi to generate batch proof.
