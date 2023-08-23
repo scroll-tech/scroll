@@ -186,6 +186,25 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	return nil
 }
 
+func (m *ProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Context, chunkHash string) error {
+	batchHash, err := m.chunkOrm.GetChunkBatchHash(ctx, chunkHash)
+	if err != nil {
+		return err
+	}
+
+	allReady, err := m.chunkOrm.CheckIfBatchChunkProofsAreReady(ctx, batchHash)
+	if err != nil {
+		return err
+	}
+	if allReady {
+		err := m.batchOrm.UpdateChunkProofsStatusByBatchHash(ctx, batchHash, types.ChunkProofsStatusReady)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.ProverTask, pk string, proofMsg *message.ProofMsg, proofParameter coordinatorType.SubmitProofParameter) (err error) {
 	defer func() {
 		if err != nil {
@@ -323,7 +342,18 @@ func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, hash string,
 		return nil
 	})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	if status == types.ProvingTaskVerified && proofMsg.Type == message.ProofTypeChunk {
+		if checkReadyErr := m.checkAreAllChunkProofsReady(ctx, hash); checkReadyErr != nil {
+			log.Error("failed to check are all chunk proofs ready", "error", checkReadyErr)
+			return checkReadyErr
+		}
+	}
+
+	return nil
 }
 
 func (m *ProofReceiverLogic) checkIsTaskSuccess(ctx context.Context, hash string, proofType message.ProofType) bool {
