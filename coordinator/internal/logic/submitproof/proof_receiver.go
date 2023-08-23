@@ -60,11 +60,7 @@ type ProofReceiverLogic struct {
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
-func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, reg prometheus.Registerer) *ProofReceiverLogic {
-	vf, err := verifier.NewVerifier(cfg.Verifier)
-	if err != nil {
-		panic("proof receiver new verifier failure")
-	}
+func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *ProofReceiverLogic {
 	return &ProofReceiverLogic{
 		chunkOrm:      orm.NewChunk(db),
 		batchOrm:      orm.NewBatch(db),
