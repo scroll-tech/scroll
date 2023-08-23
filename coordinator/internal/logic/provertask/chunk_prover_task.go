@@ -72,7 +72,11 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 	if getTaskParameter.VK != "" && // allow vk being empty, because for the first time the prover may not know its vk
 		getTaskParameter.VK != cp.vk {
-		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+		if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
+			return nil, fmt.Errorf("incompatible vk. please check your params files or config files.")
+		} else { // different prover versions and different vks
+			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+		}
 	}
 
 	isAssigned, err := cp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
