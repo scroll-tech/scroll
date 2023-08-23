@@ -70,13 +70,18 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-	if getTaskParameter.VK != "" && // allow vk being empty, because for the first time the prover may not know its vk
-		getTaskParameter.VK != cp.vk {
-		if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
-			return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
+	if getTaskParameter.VK == "" { // allow vk being empty, because for the first time the prover may not know its vk
+		if version.CheckScrollProverVersionTag(proverVersion.(string)) { // but reject too-old provers
+			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
 		}
-		// different prover versions and different vks
-		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+	} else {
+		if getTaskParameter.VK != cp.vk {
+			if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
+				return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
+			}
+			// different prover versions and different vks
+			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+		}
 	}
 
 	isAssigned, err := cp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
