@@ -137,7 +137,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	// Get block hashes.
 	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, task.TaskID)
 	if wrappedErr != nil || len(wrappedBlocks) == 0 {
-		return nil, fmt.Errorf("failed to fetch wrapped blocks, batch hash:%s err:%w", task.TaskID, wrappedErr)
+		return nil, fmt.Errorf("failed to fetch wrapped blocks, chunk hash:%s err:%w", task.TaskID, wrappedErr)
 	}
 
 	blockHashes := make([]common.Hash, len(wrappedBlocks))
