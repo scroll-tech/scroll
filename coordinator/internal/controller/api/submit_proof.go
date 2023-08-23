@@ -14,7 +14,8 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/submitproof"
-	coordinatorType "scroll-tech/coordinator/internal/types"
+	"scroll-tech/coordinator/internal/logic/verifier"
+	coodinatorType "scroll-tech/coordinator/internal/types"
 )
 
 // SubmitProofController the submit proof api controller
@@ -23,9 +24,9 @@ type SubmitProofController struct {
 }
 
 // NewSubmitProofController create the submit proof api controller instance
-func NewSubmitProofController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *SubmitProofController {
+func NewSubmitProofController(cfg *config.Config, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *SubmitProofController {
 	return &SubmitProofController{
-		submitProofReceiverLogic: submitproof.NewSubmitProofReceiverLogic(cfg.ProverManager, db, reg),
+		submitProofReceiverLogic: submitproof.NewSubmitProofReceiverLogic(cfg.ProverManager, db, vf, reg),
 	}
 }
 
