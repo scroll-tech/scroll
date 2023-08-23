@@ -34,14 +34,25 @@ func LoopWithContext(ctx context.Context, period time.Duration, f func(ctx conte
 
 // Loop Run the f func periodically.
 func Loop(ctx context.Context, period time.Duration, f func()) {
-	tick := time.NewTicker(period)
-	defer tick.Stop()
-	for ; ; <-tick.C {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			f()
+	if period == 0*time.Second {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				f()
+			}
+		}
+	} else {
+		tick := time.NewTicker(period)
+		defer tick.Stop()
+		for ; ; <-tick.C {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				f()
+			}
 		}
 	}
 }
