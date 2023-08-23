@@ -134,7 +134,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if proofParameter.UUID != "" {
 		proverTask, err = m.proverTaskOrm.GetProverTaskByUUIDAndPublicKey(ctx, proofParameter.UUID, pk)
 		if proverTask == nil || err != nil {
-			log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
+			log.Error("get none prover task for the proof", "uuid", proofParameter.UUID, "key", pk, "taskID", proofMsg.ID, "error", err)
 			return ErrValidatorFailureProverTaskEmpty
 		}
 	} else {
@@ -385,7 +385,8 @@ func (m *ProofReceiverLogic) checkIsTaskSuccess(ctx context.Context, hash string
 
 func (m *ProofReceiverLogic) processProverErr(ctx context.Context, proverTask *orm.ProverTask) {
 	if updateErr := m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, proverTask.UUID, types.ProverProofInvalid); updateErr != nil {
-		log.Error("update prover task proving status failure", "taskID", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey, "taskType", message.ProofType(proverTask.TaskType).String(), "error", updateErr)
+		log.Error("update prover task proving status failure", "uuid", proverTask.UUID, "taskID", proverTask.TaskID, "proverPublicKey",
+			proverTask.ProverPublicKey, "taskType", message.ProofType(proverTask.TaskType).String(), "error", updateErr)
 	}
 
 	proverTasks, err := m.proverTaskOrm.GetValidOrAssignedTaskOfOtherProvers(ctx, message.ProofType(proverTask.TaskType), proverTask.TaskID, proverTask.ProverPublicKey)

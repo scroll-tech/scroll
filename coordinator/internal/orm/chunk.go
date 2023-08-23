@@ -306,6 +306,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 func (o *Chunk) UpdateProvingStatusFromProverError(ctx context.Context, hash string, status types.ProvingStatus) error {
 	updateFields := make(map[string]interface{})
 	updateFields["proving_status"] = int(status)
+	updateFields["prover_assigned_at"] = nil
 
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
