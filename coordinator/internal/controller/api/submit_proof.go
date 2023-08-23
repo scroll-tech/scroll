@@ -15,7 +15,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/submitproof"
 	"scroll-tech/coordinator/internal/logic/verifier"
-	coodinatorType "scroll-tech/coordinator/internal/types"
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 // SubmitProofController the submit proof api controller
