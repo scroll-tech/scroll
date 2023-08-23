@@ -70,7 +70,8 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-	if getTaskParameter.VK != bp.vk {
+	if getTaskParameter.VK != "" && // allow vk being empty, because for the first time the prover may not know its vk
+		getTaskParameter.VK != bp.vk {
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
 	}
 
