@@ -13,6 +13,7 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/provertask"
+	"scroll-tech/coordinator/internal/logic/verifier"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
@@ -22,9 +23,9 @@ type GetTaskController struct {
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, db, reg)
-	batchProverTask := provertask.NewBatchProverTask(cfg, db, reg)
+func NewGetTaskController(cfg *config.Config, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
+	chunkProverTask := provertask.NewChunkProverTask(cfg, db, vf.ChunkVK, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, db, vf.BatchVK, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),
