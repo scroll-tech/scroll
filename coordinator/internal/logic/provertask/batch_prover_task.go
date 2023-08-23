@@ -68,9 +68,11 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-	if !version.CheckScrollProverVersion(proverVersion.(string)) {
-		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
-	}
+
+	// TODO: check VK
+	// if !version.CheckScrollProverVersion(proverVersion.(string)) {
+	// 	return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+	// }
 
 	isAssigned, err := bp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
 	if err != nil {
