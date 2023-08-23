@@ -15,7 +15,6 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"

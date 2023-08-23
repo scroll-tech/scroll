@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -49,12 +50,12 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	C.init_batch_verifier(paramsPathStr, assetsPathStr)
 	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
 
-	batchVK, err := readVK("")
+	batchVK, err := readVK(path.Join(cfg.ParamsPath, "agg_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}
 
-	chunkVK, err := readVK("")
+	chunkVK, err := readVK(path.Join(cfg.ParamsPath, "chunk_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}

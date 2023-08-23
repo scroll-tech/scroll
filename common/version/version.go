@@ -3,7 +3,6 @@ package version
 import (
 	"fmt"
 	"runtime/debug"
-	"strings"
 )
 
 var tag = "v4.1.95"
