@@ -136,7 +136,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	var proverTask *orm.ProverTask
 	var err error
 	if proofParameter.UUID != "" {
-		proverTask, err = m.proverTaskOrm.GetProverTaskByUUID(ctx, proofParameter.UUID)
+		proverTask, err = m.proverTaskOrm.GetProverTaskByUUIDAndPublicKey(ctx, proofParameter.UUID, pk)
 		if proverTask == nil || err != nil {
 			log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
 			return ErrValidatorFailureProverTaskEmpty

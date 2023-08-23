@@ -135,16 +135,17 @@ func (o *ProverTask) GetAssignedProverTaskByTaskIDAndProver(ctx context.Context,
 	return &proverTask, nil
 }
 
-// GetProverTaskByUUID get prover task taskID by uuid
-func (o *ProverTask) GetProverTaskByUUID(ctx context.Context, uuid string) (*ProverTask, error) {
+// GetProverTaskByUUIDAndPublicKey get prover task taskID by uuid and public key
+func (o *ProverTask) GetProverTaskByUUIDAndPublicKey(ctx context.Context, uuid, publicKey string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("uuid", uuid)
+	db = db.Where("prover_public_key", publicKey)
 
 	var proverTask ProverTask
 	err := db.First(&proverTask).Error
 	if err != nil {
-		return nil, fmt.Errorf("ProverTask.GetProverTaskByUUID err:%w, uuid:%s", err, uuid)
+		return nil, fmt.Errorf("ProverTask.GetProverTaskByUUID err:%w, uuid:%s publicKey:%s", err, uuid, publicKey)
 	}
 	return &proverTask, nil
 }
