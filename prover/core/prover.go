@@ -28,19 +28,22 @@ import (
 // ProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
 type ProverCore struct {
 	cfg *config.ProverCoreConfig
+	vk  string
 }
 
 // NewProverCore inits a ProverCore object.
 func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	paramsPathStr := C.CString(cfg.ParamsPath)
+	assetsPathStr := C.CString(cfg.AssetsPath)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
+		C.free(unsafe.Pointer(assetsPathStr))
 	}()
 
 	if cfg.ProofType == message.ProofTypeBatch {
-		C.init_batch_prover(paramsPathStr)
+		C.init_batch_prover(paramsPathStr, assetsPathStr)
 	} else if cfg.ProofType == message.ProofTypeChunk {
-		C.init_chunk_prover(paramsPathStr)
+		C.init_chunk_prover(paramsPathStr, assetsPathStr)
 	}
 
 	if cfg.DumpDir != "" {
@@ -52,6 +55,26 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	}
 
 	return &ProverCore{cfg: cfg}, nil
+}
+
+// GetVk get Base64 format of vk.
+func (p *ProverCore) GetVk() string {
+	if p.vk != "" { // cached
+		return p.vk
+	}
+
+	var raw *C.char
+	if p.cfg.ProofType == message.ProofTypeBatch {
+		raw = C.get_batch_vk()
+	} else if p.cfg.ProofType == message.ProofTypeChunk {
+		raw = C.get_chunk_vk()
+	}
+
+	if raw != nil {
+		p.vk = C.GoString(raw) // cache it
+	}
+
+	return p.vk
 }
 
 // ProveBatch call rust ffi to generate batch proof.
@@ -68,6 +91,11 @@ func (p *ProverCore) ProveBatch(taskID string, chunkInfos []*message.ChunkInfo, 
 	if err != nil {
 		return nil, err
 	}
+
+	if !p.checkChunkProofs(chunkProofsByt) {
+		return nil, fmt.Errorf("Non-match chunk protocol: task-id = %s", taskID)
+	}
+
 	proofByt := p.proveBatch(chunkInfosByt, chunkProofsByt)
 
 	err = p.mayDumpProof(taskID, proofByt)
@@ -110,6 +138,20 @@ func (p *ProverCore) TracesToChunkInfo(traces []*types.BlockTrace) (*message.Chu
 
 	chunkInfo := &message.ChunkInfo{}
 	return chunkInfo, json.Unmarshal(chunkInfoByt, chunkInfo)
+}
+
+func (p *ProverCore) checkChunkProofs(chunkProofsByt []byte) bool {
+	chunkProofsStr := C.CString(string(chunkProofsByt))
+
+	defer func() {
+		C.free(unsafe.Pointer(chunkProofsStr))
+	}()
+
+	log.Info("Start to check chunk proofs ...")
+	valid := C.check_chunk_proofs(chunkProofsStr)
+	log.Info("Finish checking chunk proofs!")
+
+	return valid != 0
 }
 
 func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) []byte {
