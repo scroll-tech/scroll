@@ -25,16 +25,6 @@ import (
 	"scroll-tech/common/types/message"
 )
 
-// InvalidTestProof invalid proof used in tests
-const InvalidTestProof = "this is a invalid proof"
-
-// Verifier represents a rust ffi to a halo2 verifier.
-type Verifier struct {
-	cfg     *config.VerifierConfig
-	batchVK string
-	chunkVK string
-}
-
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if cfg.MockMode {
@@ -50,20 +40,20 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	C.init_batch_verifier(paramsPathStr, assetsPathStr)
 	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
 
-	batchVK, err := readVK(path.Join(cfg.ParamsPath, "agg_vk.vkey"))
+	batchVK, err := readVK(path.Join(cfg.AssetsPath, "agg_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}
 
-	chunkVK, err := readVK(path.Join(cfg.ParamsPath, "chunk_vk.vkey"))
+	chunkVK, err := readVK(path.Join(cfg.AssetsPath, "chunk_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}
 
 	return &Verifier{
 		cfg:     cfg,
-		batchVK: batchVK,
-		chunkVK: chunkVK,
+		BatchVK: batchVK,
+		ChunkVK: chunkVK,
 	}, nil
 }
 
@@ -122,11 +112,9 @@ func readVK(filePat string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
 	byt, err := io.ReadAll(f)
 	if err != nil {
 		return "", err
 	}
-
 	return base64.StdEncoding.EncodeToString(byt), nil
 }

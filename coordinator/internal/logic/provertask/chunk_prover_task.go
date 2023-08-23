@@ -15,6 +15,7 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
@@ -24,13 +25,14 @@ import (
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
 	BaseProverTask
+	vk string
 
 	chunkAttemptsExceedTotal prometheus.Counter
 	chunkTaskGetTaskTotal    prometheus.Counter
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			db:            db,
@@ -39,7 +41,7 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Register
 			blockOrm:      orm.NewL2Block(db),
 			proverTaskOrm: orm.NewProverTask(db),
 		},
-
+		vk: vk,
 		chunkAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_chunk_attempts_exceed_total",
 			Help: "Total number of chunk attempts exceed.",
@@ -68,11 +70,9 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-
-	// TODO: check VK
-	// if !version.CheckScrollProverVersion(proverVersion.(string)) {
-	// 	return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
-	// }
+	if getTaskParameter.VK != cp.vk {
+		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+	}
 
 	isAssigned, err := cp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
 	if err != nil {

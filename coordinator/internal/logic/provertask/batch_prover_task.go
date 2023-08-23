@@ -15,6 +15,7 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
@@ -24,13 +25,14 @@ import (
 // BatchProverTask is prover task implement for batch proof
 type BatchProverTask struct {
 	BaseProverTask
+	vk string
 
 	batchAttemptsExceedTotal prometheus.Counter
 	batchTaskGetTaskTotal    prometheus.Counter
 }
 
 // NewBatchProverTask new a batch collector
-func NewBatchProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *BatchProverTask {
+func NewBatchProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
 			db:            db,
@@ -39,6 +41,7 @@ func NewBatchProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Register
 			batchOrm:      orm.NewBatch(db),
 			proverTaskOrm: orm.NewProverTask(db),
 		},
+		vk: vk,
 		batchAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_batch_attempts_exceed_total",
 			Help: "Total number of batch attempts exceed.",
@@ -67,11 +70,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-
-	// TODO: check VK
-	// if !version.CheckScrollProverVersion(proverVersion.(string)) {
-	// 	return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
-	// }
+	if getTaskParameter.VK != bp.vk {
+		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+	}
 
 	isAssigned, err := bp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
 	if err != nil {
