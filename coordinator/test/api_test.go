@@ -110,7 +110,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 }
 
 func setEnv(t *testing.T) {
-	version.Version = "v1.2.3-aaa-bbb-ccc"
+	version.Version = "v4.1.97-aaa-bbb-ccc"
 
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
