@@ -87,20 +87,6 @@ func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endInde
 	return chunks, nil
 }
 
-// GetUnbatchedChunks retrieves unbatched chunks from the database.
-func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Chunk{})
-	db = db.Where("batch_hash IS NULL")
-	db = db.Order("index asc")
-
-	var chunks []*Chunk
-	if err := db.Find(&chunks).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.GetUnbatchedChunks error: %w", err)
-	}
-	return chunks, nil
-}
-
 // GetLatestChunk retrieves the latest chunk from the database.
 func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
@@ -112,6 +98,36 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 		return nil, fmt.Errorf("Chunk.GetLatestChunk error: %w", err)
 	}
 	return &latestChunk, nil
+}
+
+// GetUnchunkedBlockHeight retrieves the first unchunked block number.
+func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
+	// Get the latest chunk
+	latestChunk, err := o.GetLatestChunk(ctx)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// if there is no chunk, return block number 1,
+			// because no need to chunk genesis block number
+			return 1, nil
+		}
+		return 0, fmt.Errorf("Chunk.GetChunkedBlockHeight error: %w", err)
+	}
+	return latestChunk.EndBlockNumber + 1, nil
+}
+
+// GetChunksFromIndex retrieves chunks that have a chunk index greater than the given index.
+// The returned chunks are sorted in ascending order by their index.
+func (o *Chunk) GetChunksFromIndex(ctx context.Context, index uint64) ([]*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("index >= ?", index)
+	db = db.Order("index ASC")
+
+	var chunks []*Chunk
+	if err := db.Find(&chunks).Error; err != nil {
+		return nil, fmt.Errorf("Chunk.GetChunksFromIndex error: %w", err)
+	}
+	return chunks, nil
 }
 
 // InsertChunk inserts a new chunk into the database.

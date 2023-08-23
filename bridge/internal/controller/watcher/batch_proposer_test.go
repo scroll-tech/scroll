@@ -39,11 +39,6 @@ func testBatchProposer(t *testing.T) {
 	}, db, nil)
 	bp.TryProposeBatch()
 
-	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
-	assert.NoError(t, err)
-	assert.Empty(t, chunks)
-
 	batchOrm := orm.NewBatch(db)
 	// get all batches.
 	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
@@ -54,6 +49,7 @@ func testBatchProposer(t *testing.T) {
 	assert.Equal(t, types.RollupPending, types.RollupStatus(batches[0].RollupStatus))
 	assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(batches[0].ProvingStatus))
 
+	chunkOrm := orm.NewChunk(db)
 	dbChunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 0)
 	assert.NoError(t, err)
 	assert.Len(t, batches, 1)

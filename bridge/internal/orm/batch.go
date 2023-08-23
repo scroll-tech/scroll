@@ -142,6 +142,21 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	return &latestBatch, nil
 }
 
+// GetUnbatchedChunkIndex retrieves the first unbatched chunk index.
+func (o *Batch) GetUnbatchedChunkIndex(ctx context.Context) (uint64, error) {
+	// Get the latest batch
+	latestBatch, err := o.GetLatestBatch(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("Chunk.GetChunkedBlockHeight error: %w", err)
+	}
+	// if parentBatch==nil then err==gorm.ErrRecordNotFound,
+	// which means there is not batched chunk yet, thus returns 0
+	if latestBatch == nil {
+		return 0, nil
+	}
+	return latestBatch.EndChunkIndex + 1, nil
+}
+
 // GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
 func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) ([]types.RollupStatus, error) {
 	if len(hashes) == 0 {
