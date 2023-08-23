@@ -3,6 +3,7 @@ package version
 import (
 	"fmt"
 	"runtime/debug"
+	"strconv"
 	"strings"
 )
 
