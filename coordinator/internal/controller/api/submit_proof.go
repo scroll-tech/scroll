@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -13,7 +14,7 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/submitproof"
-	coodinatorType "scroll-tech/coordinator/internal/types"
+	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
 // SubmitProofController the submit proof api controller
@@ -30,10 +31,10 @@ func NewSubmitProofController(cfg *config.Config, db *gorm.DB, reg prometheus.Re
 
 // SubmitProof prover submit the proof to coordinator
 func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
-	var spp coodinatorType.SubmitProofParameter
+	var spp coordinatorType.SubmitProofParameter
 	if err := ctx.ShouldBind(&spp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		coodinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
 		return
 	}
 
@@ -51,7 +52,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 			var tmpChunkProof message.ChunkProof
 			if err := json.Unmarshal([]byte(spp.Proof), &tmpChunkProof); err != nil {
 				nerr := fmt.Errorf("unmarshal parameter chunk proof invalid, err:%w", err)
-				coodinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+				coordinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
 				return
 			}
 			proofMsg.ChunkProof = &tmpChunkProof
@@ -59,7 +60,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 			var tmpBatchProof message.BatchProof
 			if err := json.Unmarshal([]byte(spp.Proof), &tmpBatchProof); err != nil {
 				nerr := fmt.Errorf("unmarshal parameter batch proof invalid, err:%w", err)
-				coodinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+				coordinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
 				return
 			}
 			proofMsg.BatchProof = &tmpBatchProof
@@ -67,9 +68,9 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 	}
 
 	if err := spc.submitProofReceiverLogic.HandleZkProof(ctx, &proofMsg, spp); err != nil {
-		nerr := fmt.Errorf("handle zk proof failure, err:%w", err)
-		coodinatorType.RenderJSON(ctx, types.ErrCoordinatorHandleZkProofFailure, nerr, nil)
+		log.Error("handle zk proof failure", "err", err)
+		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorHandleZkProofFailure, nil, nil)
 		return
 	}
-	coodinatorType.RenderJSON(ctx, types.Success, nil, nil)
+	coordinatorType.RenderJSON(ctx, types.Success, nil, nil)
 }

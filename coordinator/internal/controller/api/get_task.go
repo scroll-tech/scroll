@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -55,8 +56,8 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 	result, err := proverTask.Assign(ctx, &getTaskParameter)
 	if err != nil {
-		nerr := fmt.Errorf("return prover task err:%w", err)
-		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorGetTaskFailure, nerr, nil)
+		log.Error("assign prover task failed", "err", err)
+		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorGetTaskFailure, nil, nil)
 		return
 	}
 
