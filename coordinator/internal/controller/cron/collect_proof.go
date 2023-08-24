@@ -29,10 +29,11 @@ type Collector struct {
 	chunkOrm      *orm.Chunk
 	batchOrm      *orm.Batch
 
-	timeoutBatchCheckerRunTotal prometheus.Counter
-	batchProverTaskTimeoutTotal prometheus.Counter
-	timeoutChunkCheckerRunTotal prometheus.Counter
-	chunkProverTaskTimeoutTotal prometheus.Counter
+	timeoutBatchCheckerRunTotal     prometheus.Counter
+	batchProverTaskTimeoutTotal     prometheus.Counter
+	timeoutChunkCheckerRunTotal     prometheus.Counter
+	chunkProverTaskTimeoutTotal     prometheus.Counter
+	checkBatchAllChunkReadyRunTotal prometheus.Counter
 }
 
 // NewCollector create a collector to cron collect the data to send to prover
@@ -62,10 +63,15 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config, reg prom
 			Name: "coordinator_chunk_prover_task_timeout_total",
 			Help: "Total number of chunk timeout prover task.",
 		}),
+		checkBatchAllChunkReadyRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_check_batch_all_chunk_ready_run_total",
+			Help: "Total number of check batch all chunks ready total",
+		}),
 	}
 
 	go c.timeoutBatchProofTask()
 	go c.timeoutChunkProofTask()
+	go c.checkBatchAllChunkReady()
 
 	log.Info("Start coordinator successfully.")
 
@@ -79,7 +85,6 @@ func (c *Collector) Stop() {
 
 // timeoutTask cron check the send task is timeout. if timeout reached, restore the
 // chunk/batch task to unassigned. then the batch/chunk collector can retry it.
-
 func (c *Collector) timeoutBatchProofTask() {
 	defer func() {
 		if err := recover(); err != nil {
@@ -184,6 +189,63 @@ func (c *Collector) check(assignedProverTasks []orm.ProverTask, timeout promethe
 		})
 		if err != nil {
 			log.Error("check task proof is timeout failure", "error", err)
+		}
+	}
+}
+
+func (c *Collector) checkBatchAllChunkReady() {
+	defer func() {
+		if err := recover(); err != nil {
+			nerr := fmt.Errorf("check batch all chunk ready panic error:%v", err)
+			log.Warn(nerr.Error())
+		}
+	}()
+
+	ticker := time.NewTicker(time.Second * 10)
+	for {
+		select {
+		case <-ticker.C:
+			c.checkBatchAllChunkReadyRunTotal.Inc()
+			page := 1
+			pageSize := 50
+			for {
+				offset := (page - 1) * pageSize
+				batches, err := c.batchOrm.GetUnassignedAndChunksUnreadyBatches(c.ctx, offset, pageSize)
+				if err != nil {
+					log.Warn("checkBatchAllChunkReady GetUnassignedAndChunksUnreadyBatches", "error", err)
+					break
+				}
+
+				for _, batch := range batches {
+					allReady, checkErr := c.chunkOrm.CheckIfBatchChunkProofsAreReady(c.ctx, batch.Hash)
+					if checkErr != nil {
+						log.Warn("checkBatchAllChunkReady CheckIfBatchChunkProofsAreReady failure", "error", checkErr, "hash", batch.Hash)
+						continue
+					}
+
+					if !allReady {
+						continue
+					}
+
+					if updateErr := c.batchOrm.UpdateChunkProofsStatusByBatchHash(c.ctx, batch.Hash, types.ChunkProofsStatusReady); updateErr != nil {
+						log.Warn("checkBatchAllChunkReady UpdateChunkProofsStatusByBatchHash failure", "error", checkErr, "hash", batch.Hash)
+					}
+				}
+
+				if len(batches) < pageSize {
+					break
+				}
+				page++
+			}
+
+		case <-c.ctx.Done():
+			if c.ctx.Err() != nil {
+				log.Error("manager context canceled with error", "error", c.ctx.Err())
+			}
+			return
+		case <-c.stopTimeoutChan:
+			log.Info("the coordinator run loop exit")
+			return
 		}
 	}
 }

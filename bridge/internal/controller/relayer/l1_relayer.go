@@ -226,7 +226,7 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 				log.Info("transaction confirmed in layer2", "confirmation", cfm)
 			}
 		case cfm := <-r.gasOracleSender.ConfirmChan():
-			r.metrics.bridgeL1MsgsRelayedConfirmedTotal.Inc()
+			r.metrics.bridgeL1GasOraclerConfirmedTotal.Inc()
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
 				err := r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
