@@ -131,14 +131,14 @@ func (o *ProverTask) GetProverTaskByTaskIDAndProver(ctx context.Context, taskTyp
 	return &proverTask, nil
 }
 
-// GetValidOrAssignedTaskOfOtherProvers get the chunk/batch task assigned other provers
-func (o *ProverTask) GetValidOrAssignedTaskOfOtherProvers(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey string) ([]ProverTask, error) {
+// GetAssignedTaskOfOtherProvers get the chunk/batch task assigned other provers
+func (o *ProverTask) GetAssignedTaskOfOtherProvers(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey string) ([]ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("task_type", int(taskType))
 	db = db.Where("task_id", taskID)
 	db = db.Where("prover_public_key != ?", proverPublicKey)
-	db = db.Where("proving_status in (?)", []int{int(types.ProverAssigned), int(types.ProverProofValid)})
+	db = db.Where("proving_status = ?", []int{int(types.ProverAssigned)})
 
 	var proverTasks []ProverTask
 	if err := db.Find(&proverTasks).Error; err != nil {
