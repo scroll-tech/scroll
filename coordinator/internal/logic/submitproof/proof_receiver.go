@@ -383,7 +383,7 @@ func (m *ProofReceiverLogic) processProverErr(ctx context.Context, taskID, pk st
 		log.Error("update prover task proving status failure", "taskID", taskID, "proverPublicKey", pk, "taskType", taskType, "error", updateErr)
 	}
 
-	proverTasks, err := m.proverTaskOrm.GetValidOrAssignedTaskOfOtherProvers(ctx, taskType, taskID, pk)
+	proverTasks, err := m.proverTaskOrm.GetAssignedTaskOfOtherProvers(ctx, taskType, taskID, pk)
 	if err != nil {
 		log.Warn("checkIsAssignedToOtherProver failure", "taskID", taskID, "proverPublicKey", pk, "taskType", taskType, "error", err)
 		return
