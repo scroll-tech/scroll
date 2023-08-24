@@ -41,6 +41,8 @@ type Batch struct {
 	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt          *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
 	ProofTimeSec      int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
+	TotalAttempts     int16      `json:"total_attempts" gorm:"column:total_attempts;default:0"`
+	ActiveAttempts    int16      `json:"active_attempts" gorm:"column:active_attempts;default:0"`
 
 	// rollup
 	RollupStatus   int16      `json:"rollup_status" gorm:"column:rollup_status;default:1"`
@@ -211,6 +213,8 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		BatchHeader:       batchHeader.Encode(),
 		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),
+		TotalAttempts:     0,
+		ActiveAttempts:    0,
 		RollupStatus:      int16(types.RollupPending),
 		OracleStatus:      int16(types.GasOraclePending),
 	}
@@ -242,60 +246,25 @@ func (o *Batch) UpdateChunkProofsStatusByBatchHash(ctx context.Context, batchHas
 	return nil
 }
 
-// UpdateProvingStatus updates the proving status of a batch.
-func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
+// UpdateProvingStatusFailed updates the proving status failed of a batch.
+func (o *Batch) UpdateProvingStatusFailed(ctx context.Context, hash string, maxAttempts uint8, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-	updateFields := make(map[string]interface{})
-	updateFields["proving_status"] = int(status)
-
-	switch status {
-	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now()
-	case types.ProvingTaskUnassigned:
-		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
-	}
-
 	db = db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash", hash)
-
-	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateProvingStatus error: %w, batch hash: %v, status: %v", err, hash, status.String())
+	db = db.Where("total_attempts >= ?", maxAttempts)
+	db = db.Where("proving_status != ?", int(types.ProverProofValid))
+	if err := db.Update("proving_status", int(types.ProvingTaskFailed)).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateProvingStatus error: %w, batch hash: %v, status: %v", err, hash, types.ProvingTaskFailed.String())
 	}
 	return nil
 }
 
-// UpdateProvingStatusFromProverError updates batch proving status when prover prove failed
-func (o *Batch) UpdateProvingStatusFromProverError(ctx context.Context, hash string, status types.ProvingStatus) error {
-	updateFields := make(map[string]interface{})
-	updateFields["proving_status"] = int(status)
-
-	switch status {
-	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now()
-	case types.ProvingTaskUnassigned:
-		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
-	}
-
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("hash", hash).Where("proving_status", types.ProvingTaskAssigned)
-
-	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateProvingStatusOptimistic error: %w, batch hash: %v, status: %v", err, hash, status.String())
-	}
-	return nil
-}
-
-// UpdateProofByHash updates the batch proof by hash.
-func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *message.BatchProof, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+// UpdateProofAndProvingStatusByHash updates the batch proof and proving status by hash.
+func (o *Batch) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof *message.BatchProof, provingStatus types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -307,6 +276,7 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 
 	updateFields := make(map[string]interface{})
 	updateFields["proof"] = proofBytes
+	updateFields["proving_status"] = provingStatus
 	updateFields["proof_time_sec"] = proofTimeSec
 
 	db = db.WithContext(ctx)
@@ -319,28 +289,47 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 	return nil
 }
 
-// UpdateUnassignedBatchReturning update the unassigned batch and return the update record
-func (o *Batch) UpdateUnassignedBatchReturning(ctx context.Context, limit int) ([]*Batch, error) {
-	if limit < 0 {
-		return nil, errors.New("limit must not be smaller than zero")
-	}
-	if limit == 0 {
-		return nil, nil
-	}
-
+// UpdateBatchAttemptsReturning atomically increments the attempts count for the earliest available batch that meets the conditions.
+func (o *Batch) UpdateBatchAttemptsReturning(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	db := o.db.WithContext(ctx)
 
 	subQueryDB := db.Model(&Batch{}).Select("index")
-	subQueryDB = subQueryDB.Where("proving_status = ? AND chunk_proofs_status = ?", types.ProvingTaskUnassigned, types.ChunkProofsStatusReady)
+	subQueryDB = subQueryDB.Clauses(clause.Locking{Strength: "UPDATE"})
+	subQueryDB = subQueryDB.Where("proving_status not in (?)", []int{int(types.ProvingTaskVerified), int(types.ProvingTaskFailed)})
+	subQueryDB = subQueryDB.Where("total_attempts < ?", maxTotalAttempts)
+	subQueryDB = subQueryDB.Where("active_attempts < ?", maxActiveAttempts)
+	subQueryDB = subQueryDB.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
 	subQueryDB = subQueryDB.Order("index ASC")
-	subQueryDB = subQueryDB.Limit(limit)
+	subQueryDB = subQueryDB.Limit(1)
 
-	var batches []*Batch
-	db = db.Model(&batches).Clauses(clause.Returning{})
+	var updatedBatch Batch
+	db = db.Model(&updatedBatch).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
-	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
-	if err := db.Update("proving_status", types.ProvingTaskAssigned).Error; err != nil {
-		return nil, fmt.Errorf("Batch.UpdateUnassignedBatchReturning error: %w", err)
+	result := db.Updates(map[string]interface{}{
+		"total_attempts":  gorm.Expr("total_attempts + ?", 1),
+		"active_attempts": gorm.Expr("active_attempts + ?", 1),
+	})
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to select and update batch, max active attempts: %v, max total attempts: %v, err: %w",
+			maxActiveAttempts, maxTotalAttempts, result.Error)
 	}
-	return batches, nil
+	if result.RowsAffected == 0 {
+		return nil, nil
+	}
+	return &updatedBatch, nil
+}
+
+// DecreaseActiveAttemptsByHash decrements the active_attempts of a batch given its hash.
+func (o *Batch) DecreaseActiveAttemptsByHash(ctx context.Context, batchHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash = ?", batchHash)
+	if err := db.UpdateColumn("active_attempts", gorm.Expr("active_attempts - ?", 1)).Error; err != nil {
+		return fmt.Errorf("Batch.DecreaseActiveAttemptsByHash error: %w, batch hash: %v", err, batchHash)
+	}
+	return nil
 }
