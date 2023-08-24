@@ -211,7 +211,7 @@ func (c *Collector) checkBatchAllChunkReady() {
 			page := 1
 			pageSize := 50
 			for {
-				offset := (page - 1) * 50
+				offset := (page - 1) * pageSize
 				batches, err := c.batchOrm.GetUnassignedAndChunksUnreadyBatches(c.ctx, offset, pageSize)
 				if err != nil {
 					log.Warn("checkBatchAllChunkReady GetUnassignedAndChunksUnreadyBatches", "error", err)
