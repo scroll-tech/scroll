@@ -78,7 +78,7 @@ func CheckScrollProverVersionTag(proverVersion string) bool {
 	if remoteTagMinor != 1 {
 		return false
 	}
-	if remoteTagPatch < 96 {
+	if remoteTagPatch < 98 {
 		return false
 	}
 	return true
