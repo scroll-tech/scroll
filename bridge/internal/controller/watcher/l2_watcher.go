@@ -162,7 +162,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 			return fmt.Errorf("failed to GetBlockByNumberOrHash: %v. number: %v", err, number)
 		}
 		if block.RowConsumption == nil {
-			return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
+			// return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
 		}
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
