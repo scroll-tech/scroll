@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -42,7 +41,7 @@ func NewGetTaskController(cfg *config.Config, db *gorm.DB, vf *verifier.Verifier
 func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	var getTaskParameter coordinatorType.GetTaskParameter
 	if err := ctx.ShouldBind(&getTaskParameter); err != nil {
-		nerr := fmt.Errorf("prover tasks parameter invalid, err:%w", err)
+		nerr := fmt.Errorf("prover task parameter invalid, err:%w", err)
 		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
 		return
 	}
@@ -50,15 +49,15 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	proofType := ptc.proofType(&getTaskParameter)
 	proverTask, isExist := ptc.proverTasks[proofType]
 	if !isExist {
-		nerr := fmt.Errorf("parameter wrong proof type")
+		nerr := fmt.Errorf("parameter wrong proof type:%v", proofType)
 		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
 		return
 	}
 
 	result, err := proverTask.Assign(ctx, &getTaskParameter)
 	if err != nil {
-		log.Error("assign prover task failed", "err", err)
-		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorGetTaskFailure, nil, nil)
+		nerr := fmt.Errorf("return prover task err:%w", err)
+		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorGetTaskFailure, nerr, nil)
 		return
 	}
 

@@ -76,7 +76,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 	} else if getTaskParameter.VK != bp.vk { // non-empty vk but different
 		if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
-			return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
+			return nil, fmt.Errorf("incompatible vk. please check your params files or config files, expect vk: %s, actual vk: %s", getTaskParameter.VK, bp.vk)
 		}
 		// different prover versions and different vks
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
@@ -109,7 +109,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if !bp.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
 		bp.batchAttemptsExceedTotal.Inc()
-		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
+		// TODO: retry fetching unassigned batch proving task
+		log.Error("batch task proving attempts reach the maximum", "hash", batchTask.Hash)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	proverTask := orm.ProverTask{
@@ -127,13 +129,15 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	// Store session info.
 	if err = bp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
-		return nil, fmt.Errorf("db set session info fail, session id:%s, error:%w", proverTask.TaskID, err)
+		log.Error("db set session info fail", "task hash", batchTask.Hash, "prover name", proverName.(string), "prover pubKey", publicKey.(string), "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := bp.formatProverTask(ctx, batchTask.Hash)
 	if err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
-		return nil, fmt.Errorf("format prover failure, id:%s error:%w", batchTask.Hash, err)
+		log.Error("format prover task failure", "hash", batchTask.Hash, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	bp.batchTaskGetTaskTotal.Inc()

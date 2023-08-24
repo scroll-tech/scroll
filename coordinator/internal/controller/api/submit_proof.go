@@ -6,7 +6,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -69,8 +68,8 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 	}
 
 	if err := spc.submitProofReceiverLogic.HandleZkProof(ctx, &proofMsg, spp); err != nil {
-		log.Error("handle zk proof failure", "err", err)
-		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorHandleZkProofFailure, nil, nil)
+		nerr := fmt.Errorf("handle zk proof failure, err:%w", err)
+		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorHandleZkProofFailure, nerr, nil)
 		return
 	}
 	coordinatorType.RenderJSON(ctx, types.Success, nil, nil)
