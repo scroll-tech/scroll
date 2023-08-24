@@ -112,7 +112,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		bp.batchAttemptsExceedTotal.Inc()
 		// TODO: retry fetching unassigned batch proving task
 		log.Error("batch task proving attempts reach the maximum", "hash", batchTask.Hash)
-		return nil, ErrCoordinatorInternalFailure
+		return nil, nil
 	}
 
 	proverTask := orm.ProverTask{

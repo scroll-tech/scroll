@@ -118,7 +118,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		cp.chunkAttemptsExceedTotal.Inc()
 		// TODO: retry fetching unassigned chunk proving task
 		log.Error("chunk task proving attempts reach the maximum", "hash", chunkTask.Hash)
-		return nil, ErrCoordinatorInternalFailure
+		return nil, nil
 	}
 
 	proverTask := orm.ProverTask{
