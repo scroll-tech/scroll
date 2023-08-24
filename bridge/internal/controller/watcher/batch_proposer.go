@@ -183,6 +183,10 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	for i, chunk := range dbChunks {
+		// metric values
+		lastTotalL1CommitCalldataSize := totalL1CommitCalldataSize
+		lastTotalL1CommitGas := totalL1CommitGas
+
 		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
 		totalL1CommitGas += chunk.TotalL1CommitGas
 		// adjust batch data hash gas cost
@@ -230,9 +234,9 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
 				"maxL1CommitGasPerBatch", p.maxL1CommitGasPerBatch)
 
-			p.totalL1CommitGas.Set(float64(totalL1CommitGas))
-			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
-			p.batchChunksNum.Set(float64(len(dbChunks)))
+			p.totalL1CommitGas.Set(float64(lastTotalL1CommitGas))
+			p.totalL1CommitCalldataSize.Set(float64(lastTotalL1CommitCalldataSize))
+			p.batchChunksNum.Set(float64(len(dbChunks) - 1))
 			return dbChunks[:i], nil
 		}
 	}
