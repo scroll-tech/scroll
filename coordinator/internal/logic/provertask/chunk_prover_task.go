@@ -79,7 +79,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 	} else if getTaskParameter.VK != cp.vk { // non-empty vk but different
 		if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
-			return nil, fmt.Errorf("incompatible vk. please check your params files or config files, expect vk: %s, actual vk: %s", cp.vk, getTaskParameter.VK)
+			return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
 		}
 		// different prover versions and different vks
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
