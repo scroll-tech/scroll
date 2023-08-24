@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -24,7 +23,8 @@ type chunkRowConsumption map[string]uint64
 // add accumulates row consumption per sub-circuit
 func (crc *chunkRowConsumption) add(rowConsumption *gethTypes.RowConsumption) error {
 	if rowConsumption == nil {
-		return errors.New("rowConsumption is <nil>")
+		// return errors.New("rowConsumption is <nil>")
+		return nil
 	}
 	for _, subCircuit := range *rowConsumption {
 		(*crc)[subCircuit.Name] += subCircuit.RowNumber
