@@ -72,6 +72,7 @@ func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock
 	db = db.Select("header, transactions, withdraw_root, row_consumption")
 	db = db.Where("chunk_hash IS NULL")
 	db = db.Order("number ASC")
+	db = db.Limit(100)
 
 	var l2Blocks []L2Block
 	if err := db.Find(&l2Blocks).Error; err != nil {

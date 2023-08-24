@@ -254,7 +254,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 				}
 			}
 
-			log.Debug("breaking limit condition in chunking",
+			log.Info("breaking limit condition in chunking",
 				"totalL2TxNum", totalL2TxNum,
 				"maxL2TxNumPerChunk", p.maxL2TxNumPerChunk,
 				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
@@ -275,6 +275,16 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		}
 		chunk.Blocks = append(chunk.Blocks, block)
 	}
+
+	log.Info("did not break limit condition in chunking",
+		"numBlocks", len(chunk.Blocks),
+		"totalL2TxNum", totalL2TxNum,
+		"maxL2TxNumPerChunk", p.maxL2TxNumPerChunk,
+		"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
+		"maxL1CommitGasPerChunk", p.maxL1CommitGasPerChunk,
+		"maxL1CommitCalldataSizePerChunk", p.maxL1CommitCalldataSizePerChunk,
+		"chunkRowConsumption", crc,
+		"p.maxRowConsumptionPerChunk", p.maxRowConsumptionPerChunk)
 
 	currentTimeSec := uint64(time.Now().Unix())
 	if blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec {
