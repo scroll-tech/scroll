@@ -18,7 +18,6 @@ func RenderJSON(ctx *gin.Context, errCode int, err error, data interface{}) {
 	var errMsg string
 	if err != nil {
 		errMsg = err.Error()
-
 	}
 	renderData := Response{
 		ErrCode: errCode,
