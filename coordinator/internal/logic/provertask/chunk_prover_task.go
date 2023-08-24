@@ -106,7 +106,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	if len(chunkTasks) != 1 {
-		log.Error("get unassigned chunk proving task len not 1", "chunk tasks", chunkTasks)
+		log.Error("get unassigned chunk proving task len not 1", "length", len(chunkTasks), "chunk tasks", chunkTasks)
 		return nil, ErrCoordinatorInternalFailure
 	}
 

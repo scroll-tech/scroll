@@ -101,7 +101,8 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	if len(batchTasks) != 1 {
-		return nil, fmt.Errorf("get unassigned batch proving task len not 1, batch tasks:%v", batchTasks)
+		log.Error("get unassigned batch proving task len not 1", "length", len(batchTasks), "batch tasks", batchTasks)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	batchTask := batchTasks[0]
