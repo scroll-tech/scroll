@@ -76,7 +76,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 	} else if getTaskParameter.VK != bp.vk { // non-empty vk but different
 		if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
-			return nil, fmt.Errorf("incompatible vk. please check your params files or config files, expect vk: %s, actual vk: %s", getTaskParameter.VK, bp.vk)
+			return nil, fmt.Errorf("incompatible vk. please check your params files or config files, expect vk: %s, actual vk: %s", bp.vk, getTaskParameter.VK)
 		}
 		// different prover versions and different vks
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
