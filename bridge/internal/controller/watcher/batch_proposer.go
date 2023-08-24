@@ -236,7 +236,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 
 			p.totalL1CommitGas.Set(float64(lastTotalL1CommitGas))
 			p.totalL1CommitCalldataSize.Set(float64(lastTotalL1CommitCalldataSize))
-			p.batchChunksNum.Set(float64(len(dbChunks) - 1))
+			p.batchChunksNum.Set(float64(i))
 			return dbChunks[:i], nil
 		}
 	}
