@@ -138,7 +138,7 @@ func (o *ProverTask) GetAssignedTaskOfOtherProvers(ctx context.Context, taskType
 	db = db.Where("task_type", int(taskType))
 	db = db.Where("task_id", taskID)
 	db = db.Where("prover_public_key != ?", proverPublicKey)
-	db = db.Where("proving_status = ?", []int{int(types.ProverAssigned)})
+	db = db.Where("proving_status = ?", int(types.ProverAssigned))
 
 	var proverTasks []ProverTask
 	if err := db.Find(&proverTasks).Error; err != nil {
