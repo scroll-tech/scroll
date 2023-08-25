@@ -226,7 +226,8 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 	}()
 
 	// Ensure this prover is eligible to participate in the prover task.
-	if types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofValid {
+	if types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofValid ||
+		types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofInvalid {
 		m.validateFailureProverTaskSubmitTwice.Inc()
 		// In order to prevent DoS attacks, it is forbidden to repeatedly submit valid proofs.
 		// TODO: Defend invalid proof resubmissions by one of the following two methods:
