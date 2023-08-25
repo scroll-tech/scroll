@@ -82,14 +82,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	// Store session info.
 	if err = bp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
-		bp.recoverProvingStatus(ctx, batchTask)
+		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("insert batch prover task info fail", "taskID", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := bp.formatProverTask(ctx, &proverTask)
 	if err != nil {
-		bp.recoverProvingStatus(ctx, batchTask)
+		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "hash", batchTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
@@ -146,9 +146,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	return taskMsg, nil
 }
 
-// recoverProvingStatus if not return the batch task to prover success,
-// need recover the proving status to unassigned
-func (bp *BatchProverTask) recoverProvingStatus(ctx *gin.Context, batchTask *orm.Batch) {
+func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *orm.Batch) {
 	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx, batchTask.Hash); err != nil {
 		log.Error("failed to recover batch active attempts", "hash", batchTask.Hash, "error", err)
 	}

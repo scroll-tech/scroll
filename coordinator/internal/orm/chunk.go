@@ -356,11 +356,12 @@ func (o *Chunk) UpdateChunkAttemptsReturning(ctx context.Context, height int, ma
 	var updatedChunk Chunk
 	db = db.Model(&updatedChunk).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
-	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
 	result := db.Updates(map[string]interface{}{
-		"total_attempts":  gorm.Expr("total_attempts + ?", 1),
-		"active_attempts": gorm.Expr("active_attempts + ?", 1),
+		"proving_status":  types.ProvingTaskAssigned,
+		"total_attempts":  gorm.Expr("total_attempts + 1"),
+		"active_attempts": gorm.Expr("active_attempts + 1"),
 	})
+
 	if result.Error != nil {
 		return nil, fmt.Errorf("failed to select and update batch, max active attempts: %v, max total attempts: %v, err: %w",
 			maxActiveAttempts, maxTotalAttempts, result.Error)
@@ -380,6 +381,7 @@ func (o *Chunk) DecreaseActiveAttemptsByHash(ctx context.Context, chunkHash stri
 	db = db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash = ?", chunkHash)
+	db = db.Where("proving_status != ", int(types.ProvingTaskVerified))
 	if err := db.UpdateColumn("active_attempts", gorm.Expr("active_attempts - ?", 1)).Error; err != nil {
 		return fmt.Errorf("Chunk.DecreaseActiveAttemptsByHash error: %w, chunk hash: %v", err, chunkHash)
 	}

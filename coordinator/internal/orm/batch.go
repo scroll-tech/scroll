@@ -306,9 +306,11 @@ func (o *Batch) UpdateBatchAttemptsReturning(ctx context.Context, maxActiveAttem
 	db = db.Model(&updatedBatch).Clauses(clause.Returning{})
 	db = db.Where("index = (?)", subQueryDB)
 	result := db.Updates(map[string]interface{}{
-		"total_attempts":  gorm.Expr("total_attempts + ?", 1),
-		"active_attempts": gorm.Expr("active_attempts + ?", 1),
+		"proving_status":  types.ProvingTaskAssigned,
+		"total_attempts":  gorm.Expr("total_attempts + 1"),
+		"active_attempts": gorm.Expr("active_attempts + 1"),
 	})
+
 	if result.Error != nil {
 		return nil, fmt.Errorf("failed to select and update batch, max active attempts: %v, max total attempts: %v, err: %w",
 			maxActiveAttempts, maxTotalAttempts, result.Error)
@@ -328,6 +330,7 @@ func (o *Batch) DecreaseActiveAttemptsByHash(ctx context.Context, batchHash stri
 	db = db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("hash = ?", batchHash)
+	db = db.Where("proving_status != ", int(types.ProvingTaskVerified))
 	if err := db.UpdateColumn("active_attempts", gorm.Expr("active_attempts - ?", 1)).Error; err != nil {
 		return fmt.Errorf("Batch.DecreaseActiveAttemptsByHash error: %w, batch hash: %v", err, batchHash)
 	}

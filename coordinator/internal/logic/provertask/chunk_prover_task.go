@@ -85,14 +85,14 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	if err = cp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
-		cp.recoverProvingStatus(ctx, chunkTask)
+		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := cp.formatProverTask(ctx, &proverTask)
 	if err != nil {
-		cp.recoverProvingStatus(ctx, chunkTask)
+		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("format prover task failure", "hash", chunkTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
@@ -132,9 +132,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	return proverTaskSchema, nil
 }
 
-// recoverProvingStatus if not return the batch task to prover success,
-// need recover the proving status to unassigned
-func (cp *ChunkProverTask) recoverProvingStatus(ctx *gin.Context, chunkTask *orm.Chunk) {
+func (cp *ChunkProverTask) recoverActiveAttempts(ctx *gin.Context, chunkTask *orm.Chunk) {
 	if err := cp.chunkOrm.DecreaseActiveAttemptsByHash(ctx, chunkTask.Hash); err != nil {
 		log.Error("failed to recover chunk active attempts", "hash", chunkTask.Hash, "error", err)
 	}
