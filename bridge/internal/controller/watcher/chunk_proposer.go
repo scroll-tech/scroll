@@ -18,10 +18,6 @@ import (
 	"scroll-tech/bridge/internal/orm"
 )
 
-// maxNumBlockPerChunk is the maximum number of blocks we allow per chunk.
-// Normally we will pack much fewer blocks because of other limits.
-const maxNumBlockPerChunk int = 100
-
 // chunkRowConsumption is map(sub-circuit name => sub-circuit row count)
 type chunkRowConsumption map[string]uint64
 
