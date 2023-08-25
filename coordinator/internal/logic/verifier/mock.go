@@ -8,11 +8,6 @@ import (
 	"scroll-tech/coordinator/internal/config"
 )
 
-const InvalidTestProof = "this is a invalid proof"
-
-// Verifier represents a mock halo2 verifier.
-type Verifier struct{}
-
 // NewVerifier Sets up a mock verifier.
 func NewVerifier(_ *config.VerifierConfig) (*Verifier, error) {
 	return &Verifier{}, nil
