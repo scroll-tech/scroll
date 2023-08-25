@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 )
@@ -65,23 +64,7 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 			if txData.Type == types.L1MessageTxType {
 				continue
 			}
-			data, err := hexutil.Decode(txData.Data)
-			if err != nil {
-				return nil, err
-			}
-			// right now we only support legacy tx
-			tx := types.NewTx(&types.LegacyTx{
-				Nonce:    txData.Nonce,
-				To:       txData.To,
-				Value:    txData.Value.ToInt(),
-				Gas:      txData.Gas,
-				GasPrice: txData.GasPrice.ToInt(),
-				Data:     data,
-				V:        txData.V.ToInt(),
-				R:        txData.R.ToInt(),
-				S:        txData.S.ToInt(),
-			})
-			rlpTxData, err := tx.MarshalBinary()
+			rlpTxData, err := convertTxDataToRLPEncoding(txData)
 			if err != nil {
 				return nil, err
 			}

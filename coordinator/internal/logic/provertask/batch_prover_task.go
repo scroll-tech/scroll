@@ -25,13 +25,14 @@ import (
 // BatchProverTask is prover task implement for batch proof
 type BatchProverTask struct {
 	BaseProverTask
+	vk string
 
 	batchAttemptsExceedTotal prometheus.Counter
 	batchTaskGetTaskTotal    prometheus.Counter
 }
 
 // NewBatchProverTask new a batch collector
-func NewBatchProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *BatchProverTask {
+func NewBatchProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
 			db:            db,
@@ -40,6 +41,7 @@ func NewBatchProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Register
 			batchOrm:      orm.NewBatch(db),
 			proverTaskOrm: orm.NewProverTask(db),
 		},
+		vk: vk,
 		batchAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_batch_attempts_exceed_total",
 			Help: "Total number of batch attempts exceed.",
@@ -68,7 +70,15 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-	if !version.CheckScrollProverVersion(proverVersion.(string)) {
+	if getTaskParameter.VK == "" { // allow vk being empty, because for the first time the prover may not know its vk
+		if !version.CheckScrollProverVersionTag(proverVersion.(string)) { // but reject too-old provers
+			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+		}
+	} else if getTaskParameter.VK != bp.vk { // non-empty vk but different
+		if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
+			return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
+		}
+		// different prover versions and different vks
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
 	}
 
@@ -91,7 +101,8 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	if len(batchTasks) != 1 {
-		return nil, fmt.Errorf("get unassigned batch proving task len not 1, batch tasks:%v", batchTasks)
+		log.Error("get unassigned batch proving task len not 1", "length", len(batchTasks), "batch tasks", batchTasks)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	batchTask := batchTasks[0]
@@ -99,7 +110,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if !bp.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
 		bp.batchAttemptsExceedTotal.Inc()
-		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
+		// TODO: retry fetching unassigned batch proving task
+		log.Error("batch task proving attempts reach the maximum", "hash", batchTask.Hash)
+		return nil, nil
 	}
 
 	proverTask := orm.ProverTask{
@@ -117,13 +130,15 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	// Store session info.
 	if err = bp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
-		return nil, fmt.Errorf("db set session info fail, session id:%s, error:%w", proverTask.TaskID, err)
+		log.Error("db set session info fail", "task hash", batchTask.Hash, "prover name", proverName.(string), "prover pubKey", publicKey.(string), "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := bp.formatProverTask(ctx, batchTask.Hash)
 	if err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
-		return nil, fmt.Errorf("format prover failure, id:%s error:%w", batchTask.Hash, err)
+		log.Error("format prover task failure", "hash", batchTask.Hash, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	bp.batchTaskGetTaskTotal.Inc()
