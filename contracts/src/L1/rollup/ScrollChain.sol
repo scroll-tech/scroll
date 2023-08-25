@@ -272,9 +272,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
 
         while (_count > 0) {
+            committedBatches[_batchIndex] = bytes32(0);
+
             emit RevertBatch(_batchIndex, _batchHash);
 
-            committedBatches[_batchIndex] = bytes32(0);
             unchecked {
                 _batchIndex += 1;
                 _count -= 1;
