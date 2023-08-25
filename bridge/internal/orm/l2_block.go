@@ -66,12 +66,16 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (uint64, error) {
 
 // GetUnchunkedBlocks get the l2 blocks that have not been put into a chunk.
 // The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock, error) {
+func (o *L2Block) GetUnchunkedBlocks(ctx context.Context, limit int) ([]*types.WrappedBlock, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("header, transactions, withdraw_root, row_consumption")
 	db = db.Where("chunk_hash IS NULL")
 	db = db.Order("number ASC")
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
 
 	var l2Blocks []L2Block
 	if err := db.Find(&l2Blocks).Error; err != nil {

@@ -88,11 +88,15 @@ func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endInde
 }
 
 // GetUnbatchedChunks retrieves unbatched chunks from the database.
-func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
+func (o *Chunk) GetUnbatchedChunks(ctx context.Context, limit int) ([]*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("batch_hash IS NULL")
 	db = db.Order("index asc")
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
 
 	var chunks []*Chunk
 	if err := db.Find(&chunks).Error; err != nil {

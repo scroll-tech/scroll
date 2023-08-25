@@ -101,7 +101,7 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(3), height)
 
-	blocks, err := l2BlockOrm.GetUnchunkedBlocks(context.Background())
+	blocks, err := l2BlockOrm.GetUnchunkedBlocks(context.Background(), 0)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
 	assert.Equal(t, wrappedBlock1, blocks[0])
@@ -116,7 +116,7 @@ func TestL2BlockOrm(t *testing.T) {
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 2, 2, "test hash")
 	assert.NoError(t, err)
 
-	blocks, err = l2BlockOrm.GetUnchunkedBlocks(context.Background())
+	blocks, err = l2BlockOrm.GetUnchunkedBlocks(context.Background(), 0)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 1)
 	assert.Equal(t, wrappedBlock2, blocks[0])
@@ -135,7 +135,7 @@ func TestChunkOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
+	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background(), 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 2)
 	assert.Equal(t, chunkHash1.Hex(), chunks[0].Hash)
@@ -156,7 +156,7 @@ func TestChunkOrm(t *testing.T) {
 
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, "test hash")
 	assert.NoError(t, err)
-	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
+	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background(), 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
 }
