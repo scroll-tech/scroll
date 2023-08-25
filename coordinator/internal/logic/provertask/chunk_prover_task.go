@@ -21,6 +21,9 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
+// ErrCoordinatorInternalFailure coordinator internal db failure
+var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
 	BaseProverTask
@@ -63,7 +66,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	maxTotalAttempts := cp.cfg.ProverManager.SessionAttempts
 	chunkTask, err := cp.chunkOrm.UpdateChunkAttemptsReturning(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get unassigned chunk proving tasks, error:%w", err)
+		log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
@@ -82,13 +86,15 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if err = cp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
 		cp.recoverProvingStatus(ctx, chunkTask)
-		return nil, fmt.Errorf("insert prover task fail, task id:%s , public key:%s, err:%w", chunkTask.Hash, taskCtx.PublicKey, err)
+		log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := cp.formatProverTask(ctx, &proverTask)
 	if err != nil {
 		cp.recoverProvingStatus(ctx, chunkTask)
-		return nil, fmt.Errorf("format prover task failure, id:%s error:%w", chunkTask.Hash, err)
+		log.Error("format prover task failure", "hash", chunkTask.Hash, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	cp.chunkTaskGetTaskTotal.Inc()

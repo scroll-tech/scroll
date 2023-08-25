@@ -199,6 +199,13 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	crc := chunkRowConsumption{}
 
 	for i, block := range blocks {
+		// metric values
+		lastTotalL2TxNum := totalL2TxNum
+		lastTotalL1CommitGas := totalL1CommitGas
+		lastCrcMax := crc.max()
+		lastTotalL1CommitCalldataSize := totalL1CommitCalldataSize
+		lastTotalTxGasUsed := totalTxGasUsed
+
 		totalTxGasUsed += block.Header.GasUsed
 		totalL2TxNum += block.L2TxsNum()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
@@ -258,18 +265,18 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 				"totalL2TxNum", totalL2TxNum,
 				"maxL2TxNumPerChunk", p.maxL2TxNumPerChunk,
 				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
-				"maxL1CommitGasPerChunk", p.maxL1CommitGasPerChunk,
-				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
 				"maxL1CommitCalldataSizePerChunk", p.maxL1CommitCalldataSizePerChunk,
+				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
+				"maxL1CommitGasPerChunk", p.maxL1CommitGasPerChunk,
 				"chunkRowConsumptionMax", crcMax,
 				"chunkRowConsumption", crc,
 				"p.maxRowConsumptionPerChunk", p.maxRowConsumptionPerChunk)
 
-			p.chunkL2TxNum.Set(float64(totalL2TxNum))
-			p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))
-			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
-			p.maxTxConsumption.Set(float64(crcMax))
-			p.totalTxGasUsed.Set(float64(totalTxGasUsed))
+			p.chunkL2TxNum.Set(float64(lastTotalL2TxNum))
+			p.chunkEstimateL1CommitGas.Set(float64(lastTotalL1CommitGas))
+			p.totalL1CommitCalldataSize.Set(float64(lastTotalL1CommitCalldataSize))
+			p.maxTxConsumption.Set(float64(lastCrcMax))
+			p.totalTxGasUsed.Set(float64(lastTotalTxGasUsed))
 			p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
 			return &chunk, nil
 		}

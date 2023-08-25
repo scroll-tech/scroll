@@ -83,13 +83,15 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	// Store session info.
 	if err = bp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
-		return nil, fmt.Errorf("insert prover task info fail, task id:%s, public key:%s, err:%w", batchTask.Hash, taskCtx.PublicKey, err)
+		log.Error("insert batch prover task info fail", "taskID", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := bp.formatProverTask(ctx, &proverTask)
 	if err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
-		return nil, fmt.Errorf("format prover failure, id:%s error:%w", batchTask.Hash, err)
+		log.Error("format prover task failure", "hash", batchTask.Hash, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	bp.batchTaskGetTaskTotal.Inc()
