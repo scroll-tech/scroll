@@ -34,6 +34,12 @@ var (
 	ErrValidatorFailureProofTimeout = errors.New("validator failure submit proof timeout")
 	// ErrValidatorFailureTaskHaveVerifiedSuccess have proved success and verified success
 	ErrValidatorFailureTaskHaveVerifiedSuccess = errors.New("validator failure chunk/batch have proved and verified success")
+	// ErrValidatorFailureVerifiedFailed failed to verify and the verifier returns error
+	ErrValidatorFailureVerifiedFailed = fmt.Errorf("verification failed, verifier returns error")
+	// ErrValidatorSuccessInvalidProof successful verified and the proof is invalid
+	ErrValidatorSuccessInvalidProof = fmt.Errorf("verification succeeded, it's an invalid proof")
+	// ErrCoordinatorInternalFailure coordinator internal db failure
+	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
 )
 
 // ProofReceiverLogic the proof receiver logic
@@ -173,10 +179,10 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
 
-		if verifyErr == nil {
-			verifyErr = fmt.Errorf("verification succeeded and it's an invalid proof")
+		if verifyErr != nil {
+			return ErrValidatorFailureVerifiedFailed
 		}
-		return verifyErr
+		return ErrValidatorSuccessInvalidProof
 	}
 
 	m.proverTaskProveDuration.Observe(time.Since(proverTask.CreatedAt).Seconds())
@@ -187,7 +193,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if err := m.closeProofTask(ctx, proverTask, proofMsg, proofTimeSec); err != nil {
 		m.proofSubmitFailure.Inc()
 		m.proofRecover(ctx, proverTask, proofMsg)
-		return err
+		return ErrCoordinatorInternalFailure
 	}
 
 	return nil
