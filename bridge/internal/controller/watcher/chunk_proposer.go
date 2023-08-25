@@ -19,7 +19,7 @@ import (
 )
 
 // maxNumBlockPerChunk is the maximum number of blocks we allow per chunk.
-// Normally we will pack much fewer blocks due to other limits.
+// Normally we will pack much fewer blocks because of other limits.
 const maxNumBlockPerChunk int = 100
 
 // chunkRowConsumption is map(sub-circuit name => sub-circuit row count)
