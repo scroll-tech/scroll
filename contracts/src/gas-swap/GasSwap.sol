@@ -15,6 +15,7 @@ import {OwnableBase} from "../libraries/common/OwnableBase.sol";
 
 contract GasSwap is ERC2771Context, ReentrancyGuard, OwnableBase {
     using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Permit;
 
     /**********
      * Events *
@@ -94,7 +95,7 @@ contract GasSwap is ERC2771Context, ReentrancyGuard, OwnableBase {
         address _sender = _msgSender();
 
         // do permit
-        IERC20Permit(_permit.token).permit(
+        IERC20Permit(_permit.token).safePermit(
             _sender,
             address(this),
             _permit.value,
