@@ -148,7 +148,7 @@ func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk) error {
 }
 
 func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
-	dbChunks, err := p.chunkOrm.GetUnbatchedChunks(p.ctx, int(p.maxChunkNumPerBatch))
+	dbChunks, err := p.chunkOrm.GetUnbatchedChunks(p.ctx, int(p.maxChunkNumPerBatch)+1)
 	if err != nil {
 		return nil, err
 	}
