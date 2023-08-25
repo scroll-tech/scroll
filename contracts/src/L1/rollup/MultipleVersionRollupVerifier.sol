@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
+import {IScrollChain} from "./IScrollChain.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 import {IZkEvmVerifier} from "../../libraries/verifier/IZkEvmVerifier.sol";
 
@@ -38,6 +39,9 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
     /// @notice The lastest used zkevm verifier.
     Verifier public latestVerifier;
 
+    /// @notice The address of ScrollChain contract.
+    address public scrollChain;
+
     /***************
      * Constructor *
      ***************/
@@ -46,6 +50,12 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
         require(_verifier != address(0), "zero verifier address");
 
         latestVerifier.verifier = _verifier;
+    }
+
+    function initialize(address _scrollChain) external onlyOwner {
+        require(scrollChain == address(0), "initialized");
+
+        scrollChain = _scrollChain;
     }
 
     /*************************
@@ -101,6 +111,8 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
     /// @param _startBatchIndex The start batch index when the verifier will be used.
     /// @param _verifier The address of new verifier.
     function updateVerifier(uint64 _startBatchIndex, address _verifier) external onlyOwner {
+        require(_startBatchIndex > IScrollChain(scrollChain).lastFinalizedBatchIndex(), "start batch index finalized");
+
         Verifier memory _latestVerifier = latestVerifier;
         require(_startBatchIndex >= _latestVerifier.startBatchIndex, "start batch index too small");
         require(_verifier != address(0), "zero verifier address");
