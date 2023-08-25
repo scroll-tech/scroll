@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -222,7 +221,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 				}
 			}
 
-			log.Debug("breaking limit condition in batching",
+			log.Info("breaking limit condition in batching",
 				"currentTotalChunks", totalChunks,
 				"maxChunkNumPerBatch", p.maxChunkNumPerBatch,
 				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
@@ -237,13 +236,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		}
 	}
 
-	currentTimeSec := uint64(time.Now().Unix())
-	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
-		log.Warn("first block timeout",
-			"start block number", dbChunks[0].StartBlockNumber,
-			"first block timestamp", dbChunks[0].StartBlockTime,
-			"chunk outdated time threshold", currentTimeSec,
-		)
+	if len(dbChunks) == 10 {
+		log.Info("Collected 10 chunks, creating batch")
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.totalL1CommitGas.Set(float64(totalL1CommitGas))
 		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))

@@ -93,6 +93,7 @@ func (o *Chunk) GetUnbatchedChunks(ctx context.Context) ([]*Chunk, error) {
 	db = db.Model(&Chunk{})
 	db = db.Where("batch_hash IS NULL")
 	db = db.Order("index asc")
+	db = db.Limit(10) // we allow at most 10 chunks per batch
 
 	var chunks []*Chunk
 	if err := db.Find(&chunks).Error; err != nil {

@@ -276,7 +276,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		chunk.Blocks = append(chunk.Blocks, block)
 	}
 
-	log.Info("did not break limit condition in chunking",
+	log.Debug("did not break limit condition in chunking",
 		"numBlocks", len(chunk.Blocks),
 		"totalL2TxNum", totalL2TxNum,
 		"maxL2TxNumPerChunk", p.maxL2TxNumPerChunk,
