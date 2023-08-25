@@ -14,8 +14,6 @@ import {ScrollConstants} from "../../libraries/constants/ScrollConstants.sol";
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallback.sol";
 
-// solhint-disable no-empty-blocks
-
 abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, ScrollGatewayBase {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
