@@ -117,11 +117,15 @@ func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 
 // GetChunksGEIndex retrieves chunks that have a chunk index greater than the given index.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64) ([]*Chunk, error) {
+func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) ([]*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("index >= ?", index)
 	db = db.Order("index ASC")
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
 
 	var chunks []*Chunk
 	if err := db.Find(&chunks).Error; err != nil {

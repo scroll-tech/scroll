@@ -136,7 +136,7 @@ func TestChunkOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
-	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0)
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 2)
 	assert.Equal(t, chunkHash1.Hex(), chunks[0].Hash)
@@ -159,7 +159,7 @@ func TestChunkOrm(t *testing.T) {
 
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, "test hash")
 	assert.NoError(t, err)
-	chunks, err = chunkOrm.GetChunksGEIndex(context.Background(), 0)
+	chunks, err = chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 2)
 	assert.Equal(t, chunkHash1.Hex(), chunks[0].Hash)

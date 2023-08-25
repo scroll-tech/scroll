@@ -38,7 +38,7 @@ func testChunkProposer(t *testing.T) {
 	assert.NoError(t, err)
 
 	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0)
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
 	assert.Equal(t, expectedHash.Hex(), chunks[0].Hash)
@@ -62,7 +62,7 @@ func testChunkProposerRowConsumption(t *testing.T) {
 	cp.TryProposeChunk()
 
 	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0)
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 0)
 }
