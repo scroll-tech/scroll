@@ -381,8 +381,8 @@ func (o *Chunk) DecreaseActiveAttemptsByHash(ctx context.Context, chunkHash stri
 	db = db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash = ?", chunkHash)
-	db = db.Where("proving_status != ", int(types.ProvingTaskVerified))
-	if err := db.UpdateColumn("active_attempts", gorm.Expr("active_attempts - ?", 1)).Error; err != nil {
+	db = db.Where("proving_status != ?", int(types.ProvingTaskVerified))
+	if err := db.UpdateColumn("active_attempts", gorm.Expr("active_attempts - 1")).Error; err != nil {
 		return fmt.Errorf("Chunk.DecreaseActiveAttemptsByHash error: %w, chunk hash: %v", err, chunkHash)
 	}
 	return nil
