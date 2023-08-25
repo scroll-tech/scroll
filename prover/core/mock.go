@@ -42,3 +42,7 @@ func (p *ProverCore) ProveBatch(taskID string, chunkInfos []*message.ChunkInfo, 
 		Vk:        _empty[:],
 	}, nil
 }
+
+func (p *ProverCore) GetVk() string {
+	return ""
+}

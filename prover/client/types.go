@@ -43,6 +43,7 @@ type LoginResponse struct {
 type GetTaskRequest struct {
 	TaskType     message.ProofType `json:"task_type"`
 	ProverHeight uint64            `json:"prover_height,omitempty"`
+	VK           string            `json:"vk"`
 }
 
 // GetTaskResponse defines the response structure for GetTask API

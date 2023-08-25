@@ -34,6 +34,12 @@ var (
 	ErrValidatorFailureProofTimeout = errors.New("validator failure submit proof timeout")
 	// ErrValidatorFailureTaskHaveVerifiedSuccess have proved success and verified success
 	ErrValidatorFailureTaskHaveVerifiedSuccess = errors.New("validator failure chunk/batch have proved and verified success")
+	// ErrValidatorFailureVerifiedFailed failed to verify and the verifier returns error
+	ErrValidatorFailureVerifiedFailed = fmt.Errorf("verification failed, verifier returns error")
+	// ErrValidatorSuccessInvalidProof successful verified and the proof is invalid
+	ErrValidatorSuccessInvalidProof = fmt.Errorf("verification succeeded, it's an invalid proof")
+	// ErrCoordinatorInternalFailure coordinator internal db failure
+	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
 )
 
 // ProofReceiverLogic the proof receiver logic
@@ -60,11 +66,7 @@ type ProofReceiverLogic struct {
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
-func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, reg prometheus.Registerer) *ProofReceiverLogic {
-	vf, err := verifier.NewVerifier(cfg.Verifier)
-	if err != nil {
-		panic("proof receiver new verifier failure")
-	}
+func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *ProofReceiverLogic {
 	return &ProofReceiverLogic{
 		chunkOrm:      orm.NewChunk(db),
 		batchOrm:      orm.NewBatch(db),
@@ -166,10 +168,10 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
 
-		if verifyErr == nil {
-			verifyErr = fmt.Errorf("verification succeeded and it's an invalid proof")
+		if verifyErr != nil {
+			return ErrValidatorFailureVerifiedFailed
 		}
-		return verifyErr
+		return ErrValidatorSuccessInvalidProof
 	}
 
 	m.proverTaskProveDuration.Observe(time.Since(proverTask.CreatedAt).Seconds())
@@ -180,7 +182,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if err := m.closeProofTask(ctx, proofMsg.ID, pk, proofMsg, proofTimeSec); err != nil {
 		m.proofSubmitFailure.Inc()
 		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg)
-		return err
+		return ErrCoordinatorInternalFailure
 	}
 
 	return nil
@@ -381,7 +383,7 @@ func (m *ProofReceiverLogic) processProverErr(ctx context.Context, taskID, pk st
 		log.Error("update prover task proving status failure", "taskID", taskID, "proverPublicKey", pk, "taskType", taskType, "error", updateErr)
 	}
 
-	proverTasks, err := m.proverTaskOrm.GetValidOrAssignedTaskOfOtherProvers(ctx, taskType, taskID, pk)
+	proverTasks, err := m.proverTaskOrm.GetAssignedTaskOfOtherProvers(ctx, taskType, taskID, pk)
 	if err != nil {
 		log.Warn("checkIsAssignedToOtherProver failure", "taskID", taskID, "proverPublicKey", pk, "taskType", taskType, "error", err)
 		return
