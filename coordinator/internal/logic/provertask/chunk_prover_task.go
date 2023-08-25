@@ -70,6 +70,10 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
+	if chunkTask == nil {
+		return nil, nil
+	}
+
 	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 
 	proverTask := orm.ProverTask{
