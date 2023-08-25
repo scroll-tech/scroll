@@ -25,6 +25,7 @@ type Config struct {
 // ProverCoreConfig load zk prover config.
 type ProverCoreConfig struct {
 	ParamsPath string            `json:"params_path"`
+	AssetsPath string            `json:"assets_path"`
 	ProofType  message.ProofType `json:"proof_type,omitempty"` // 1: chunk prover (default type), 2: batch prover
 	DumpDir    string            `json:"dump_dir,omitempty"`
 }

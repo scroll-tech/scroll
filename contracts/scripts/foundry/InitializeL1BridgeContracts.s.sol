@@ -12,6 +12,7 @@ import {L1ScrollMessenger} from "../../src/L1/L1ScrollMessenger.sol";
 import {L1StandardERC20Gateway} from "../../src/L1/gateways/L1StandardERC20Gateway.sol";
 import {L1WETHGateway} from "../../src/L1/gateways/L1WETHGateway.sol";
 import {L1DAIGateway} from "../../src/L1/gateways/L1DAIGateway.sol";
+import {MultipleVersionRollupVerifier} from "../../src/L1/rollup/MultipleVersionRollupVerifier.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
 import {L1MessageQueue} from "../../src/L1/rollup/L1MessageQueue.sol";
 import {L2GasPriceOracle} from "../../src/L1/rollup/L2GasPriceOracle.sol";
@@ -70,6 +71,9 @@ contract InitializeL1BridgeContracts is Script {
         );
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addSequencer(L1_COMMIT_SENDER_ADDRESS);
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addProver(L1_FINALIZE_SENDER_ADDRESS);
+
+        // initialize MultipleVersionRollupVerifier
+        MultipleVersionRollupVerifier(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR).initialize(L1_SCROLL_CHAIN_PROXY_ADDR);
 
         // initialize L2GasPriceOracle
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize(

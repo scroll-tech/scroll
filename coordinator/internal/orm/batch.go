@@ -91,6 +91,26 @@ func (o *Batch) GetUnassignedBatches(ctx context.Context, limit int) ([]*Batch, 
 	return batches, nil
 }
 
+// GetUnassignedAndChunksUnreadyBatches get the batches which is unassigned and chunks is not ready
+func (o *Batch) GetUnassignedAndChunksUnreadyBatches(ctx context.Context, offset, limit int) ([]*Batch, error) {
+	if offset < 0 || limit < 0 {
+		return nil, errors.New("limit and offset must not be smaller than 0")
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
+	db = db.Where("chunk_proofs_status = ?", types.ChunkProofsStatusPending)
+	db = db.Order("index ASC")
+	db = db.Offset(offset)
+	db = db.Limit(limit)
+
+	var batches []*Batch
+	if err := db.Find(&batches).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetUnassignedAndChunksUnreadyBatches error: %w", err)
+	}
+	return batches, nil
+}
+
 // GetAssignedBatches retrieves all batches whose proving_status is either types.ProvingTaskAssigned.
 func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
