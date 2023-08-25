@@ -40,7 +40,7 @@ func testBatchProposer(t *testing.T) {
 	bp.TryProposeBatch()
 
 	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
+	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background(), 0)
 	assert.NoError(t, err)
 	assert.Empty(t, chunks)
 

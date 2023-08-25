@@ -18,6 +18,10 @@ import (
 	"scroll-tech/bridge/internal/orm"
 )
 
+// maxNumBlockPerChunk is the maximum number of blocks we allow per chunk.
+// Normally we will pack much fewer blocks because of other limits.
+const maxNumBlockPerChunk int = 100
+
 // chunkRowConsumption is map(sub-circuit name => sub-circuit row count)
 type chunkRowConsumption map[string]uint64
 
@@ -182,7 +186,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 }
 
 func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
-	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks(p.ctx)
+	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks(p.ctx, maxNumBlockPerChunk)
 	if err != nil {
 		return nil, err
 	}
