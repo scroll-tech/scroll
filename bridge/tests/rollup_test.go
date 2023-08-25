@@ -71,7 +71,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetChunksFromIndex(context.Background(), unbatchedChunkIndex)
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), unbatchedChunkIndex)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
 

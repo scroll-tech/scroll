@@ -187,7 +187,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, err
 	}
 
-	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksFromHeight(p.ctx, unchunkedBlockHeight)
+	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight)
 	if err != nil {
 		return nil, err
 	}
