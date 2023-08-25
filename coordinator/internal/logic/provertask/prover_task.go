@@ -1,7 +1,6 @@
 package provertask
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +21,6 @@ type ProverTask interface {
 // BaseProverTask a base prover task which contain series functions
 type BaseProverTask struct {
 	cfg *config.Config
-	ctx context.Context
 	db  *gorm.DB
 	vk  string
 
