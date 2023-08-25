@@ -74,6 +74,10 @@ func (o *L2Block) GetL2WrappedBlocksFromHeight(ctx context.Context, height uint6
 	db = db.Where("number >= ?", height)
 	db = db.Order("number ASC")
 
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+
 	var l2Blocks []L2Block
 	if err := db.Find(&l2Blocks).Error; err != nil {
 		return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksFromHeight error: %w", err)
