@@ -202,7 +202,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 
 	var totalL1MessagesPoppedBefore uint64
 	if latestChunk != nil {
-		totalL1MessagesPoppedBefore = latestChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
+		totalL1MessagesPoppedBefore = latestChunk.TotalL1MessagesPoppedBefore + uint64(latestChunk.TotalL1MessagesPoppedInChunk)
 	}
 
 	var chunk types.Chunk
@@ -222,7 +222,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 
 		totalTxGasUsed += block.Header.GasUsed
 		numL1MessagesInBlock := block.NumL1Messages(totalL1MessagesPoppedBefore)
-		totalTxNum += numL1MessagesInBlock + block.NumL2Transactions()
+		totalTxNum += numL1MessagesInBlock + block.L2TxsNum()
 		totalL1MessagesPoppedBefore += numL1MessagesInBlock
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas = chunk.EstimateL1CommitGas()
