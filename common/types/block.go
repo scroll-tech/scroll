@@ -47,6 +47,17 @@ func (w *WrappedBlock) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 	return *lastQueueIndex - totalL1MessagePoppedBefore + 1
 }
 
+// NumL2Transactions returns the number of L2 transactions in this block.
+func (w *WrappedBlock) NumL2Transactions() uint64 {
+	var count uint64
+	for _, txData := range w.Transactions {
+		if txData.Type != types.L1MessageTxType {
+			count++
+		}
+	}
+	return count
+}
+
 // Encode encodes the WrappedBlock into RollupV2 BlockContext Encoding.
 func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 	bytes := make([]byte, 60)
@@ -62,7 +73,7 @@ func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error)
 	}
 
 	// note: numTransactions includes skipped messages
-	numL2Transactions := w.L2TxsNum()
+	numL2Transactions := w.NumL2Transactions()
 	numTransactions := numL1Messages + numL2Transactions
 	if numTransactions > math.MaxUint16 {
 		return nil, errors.New("number of transactions exceeds max uint16")
@@ -117,17 +128,6 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	total += 100 * numL1Messages // numL1Messages times warm address access to L1MessageQueue
 
 	return total
-}
-
-// L2TxsNum calculates the number of l2 txs.
-func (w *WrappedBlock) L2TxsNum() uint64 {
-	var count uint64
-	for _, txData := range w.Transactions {
-		if txData.Type != types.L1MessageTxType {
-			count++
-		}
-	}
-	return count
 }
 
 func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 {

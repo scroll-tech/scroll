@@ -39,7 +39,7 @@ func TestChunkEncode(t *testing.T) {
 	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
 	assert.Equal(t, uint64(0), wrappedBlock.NumL1Messages(0))
 	assert.Equal(t, uint64(358), wrappedBlock.EstimateL1CommitCalldataSize())
-	assert.Equal(t, uint64(2), wrappedBlock.L2TxsNum())
+	assert.Equal(t, uint64(2), wrappedBlock.NumL2Transactions())
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
 			wrappedBlock,
@@ -61,7 +61,7 @@ func TestChunkEncode(t *testing.T) {
 	assert.NoError(t, json.Unmarshal(templateBlockTrace2, wrappedBlock2))
 	assert.Equal(t, uint64(11), wrappedBlock2.NumL1Messages(0)) // 0..=9 skipped, 10 included
 	assert.Equal(t, uint64(96), wrappedBlock2.EstimateL1CommitCalldataSize())
-	assert.Equal(t, uint64(1), wrappedBlock2.L2TxsNum())
+	assert.Equal(t, uint64(1), wrappedBlock2.NumL2Transactions())
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
 			wrappedBlock2,
