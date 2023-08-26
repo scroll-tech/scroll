@@ -1,7 +1,9 @@
 -- +goose Up
 -- +goose StatementBegin
 
-create index if not exists idx_hash on chunk(hash, deleted_at) where deleted_at IS NULL;
+create index if not exists idx_chunk_hash on chunk(hash, deleted_at) where deleted_at IS NULL;
+
+CREATE INDEX idx_chunk_index ON chunk(index) WHERE deleted_at IS NULL;
 
 create index if not exists idx_proving_status_end_block_number_index on chunk(proving_status, end_block_number,deleted_at, index) where deleted_at IS NULL;
 
