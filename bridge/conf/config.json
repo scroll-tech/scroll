@@ -64,7 +64,8 @@
       "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515"
     },
     "chunk_proposer_config": {
-      "max_tx_num_per_chunk": 1123,
+      "max_block_num_per_chunk": 100,
+      "max_tx_num_per_chunk": 100,
       "max_l1_commit_gas_per_chunk": 11234567,
       "max_l1_commit_calldata_size_per_chunk": 112345,
       "chunk_timeout_sec": 300,

@@ -18,10 +18,6 @@ import (
 	"scroll-tech/bridge/internal/orm"
 )
 
-// maxNumBlockPerChunk is the maximum number of blocks we allow per chunk.
-// Normally we will pack much fewer blocks because of other limits.
-const maxNumBlockPerChunk int = 100
-
 // chunkRowConsumption is map(sub-circuit name => sub-circuit row count)
 type chunkRowConsumption map[string]uint64
 
@@ -55,6 +51,7 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
+	maxBlockNumPerChunk             uint64
 	maxTxNumPerChunk                uint64
 	maxL1CommitGasPerChunk          uint64
 	maxL1CommitCalldataSizePerChunk uint64
@@ -90,6 +87,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
+		maxBlockNumPerChunk:             cfg.MaxBlockNumPerChunk,
 		maxTxNumPerChunk:                cfg.MaxTxNumPerChunk,
 		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
@@ -191,7 +189,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, err
 	}
 
-	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight, maxNumBlockPerChunk)
+	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight, int(p.maxBlockNumPerChunk)+1)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +223,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		}
 		crcMax := crc.max()
 
-		if totalTxNum > p.maxTxNumPerChunk ||
+		if totalTxNum > p.maxTxNumPerChunk || uint64(i)+1 > p.maxBlockNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerChunk ||
 			crcMax > p.maxRowConsumptionPerChunk {
@@ -271,6 +269,8 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			}
 
 			log.Debug("breaking limit condition in chunking",
+				"totalBlockNum", i+1,
+				"maxBlockNumPerChunk", p.maxBlockNumPerChunk,
 				"totalTxNum", totalTxNum,
 				"maxTxNumPerChunk", p.maxTxNumPerChunk,
 				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,

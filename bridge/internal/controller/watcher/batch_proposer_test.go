@@ -23,6 +23,7 @@ func testBatchProposer(t *testing.T) {
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+		MaxBlockNumPerChunk:             100,
 		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
