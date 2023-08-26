@@ -142,8 +142,8 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	return &latestBatch, nil
 }
 
-// GetUnbatchedChunkIndex retrieves the first unbatched chunk index.
-func (o *Batch) GetUnbatchedChunkIndex(ctx context.Context) (uint64, error) {
+// GetFirstUnbatchedChunkIndex retrieves the first unbatched chunk index.
+func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error) {
 	// Get the latest batch
 	latestBatch, err := o.GetLatestBatch(ctx)
 	if err != nil {

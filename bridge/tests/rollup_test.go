@@ -67,7 +67,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	cp.TryProposeChunk()
 
 	batchOrm := orm.NewBatch(db)
-	unbatchedChunkIndex, err := batchOrm.GetUnbatchedChunkIndex(context.Background())
+	unbatchedChunkIndex, err := batchOrm.GetFirstUnbatchedChunkIndex(context.Background())
 	assert.NoError(t, err)
 
 	chunkOrm := orm.NewChunk(db)
