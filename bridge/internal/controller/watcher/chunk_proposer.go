@@ -55,7 +55,7 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
-	maxL2TxNumPerChunk              uint64
+	maxTxNumPerChunk                uint64
 	maxL1CommitGasPerChunk          uint64
 	maxL1CommitCalldataSizePerChunk uint64
 	maxRowConsumptionPerChunk       uint64
@@ -66,7 +66,7 @@ type ChunkProposer struct {
 	proposeChunkFailureTotal           prometheus.Counter
 	proposeChunkUpdateInfoTotal        prometheus.Counter
 	proposeChunkUpdateInfoFailureTotal prometheus.Counter
-	chunkL2TxNum                       prometheus.Gauge
+	chunkTxNum                         prometheus.Gauge
 	chunkEstimateL1CommitGas           prometheus.Gauge
 	totalL1CommitCalldataSize          prometheus.Gauge
 	totalTxGasUsed                     prometheus.Gauge
@@ -79,7 +79,7 @@ type ChunkProposer struct {
 // NewChunkProposer creates a new ChunkProposer instance.
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
 	log.Debug("new chunk proposer",
-		"maxL2TxNumPerChunk", cfg.MaxL2TxNumPerChunk,
+		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
 		"maxL1CommitCalldataSizePerChunk", cfg.MaxL1CommitCalldataSizePerChunk,
 		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
@@ -90,7 +90,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
-		maxL2TxNumPerChunk:              cfg.MaxL2TxNumPerChunk,
+		maxTxNumPerChunk:                cfg.MaxTxNumPerChunk,
 		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
 		maxRowConsumptionPerChunk:       cfg.MaxRowConsumptionPerChunk,
@@ -113,9 +113,9 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 			Name: "bridge_propose_chunk_update_info_failure_total",
 			Help: "Total number of propose chunk update info failure total.",
 		}),
-		chunkL2TxNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_chunk_l2_tx_num",
-			Help: "The chunk l2 tx num",
+		chunkTxNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "bridge_propose_chunk_tx_num",
+			Help: "The chunk tx num",
 		}),
 		chunkEstimateL1CommitGas: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "bridge_propose_chunk_estimate_l1_commit_gas",
@@ -195,23 +195,35 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, nil
 	}
 
+	latestChunk, err := p.chunkOrm.GetLatestChunk(p.ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var totalL1MessagesPoppedBefore uint64
+	if latestChunk != nil {
+		totalL1MessagesPoppedBefore = latestChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
+	}
+
 	var chunk types.Chunk
 	var totalTxGasUsed uint64
-	var totalL2TxNum uint64
+	var totalTxNum uint64
 	var totalL1CommitCalldataSize uint64
 	var totalL1CommitGas uint64
 	crc := chunkRowConsumption{}
 
 	for i, block := range blocks {
 		// metric values
-		lastTotalL2TxNum := totalL2TxNum
+		lastTotalTxNum := totalTxNum
 		lastTotalL1CommitGas := totalL1CommitGas
 		lastCrcMax := crc.max()
 		lastTotalL1CommitCalldataSize := totalL1CommitCalldataSize
 		lastTotalTxGasUsed := totalTxGasUsed
 
 		totalTxGasUsed += block.Header.GasUsed
-		totalL2TxNum += block.L2TxsNum()
+		numL1MessagesInBlock := block.NumL1Messages(totalL1MessagesPoppedBefore)
+		totalTxNum += numL1MessagesInBlock + block.NumL2Transactions()
+		totalL1MessagesPoppedBefore += numL1MessagesInBlock
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas = chunk.EstimateL1CommitGas()
 		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
@@ -220,19 +232,19 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		}
 		crcMax := crc.max()
 
-		if totalL2TxNum > p.maxL2TxNumPerChunk ||
+		if totalTxNum > p.maxTxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerChunk ||
 			crcMax > p.maxRowConsumptionPerChunk {
 			// Check if the first block breaks hard limits.
 			// If so, it indicates there are bugs in sequencer, manual fix is needed.
 			if i == 0 {
-				if totalL2TxNum > p.maxL2TxNumPerChunk {
+				if totalTxNum > p.maxTxNumPerChunk {
 					return nil, fmt.Errorf(
 						"the first block exceeds l2 tx number limit; block number: %v, number of transactions: %v, max transaction number limit: %v",
 						block.Header.Number,
-						totalL2TxNum,
-						p.maxL2TxNumPerChunk,
+						totalTxNum,
+						p.maxTxNumPerChunk,
 					)
 				}
 
@@ -266,8 +278,8 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			}
 
 			log.Debug("breaking limit condition in chunking",
-				"totalL2TxNum", totalL2TxNum,
-				"maxL2TxNumPerChunk", p.maxL2TxNumPerChunk,
+				"totalTxNum", totalTxNum,
+				"maxTxNumPerChunk", p.maxTxNumPerChunk,
 				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
 				"maxL1CommitCalldataSizePerChunk", p.maxL1CommitCalldataSizePerChunk,
 				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
@@ -276,7 +288,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 				"chunkRowConsumption", crc,
 				"p.maxRowConsumptionPerChunk", p.maxRowConsumptionPerChunk)
 
-			p.chunkL2TxNum.Set(float64(lastTotalL2TxNum))
+			p.chunkTxNum.Set(float64(lastTotalTxNum))
 			p.chunkEstimateL1CommitGas.Set(float64(lastTotalL1CommitGas))
 			p.totalL1CommitCalldataSize.Set(float64(lastTotalL1CommitCalldataSize))
 			p.maxTxConsumption.Set(float64(lastCrcMax))
@@ -295,7 +307,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			"block outdated time threshold", currentTimeSec,
 		)
 		p.chunkFirstBlockTimeoutReached.Inc()
-		p.chunkL2TxNum.Set(float64(totalL2TxNum))
+		p.chunkTxNum.Set(float64(totalTxNum))
 		p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))
 		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
 		p.maxTxConsumption.Set(float64(crc.max()))
