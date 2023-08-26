@@ -64,7 +64,7 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (uint64, error) {
 	return maxNumber, nil
 }
 
-// GetL2WrappedBlocksGEHeight retrieves L2 blocks that have a block number greater than the given height.
+// GetL2WrappedBlocksGEHeight retrieves L2 blocks that have a block number greater than or equal to the given height.
 // The blocks are converted into WrappedBlock format for output.
 // The returned blocks are sorted in ascending order by their block number.
 func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64, limit int) ([]*types.WrappedBlock, error) {
