@@ -66,8 +66,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	}, db, nil)
 	cp.TryProposeChunk()
 
+	batchOrm := orm.NewBatch(db)
+	unbatchedChunkIndex, err := batchOrm.GetFirstUnbatchedChunkIndex(context.Background())
+	assert.NoError(t, err)
+
 	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background(), 0)
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), unbatchedChunkIndex, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
 
@@ -81,7 +85,6 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	l2Relayer.ProcessPendingBatches()
 
-	batchOrm := orm.NewBatch(db)
 	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, batch)

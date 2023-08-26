@@ -186,7 +186,12 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 }
 
 func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
-	blocks, err := p.l2BlockOrm.GetUnchunkedBlocks(p.ctx, maxNumBlockPerChunk)
+	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight, maxNumBlockPerChunk)
 	if err != nil {
 		return nil, err
 	}
