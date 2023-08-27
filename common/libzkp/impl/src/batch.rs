@@ -1,4 +1,5 @@
 use crate::utils::{c_char_to_str, c_char_to_vec, string_to_c_char, vec_to_c_char, OUTPUT_DIR};
+use crate::types::{CheckChunkProofsResponse, ProofResult};
 use libc::c_char;
 use prover::{
     aggregator::{Prover, Verifier},
@@ -54,13 +55,33 @@ pub unsafe extern "C" fn get_batch_vk() -> *const c_char {
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> c_char {
-    let chunk_proofs = c_char_to_vec(chunk_proofs);
-    let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs).unwrap();
-    assert!(!chunk_proofs.is_empty());
+pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *const c_char {
+    let check_result: Result<bool, String> = panic::catch_unwind(|| {
+        let chunk_proofs = c_char_to_vec(chunk_proofs);
+        let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
+            .map_err(|e| format!("Failed to deserialize chunk proofs: {:?}", e))?;
+        if chunk_proofs.is_empty() {
+            return Err("Provided chunk proofs are empty.".to_string());
+        }
 
-    let valid = panic::catch_unwind(|| PROVER.get().unwrap().check_chunk_proofs(&chunk_proofs));
-    valid.unwrap_or(false) as c_char
+        PROVER.get()
+            .map_err(|_| "Failed to get reference to PROVER.".to_string())?
+            .check_chunk_proofs(&chunk_proofs)
+            .map_err(|e| format!("Error checking chunk proofs: {:?}", e))
+    }).unwrap_or_else(|err| Err(format!("Unwind error: {:?}", err)));
+
+    let r = match check_result {
+        Ok(valid) => CheckChunkProofsResponse {
+            ok: valid,
+            error: None,
+        },
+        Err(err) => CheckChunkProofsResponse {
+            ok: false,
+            error: Some(err),
+        },
+    };
+
+    serde_json::to_vec(&r).map_or(null(), vec_to_c_char)
 }
 
 /// # Safety
@@ -69,28 +90,43 @@ pub unsafe extern "C" fn gen_batch_proof(
     chunk_hashes: *const c_char,
     chunk_proofs: *const c_char,
 ) -> *const c_char {
-    let chunk_hashes = c_char_to_vec(chunk_hashes);
-    let chunk_proofs = c_char_to_vec(chunk_proofs);
+    let proof_result: Result<Vec<u8>, String> = panic::catch_unwind(|| {
+        let chunk_hashes = c_char_to_vec(chunk_hashes);
+        let chunk_proofs = c_char_to_vec(chunk_proofs);
 
-    let chunk_hashes = serde_json::from_slice::<Vec<ChunkHash>>(&chunk_hashes).unwrap();
-    let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs).unwrap();
-    assert_eq!(chunk_hashes.len(), chunk_proofs.len());
+        let chunk_hashes = serde_json::from_slice::<Vec<ChunkHash>>(&chunk_hashes)
+            .map_err(|e| format!("Failed to deserialize chunk hashes: {:?}", e))?;
+        let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
+            .map_err(|e| format!("Failed to deserialize chunk proofs: {:?}", e))?;
 
-    let chunk_hashes_proofs = chunk_hashes
-        .into_iter()
-        .zip(chunk_proofs.into_iter())
-        .collect();
+        if chunk_hashes.len() != chunk_proofs.len() {
+            return Err("Chunk hashes and chunk proofs lengths mismatch.".to_string());
+        }
 
-    let proof_result = panic::catch_unwind(|| {
+        let chunk_hashes_proofs = chunk_hashes.into_iter().zip(chunk_proofs.into_iter()).collect();
+
         let proof = PROVER
             .get_mut()
-            .unwrap()
+            .map_err(|_| "Failed to get mutable reference to PROVER.".to_string())?
             .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
-            .unwrap();
+            .map_err(|e| format!("Proof generation failed: {:?}", e))?;
 
-        serde_json::to_vec(&proof).unwrap()
-    });
-    proof_result.map_or(null(), vec_to_c_char)
+        serde_json::to_vec(&proof)
+            .map_err(|e| format!("Failed to serialize the proof: {:?}", e))
+    }).unwrap_or_else(|err| Err(format!("Unwind error: {:?}", err)));
+
+    let r = match proof_result {
+        Ok(proof_bytes) => ProofResult {
+            message: Some(proof_bytes),
+            error: None,
+        },
+        Err(err) => ProofResult {
+            message: None,
+            error: Some(err),
+        },
+    };
+
+    serde_json::to_vec(&r).map_or(null(), vec_to_c_char)
 }
 
 /// # Safety

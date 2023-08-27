@@ -3,3 +3,4 @@
 mod batch;
 mod chunk;
 mod utils;
+mod types;
