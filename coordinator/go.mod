@@ -47,7 +47,10 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 )
 
-require github.com/prometheus/client_golang v1.14.0
+require (
+	github.com/google/uuid v1.3.0
+	github.com/prometheus/client_golang v1.14.0
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

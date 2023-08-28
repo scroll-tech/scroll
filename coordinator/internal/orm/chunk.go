@@ -306,15 +306,8 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 func (o *Chunk) UpdateProvingStatusFromProverError(ctx context.Context, hash string, status types.ProvingStatus) error {
 	updateFields := make(map[string]interface{})
 	updateFields["proving_status"] = int(status)
+	updateFields["prover_assigned_at"] = nil
 
-	switch status {
-	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now()
-	case types.ProvingTaskUnassigned:
-		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
-	}
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash", hash).Where("proving_status", types.ProvingTaskAssigned)
