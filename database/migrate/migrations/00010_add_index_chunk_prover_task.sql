@@ -8,3 +8,12 @@ create index if not exists idx_proving_status_end_block_number_index on chunk(in
 create index if not exists  idx_publickey_proving_status on prover_task(prover_public_key, proving_status, deleted_at, id) where deleted_at is null;
 
 -- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+drop index if exists idx_chunk_hash;
+drop index if exists idx_proving_status_end_block_number_index;
+drop index if exists idx_publickey_proving_status;
+
+-- +goose StatementEnd
