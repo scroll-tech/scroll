@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -18,7 +19,8 @@ import (
 type ProverTask struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	ID int64 `json:"id" gorm:"column:id"`
+	ID   int64     `json:"id" gorm:"column:id"`
+	UUID uuid.UUID `json:"uuid" gorm:"column:uuid;type:uuid;default:gen_random_uuid()"`
 
 	// prover
 	ProverPublicKey string `json:"prover_public_key" gorm:"column:prover_public_key"`
@@ -114,19 +116,36 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, taskType messag
 	return proverTasks, nil
 }
 
-// GetProverTaskByTaskIDAndProver get prover task taskID and public key
-func (o *ProverTask) GetProverTaskByTaskIDAndProver(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
+// GetAssignedProverTaskByTaskIDAndProver get prover task taskID and public key
+// TODO: when prover all upgrade need DEPRECATED this function
+func (o *ProverTask) GetAssignedProverTaskByTaskIDAndProver(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("task_type", int(taskType))
 	db = db.Where("task_id", taskID)
 	db = db.Where("prover_public_key", proverPublicKey)
 	db = db.Where("prover_version", proverVersion)
+	db = db.Where("proving_status", types.ProverAssigned)
 
 	var proverTask ProverTask
 	err := db.First(&proverTask).Error
 	if err != nil {
 		return nil, fmt.Errorf("ProverTask.GetProverTaskByTaskIDAndProver err:%w, taskID:%s, pubkey:%s, prover_version:%s", err, taskID, proverPublicKey, proverVersion)
+	}
+	return &proverTask, nil
+}
+
+// GetProverTaskByUUIDAndPublicKey get prover task taskID by uuid and public key
+func (o *ProverTask) GetProverTaskByUUIDAndPublicKey(ctx context.Context, uuid, publicKey string) (*ProverTask, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("uuid", uuid)
+	db = db.Where("prover_public_key", publicKey)
+
+	var proverTask ProverTask
+	err := db.First(&proverTask).Error
+	if err != nil {
+		return nil, fmt.Errorf("ProverTask.GetProverTaskByUUID err:%w, uuid:%s publicKey:%s", err, uuid, publicKey)
 	}
 	return &proverTask, nil
 }
@@ -199,96 +218,59 @@ func (o *ProverTask) TaskTimeoutMoreThanOnce(ctx context.Context, taskType messa
 	return false
 }
 
-// SetProverTask updates or inserts a ProverTask record.
-func (o *ProverTask) SetProverTask(ctx context.Context, proverTask *ProverTask, dbTX ...*gorm.DB) error {
+// InsertProverTask insert a prover Task record
+func (o *ProverTask) InsertProverTask(ctx context.Context, proverTask *ProverTask, dbTX ...*gorm.DB) error {
 	db := o.db.WithContext(ctx)
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-
+	db = db.Clauses(clause.Returning{})
 	db = db.Model(&ProverTask{})
-	db = db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "task_type"}, {Name: "task_id"}, {Name: "prover_public_key"}, {Name: "prover_version"}},
-		DoUpdates: clause.AssignmentColumns([]string{"proving_status", "failure_type", "assigned_at"}),
-	})
-
-	if err := db.Create(&proverTask).Error; err != nil {
-		return fmt.Errorf("ProverTask.SetProverTask error: %w, prover task: %v", err, proverTask)
+	if err := db.Create(proverTask).Error; err != nil {
+		return fmt.Errorf("ProverTask.InsertProverTask error: %w, prover task: %v", err, proverTask)
 	}
 	return nil
 }
 
 // UpdateProverTaskProof update the prover task's proof
-func (o *ProverTask) UpdateProverTaskProof(ctx context.Context, proofType message.ProofType, taskID string, pk string, proof []byte) error {
+func (o *ProverTask) UpdateProverTaskProof(ctx context.Context, uuid uuid.UUID, proof []byte) error {
 	db := o.db
 	db = db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", int(proofType), taskID, pk)
-
+	db = db.Where("uuid = ?", uuid)
 	if err := db.Update("proof", proof).Error; err != nil {
-		return fmt.Errorf("ProverTask.UpdateProverTaskProof error: %w, proof type: %v, taskID: %v, prover public key: %v", err, proofType.String(), taskID, pk)
+		return fmt.Errorf("ProverTask.UpdateProverTaskProof error: %w, uuid: %v", err, uuid)
 	}
 	return nil
 }
 
 // UpdateProverTaskProvingStatus updates the proving_status of a specific ProverTask record.
-func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, proofType message.ProofType, taskID string, pk string, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
+func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, uuid uuid.UUID, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
 	db = db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("task_type = ? AND task_id = ? AND prover_public_key = ?", int(proofType), taskID, pk)
+	db = db.Where("uuid = ?", uuid)
 
 	if err := db.Update("proving_status", status).Error; err != nil {
-		return fmt.Errorf("ProverTask.UpdateProverTaskProvingStatus error: %w, proof type: %v, taskID: %v, prover public key: %v, status: %v", err, proofType.String(), taskID, pk, status.String())
-	}
-	return nil
-}
-
-// UpdateAllProverTaskProvingStatusOfTaskID updates all the proving_status of a specific task id.
-func (o *ProverTask) UpdateAllProverTaskProvingStatusOfTaskID(ctx context.Context, proofType message.ProofType, taskID string, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-	db = db.WithContext(ctx)
-	db = db.Model(&ProverTask{})
-	db = db.Where("task_type = ? AND task_id = ?", int(proofType), taskID)
-
-	if err := db.Update("proving_status", status).Error; err != nil {
-		return fmt.Errorf("ProverTask.UpdateAllProverTaskProvingStatusOfTaskID error: %w, proof type: %v, taskID: %v, status: %v", err, proofType.String(), taskID, status.String())
+		return fmt.Errorf("ProverTask.UpdateProverTaskProvingStatus error: %w, uuid:%s, status: %v", err, uuid, status.String())
 	}
 	return nil
 }
 
 // UpdateProverTaskFailureType update the prover task failure type
-func (o *ProverTask) UpdateProverTaskFailureType(ctx context.Context, proofType message.ProofType, taskID string, pk string, failureType types.ProverTaskFailureType, dbTX ...*gorm.DB) error {
+func (o *ProverTask) UpdateProverTaskFailureType(ctx context.Context, uuid uuid.UUID, failureType types.ProverTaskFailureType, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
 	db = db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
-	db = db.Where("task_id", taskID).Where("prover_public_key", pk).Where("task_type", int(proofType))
+	db = db.Where("uuid", uuid)
 	if err := db.Update("failure_type", int(failureType)).Error; err != nil {
-		return fmt.Errorf("ProverTask.UpdateProverTaskFailureType error: %w, proof type: %v, taskID: %v, prover public key: %v, failure type: %v", err, proofType.String(), taskID, pk, failureType.String())
-	}
-	return nil
-}
-
-// UpdateAllProverTaskFailureTypeOfTaskID update the prover task failure type
-func (o *ProverTask) UpdateAllProverTaskFailureTypeOfTaskID(ctx context.Context, proofType message.ProofType, taskID string, failureType types.ProverTaskFailureType, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-	db = db.WithContext(ctx)
-	db = db.Model(&ProverTask{})
-	db = db.Where("task_id", taskID).Where("task_type", int(proofType))
-	if err := db.Update("failure_type", int(failureType)).Error; err != nil {
-		return fmt.Errorf("ProverTask.UpdateAllProverTaskFailureTypeOfTaskID error: %w, proof type: %v, taskID: %v, failure type: %v", err, proofType.String(), taskID, failureType.String())
+		return fmt.Errorf("ProverTask.UpdateProverTaskFailureType error: %w, uuid:%s, failure type: %v", err, uuid.String(), failureType.String())
 	}
 	return nil
 }

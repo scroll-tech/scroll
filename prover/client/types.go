@@ -51,6 +51,7 @@ type GetTaskResponse struct {
 	ErrCode int    `json:"errcode"`
 	ErrMsg  string `json:"errmsg"`
 	Data    *struct {
+		UUID     string `json:"uuid"`
 		TaskID   string `json:"task_id"`
 		TaskType int    `json:"task_type"`
 		TaskData string `json:"task_data"`
@@ -59,6 +60,7 @@ type GetTaskResponse struct {
 
 // SubmitProofRequest defines the request structure for the SubmitProof API.
 type SubmitProofRequest struct {
+	UUID        string `json:"uuid"`
 	TaskID      string `json:"task_id"`
 	TaskType    int    `json:"task_type"`
 	Status      int    `json:"status"`
