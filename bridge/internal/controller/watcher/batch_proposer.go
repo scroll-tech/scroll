@@ -153,7 +153,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		return nil, err
 	}
 
-	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, unbatchedChunkIndex, int(p.maxChunkNumPerBatch)+1)
+	// select ad most p.maxChunkNumPerBatch chunks
+	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, unbatchedChunkIndex, int(p.maxChunkNumPerBatch))
 	if err != nil {
 		return nil, err
 	}
@@ -205,8 +206,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		totalL1CommitGas += types.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
 		totalL1CommitGas += types.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
 		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
-		if totalChunks > p.maxChunkNumPerBatch ||
-			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
+		if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {
 			// Check if the first chunk breaks hard limits.
 			// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
@@ -247,12 +247,21 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
-	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
-		log.Warn("first block timeout",
-			"start block number", dbChunks[0].StartBlockNumber,
-			"first block timestamp", dbChunks[0].StartBlockTime,
-			"chunk outdated time threshold", currentTimeSec,
-		)
+	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec ||
+		totalChunks > p.maxChunkNumPerBatch {
+		if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
+			log.Warn("first block timeout",
+				"start block number", dbChunks[0].StartBlockNumber,
+				"first block timestamp", dbChunks[0].StartBlockTime,
+				"chunk outdated time threshold", currentTimeSec,
+			)
+		} else {
+			log.Warn("reached maximum number of chunks in batch",
+				"chunk number", totalChunks,
+				"chunk count", p.maxChunkNumPerBatch,
+			)
+		}
+
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.totalL1CommitGas.Set(float64(totalL1CommitGas))
 		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))

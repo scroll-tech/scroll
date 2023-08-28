@@ -189,7 +189,8 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, err
 	}
 
-	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight, int(p.maxBlockNumPerChunk)+1)
+	// select ad most p.maxBlockNumPerChunk blocks
+	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight, int(p.maxBlockNumPerChunk))
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +224,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		}
 		crcMax := crc.max()
 
-		if totalTxNum > p.maxTxNumPerChunk || uint64(i)+1 > p.maxBlockNumPerChunk ||
+		if totalTxNum > p.maxTxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerChunk ||
 			crcMax > p.maxRowConsumptionPerChunk {
@@ -293,12 +294,21 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
-	if blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec {
-		log.Warn("first block timeout",
-			"block number", blocks[0].Header.Number,
-			"block timestamp", blocks[0].Header.Time,
-			"block outdated time threshold", currentTimeSec,
-		)
+	if chunk.Blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec ||
+		uint64(len(chunk.Blocks)) == p.maxBlockNumPerChunk {
+		if chunk.Blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec {
+			log.Warn("first block timeout",
+				"block number", chunk.Blocks[0].Header.Number,
+				"block timestamp", chunk.Blocks[0].Header.Time,
+				"current time", currentTimeSec,
+			)
+		} else {
+			log.Warn("reached maximum number of blocks in chunk",
+				"block number", chunk.Blocks[0].Header.Number,
+				"block count", len(chunk.Blocks),
+			)
+		}
+
 		p.chunkFirstBlockTimeoutReached.Inc()
 		p.chunkTxNum.Set(float64(totalTxNum))
 		p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))
