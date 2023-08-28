@@ -2,9 +2,12 @@ package relayer
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
+	"net/http"
 	"sync"
 	"time"
 
@@ -434,6 +437,16 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("Start to roll up zk proof", "hash", hash)
 		r.metrics.bridgeL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 
+		// Check batch status before send `finalizeBatchWithProof` tx.
+		batchStatus, err := r.getBatchStatusByIndex(batch.Index)
+		if err != nil {
+			log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
+		} else if !batchStatus {
+			r.metrics.bridgeL2LatestFailedBatch.Set(float64(batch.Index))
+			log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
+			return
+		}
+
 		var parentBatchStateRoot string
 		if batch.Index > 0 {
 			var parentBatch *orm.Batch
@@ -525,6 +538,41 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches", "proving status", status)
 	}
+}
+
+// batchStatusResponse the response schema
+type batchStatusResponse struct {
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
+	Data    bool   `json:"data"`
+}
+
+func (r *Layer2Relayer) getBatchStatusByIndex(batchIndex uint64) (bool, error) {
+	// If the config is not set return true as default.
+	if r.cfg.ChainMonitorURL == "" {
+		return true, nil
+	}
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/batch_status?batch_index=%d", r.cfg.ChainMonitorURL, batchIndex), nil)
+	if err != nil {
+		return false, err
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, err
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+
+	var response batchStatusResponse
+	if err = json.Unmarshal(data, &response); err != nil {
+		return false, err
+	}
+
+	return response.Data, nil
 }
 
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {

@@ -27,6 +27,7 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
+      "chain_monitor_url": "http://localhost:8750",
       "message_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }

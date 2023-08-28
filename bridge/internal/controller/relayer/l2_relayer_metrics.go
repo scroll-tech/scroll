@@ -18,6 +18,7 @@ type l2RelayerMetrics struct {
 	bridgeL2BatchesCommittedConfirmedTotal                      prometheus.Counter
 	bridgeL2BatchesFinalizedConfirmedTotal                      prometheus.Counter
 	bridgeL2BatchesGasOraclerConfirmedTotal                     prometheus.Counter
+	bridgeL2LatestFailedBatch                                   prometheus.Gauge
 }
 
 var (
@@ -67,6 +68,10 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 			bridgeL2BatchesGasOraclerConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "bridge_layer2_process_gras_oracler_confirmed_total",
 				Help: "The total number of layer2 process finalized batches confirmed total",
+			}),
+			bridgeL2LatestFailedBatch: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+				Name: "bridge_layer2_failed_batch_index_total",
+				Help: "The total number of failed status batches",
 			}),
 		}
 	})
