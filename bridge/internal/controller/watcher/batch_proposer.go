@@ -246,7 +246,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 
 	currentTimeSec := uint64(time.Now().Unix())
 	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec ||
-		totalChunks > p.maxChunkNumPerBatch {
+		totalChunks == p.maxChunkNumPerBatch {
 		if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
 			log.Warn("first block timeout",
 				"start block number", dbChunks[0].StartBlockNumber,
