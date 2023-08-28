@@ -18,3 +18,11 @@ create index if not exists idx_total_attempts_active_attempts_chunk_proofs_statu
     where deleted_at IS NULL;
 
 -- +goose StatementEnd
+
+-- +goose Down
+-- +goose StatementBegin
+
+drop index if exists idx_total_attempts_active_attempts_end_block_number;
+drop index if exists idx_total_attempts_active_attempts_chunk_proofs_status;
+
+-- +goose StatementEnd
