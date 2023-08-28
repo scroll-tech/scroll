@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 // `error` provides additional details in case the check failed.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CheckChunkProofsResponse {
-    ok: bool,
+    pub ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
+    pub error: Option<String>,
 }
 
 // Encapsulates the result from generating a proof.
@@ -16,7 +16,7 @@ pub struct CheckChunkProofsResponse {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProofResult {
     #[serde(skip_serializing_if = "Option::is_none")]
-    message: Option<Vec<u8>>,
+    pub message: Option<Vec<u8>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
+    pub error: Option<String>,
 }

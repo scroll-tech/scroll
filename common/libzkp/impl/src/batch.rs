@@ -1,5 +1,7 @@
-use crate::utils::{c_char_to_str, c_char_to_vec, string_to_c_char, vec_to_c_char, OUTPUT_DIR};
-use crate::types::{CheckChunkProofsResponse, ProofResult};
+use crate::{
+    types::{CheckChunkProofsResponse, ProofResult},
+    utils::{c_char_to_str, c_char_to_vec, string_to_c_char, vec_to_c_char, OUTPUT_DIR},
+};
 use libc::c_char;
 use prover::{
     aggregator::{Prover, Verifier},
@@ -59,16 +61,20 @@ pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *con
     let check_result: Result<bool, String> = panic::catch_unwind(|| {
         let chunk_proofs = c_char_to_vec(chunk_proofs);
         let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
-            .map_err(|e| format!("Failed to deserialize chunk proofs: {:?}", e))?;
+            .map_err(|e| format!("Failed to deserialize chunk proofs: {e:?}"))?;
+
         if chunk_proofs.is_empty() {
             return Err("Provided chunk proofs are empty.".to_string());
         }
 
-        PROVER.get()
-            .map_err(|_| "Failed to get reference to PROVER.".to_string())?
-            .check_chunk_proofs(&chunk_proofs)
-            .map_err(|e| format!("Error checking chunk proofs: {:?}", e))
-    }).unwrap_or_else(|err| Err(format!("Unwind error: {:?}", err)));
+        let prover_ref = PROVER
+            .get()
+            .ok_or_else(|| "Failed to get reference to PROVER.".to_string())?;
+
+        let valid = prover_ref.check_chunk_proofs(&chunk_proofs);
+        Ok(valid)
+    })
+    .unwrap_or_else(|e| Err(format!("Unwind error: {e:?}")));
 
     let r = match check_result {
         Ok(valid) => CheckChunkProofsResponse {
@@ -95,25 +101,28 @@ pub unsafe extern "C" fn gen_batch_proof(
         let chunk_proofs = c_char_to_vec(chunk_proofs);
 
         let chunk_hashes = serde_json::from_slice::<Vec<ChunkHash>>(&chunk_hashes)
-            .map_err(|e| format!("Failed to deserialize chunk hashes: {:?}", e))?;
+            .map_err(|e| format!("Failed to deserialize chunk hashes: {e:?}"))?;
         let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
-            .map_err(|e| format!("Failed to deserialize chunk proofs: {:?}", e))?;
+            .map_err(|e| format!("Failed to deserialize chunk proofs: {e:?}"))?;
 
         if chunk_hashes.len() != chunk_proofs.len() {
             return Err("Chunk hashes and chunk proofs lengths mismatch.".to_string());
         }
 
-        let chunk_hashes_proofs = chunk_hashes.into_iter().zip(chunk_proofs.into_iter()).collect();
+        let chunk_hashes_proofs = chunk_hashes
+            .into_iter()
+            .zip(chunk_proofs.into_iter())
+            .collect();
 
         let proof = PROVER
             .get_mut()
-            .map_err(|_| "Failed to get mutable reference to PROVER.".to_string())?
+            .ok_or_else(|| "Failed to get mutable reference to PROVER.".to_string())?
             .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
-            .map_err(|e| format!("Proof generation failed: {:?}", e))?;
+            .map_err(|e| format!("Proof generation failed: {e:?}"))?;
 
-        serde_json::to_vec(&proof)
-            .map_err(|e| format!("Failed to serialize the proof: {:?}", e))
-    }).unwrap_or_else(|err| Err(format!("Unwind error: {:?}", err)));
+        serde_json::to_vec(&proof).map_err(|e| format!("Failed to serialize the proof: {e:?}"))
+    })
+    .unwrap_or_else(|e| Err(format!("Unwind error: {e:?}")));
 
     let r = match proof_result {
         Ok(proof_bytes) => ProofResult {

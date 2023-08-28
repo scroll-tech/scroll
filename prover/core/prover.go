@@ -125,7 +125,10 @@ func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*mes
 	if err != nil {
 		return nil, err
 	}
-	proofByt := p.proveChunk(tracesByt)
+	proofByt, err := p.proveChunk(tracesByt)
+	if err != nil {
+		return nil, err
+	}
 
 	err = p.mayDumpProof(taskID, proofByt)
 	if err != nil {
