@@ -72,10 +72,10 @@ func CheckScrollProverVersionTag(proverVersion string) bool {
 	if err != nil {
 		return false
 	}
-	if remoteTagMajor != 4 {
+	if remoteTagMajor < 4 {
 		return false
 	}
-	if remoteTagMinor != 1 {
+	if remoteTagMinor < 1 {
 		return false
 	}
 	if remoteTagPatch < 98 {
