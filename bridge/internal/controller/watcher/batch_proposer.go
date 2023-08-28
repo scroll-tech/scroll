@@ -232,8 +232,6 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 			}
 
 			log.Debug("breaking limit condition in batching",
-				"currentTotalChunks", totalChunks,
-				"maxChunkNumPerBatch", p.maxChunkNumPerBatch,
 				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
 				"maxL1CommitCalldataSizePerBatch", p.maxL1CommitCalldataSizePerBatch,
 				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,

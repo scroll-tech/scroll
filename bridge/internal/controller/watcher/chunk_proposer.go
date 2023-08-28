@@ -270,8 +270,6 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			}
 
 			log.Debug("breaking limit condition in chunking",
-				"totalBlockNum", i+1,
-				"maxBlockNumPerChunk", p.maxBlockNumPerChunk,
 				"totalTxNum", totalTxNum,
 				"maxTxNumPerChunk", p.maxTxNumPerChunk,
 				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
