@@ -163,16 +163,14 @@ func (c *Collector) check(assignedProverTasks []orm.ProverTask, timeout promethe
 			"prover public key", assignedProverTask.ProverPublicKey, "prover name", assignedProverTask.ProverName, "task type", assignedProverTask.TaskType)
 		err := c.db.Transaction(func(tx *gorm.DB) error {
 			// update prover task proving status as ProverProofInvalid
-			if err := c.proverTaskOrm.UpdateProverTaskProvingStatus(c.ctx, message.ProofType(assignedProverTask.TaskType),
-				assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverProofInvalid, tx); err != nil {
-				log.Error("update prover task proving status failure", "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+			if err := c.proverTaskOrm.UpdateProverTaskProvingStatus(c.ctx, assignedProverTask.UUID, types.ProverProofInvalid, tx); err != nil {
+				log.Error("update prover task proving status failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 				return err
 			}
 
 			// update prover task failure type
-			if err := c.proverTaskOrm.UpdateProverTaskFailureType(c.ctx, message.ProofType(assignedProverTask.TaskType),
-				assignedProverTask.TaskID, assignedProverTask.ProverPublicKey, types.ProverTaskFailureTypeTimeout, tx); err != nil {
-				log.Error("update prover task failure type failure", "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+			if err := c.proverTaskOrm.UpdateProverTaskFailureType(c.ctx, assignedProverTask.UUID, types.ProverTaskFailureTypeTimeout, tx); err != nil {
+				log.Error("update prover task failure type failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 				return err
 			}
 

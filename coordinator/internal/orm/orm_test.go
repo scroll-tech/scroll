@@ -77,12 +77,13 @@ func TestProverTaskOrm(t *testing.T) {
 		AssignedAt:      utils.NowUTC(),
 	}
 
-	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
+	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
 	proverTasks, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), message.ProofTypeChunk, []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(proverTasks))
 	assert.Equal(t, proverTask.ProverName, proverTasks[0].ProverName)
+	assert.NotEqual(t, proverTask.UUID.String(), "00000000-0000-0000-0000-000000000000")
 
 	// test decimal reward, get reward
 	resultReward := proverTasks[0].Reward.BigInt()
@@ -91,12 +92,8 @@ func TestProverTaskOrm(t *testing.T) {
 
 	proverTask.ProvingStatus = int16(types.ProverProofValid)
 	proverTask.AssignedAt = utils.NowUTC()
-	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
-	assert.NoError(t, err)
-	proverTasks, err = proverTaskOrm.GetProverTasksByHashes(context.Background(), message.ProofTypeChunk, []string{"test-hash"})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(proverTasks))
-	assert.Equal(t, proverTask.ProvingStatus, proverTasks[0].ProvingStatus)
+	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
+	assert.Error(t, err)
 }
 
 func TestProverTaskOrmUint256(t *testing.T) {
@@ -117,8 +114,9 @@ func TestProverTaskOrmUint256(t *testing.T) {
 		AssignedAt:      utils.NowUTC(),
 	}
 
-	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
+	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
+	assert.NotEqual(t, proverTask.UUID.String(), "00000000-0000-0000-0000-000000000000")
 	proverTasksUint256, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), message.ProofTypeChunk, []string{"test-hash"})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(proverTasksUint256))

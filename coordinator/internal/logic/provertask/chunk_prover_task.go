@@ -132,13 +132,14 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// here why need use UTC time. see scroll/common/databased/db.go
 		AssignedAt: utils.NowUTC(),
 	}
-	if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
+
+	if err = cp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
 		cp.recoverProvingStatus(ctx, chunkTask)
-		log.Error("db set session info fail", "task hash", chunkTask.Hash, "prover name", proverName.(string), "prover pubKey", publicKey.(string), "err", err)
+		log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", publicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := cp.formatProverTask(ctx, chunkTask.Hash)
+	taskMsg, err := cp.formatProverTask(ctx, &proverTask)
 	if err != nil {
 		cp.recoverProvingStatus(ctx, chunkTask)
 		log.Error("format prover task failure", "hash", chunkTask.Hash, "err", err)
@@ -150,11 +151,11 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
-	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, hash)
+	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, task.TaskID)
 	if wrappedErr != nil || len(wrappedBlocks) == 0 {
-		return nil, fmt.Errorf("failed to fetch wrapped blocks, batch hash:%s err:%w", hash, wrappedErr)
+		return nil, fmt.Errorf("failed to fetch wrapped blocks, chunk hash:%s err:%w", task.TaskID, wrappedErr)
 	}
 
 	blockHashes := make([]common.Hash, len(wrappedBlocks))
@@ -167,11 +168,12 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*
 	}
 	blockHashesBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", hash, err)
+		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
 	}
 
 	proverTaskSchema := &coordinatorType.GetTaskSchema{
-		TaskID:   hash,
+		UUID:     task.UUID.String(),
+		TaskID:   task.TaskID,
 		TaskType: int(message.ProofTypeChunk),
 		TaskData: string(blockHashesBytes),
 	}

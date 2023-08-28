@@ -128,13 +128,13 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	// Store session info.
-	if err = bp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
+	if err = bp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
-		log.Error("db set session info fail", "task hash", batchTask.Hash, "prover name", proverName.(string), "prover pubKey", publicKey.(string), "err", err)
+		log.Error("insert batch prover task info fail", "taskID", batchTask.Hash, "publicKey", publicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx, batchTask.Hash)
+	taskMsg, err := bp.formatProverTask(ctx, &proverTask)
 	if err != nil {
 		bp.recoverProvingStatus(ctx, batchTask)
 		log.Error("format prover task failure", "hash", batchTask.Hash, "err", err)
@@ -146,11 +146,11 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
 	// get chunk from db
-	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, taskID)
+	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, task.TaskID)
 	if err != nil {
-		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", taskID, err)
+		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", task.TaskID, err)
 		return nil, err
 	}
 
@@ -159,7 +159,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 	for _, chunk := range chunks {
 		var proof message.ChunkProof
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, taskID, chunk.Hash)
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
 		}
 		chunkProofs = append(chunkProofs, &proof)
 
@@ -181,11 +181,12 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 
 	chunkProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", taskID, err)
+		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", task.TaskID, err)
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		TaskID:   taskID,
+		UUID:     task.UUID.String(),
+		TaskID:   task.TaskID,
 		TaskType: int(message.ProofTypeBatch),
 		TaskData: string(chunkProofsBytes),
 	}
