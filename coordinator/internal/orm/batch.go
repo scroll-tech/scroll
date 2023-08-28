@@ -153,6 +153,18 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	return &latestBatch, nil
 }
 
+// GetAttemptsByHash get batch attempts by hash. Used by unit test
+func (o *Batch) GetAttemptsByHash(ctx context.Context, hash string) (int16, int16, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash = ?", hash)
+	var batch Batch
+	if err := db.Find(&batch).Error; err != nil {
+		return 0, 0, fmt.Errorf("Batch.GetAttemptsByHash error: %w, batch hash: %v", err, hash)
+	}
+	return batch.ActiveAttempts, batch.TotalAttempts, nil
+}
+
 // InsertBatch inserts a new batch into the database.
 // for unit test
 func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {

@@ -197,6 +197,18 @@ func (o *Chunk) GetChunkBatchHash(ctx context.Context, chunkHash string) (string
 	return chunk.BatchHash, nil
 }
 
+// GetAttemptsByHash get chunk attempts by hash. Used by unit test
+func (o *Chunk) GetAttemptsByHash(ctx context.Context, hash string) (int16, int16, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash = ?", hash)
+	var chunk Chunk
+	if err := db.Find(&chunk).Error; err != nil {
+		return 0, 0, fmt.Errorf("Batch.GetAttemptsByHash error: %w, batch hash: %v", err, hash)
+	}
+	return chunk.ActiveAttempts, chunk.TotalAttempts, nil
+}
+
 // InsertChunk inserts a new chunk into the database.
 // for unit test
 func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
