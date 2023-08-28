@@ -174,6 +174,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 
 	if verifyErr != nil || !success {
 		m.verifierFailureTotal.WithLabelValues(pv).Inc()
+
 		m.proofRecover(ctx, proverTask, types.ProverTaskFailureTypeVerifiedFailed, proofMsg)
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
@@ -192,7 +193,9 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 
 	if err := m.closeProofTask(ctx, proverTask, proofMsg, proofTimeSec); err != nil {
 		m.proofSubmitFailure.Inc()
+
 		m.proofRecover(ctx, proverTask, types.ProverTaskFailureTypeServerError, proofMsg)
+
 		return ErrCoordinatorInternalFailure
 	}
 
@@ -248,6 +251,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 	if proofMsg.Status != message.StatusOk {
 		// Temporarily replace "panic" with "pa-nic" to prevent triggering the alert based on logs.
 		failureMsg := strings.Replace(proofParameter.FailureMsg, "panic", "pa-nic", -1)
+
 		m.proofRecover(ctx, proverTask, types.ProverTaskFailureTypeSubmitStatusNotOk, proofMsg)
 
 		m.validateFailureProverTaskStatusNotOk.Inc()

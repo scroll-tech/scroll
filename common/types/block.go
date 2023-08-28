@@ -130,17 +130,6 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	return total
 }
 
-// L2TxsNum calculates the number of l2 txs.
-func (w *WrappedBlock) L2TxsNum() uint64 {
-	var count uint64
-	for _, txData := range w.Transactions {
-		if txData.Type != types.L1MessageTxType {
-			count++
-		}
-	}
-	return count
-}
-
 func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 {
 	if w.txPayloadLengthCache == nil {
 		w.txPayloadLengthCache = make(map[string]uint64)

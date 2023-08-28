@@ -7,7 +7,11 @@ import (
 	"strings"
 )
 
+<<<<<<< HEAD
 var tag = "v4.1.115"
+=======
+var tag = "v4.2.1"
+>>>>>>> 30ad0bfe78d99da62156922cee2aa52bffd2ce12
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
@@ -72,13 +76,10 @@ func CheckScrollProverVersionTag(proverVersion string) bool {
 	if err != nil {
 		return false
 	}
-	if remoteTagMajor != 4 {
+	if remoteTagMajor < 4 {
 		return false
 	}
-	if remoteTagMinor != 1 {
-		return false
-	}
-	if remoteTagPatch < 98 {
+	if remoteTagMinor == 1 && remoteTagPatch < 98 {
 		return false
 	}
 	return true
