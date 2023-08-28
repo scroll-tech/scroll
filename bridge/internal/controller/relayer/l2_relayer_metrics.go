@@ -70,8 +70,8 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 				Help: "The total number of layer2 process finalized batches confirmed total",
 			}),
 			bridgeL2LatestFailedBatch: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-				Name: "bridge_layer2_failed_batch_index_total",
-				Help: "The total number of failed status batches",
+				Name: "bridge_layer2_latest_failed_batch_index",
+				Help: "The latest failed batch index before sending finalize batch tx",
 			}),
 		}
 	})
