@@ -156,7 +156,7 @@ func (p *ProverCore) TracesToChunkInfo(traces []*types.BlockTrace) (*message.Chu
 // Error provides additional details in case the check failed.
 type CheckChunkProofsResponse struct {
 	Ok    bool   `json:"ok"`
-	Error string `json:"error"`
+	Error string `json:"error,omitempty"`
 }
 
 // ProofResult encapsulates the result from generating a proof.
@@ -164,7 +164,7 @@ type CheckChunkProofsResponse struct {
 // Error provides additional details in case the proof generation failed.
 type ProofResult struct {
 	Message []byte `json:"message"`
-	Error   string `json:"error"`
+	Error   string `json:"error,omitempty"`
 }
 
 func (p *ProverCore) checkChunkProofs(chunkProofsByt []byte) (bool, error) {
