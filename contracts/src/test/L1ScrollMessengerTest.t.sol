@@ -42,6 +42,26 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         l1Messenger.relayMessageWithProof(address(this), address(messageQueue), 0, 0, new bytes(0), proof);
     }
 
+    function testForbidCallRateLimiterFromL2() external {
+        l1Messenger.updateRateLimiter(address(1));
+        bytes32 _xDomainCalldataHash = keccak256(
+            abi.encodeWithSignature(
+                "relayMessage(address,address,uint256,uint256,bytes)",
+                address(this),
+                address(1),
+                0,
+                0,
+                new bytes(0)
+            )
+        );
+        prepareL2MessageRoot(_xDomainCalldataHash);
+        IL1ScrollMessenger.L2MessageProof memory proof;
+        proof.batchIndex = rollup.lastFinalizedBatchIndex();
+
+        hevm.expectRevert("Forbid to call rate limiter");
+        l1Messenger.relayMessageWithProof(address(this), address(1), 0, 0, new bytes(0), proof);
+    }
+
     function testForbidCallSelfFromL2() external {
         bytes32 _xDomainCalldataHash = keccak256(
             abi.encodeWithSignature(
@@ -85,6 +105,8 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         hevm.assume(refundAddress != address(0x000000000000000000636F6e736F6c652e6c6f67)); // ignore console/console2
 
         exceedValue = bound(exceedValue, 1, address(this).balance / 2);
+
+        l1Messenger.updateMaxReplayTimes(0);
 
         // append a message
         l1Messenger.sendMessage{value: 100}(address(0), 100, new bytes(0), 0, refundAddress);
@@ -159,9 +181,9 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         hevm.stopPrank();
 
         hevm.expectEmit(false, false, false, true);
-        emit UpdateMaxReplayTimes(0, _maxReplayTimes);
+        emit UpdateMaxReplayTimes(3, _maxReplayTimes);
 
-        assertEq(l1Messenger.maxReplayTimes(), 0);
+        assertEq(l1Messenger.maxReplayTimes(), 3);
         l1Messenger.updateMaxReplayTimes(_maxReplayTimes);
         assertEq(l1Messenger.maxReplayTimes(), _maxReplayTimes);
     }

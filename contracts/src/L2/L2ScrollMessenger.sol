@@ -40,12 +40,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
     /// @notice Mapping from L1 message hash to a boolean value indicating if the message has been successfully executed.
     mapping(bytes32 => bool) public isL1MessageExecuted;
 
-    /// @notice Mapping from L1 message hash to the number of failure times.
-    mapping(bytes32 => uint256) public l1MessageFailedTimes;
-
-    /// @notice The maximum number of times each L1 message can fail on L2.
-    uint256 public maxFailedExecutionTimes;
-
     /***************
      * Constructor *
      ***************/
@@ -58,8 +52,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
 
     function initialize(address _counterpart) external initializer {
         ScrollMessengerBase.__ScrollMessengerBase_init(_counterpart, address(0));
-
-        maxFailedExecutionTimes = 3;
     }
 
     /*****************************
@@ -105,22 +97,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         _executeMessage(_from, _to, _value, _message, _xDomainCalldataHash);
     }
 
-    /************************
-     * Restricted Functions *
-     ************************/
-
-    /// @notice Update max failed execution times.
-    /// @dev This function can only called by contract owner.
-    /// @param _newMaxFailedExecutionTimes The new max failed execution times.
-    function updateMaxFailedExecutionTimes(uint256 _newMaxFailedExecutionTimes) external onlyOwner {
-        require(_newMaxFailedExecutionTimes > 0, "maxFailedExecutionTimes cannot be zero");
-
-        uint256 _oldMaxFailedExecutionTimes = maxFailedExecutionTimes;
-        maxFailedExecutionTimes = _newMaxFailedExecutionTimes;
-
-        emit UpdateMaxFailedExecutionTimes(_oldMaxFailedExecutionTimes, _newMaxFailedExecutionTimes);
-    }
-
     /**********************
      * Internal Functions *
      **********************/
@@ -137,6 +113,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         uint256 _gasLimit
     ) internal nonReentrant {
         require(msg.value == _value, "msg.value mismatch");
+        _addUsedAmount(_value);
 
         uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
@@ -165,7 +142,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
     ) internal {
         // @note check more `_to` address to avoid attack in the future when we add more gateways.
         require(_to != messageQueue, "Forbid to call message queue");
-        require(_to != address(this), "Forbid to call self");
+        _validateTargetAddress(_to);
 
         // @note This usually will never happen, just in case.
         require(_from != xDomainMessageSender, "Invalid message sender");
@@ -180,11 +157,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
             isL1MessageExecuted[_xDomainCalldataHash] = true;
             emit RelayedMessage(_xDomainCalldataHash);
         } else {
-            unchecked {
-                uint256 _failedTimes = l1MessageFailedTimes[_xDomainCalldataHash] + 1;
-                require(_failedTimes <= maxFailedExecutionTimes, "Exceed maximum failure times");
-                l1MessageFailedTimes[_xDomainCalldataHash] = _failedTimes;
-            }
             emit FailedRelayedMessage(_xDomainCalldataHash);
         }
     }

@@ -146,7 +146,7 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
         require(_token == l2USDC, "only USDC is allowed");
         require(!withdrawPaused, "withdraw paused");
 
-        // 1. Extract real sender if this call is from L1GatewayRouter.
+        // 1. Extract real sender if this call is from L2GatewayRouter.
         address _from = msg.sender;
         if (router == msg.sender) {
             (_from, _data) = abi.decode(_data, (address, bytes));

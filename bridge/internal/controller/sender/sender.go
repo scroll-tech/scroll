@@ -11,6 +11,7 @@ import (
 	"time"
 
 	cmapV2 "github.com/orcaman/concurrent-map/v2"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -70,6 +71,8 @@ type Sender struct {
 	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
 	chainID *big.Int          // The chain id of the endpoint
 	ctx     context.Context
+	service string
+	name    string
 
 	auth       *bind.TransactOpts
 	minBalance *big.Int
@@ -80,11 +83,13 @@ type Sender struct {
 	confirmCh     chan *Confirmation
 
 	stopCh chan struct{}
+
+	metrics *senderMetrics
 }
 
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
-func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey) (*Sender, error) {
+func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey, service, name string, reg prometheus.Registerer) (*Sender, error) {
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial eth client, err: %w", err)
@@ -135,7 +140,10 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 		baseFeePerGas: baseFeePerGas,
 		pendingTxs:    cmapV2.New[*PendingTransaction](),
 		stopCh:        make(chan struct{}),
+		name:          name,
+		service:       service,
 	}
+	sender.metrics = initSenderMetrics(reg)
 
 	go sender.loop(ctx)
 
@@ -183,10 +191,15 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (common.Hash, error) {
+	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	if s.IsFull() {
+		s.metrics.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(1)
 		return common.Hash{}, ErrFullPending
 	}
+
+	s.metrics.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(0)
 	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
+		s.metrics.sendTransactionFailureRepeatTransaction.WithLabelValues(s.service, s.name).Inc()
 		return common.Hash{}, fmt.Errorf("repeat transaction ID: %s", ID)
 	}
 
@@ -203,9 +216,12 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	}()
 
 	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
+		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
+
 	if tx, err = s.createAndSendTx(s.auth, feeData, target, value, data, nil); err != nil {
+		s.metrics.sendTransactionFailureSendTx.WithLabelValues(s.service, s.name).Inc()
 		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
 	}
 
@@ -294,6 +310,20 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 		return nil, err
 	}
 
+	if feeData.gasTipCap != nil {
+		s.metrics.currentGasTipCap.WithLabelValues(s.service, s.name).Set(float64(feeData.gasTipCap.Uint64()))
+	}
+
+	if feeData.gasFeeCap != nil {
+		s.metrics.currentGasFeeCap.WithLabelValues(s.service, s.name).Set(float64(feeData.gasFeeCap.Uint64()))
+	}
+
+	if feeData.gasPrice != nil {
+		s.metrics.currentGasPrice.WithLabelValues(s.service, s.name).Set(float64(feeData.gasPrice.Uint64()))
+	}
+
+	s.metrics.currentGasLimit.WithLabelValues(s.service, s.name).Set(float64(feeData.gasLimit))
+
 	// update nonce when it is not from resubmit
 	if overrideNonce == nil {
 		auth.Nonce = big.NewInt(int64(nonce + 1))
@@ -316,8 +346,15 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
 
+	txInfo := map[string]interface{}{
+		"tx_hash": tx.Hash().String(),
+		"tx_type": s.config.TxType,
+		"from":    auth.From.String(),
+	}
+
 	switch s.config.TxType {
 	case LegacyTxType, AccessListTxType: // `LegacyTxType`is for ganache mock node
+		originalGasPrice := feeData.gasPrice
 		gasPrice := escalateMultipleNum.Mul(escalateMultipleNum, big.NewInt(feeData.gasPrice.Int64()))
 		gasPrice = gasPrice.Div(gasPrice, escalateMultipleDen)
 		if gasPrice.Cmp(feeData.gasPrice) < 0 {
@@ -327,7 +364,13 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 			gasPrice = maxGasPrice
 		}
 		feeData.gasPrice = gasPrice
+
+		txInfo["original_gas_price"] = originalGasPrice
+		txInfo["adjusted_gas_price"] = gasPrice
 	default:
+		originalGasTipCap := big.NewInt(feeData.gasTipCap.Int64())
+		originalGasFeeCap := big.NewInt(feeData.gasFeeCap.Int64())
+
 		gasTipCap := big.NewInt(feeData.gasTipCap.Int64())
 		gasTipCap = gasTipCap.Mul(gasTipCap, escalateMultipleNum)
 		gasTipCap = gasTipCap.Div(gasTipCap, escalateMultipleDen)
@@ -359,9 +402,17 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		}
 		feeData.gasFeeCap = gasFeeCap
 		feeData.gasTipCap = gasTipCap
+
+		txInfo["original_gas_tip_cap"] = originalGasTipCap
+		txInfo["adjusted_gas_tip_cap"] = gasTipCap
+		txInfo["original_gas_fee_cap"] = originalGasFeeCap
+		txInfo["adjusted_gas_fee_cap"] = gasFeeCap
 	}
 
+	log.Debug("Transaction gas adjustment details", txInfo)
+
 	nonce := tx.Nonce()
+	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	return s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
 }
 
@@ -398,6 +449,12 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 				}
 			}
 		} else if s.config.EscalateBlocks+pending.submitAt < number {
+			log.Debug("resubmit transaction",
+				"tx hash", pending.tx.Hash().String(),
+				"submit block number", pending.submitAt,
+				"current block number", number,
+				"escalateBlocks", s.config.EscalateBlocks)
+
 			var tx *types.Transaction
 			tx, err := s.resubmitTransaction(pending.feeData, pending.signer, pending.tx)
 			if err != nil {
@@ -454,8 +511,8 @@ func (s *Sender) checkBalance(ctx context.Context) error {
 	}
 
 	if bls.Cmp(s.minBalance) < 0 {
-		return fmt.Errorf("insufficient account balance - actual balance: %s, minimum required balance: %s",
-			bls.String(), s.minBalance.String())
+		return fmt.Errorf("insufficient account balance - actual balance: %s, minimum required balance: %s, address: %s",
+			bls.String(), s.minBalance.String(), s.auth.From.String())
 	}
 
 	return nil
@@ -472,6 +529,7 @@ func (s *Sender) loop(ctx context.Context) {
 	for {
 		select {
 		case <-checkTick.C:
+			s.metrics.senderCheckPendingTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 			header, err := s.client.HeaderByNumber(s.ctx, nil)
 			if err != nil {
 				log.Error("failed to get latest head", "err", err)
@@ -486,6 +544,7 @@ func (s *Sender) loop(ctx context.Context) {
 
 			s.checkPendingTransaction(header, confirmed)
 		case <-checkBalanceTicker.C:
+			s.metrics.senderCheckBalancerTotal.WithLabelValues(s.service, s.name).Inc()
 			// Check and set balance.
 			if err := s.checkBalance(ctx); err != nil {
 				log.Error("check balance error", "err", err)

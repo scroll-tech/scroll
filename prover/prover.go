@@ -151,16 +151,9 @@ func (r *Prover) proveAndSubmit() error {
 		}
 	}
 
-	defer func() {
-		err = r.stack.Delete(task.Task.ID)
-		if err != nil {
-			log.Error("prover stack pop failed!", "err", err)
-		}
-	}()
-
 	var proofMsg *message.ProofDetail
 	if task.Times <= 2 {
-		// If panic times <= 2, try to proof the task.
+		// If tried times <= 2, try to proof the task.
 		if err = r.stack.UpdateTimes(task, task.Times+1); err != nil {
 			return fmt.Errorf("failed to update times on stack: %v", err)
 		}
@@ -168,15 +161,15 @@ func (r *Prover) proveAndSubmit() error {
 		log.Info("start to prove task", "task-type", task.Task.Type, "task-id", task.Task.ID)
 		proofMsg, err = r.prove(task)
 		if err != nil { // handling error from prove
-			return fmt.Errorf("failed to prove task, task-type: %v, err: %v", task.Task.Type, err)
+			log.Error("failed to prove task", "task_type", task.Task.Type, "task-id", task.Task.ID, "err", err)
+			return r.submitErr(task, message.ProofFailureNoPanic, err)
 		}
-
-		return r.submitProof(proofMsg)
+		return r.submitProof(proofMsg, task.Task.UUID)
 	}
 
-	// when the prover has more than 3 times panic,
-	// it will omit to prove the task, submit StatusProofError and then Delete the task.
-	return fmt.Errorf("zk proving panic for task, task-type: %v, task-id: %v", task.Task.Type, task.Task.ID)
+	// if tried times >= 3, it's probably due to circuit proving panic
+	log.Error("zk proving panic for task", "task-type", task.Task.Type, "task-id", task.Task.ID)
+	return r.submitErr(task, message.ProofFailurePanic, errors.New("zk proving panic for task"))
 }
 
 // fetchTaskFromCoordinator fetches a new task from the server
@@ -184,6 +177,9 @@ func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 	// prepare the request
 	req := &client.GetTaskRequest{
 		TaskType: r.Type(),
+		// we may not be able to get the vk at the first time, so we should pass vk to the coordinator every time we getTask
+		// instead of passing vk when we login
+		VK: r.proverCore.GetVk(),
 	}
 
 	if req.TaskType == message.ProofTypeChunk {
@@ -207,6 +203,7 @@ func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 
 	// create a new TaskMsg
 	taskMsg := message.TaskMsg{
+		UUID: resp.Data.UUID,
 		ID:   resp.Data.TaskID,
 		Type: message.ProofType(resp.Data.TaskType),
 	}
@@ -299,9 +296,10 @@ func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error
 	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.ChunkProofs)
 }
 
-func (r *Prover) submitProof(msg *message.ProofDetail) error {
+func (r *Prover) submitProof(msg *message.ProofDetail, uuid string) error {
 	// prepare the submit request
 	req := &client.SubmitProofRequest{
+		UUID:     uuid,
 		TaskID:   msg.ID,
 		TaskType: int(msg.Type),
 		Status:   int(msg.Status),
@@ -329,10 +327,50 @@ func (r *Prover) submitProof(msg *message.ProofDetail) error {
 
 	// send the submit request
 	if err := r.coordinatorClient.SubmitProof(r.ctx, req); err != nil {
+		if !errors.Is(errors.Unwrap(err), client.ErrCoordinatorConnect) {
+			if deleteErr := r.stack.Delete(msg.ID); deleteErr != nil {
+				log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", deleteErr)
+			}
+		}
 		return fmt.Errorf("error submitting proof: %v", err)
 	}
 
+	if deleteErr := r.stack.Delete(msg.ID); deleteErr != nil {
+		log.Error("prover stack pop failed", "task_type", msg.Type, "task_id", msg.ID, "err", deleteErr)
+	}
 	log.Info("proof submitted successfully", "task-id", msg.ID, "task-type", msg.Type, "task-status", msg.Status, "err", msg.Error)
+
+	return nil
+}
+
+func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.ProofFailureType, err error) error {
+	// prepare the submit request
+	req := &client.SubmitProofRequest{
+		UUID:        task.Task.UUID,
+		TaskID:      task.Task.ID,
+		TaskType:    int(task.Task.Type),
+		Status:      int(message.StatusProofError),
+		Proof:       "",
+		FailureType: int(proofFailureType),
+		FailureMsg:  err.Error(),
+	}
+
+	// send the submit request
+	if submitErr := r.coordinatorClient.SubmitProof(r.ctx, req); submitErr != nil {
+		if !errors.Is(errors.Unwrap(err), client.ErrCoordinatorConnect) {
+			if deleteErr := r.stack.Delete(task.Task.ID); deleteErr != nil {
+				log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", deleteErr)
+			}
+		}
+		return fmt.Errorf("error submitting proof: %v", submitErr)
+	}
+	if deleteErr := r.stack.Delete(task.Task.ID); deleteErr != nil {
+		log.Error("prover stack pop failed", "task_type", task.Task.Type, "task_id", task.Task.ID, "err", deleteErr)
+	}
+
+	log.Info("proof submitted report failure successfully",
+		"task-id", task.Task.ID, "task-type", task.Task.Type,
+		"task-status", message.StatusProofError, "err", err)
 	return nil
 }
 

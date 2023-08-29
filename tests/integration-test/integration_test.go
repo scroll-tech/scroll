@@ -51,7 +51,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCoordinatorProverInteraction(t *testing.T) {
-	// Start postgres docker containers.
+	// Start postgres docker containers
 	base.RunL2Geth(t)
 	base.RunDBImage(t)
 
