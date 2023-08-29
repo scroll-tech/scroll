@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/agiledragon/gomonkey/v2 v2.9.0
+	github.com/go-resty/resty/v2 v2.7.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20230812030736-25fe3ba69a28
@@ -21,7 +22,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
