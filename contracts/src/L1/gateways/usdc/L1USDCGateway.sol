@@ -36,16 +36,16 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
     /// @notice The address of caller from Circle.
     address public circleCaller;
 
-    /// @notice The flag indicates whether USDC depositing is paused.
+    /// @notice The flag indicates whether USDC deposit is paused.
     bool public depositPaused;
 
-    /// @notice The flag indicates whether USDC withdrawing is paused.
+    /// @notice The flag indicates whether USDC withdrawal is paused.
     /// @dev This is not necessary to be set `true` since we will set `L2USDCGateway.withdrawPaused` first.
-    ///      This is kept just in case and will be set after all pending messages being replayed.
+    ///      This is kept just in case and will be set after all pending messages being are relayed.
     bool public withdrawPaused;
 
     /// @notice The total amount of bridged USDC in this contract.
-    /// @dev Only deposited USDC will count, so the accidentally transfered USDC is ignored.
+    /// @dev Only deposited USDC will count. Accidentally transferred USDC will be ignored.
     uint256 public totalBridgedUSDC;
 
     /***************
