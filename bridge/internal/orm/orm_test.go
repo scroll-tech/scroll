@@ -216,20 +216,12 @@ func TestBatchOrm(t *testing.T) {
 	assert.Error(t, err)
 	assert.Nil(t, dbProof)
 
-	finalizedBatch, err := batchOrm.GetLatestFinalizedBatch(context.Background())
-	assert.Nil(t, finalizedBatch)
-	assert.Nil(t, err)
-
 	err = batchOrm.UpdateProvingStatus(context.Background(), batchHash2, types.ProvingTaskVerified)
 	assert.NoError(t, err)
 	err = batchOrm.UpdateRollupStatus(context.Background(), batchHash2, types.RollupFinalized)
 	assert.NoError(t, err)
 	err = batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(context.Background(), batchHash2, types.GasOracleImported, "oracleTxHash")
 	assert.NoError(t, err)
-
-	finalizedBatch, err = batchOrm.GetLatestFinalizedBatch(context.Background())
-	assert.Nil(t, err)
-	assert.NotNil(t, finalizedBatch)
 
 	updatedBatch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)

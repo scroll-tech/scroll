@@ -13,6 +13,8 @@ type L1Config struct {
 	Endpoint string `json:"endpoint"`
 	// The start height to sync event from layer 1
 	StartHeight uint64 `json:"start_height"`
+	// The L1MessageQueue contract address deployed on layer 1 chain.
+	L1MessageQueueAddress common.Address `json:"l1_message_queue_address"`
 	// The ScrollChain contract address deployed on layer 1 chain.
 	ScrollChainContractAddress common.Address `json:"scroll_chain_address"`
 	// The relayer config
