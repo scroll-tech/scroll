@@ -23,16 +23,16 @@ async function main() {
   const L1ScrollMessengerAddress = addressFile.get("L1ScrollMessenger.proxy");
   const L2GatewayRouterAddress = process.env.L2_GATEWAY_ROUTER_PROXY_ADDR!;
 
-  // if ((await L1GatewayRouter.counterpart()) === constants.AddressZero) {
-  const tx = await L1GatewayRouter.initialize(
-    L1StandardERC20GatewayAddress,
-    L2GatewayRouterAddress,
-    L1ScrollMessengerAddress
-  );
-  console.log("initialize L1StandardERC20Gateway, hash:", tx.hash);
-  const receipt = await tx.wait();
-  console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
-  // }
+  if ((await L1GatewayRouter.counterpart()) === constants.AddressZero) {
+    const tx = await L1GatewayRouter.initialize(
+      L1StandardERC20GatewayAddress,
+      L2GatewayRouterAddress,
+      L1ScrollMessengerAddress
+    );
+    console.log("initialize L1StandardERC20Gateway, hash:", tx.hash);
+    const receipt = await tx.wait();
+    console.log(`✅ Done, gas used: ${receipt.gasUsed}`);
+  }
 }
 
 // We recommend this pattern to be able to use async/await everywhere
