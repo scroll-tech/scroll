@@ -74,6 +74,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         assertEq(address(l1USDC), gateway.l1USDC());
         assertEq(address(l2USDC), gateway.l2USDC());
         assertEq(address(l2USDC), gateway.getL2ERC20Address(address(l1USDC)));
+        assertEq(0, gateway.totalBridgedUSDC());
 
         hevm.expectRevert("Initializable: contract is already initialized");
         gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
@@ -355,10 +356,12 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         }
 
         uint256 gatewayBalance = l1USDC.balanceOf(address(gateway));
+        uint256 totalBridgedUSDCBefore = gateway.totalBridgedUSDC();
         uint256 recipientBalance = l1USDC.balanceOf(address(recipient));
         assertBoolEq(false, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
         l1Messenger.relayMessageWithProof(address(counterpartGateway), address(gateway), 0, 0, message, proof);
         assertEq(gatewayBalance - amount, l1USDC.balanceOf(address(gateway)));
+        assertEq(totalBridgedUSDCBefore - amount, gateway.totalBridgedUSDC());
         assertEq(recipientBalance + amount, l1USDC.balanceOf(address(recipient)));
         assertBoolEq(true, l1Messenger.isL2MessageExecuted(keccak256(xDomainCalldata)));
     }
@@ -424,6 +427,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             emit DepositERC20(address(l1USDC), address(l2USDC), address(this), address(this), amount, new bytes(0));
 
             uint256 gatewayBalance = l1USDC.balanceOf(address(gateway));
+            uint256 totalBridgedUSDCBefore = gateway.totalBridgedUSDC();
             uint256 feeVaultBalance = address(feeVault).balance;
             assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
             if (useRouter) {
@@ -432,6 +436,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
                 gateway.depositERC20{value: feeToPay + extraValue}(address(l1USDC), amount, gasLimit);
             }
             assertEq(amount + gatewayBalance, l1USDC.balanceOf(address(gateway)));
+            assertEq(amount + totalBridgedUSDCBefore, gateway.totalBridgedUSDC());
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
         }
@@ -499,6 +504,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             emit DepositERC20(address(l1USDC), address(l2USDC), address(this), recipient, amount, new bytes(0));
 
             uint256 gatewayBalance = l1USDC.balanceOf(address(gateway));
+            uint256 totalBridgedUSDCBefore = gateway.totalBridgedUSDC();
             uint256 feeVaultBalance = address(feeVault).balance;
             assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
             if (useRouter) {
@@ -507,6 +513,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
                 gateway.depositERC20{value: feeToPay + extraValue}(address(l1USDC), recipient, amount, gasLimit);
             }
             assertEq(amount + gatewayBalance, l1USDC.balanceOf(address(gateway)));
+            assertEq(amount + totalBridgedUSDCBefore, gateway.totalBridgedUSDC());
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
         }

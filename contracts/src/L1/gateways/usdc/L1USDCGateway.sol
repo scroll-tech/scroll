@@ -33,11 +33,20 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
      * Variables *
      *************/
 
+    /// @notice The address of caller from Circle.
     address public circleCaller;
 
+    /// @notice The flag indicates whether USDC depositing is paused.
     bool public depositPaused;
 
+    /// @notice The flag indicates whether USDC withdrawing is paused.
+    /// @dev This is not necessary to be set `true` since we will set `L2USDCGateway.withdrawPaused` first.
+    ///      This is kept just in case and will be set after all pending messages being replayed.
     bool public withdrawPaused;
+
+    /// @notice The total amount of bridged USDC in this contract.
+    /// @dev Only deposited USDC will count, so the accidentally transfered USDC is ignored.
+    uint256 public totalBridgedUSDC;
 
     /***************
      * Constructor *
@@ -80,7 +89,10 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
     function burnAllLockedUSDC() external override {
         require(msg.sender == circleCaller, "only circle caller");
 
-        uint256 _balance = IERC20Upgradeable(l1USDC).balanceOf(address(this));
+        // @note Only bridged USDC will be burned. We may refund the rest if possible.
+        uint256 _balance = totalBridgedUSDC;
+        totalBridgedUSDC = 0;
+
         IFiatToken(l1USDC).burn(_balance);
     }
 
@@ -112,22 +124,25 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
         address _l2Token,
         address,
         address,
-        uint256,
+        uint256 _amount,
         bytes calldata
     ) internal virtual override {
         require(msg.value == 0, "nonzero msg.value");
         require(_l1Token == l1USDC, "l1 token not USDC");
         require(_l2Token == l2USDC, "l2 token not USDC");
         require(!withdrawPaused, "withdraw paused");
+
+        totalBridgedUSDC -= _amount;
     }
 
     /// @inheritdoc L1ERC20Gateway
     function _beforeDropMessage(
         address,
         address,
-        uint256
+        uint256 _amount
     ) internal virtual override {
         require(msg.value == 0, "nonzero msg.value");
+        totalBridgedUSDC -= _amount;
     }
 
     /// @inheritdoc L1ERC20Gateway
@@ -146,6 +161,7 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
         address _from;
         (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
         require(_data.length == 0, "call is not allowed");
+        totalBridgedUSDC += _amount;
 
         // 2. Generate message passed to L2USDCGateway.
         bytes memory _message = abi.encodeCall(

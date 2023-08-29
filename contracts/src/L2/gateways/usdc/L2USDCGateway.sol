@@ -35,10 +35,15 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
      * Variables *
      *************/
 
+    /// @notice The address of caller from Circle.
     address public circleCaller;
 
+    /// @notice The flag indicates whether USDC depositing is paused.
+    /// @dev This is not necessary to be set `true` since we will set `L1USDCGateway.depositPaused` first.
+    ///      This is kept just in case and will be set after all pending messages being replayed.
     bool public depositPaused;
 
+    /// @notice The flag indicates whether USDC withdrawing is paused.
     bool public withdrawPaused;
 
     /***************
