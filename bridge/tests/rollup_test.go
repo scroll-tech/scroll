@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -13,6 +12,7 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/relayer"
@@ -28,12 +28,13 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := bridgeApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 
 	// Create L1Watcher
 	l1Cfg := bridgeApp.Config.L1Config
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress,
+		l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// add some blocks to db
 	var wrappedBlocks []*types.WrappedBlock
@@ -57,18 +58,20 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxTxGasPerChunk:                1000000000,
-		MaxL2TxNumPerChunk:              10000,
+		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
-		MinL1CommitCalldataSizePerChunk: 0,
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	cp.TryProposeChunk()
 
+	batchOrm := orm.NewBatch(db)
+	unbatchedChunkIndex, err := batchOrm.GetFirstUnbatchedChunkIndex(context.Background())
+	assert.NoError(t, err)
+
 	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), unbatchedChunkIndex, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
 
@@ -76,14 +79,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxChunkNumPerBatch:             10,
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
-		MinChunkNumPerBatch:             1,
 		BatchTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	bp.TryProposeBatch()
 
 	l2Relayer.ProcessPendingBatches()
 
-	batchOrm := orm.NewBatch(db)
 	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, batch)
@@ -91,20 +92,22 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NotEmpty(t, batch.CommitTxHash)
 	assert.Equal(t, types.RollupCommitting, types.RollupStatus(batch.RollupStatus))
 
-	assert.NoError(t, err)
-	commitTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batch.CommitTxHash))
-	assert.NoError(t, err)
-	commitTxReceipt, err := bind.WaitMined(context.Background(), l1Client, commitTx)
-	assert.NoError(t, err)
-	assert.Equal(t, len(commitTxReceipt.Logs), 1)
+	success := utils.TryTimes(30, func() bool {
+		var receipt *gethTypes.Receipt
+		receipt, err = l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.CommitTxHash))
+		return err == nil && receipt.Status == 1
+	})
+	assert.True(t, success)
 
 	// fetch rollup events
-	err = l1Watcher.FetchContractEvent()
-	assert.NoError(t, err)
-	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupCommitted, statuses[0])
+	success = utils.TryTimes(30, func() bool {
+		err = l1Watcher.FetchContractEvent()
+		assert.NoError(t, err)
+		var statuses []types.RollupStatus
+		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
+		return err == nil && len(statuses) == 1 && types.RollupCommitted == statuses[0]
+	})
+	assert.True(t, success)
 
 	// add dummy proof
 	proof := &message.BatchProof{
@@ -118,7 +121,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	// process committed batch and check status
 	l2Relayer.ProcessCommittedBatches()
 
-	statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
+	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(statuses))
 	assert.Equal(t, types.RollupFinalizing, statuses[0])
@@ -128,17 +131,20 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NotNil(t, batch)
 	assert.NotEmpty(t, batch.FinalizeTxHash)
 
-	finalizeTx, _, err := l1Client.TransactionByHash(context.Background(), common.HexToHash(batch.FinalizeTxHash))
-	assert.NoError(t, err)
-	finalizeTxReceipt, err := bind.WaitMined(context.Background(), l1Client, finalizeTx)
-	assert.NoError(t, err)
-	assert.Equal(t, len(finalizeTxReceipt.Logs), 1)
+	success = utils.TryTimes(30, func() bool {
+		var receipt *gethTypes.Receipt
+		receipt, err = l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.FinalizeTxHash))
+		return err == nil && receipt.Status == 1
+	})
+	assert.True(t, success)
 
 	// fetch rollup events
-	err = l1Watcher.FetchContractEvent()
-	assert.NoError(t, err)
-	statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupFinalized, statuses[0])
+	success = utils.TryTimes(30, func() bool {
+		err = l1Watcher.FetchContractEvent()
+		assert.NoError(t, err)
+		var statuses []types.RollupStatus
+		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
+		return err == nil && len(statuses) == 1 && types.RollupFinalized == statuses[0]
+	})
+	assert.True(t, success)
 }

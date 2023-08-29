@@ -57,10 +57,6 @@ func (b *BaseProverTask) checkAttemptsExceeded(hash string, taskType message.Pro
 					log.Error("failed to update batch proving_status as failed", "msg.ID", hash, "error", err)
 				}
 			}
-			// update the prover task status to let timeout checker don't check it.
-			if err := b.proverTaskOrm.UpdateAllProverTaskProvingStatusOfTaskID(b.ctx, message.ProofType(proverTasks[0].TaskType), hash, types.ProverProofInvalid, tx); err != nil {
-				log.Error("failed to update prover task proving_status as failed", "msg.ID", hash, "error", err)
-			}
 			return nil
 		})
 		if transErr == nil {

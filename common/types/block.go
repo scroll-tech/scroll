@@ -3,20 +3,31 @@ package types
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/log"
 )
+
+// CalldataNonZeroByteGas is the gas consumption per non zero byte in calldata.
+const CalldataNonZeroByteGas = 16
+
+// GetKeccak256Gas calculates keccak256 hash gas.
+func GetKeccak256Gas(size uint64) uint64 {
+	return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
+}
 
 // WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
-	Transactions   []*types.TransactionData `json:"transactions"`
-	WithdrawRoot   common.Hash              `json:"withdraw_trie_root,omitempty"`
-	RowConsumption *types.RowConsumption    `json:"row_consumption"`
+	Transactions         []*types.TransactionData `json:"transactions"`
+	WithdrawRoot         common.Hash              `json:"withdraw_trie_root,omitempty"`
+	RowConsumption       *types.RowConsumption    `json:"row_consumption"`
+	txPayloadLengthCache map[string]uint64
 }
 
 // NumL1Messages returns the number of L1 messages in this block.
@@ -87,17 +98,15 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 		if txData.Type == types.L1MessageTxType {
 			continue
 		}
-		size += uint64(len(txData.Data))
+		size += 4 // 4 bytes payload length
+		size += w.getTxPayloadLength(txData)
 	}
+	size += 60 //  60 bytes BlockContext
 	return size
 }
 
 // EstimateL1CommitGas calculates the total L1 commit gas for this block approximately.
 func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
-	getKeccakGas := func(size uint64) uint64 {
-		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
-	}
-
 	var total uint64
 	var numL1Messages uint64
 	for _, txData := range w.Transactions {
@@ -106,24 +115,14 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 			continue
 		}
 
-		data, _ := hexutil.Decode(txData.Data)
-		tx := types.NewTx(&types.LegacyTx{
-			Nonce:    txData.Nonce,
-			To:       txData.To,
-			Value:    txData.Value.ToInt(),
-			Gas:      txData.Gas,
-			GasPrice: txData.GasPrice.ToInt(),
-			Data:     data,
-			V:        txData.V.ToInt(),
-			R:        txData.R.ToInt(),
-			S:        txData.S.ToInt(),
-		})
-		rlpTxData, _ := tx.MarshalBinary()
-		txPayloadLength := uint64(len(rlpTxData))
-		total += 16 * txPayloadLength          // an over-estimate: treat each byte as non-zero
-		total += 16 * 4                        // size of a uint32 field
-		total += getKeccakGas(txPayloadLength) // l2 tx hash
+		txPayloadLength := w.getTxPayloadLength(txData)
+		total += CalldataNonZeroByteGas * txPayloadLength // an over-estimate: treat each byte as non-zero
+		total += CalldataNonZeroByteGas * 4               // 4 bytes payload length
+		total += GetKeccak256Gas(txPayloadLength)         // l2 tx hash
 	}
+
+	// 60 bytes BlockContext calldata
+	total += CalldataNonZeroByteGas * 60
 
 	// sload
 	total += 2100 * numL1Messages // numL1Messages times cold sload in L1MessageQueue
@@ -135,13 +134,47 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	return total
 }
 
-// L2TxsNum calculates the number of l2 txs.
-func (w *WrappedBlock) L2TxsNum() uint64 {
-	var count uint64
-	for _, txData := range w.Transactions {
-		if txData.Type != types.L1MessageTxType {
-			count++
-		}
+func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 {
+	if w.txPayloadLengthCache == nil {
+		w.txPayloadLengthCache = make(map[string]uint64)
 	}
-	return count
+
+	if length, exists := w.txPayloadLengthCache[txData.TxHash]; exists {
+		return length
+	}
+
+	rlpTxData, err := convertTxDataToRLPEncoding(txData)
+	if err != nil {
+		log.Crit("convertTxDataToRLPEncoding failed, which should not happen", "hash", txData.TxHash, "err", err)
+		return 0
+	}
+	txPayloadLength := uint64(len(rlpTxData))
+	w.txPayloadLengthCache[txData.TxHash] = txPayloadLength
+	return txPayloadLength
+}
+
+func convertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
+	data, err := hexutil.Decode(txData.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode txData.Data: %s, err: %w", txData.Data, err)
+	}
+
+	tx := types.NewTx(&types.LegacyTx{
+		Nonce:    txData.Nonce,
+		To:       txData.To,
+		Value:    txData.Value.ToInt(),
+		Gas:      txData.Gas,
+		GasPrice: txData.GasPrice.ToInt(),
+		Data:     data,
+		V:        txData.V.ToInt(),
+		R:        txData.R.ToInt(),
+		S:        txData.S.ToInt(),
+	})
+
+	rlpTxData, err := tx.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal binary of the tx: %+v, err: %w", tx, err)
+	}
+
+	return rlpTxData, nil
 }

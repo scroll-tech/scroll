@@ -67,8 +67,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @notice Whether an account is a prover.
     mapping(address => bool) public isProver;
 
-    /// @notice The latest finalized batch index.
-    uint256 public lastFinalizedBatchIndex;
+    /// @inheritdoc IScrollChain
+    uint256 public override lastFinalizedBatchIndex;
 
     /// @inheritdoc IScrollChain
     mapping(uint256 => bytes32) public override committedBatches;
@@ -272,9 +272,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
 
         while (_count > 0) {
+            committedBatches[_batchIndex] = bytes32(0);
+
             emit RevertBatch(_batchIndex, _batchHash);
 
-            committedBatches[_batchIndex] = bytes32(0);
             unchecked {
                 _batchIndex += 1;
                 _count -= 1;

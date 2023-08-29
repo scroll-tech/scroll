@@ -1,8 +1,13 @@
 package client
 
 import (
+	"errors"
+
 	"scroll-tech/common/types/message"
 )
+
+// ErrCoordinatorConnect connect to coordinator error
+var ErrCoordinatorConnect = errors.New("connect coordinator error")
 
 // ChallengeResponse defines the response structure for random API
 type ChallengeResponse struct {
@@ -38,6 +43,7 @@ type LoginResponse struct {
 type GetTaskRequest struct {
 	TaskType     message.ProofType `json:"task_type"`
 	ProverHeight uint64            `json:"prover_height,omitempty"`
+	VK           string            `json:"vk"`
 }
 
 // GetTaskResponse defines the response structure for GetTask API
@@ -45,6 +51,7 @@ type GetTaskResponse struct {
 	ErrCode int    `json:"errcode"`
 	ErrMsg  string `json:"errmsg"`
 	Data    *struct {
+		UUID     string `json:"uuid"`
 		TaskID   string `json:"task_id"`
 		TaskType int    `json:"task_type"`
 		TaskData string `json:"task_data"`
@@ -53,10 +60,13 @@ type GetTaskResponse struct {
 
 // SubmitProofRequest defines the request structure for the SubmitProof API.
 type SubmitProofRequest struct {
-	TaskID   string `json:"task_id"`
-	TaskType int    `json:"task_type"`
-	Status   int    `json:"status"`
-	Proof    string `json:"proof"`
+	UUID        string `json:"uuid"`
+	TaskID      string `json:"task_id"`
+	TaskType    int    `json:"task_type"`
+	Status      int    `json:"status"`
+	Proof       string `json:"proof"`
+	FailureType int    `json:"failure_type,omitempty"`
+	FailureMsg  string `json:"failure_msg,omitempty"`
 }
 
 // SubmitProofResponse defines the response structure for the SubmitProof API.

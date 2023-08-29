@@ -113,7 +113,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	var totalL1CommitGas uint64
 	for _, block := range chunk.Blocks {
 		totalL2TxGas += block.Header.GasUsed
-		totalL2TxNum += block.L2TxsNum()
+		totalL2TxNum += block.NumL2Transactions()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas += block.EstimateL1CommitGas()
 	}

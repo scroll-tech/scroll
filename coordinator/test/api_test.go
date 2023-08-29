@@ -76,11 +76,12 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			ChainID: 111,
 		},
 		ProverManager: &config.ProverManager{
-			ProversPerSession:  proversPerSession,
-			Verifier:           &config.VerifierConfig{MockMode: true},
-			CollectionTimeSec:  10,
-			MaxVerifierWorkers: 10,
-			SessionAttempts:    5,
+			ProversPerSession:      proversPerSession,
+			Verifier:               &config.VerifierConfig{MockMode: true},
+			BatchCollectionTimeSec: 10,
+			ChunkCollectionTimeSec: 10,
+			MaxVerifierWorkers:     10,
+			SessionAttempts:        5,
 		},
 		Auth: &config.Auth{
 			ChallengeExpireDurationSec: tokenTimeout,
@@ -109,7 +110,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 }
 
 func setEnv(t *testing.T) {
-	version.Version = "v1.2.3-aaa-bbb-ccc"
+	version.Version = "v4.1.98-aaa-bbb-ccc"
 
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
@@ -316,7 +317,7 @@ func testInvalidProof(t *testing.T) {
 			assert.NoError(t, err)
 			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
-			if chunkProofStatus == types.ProvingTaskFailed && batchProofStatus == types.ProvingTaskFailed {
+			if chunkProofStatus == types.ProvingTaskUnassigned && batchProofStatus == types.ProvingTaskUnassigned {
 				return
 			}
 		case <-tickStop:
@@ -385,9 +386,9 @@ func testProofGeneratedFailed(t *testing.T) {
 				return
 			}
 
-			chunkProverTaskProvingStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), dbChunk.Hash)
+			chunkProverTaskProvingStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), message.ProofTypeChunk, dbChunk.Hash)
 			assert.NoError(t, err)
-			batchProverTaskProvingStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), batch.Hash)
+			batchProverTaskProvingStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), message.ProofTypeBatch, batch.Hash)
 			assert.NoError(t, err)
 			if chunkProverTaskProvingStatus == types.ProverProofInvalid && batchProverTaskProvingStatus == types.ProverProofInvalid {
 				return
@@ -438,7 +439,7 @@ func testTimeoutProof(t *testing.T) {
 	assert.Equal(t, batchProofStatus, types.ProvingTaskAssigned)
 
 	// wait coordinator to reset the prover task proving status
-	time.Sleep(time.Duration(conf.ProverManager.CollectionTimeSec*2) * time.Second)
+	time.Sleep(time.Duration(conf.ProverManager.BatchCollectionTimeSec*2) * time.Second)
 
 	// create second mock prover, that will send valid proof.
 	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), coordinatorURL, message.ProofTypeChunk)
