@@ -98,12 +98,12 @@ func (p *ProverCore) ProveBatch(taskID string, chunkInfos []*message.ChunkInfo, 
 	}
 
 	if !isValid {
-		return nil, fmt.Errorf("Non-match chunk protocol: task-id = %s", taskID)
+		return nil, fmt.Errorf("non-match chunk protocol, task-id: %s", taskID)
 	}
 
 	proofByt, err := p.proveBatch(chunkInfosByt, chunkProofsByt)
 	if err != nil {
-		return nil, fmt.Errorf("Error generating batch proof: %v", err)
+		return nil, fmt.Errorf("failed to generate batch proof: %v", err)
 	}
 
 	err = p.mayDumpProof(taskID, proofByt)
@@ -179,11 +179,11 @@ func (p *ProverCore) checkChunkProofs(chunkProofsByt []byte) (bool, error) {
 	var result CheckChunkProofsResponse
 	err := json.Unmarshal([]byte(C.GoString(cResult)), &result)
 	if err != nil {
-		return false, fmt.Errorf("Failed to parse check proof result: %v", err)
+		return false, fmt.Errorf("failed to parse check chunk proofs result: %v", err)
 	}
 
 	if result.Error != "" {
-		return false, fmt.Errorf("Failed to check_chunk_proofs: %s", result.Error)
+		return false, fmt.Errorf("failed to check chunk proofs: %s", result.Error)
 	}
 
 	return result.Ok, nil
@@ -206,11 +206,11 @@ func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) ([]
 	var result ProofResult
 	err := json.Unmarshal([]byte(C.GoString(bResult)), &result)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse batch proof result: %v", err)
+		return nil, fmt.Errorf("failed to parse batch proof result: %v", err)
 	}
 
 	if result.Error != "" {
-		return nil, fmt.Errorf("Failed to gen_batch_proof: %s", result.Error)
+		return nil, fmt.Errorf("failed to generate batch proof: %s", result.Error)
 	}
 
 	return result.Message, nil
@@ -228,11 +228,11 @@ func (p *ProverCore) proveChunk(tracesByt []byte) ([]byte, error) {
 	var result ProofResult
 	err := json.Unmarshal([]byte(C.GoString(cProof)), &result)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to parse chunk proof result: %v", err)
+		return nil, fmt.Errorf("failed to parse chunk proof result: %v", err)
 	}
 
 	if result.Error != "" {
-		return nil, fmt.Errorf("Failed to gen_chunk_proof: %s", result.Error)
+		return nil, fmt.Errorf("failed to generate chunk proof: %s", result.Error)
 	}
 
 	return result.Message, nil
