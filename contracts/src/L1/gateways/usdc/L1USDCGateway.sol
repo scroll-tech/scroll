@@ -41,7 +41,7 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
 
     /// @notice The flag indicates whether USDC withdrawal is paused.
     /// @dev This is not necessary to be set `true` since we will set `L2USDCGateway.withdrawPaused` first.
-    ///      This is kept just in case and will be set after all pending messages being are relayed.
+    ///      This is kept just in case and will be set after all pending messages are relayed.
     bool public withdrawPaused;
 
     /// @notice The total amount of bridged USDC in this contract.
