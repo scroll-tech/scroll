@@ -67,9 +67,7 @@ pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *con
             return Err("provided chunk proofs are empty.".to_string());
         }
 
-        let prover_ref = PROVER
-            .get()
-            .ok_or_else(|| "failed to get reference to PROVER.".to_string())?;
+        let prover_ref = PROVER.get().expect("failed to get reference to PROVER.");
 
         let valid = prover_ref.check_chunk_proofs(&chunk_proofs);
         Ok(valid)
@@ -117,7 +115,7 @@ pub unsafe extern "C" fn gen_batch_proof(
 
         let proof = PROVER
             .get_mut()
-            .ok_or_else(|| "failed to get mutable reference to PROVER.".to_string())?
+            .expect("failed to get mutable reference to PROVER.")
             .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
             .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 

@@ -65,7 +65,7 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
 
         let proof = PROVER
             .get_mut()
-            .ok_or_else(|| "failed to get mutable reference to PROVER.".to_string())?
+            .expect("failed to get mutable reference to PROVER.")
             .gen_chunk_proof(block_traces, None, OUTPUT_DIR.as_deref())
             .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 
