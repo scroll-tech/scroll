@@ -2,15 +2,13 @@ package relayer
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
 	"sync"
 	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -61,6 +59,9 @@ type Layer2Relayer struct {
 	lastGasPrice uint64
 	minGasPrice  uint64
 	gasPriceDiff uint64
+
+	// Used to get batch status from chain_monitor api.
+	chainMonitorClient *resty.Client
 
 	// A list of processing message.
 	// key(string): confirmation ID, value(string): layer2 hash.
@@ -117,6 +118,11 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}
 
+	// chain_monitor client
+	chainMonitorClient := resty.New()
+	chainMonitorClient.SetRetryCount(cfg.ChainMonitor.TryTimes)
+	chainMonitorClient.SetTimeout(time.Duration(cfg.ChainMonitor.TimeOut) * time.Second)
+
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
@@ -146,6 +152,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		processingMessage:      sync.Map{},
 		processingCommitment:   sync.Map{},
 		processingFinalization: sync.Map{},
+		chainMonitorClient:     chainMonitorClient,
 	}
 
 	// Initialize genesis before we do anything else
@@ -440,9 +447,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		// Check batch status before send `finalizeBatchWithProof` tx.
 		batchStatus, err := r.getBatchStatusByIndex(batch.Index)
 		if err != nil {
+			r.metrics.bridgeL2ChainMonitorLatestFailedCall.Set(float64(batch.Index))
 			log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
-		} else if !batchStatus {
-			r.metrics.bridgeL2LatestFailedBatch.Set(float64(batch.Index))
+			return
+		}
+		if !batchStatus {
+			r.metrics.bridgeL2ChainMonitorLatestFailedBatchStatus.Set(float64(batch.Index))
 			log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
 			return
 		}
@@ -548,28 +558,16 @@ type batchStatusResponse struct {
 }
 
 func (r *Layer2Relayer) getBatchStatusByIndex(batchIndex uint64) (bool, error) {
-	// If the config is not set return true as default.
-	if r.cfg.ChainMonitorURL == "" {
-		return true, nil
-	}
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/batch_status?batch_index=%d", r.cfg.ChainMonitorURL, batchIndex), nil)
-	if err != nil {
-		return false, err
-	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return false, err
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
-
 	var response batchStatusResponse
-	if err = json.Unmarshal(data, &response); err != nil {
+	resp, err := r.chainMonitorClient.R().SetResult(&response).Get(fmt.Sprintf("%s/v1/batch_status?batch_index=%d", r.cfg.ChainMonitor.BaseURL, batchIndex))
+	if err != nil {
 		return false, err
+	}
+	if resp.IsError() {
+		return false, resp.Error().(error)
+	}
+	if response.ErrCode != 0 {
+		return false, fmt.Errorf("failed to get batch status, errCode: %d, errMsg: %s", response.ErrCode, response.ErrMsg)
 	}
 
 	return response.Data, nil
