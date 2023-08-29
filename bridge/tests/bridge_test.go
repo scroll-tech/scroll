@@ -2,8 +2,12 @@ package tests
 
 import (
 	"context"
+	"net/http"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -90,6 +94,39 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func mockChainMonitorServer(baseURL string) (*http.Server, error) {
+	router := gin.New()
+	r := router.Group("/v1")
+	r.GET("/batch_status", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, struct {
+			ErrCode int    `json:"errcode"`
+			ErrMsg  string `json:"errmsg"`
+			Data    bool   `json:"data"`
+		}{
+			ErrCode: 0,
+			ErrMsg:  "",
+			Data:    true,
+		})
+	})
+	srv := &http.Server{
+		Handler:      router,
+		Addr:         strings.Trim(baseURL, "http://"),
+		ReadTimeout:  time.Second * 3,
+		WriteTimeout: time.Second * 3,
+		IdleTimeout:  time.Second * 12,
+	}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.ListenAndServe()
+	}()
+	select {
+	case err := <-errCh:
+		return nil, err
+	case <-time.After(time.Second):
+	}
+	return srv, nil
+}
+
 func prepareContracts(t *testing.T) {
 	var err error
 	var tx *types.Transaction
@@ -128,6 +165,9 @@ func prepareContracts(t *testing.T) {
 
 func TestFunction(t *testing.T) {
 	setupEnv(t)
+	srv, err := mockChainMonitorServer(bridgeApp.Config.L2Config.RelayerConfig.ChainMonitor.BaseURL)
+	assert.NoError(t, err)
+	defer srv.Close()
 
 	// process start test
 	t.Run("TestProcessStart", testProcessStart)

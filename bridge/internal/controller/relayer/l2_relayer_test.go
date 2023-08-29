@@ -3,8 +3,12 @@ package relayer
 import (
 	"context"
 	"errors"
+	"github.com/gin-gonic/gin"
 	"math/big"
+	"net/http"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -330,4 +334,53 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 		return nil
 	})
 	relayer.ProcessGasPriceOracle()
+}
+
+func mockChainMonitorServer(baseURL string) (*http.Server, error) {
+	router := gin.New()
+	r := router.Group("/v1")
+	r.GET("/batch_status", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, struct {
+			ErrCode int    `json:"errcode"`
+			ErrMsg  string `json:"errmsg"`
+			Data    bool   `json:"data"`
+		}{
+			ErrCode: 0,
+			ErrMsg:  "",
+			Data:    true,
+		})
+	})
+	srv := &http.Server{
+		Handler:      router,
+		Addr:         strings.Trim(baseURL, "http://"),
+		ReadTimeout:  time.Second * 3,
+		WriteTimeout: time.Second * 3,
+		IdleTimeout:  time.Second * 12,
+	}
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.ListenAndServe()
+	}()
+	select {
+	case err := <-errCh:
+		return nil, err
+	case <-time.After(time.Second):
+	}
+	return srv, nil
+}
+
+func testGetBatchStatusByIndex(t *testing.T) {
+	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
+	srv, err := mockChainMonitorServer(cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL)
+	assert.NoError(t, err)
+	defer srv.Close()
+
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, relayer)
+
+	status, err := relayer.getBatchStatusByIndex(1)
+	assert.NoError(t, err)
+	assert.Equal(t, true, status)
 }

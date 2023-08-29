@@ -101,4 +101,6 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestL2RelayerFinalizeConfirm", testL2RelayerFinalizeConfirm)
 	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
 	t.Run("TestLayer2RelayerProcessGasPriceOracle", testLayer2RelayerProcessGasPriceOracle)
+	// test getBatchStatusByIndex
+	t.Run("TestGetBatchStatusByIndex", testGetBatchStatusByIndex)
 }

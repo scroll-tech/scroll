@@ -62,7 +62,7 @@ type RelayerConfig struct {
 	// MessageRelayMinGasLimit to avoid OutOfGas error
 	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit,omitempty"`
 	// chain-monitor endpoint
-	ChainMonitor *ChainMonitor `json:"chain_monitor"`
+	ChainMonitor *ChainMonitor `json:"chain_monitor,omitempty"`
 	// The private key of the relayer
 	MessageSenderPrivateKey   *ecdsa.PrivateKey `json:"-"`
 	GasOracleSenderPrivateKey *ecdsa.PrivateKey `json:"-"`
