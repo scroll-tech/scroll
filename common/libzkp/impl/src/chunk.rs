@@ -61,17 +61,17 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
     let proof_result: Result<Vec<u8>, String> = panic::catch_unwind(|| {
         let block_traces = c_char_to_vec(block_traces);
         let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces)
-            .map_err(|e| format!("Failed to deserialize block traces: {e:?}"))?;
+            .map_err(|e| format!("failed to deserialize block traces: {e:?}"))?;
 
         let proof = PROVER
             .get_mut()
-            .ok_or_else(|| "Failed to get mutable reference to PROVER.".to_string())?
+            .ok_or_else(|| "failed to get mutable reference to PROVER.".to_string())?
             .gen_chunk_proof(block_traces, None, OUTPUT_DIR.as_deref())
-            .map_err(|e| format!("Proof generation failed: {e:?}"))?;
+            .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 
-        serde_json::to_vec(&proof).map_err(|e| format!("Failed to serialize the proof: {e:?}"))
+        serde_json::to_vec(&proof).map_err(|e| format!("failed to serialize the proof: {e:?}"))
     })
-    .unwrap_or_else(|e| Err(format!("Unwind error: {e:?}")));
+    .unwrap_or_else(|e| Err(format!("unwind error: {e:?}")));
 
     let r = match proof_result {
         Ok(proof_bytes) => ProofResult {

@@ -61,20 +61,20 @@ pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *con
     let check_result: Result<bool, String> = panic::catch_unwind(|| {
         let chunk_proofs = c_char_to_vec(chunk_proofs);
         let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
-            .map_err(|e| format!("Failed to deserialize chunk proofs: {e:?}"))?;
+            .map_err(|e| format!("failed to deserialize chunk proofs: {e:?}"))?;
 
         if chunk_proofs.is_empty() {
-            return Err("Provided chunk proofs are empty.".to_string());
+            return Err("provided chunk proofs are empty.".to_string());
         }
 
         let prover_ref = PROVER
             .get()
-            .ok_or_else(|| "Failed to get reference to PROVER.".to_string())?;
+            .ok_or_else(|| "failed to get reference to PROVER.".to_string())?;
 
         let valid = prover_ref.check_chunk_proofs(&chunk_proofs);
         Ok(valid)
     })
-    .unwrap_or_else(|e| Err(format!("Unwind error: {e:?}")));
+    .unwrap_or_else(|e| Err(format!("unwind error: {e:?}")));
 
     let r = match check_result {
         Ok(valid) => CheckChunkProofsResponse {
@@ -101,12 +101,13 @@ pub unsafe extern "C" fn gen_batch_proof(
         let chunk_proofs = c_char_to_vec(chunk_proofs);
 
         let chunk_hashes = serde_json::from_slice::<Vec<ChunkHash>>(&chunk_hashes)
-            .map_err(|e| format!("Failed to deserialize chunk hashes: {e:?}"))?;
+            .map_err(|e| format!("failed to deserialize chunk hashes: {e:?}"))?;
         let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
-            .map_err(|e| format!("Failed to deserialize chunk proofs: {e:?}"))?;
+            .map_err(|e| format!("failed to deserialize chunk proofs: {e:?}"))?;
 
         if chunk_hashes.len() != chunk_proofs.len() {
-            return Err("Chunk hashes and chunk proofs lengths mismatch.".to_string());
+            return Err(format!("chunk hashes and chunk proofs lengths mismatch: chunk_hashes.len() = {}, chunk_proofs.len() = {}",
+                chunk_hashes.len(), chunk_proofs.len()));
         }
 
         let chunk_hashes_proofs = chunk_hashes
@@ -116,13 +117,13 @@ pub unsafe extern "C" fn gen_batch_proof(
 
         let proof = PROVER
             .get_mut()
-            .ok_or_else(|| "Failed to get mutable reference to PROVER.".to_string())?
+            .ok_or_else(|| "failed to get mutable reference to PROVER.".to_string())?
             .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
-            .map_err(|e| format!("Proof generation failed: {e:?}"))?;
+            .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 
-        serde_json::to_vec(&proof).map_err(|e| format!("Failed to serialize the proof: {e:?}"))
+        serde_json::to_vec(&proof).map_err(|e| format!("failed to serialize the proof: {e:?}"))
     })
-    .unwrap_or_else(|e| Err(format!("Unwind error: {e:?}")));
+    .unwrap_or_else(|e| Err(format!("unwind error: {e:?}")));
 
     let r = match proof_result {
         Ok(proof_bytes) => ProofResult {
