@@ -110,7 +110,7 @@ func mockChainMonitorServer(baseURL string) (*http.Server, error) {
 	})
 	srv := &http.Server{
 		Handler:      router,
-		Addr:         strings.Trim(baseURL, "http://"),
+		Addr:         strings.Split(baseURL, "//")[1],
 		ReadTimeout:  time.Second * 3,
 		WriteTimeout: time.Second * 3,
 		IdleTimeout:  time.Second * 12,
