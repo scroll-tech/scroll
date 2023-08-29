@@ -13,6 +13,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 )
 
 // Chunk represents a chunk of blocks in the database.
@@ -323,6 +324,7 @@ func (o *Chunk) UpdateProofAndProvingStatusByHash(ctx context.Context, hash stri
 	updateFields["proof"] = proofBytes
 	updateFields["proving_status"] = int(status)
 	updateFields["proof_time_sec"] = proofTimeSec
+	updateFields["proved_at"] = utils.NowUTC()
 
 	db = db.WithContext(ctx)
 	db = db.Model(&Chunk{})

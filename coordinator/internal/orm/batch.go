@@ -14,6 +14,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 )
 
 const defaultBatchHeaderVersion = 0
@@ -290,6 +291,7 @@ func (o *Batch) UpdateProofAndProvingStatusByHash(ctx context.Context, hash stri
 	updateFields["proof"] = proofBytes
 	updateFields["proving_status"] = provingStatus
 	updateFields["proof_time_sec"] = proofTimeSec
+	updateFields["proved_at"] = utils.NowUTC()
 
 	db = db.WithContext(ctx)
 	db = db.Model(&Batch{})
