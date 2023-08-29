@@ -18,8 +18,8 @@ type l2RelayerMetrics struct {
 	bridgeL2BatchesCommittedConfirmedTotal                      prometheus.Counter
 	bridgeL2BatchesFinalizedConfirmedTotal                      prometheus.Counter
 	bridgeL2BatchesGasOraclerConfirmedTotal                     prometheus.Counter
-	bridgeL2ChainMonitorLatestFailedCall                        prometheus.Gauge
-	bridgeL2ChainMonitorLatestFailedBatchStatus                 prometheus.Gauge
+	bridgeL2ChainMonitorLatestFailedCall                        prometheus.Counter
+	bridgeL2ChainMonitorLatestFailedBatchStatus                 prometheus.Counter
 }
 
 var (
@@ -70,13 +70,13 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 				Name: "bridge_layer2_process_gras_oracler_confirmed_total",
 				Help: "The total number of layer2 process finalized batches confirmed total",
 			}),
-			bridgeL2ChainMonitorLatestFailedCall: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			bridgeL2ChainMonitorLatestFailedCall: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "bridge_layer2_chain_monitor_latest_failed_batch_call",
-				Help: "",
+				Help: "The total number of failed call chain_monitor api",
 			}),
-			bridgeL2ChainMonitorLatestFailedBatchStatus: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			bridgeL2ChainMonitorLatestFailedBatchStatus: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "bridge_layer2_chain_monitor_latest_failed_batch_status",
-				Help: "The latest failed batch index before sending finalize batch tx",
+				Help: "The total number of failed batch status get from chain_monitor",
 			}),
 		}
 	})
