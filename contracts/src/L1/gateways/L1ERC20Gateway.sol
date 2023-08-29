@@ -66,7 +66,7 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart nonReentrant {
+    ) external payable virtual override onlyCallByCounterpart nonReentrant {
         _beforeFinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
 
         // @note can possible trigger reentrant call to this contract or messenger,
