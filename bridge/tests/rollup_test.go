@@ -57,18 +57,20 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxTxGasPerChunk:                1000000000,
-		MaxL2TxNumPerChunk:              10000,
+		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
-		MinL1CommitCalldataSizePerChunk: 0,
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
 	}, db, nil)
 	cp.TryProposeChunk()
 
+	batchOrm := orm.NewBatch(db)
+	unbatchedChunkIndex, err := batchOrm.GetFirstUnbatchedChunkIndex(context.Background())
+	assert.NoError(t, err)
+
 	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), unbatchedChunkIndex, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
 
@@ -76,14 +78,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxChunkNumPerBatch:             10,
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
-		MinChunkNumPerBatch:             1,
 		BatchTimeoutSec:                 300,
 	}, db, nil)
 	bp.TryProposeBatch()
 
 	l2Relayer.ProcessPendingBatches()
 
-	batchOrm := orm.NewBatch(db)
 	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, batch)

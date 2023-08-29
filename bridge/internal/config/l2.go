@@ -26,11 +26,9 @@ type L2Config struct {
 
 // ChunkProposerConfig loads chunk_proposer configuration items.
 type ChunkProposerConfig struct {
-	MaxTxGasPerChunk                uint64  `json:"max_tx_gas_per_chunk"`
-	MaxL2TxNumPerChunk              uint64  `json:"max_l2_tx_num_per_chunk"`
+	MaxTxNumPerChunk                uint64  `json:"max_tx_num_per_chunk"`
 	MaxL1CommitGasPerChunk          uint64  `json:"max_l1_commit_gas_per_chunk"`
 	MaxL1CommitCalldataSizePerChunk uint64  `json:"max_l1_commit_calldata_size_per_chunk"`
-	MinL1CommitCalldataSizePerChunk uint64  `json:"min_l1_commit_calldata_size_per_chunk"`
 	ChunkTimeoutSec                 uint64  `json:"chunk_timeout_sec"`
 	MaxRowConsumptionPerChunk       uint64  `json:"max_row_consumption_per_chunk"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
@@ -41,7 +39,6 @@ type BatchProposerConfig struct {
 	MaxChunkNumPerBatch             uint64  `json:"max_chunk_num_per_batch"`
 	MaxL1CommitGasPerBatch          uint64  `json:"max_l1_commit_gas_per_batch"`
 	MaxL1CommitCalldataSizePerBatch uint32  `json:"max_l1_commit_calldata_size_per_batch"`
-	MinChunkNumPerBatch             uint64  `json:"min_chunk_num_per_batch"`
 	BatchTimeoutSec                 uint64  `json:"batch_timeout_sec"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
 }

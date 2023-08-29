@@ -106,6 +106,8 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
 
         exceedValue = bound(exceedValue, 1, address(this).balance / 2);
 
+        l1Messenger.updateMaxReplayTimes(0);
+
         // append a message
         l1Messenger.sendMessage{value: 100}(address(0), 100, new bytes(0), 0, refundAddress);
 
@@ -179,9 +181,9 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         hevm.stopPrank();
 
         hevm.expectEmit(false, false, false, true);
-        emit UpdateMaxReplayTimes(0, _maxReplayTimes);
+        emit UpdateMaxReplayTimes(3, _maxReplayTimes);
 
-        assertEq(l1Messenger.maxReplayTimes(), 0);
+        assertEq(l1Messenger.maxReplayTimes(), 3);
         l1Messenger.updateMaxReplayTimes(_maxReplayTimes);
         assertEq(l1Messenger.maxReplayTimes(), _maxReplayTimes);
     }

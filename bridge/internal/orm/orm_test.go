@@ -101,25 +101,26 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(3), height)
 
-	blocks, err := l2BlockOrm.GetUnchunkedBlocks(context.Background())
+	blocks, err := l2BlockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{}, 0)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
-	assert.Equal(t, wrappedBlock1, blocks[0])
-	assert.Equal(t, wrappedBlock2, blocks[1])
+	assert.Equal(t, "", blocks[0].ChunkHash)
+	assert.Equal(t, "", blocks[1].ChunkHash)
 
-	blocks, err = l2BlockOrm.GetL2BlocksInRange(context.Background(), 2, 3)
+	wrappedBlocks, err := l2BlockOrm.GetL2BlocksInRange(context.Background(), 2, 3)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
-	assert.Equal(t, wrappedBlock1, blocks[0])
-	assert.Equal(t, wrappedBlock2, blocks[1])
+	assert.Equal(t, wrappedBlock1, wrappedBlocks[0])
+	assert.Equal(t, wrappedBlock2, wrappedBlocks[1])
 
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 2, 2, "test hash")
 	assert.NoError(t, err)
 
-	blocks, err = l2BlockOrm.GetUnchunkedBlocks(context.Background())
+	blocks, err = l2BlockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{}, 0)
 	assert.NoError(t, err)
-	assert.Len(t, blocks, 1)
-	assert.Equal(t, wrappedBlock2, blocks[0])
+	assert.Len(t, blocks, 2)
+	assert.Equal(t, "test hash", blocks[0].ChunkHash)
+	assert.Equal(t, "", blocks[1].ChunkHash)
 }
 
 func TestChunkOrm(t *testing.T) {
@@ -135,11 +136,13 @@ func TestChunkOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 2)
 	assert.Equal(t, chunkHash1.Hex(), chunks[0].Hash)
 	assert.Equal(t, chunkHash2.Hex(), chunks[1].Hash)
+	assert.Equal(t, "", chunks[0].BatchHash)
+	assert.Equal(t, "", chunks[1].BatchHash)
 
 	err = chunkOrm.UpdateProvingStatus(context.Background(), chunkHash1.Hex(), types.ProvingTaskVerified)
 	assert.NoError(t, err)
@@ -156,9 +159,13 @@ func TestChunkOrm(t *testing.T) {
 
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, "test hash")
 	assert.NoError(t, err)
-	chunks, err = chunkOrm.GetUnbatchedChunks(context.Background())
+	chunks, err = chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
-	assert.Len(t, chunks, 1)
+	assert.Len(t, chunks, 2)
+	assert.Equal(t, chunkHash1.Hex(), chunks[0].Hash)
+	assert.Equal(t, chunkHash2.Hex(), chunks[1].Hash)
+	assert.Equal(t, "test hash", chunks[0].BatchHash)
+	assert.Equal(t, "", chunks[1].BatchHash)
 }
 
 func TestBatchOrm(t *testing.T) {

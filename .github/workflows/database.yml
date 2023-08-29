@@ -81,8 +81,6 @@ jobs:
         version: '0.8.16'
     - name: Install Geth Tools
       uses: gacts/install-geth-tools@v1
-      with:
-        version: 1.10.19
     - name: Build prerequisites
       run: |
         make dev_docker

@@ -107,7 +107,7 @@ func action(ctx *cli.Context) error {
 
 	go utils.Loop(subCtx, 2*time.Second, chunkProposer.TryProposeChunk)
 
-	go utils.Loop(subCtx, 2*time.Second, batchProposer.TryProposeBatch)
+	go utils.Loop(subCtx, 10*time.Second, batchProposer.TryProposeBatch)
 
 	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
 
