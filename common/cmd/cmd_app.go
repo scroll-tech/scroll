@@ -3,13 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/docker/docker/pkg/reexec"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -21,13 +19,7 @@ func (c *Cmd) IsRunning() bool {
 func (c *Cmd) runApp() {
 	fmt.Println("cmd:", append([]string{c.name}, c.args...))
 	if atomic.CompareAndSwapUint64(&c.isRunning, 0, 1) {
-		c.cmd = &exec.Cmd{
-			Path:   reexec.Self(),
-			Args:   append([]string{c.name}, c.args...),
-			Stderr: c,
-			Stdout: c,
-		}
-		c.ErrChan <- c.cmd.Run()
+		c.ErrChan <- c.app.Run()
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/docker/docker/pkg/reexec"
 	cmap "github.com/orcaman/concurrent-map"
 )
 
@@ -28,6 +29,7 @@ type Cmd struct {
 
 	isRunning uint64
 	cmd       *exec.Cmd
+	app       *exec.Cmd
 
 	checkFuncs cmap.ConcurrentMap //map[string]checkFunc
 
@@ -43,11 +45,17 @@ func NewCmd(name string, params ...string) *Cmd {
 		checkFuncs: cmap.New(),
 		name:       name,
 		args:       params,
-		cmd:        exec.Command(name, params...),
 		ErrChan:    make(chan error, 10),
+		cmd:        exec.Command(name, params...),
+		app: &exec.Cmd{
+			Path: reexec.Self(),
+			Args: append([]string{name}, params...),
+		},
 	}
 	cmd.cmd.Stdout = cmd
 	cmd.cmd.Stderr = cmd
+	cmd.app.Stdout = cmd
+	cmd.app.Stderr = cmd
 	return cmd
 }
 
