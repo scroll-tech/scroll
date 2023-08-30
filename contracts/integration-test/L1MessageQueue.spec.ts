@@ -42,7 +42,7 @@ describe("L1MessageQueue", async () => {
       deployer
     );
 
-    await oracle.initialize(21000, 0, 8, 16);
+    await oracle.initialize(21000, 50000, 8, 16);
     await queue.initialize(messenger.address, scrollChain.address, gateway.address, oracle.address, 10000000);
   });
 
