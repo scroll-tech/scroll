@@ -2,6 +2,10 @@ package tests
 
 import (
 	"context"
+	"net/http"
+	"strings"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -9,13 +13,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"net/http"
-	"scroll-tech/common/utils"
-	"strings"
-	"testing"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database/migrate"
 

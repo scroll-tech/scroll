@@ -3,16 +3,17 @@ package relayer
 import (
 	"context"
 	"errors"
+	"math/big"
+	"net/http"
+	"strings"
+	"testing"
+
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"math/big"
-	"net/http"
-	"strings"
-	"testing"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
