@@ -462,19 +462,26 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         uint256 _numBlocks = ChunkCodec.validateChunkLength(chunkPtr, _chunk.length);
 
-        // concatenate block contexts
-        uint256 _totalTransactionsInChunk;
-        for (uint256 i = 0; i < _numBlocks; i++) {
-            dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
-            uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
-            unchecked {
-                _totalTransactionsInChunk += _numTransactionsInBlock;
-                blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+        // concatenate block contexts, use scope to avoid stack too deep
+        {
+            uint256 _totalTransactionsInChunk;
+            for (uint256 i = 0; i < _numBlocks; i++) {
+                dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
+                uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+                unchecked {
+                    _totalTransactionsInChunk += _numTransactionsInBlock;
+                    blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+                }
+            }
+            assembly {
+                mstore(0x40, add(dataPtr, mul(_totalTransactionsInChunk, 0x20))) // reserve memory for tx hashes
             }
         }
 
+        // It is used to compute the actual number of transactions in chunk.
+        uint256 txHashStartDataPtr;
         assembly {
-            mstore(0x40, add(dataPtr, mul(_totalTransactionsInChunk, 0x20))) // reserve memory for tx hashes
+            txHashStartDataPtr := dataPtr
             blockPtr := add(chunkPtr, 1) // reset block ptr
         }
 
@@ -513,11 +520,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             }
         }
 
-        // check the number of L2 transactions in the chunk
-        require(
-            _totalTransactionsInChunk - _totalNumL1MessagesInChunk <= maxNumL2TxInChunk,
-            "too many L2 txs in one chunk"
-        );
+        // check the actual number of transactions in the chunk
+        // (dataPtr - startDataPtr - _numBlocks * 58) / 32;
+        require((dataPtr - txHashStartDataPtr) / 32 <= maxNumL2TxInChunk, "too many txs in one chunk");
 
         // check chunk has correct length
         require(l2TxPtr - chunkPtr == _chunk.length, "incomplete l2 transaction data");
@@ -550,9 +555,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         unchecked {
             uint256 _bitmap;
+            uint256 rem;
             for (uint256 i = 0; i < _numL1Messages; i++) {
                 uint256 quo = _totalL1MessagesPoppedInBatch >> 8;
-                uint256 rem = _totalL1MessagesPoppedInBatch & 0xff;
+                rem = _totalL1MessagesPoppedInBatch & 0xff;
 
                 // load bitmap every 256 bits
                 if (i == 0 || rem == 0) {
@@ -574,7 +580,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             }
 
             // check last L1 message is not skipped, _totalL1MessagesPoppedInBatch must > 0
-            uint256 rem = (_totalL1MessagesPoppedInBatch - 1) & 0xff;
+            rem = (_totalL1MessagesPoppedInBatch - 1) & 0xff;
             require(((_bitmap >> rem) & 1) == 0, "cannot skip last L1 message");
         }
 

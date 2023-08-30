@@ -429,6 +429,15 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(bitmap, add(0x20, 32)), 42) // bitmap1
         }
 
+        // too many txs in one chunk, revert
+        rollup.updateMaxNumL2TxInChunk(2); // 3 - 1
+        hevm.expectRevert("too many txs in one chunk");
+        rollup.commitBatch(0, batchHeader1, chunks, bitmap); // first chunk with too many txs
+        rollup.updateMaxNumL2TxInChunk(185); // 5+10+300 - 2 - 127
+        hevm.expectRevert("too many txs in one chunk");
+        rollup.commitBatch(0, batchHeader1, chunks, bitmap); // second chunk with too many txs
+
+        rollup.updateMaxNumL2TxInChunk(186);
         hevm.expectEmit(true, true, false, true);
         emit CommitBatch(2, bytes32(0x03a9cdcb9d582251acf60937db006ec99f3505fd4751b7c1f92c9a8ef413e873));
         rollup.commitBatch(0, batchHeader1, chunks, bitmap);
