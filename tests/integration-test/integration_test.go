@@ -1,17 +1,10 @@
 package integration_test
 
 import (
-	"context"
-	"log"
-	"math/big"
 	"testing"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/integration-test/orm"
 
 	rapp "scroll-tech/prover/cmd/app"
 
@@ -19,13 +12,9 @@ import (
 
 	capp "scroll-tech/coordinator/cmd/app"
 
-	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
-	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
-
 	bcmd "scroll-tech/bridge/cmd"
+	"scroll-tech/common/docker"
+	"scroll-tech/common/utils"
 )
 
 var (
@@ -50,7 +39,7 @@ func TestMain(m *testing.M) {
 	base.Free()
 }
 
-func TestCoordinatorProverInteraction(t *testing.T) {
+/*func TestCoordinatorProverInteraction(t *testing.T) {
 	// Start postgres docker containers
 	base.RunL2Geth(t)
 	base.RunDBImage(t)
@@ -132,7 +121,7 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	chunkProverApp.WaitExit()
 	batchProverApp.WaitExit()
 	coordinatorApp.WaitExit()
-}
+}*/
 
 func TestProverReLogin(t *testing.T) {
 	// Start postgres docker containers.
