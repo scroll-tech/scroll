@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/docker/docker/pkg/reexec"
 	cmap "github.com/orcaman/concurrent-map"
 )
 
@@ -65,19 +64,6 @@ func (c *Cmd) UnRegistFunc(key string) {
 func (c *Cmd) runCmd() {
 	fmt.Println("cmd:", append([]string{c.name}, c.args...))
 	if atomic.CompareAndSwapUint64(&c.isRunning, 0, 1) {
-		c.ErrChan <- c.cmd.Run()
-	}
-}
-
-func (c *Cmd) runApp() {
-	fmt.Println("cmd:", append([]string{c.name}, c.args...))
-	if atomic.CompareAndSwapUint64(&c.isRunning, 0, 1) {
-		c.cmd = &exec.Cmd{
-			Path:   reexec.Self(),
-			Args:   append([]string{c.name}, c.args...),
-			Stderr: c,
-			Stdout: c,
-		}
 		c.ErrChan <- c.cmd.Run()
 	}
 }

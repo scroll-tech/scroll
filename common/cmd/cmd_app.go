@@ -3,17 +3,32 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/docker/docker/pkg/reexec"
 	"github.com/stretchr/testify/assert"
 )
 
 // IsRunning 1 started, 0 not started.
 func (c *Cmd) IsRunning() bool {
 	return atomic.LoadUint64(&c.isRunning) == 1
+}
+
+func (c *Cmd) runApp() {
+	fmt.Println("cmd:", append([]string{c.name}, c.args...))
+	if atomic.CompareAndSwapUint64(&c.isRunning, 0, 1) {
+		c.cmd = &exec.Cmd{
+			Path:   reexec.Self(),
+			Args:   append([]string{c.name}, c.args...),
+			Stderr: c,
+			Stdout: c,
+		}
+		c.ErrChan <- c.cmd.Run()
+	}
 }
 
 // RunApp exec's the current binary using name as argv[0] which will trigger the
@@ -31,6 +46,9 @@ func (c *Cmd) RunApp(waitResult func() bool) {
 
 // WaitExit wait util process exit.
 func (c *Cmd) WaitExit() {
+	if atomic.LoadUint64(&c.isRunning) == 0 {
+		return
+	}
 	// Wait all the check functions are finished, interrupt loop when appear error.
 	var err error
 	for err == nil && !c.checkFuncs.IsEmpty() {
