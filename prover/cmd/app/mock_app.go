@@ -64,6 +64,7 @@ func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, htt
 		name:       name,
 		args:       []string{"--log.debug", "--config", proverFile},
 	}
+	proverApp.AppAPI = cmd.NewCmd(proverApp.name, proverApp.args...)
 	if err := proverApp.MockConfig(true, httpURL, proofType); err != nil {
 		panic(err)
 	}
@@ -71,8 +72,7 @@ func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, htt
 }
 
 // RunApp run prover-test child process by multi parameters.
-func (r *ProverApp) RunApp(t *testing.T, args ...string) {
-	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
+func (r *ProverApp) RunApp(t *testing.T) {
 	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
