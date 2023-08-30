@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -59,7 +60,9 @@ func (c *Cmd) WaitExit() {
 	// should use `_ = c.app.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
 	// so we use `Kill` as a temp workaround. And since `WaitExit` is only used in integration tests, so
 	// it won't really affect our functionalities.
-	_ = c.app.Process.Kill()
+	if err = c.app.Process.Signal(syscall.SIGTERM); err != nil {
+		_ = c.app.Process.Kill()
+	}
 }
 
 // Interrupt send interrupt signal.
