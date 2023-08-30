@@ -10,6 +10,16 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 )
 
+// BatchMeta contains metadata of a batch.
+type BatchMeta struct {
+	StartChunkIndex           uint64
+	StartChunkHash            string
+	EndChunkIndex             uint64
+	EndChunkHash              string
+	TotalL1CommitGas          uint64
+	TotalL1CommitCalldataSize uint32
+}
+
 // BatchHeader contains batch header info to be committed.
 type BatchHeader struct {
 	// Encoded in BatchHeaderV0Codec

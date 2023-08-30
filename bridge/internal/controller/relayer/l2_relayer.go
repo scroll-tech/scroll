@@ -193,7 +193,12 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		}
 
 		var batch *orm.Batch
-		batch, err = r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk}, dbTX)
+		batch, err = r.batchOrm.InsertBatch(r.ctx, []*types.Chunk{chunk}, &types.BatchMeta{
+			StartChunkIndex: 0,
+			StartChunkHash:  dbChunk.Hash,
+			EndChunkIndex:   0,
+			EndChunkHash:    dbChunk.Hash,
+		}, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
