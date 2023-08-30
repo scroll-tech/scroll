@@ -372,9 +372,6 @@ func mockChainMonitorServer(baseURL string) (*http.Server, error) {
 func testGetBatchStatusByIndex(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
-	srv, err := mockChainMonitorServer(cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL)
-	assert.NoError(t, err)
-	defer srv.Close()
 
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, nil)
 	assert.NoError(t, err)

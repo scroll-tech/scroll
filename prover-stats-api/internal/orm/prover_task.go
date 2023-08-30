@@ -3,15 +3,15 @@ package orm
 import (
 	"context"
 	"fmt"
-	"github.com/google/uuid"
 	"math/big"
-	"scroll-tech/common/types/message"
 	"time"
 
-	"gorm.io/gorm/clause"
-
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+
+	"scroll-tech/common/types/message"
 )
 
 // ProverTask is assigned provers info of chunk/batch proof prover task
