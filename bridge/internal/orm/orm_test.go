@@ -173,12 +173,13 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	batch1, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1}, &types.BatchMeta{
+	batchMeta1 := &types.BatchMeta{
 		StartChunkIndex: 0,
 		StartChunkHash:  chunkHash1.Hex(),
 		EndChunkIndex:   0,
 		EndChunkHash:    chunkHash1.Hex(),
-	})
+	}
+	batch1, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1}, batchMeta1)
 	assert.NoError(t, err)
 	hash1 := batch1.Hash
 
@@ -189,12 +190,13 @@ func TestBatchOrm(t *testing.T) {
 	batchHash1 := batchHeader1.Hash().Hex()
 	assert.Equal(t, hash1, batchHash1)
 
-	batch2, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk2}, &types.BatchMeta{
+	batchMeta2 := &types.BatchMeta{
 		StartChunkIndex: 1,
 		StartChunkHash:  chunkHash2.Hex(),
 		EndChunkIndex:   1,
 		EndChunkHash:    chunkHash2.Hex(),
-	})
+	}
+	batch2, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk2}, batchMeta2)
 	assert.NoError(t, err)
 	hash2 := batch2.Hash
 
