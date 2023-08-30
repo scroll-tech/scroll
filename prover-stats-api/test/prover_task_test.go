@@ -4,15 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"math/big"
-	"net/http"
-	"testing"
-
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+	"io"
+	"math/big"
+	"net/http"
+	"scroll-tech/common/utils"
+	"testing"
 
 	"scroll-tech/database/migrate"
 
@@ -32,11 +32,18 @@ var (
 )
 
 var (
-	port      = ":12990"
-	addr      = fmt.Sprintf("http://localhost%s", port)
-	basicPath = fmt.Sprintf("%s/api/prover_task/v1", addr)
+	addr      = utils.RandomURL()
+	basicPath = fmt.Sprintf("http://%s/api/prover_task/v1", addr)
 	token     string
 )
+
+func mockHttpServer(cfg *config.Config, db *gorm.DB) (*http.Server, error) {
+	// run Prover Stats APIs
+	router := gin.Default()
+	controller.InitController(db)
+	route.Route(router, cfg)
+	return utils.StartHttpServer(addr, router)
+}
 
 func TestProverTaskAPIs(t *testing.T) {
 	// start database image
@@ -54,12 +61,9 @@ func TestProverTaskAPIs(t *testing.T) {
 	insertSomeProverTasks(t, db)
 
 	// run Prover Stats APIs
-	router := gin.Default()
-	controller.InitController(db)
-	route.Route(router, cfg)
-	go func() {
-		router.Run(port)
-	}()
+	srv, err := mockHttpServer(cfg, db)
+	assert.NoError(t, err)
+	defer srv.Close()
 
 	t.Run("testRequestToken", testRequestToken)
 	t.Run("testGetProverTasksByProver", testGetProverTasksByProver)

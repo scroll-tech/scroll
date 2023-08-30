@@ -3,18 +3,16 @@ package relayer
 import (
 	"context"
 	"errors"
-	"math/big"
-	"net/http"
-	"strings"
-	"testing"
-	"time"
-
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+	"math/big"
+	"net/http"
+	"strings"
+	"testing"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
@@ -350,23 +348,7 @@ func mockChainMonitorServer(baseURL string) (*http.Server, error) {
 			Data:    true,
 		})
 	})
-	srv := &http.Server{
-		Handler:      router,
-		Addr:         strings.Split(baseURL, "//")[1],
-		ReadTimeout:  time.Second * 3,
-		WriteTimeout: time.Second * 3,
-		IdleTimeout:  time.Second * 12,
-	}
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- srv.ListenAndServe()
-	}()
-	select {
-	case err := <-errCh:
-		return nil, err
-	case <-time.After(time.Second):
-	}
-	return srv, nil
+	return utils.StartHttpServer(strings.Split(baseURL, "//")[1], router)
 }
 
 func testGetBatchStatusByIndex(t *testing.T) {
