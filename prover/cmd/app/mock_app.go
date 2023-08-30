@@ -38,6 +38,7 @@ type ProverApp struct {
 
 	index int
 	name  string
+	args  []string
 	docker.AppAPI
 }
 
@@ -61,7 +62,7 @@ func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, htt
 		bboltDB:    fmt.Sprintf("/tmp/%d_%s_bbolt_db", base.Timestamp, name),
 		index:      getIndex(),
 		name:       name,
-		AppAPI:     cmd.NewCmd(name, []string{"--log.debug", "--config", proverFile}...),
+		args:       []string{"--log.debug", "--config", proverFile},
 	}
 	if err := proverApp.MockConfig(true, httpURL, proofType); err != nil {
 		panic(err)
@@ -70,7 +71,8 @@ func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, htt
 }
 
 // RunApp run prover-test child process by multi parameters.
-func (r *ProverApp) RunApp(t *testing.T) {
+func (r *ProverApp) RunApp(t *testing.T, args ...string) {
+	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
 	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
