@@ -1,7 +1,7 @@
 void init_batch_prover(char* params_dir, char* assets_dir);
 void init_batch_verifier(char* params_dir, char* assets_dir);
 char* get_batch_vk();
-char check_chunk_proofs(char* chunk_proofs);
+char* check_chunk_proofs(char* chunk_proofs);
 char* gen_batch_proof(char* chunk_hashes, char* chunk_proofs);
 char verify_batch_proof(char* proof);
 
