@@ -183,7 +183,7 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 	}
 
 	if resp.StatusCode() != 200 {
-		log.Error("failed to submit proof, status code: %v", resp.StatusCode())
+		log.Error("failed to submit proof", "status code", resp.StatusCode())
 		return fmt.Errorf("failed to submit proof, status code not 200: %w", ErrCoordinatorConnect)
 	}
 
