@@ -142,9 +142,9 @@ func insertSomeProverTasks(t *testing.T, db *gorm.DB) {
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	ptdb := orm.NewProverTask(db)
-	err = ptdb.SetProverTask(context.Background(), &task1)
+	err = ptdb.InsertProverTask(context.Background(), &task1)
 	assert.NoError(t, err)
 
-	err = ptdb.SetProverTask(context.Background(), &task2)
+	err = ptdb.InsertProverTask(context.Background(), &task2)
 	assert.NoError(t, err)
 }
