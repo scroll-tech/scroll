@@ -55,16 +55,16 @@ func (c *Cmd) WaitExit() {
 	}
 
 	// Send interrupt signal.
-	_ = c.cmd.Process.Signal(os.Interrupt)
-	// should use `_ = c.cmd.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
+	_ = c.app.Process.Signal(os.Interrupt)
+	// should use `_ = c.app.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
 	// so we use `Kill` as a temp workaround. And since `WaitExit` is only used in integration tests, so
 	// it won't really affect our functionalities.
-	_ = c.cmd.Process.Kill()
+	_ = c.app.Process.Kill()
 }
 
 // Interrupt send interrupt signal.
 func (c *Cmd) Interrupt() {
-	c.ErrChan <- c.cmd.Process.Signal(os.Interrupt)
+	c.ErrChan <- c.app.Process.Signal(os.Interrupt)
 }
 
 // WaitResult return true when get the keyword during timeout.
