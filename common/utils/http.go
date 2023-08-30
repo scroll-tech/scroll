@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// StartHttpServer a public http server to be used.
-func StartHttpServer(address string, handler http.Handler) (*http.Server, error) {
+// StartHTTPServer a public http server to be used.
+func StartHTTPServer(address string, handler http.Handler) (*http.Server, error) {
 	srv := &http.Server{
 		Handler:      handler,
 		Addr:         address,

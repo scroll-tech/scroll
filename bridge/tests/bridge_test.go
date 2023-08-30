@@ -108,7 +108,7 @@ func mockChainMonitorServer(baseURL string) (*http.Server, error) {
 			Data:    true,
 		})
 	})
-	return utils.StartHttpServer(strings.Split(baseURL, "//")[1], router)
+	return utils.StartHTTPServer(strings.Split(baseURL, "//")[1], router)
 }
 
 func prepareContracts(t *testing.T) {

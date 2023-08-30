@@ -4,21 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math/big"
+	"net/http"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	"io"
-	"math/big"
-	"net/http"
-	"scroll-tech/common/utils"
-	"testing"
 
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/controller"
@@ -37,12 +38,12 @@ var (
 	token     string
 )
 
-func mockHttpServer(cfg *config.Config, db *gorm.DB) (*http.Server, error) {
+func mockHTTPServer(cfg *config.Config, db *gorm.DB) (*http.Server, error) {
 	// run Prover Stats APIs
 	router := gin.Default()
 	controller.InitController(db)
 	route.Route(router, cfg)
-	return utils.StartHttpServer(addr, router)
+	return utils.StartHTTPServer(addr, router)
 }
 
 func TestProverTaskAPIs(t *testing.T) {
@@ -61,7 +62,7 @@ func TestProverTaskAPIs(t *testing.T) {
 	insertSomeProverTasks(t, db)
 
 	// run Prover Stats APIs
-	srv, err := mockHttpServer(cfg, db)
+	srv, err := mockHTTPServer(cfg, db)
 	assert.NoError(t, err)
 	defer srv.Close()
 
