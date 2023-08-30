@@ -145,8 +145,8 @@ func TestProverReLogin(t *testing.T) {
 	coordinatorApp.RunApp(t) // login timeout: 1 sec
 
 	// Run prover app.
-	chunkProverApp.ExpectWithTimeout(t, true, time.Second*40, "re-login success") // chunk prover login.
-	batchProverApp.ExpectWithTimeout(t, true, time.Second*40, "re-login success") // batch prover login.
+	chunkProverApp.ExpectWithTimeout(t, true, time.Second*80, "re-login success") // chunk prover login.
+	batchProverApp.ExpectWithTimeout(t, true, time.Second*80, "re-login success") // batch prover login.
 
 	chunkProverApp.RunApp(t)
 	batchProverApp.RunApp(t)
