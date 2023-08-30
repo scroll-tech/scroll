@@ -10,7 +10,7 @@ ADD COLUMN total_l1_commit_calldata_size INTEGER NOT NULL DEFAULT 0;
 -- +goose Down
 -- +goose StatementBegin
 
-ALTER TABLE batch
+ALTER TABLE IF EXISTS batch
 DROP COLUMN total_l1_commit_gas,
 DROP COLUMN total_l1_commit_calldata_size;
 
