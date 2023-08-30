@@ -86,6 +86,10 @@ func TestMain(m *testing.M) {
 
 func TestFunctions(t *testing.T) {
 	setupEnv(t)
+	srv, err := mockChainMonitorServer(cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL)
+	assert.NoError(t, err)
+	defer srv.Close()
+
 	// Run l1 relayer test cases.
 	t.Run("TestCreateNewL1Relayer", testCreateNewL1Relayer)
 	t.Run("TestL1RelayerProcessSaveEvents", testL1RelayerProcessSaveEvents)

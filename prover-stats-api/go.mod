@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/appleboy/gin-jwt/v2 v2.9.1
 	github.com/gin-gonic/gin v1.9.1
+	github.com/google/uuid v1.1.5
 	github.com/stretchr/testify v1.8.3
 	gorm.io/gorm v1.25.2
 )
