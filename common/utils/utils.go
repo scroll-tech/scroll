@@ -56,6 +56,6 @@ func IsNil(i interface{}) bool {
 
 // RandomURL return a random port endpoint.
 func RandomURL() string {
-	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
+	id, _ := rand.Int(rand.Reader, big.NewInt(5000-1))
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
