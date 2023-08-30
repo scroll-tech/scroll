@@ -163,7 +163,7 @@ type CheckChunkProofsResponse struct {
 // Message holds the generated proof in byte slice format.
 // Error provides additional details in case the proof generation failed.
 type ProofResult struct {
-	Message []byte `json:"message"`
+	Message []byte `json:"message,omitempty"`
 	Error   string `json:"error,omitempty"`
 }
 
