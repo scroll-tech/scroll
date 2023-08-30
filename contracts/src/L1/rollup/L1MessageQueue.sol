@@ -3,6 +3,7 @@
 pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {BitMapsUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/structs/BitMapsUpgradeable.sol";
 
 import {IL2GasPriceOracle} from "./IL2GasPriceOracle.sol";
 import {IL1MessageQueue} from "./IL1MessageQueue.sol";
@@ -17,6 +18,8 @@ import {AddressAliasHelper} from "../../libraries/common/AddressAliasHelper.sol"
 /// @notice This contract will hold all L1 to L2 messages.
 /// Each appended message is assigned with a unique and increasing `uint256` index.
 contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
+    using BitMapsUpgradeable for BitMapsUpgradeable.BitMap;
+
     /**********
      * Events *
      **********/
@@ -61,6 +64,15 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @notice The max gas limit of L1 transactions.
     uint256 public maxGasLimit;
 
+    /// @dev The bitmap for skipped messages.
+    BitMapsUpgradeable.BitMap private droppedMessageBitmap;
+
+    /// @dev The bitmap for skipped messages, where `skippedMessageBitmap[i]` keeps the bits from `[i*256, (i+1)*256)`.
+    mapping(uint256 => uint256) private skippedMessageBitmap;
+
+    /// @notice The start queue index when we enable the `skippedMessageBitmap`.
+    uint256 public bitmapEnabledQueueIndex;
+
     /**********************
      * Function Modifiers *
      **********************/
@@ -92,6 +104,10 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         enforcedTxGateway = _enforcedTxGateway;
         gasOracle = _gasOracle;
         maxGasLimit = _maxGasLimit;
+    }
+
+    function initializeV2() external reinitializer(2) {
+        bitmapEnabledQueueIndex = pendingQueueIndex;
     }
 
     /*************************
@@ -256,6 +272,29 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         return hash;
     }
 
+    /// @inheritdoc IL1MessageQueue
+    /// @dev Before the `bitmapEnabledQueueIndex`, if the message is dropped, the function will return `false`.
+    function isMessageSkipped(uint256 _queueIndex) external view returns (bool) {
+        if (_queueIndex >= pendingQueueIndex) return false;
+
+        if (_queueIndex < bitmapEnabledQueueIndex) {
+            return messageQueue[_queueIndex] != bytes32(0);
+        } else {
+            return _getBitmap(_queueIndex);
+        }
+    }
+
+    /// @inheritdoc IL1MessageQueue
+    function isMessageDropped(uint256 _queueIndex) external view returns (bool) {
+        if (_queueIndex < bitmapEnabledQueueIndex) {
+            // @note This will also include the executed messages.
+            return messageQueue[_queueIndex] == bytes32(0);
+        } else {
+            // it should be a skipped message first.
+            return _getBitmap(_queueIndex) && droppedMessageBitmap.get(_queueIndex);
+        }
+    }
+
     /*****************************
      * Public Mutating Functions *
      *****************************/
@@ -305,10 +344,15 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         require(pendingQueueIndex == _startIndex, "start index mismatch");
 
         unchecked {
-            for (uint256 i = 0; i < _count; i++) {
-                if ((_skippedBitmap >> i) & 1 == 0) {
-                    messageQueue[_startIndex + i] = bytes32(0);
-                }
+            // clear extra bits in `_skippedBitmap`, and if _count = 256, the overflow is designed
+            uint256 mask = (1 << _count) - 1;
+            _skippedBitmap &= mask;
+
+            uint256 bucket = _startIndex >> 8;
+            uint256 offset = _startIndex & 0xff;
+            skippedMessageBitmap[bucket] |= _skippedBitmap << offset;
+            if (offset + _count > 256) {
+                skippedMessageBitmap[bucket + 1] = _skippedBitmap >> (256 - offset);
             }
 
             pendingQueueIndex = _startIndex + _count;
@@ -320,9 +364,10 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @inheritdoc IL1MessageQueue
     function dropCrossDomainMessage(uint256 _index) external onlyMessenger {
         require(_index < pendingQueueIndex, "cannot drop pending message");
-        require(messageQueue[_index] != bytes32(0), "message already dropped or executed");
 
-        messageQueue[_index] = bytes32(0);
+        require(_getBitmap(_index), "drop non-skipped message");
+        require(!droppedMessageBitmap.get(_index), "message already dropped");
+        droppedMessageBitmap.set(_index);
 
         emit DropTransaction(_index);
     }
@@ -392,5 +437,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         // check if the gas limit is above intrinsic gas
         uint256 intrinsicGas = calculateIntrinsicGasFee(_calldata);
         require(_gasLimit >= intrinsicGas, "Insufficient gas limit, must be above intrinsic gas");
+    }
+
+    /// @dev Returns whether the bit at `index` is set.
+    function _getBitmap(uint256 index) internal view returns (bool) {
+        uint256 bucket = index >> 8;
+        uint256 mask = 1 << (index & 0xff);
+        return skippedMessageBitmap[bucket] & mask != 0;
     }
 }
