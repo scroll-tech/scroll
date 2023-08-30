@@ -12,6 +12,8 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database/migrate"
 )
@@ -66,30 +68,32 @@ func TestProverTaskOrm(t *testing.T) {
 	reward.SetString("18446744073709551616", 10) // 1 << 64, uint64 maximum 1<<64 -1
 
 	proverTask := ProverTask{
+		TaskType:        int16(message.ProofTypeChunk),
 		TaskID:          "test-hash",
 		ProverName:      "prover-0",
 		ProverPublicKey: "0",
 		ProvingStatus:   int16(types.ProverAssigned),
 		Reward:          decimal.NewFromBigInt(reward, 0),
+		AssignedAt:      utils.NowUTC(),
 	}
 
-	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
+	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
-	getTask, err := proverTaskOrm.GetProverTasksByHash(context.Background(), "test-hash")
+	proverTasks, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), message.ProofTypeChunk, []string{"test-hash"})
 	assert.NoError(t, err)
-	assert.Equal(t, proverTask.ProverName, getTask.ProverName)
+	assert.Equal(t, 1, len(proverTasks))
+	assert.Equal(t, proverTask.ProverName, proverTasks[0].ProverName)
+	assert.NotEqual(t, proverTask.UUID.String(), "00000000-0000-0000-0000-000000000000")
 
 	// test decimal reward, get reward
-	resultReward := getTask.Reward.BigInt()
+	resultReward := proverTasks[0].Reward.BigInt()
 	assert.Equal(t, resultReward, reward)
 	assert.Equal(t, resultReward.String(), "18446744073709551616")
 
 	proverTask.ProvingStatus = int16(types.ProverProofValid)
-	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
-	assert.NoError(t, err)
-	getTask, err = proverTaskOrm.GetProverTasksByHash(context.Background(), "test-hash")
-	assert.NoError(t, err)
-	assert.Equal(t, proverTask.ProvingStatus, getTask.ProvingStatus)
+	proverTask.AssignedAt = utils.NowUTC()
+	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
+	assert.Error(t, err)
 }
 
 func TestProverTaskOrmUint256(t *testing.T) {
@@ -101,18 +105,22 @@ func TestProverTaskOrmUint256(t *testing.T) {
 	rewardUint256 := big.NewInt(0)
 	rewardUint256.SetString("115792089237316195423570985008687907853269984665640564039457584007913129639935", 10)
 	proverTask := ProverTask{
+		TaskType:        int16(message.ProofTypeChunk),
 		TaskID:          "test-hash",
 		ProverName:      "prover-0",
 		ProverPublicKey: "0",
 		ProvingStatus:   int16(types.ProverAssigned),
 		Reward:          decimal.NewFromBigInt(rewardUint256, 0),
+		AssignedAt:      utils.NowUTC(),
 	}
 
-	err = proverTaskOrm.SetProverTask(context.Background(), &proverTask)
+	err = proverTaskOrm.InsertProverTask(context.Background(), &proverTask)
 	assert.NoError(t, err)
-	proverTasksUint256, err := proverTaskOrm.GetProverTasksByHash(context.Background(), "test-hash")
+	assert.NotEqual(t, proverTask.UUID.String(), "00000000-0000-0000-0000-000000000000")
+	proverTasksUint256, err := proverTaskOrm.GetProverTasksByHashes(context.Background(), message.ProofTypeChunk, []string{"test-hash"})
 	assert.NoError(t, err)
-	resultRewardUint256 := proverTasksUint256.Reward.BigInt()
+	assert.Equal(t, 1, len(proverTasksUint256))
+	resultRewardUint256 := proverTasksUint256[0].Reward.BigInt()
 	assert.Equal(t, resultRewardUint256, rewardUint256)
 	assert.Equal(t, resultRewardUint256.String(), "115792089237316195423570985008687907853269984665640564039457584007913129639935")
 }
