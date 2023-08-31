@@ -71,7 +71,7 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 		Get("/coordinator/v1/challenge")
 
 	if err != nil {
-		return fmt.Errorf("get random string failed: %v", err)
+		return fmt.Errorf("get random string failed: %w", err)
 	}
 
 	if challengeResp.StatusCode() != 200 {
@@ -89,7 +89,7 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 
 	err = authMsg.SignWithKey(c.priv)
 	if err != nil {
-		return fmt.Errorf("signature failed: %v", err)
+		return fmt.Errorf("signature failed: %w", err)
 	}
 
 	// Login to coordinator
@@ -117,7 +117,7 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 		Post("/coordinator/v1/login")
 
 	if err != nil {
-		return fmt.Errorf("login failed: %v", err)
+		return fmt.Errorf("login failed: %w", err)
 	}
 
 	if loginResp.StatusCode() != 200 {
@@ -145,7 +145,7 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 		Post("/coordinator/v1/get_task")
 
 	if err != nil {
-		return nil, fmt.Errorf("request for GetTask failed: %v", err)
+		return nil, fmt.Errorf("request for GetTask failed: %w", err)
 	}
 
 	if resp.StatusCode() != 200 {
@@ -155,7 +155,7 @@ func (c *CoordinatorClient) GetTask(ctx context.Context, req *GetTaskRequest) (*
 	if result.ErrCode == types.ErrJWTTokenExpired {
 		log.Info("JWT expired, attempting to re-login")
 		if err := c.Login(ctx); err != nil {
-			return nil, fmt.Errorf("JWT expired, re-login failed: %v", err)
+			return nil, fmt.Errorf("JWT expired, re-login failed: %w", err)
 		}
 		log.Info("re-login success")
 		return c.GetTask(ctx, req)
@@ -178,19 +178,19 @@ func (c *CoordinatorClient) SubmitProof(ctx context.Context, req *SubmitProofReq
 		Post("/coordinator/v1/submit_proof")
 
 	if err != nil {
-		log.Error("submit proof request failed: %v", err)
+		log.Error("submit proof request failed", "error", err)
 		return fmt.Errorf("submit proof request failed: %w", ErrCoordinatorConnect)
 	}
 
 	if resp.StatusCode() != 200 {
-		log.Error("failed to submit proof, status code: %v", resp.StatusCode())
+		log.Error("failed to submit proof", "status code", resp.StatusCode())
 		return fmt.Errorf("failed to submit proof, status code not 200: %w", ErrCoordinatorConnect)
 	}
 
 	if result.ErrCode == types.ErrJWTTokenExpired {
 		log.Info("JWT expired, attempting to re-login")
 		if err := c.Login(ctx); err != nil {
-			log.Error("JWT expired, re-login failed: %v", err)
+			log.Error("JWT expired, re-login failed", "error", err)
 			return fmt.Errorf("JWT expired, re-login failed: %w", ErrCoordinatorConnect)
 		}
 		log.Info("re-login success")
