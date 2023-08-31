@@ -19,6 +19,7 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/prover-stats-api/internal/config"
 	"scroll-tech/prover-stats-api/internal/controller"
@@ -32,11 +33,18 @@ var (
 )
 
 var (
-	port      = ":12990"
-	addr      = fmt.Sprintf("http://localhost%s", port)
-	basicPath = fmt.Sprintf("%s/api/prover_task/v1", addr)
+	addr      = utils.RandomURL()
+	basicPath = fmt.Sprintf("http://%s/api/prover_task/v1", addr)
 	token     string
 )
+
+func mockHTTPServer(cfg *config.Config, db *gorm.DB) (*http.Server, error) {
+	// run Prover Stats APIs
+	router := gin.Default()
+	controller.InitController(db)
+	route.Route(router, cfg)
+	return utils.StartHTTPServer(addr, router)
+}
 
 func TestProverTaskAPIs(t *testing.T) {
 	// start database image
@@ -54,12 +62,9 @@ func TestProverTaskAPIs(t *testing.T) {
 	insertSomeProverTasks(t, db)
 
 	// run Prover Stats APIs
-	router := gin.Default()
-	controller.InitController(db)
-	route.Route(router, cfg)
-	go func() {
-		router.Run(port)
-	}()
+	srv, err := mockHTTPServer(cfg, db)
+	assert.NoError(t, err)
+	defer srv.Close()
 
 	t.Run("testRequestToken", testRequestToken)
 	t.Run("testGetProverTasksByProver", testGetProverTasksByProver)
@@ -142,9 +147,9 @@ func insertSomeProverTasks(t *testing.T, db *gorm.DB) {
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	ptdb := orm.NewProverTask(db)
-	err = ptdb.SetProverTask(context.Background(), &task1)
+	err = ptdb.InsertProverTask(context.Background(), &task1)
 	assert.NoError(t, err)
 
-	err = ptdb.SetProverTask(context.Background(), &task2)
+	err = ptdb.InsertProverTask(context.Background(), &task2)
 	assert.NoError(t, err)
 }
