@@ -153,7 +153,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 		return nil, err
 	}
 
-	// select ad most p.maxChunkNumPerBatch chunks
+	// select at most p.maxChunkNumPerBatch chunks
 	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, unbatchedChunkIndex, int(p.maxChunkNumPerBatch))
 	if err != nil {
 		return nil, err
@@ -254,9 +254,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 				"chunk outdated time threshold", currentTimeSec,
 			)
 		} else {
-			log.Warn("reached maximum number of chunks in batch",
-				"chunk number", totalChunks,
-				"chunk count", p.maxChunkNumPerBatch,
+			log.Info("reached maximum number of chunks in batch",
+				"chunk count", totalChunks,
 			)
 		}
 

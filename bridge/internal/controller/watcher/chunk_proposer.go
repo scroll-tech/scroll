@@ -189,7 +189,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, err
 	}
 
-	// select ad most p.maxBlockNumPerChunk blocks
+	// select at most p.maxBlockNumPerChunk blocks
 	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight, int(p.maxBlockNumPerChunk))
 	if err != nil {
 		return nil, err
@@ -301,8 +301,8 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 				"current time", currentTimeSec,
 			)
 		} else {
-			log.Warn("reached maximum number of blocks in chunk",
-				"block number", chunk.Blocks[0].Header.Number,
+			log.Info("reached maximum number of blocks in chunk",
+				"start block number", chunk.Blocks[0].Header.Number,
 				"block count", len(chunk.Blocks),
 			)
 		}
