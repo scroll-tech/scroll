@@ -202,8 +202,14 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
 		}
 
+		batchMeta := &types.BatchMeta{
+			StartChunkIndex: 0,
+			StartChunkHash:  dbChunk.Hash,
+			EndChunkIndex:   0,
+			EndChunkHash:    dbChunk.Hash,
+		}
 		var batch *orm.Batch
-		batch, err = r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk}, dbTX)
+		batch, err = r.batchOrm.InsertBatch(r.ctx, []*types.Chunk{chunk}, batchMeta, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
