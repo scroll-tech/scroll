@@ -61,7 +61,7 @@ type RelayerConfig struct {
 	FinalizeBatchIntervalSec uint64 `json:"finalize_batch_interval_sec"`
 	// MessageRelayMinGasLimit to avoid OutOfGas error
 	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit,omitempty"`
-	// chain-monitor endpoint
+	// ChainMonitor config of monitoring service
 	ChainMonitor *ChainMonitor `json:"chain_monitor,omitempty"`
 	// The private key of the relayer
 	MessageSenderPrivateKey   *ecdsa.PrivateKey `json:"-"`
