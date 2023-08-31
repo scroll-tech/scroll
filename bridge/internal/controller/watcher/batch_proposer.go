@@ -261,8 +261,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 			)
 		}
 
-    batchMeta.TotalL1CommitGas = totalL1CommitGas
-    batchMeta.TotalL1CommitCalldataSize = totalL1CommitCalldataSize
+		batchMeta.TotalL1CommitGas = totalL1CommitGas
+		batchMeta.TotalL1CommitCalldataSize = totalL1CommitCalldataSize
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.totalL1CommitGas.Set(float64(batchMeta.TotalL1CommitGas))
 		p.totalL1CommitCalldataSize.Set(float64(batchMeta.TotalL1CommitCalldataSize))
