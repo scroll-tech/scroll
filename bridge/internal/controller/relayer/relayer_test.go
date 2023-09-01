@@ -86,6 +86,10 @@ func TestMain(m *testing.M) {
 
 func TestFunctions(t *testing.T) {
 	setupEnv(t)
+	srv, err := mockChainMonitorServer(cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL)
+	assert.NoError(t, err)
+	defer srv.Close()
+
 	// Run l1 relayer test cases.
 	t.Run("TestCreateNewL1Relayer", testCreateNewL1Relayer)
 	t.Run("TestL1RelayerGasOracleConfirm", testL1RelayerGasOracleConfirm)
@@ -99,4 +103,6 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestL2RelayerFinalizeConfirm", testL2RelayerFinalizeConfirm)
 	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
 	t.Run("TestLayer2RelayerProcessGasPriceOracle", testLayer2RelayerProcessGasPriceOracle)
+	// test getBatchStatusByIndex
+	t.Run("TestGetBatchStatusByIndex", testGetBatchStatusByIndex)
 }

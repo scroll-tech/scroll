@@ -2,8 +2,11 @@ package tests
 
 import (
 	"context"
+	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -13,6 +16,7 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/utils"
 
 	"scroll-tech/database/migrate"
 
@@ -82,6 +86,23 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func mockChainMonitorServer(baseURL string) (*http.Server, error) {
+	router := gin.New()
+	r := router.Group("/v1")
+	r.GET("/batch_status", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, struct {
+			ErrCode int    `json:"errcode"`
+			ErrMsg  string `json:"errmsg"`
+			Data    bool   `json:"data"`
+		}{
+			ErrCode: 0,
+			ErrMsg:  "",
+			Data:    true,
+		})
+	})
+	return utils.StartHTTPServer(strings.Split(baseURL, "//")[1], router)
+}
+
 func prepareContracts(t *testing.T) {
 	var err error
 	var tx *types.Transaction
@@ -100,6 +121,9 @@ func prepareContracts(t *testing.T) {
 
 func TestFunction(t *testing.T) {
 	setupEnv(t)
+	srv, err := mockChainMonitorServer(bridgeApp.Config.L2Config.RelayerConfig.ChainMonitor.BaseURL)
+	assert.NoError(t, err)
+	defer srv.Close()
 
 	// process start test
 	t.Run("TestProcessStart", testProcessStart)

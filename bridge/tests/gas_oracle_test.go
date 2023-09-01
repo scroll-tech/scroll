@@ -89,8 +89,14 @@ func testImportL2GasPrice(t *testing.T) {
 	chunkHash, err := chunk.Hash(0)
 	assert.NoError(t, err)
 
+	batchMeta := &types.BatchMeta{
+		StartChunkIndex: 0,
+		StartChunkHash:  chunkHash.Hex(),
+		EndChunkIndex:   0,
+		EndChunkHash:    chunkHash.Hex(),
+	}
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*types.Chunk{chunk})
+	_, err = batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk}, batchMeta)
 	assert.NoError(t, err)
 
 	// check db status
