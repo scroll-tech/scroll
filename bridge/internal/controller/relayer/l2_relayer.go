@@ -458,17 +458,17 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		r.metrics.bridgeL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 
 		// Check batch status before send `finalizeBatchWithProof` tx.
-		batchStatus, err := r.getBatchStatusByIndex(batch.Index)
-		if err != nil {
-			r.metrics.bridgeL2ChainMonitorLatestFailedCall.Inc()
-			log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
-			return
-		}
-		if !batchStatus {
-			r.metrics.bridgeL2ChainMonitorLatestFailedBatchStatus.Inc()
-			log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
-			return
-		}
+		//batchStatus, err := r.getBatchStatusByIndex(batch.Index)
+		//if err != nil {
+		//	r.metrics.bridgeL2ChainMonitorLatestFailedCall.Inc()
+		//	log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
+		//	return
+		//}
+		//if !batchStatus {
+		//	r.metrics.bridgeL2ChainMonitorLatestFailedBatchStatus.Inc()
+		//	log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
+		//	return
+		//}
 
 		var parentBatchStateRoot string
 		if batch.Index > 0 {
