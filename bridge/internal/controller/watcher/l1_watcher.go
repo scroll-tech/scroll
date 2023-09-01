@@ -22,6 +22,8 @@ import (
 	"scroll-tech/bridge/internal/utils"
 )
 
+const contractEventsBlocksFetchLimit = int64(10)
+
 type rollupEvent struct {
 	batchHash common.Hash
 	txHash    common.Hash
@@ -198,10 +200,10 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 			},
 			Topics: make([][]common.Hash, 1),
 		}
-		query.Topics[0] = make([]common.Hash, 5)
+		query.Topics[0] = make([]common.Hash, 3)
 		query.Topics[0][0] = bridgeAbi.L1QueueTransactionEventSignature
-		query.Topics[0][3] = bridgeAbi.L1CommitBatchEventSignature
-		query.Topics[0][4] = bridgeAbi.L1FinalizeBatchEventSignature
+		query.Topics[0][1] = bridgeAbi.L1CommitBatchEventSignature
+		query.Topics[0][2] = bridgeAbi.L1FinalizeBatchEventSignature
 
 		logs, err := w.client.FilterLogs(w.ctx, query)
 		if err != nil {

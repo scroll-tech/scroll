@@ -26,7 +26,9 @@ func TestERC20(t *testing.T) {
 
 	token, err := erc20.NewERC20Mock(erc20Address, l2Cli)
 	assert.NoError(t, err)
-	privKey, _ := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	privKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
+	assert.NoError(t, err)
+
 	auth, err := bind.NewKeyedTransactorWithChainID(privKey, base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
