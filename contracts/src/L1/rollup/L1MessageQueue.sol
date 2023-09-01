@@ -280,7 +280,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         if (_queueIndex < bitmapEnabledQueueIndex) {
             return messageQueue[_queueIndex] != bytes32(0);
         } else {
-            return _getBitmap(_queueIndex);
+            return _isMessageSkipped(_queueIndex);
         }
     }
 
@@ -291,7 +291,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
             return messageQueue[_queueIndex] == bytes32(0);
         } else {
             // it should be a skipped message first.
-            return _getBitmap(_queueIndex) && droppedMessageBitmap.get(_queueIndex);
+            return _isMessageSkipped(_queueIndex) && droppedMessageBitmap.get(_queueIndex);
         }
     }
 
@@ -344,7 +344,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         require(pendingQueueIndex == _startIndex, "start index mismatch");
 
         unchecked {
-            // clear extra bits in `_skippedBitmap`, and if _count = 256, the overflow is designed
+            // clear extra bits in `_skippedBitmap`, and if _count = 256, it's designed to overflow.
             uint256 mask = (1 << _count) - 1;
             _skippedBitmap &= mask;
 
@@ -365,7 +365,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     function dropCrossDomainMessage(uint256 _index) external onlyMessenger {
         require(_index < pendingQueueIndex, "cannot drop pending message");
 
-        require(_getBitmap(_index), "drop non-skipped message");
+        require(_isMessageSkipped(_index), "drop non-skipped message");
         require(!droppedMessageBitmap.get(_index), "message already dropped");
         droppedMessageBitmap.set(_index);
 
@@ -440,7 +440,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @dev Returns whether the bit at `index` is set.
-    function _getBitmap(uint256 index) internal view returns (bool) {
+    function _isMessageSkipped(uint256 index) internal view returns (bool) {
         uint256 bucket = index >> 8;
         uint256 mask = 1 << (index & 0xff);
         return skippedMessageBitmap[bucket] & mask != 0;
