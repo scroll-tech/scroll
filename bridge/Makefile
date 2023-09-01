@@ -35,7 +35,6 @@ docker_push:
 	docker docker push scrolltech/gas-oracle:${IMAGE_VERSION}
 	docker docker push scrolltech/event-watcher:${IMAGE_VERSION}
 	docker docker push scrolltech/rollup-relayer:${IMAGE_VERSION}
-	docker docker push scrolltech/msg-relayer:${IMAGE_VERSION}
 
 docker:
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/gas-oracle:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/gas_oracle.Dockerfile
