@@ -7,50 +7,60 @@ This directory contains the solidity code for Scroll L1 bridge and rollup contra
 <pre>
 ├── <a href="./docs/">docs</a>: Documentation for the contracts
 ├── <a href="./integration-test/">integration-test</a>: Hardhat integration tests
-├── <a href="./lib/">lib</a>
-│   ├── <a href="./lib/ds-test">ds-test</a>: testing tools
-│   ├── <a href="./lib/forge-std">forge-std</a>: foundry dependency
-│   └── <a href="./lib/solmate">solmate</a>: testing tools
-├── <a href="./scripts">scripts</a>: deployment scripts
+├── <a href="./lib/">lib</a>: External libraries and testing tools
+├── <a href="./scripts">scripts</a>: Deployment scripts
 ├── <a href="./src">src</a>
-│   ├── <a href="./src/interfaces/">interfaces</a>: common contract interfaces
-│   ├── <a href="./src/L1/">L1</a>: contracts on the L1
-│   │   ├── <a href="./src/L1/gateways/">gateways</a>: Gateway router and individual gateway contracts
+│   ├── <a href="./src/gas-swap/">gas-swap</a>: Utility contract that allows gas payment in other tokens
+│   ├── <a href="./src/interfaces/">interfaces</a>: Common contract interfaces
+│   ├── <a href="./src/L1/">L1</a>: Contracts deployed on the L1 (Ethereum)
+│   │   ├── <a href="./src/L1/gateways/">gateways</a>: Gateway router and token gateway contracts
 │   │   ├── <a href="./src/L1/rollup/">rollup</a>: Rollup contracts for data availability and finalization
 │   │   ├── <a href="./src/L1/IL1ScrollMessenger.sol">IL1ScrollMessenger.sol</a>: L1 Scroll messenger interface
 │   │   └── <a href="./src/L1/L1ScrollMessenger.sol">L1ScrollMessenger.sol</a>: L1 Scroll messenger contract
-│   ├── <a href="./src/L2/">L2</a>: contracts on the L2
-│   │   ├── <a href="./src/L2/gateways/">gateways</a>: Gateway router and individual gateway contracts
-│   │   ├── <a href="./src/L2/predeploys/">predeploys</a>: Pre-deployed contracts on the L2 Scroll chain
+│   ├── <a href="./src/L2/">L2</a>: Contracts deployed on the L2 (Scroll)
+│   │   ├── <a href="./src/L2/gateways/">gateways</a>: Gateway router and token gateway contracts
+│   │   ├── <a href="./src/L2/predeploys/">predeploys</a>: Pre-deployed contracts on L2
 │   │   ├── <a href="./src/L2/IL2ScrollMessenger.sol">IL2ScrollMessenger.sol</a>: L2 Scroll messenger interface
 │   │   └── <a href="./src/L2/L2ScrollMessenger.sol">L2ScrollMessenger.sol</a>: L2 Scroll messenger contract
-│   ├── <a href="./src/libraries/">libraries</a>: shared contract libraries
-│   ├── <a href="./src/misc/">misc</a>: miscellaneous contracts
-│   ├── <a href="./src/mocks/">mocks</a>: mock contracts used in the testing
-│   └── <a href="./src/test/">test</a>: unit tests in solidity
-├── <a href="./foundry.toml">foundry.toml</a>: configure foundry
-├── <a href="./hardhat.config.ts">hardhat.config.ts</a>: configure hardhat
-├── <a href="./remappings.txt">remappings.txt</a>: foundry dependency mappings
+│   ├── <a href="./src/libraries/">libraries</a>: Shared contract libraries
+│   ├── <a href="./src/misc/">misc</a>: Miscellaneous contracts
+│   ├── <a href="./src/mocks/">mocks</a>: Mock contracts used in the testing
+│   ├── <a href="./src/rate-limiter/">rate-limiter</a>: Rater limiter contract
+│   └── <a href="./src/test/">test</a>: Unit tests in solidity
+├── <a href="./foundry.toml">foundry.toml</a>: Foundry configuration
+├── <a href="./hardhat.config.ts">hardhat.config.ts</a>: Hardhat configuration
+├── <a href="./remappings.txt">remappings.txt</a>: Foundry dependency mappings
 ...
 </pre>
 
 ## Dependencies
 
+### Node.js
+
+First install [`Node.js`](https://nodejs.org/en) and [`npm`](https://www.npmjs.com/).
+Run the following command to install [`yarn`](https://classic.yarnpkg.com/en/):
+
+```bash
+npm install --global yarn
+```
+
 ### Foundry
 
-First run the command below to get foundryup, the Foundry toolchain installer:
+Install `foundryup`, the Foundry toolchain installer:
 
 ```bash
 curl -L https://foundry.paradigm.xyz | bash
 ```
 
-If you do not want to use the redirect, feel free to manually download the foundryup installation script from [here](https://raw.githubusercontent.com/foundry-rs/foundry/master/foundryup/foundryup).
+If you do not want to use the redirect, feel free to manually download the `foundryup` installation script from [here](https://raw.githubusercontent.com/foundry-rs/foundry/master/foundryup/foundryup).
 
-Then, run `foundryup` in a new terminal session or after reloading your `PATH`.
+Then, run `foundryup` in a new terminal session or after reloading `PATH`.
 
 Other ways to install Foundry can be found [here](https://github.com/foundry-rs/foundry#installation).
 
 ### Hardhat
+
+Run the following command to install [Hardhat](https://hardhat.org/) and other dependencies.
 
 ```
 yarn install
