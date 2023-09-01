@@ -70,9 +70,6 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @dev The bitmap for skipped messages, where `skippedMessageBitmap[i]` keeps the bits from `[i*256, (i+1)*256)`.
     mapping(uint256 => uint256) private skippedMessageBitmap;
 
-    /// @notice The start queue index when we enable the `skippedMessageBitmap`.
-    uint256 public bitmapEnabledQueueIndex;
-
     /**********************
      * Function Modifiers *
      **********************/
@@ -104,10 +101,6 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         enforcedTxGateway = _enforcedTxGateway;
         gasOracle = _gasOracle;
         maxGasLimit = _maxGasLimit;
-    }
-
-    function initializeV2() external reinitializer(2) {
-        bitmapEnabledQueueIndex = pendingQueueIndex;
     }
 
     /*************************
@@ -273,26 +266,16 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @inheritdoc IL1MessageQueue
-    /// @dev Before the `bitmapEnabledQueueIndex`, if the message is dropped, the function will return `false`.
     function isMessageSkipped(uint256 _queueIndex) external view returns (bool) {
         if (_queueIndex >= pendingQueueIndex) return false;
 
-        if (_queueIndex < bitmapEnabledQueueIndex) {
-            return messageQueue[_queueIndex] != bytes32(0);
-        } else {
-            return _isMessageSkipped(_queueIndex);
-        }
+        return _isMessageSkipped(_queueIndex);
     }
 
     /// @inheritdoc IL1MessageQueue
     function isMessageDropped(uint256 _queueIndex) external view returns (bool) {
-        if (_queueIndex < bitmapEnabledQueueIndex) {
-            // @note This will also include the executed messages.
-            return messageQueue[_queueIndex] == bytes32(0);
-        } else {
-            // it should be a skipped message first.
-            return _isMessageSkipped(_queueIndex) && droppedMessageBitmap.get(_queueIndex);
-        }
+        // it should be a skipped message first.
+        return _isMessageSkipped(_queueIndex) && droppedMessageBitmap.get(_queueIndex);
     }
 
     /*****************************
