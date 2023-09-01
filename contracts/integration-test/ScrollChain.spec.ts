@@ -2,7 +2,6 @@
 /* eslint-disable node/no-missing-import */
 import { concat } from "ethers/lib/utils";
 import { constants } from "ethers";
-import { concat } from "ethers/lib/utils";
 import { ethers } from "hardhat";
 import { ScrollChain, L1MessageQueue } from "../typechain";
 
