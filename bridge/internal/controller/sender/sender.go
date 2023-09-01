@@ -419,7 +419,6 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	}
 
 	log.Debug("Transaction gas adjustment details", txInfo)
-
 	s.cacheGasLimitData(uint64(float64(s.cachedMaxGasLimit) * 1.2))
 
 	nonce := tx.Nonce()
