@@ -29,15 +29,24 @@ import (
 )
 
 var (
-	base      *docker.App
-	bridgeApp *bcmd.MockApp
+	base           *docker.App
+	bridgeApp      *bcmd.MockApp
+	coordinatorApp *capp.CoordinatorApp
+	chunkProverApp *rapp.ProverApp
+	batchProverApp *rapp.ProverApp
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
+	coordinatorApp = capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
+	chunkProverApp = rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
+	batchProverApp = rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	m.Run()
 	bridgeApp.Free()
+	coordinatorApp.Free()
+	chunkProverApp.Free()
+	batchProverApp.Free()
 	base.Free()
 }
 
@@ -105,14 +114,6 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log(version.Version)
 
-	base.Timestamp = time.Now().Nanosecond()
-	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
-	chunkProverApp := rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
-	batchProverApp := rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
-	defer coordinatorApp.Free()
-	defer chunkProverApp.Free()
-	defer batchProverApp.Free()
-
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
 
@@ -140,23 +141,14 @@ func TestProverReLogin(t *testing.T) {
 
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
-	base.Timestamp = time.Now().Nanosecond()
-	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
-	chunkProverApp := rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
-	batchProverApp := rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
-	defer coordinatorApp.Free()
-	defer chunkProverApp.Free()
-	defer batchProverApp.Free()
-
 	// Run coordinator app.
 	coordinatorApp.RunApp(t) // login timeout: 1 sec
-
-	// Run prover app.
-	chunkProverApp.ExpectWithTimeout(t, true, time.Second*40, "re-login success") // chunk prover login.
-	batchProverApp.ExpectWithTimeout(t, true, time.Second*40, "re-login success") // batch prover login.
-
 	chunkProverApp.RunApp(t)
 	batchProverApp.RunApp(t)
+
+	// Run prover app.
+	chunkProverApp.WaitResult(t, time.Second*40, "re-login success") // chunk prover login.
+	batchProverApp.WaitResult(t, time.Second*40, "re-login success") // batch prover login.
 
 	// Free apps.
 	chunkProverApp.WaitExit()

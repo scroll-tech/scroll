@@ -2,9 +2,6 @@ package utils
 
 import (
 	"context"
-	"crypto/rand"
-	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/modern-go/reflect2"
@@ -52,10 +49,4 @@ func Loop(ctx context.Context, period time.Duration, f func()) {
 // IsNil Check if the interface is empty.
 func IsNil(i interface{}) bool {
 	return i == nil || reflect2.IsNil(i)
-}
-
-// RandomURL return a random port endpoint.
-func RandomURL() string {
-	id, _ := rand.Int(rand.Reader, big.NewInt(5000-1))
-	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }

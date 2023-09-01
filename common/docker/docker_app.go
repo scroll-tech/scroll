@@ -27,7 +27,6 @@ var (
 
 // AppAPI app interface.
 type AppAPI interface {
-	IsRunning() bool
 	WaitResult(t *testing.T, timeout time.Duration, keyword string) bool
 	RunApp(waitResult func() bool)
 	WaitExit()

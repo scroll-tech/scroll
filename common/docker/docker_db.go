@@ -36,7 +36,7 @@ func NewImgDB(image, password, dbName string, port int) ImgInstance {
 		dbName:   dbName,
 		port:     port,
 	}
-	img.cmd = cmd.NewCmd("docker", img.prepare()...)
+	img.cmd = cmd.NewCmd(img.name, img.prepare()...)
 	return img
 }
 
@@ -89,7 +89,7 @@ func (i *ImgDB) IsRunning() bool {
 }
 
 func (i *ImgDB) prepare() []string {
-	cmd := []string{"run", "--rm", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
+	cmd := []string{"docker", "run", "--rm", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
 	envs := []string{
 		"-e", "POSTGRES_PASSWORD=" + i.password,
 		"-e", fmt.Sprintf("POSTGRES_DB=%s", i.dbName),

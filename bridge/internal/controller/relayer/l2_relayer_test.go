@@ -4,12 +4,9 @@ import (
 	"context"
 	"errors"
 	"math/big"
-	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
-	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -369,34 +366,4 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 		return nil
 	})
 	relayer.ProcessGasPriceOracle()
-}
-
-func mockChainMonitorServer(baseURL string) (*http.Server, error) {
-	router := gin.New()
-	r := router.Group("/v1")
-	r.GET("/batch_status", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, struct {
-			ErrCode int    `json:"errcode"`
-			ErrMsg  string `json:"errmsg"`
-			Data    bool   `json:"data"`
-		}{
-			ErrCode: 0,
-			ErrMsg:  "",
-			Data:    true,
-		})
-	})
-	return utils.StartHTTPServer(strings.Split(baseURL, "//")[1], router)
-}
-
-func testGetBatchStatusByIndex(t *testing.T) {
-	db := setupL2RelayerDB(t)
-	defer database.CloseDB(db)
-
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, relayer)
-
-	status, err := relayer.getBatchStatusByIndex(1)
-	assert.NoError(t, err)
-	assert.Equal(t, true, status)
 }

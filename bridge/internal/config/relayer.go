@@ -37,13 +37,6 @@ type SenderConfig struct {
 	PendingLimit int `json:"pending_limit"`
 }
 
-// ChainMonitor this config is used to get batch status from chain_monitor API.
-type ChainMonitor struct {
-	TimeOut  int    `json:"timeout"`
-	TryTimes int    `json:"try_times"`
-	BaseURL  string `json:"base_url"`
-}
-
 // RelayerConfig loads relayer configuration items.
 // What we need to pay attention to is that
 type RelayerConfig struct {
@@ -61,8 +54,6 @@ type RelayerConfig struct {
 	FinalizeBatchIntervalSec uint64 `json:"finalize_batch_interval_sec"`
 	// MessageRelayMinGasLimit to avoid OutOfGas error
 	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit,omitempty"`
-	// ChainMonitor config of monitoring service
-	ChainMonitor *ChainMonitor `json:"chain_monitor,omitempty"`
 	// The private key of the relayer
 	MessageSenderPrivateKey   *ecdsa.PrivateKey `json:"-"`
 	GasOracleSenderPrivateKey *ecdsa.PrivateKey `json:"-"`

@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -21,8 +20,6 @@ var (
 
 func TestERC20(t *testing.T) {
 	base.RunL2Geth(t)
-	time.Sleep(time.Second * 3)
-
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
 

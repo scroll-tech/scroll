@@ -42,7 +42,7 @@ func NewImgGeth(image, volume, ipc string, hPort, wPort int) GethImgInstance {
 		httpPort: hPort,
 		wsPort:   wPort,
 	}
-	img.cmd = cmd.NewCmd("docker", img.params()...)
+	img.cmd = cmd.NewCmd(img.name, img.prepare()...)
 	return img
 }
 
@@ -149,8 +149,8 @@ func (i *ImgGeth) Stop() error {
 	return cli.ContainerRemove(ctx, i.id, types.ContainerRemoveOptions{})
 }
 
-func (i *ImgGeth) params() []string {
-	cmds := []string{"run", "--rm", "--name", i.name}
+func (i *ImgGeth) prepare() []string {
+	cmds := []string{"docker", "run", "--rm", "--name", i.name}
 	var ports []string
 	if i.httpPort != 0 {
 		ports = append(ports, []string{"-p", strconv.Itoa(i.httpPort) + ":8545"}...)
