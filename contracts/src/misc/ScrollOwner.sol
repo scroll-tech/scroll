@@ -10,6 +10,22 @@ import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet
 contract ScrollOwner is AccessControlEnumerable {
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
+    /**********
+     * Events *
+     **********/
+
+    /// @notice Emitted when the access to target contract is granted.
+    /// @param role The role to grant access.
+    /// @param target The address of target contract.
+    /// @param selectors The list of function selectors to grant access.
+    event GrantAccess(bytes32 indexed role, address indexed target, bytes4[] selectors);
+
+    /// @notice Emitted when the access to target contract is revoked.
+    /// @param role The role to revoke access.
+    /// @param target The address of target contract.
+    /// @param selectors The list of function selectors to revoke access.
+    event RevokeAccess(bytes32 indexed role, address indexed target, bytes4[] selectors);
+
     /*************
      * Variables *
      *************/
@@ -95,10 +111,14 @@ contract ScrollOwner is AccessControlEnumerable {
             for (uint256 i = 0; i < _selectors.length; i++) {
                 targetAccess[_target][_selectors[i]].add(_role);
             }
+
+            emit GrantAccess(_role, _target, _selectors);
         } else {
             for (uint256 i = 0; i < _selectors.length; i++) {
                 targetAccess[_target][_selectors[i]].remove(_role);
             }
+
+            emit RevokeAccess(_role, _target, _selectors);
         }
     }
 
