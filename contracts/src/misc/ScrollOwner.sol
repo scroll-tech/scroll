@@ -116,7 +116,7 @@ contract ScrollOwner is AccessControlEnumerable {
         bytes calldata _data
     ) internal {
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = address(_target).call{value: _value}(_data);
+        (bool success, ) = _target.call{value: _value}(_data);
         if (!success) {
             // solhint-disable-next-line no-inline-assembly
             assembly {
