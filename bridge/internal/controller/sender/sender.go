@@ -60,8 +60,8 @@ func newEmptyFeeData() *FeeData {
 	return &FeeData{
 		gasFeeCap: big.NewInt(0),
 		gasTipCap: big.NewInt(0),
-		gasPrice: big.NewInt(0),
-		gasLimit:0,
+		gasPrice:  big.NewInt(0),
+		gasLimit:  0,
 	}
 }
 
@@ -140,19 +140,19 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	}
 
 	sender := &Sender{
-		ctx:           ctx,
-		config:        config,
-		client:        client,
-		chainID:       chainID,
-		auth:          auth,
-		minBalance:    config.MinBalance,
-		confirmCh:     make(chan *Confirmation, 128),
-		blockNumber:   header.Number.Uint64(),
-		baseFeePerGas: baseFeePerGas,
-		pendingTxs:    cmapV2.New[*PendingTransaction](),
-		stopCh:        make(chan struct{}),
-		name:          name,
-		service:       service,
+		ctx:              ctx,
+		config:           config,
+		client:           client,
+		chainID:          chainID,
+		auth:             auth,
+		minBalance:       config.MinBalance,
+		confirmCh:        make(chan *Confirmation, 128),
+		blockNumber:      header.Number.Uint64(),
+		baseFeePerGas:    baseFeePerGas,
+		pendingTxs:       cmapV2.New[*PendingTransaction](),
+		stopCh:           make(chan struct{}),
+		name:             name,
+		service:          service,
 		cachedMaxFeeData: newEmptyFeeData(),
 	}
 	sender.metrics = initSenderMetrics(reg)
@@ -249,8 +249,8 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 
 	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
-		log.Error("failed to get fee data", "error", err)
-		if s.cachedMaxFeeData.gasLimit == 0{ // if no MaxFeeData cached, and getFeeData fails
+		log.Error("failed to get fee data", "err", err)
+		if s.cachedMaxFeeData.gasLimit == 0 { // if no MaxFeeData cached, and getFeeData fails
 			return common.Hash{}, fmt.Errorf("failed to get fee data for the first time, err: %w", err)
 		}
 		feeData = s.cachedMaxFeeData
