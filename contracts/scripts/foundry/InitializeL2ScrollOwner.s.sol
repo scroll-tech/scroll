@@ -67,8 +67,21 @@ contract InitializeL2ScrollOwner is Script {
         configL2ERC1155Gateway();
 
         grantRoles();
+        transferOwnership();
 
         vm.stopBroadcast();
+    }
+
+    function transferOwnership() internal {
+        Ownable(L2_PROXY_ADMIN_ADDR).transferOwnership(address(owner));
+        Ownable(L1_GAS_PRICE_ORACLE_ADDR).transferOwnership(address(owner));
+        Ownable(L2_TX_FEE_VAULT_ADDR).transferOwnership(address(owner));
+        Ownable(L2_WHITELIST_ADDR).transferOwnership(address(owner));
+        Ownable(L2_SCROLL_MESSENGER_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L2_GATEWAY_ROUTER_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L2_ERC721_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L2_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
     }
 
     function grantRoles() internal {
@@ -115,7 +128,7 @@ contract InitializeL2ScrollOwner is Script {
         bytes4[] memory _selectors;
 
         // delay 1 day, scroll multisig
-        _selectors = new bytes4[](2);
+        _selectors = new bytes4[](1);
         _selectors[0] = Whitelist.updateWhitelistStatus.selector;
         owner.updateAccess(L2_WHITELIST_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
     }
