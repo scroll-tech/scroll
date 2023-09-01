@@ -3,41 +3,45 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
+	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
-	"github.com/docker/docker/pkg/reexec"
 	"github.com/stretchr/testify/assert"
 )
+
+// IsRunning 1 started, 0 not started.
+func (c *Cmd) IsRunning() bool {
+	return atomic.LoadUint64(&c.isRunning) == 1
+}
+
+func (c *Cmd) runApp() {
+	fmt.Println("cmd:", append([]string{c.name}, c.args...))
+	if atomic.CompareAndSwapUint64(&c.isRunning, 0, 1) {
+		c.ErrChan <- c.app.Run()
+	}
+}
 
 // RunApp exec's the current binary using name as argv[0] which will trigger the
 // reexec init function for that name (e.g. "geth-test" in cmd/geth/run_test.go)
 func (c *Cmd) RunApp(waitResult func() bool) {
-	fmt.Println("cmd: ", append([]string{c.name}, c.args...))
-	cmd := &exec.Cmd{
-		Path:   reexec.Self(),
-		Args:   append([]string{c.name}, c.args...),
-		Stderr: c,
-		Stdout: c,
-	}
 	if waitResult != nil {
 		go func() {
-			_ = cmd.Run()
+			c.runApp()
 		}()
 		waitResult()
 	} else {
-		_ = cmd.Run()
+		c.runApp()
 	}
-
-	c.mu.Lock()
-	c.cmd = cmd
-	c.mu.Unlock()
 }
 
 // WaitExit wait util process exit.
 func (c *Cmd) WaitExit() {
+	if atomic.LoadUint64(&c.isRunning) == 0 {
+		return
+	}
 	// Wait all the check functions are finished, interrupt loop when appear error.
 	var err error
 	for err == nil && !c.checkFuncs.IsEmpty() {
@@ -52,20 +56,18 @@ func (c *Cmd) WaitExit() {
 	}
 
 	// Send interrupt signal.
-	c.mu.Lock()
-	_ = c.cmd.Process.Signal(os.Interrupt)
-	// should use `_ = c.cmd.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
+	_ = c.app.Process.Signal(os.Interrupt)
+	// should use `_ = c.app.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
 	// so we use `Kill` as a temp workaround. And since `WaitExit` is only used in integration tests, so
 	// it won't really affect our functionalities.
-	_ = c.cmd.Process.Kill()
-	c.mu.Unlock()
+	if err = c.app.Process.Signal(syscall.SIGTERM); err != nil {
+		_ = c.app.Process.Kill()
+	}
 }
 
 // Interrupt send interrupt signal.
 func (c *Cmd) Interrupt() {
-	c.mu.Lock()
-	c.ErrChan <- c.cmd.Process.Signal(os.Interrupt)
-	c.mu.Unlock()
+	c.ErrChan <- c.app.Process.Signal(os.Interrupt)
 }
 
 // WaitResult return true when get the keyword during timeout.
