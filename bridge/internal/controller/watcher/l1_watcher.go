@@ -22,8 +22,6 @@ import (
 	"scroll-tech/bridge/internal/utils"
 )
 
-const contractEventsBlocksFetchLimit = int64(10)
-
 type rollupEvent struct {
 	batchHash common.Hash
 	txHash    common.Hash
@@ -41,6 +39,9 @@ type L1WatcherClient struct {
 	// The number of new blocks to wait for a block to be confirmed
 	confirmations rpc.BlockNumber
 
+	messengerAddress common.Address
+	messengerABI     *abi.ABI
+
 	messageQueueAddress common.Address
 	messageQueueABI     *abi.ABI
 
@@ -56,7 +57,7 @@ type L1WatcherClient struct {
 }
 
 // NewL1WatcherClient returns a new instance of L1WatcherClient.
-func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messageQueueAddress, scrollChainAddress common.Address, db *gorm.DB, reg prometheus.Registerer) *L1WatcherClient {
+func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress, scrollChainAddress common.Address, db *gorm.DB, reg prometheus.Registerer) *L1WatcherClient {
 	l1MessageOrm := orm.NewL1Message(db)
 	savedHeight, err := l1MessageOrm.GetLayer1LatestWatchedHeight()
 	if err != nil {
@@ -84,6 +85,9 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 		l1BlockOrm:    l1BlockOrm,
 		batchOrm:      orm.NewBatch(db),
 		confirmations: confirmations,
+
+		messengerAddress: messengerAddress,
+		messengerABI:     bridgeAbi.L1ScrollMessengerABI,
 
 		messageQueueAddress: messageQueueAddress,
 		messageQueueABI:     bridgeAbi.L1MessageQueueABI,
@@ -195,15 +199,18 @@ func (w *L1WatcherClient) FetchContractEvent() error {
 			FromBlock: big.NewInt(from), // inclusive
 			ToBlock:   big.NewInt(to),   // inclusive
 			Addresses: []common.Address{
+				w.messengerAddress,
 				w.scrollChainAddress,
 				w.messageQueueAddress,
 			},
 			Topics: make([][]common.Hash, 1),
 		}
-		query.Topics[0] = make([]common.Hash, 3)
+		query.Topics[0] = make([]common.Hash, 5)
 		query.Topics[0][0] = bridgeAbi.L1QueueTransactionEventSignature
-		query.Topics[0][1] = bridgeAbi.L1CommitBatchEventSignature
-		query.Topics[0][2] = bridgeAbi.L1FinalizeBatchEventSignature
+		query.Topics[0][1] = bridgeAbi.L1RelayedMessageEventSignature
+		query.Topics[0][2] = bridgeAbi.L1FailedRelayedMessageEventSignature
+		query.Topics[0][3] = bridgeAbi.L1CommitBatchEventSignature
+		query.Topics[0][4] = bridgeAbi.L1FinalizeBatchEventSignature
 
 		logs, err := w.client.FilterLogs(w.ctx, query)
 		if err != nil {
