@@ -151,7 +151,7 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 
 	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 	cfgCopy.TxType = txType
-	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test")
+	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
 	assert.NoError(t, err)
 	tx := types.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
 	s.baseFeePerGas = 1000
