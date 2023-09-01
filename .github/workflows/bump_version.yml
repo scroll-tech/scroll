@@ -12,7 +12,7 @@ on:
 
 jobs:
   try-to-bump:
-    if: ${{ github.event.label.name == 'bump-version' }}
+    if: contains(github.event.pull_request.labels.*.name, 'bump-version')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
