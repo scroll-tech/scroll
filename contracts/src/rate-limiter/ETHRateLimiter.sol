@@ -82,7 +82,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
         uint256 _currentTotalAmount;
         ETHAmount memory _currentPeriod = currentPeriod;
 
-        if (_currentPeriod.lastUpdateTs < _currentPeriodStart) {
+        if (uint256(_currentPeriod.lastUpdateTs) < _currentPeriodStart) {
             _currentTotalAmount = _amount;
         } else {
             _currentTotalAmount = _currentPeriod.amount + _amount;
