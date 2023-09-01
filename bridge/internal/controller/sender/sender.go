@@ -448,6 +448,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	}
 
 	log.Debug("Transaction gas adjustment details", txInfo)
+	s.cacheMaxFeeData(feeData)
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
