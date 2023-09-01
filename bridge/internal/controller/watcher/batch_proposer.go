@@ -175,6 +175,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	}
 
 	// Add extra gas costs
+	totalL1CommitGas += 21000                        // base transaction cost
 	totalL1CommitGas += 4 * 2100                     // 4 one-time cold sload for commitBatch
 	totalL1CommitGas += 20000                        // 1 time sstore
 	totalL1CommitGas += types.CalldataNonZeroByteGas // version in calldata
