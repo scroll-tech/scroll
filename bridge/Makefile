@@ -11,7 +11,6 @@ mock_abi:
 bridge_bins: ## Builds the Bridge bins.
 	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
 	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
-	go build -o $(PWD)/build/bin/message_relayer ./cmd/msg_relayer/
 	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
 
 event_watcher: ## Builds the event_watcher bin

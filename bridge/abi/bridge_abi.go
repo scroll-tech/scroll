@@ -11,8 +11,6 @@ import (
 var (
 	// ScrollChainABI holds information about ScrollChain's context and available invokable methods.
 	ScrollChainABI *abi.ABI
-	// L1ScrollMessengerABI holds information about L1ScrollMessenger's context and available invokable methods.
-	L1ScrollMessengerABI *abi.ABI
 	// L1MessageQueueABI holds information about L1MessageQueue contract's context and available invokable methods.
 	L1MessageQueueABI *abi.ABI
 	// L2GasPriceOracleABI holds information about L2GasPriceOracle's context and available invokable methods.
@@ -20,25 +18,15 @@ var (
 
 	// L2ScrollMessengerABI holds information about L2ScrollMessenger's context and available invokable methods.
 	L2ScrollMessengerABI *abi.ABI
-	// L1BlockContainerABI holds information about L1BlockContainer contract's context and available invokable methods.
-	L1BlockContainerABI *abi.ABI
 	// L1GasPriceOracleABI holds information about L1GasPriceOracle's context and available invokable methods.
 	L1GasPriceOracleABI *abi.ABI
 	// L2MessageQueueABI holds information about L2MessageQueue contract's context and available invokable methods.
 	L2MessageQueueABI *abi.ABI
 
-	// L1SentMessageEventSignature = keccak256("SentMessage(address,address,uint256,uint256,uint256,bytes)")
-	L1SentMessageEventSignature common.Hash
-	// L1RelayedMessageEventSignature = keccak256("RelayedMessage(bytes32)")
-	L1RelayedMessageEventSignature common.Hash
-	// L1FailedRelayedMessageEventSignature = keccak256("FailedRelayedMessage(bytes32)")
-	L1FailedRelayedMessageEventSignature common.Hash
-
 	// L1CommitBatchEventSignature = keccak256("CommitBatch(uint256,bytes32)")
 	L1CommitBatchEventSignature common.Hash
 	// L1FinalizeBatchEventSignature = keccak256("FinalizeBatch(uint256,bytes32,bytes32,bytes32)")
 	L1FinalizeBatchEventSignature common.Hash
-
 	// L1QueueTransactionEventSignature = keccak256("QueueTransaction(address,address,uint256,uint64,uint256,bytes)")
 	L1QueueTransactionEventSignature common.Hash
 
@@ -49,27 +37,18 @@ var (
 	// L2FailedRelayedMessageEventSignature = keccak256("FailedRelayedMessage(bytes32)")
 	L2FailedRelayedMessageEventSignature common.Hash
 
-	// L2ImportBlockEventSignature = keccak256("ImportBlock(bytes32,uint256,uint256,uint256,bytes32)")
-	L2ImportBlockEventSignature common.Hash
-
 	// L2AppendMessageEventSignature = keccak256("AppendMessage(uint256,bytes32)")
 	L2AppendMessageEventSignature common.Hash
 )
 
 func init() {
 	ScrollChainABI, _ = ScrollChainMetaData.GetAbi()
-	L1ScrollMessengerABI, _ = L1ScrollMessengerMetaData.GetAbi()
 	L1MessageQueueABI, _ = L1MessageQueueMetaData.GetAbi()
 	L2GasPriceOracleABI, _ = L2GasPriceOracleMetaData.GetAbi()
 
 	L2ScrollMessengerABI, _ = L2ScrollMessengerMetaData.GetAbi()
-	L1BlockContainerABI, _ = L1BlockContainerMetaData.GetAbi()
 	L2MessageQueueABI, _ = L2MessageQueueMetaData.GetAbi()
 	L1GasPriceOracleABI, _ = L1GasPriceOracleMetaData.GetAbi()
-
-	L1SentMessageEventSignature = L1ScrollMessengerABI.Events["SentMessage"].ID
-	L1RelayedMessageEventSignature = L1ScrollMessengerABI.Events["RelayedMessage"].ID
-	L1FailedRelayedMessageEventSignature = L1ScrollMessengerABI.Events["FailedRelayedMessage"].ID
 
 	L1CommitBatchEventSignature = ScrollChainABI.Events["CommitBatch"].ID
 	L1FinalizeBatchEventSignature = ScrollChainABI.Events["FinalizeBatch"].ID
@@ -79,8 +58,6 @@ func init() {
 	L2SentMessageEventSignature = L2ScrollMessengerABI.Events["SentMessage"].ID
 	L2RelayedMessageEventSignature = L2ScrollMessengerABI.Events["RelayedMessage"].ID
 	L2FailedRelayedMessageEventSignature = L2ScrollMessengerABI.Events["FailedRelayedMessage"].ID
-
-	L2ImportBlockEventSignature = L1BlockContainerABI.Events["ImportBlock"].ID
 
 	L2AppendMessageEventSignature = L2MessageQueueABI.Events["AppendMessage"].ID
 }

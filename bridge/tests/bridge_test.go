@@ -36,17 +36,9 @@ var (
 	l1Auth *bind.TransactOpts
 	l2Auth *bind.TransactOpts
 
-	// l1 messenger contract
-	l1MessengerInstance *mock_bridge.MockBridgeL1
-	l1MessengerAddress  common.Address
-
 	// l1 rollup contract
 	scrollChainInstance *mock_bridge.MockBridgeL1
 	scrollChainAddress  common.Address
-
-	// l2 messenger contract
-	l2MessengerInstance *mock_bridge.MockBridgeL2
-	l2MessengerAddress  common.Address
 )
 
 func setupDB(t *testing.T) *gorm.DB {
@@ -87,10 +79,10 @@ func setupEnv(t *testing.T) {
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
-	l1Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.MessageSenderPrivateKey, base.L1gethImg.ChainID())
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L1gethImg.ChainID())
 	assert.NoError(t, err)
 
-	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.MessageSenderPrivateKey, base.L2gethImg.ChainID())
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKey, base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 }
 
@@ -115,36 +107,16 @@ func prepareContracts(t *testing.T) {
 	var err error
 	var tx *types.Transaction
 
-	// L1 messenger contract
-	_, tx, l1MessengerInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
-	assert.NoError(t, err)
-	l1MessengerAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
-	assert.NoError(t, err)
-
 	// L1 ScrolChain contract
 	_, tx, scrollChainInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
 	assert.NoError(t, err)
 	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
 
-	// L2 messenger contract
-	_, tx, l2MessengerInstance, err = mock_bridge.DeployMockBridgeL2(l2Auth, l2Client)
-	assert.NoError(t, err)
-	l2MessengerAddress, err = bind.WaitDeployed(context.Background(), l2Client, tx)
-	assert.NoError(t, err)
-
 	l1Config, l2Config := bridgeApp.Config.L1Config, bridgeApp.Config.L2Config
-	l1Config.L1MessengerAddress = l1MessengerAddress
-	l1Config.L1MessageQueueAddress = l1MessengerAddress
 	l1Config.ScrollChainContractAddress = scrollChainAddress
-	l1Config.RelayerConfig.MessengerContractAddress = l2MessengerAddress
-	l1Config.RelayerConfig.GasPriceOracleContractAddress = l1MessengerAddress
 
-	l2Config.L2MessengerAddress = l2MessengerAddress
-	l2Config.L2MessageQueueAddress = l2MessengerAddress
-	l2Config.RelayerConfig.MessengerContractAddress = l1MessengerAddress
 	l2Config.RelayerConfig.RollupContractAddress = scrollChainAddress
-	l2Config.RelayerConfig.GasPriceOracleContractAddress = l2MessengerAddress
 }
 
 func TestFunction(t *testing.T) {
@@ -161,7 +133,6 @@ func TestFunction(t *testing.T) {
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
 	// l1 message
-	t.Run("TestRelayL1MessageSucceed", testRelayL1MessageSucceed)
 
 	// l2 message
 	// TODO: add a "user relay l2msg Succeed" test
