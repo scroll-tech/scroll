@@ -25,6 +25,52 @@
         "baseFeePerGas": "0x1de9",
         "hash": "0xc7b6c7022c8386cdaf6fcd3d4f8d03dce257ae3664a072fdce511ecefce73ad0"
     },
+    "row_consumption": [
+        {
+            "name": "evm",
+            "row_number": 1
+        },
+        {
+            "name": "state",
+            "row_number": 2
+        },
+        {
+            "name": "bytecode",
+            "row_number": 3
+        },
+        {
+            "name": "copy",
+            "row_number": 4
+        },
+        {
+            "name": "keccak",
+            "row_number": 5
+        },
+        {
+            "name": "tx",
+            "row_number": 6
+        },
+        {
+            "name": "rlp",
+            "row_number": 7
+        },
+        {
+            "name": "exp",
+            "row_number": 8
+        },
+        {
+            "name": "pi",
+            "row_number": 9
+        },
+        {
+            "name": "poseidon",
+            "row_number": 10
+        },
+        {
+            "name": "mpt",
+            "row_number": 11
+        }
+    ],
     "transactions": [
         {
             "type": 0,

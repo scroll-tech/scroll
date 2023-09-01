@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import {IL2GatewayRouter} from "./IL2GatewayRouter.sol";
 import {IL2ETHGateway} from "./IL2ETHGateway.sol";
 import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
-import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
-import {IL1ETHGateway} from "../../L1/gateways/IL1ETHGateway.sol";
-import {IScrollGateway} from "../../libraries/gateway/IScrollGateway.sol";
 
 /// @title L2GatewayRouter
 /// @notice The `L2GatewayRouter` is the main entry for withdrawing Ether and ERC20 tokens.
@@ -35,18 +32,23 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
      * Constructor *
      ***************/
 
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         // it can be zero during initialization
         if (_defaultERC20Gateway != address(0)) {
             defaultERC20Gateway = _defaultERC20Gateway;
+            emit SetDefaultERC20Gateway(address(0), _defaultERC20Gateway);
         }
 
         // it can be zero during initialization
         if (_ethGateway != address(0)) {
             ethGateway = _ethGateway;
-            emit SetETHGateway(_ethGateway);
+            emit SetETHGateway(address(0), _ethGateway);
         }
     }
 
@@ -177,20 +179,22 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
 
     /// @notice Update the address of ETH gateway contract.
     /// @dev This function should only be called by contract owner.
-    /// @param _ethGateway The address to update.
-    function setETHGateway(address _ethGateway) external onlyOwner {
-        ethGateway = _ethGateway;
+    /// @param _newEthGateway The address to update.
+    function setETHGateway(address _newEthGateway) external onlyOwner {
+        address _oldEthGateway = ethGateway;
+        ethGateway = _newEthGateway;
 
-        emit SetETHGateway(_ethGateway);
+        emit SetETHGateway(_oldEthGateway, _newEthGateway);
     }
 
     /// @notice Update the address of default ERC20 gateway contract.
     /// @dev This function should only be called by contract owner.
-    /// @param _defaultERC20Gateway The address to update.
-    function setDefaultERC20Gateway(address _defaultERC20Gateway) external onlyOwner {
-        defaultERC20Gateway = _defaultERC20Gateway;
+    /// @param _newDefaultERC20Gateway The address to update.
+    function setDefaultERC20Gateway(address _newDefaultERC20Gateway) external onlyOwner {
+        address _oldDefaultERC20Gateway = defaultERC20Gateway;
+        defaultERC20Gateway = _newDefaultERC20Gateway;
 
-        emit SetDefaultERC20Gateway(_defaultERC20Gateway);
+        emit SetDefaultERC20Gateway(_oldDefaultERC20Gateway, _newDefaultERC20Gateway);
     }
 
     /// @notice Update the mapping from token address to gateway address.
@@ -201,9 +205,10 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         require(_tokens.length == _gateways.length, "length mismatch");
 
         for (uint256 i = 0; i < _tokens.length; i++) {
+            address _oldGateway = ERC20Gateway[_tokens[i]];
             ERC20Gateway[_tokens[i]] = _gateways[i];
 
-            emit SetERC20Gateway(_tokens[i], _gateways[i]);
+            emit SetERC20Gateway(_tokens[i], _oldGateway, _gateways[i]);
         }
     }
 }

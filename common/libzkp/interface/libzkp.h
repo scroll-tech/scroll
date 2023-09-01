@@ -1,5 +1,14 @@
-init_prover(char *params_path, char *seed_path);
-char* create_agg_proof(char *trace);
-char* create_agg_proof_multi(char *trace);
-init_verifier(char *params_path, char *agg_vk_path);
-char verify_agg_proof(char *proof);
+void init_batch_prover(char* params_dir, char* assets_dir);
+void init_batch_verifier(char* params_dir, char* assets_dir);
+char* get_batch_vk();
+char* check_chunk_proofs(char* chunk_proofs);
+char* gen_batch_proof(char* chunk_hashes, char* chunk_proofs);
+char verify_batch_proof(char* proof);
+
+void init_chunk_prover(char* params_dir, char* assets_dir);
+void init_chunk_verifier(char* params_dir, char* assets_dir);
+char* get_chunk_vk();
+char* gen_chunk_proof(char* block_traces);
+char verify_chunk_proof(char* proof);
+
+char* block_traces_to_chunk_info(char* block_traces);

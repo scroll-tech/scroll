@@ -6,30 +6,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRollerProveStatus(t *testing.T) {
+func TestProverProveStatus(t *testing.T) {
 	tests := []struct {
 		name string
-		s    RollerProveStatus
+		s    ProverProveStatus
 		want string
 	}{
 		{
-			"RollerAssigned",
-			RollerAssigned,
-			"RollerAssigned",
+			"ProverAssigned",
+			ProverAssigned,
+			"ProverAssigned",
 		},
 		{
-			"RollerProofValid",
-			RollerProofValid,
-			"RollerProofValid",
+			"ProverProofValid",
+			ProverProofValid,
+			"ProverProofValid",
 		},
 		{
-			"RollerProofInvalid",
-			RollerProofInvalid,
-			"RollerProofInvalid",
+			"ProverProofInvalid",
+			ProverProofInvalid,
+			"ProverProofInvalid",
 		},
 		{
 			"Bad Value",
-			RollerProveStatus(999), // Invalid value.
+			ProverProveStatus(999), // Invalid value.
 			"Bad Value: 999",
 		},
 	}
@@ -53,18 +53,13 @@ func TestProvingStatus(t *testing.T) {
 			"unassigned",
 		},
 		{
-			"ProvingTaskSkipped",
-			ProvingTaskSkipped,
-			"skipped",
-		},
-		{
 			"ProvingTaskAssigned",
 			ProvingTaskAssigned,
 			"assigned",
 		},
 		{
-			"ProvingTaskProved",
-			ProvingTaskProved,
+			"ProvingTaskProvedDEPRECATED",
+			ProvingTaskProvedDEPRECATED,
 			"proved",
 		},
 		{
@@ -80,7 +75,7 @@ func TestProvingStatus(t *testing.T) {
 		{
 			"Undefined",
 			ProvingStatus(999), // Invalid value.
-			"undefined",
+			"Undefined (999)",
 		},
 	}
 

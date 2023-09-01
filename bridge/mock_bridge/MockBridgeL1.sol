@@ -56,13 +56,13 @@ contract MockBridgeL1 {
 
   /// @notice Emitted when a new batch is committed.
   /// @param batchHash The hash of the batch.
-  event CommitBatch(bytes32 indexed batchHash);
+  event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
 
   /// @notice Emitted when a batch is finalized.
   /// @param batchHash The hash of the batch
-  /// @param stateRoot The state root in layer 2 after this batch.
-  /// @param withdrawRoot The merkle root in layer2 after this batch.
-  event FinalizeBatch(bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
+  /// @param stateRoot The state root on layer 2 after this batch.
+  /// @param withdrawRoot The merkle root on layer2 after this batch.
+  event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
 
   /***********
    * Structs *
@@ -130,13 +130,24 @@ contract MockBridgeL1 {
 
   function commitBatch(
     uint8 /*version*/,
-    bytes calldata /*parentBatchHeader*/,
+    bytes calldata _parentBatchHeader,
     bytes[] memory chunks,
     bytes calldata /*skippedL1MessageBitmap*/
   ) external {
     // check whether the batch is empty
     uint256 _chunksLength = chunks.length;
     require(_chunksLength > 0, "batch is empty");
+
+    // decode batch index
+    uint256 headerLength = _parentBatchHeader.length;
+    uint256 parentBatchPtr;
+    uint256 parentBatchIndex;
+    assembly {
+      parentBatchPtr := mload(0x40)
+      calldatacopy(parentBatchPtr, _parentBatchHeader.offset, headerLength)
+      mstore(0x40, add(parentBatchPtr, headerLength))
+      parentBatchIndex := shr(192, mload(add(parentBatchPtr, 1)))
+    }
 
     uint256 dataPtr;
     assembly {
@@ -169,18 +180,29 @@ contract MockBridgeL1 {
     }
     bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89);
     committedBatches[0] = _batchHash;
-    emit CommitBatch(_batchHash);
+    emit CommitBatch(parentBatchIndex + 1, _batchHash);
   }
 
   function finalizeBatchWithProof(
-    bytes calldata /*batchHeader*/,
+    bytes calldata batchHeader,
     bytes32 /*prevStateRoot*/,
     bytes32 postStateRoot,
     bytes32 withdrawRoot,
     bytes calldata /*aggrProof*/
   ) external {
+    // decode batch index
+    uint256 headerLength = batchHeader.length;
+    uint256 batchPtr;
+    uint256 batchIndex;
+    assembly {
+      batchPtr := mload(0x40)
+      calldatacopy(batchPtr, batchHeader.offset, headerLength)
+      mstore(0x40, add(batchPtr, headerLength))
+      batchIndex := shr(192, mload(add(batchPtr, 1)))
+    }
+
     bytes32 _batchHash = committedBatches[0];
-    emit FinalizeBatch(_batchHash, postStateRoot, withdrawRoot);
+    emit FinalizeBatch(batchIndex, _batchHash, postStateRoot, withdrawRoot);
   }
 
   /**********************

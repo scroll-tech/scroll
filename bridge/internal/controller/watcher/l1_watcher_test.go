@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/database"
 	commonTypes "scroll-tech/common/types"
 
 	bridgeAbi "scroll-tech/bridge/abi"
@@ -29,20 +30,21 @@ func setupL1Watcher(t *testing.T) (*L1WatcherClient, *gorm.DB) {
 	client, err := ethclient.Dial(base.L1gethImg.Endpoint())
 	assert.NoError(t, err)
 	l1Cfg := cfg.L1Config
-	watcher := NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db)
+	watcher := NewL1WatcherClient(context.Background(), client, l1Cfg.StartHeight, l1Cfg.Confirmations, l1Cfg.L1MessengerAddress,
+		l1Cfg.L1MessageQueueAddress, l1Cfg.RelayerConfig.RollupContractAddress, db, nil)
 	assert.NoError(t, watcher.FetchContractEvent())
 	return watcher, db
 }
 
 func testFetchContractEvent(t *testing.T) {
 	watcher, db := setupL1Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 	assert.NoError(t, watcher.FetchContractEvent())
 }
 
 func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 	watcher, db := setupL1Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 	convey.Convey("test toBlock < fromBlock", t, func() {
 		var blockHeight uint64
 		if watcher.ProcessedBlockHeight() <= 0 {
@@ -114,7 +116,7 @@ func testL1WatcherClientFetchBlockHeader(t *testing.T) {
 
 func testL1WatcherClientFetchContractEvent(t *testing.T) {
 	watcher, db := setupL1Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	watcher.SetConfirmations(rpc.SafeBlockNumber)
 	convey.Convey("get latest confirmed block number failure", t, func() {
@@ -259,7 +261,7 @@ func testL1WatcherClientFetchContractEvent(t *testing.T) {
 
 func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 	watcher, db := setupL1Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	logs := []types.Log{
 		{
@@ -305,7 +307,7 @@ func testParseBridgeEventLogsL1QueueTransactionEventSignature(t *testing.T) {
 
 func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
 	watcher, db := setupL1Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 	logs := []types.Log{
 		{
 			Topics:      []common.Hash{bridgeAbi.L1CommitBatchEventSignature},
@@ -347,7 +349,7 @@ func testParseBridgeEventLogsL1CommitBatchEventSignature(t *testing.T) {
 
 func testParseBridgeEventLogsL1FinalizeBatchEventSignature(t *testing.T) {
 	watcher, db := setupL1Watcher(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 	logs := []types.Log{
 		{
 			Topics:      []common.Hash{bridgeAbi.L1FinalizeBatchEventSignature},

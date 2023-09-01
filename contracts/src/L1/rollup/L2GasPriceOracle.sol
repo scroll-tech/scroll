@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
@@ -19,8 +19,9 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
 
     /// @notice Emitted when current l2 base fee is updated.
-    /// @param l2BaseFee The current l2 base fee updated.
-    event L2BaseFeeUpdated(uint256 l2BaseFee);
+    /// @param oldL2BaseFee The original l2 base fee before update.
+    /// @param newL2BaseFee The current l2 base fee updated.
+    event L2BaseFeeUpdated(uint256 oldL2BaseFee, uint256 newL2BaseFee);
 
     /// @notice Emitted when intrinsic params are updated.
     /// @param txGas The intrinsic gas for transaction.
@@ -52,6 +53,10 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     function initialize(
         uint64 _txGas,
@@ -126,13 +131,14 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     }
 
     /// @notice Allows the owner to modify the l2 base fee.
-    /// @param _l2BaseFee The new l2 base fee.
-    function setL2BaseFee(uint256 _l2BaseFee) external {
+    /// @param _newL2BaseFee The new l2 base fee.
+    function setL2BaseFee(uint256 _newL2BaseFee) external {
         require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
 
-        l2BaseFee = _l2BaseFee;
+        uint256 _oldL2BaseFee = l2BaseFee;
+        l2BaseFee = _newL2BaseFee;
 
-        emit L2BaseFeeUpdated(_l2BaseFee);
+        emit L2BaseFeeUpdated(_oldL2BaseFee, _newL2BaseFee);
     }
 
     /************************

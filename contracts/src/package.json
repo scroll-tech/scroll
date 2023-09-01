@@ -1,7 +1,7 @@
 {
     "name": "@scroll-tech/contracts",
     "description": "A library for interacting with Scroll contracts.",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "repository": {
       "type": "git",
       "url": "https://github.com/scroll-tech/scroll.git"
@@ -20,8 +20,12 @@
         "libraries/callbacks",
         "libraries/gateway",
         "libraries/oracle/IGasOracle.sol",
+        "libraries/token/IScrollERC20.sol",
+        "libraries/token/IScrollERC20Extension.sol",
         "libraries/token/IScrollERC1155.sol",
+        "libraries/token/IScrollERC1155Extension.sol",
         "libraries/token/IScrollERC721.sol",
+        "libraries/token/IScrollERC721Extension.sol",
         "libraries/token/IScrollStandardERC20.sol",
         "libraries/token/IScrollStandardERC20Factory.sol",
         "libraries/IScrollMessenger.sol"

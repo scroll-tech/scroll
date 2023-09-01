@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 interface IL1MessageQueue {
     /**********
@@ -28,6 +28,10 @@ interface IL1MessageQueue {
     /// @param count The number of messages popped.
     /// @param skippedBitmap A bitmap indicates whether a message is skipped.
     event DequeueTransaction(uint256 startIndex, uint256 count, uint256 skippedBitmap);
+
+    /// @notice Emitted when a message is dropped from L1.
+    /// @param index The index of message dropped.
+    event DropTransaction(uint256 index);
 
     /*************************
      * Public View Functions *
@@ -110,4 +114,7 @@ interface IL1MessageQueue {
         uint256 count,
         uint256 skippedBitmap
     ) external;
+
+    /// @notice Drop a skipped message from the queue.
+    function dropCrossDomainMessage(uint256 index) external;
 }

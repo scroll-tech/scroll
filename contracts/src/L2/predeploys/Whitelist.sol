@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {OwnableBase} from "../../libraries/common/OwnableBase.sol";
 import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
@@ -15,7 +15,7 @@ contract Whitelist is OwnableBase, IWhitelist {
     mapping(address => bool) private isWhitelisted;
 
     constructor(address _owner) {
-        owner = _owner;
+        _transferOwnership(_owner);
     }
 
     /// @notice See {IWhitelist-isSenderAllowed}

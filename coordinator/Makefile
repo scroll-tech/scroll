@@ -1,14 +1,14 @@
-.PHONY: lint docker clean coordinator mock_coordinator
+.PHONY: lint docker clean coordinator coordinator_skip_libzkp mock_coordinator
 
 IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-	ZKEVM_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-	ZKEVM_VERSION=$(shell grep -m 1 "scroll-zkevm" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+	ZKEVM_VERSION=$(shell grep -m 1 "scroll-prover" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 	HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
@@ -19,23 +19,26 @@ test:
 
 libzkp:
 	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
-	rm -rf ./verifier/lib && cp -r ../common/libzkp/interface ./verifier/lib
-	find ../common | grep libzktrie.so | xargs -I{} cp {} ./verifier/lib/
+	rm -rf ./internal/logic/verifier/lib && cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
+	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/verifier/lib
 
 coordinator: libzkp ## Builds the Coordinator instance.
+	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
+
+coordinator_skip_libzkp:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
 
 mock_coordinator: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator ./cmd
 
 test-verifier: libzkp
-	go test -tags ffi -timeout 0 -v ./verifier
+	go test -tags ffi -timeout 0 -v ./internal/logic/verifier
 
 test-gpu-verifier: libzkp
-	go test -tags="gpu ffi" -timeout 0 -v ./verifier
+	go test -tags="gpu ffi" -timeout 0 -v ./internal/logic/verifier
 
 lint: ## Lint the files - used for CI
-	cp -r ../common/libzkp/interface ./verifier/lib
+	cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder

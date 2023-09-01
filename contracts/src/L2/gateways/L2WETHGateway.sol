@@ -1,26 +1,25 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import {IL2ERC20Gateway, L2ERC20Gateway} from "./L2ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IWETH} from "../../interfaces/IWETH.sol";
 import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
-import {ScrollGatewayBase, IScrollGateway} from "../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 /// @title L2WETHGateway
-/// @notice The `L2WETHGateway` contract is used to withdraw `WETH` token in layer 2 and
+/// @notice The `L2WETHGateway` contract is used to withdraw `WETH` token on layer 2 and
 /// finalize deposit `WETH` from layer 1.
 /// @dev The WETH tokens are not held in the gateway. It will first be unwrapped as Ether and
 /// then the Ether will be sent to the `L2ScrollMessenger` contract.
 /// On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then
 /// wrapped as WETH and finally transfer to recipient.
-contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
-    using SafeERC20 for IERC20;
+contract L2WETHGateway is L2ERC20Gateway {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /*************
      * Constants *
@@ -38,6 +37,8 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
      ***************/
 
     constructor(address _WETH, address _l1WETH) {
+        _disableInitializers();
+
         WETH = _WETH;
         l1WETH = _l1WETH;
     }
@@ -87,7 +88,7 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
         require(_amount == msg.value, "msg.value mismatch");
 
         IWETH(_l2Token).deposit{value: _amount}();
-        IERC20(_l2Token).safeTransfer(_to, _amount);
+        IERC20Upgradeable(_l2Token).safeTransfer(_to, _amount);
 
         _doCallback(_to, _data);
 
@@ -115,20 +116,18 @@ contract L2WETHGateway is Initializable, ScrollGatewayBase, L2ERC20Gateway {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
 
+        // rate limit
+        _addUsedAmount(_token, _amount);
+
         // 2. Transfer token into this contract.
-        IERC20(_token).safeTransferFrom(_from, address(this), _amount);
+        IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
         IWETH(_token).withdraw(_amount);
 
         // 3. Generate message passed to L2StandardERC20Gateway.
         address _l1WETH = l1WETH;
-        bytes memory _message = abi.encodeWithSelector(
-            IL1ERC20Gateway.finalizeWithdrawERC20.selector,
-            _l1WETH,
-            _token,
-            _from,
-            _to,
-            _amount,
-            _data
+        bytes memory _message = abi.encodeCall(
+            IL1ERC20Gateway.finalizeWithdrawERC20,
+            (_l1WETH, _token, _from, _to, _amount, _data)
         );
 
         // 4. Send message to L1ScrollMessenger.

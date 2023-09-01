@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
 import {L1MessageQueue} from "../L1/rollup/L1MessageQueue.sol";
 import {MultipleVersionRollupVerifier} from "../L1/rollup/MultipleVersionRollupVerifier.sol";
 
+import {MockScrollChain} from "./mocks/MockScrollChain.sol";
 import {MockZkEvmVerifier} from "./mocks/MockZkEvmVerifier.sol";
 
 contract MultipleVersionRollupVerifierTest is DSTestPlus {
@@ -17,17 +18,40 @@ contract MultipleVersionRollupVerifierTest is DSTestPlus {
     MockZkEvmVerifier private v0;
     MockZkEvmVerifier private v1;
     MockZkEvmVerifier private v2;
+    MockScrollChain private chain;
 
     function setUp() external {
         v0 = new MockZkEvmVerifier();
         v1 = new MockZkEvmVerifier();
         v2 = new MockZkEvmVerifier();
+        chain = new MockScrollChain();
 
         verifier = new MultipleVersionRollupVerifier(address(v0));
     }
 
+    function testInitialize(address _chain) external {
+        hevm.assume(_chain != address(0));
+
+        // set by non-owner, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("Ownable: caller is not the owner");
+        verifier.initialize(_chain);
+        hevm.stopPrank();
+
+        // succeed
+        assertEq(verifier.scrollChain(), address(0));
+        verifier.initialize(_chain);
+        assertEq(verifier.scrollChain(), _chain);
+
+        // initialized, revert
+        hevm.expectRevert("initialized");
+        verifier.initialize(_chain);
+    }
+
     function testUpdateVerifier(address _newVerifier) external {
         hevm.assume(_newVerifier != address(0));
+
+        verifier.initialize(address(chain));
 
         // set by non-owner, should revert
         hevm.startPrank(address(1));
@@ -35,9 +59,13 @@ contract MultipleVersionRollupVerifierTest is DSTestPlus {
         verifier.updateVerifier(0, address(0));
         hevm.stopPrank();
 
+        // start batch index finalized, revert
+        hevm.expectRevert("start batch index finalized");
+        verifier.updateVerifier(0, address(1));
+
         // zero verifier address, revert
         hevm.expectRevert("zero verifier address");
-        verifier.updateVerifier(0, address(0));
+        verifier.updateVerifier(1, address(0));
 
         // change to random operator
         assertEq(verifier.legacyVerifiersLength(), 0);
@@ -65,6 +93,8 @@ contract MultipleVersionRollupVerifierTest is DSTestPlus {
     }
 
     function testGetVerifier() external {
+        verifier.initialize(address(chain));
+
         verifier.updateVerifier(100, address(v1));
         verifier.updateVerifier(300, address(v2));
 
@@ -80,6 +110,8 @@ contract MultipleVersionRollupVerifierTest is DSTestPlus {
     }
 
     function testVerifyAggregateProof() external {
+        verifier.initialize(address(chain));
+
         verifier.updateVerifier(100, address(v1));
         verifier.updateVerifier(300, address(v2));
 

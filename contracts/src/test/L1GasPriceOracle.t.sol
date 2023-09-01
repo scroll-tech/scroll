@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
@@ -99,7 +99,7 @@ contract L1GasPriceOracleTest is DSTestPlus {
 
         oracle.setOverhead(_overhead);
 
-        uint256 _gasUsed = _overhead + 74 * 16;
+        uint256 _gasUsed = _overhead + 4 * 16;
         for (uint256 i = 0; i < _data.length; i++) {
             if (_data[i] == 0) _gasUsed += 4;
             else _gasUsed += 16;
@@ -122,7 +122,7 @@ contract L1GasPriceOracleTest is DSTestPlus {
         oracle.setScalar(_scalar);
         oracle.setL1BaseFee(_baseFee);
 
-        uint256 _gasUsed = _overhead + 74 * 16;
+        uint256 _gasUsed = _overhead + 4 * 16;
         for (uint256 i = 0; i < _data.length; i++) {
             if (_data[i] == 0) _gasUsed += 4;
             else _gasUsed += 16;

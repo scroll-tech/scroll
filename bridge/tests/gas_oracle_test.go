@@ -9,31 +9,31 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/controller/watcher"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
-	"scroll-tech/bridge/internal/utils"
 )
 
 func testImportL1GasPrice(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	prepareContracts(t)
 
 	l1Cfg := bridgeApp.Config.L1Config
 
 	// Create L1Relayer
-	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig)
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, nil)
 	assert.NoError(t, err)
 
 	// Create L1Watcher
 	startHeight, err := l1Client.BlockNumber(context.Background())
 	assert.NoError(t, err)
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, 0, l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, 0,
+		l1Cfg.L1MessengerAddress, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// fetch new blocks
 	number, err := l1Client.BlockNumber(context.Background())
@@ -44,10 +44,10 @@ func testImportL1GasPrice(t *testing.T) {
 
 	l1BlockOrm := orm.NewL1Block(db)
 	// check db status
-	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight()
+	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, number, latestBlockHeight)
-	blocks, err := l1BlockOrm.GetL1Blocks(map[string]interface{}{"number": latestBlockHeight})
+	blocks, err := l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
 	assert.Empty(t, blocks[0].OracleTxHash)
@@ -55,7 +55,7 @@ func testImportL1GasPrice(t *testing.T) {
 
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
-	blocks, err = l1BlockOrm.GetL1Blocks(map[string]interface{}{"number": latestBlockHeight})
+	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
 	assert.NoError(t, err)
 	assert.Equal(t, len(blocks), 1)
 	assert.NotEmpty(t, blocks[0].OracleTxHash)
@@ -64,16 +64,16 @@ func testImportL1GasPrice(t *testing.T) {
 
 func testImportL2GasPrice(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 	prepareContracts(t)
 
 	l2Cfg := bridgeApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 
 	// add fake chunk
-	chunk := &bridgeTypes.Chunk{
-		Blocks: []*bridgeTypes.WrappedBlock{
+	chunk := &types.Chunk{
+		Blocks: []*types.WrappedBlock{
 			{
 				Header: &gethTypes.Header{
 					Number:     big.NewInt(1),
@@ -81,21 +81,29 @@ func testImportL2GasPrice(t *testing.T) {
 					Difficulty: big.NewInt(0),
 					BaseFee:    big.NewInt(0),
 				},
-				Transactions:     nil,
-				WithdrawTrieRoot: common.Hash{},
+				Transactions:   nil,
+				WithdrawRoot:   common.Hash{},
+				RowConsumption: &gethTypes.RowConsumption{},
 			},
 		},
 	}
 	chunkHash, err := chunk.Hash(0)
 	assert.NoError(t, err)
 
+	batchMeta := &types.BatchMeta{
+		StartChunkIndex: 0,
+		StartChunkHash:  chunkHash.Hex(),
+		EndChunkIndex:   0,
+		EndChunkHash:    chunkHash.Hex(),
+	}
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash.Hex(), chunkHash.Hex(), []*bridgeTypes.Chunk{chunk})
+	_, err = batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk}, batchMeta)
 	assert.NoError(t, err)
 
 	// check db status
 	batch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	assert.Empty(t, batch.OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOraclePending)
 
@@ -103,6 +111,7 @@ func testImportL2GasPrice(t *testing.T) {
 	l2Relayer.ProcessGasPriceOracle()
 	batch, err = batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
+	assert.NotNil(t, batch)
 	assert.NotEmpty(t, batch.OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOracleImporting)
 }

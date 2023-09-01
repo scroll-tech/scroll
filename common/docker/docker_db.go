@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/utils"
@@ -35,7 +36,7 @@ func NewImgDB(image, password, dbName string, port int) ImgInstance {
 		dbName:   dbName,
 		port:     port,
 	}
-	img.cmd = cmd.NewCmd(img.name, img.prepare()...)
+	img.cmd = cmd.NewCmd("docker", img.prepare()...)
 	return img
 }
 
@@ -65,8 +66,12 @@ func (i *ImgDB) Stop() error {
 	if i.id == "" {
 		i.id = GetContainerID(i.name)
 	}
-	timeout := time.Second * 3
-	if err := cli.ContainerStop(ctx, i.id, &timeout); err != nil {
+
+	timeoutSec := 3
+	timeout := container.StopOptions{
+		Timeout: &timeoutSec,
+	}
+	if err := cli.ContainerStop(ctx, i.id, timeout); err != nil {
 		return err
 	}
 	// remove the stopped container.
@@ -84,7 +89,7 @@ func (i *ImgDB) IsRunning() bool {
 }
 
 func (i *ImgDB) prepare() []string {
-	cmd := []string{"docker", "run", "--rm", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
+	cmd := []string{"run", "--rm", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
 	envs := []string{
 		"-e", "POSTGRES_PASSWORD=" + i.password,
 		"-e", fmt.Sprintf("POSTGRES_DB=%s", i.dbName),

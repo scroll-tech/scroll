@@ -6,46 +6,38 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/orm"
-	bridgeTypes "scroll-tech/bridge/internal/types"
-	"scroll-tech/bridge/internal/utils"
 )
 
 // TODO: Add unit tests that the limits are enforced correctly.
 func testBatchProposer(t *testing.T) {
 	db := setupDB(t)
-	defer utils.CloseDB(db)
+	defer database.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*bridgeTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxTxGasPerChunk:                1000000000,
-		MaxL2TxNumPerChunk:              10000,
+		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
-		MinL1CommitCalldataSizePerChunk: 0,
+		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	cp.TryProposeChunk()
 
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		MaxChunkNumPerBatch:             10,
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
-		MinChunkNumPerBatch:             1,
 		BatchTimeoutSec:                 300,
-	}, db)
+	}, db, nil)
 	bp.TryProposeBatch()
-
-	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
-	assert.NoError(t, err)
-	assert.Empty(t, chunks)
 
 	batchOrm := orm.NewBatch(db)
 	// get all batches.
@@ -57,6 +49,7 @@ func testBatchProposer(t *testing.T) {
 	assert.Equal(t, types.RollupPending, types.RollupStatus(batches[0].RollupStatus))
 	assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(batches[0].ProvingStatus))
 
+	chunkOrm := orm.NewChunk(db)
 	dbChunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 0)
 	assert.NoError(t, err)
 	assert.Len(t, batches, 1)

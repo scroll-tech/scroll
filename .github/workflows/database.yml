@@ -10,6 +10,7 @@ on:
     paths:
       - 'database/**'
       - 'common/**'
+      - '!common/version/version.go'
       - '.github/workflows/database.yml'
   pull_request:
     types:
@@ -20,6 +21,7 @@ on:
     paths:
       - 'database/**'
       - 'common/**'
+      - '!common/version/version.go'
       - '.github/workflows/database.yml'
 
 jobs:
@@ -70,7 +72,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.18.x
+        go-version: 1.19.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install Solc

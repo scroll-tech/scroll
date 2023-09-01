@@ -15,10 +15,6 @@ func TestConfig(t *testing.T) {
 		cfg, err := NewConfig("../../conf/config.json")
 		assert.NoError(t, err)
 
-		assert.Len(t, cfg.L1Config.RelayerConfig.MessageSenderPrivateKeys, 1)
-		assert.Len(t, cfg.L2Config.RelayerConfig.MessageSenderPrivateKeys, 1)
-		assert.Len(t, cfg.L2Config.RelayerConfig.RollupSenderPrivateKeys, 1)
-
 		data, err := json.Marshal(cfg)
 		assert.NoError(t, err)
 

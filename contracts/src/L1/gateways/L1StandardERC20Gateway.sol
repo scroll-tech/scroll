@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {ClonesUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
+import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 
-import {IERC20Metadata} from "../../interfaces/IERC20Metadata.sol";
 import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
@@ -16,14 +13,12 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 
 /// @title L1StandardERC20Gateway
-/// @notice The `L1StandardERC20Gateway` is used to deposit standard ERC20 tokens in layer 1 and
+/// @notice The `L1StandardERC20Gateway` is used to deposit standard ERC20 tokens on layer 1 and
 /// finalize withdraw the tokens from layer 2.
 /// @dev The deposited ERC20 tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// token will be transfer to the recipient directly. Any ERC20 that requires non-standard functionality
 /// should use a separate gateway.
-contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
-    using SafeERC20 for IERC20;
-
+contract L1StandardERC20Gateway is L1ERC20Gateway {
     /*************
      * Variables *
      *************/
@@ -43,6 +38,10 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
     /***************
      * Constructor *
      ***************/
+
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice Initialize the storage of L1StandardERC20Gateway.
     /// @param _counterpart The address of L2StandardERC20Gateway in L2.
@@ -77,38 +76,43 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         // we can calculate the l2 address directly.
         bytes32 _salt = keccak256(abi.encodePacked(counterpart, keccak256(abi.encodePacked(_l1Token))));
 
-        return Clones.predictDeterministicAddress(l2TokenImplementation, _salt, l2TokenFactory);
-    }
-
-    /*****************************
-     * Public Mutating Functions *
-     *****************************/
-
-    /// @inheritdoc IL1ERC20Gateway
-    function finalizeWithdrawERC20(
-        address _l1Token,
-        address _l2Token,
-        address _from,
-        address _to,
-        uint256 _amount,
-        bytes calldata _data
-    ) external payable override onlyCallByCounterpart nonReentrant {
-        require(msg.value == 0, "nonzero msg.value");
-        require(_l2Token != address(0), "token address cannot be 0");
-        require(getL2ERC20Address(_l1Token) == _l2Token, "l2 token mismatch");
-
-        // @note can possible trigger reentrant call to messenger,
-        // but it seems not a big problem.
-        IERC20(_l1Token).safeTransfer(_to, _amount);
-
-        _doCallback(_to, _data);
-
-        emit FinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
+        return ClonesUpgradeable.predictDeterministicAddress(l2TokenImplementation, _salt, l2TokenFactory);
     }
 
     /**********************
      * Internal Functions *
      **********************/
+
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeFinalizeWithdrawERC20(
+        address _l1Token,
+        address _l2Token,
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+        require(_l2Token != address(0), "token address cannot be 0");
+        require(getL2ERC20Address(_l1Token) == _l2Token, "l2 token mismatch");
+
+        // update `tokenMapping` on first withdraw
+        address _storedL2Token = tokenMapping[_l1Token];
+        if (_storedL2Token == address(0)) {
+            tokenMapping[_l1Token] = _l2Token;
+        } else {
+            require(_storedL2Token == _l2Token, "l2 token mismatch");
+        }
+    }
+
+    /// @inheritdoc L1ERC20Gateway
+    function _beforeDropMessage(
+        address,
+        address,
+        uint256
+    ) internal virtual override {
+        require(msg.value == 0, "nonzero msg.value");
+    }
 
     /// @inheritdoc L1ERC20Gateway
     function _deposit(
@@ -120,50 +124,34 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
     ) internal virtual override nonReentrant {
         require(_amount > 0, "deposit zero amount");
 
-        // 1. Extract real sender if this call is from L1GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
-            (_from, _data) = abi.decode(_data, (address, bytes));
-        }
+        // 1. Transfer token into this contract.
+        address _from;
+        (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
 
-        // 2. Transfer token into this contract.
-        {
-            // common practice to handle fee on transfer token.
-            uint256 _before = IERC20(_token).balanceOf(address(this));
-            IERC20(_token).safeTransferFrom(_from, address(this), _amount);
-            uint256 _after = IERC20(_token).balanceOf(address(this));
-            // no unchecked here, since some weird token may return arbitrary balance.
-            _amount = _after - _before;
-            // ignore weird fee on transfer token
-            require(_amount > 0, "deposit zero amount");
-        }
-
-        // 3. Generate message passed to L2StandardERC20Gateway.
+        // 2. Generate message passed to L2StandardERC20Gateway.
         address _l2Token = tokenMapping[_token];
-        bytes memory _l2Data = _data;
+        bytes memory _l2Data;
         if (_l2Token == address(0)) {
-            // It is a new token, compute and store mapping in storage.
+            // @note we won't update `tokenMapping` here but update the `tokenMapping` on
+            // first successful withdraw. This will prevent user to set arbitrary token
+            // metadata by setting a very small `_gasLimit` on the first tx.
             _l2Token = getL2ERC20Address(_token);
-            tokenMapping[_token] = _l2Token;
 
             // passing symbol/name/decimal in order to deploy in L2.
-            string memory _symbol = IERC20Metadata(_token).symbol();
-            string memory _name = IERC20Metadata(_token).name();
-            uint8 _decimals = IERC20Metadata(_token).decimals();
-            _l2Data = abi.encode(_data, abi.encode(_symbol, _name, _decimals));
+            string memory _symbol = IERC20MetadataUpgradeable(_token).symbol();
+            string memory _name = IERC20MetadataUpgradeable(_token).name();
+            uint8 _decimals = IERC20MetadataUpgradeable(_token).decimals();
+            _l2Data = abi.encode(true, abi.encode(_data, abi.encode(_symbol, _name, _decimals)));
+        } else {
+            _l2Data = abi.encode(false, _data);
         }
-        bytes memory _message = abi.encodeWithSelector(
-            IL2ERC20Gateway.finalizeDepositERC20.selector,
-            _token,
-            _l2Token,
-            _from,
-            _to,
-            _amount,
-            _l2Data
+        bytes memory _message = abi.encodeCall(
+            IL2ERC20Gateway.finalizeDepositERC20,
+            (_token, _l2Token, _from, _to, _amount, _l2Data)
         );
 
-        // 4. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
+        // 3. Send message to L1ScrollMessenger.
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _from);
 
         emit DepositERC20(_token, _l2Token, _from, _to, _amount, _data);
     }

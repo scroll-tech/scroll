@@ -4,7 +4,7 @@
 
 > L1StandardERC20Gateway
 
-The `L1StandardERC20Gateway` is used to deposit standard ERC20 tokens in layer 1 and finalize withdraw the tokens from layer 2.
+The `L1StandardERC20Gateway` is used to deposit standard ERC20 tokens on layer 1 and finalize withdraw the tokens from layer 2.
 
 *The deposited ERC20 tokens are held in this gateway. On finalizing withdraw, the corresponding token will be transfer to the recipient directly. Any ERC20 that requires non-standard functionality should use a separate gateway.*
 
@@ -198,6 +198,67 @@ The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 |---|---|---|
 | _0 | address | undefined |
 
+### onDropMessage
+
+```solidity
+function onDropMessage(bytes _message) external payable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _message | bytes | undefined |
+
+### owner
+
+```solidity
+function owner() external view returns (address)
+```
+
+
+
+*Returns the address of the current owner.*
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### rateLimiter
+
+```solidity
+function rateLimiter() external view returns (address)
+```
+
+The address of token rate limiter contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### renounceOwnership
+
+```solidity
+function renounceOwnership() external nonpayable
+```
+
+
+
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
+
+
 ### router
 
 ```solidity
@@ -214,6 +275,38 @@ The address of L1GatewayRouter/L2GatewayRouter contract.
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
+
+### transferOwnership
+
+```solidity
+function transferOwnership(address newOwner) external nonpayable
+```
+
+
+
+*Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| newOwner | address | undefined |
+
+### updateRateLimiter
+
+```solidity
+function updateRateLimiter(address _newRateLimiter) external nonpayable
+```
+
+Update rate limiter contract.
+
+*This function can only called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _newRateLimiter | address | The address of new rate limiter contract. |
 
 
 
@@ -260,6 +353,74 @@ Emitted when ERC20 token is withdrawn from L2 to L1 and transfer to recipient.
 | to  | address | undefined |
 | amount  | uint256 | undefined |
 | data  | bytes | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
+
+### OwnershipTransferred
+
+```solidity
+event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| previousOwner `indexed` | address | undefined |
+| newOwner `indexed` | address | undefined |
+
+### RefundERC20
+
+```solidity
+event RefundERC20(address indexed token, address indexed recipient, uint256 amount)
+```
+
+Emitted when some ERC20 token is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+
+### UpdateRateLimiter
+
+```solidity
+event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
+```
+
+Emitted when owner updates rate limiter contract.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _oldRateLimiter `indexed` | address | undefined |
+| _newRateLimiter `indexed` | address | undefined |
 
 
 

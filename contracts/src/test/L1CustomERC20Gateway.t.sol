@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
+
+import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {IL1ERC20Gateway, L1CustomERC20Gateway} from "../L1/gateways/L1CustomERC20Gateway.sol";
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
 import {IL2ERC20Gateway, L2CustomERC20Gateway} from "../L2/gateways/L2CustomERC20Gateway.sol";
 import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
+import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 
 import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
 import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
@@ -32,6 +35,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         uint256 _amount,
         bytes _data
     );
+    event RefundERC20(address indexed token, address indexed recipient, uint256 amount);
 
     L1CustomERC20Gateway private gateway;
     L1GatewayRouter private router;
@@ -48,8 +52,8 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         l2Token = new MockERC20("Mock L2", "ML2", 18);
 
         // Deploy L1 contracts
-        gateway = new L1CustomERC20Gateway();
-        router = new L1GatewayRouter();
+        gateway = _deployGateway();
+        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
 
         // Deploy L2 contracts
         counterpartGateway = new L2CustomERC20Gateway();
@@ -61,6 +65,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         // Prepare token balances
         l1Token.mint(address(this), type(uint128).max);
         l1Token.approve(address(gateway), type(uint256).max);
+        l1Token.approve(address(router), type(uint256).max);
     }
 
     function testInitialized() public {
@@ -123,6 +128,83 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         _depositERC20WithRecipientAndCalldata(false, amount, recipient, dataToCall, gasLimit, feePerGas);
     }
 
+    function testDropMessageMocking() public {
+        MockScrollMessenger mockMessenger = new MockScrollMessenger();
+        gateway = _deployGateway();
+        gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
+
+        // only messenger can call, revert
+        hevm.expectRevert("only messenger can call");
+        gateway.onDropMessage(new bytes(0));
+
+        // only called in drop context, revert
+        hevm.expectRevert("only called in drop context");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(0))
+        );
+
+        mockMessenger.setXDomainMessageSender(ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER);
+
+        // invalid selector, revert
+        hevm.expectRevert("invalid selector");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(4))
+        );
+
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC20Gateway.finalizeDepositERC20.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            address(this),
+            100,
+            new bytes(0)
+        );
+
+        // nonzero msg.value, revert
+        hevm.expectRevert("nonzero msg.value");
+        mockMessenger.callTarget{value: 1}(
+            address(gateway),
+            abi.encodeWithSelector(gateway.onDropMessage.selector, message)
+        );
+    }
+
+    function testDropMessage(
+        uint256 amount,
+        address recipient,
+        bytes memory dataToCall
+    ) public {
+        gateway.updateTokenMapping(address(l1Token), address(l2Token));
+
+        amount = bound(amount, 1, l1Token.balanceOf(address(this)));
+        bytes memory message = abi.encodeWithSelector(
+            IL2ERC20Gateway.finalizeDepositERC20.selector,
+            address(l1Token),
+            address(l2Token),
+            address(this),
+            recipient,
+            amount,
+            dataToCall
+        );
+        gateway.depositERC20AndCall(address(l1Token), recipient, amount, dataToCall, 0);
+
+        // skip message 0
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(0, 1, 0x1);
+        assertEq(messageQueue.pendingQueueIndex(), 1);
+        hevm.stopPrank();
+
+        // drop message 0
+        hevm.expectEmit(true, true, false, true);
+        emit RefundERC20(address(l1Token), address(this), amount);
+
+        uint256 balance = l1Token.balanceOf(address(this));
+        l1Messenger.dropMessage(address(gateway), address(counterpartGateway), 0, 0, message);
+        assertEq(balance + amount, l1Token.balanceOf(address(this)));
+    }
+
     function testFinalizeWithdrawERC20FailedMocking(
         address sender,
         address recipient,
@@ -136,7 +218,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         gateway.finalizeWithdrawERC20(address(l1Token), address(l2Token), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = new L1CustomERC20Gateway();
+        gateway = _deployGateway();
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
@@ -574,5 +656,9 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
             assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
         }
+    }
+
+    function _deployGateway() internal returns (L1CustomERC20Gateway) {
+        return L1CustomERC20Gateway(address(new ERC1967Proxy(address(new L1CustomERC20Gateway()), new bytes(0))));
     }
 }

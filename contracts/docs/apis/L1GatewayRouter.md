@@ -217,6 +217,23 @@ Complete ETH withdraw from L2 to L1 and send fund to recipient&#39;s account in 
 | _2 | uint256 | undefined |
 | _3 | bytes | undefined |
 
+### gatewayInContext
+
+```solidity
+function gatewayInContext() external view returns (address)
+```
+
+The address of gateway in current execution context.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
 ### getERC20Gateway
 
 ```solidity
@@ -303,13 +320,37 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
+
+### requestERC20
+
+```solidity
+function requestERC20(address _sender, address _token, uint256 _amount) external nonpayable returns (uint256)
+```
+
+Request ERC20 token transfer from users to gateways.
+
+*All the gateways should have reentrancy guard to prevent potential attack though this function.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _sender | address | undefined |
+| _token | address | undefined |
+| _amount | uint256 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### setDefaultERC20Gateway
 
 ```solidity
-function setDefaultERC20Gateway(address _defaultERC20Gateway) external nonpayable
+function setDefaultERC20Gateway(address _newDefaultERC20Gateway) external nonpayable
 ```
 
 Update the address of default ERC20 gateway contract.
@@ -320,7 +361,7 @@ Update the address of default ERC20 gateway contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _defaultERC20Gateway | address | The address to update. |
+| _newDefaultERC20Gateway | address | undefined |
 
 ### setERC20Gateway
 
@@ -342,7 +383,7 @@ Update the mapping from token address to gateway address.
 ### setETHGateway
 
 ```solidity
-function setETHGateway(address _ethGateway) external nonpayable
+function setETHGateway(address _newEthGateway) external nonpayable
 ```
 
 Update the address of ETH gateway contract.
@@ -353,7 +394,7 @@ Update the address of ETH gateway contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _ethGateway | address | The address to update. |
+| _newEthGateway | address | undefined |
 
 ### transferOwnership
 
@@ -455,6 +496,22 @@ Emitted when ETH is withdrawn from L2 to L1 and transfer to recipient.
 | amount  | uint256 | undefined |
 | data  | bytes | undefined |
 
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
+
 ### OwnershipTransferred
 
 ```solidity
@@ -472,10 +529,45 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
 
+### RefundERC20
+
+```solidity
+event RefundERC20(address indexed token, address indexed recipient, uint256 amount)
+```
+
+Emitted when some ERC20 token is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| token `indexed` | address | undefined |
+| recipient `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+
+### RefundETH
+
+```solidity
+event RefundETH(address indexed recipient, uint256 amount)
+```
+
+Emitted when some ETH is refunded.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| recipient `indexed` | address | undefined |
+| amount  | uint256 | undefined |
+
 ### SetDefaultERC20Gateway
 
 ```solidity
-event SetDefaultERC20Gateway(address indexed defaultERC20Gateway)
+event SetDefaultERC20Gateway(address indexed oldDefaultERC20Gateway, address indexed newDefaultERC20Gateway)
 ```
 
 Emitted when the address of default ERC20 Gateway is updated.
@@ -486,12 +578,13 @@ Emitted when the address of default ERC20 Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| defaultERC20Gateway `indexed` | address | undefined |
+| oldDefaultERC20Gateway `indexed` | address | undefined |
+| newDefaultERC20Gateway `indexed` | address | undefined |
 
 ### SetERC20Gateway
 
 ```solidity
-event SetERC20Gateway(address indexed token, address indexed gateway)
+event SetERC20Gateway(address indexed token, address indexed oldGateway, address indexed newGateway)
 ```
 
 Emitted when the `gateway` for `token` is updated.
@@ -503,12 +596,13 @@ Emitted when the `gateway` for `token` is updated.
 | Name | Type | Description |
 |---|---|---|
 | token `indexed` | address | undefined |
-| gateway `indexed` | address | undefined |
+| oldGateway `indexed` | address | undefined |
+| newGateway `indexed` | address | undefined |
 
 ### SetETHGateway
 
 ```solidity
-event SetETHGateway(address indexed ethGateway)
+event SetETHGateway(address indexed oldETHGateway, address indexed newEthGateway)
 ```
 
 Emitted when the address of ETH Gateway is updated.
@@ -519,7 +613,8 @@ Emitted when the address of ETH Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| ethGateway `indexed` | address | undefined |
+| oldETHGateway `indexed` | address | undefined |
+| newEthGateway `indexed` | address | undefined |
 
 
 

@@ -4,7 +4,7 @@
 
 > L2WETHGateway
 
-The `L2WETHGateway` contract is used to withdraw `WETH` token in layer 2 and finalize deposit `WETH` from layer 1.
+The `L2WETHGateway` contract is used to withdraw `WETH` token on layer 2 and finalize deposit `WETH` from layer 1.
 
 *The WETH tokens are not held in the gateway. It will first be unwrapped as Ether and then the Ether will be sent to the `L2ScrollMessenger` contract. On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then wrapped as WETH and finally transfer to recipient.*
 
@@ -161,6 +161,51 @@ The address of corresponding L1ScrollMessenger/L2ScrollMessenger contract.
 |---|---|---|
 | _0 | address | undefined |
 
+### owner
+
+```solidity
+function owner() external view returns (address)
+```
+
+
+
+*Returns the address of the current owner.*
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### rateLimiter
+
+```solidity
+function rateLimiter() external view returns (address)
+```
+
+The address of token rate limiter contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
+### renounceOwnership
+
+```solidity
+function renounceOwnership() external nonpayable
+```
+
+
+
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
+
+
 ### router
 
 ```solidity
@@ -177,6 +222,38 @@ The address of L1GatewayRouter/L2GatewayRouter contract.
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
+
+### transferOwnership
+
+```solidity
+function transferOwnership(address newOwner) external nonpayable
+```
+
+
+
+*Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| newOwner | address | undefined |
+
+### updateRateLimiter
+
+```solidity
+function updateRateLimiter(address _newRateLimiter) external nonpayable
+```
+
+Update rate limiter contract.
+
+*This function can only called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _newRateLimiter | address | The address of new rate limiter contract. |
 
 ### withdrawERC20
 
@@ -259,6 +336,56 @@ Emitted when ERC20 token is deposited from L1 to L2 and transfer to recipient.
 | to  | address | undefined |
 | amount  | uint256 | undefined |
 | data  | bytes | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
+
+### OwnershipTransferred
+
+```solidity
+event OwnershipTransferred(address indexed previousOwner, address indexed newOwner)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| previousOwner `indexed` | address | undefined |
+| newOwner `indexed` | address | undefined |
+
+### UpdateRateLimiter
+
+```solidity
+event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
+```
+
+Emitted when owner updates rate limiter contract.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _oldRateLimiter `indexed` | address | undefined |
+| _newRateLimiter `indexed` | address | undefined |
 
 ### WithdrawERC20
 

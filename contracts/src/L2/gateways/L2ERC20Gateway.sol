@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.16;
 
 import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
 
-// solhint-disable no-empty-blocks
+import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
-abstract contract L2ERC20Gateway is IL2ERC20Gateway {
+abstract contract L2ERC20Gateway is ScrollGatewayBase, IL2ERC20Gateway {
+    /*************
+     * Variables *
+     *************/
+
+    /// @dev The storage slots for future usage.
+    uint256[50] private __gap;
+
     /*****************************
      * Public Mutating Functions *
      *****************************/

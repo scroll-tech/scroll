@@ -7,18 +7,20 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/metrics"
-	cutils "scroll-tech/common/utils"
+	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
 	"scroll-tech/bridge/internal/config"
 	"scroll-tech/bridge/internal/controller/relayer"
 	"scroll-tech/bridge/internal/controller/watcher"
-	"scroll-tech/bridge/internal/utils"
+	butils "scroll-tech/bridge/internal/utils"
 )
 
 var app *cli.App
@@ -30,19 +32,19 @@ func init() {
 	app.Name = "rollup-relayer"
 	app.Usage = "The Scroll Rollup Relayer"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, cutils.CommonFlags...)
-	app.Flags = append(app.Flags, cutils.RollupRelayerFlags...)
+	app.Flags = append(app.Flags, utils.CommonFlags...)
+	app.Flags = append(app.Flags, utils.RollupRelayerFlags...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
-		return cutils.LogSetup(ctx)
+		return utils.LogSetup(ctx)
 	}
 	// Register `rollup-relayer-test` app for integration-test.
-	cutils.RegisterSimulation(app, cutils.RollupRelayerApp)
+	utils.RegisterSimulation(app, utils.RollupRelayerApp)
 }
 
 func action(ctx *cli.Context) error {
 	// Load config file.
-	cfgFile := ctx.String(cutils.ConfigFileFlag.Name)
+	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
@@ -50,19 +52,19 @@ func action(ctx *cli.Context) error {
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	// Init db connection
-	db, err := utils.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DBConfig)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 	defer func() {
 		cancel()
-		if err = utils.CloseDB(db); err != nil {
+		if err = database.CloseDB(db); err != nil {
 			log.Error("can not close ormFactory", "error", err)
 		}
 	}()
 
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
+	registry := prometheus.DefaultRegisterer
+	metrics.Server(ctx, registry.(*prometheus.Registry))
 
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
@@ -71,30 +73,31 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	initGenesis := ctx.Bool(cutils.ImportGenesisFlag.Name)
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis)
+	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis, registry)
 	if err != nil {
 		log.Error("failed to create l2 relayer", "config file", cfgFile, "error", err)
 		return err
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db)
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db, registry)
 	if err != nil {
 		log.Error("failed to create chunkProposer", "config file", cfgFile, "error", err)
 		return err
 	}
 
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, db)
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, db, registry)
 	if err != nil {
 		log.Error("failed to create batchProposer", "config file", cfgFile, "error", err)
 		return err
 	}
 
-	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db)
+	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress,
+		cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db, registry)
 
 	// Watcher loop to fetch missing blocks
-	go cutils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
-		number, loopErr := utils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
+	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
+		number, loopErr := butils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
 			return
@@ -102,13 +105,13 @@ func action(ctx *cli.Context) error {
 		l2watcher.TryFetchRunningMissingBlocks(number)
 	})
 
-	go cutils.Loop(subCtx, 2*time.Second, chunkProposer.TryProposeChunk)
+	go utils.Loop(subCtx, 2*time.Second, chunkProposer.TryProposeChunk)
 
-	go cutils.Loop(subCtx, 2*time.Second, batchProposer.TryProposeBatch)
+	go utils.Loop(subCtx, 10*time.Second, batchProposer.TryProposeBatch)
 
-	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
+	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
 
-	go cutils.Loop(subCtx, 2*time.Second, l2relayer.ProcessCommittedBatches)
+	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessCommittedBatches)
 
 	// Finish start all rollup relayer functions.
 	log.Info("Start rollup-relayer successfully")

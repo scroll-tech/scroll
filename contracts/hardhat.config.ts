@@ -22,7 +22,7 @@ const RINKEBY_PRIVATE_KEY = process.env.RINKEBY_PRIVATE_KEY || "1".repeat(64);
 const L1_DEPLOYER_PRIVATE_KEY = process.env.L1_DEPLOYER_PRIVATE_KEY || "1".repeat(64);
 const L2_DEPLOYER_PRIVATE_KEY = process.env.L2_DEPLOYER_PRIVATE_KEY || "1".repeat(64);
 
-const SOLC_DEFAULT = "0.8.10";
+const SOLC_DEFAULT = "0.8.16";
 
 // try use forge config
 let foundry: any;
@@ -83,6 +83,9 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
+  },
+  mocha: {
+    timeout: 10000000,
   },
   dodoc: {
     runOnCompile: true,
