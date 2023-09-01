@@ -71,7 +71,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
 
     /// @inheritdoc IETHRateLimiter
     function addUsedAmount(uint256 _amount) external override {
-        if (msg.sender != spender) {
+        if (_msgSender() != spender) {
             revert CallerNotSpender();
         }
         if (_amount == 0) return;

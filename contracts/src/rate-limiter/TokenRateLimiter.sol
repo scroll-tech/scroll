@@ -54,7 +54,7 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
             revert PeriodIsZero();
         }
 
-        _setupRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
 
         periodDuration = _periodDuration;
     }

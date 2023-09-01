@@ -27,17 +27,21 @@ contract WrappedEther is ERC20Permit {
     }
 
     function deposit() public payable {
-        _mint(msg.sender, msg.value);
+        address _sender = _msgSender();
 
-        emit Deposit(msg.sender, msg.value);
+        _mint(_sender, msg.value);
+
+        emit Deposit(_sender, msg.value);
     }
 
     function withdraw(uint256 wad) external {
-        _burn(msg.sender, wad);
+        address _sender = _msgSender();
 
-        (bool success, ) = msg.sender.call{value: wad}("");
+        _burn(_sender, wad);
+
+        (bool success, ) = _sender.call{value: wad}("");
         require(success, "withdraw ETH failed");
 
-        emit Withdrawal(msg.sender, wad);
+        emit Withdrawal(_sender, wad);
     }
 }

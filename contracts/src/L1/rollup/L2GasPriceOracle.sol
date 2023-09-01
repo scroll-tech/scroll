@@ -118,7 +118,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
         uint64 _zeroGas,
         uint64 _nonZeroGas
     ) public {
-        require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
+        require(whitelist.isSenderAllowed(_msgSender()), "Not whitelisted sender");
 
         intrinsicParams = IntrinsicParams({
             txGas: _txGas,
@@ -133,7 +133,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @notice Allows the owner to modify the l2 base fee.
     /// @param _newL2BaseFee The new l2 base fee.
     function setL2BaseFee(uint256 _newL2BaseFee) external {
-        require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
+        require(whitelist.isSenderAllowed(_msgSender()), "Not whitelisted sender");
 
         uint256 _oldL2BaseFee = l2BaseFee;
         l2BaseFee = _newL2BaseFee;

@@ -132,8 +132,8 @@ contract L2StandardERC20Gateway is L2ERC20Gateway {
         require(_amount > 0, "withdraw zero amount");
 
         // 1. Extract real sender if this call is from L2GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
+        address _from = _msgSender();
+        if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
 

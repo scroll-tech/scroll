@@ -66,7 +66,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      **********************/
 
     modifier onlyMessenger() {
-        require(msg.sender == messenger, "Only callable by the L1ScrollMessenger");
+        require(_msgSender() == messenger, "Only callable by the L1ScrollMessenger");
         _;
     }
 
@@ -270,7 +270,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         _validateGasLimit(_gasLimit, _data);
 
         // do address alias to avoid replay attack in L2.
-        address _sender = AddressAliasHelper.applyL1ToL2Alias(msg.sender);
+        address _sender = AddressAliasHelper.applyL1ToL2Alias(_msgSender());
 
         _queueTransaction(_sender, _target, 0, _gasLimit, _data);
     }
@@ -283,7 +283,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         uint256 _gasLimit,
         bytes calldata _data
     ) external override {
-        require(msg.sender == enforcedTxGateway, "Only callable by the EnforcedTxGateway");
+        require(_msgSender() == enforcedTxGateway, "Only callable by the EnforcedTxGateway");
         // We will check it in EnforcedTxGateway, just in case.
         require(_sender.code.length == 0, "only EOA");
 
@@ -299,7 +299,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         uint256 _count,
         uint256 _skippedBitmap
     ) external {
-        require(msg.sender == scrollChain, "Only callable by the ScrollChain");
+        require(_msgSender() == scrollChain, "Only callable by the ScrollChain");
 
         require(_count <= 256, "pop too many messages");
         require(pendingQueueIndex == _startIndex, "start index mismatch");

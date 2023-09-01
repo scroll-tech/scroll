@@ -53,7 +53,7 @@ contract L2WETHGateway is L2ERC20Gateway {
     }
 
     receive() external payable {
-        require(msg.sender == WETH, "only WETH");
+        require(_msgSender() == WETH, "only WETH");
     }
 
     /*************************
@@ -111,8 +111,8 @@ contract L2WETHGateway is L2ERC20Gateway {
         require(_token == WETH, "only WETH is allowed");
 
         // 1. Extract real sender if this call is from L1GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
+        address _from = _msgSender();
+        if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
 

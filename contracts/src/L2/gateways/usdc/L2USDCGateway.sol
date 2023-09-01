@@ -112,7 +112,7 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
 
     /// @inheritdoc IUSDCDestinationBridge
     function transferUSDCRoles(address _owner) external {
-        require(msg.sender == circleCaller, "only circle caller");
+        require(_msgSender() == circleCaller, "only circle caller");
 
         OwnableUpgradeable(l2USDC).transferOwnership(_owner);
     }
@@ -152,8 +152,8 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
         require(!withdrawPaused, "withdraw paused");
 
         // 1. Extract real sender if this call is from L2GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
+        address _from = _msgSender();
+        if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
         require(_data.length == 0, "call is not allowed");

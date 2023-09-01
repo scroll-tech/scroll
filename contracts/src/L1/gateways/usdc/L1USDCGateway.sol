@@ -87,7 +87,7 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
 
     /// @inheritdoc IUSDCBurnableSourceBridge
     function burnAllLockedUSDC() external override {
-        require(msg.sender == circleCaller, "only circle caller");
+        require(_msgSender() == circleCaller, "only circle caller");
 
         // @note Only bridged USDC will be burned. We may refund the rest if possible.
         uint256 _balance = totalBridgedUSDC;

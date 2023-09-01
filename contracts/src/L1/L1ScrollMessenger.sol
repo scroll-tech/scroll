@@ -114,7 +114,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         bytes memory _message,
         uint256 _gasLimit
     ) external payable override whenNotPaused {
-        _sendMessage(_to, _value, _message, _gasLimit, msg.sender);
+        _sendMessage(_to, _value, _message, _gasLimit, _msgSender());
     }
 
     /// @inheritdoc IScrollMessenger
@@ -322,7 +322,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
 
         // compute the actual cross domain message calldata.
         uint256 _messageNonce = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
-        bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
+        bytes memory _xDomainCalldata = _encodeXDomainCalldata(_msgSender(), _to, _value, _messageNonce, _message);
 
         // compute and deduct the messaging fee to fee vault.
         uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_gasLimit);
@@ -342,7 +342,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         require(!isL1MessageSent[_xDomainCalldataHash], "Duplicated message");
         isL1MessageSent[_xDomainCalldataHash] = true;
 
-        emit SentMessage(msg.sender, _to, _value, _messageNonce, _gasLimit, _message);
+        emit SentMessage(_msgSender(), _to, _value, _messageNonce, _gasLimit, _message);
 
         // refund fee to `_refundAddress`
         unchecked {

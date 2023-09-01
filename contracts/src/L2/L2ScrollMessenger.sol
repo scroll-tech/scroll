@@ -88,7 +88,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         bytes memory _message
     ) external override whenNotPaused {
         // It is impossible to deploy a contract with the same address, reentrance is prevented in nature.
-        require(AddressAliasHelper.undoL1ToL2Alias(msg.sender) == counterpart, "Caller is not L1ScrollMessenger");
+        require(AddressAliasHelper.undoL1ToL2Alias(_msgSender()) == counterpart, "Caller is not L1ScrollMessenger");
 
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
 
@@ -116,7 +116,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         _addUsedAmount(_value);
 
         uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
-        bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
+        bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_msgSender(), _to, _value, _nonce, _message));
 
         // normally this won't happen, since each message has different nonce, but just in case.
         require(!isL2MessageSent[_xDomainCalldataHash], "Duplicated message");
@@ -124,7 +124,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
 
         L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
-        emit SentMessage(msg.sender, _to, _value, _nonce, _gasLimit, _message);
+        emit SentMessage(_msgSender(), _to, _value, _nonce, _gasLimit, _message);
     }
 
     /// @dev Internal function to execute a L1 => L2 message.
