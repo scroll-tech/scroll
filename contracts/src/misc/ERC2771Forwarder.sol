@@ -1,5 +1,9 @@
 // SPDX-License-Identifier: MIT
 
+// @note This file is directly copied from OpenZeppelin's master branch:
+// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/metatx/ERC2771Forwarder.sol
+// Modifications are made to make it compatible with solidity 0.8.16.
+
 pragma solidity =0.8.16;
 
 import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
@@ -7,10 +11,6 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {Nonces} from "./Nonces.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-
-// @note This file is directly copied from OpenZeppelin's master branch:
-// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/metatx/ERC2771Forwarder.sol
-// And modifications are made to make sure it can compile under 0.8.16 solidity.
 
 /**
  * @dev A forwarder compatible with ERC2771 contracts. See {ERC2771Context}.

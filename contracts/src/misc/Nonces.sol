@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
-
 // @note This file is directly copied from OpenZeppelin's master branch:
 // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Nonces.sol
-// And modifications are made to make sure it can compile under 0.8.16 solidity.
+// Modifications are made to make it compatible with solidity 0.8.16.
+
+pragma solidity ^0.8.16;
 
 /**
  * @dev Provides tracking nonces for addresses. Nonces will only increment.
