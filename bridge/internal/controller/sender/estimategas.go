@@ -67,7 +67,7 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 	}
 	gasLimit, err := s.client.EstimateGas(s.ctx, msg)
 	if err != nil {
-		log.Error("estimateGasLimit EstimateGas failure", "msg", msg, "error", err)
+		log.Error("estimateGasLimit EstimateGas failure", "error", err)
 		return 0, err
 	}
 	if minGasLimit > gasLimit {
