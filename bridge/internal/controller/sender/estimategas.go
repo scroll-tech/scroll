@@ -45,7 +45,10 @@ func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Ad
 	gasLimit, err := s.estimateGasLimit(auth, contract, input, nil, gasTipCap, gasFeeCap, value, minGasLimit)
 	if err != nil {
 		log.Error("estimateDynamicGas estimateGasLimit failure", "error", err)
-		return nil, err
+		if minGasLimit == 0 {
+			return nil, err
+		}
+		gasLimit = minGasLimit
 	}
 	return &FeeData{
 		gasLimit:  gasLimit,
