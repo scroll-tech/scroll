@@ -18,8 +18,6 @@ var (
 
 	// L2ScrollMessengerABI holds information about L2ScrollMessenger's context and available invokable methods.
 	L2ScrollMessengerABI *abi.ABI
-	// L1BlockContainerABI holds information about L1BlockContainer contract's context and available invokable methods.
-	L1BlockContainerABI *abi.ABI
 	// L1GasPriceOracleABI holds information about L1GasPriceOracle's context and available invokable methods.
 	L1GasPriceOracleABI *abi.ABI
 	// L2MessageQueueABI holds information about L2MessageQueue contract's context and available invokable methods.
@@ -49,7 +47,6 @@ func init() {
 	L2GasPriceOracleABI, _ = L2GasPriceOracleMetaData.GetAbi()
 
 	L2ScrollMessengerABI, _ = L2ScrollMessengerMetaData.GetAbi()
-	L1BlockContainerABI, _ = L1BlockContainerMetaData.GetAbi()
 	L2MessageQueueABI, _ = L2MessageQueueMetaData.GetAbi()
 	L1GasPriceOracleABI, _ = L1GasPriceOracleMetaData.GetAbi()
 

@@ -68,7 +68,27 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db, registry)
+	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
+	if err != nil {
+		log.Error("failed to connect l2 geth", "config file", cfgFile, "error", err)
+		return err
+	}
+
+	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations,
+		cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db, registry)
+
+	l2watcher := watcher.NewL2WatcherClient(ctx.Context, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress,
+		cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db, registry)
+
+	go utils.Loop(subCtx, 10*time.Second, func() {
+		if loopErr := l1watcher.FetchContractEvent(); loopErr != nil {
+			log.Error("Failed to fetch bridge contract", "err", loopErr)
+		}
+	})
+
+	// Start l2 watcher process
+	go utils.Loop(subCtx, 2*time.Second, l2watcher.FetchContractEvent)
+	// Finish start all l2 functions
 
 	go utils.Loop(subCtx, 10*time.Second, func() {
 		if loopErr := l1watcher.FetchContractEvent(); loopErr != nil {

@@ -109,12 +109,3 @@ func TestPackSetL2BaseFee(t *testing.T) {
 	_, err = l2GasOracleABI.Pack("setL2BaseFee", baseFee)
 	assert.NoError(err)
 }
-
-func TestPackImportBlock(t *testing.T) {
-	assert := assert.New(t)
-
-	l1BlockContainerABI := L1BlockContainerABI
-
-	_, err := l1BlockContainerABI.Pack("importBlockHeader", common.Hash{}, []byte{}, false)
-	assert.NoError(err)
-}
