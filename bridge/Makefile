@@ -19,9 +19,6 @@ event_watcher: ## Builds the event_watcher bin
 gas_oracle: ## Builds the gas_oracle bin
 	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
 
-message_relayer: ## Builds the message_relayer bin
-	go build -o $(PWD)/build/bin/message_relayer ./cmd/msg_relayer/
-
 rollup_relayer: ## Builds the rollup_relayer bin
 	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
 
