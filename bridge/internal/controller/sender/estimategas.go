@@ -19,7 +19,9 @@ func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Add
 	gasLimit, err := s.estimateGasLimit(auth, contract, input, gasPrice, nil, nil, value, minGasLimit)
 	if err != nil {
 		log.Error("estimateLegacyGas estimateGasLimit failure", "gasPrice", gasPrice, "error", err)
-		return nil, err
+		gasLimit = s.cachedMaxGasLimit
+	} else {
+		s.cacheGasLimitData(gasLimit)
 	}
 	return &FeeData{
 		gasPrice: gasPrice,
@@ -45,7 +47,9 @@ func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Ad
 	gasLimit, err := s.estimateGasLimit(auth, contract, input, nil, gasTipCap, gasFeeCap, value, minGasLimit)
 	if err != nil {
 		log.Error("estimateDynamicGas estimateGasLimit failure", "error", err)
-		return nil, err
+		gasLimit = s.cachedMaxGasLimit
+	} else {
+		s.cacheGasLimitData(gasLimit)
 	}
 	return &FeeData{
 		gasLimit:  gasLimit,
