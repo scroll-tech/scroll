@@ -69,7 +69,7 @@ contract ScrollOwner is AccessControlEnumerable {
         uint256 _value,
         bytes calldata _data,
         bytes32 _role
-    ) public payable onlyRole(_role) hasAccess(_target, bytes4(_data[0:4]), _role) {
+    ) external payable onlyRole(_role) hasAccess(_target, bytes4(_data[0:4]), _role) {
         _execute(_target, _value, _data);
     }
 
@@ -114,7 +114,7 @@ contract ScrollOwner is AccessControlEnumerable {
         address _target,
         uint256 _value,
         bytes calldata _data
-    ) internal {
+    ) private {
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = address(_target).call{value: _value}(_data);
         if (!success) {
