@@ -7,15 +7,19 @@ import (
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Address, value *big.Int, input []byte, minGasLimit uint64) (*FeeData, error) {
 	gasPrice, err := s.client.SuggestGasPrice(s.ctx)
 	if err != nil {
+		log.Error("estimateLegacyGas SuggestGasPrice failure", "error", err)
 		return nil, err
 	}
+
 	gasLimit, err := s.estimateGasLimit(auth, contract, input, gasPrice, nil, nil, value, minGasLimit)
 	if err != nil {
+		log.Error("estimateLegacyGas estimateGasLimit failure", "gasPrice", gasPrice, "error", err)
 		return nil, err
 	}
 	return &FeeData{
@@ -27,6 +31,7 @@ func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Add
 func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Address, value *big.Int, input []byte, minGasLimit uint64) (*FeeData, error) {
 	gasTipCap, err := s.client.SuggestGasTipCap(s.ctx)
 	if err != nil {
+		log.Error("estimateDynamicGas SuggestGasTipCap failure", "error", err)
 		return nil, err
 	}
 
@@ -40,6 +45,7 @@ func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Ad
 	)
 	gasLimit, err := s.estimateGasLimit(auth, contract, input, nil, gasTipCap, gasFeeCap, value, minGasLimit)
 	if err != nil {
+		log.Error("estimateDynamicGas estimateGasLimit failure", "error", err)
 		return nil, err
 	}
 	return &FeeData{
@@ -61,6 +67,7 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 	}
 	gasLimit, err := s.client.EstimateGas(s.ctx, msg)
 	if err != nil {
+		log.Error("estimateGasLimit EstimateGas failure", "msg", msg, "error", err)
 		return 0, err
 	}
 	if minGasLimit > gasLimit {
