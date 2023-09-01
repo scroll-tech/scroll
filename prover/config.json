@@ -5,6 +5,7 @@
     "db_path": "unique-db-path-for-prover-1",
     "core": {
         "params_path": "params",
+        "assets_path": "assets",
         "proof_type": 2
     },
     "coordinator": {

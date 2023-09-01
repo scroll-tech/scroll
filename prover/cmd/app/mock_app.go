@@ -38,6 +38,7 @@ type ProverApp struct {
 
 	index int
 	name  string
+	args  []string
 	docker.AppAPI
 }
 
@@ -61,8 +62,9 @@ func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, htt
 		bboltDB:    fmt.Sprintf("/tmp/%d_%s_bbolt_db", base.Timestamp, name),
 		index:      getIndex(),
 		name:       name,
-		AppAPI:     cmd.NewCmd(name, []string{"--log.debug", "--config", proverFile}...),
+		args:       []string{"--log.debug", "--config", proverFile},
 	}
+	proverApp.AppAPI = cmd.NewCmd(proverApp.name, proverApp.args...)
 	if err := proverApp.MockConfig(true, httpURL, proofType); err != nil {
 		panic(err)
 	}

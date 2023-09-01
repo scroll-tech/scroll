@@ -36,10 +36,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @param newVerifier The address of new rollup verifier.
     event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
 
-    /// @notice Emitted when the value of `maxNumL2TxInChunk` is updated.
-    /// @param oldMaxNumL2TxInChunk The old value of `maxNumL2TxInChunk`.
-    /// @param newMaxNumL2TxInChunk The new value of `maxNumL2TxInChunk`.
-    event UpdateMaxNumL2TxInChunk(uint256 oldMaxNumL2TxInChunk, uint256 newMaxNumL2TxInChunk);
+    /// @notice Emitted when the value of `maxNumTxInChunk` is updated.
+    /// @param oldMaxNumTxInChunk The old value of `maxNumTxInChunk`.
+    /// @param newMaxNumTxInChunk The new value of `maxNumTxInChunk`.
+    event UpdateMaxNumTxInChunk(uint256 oldMaxNumTxInChunk, uint256 newMaxNumTxInChunk);
 
     /*************
      * Constants *
@@ -53,7 +53,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
      *************/
 
     /// @notice The maximum number of transactions allowed in each chunk.
-    uint256 public maxNumL2TxInChunk;
+    uint256 public maxNumTxInChunk;
 
     /// @notice The address of L1MessageQueue.
     address public messageQueue;
@@ -67,8 +67,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @notice Whether an account is a prover.
     mapping(address => bool) public isProver;
 
-    /// @notice The latest finalized batch index.
-    uint256 public lastFinalizedBatchIndex;
+    /// @inheritdoc IScrollChain
+    uint256 public override lastFinalizedBatchIndex;
 
     /// @inheritdoc IScrollChain
     mapping(uint256 => bytes32) public override committedBatches;
@@ -107,16 +107,16 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     function initialize(
         address _messageQueue,
         address _verifier,
-        uint256 _maxNumL2TxInChunk
+        uint256 _maxNumTxInChunk
     ) public initializer {
         OwnableUpgradeable.__Ownable_init();
 
         messageQueue = _messageQueue;
         verifier = _verifier;
-        maxNumL2TxInChunk = _maxNumL2TxInChunk;
+        maxNumTxInChunk = _maxNumTxInChunk;
 
         emit UpdateVerifier(address(0), _verifier);
-        emit UpdateMaxNumL2TxInChunk(0, _maxNumL2TxInChunk);
+        emit UpdateMaxNumTxInChunk(0, _maxNumTxInChunk);
     }
 
     /*************************
@@ -272,9 +272,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
 
         while (_count > 0) {
+            committedBatches[_batchIndex] = bytes32(0);
+
             emit RevertBatch(_batchIndex, _batchHash);
 
-            committedBatches[_batchIndex] = bytes32(0);
             unchecked {
                 _batchIndex += 1;
                 _count -= 1;
@@ -397,13 +398,13 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         emit UpdateVerifier(_oldVerifier, _newVerifier);
     }
 
-    /// @notice Update the value of `maxNumL2TxInChunk`.
-    /// @param _maxNumL2TxInChunk The new value of `maxNumL2TxInChunk`.
-    function updateMaxNumL2TxInChunk(uint256 _maxNumL2TxInChunk) external onlyOwner {
-        uint256 _oldMaxNumL2TxInChunk = maxNumL2TxInChunk;
-        maxNumL2TxInChunk = _maxNumL2TxInChunk;
+    /// @notice Update the value of `maxNumTxInChunk`.
+    /// @param _maxNumTxInChunk The new value of `maxNumTxInChunk`.
+    function updateMaxNumTxInChunk(uint256 _maxNumTxInChunk) external onlyOwner {
+        uint256 _oldMaxNumTxInChunk = maxNumTxInChunk;
+        maxNumTxInChunk = _maxNumTxInChunk;
 
-        emit UpdateMaxNumL2TxInChunk(_oldMaxNumL2TxInChunk, _maxNumL2TxInChunk);
+        emit UpdateMaxNumTxInChunk(_oldMaxNumTxInChunk, _maxNumTxInChunk);
     }
 
     /// @notice Pause the contract
@@ -461,19 +462,26 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         uint256 _numBlocks = ChunkCodec.validateChunkLength(chunkPtr, _chunk.length);
 
-        // concatenate block contexts
-        uint256 _totalTransactionsInChunk;
-        for (uint256 i = 0; i < _numBlocks; i++) {
-            dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
-            uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
-            unchecked {
-                _totalTransactionsInChunk += _numTransactionsInBlock;
-                blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+        // concatenate block contexts, use scope to avoid stack too deep
+        {
+            uint256 _totalTransactionsInChunk;
+            for (uint256 i = 0; i < _numBlocks; i++) {
+                dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
+                uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+                unchecked {
+                    _totalTransactionsInChunk += _numTransactionsInBlock;
+                    blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+                }
+            }
+            assembly {
+                mstore(0x40, add(dataPtr, mul(_totalTransactionsInChunk, 0x20))) // reserve memory for tx hashes
             }
         }
 
+        // It is used to compute the actual number of transactions in chunk.
+        uint256 txHashStartDataPtr;
         assembly {
-            mstore(0x40, add(dataPtr, mul(_totalTransactionsInChunk, 0x20))) // reserve memory for tx hashes
+            txHashStartDataPtr := dataPtr
             blockPtr := add(chunkPtr, 1) // reset block ptr
         }
 
@@ -512,11 +520,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             }
         }
 
-        // check the number of L2 transactions in the chunk
-        require(
-            _totalTransactionsInChunk - _totalNumL1MessagesInChunk <= maxNumL2TxInChunk,
-            "too many L2 txs in one chunk"
-        );
+        // check the actual number of transactions in the chunk
+        require((dataPtr - txHashStartDataPtr) / 32 <= maxNumTxInChunk, "too many txs in one chunk");
 
         // check chunk has correct length
         require(l2TxPtr - chunkPtr == _chunk.length, "incomplete l2 transaction data");
@@ -549,9 +554,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         unchecked {
             uint256 _bitmap;
+            uint256 rem;
             for (uint256 i = 0; i < _numL1Messages; i++) {
                 uint256 quo = _totalL1MessagesPoppedInBatch >> 8;
-                uint256 rem = _totalL1MessagesPoppedInBatch & 0xff;
+                rem = _totalL1MessagesPoppedInBatch & 0xff;
 
                 // load bitmap every 256 bits
                 if (i == 0 || rem == 0) {
@@ -573,7 +579,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             }
 
             // check last L1 message is not skipped, _totalL1MessagesPoppedInBatch must > 0
-            uint256 rem = (_totalL1MessagesPoppedInBatch - 1) & 0xff;
+            rem = (_totalL1MessagesPoppedInBatch - 1) & 0xff;
             require(((_bitmap >> rem) & 1) == 0, "cannot skip last L1 message");
         }
 

@@ -108,10 +108,10 @@ Mapping from L1 message hash to drop status.
 ### isL1MessageSent
 
 ```solidity
-function isL1MessageSent(bytes32) external view returns (bool)
+function isL1MessageSent(bytes32) external view returns (uint256)
 ```
 
-Mapping from L1 message hash to sent status.
+Mapping from L1 message hash to the timestamp when the message is sent.
 
 
 
@@ -125,7 +125,7 @@ Mapping from L1 message hash to sent status.
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | bool | undefined |
+| _0 | uint256 | undefined |
 
 ### isL2MessageExecuted
 

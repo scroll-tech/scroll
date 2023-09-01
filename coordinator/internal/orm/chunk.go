@@ -155,11 +155,11 @@ func (o *Chunk) GetProvingStatusByHash(ctx context.Context, hash string) (types.
 	return types.ProvingStatus(chunk.ProvingStatus), nil
 }
 
-// GetAssignedChunks retrieves all chunks whose proving_status is either types.ProvingTaskAssigned or types.ProvingTaskProved.
+// GetAssignedChunks retrieves all chunks whose proving_status is either types.ProvingTaskAssigned.
 func (o *Chunk) GetAssignedChunks(ctx context.Context) ([]*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
-	db = db.Where("proving_status IN (?)", []int{int(types.ProvingTaskAssigned), int(types.ProvingTaskProved)})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
 
 	var chunks []*Chunk
 	if err := db.Find(&chunks).Error; err != nil {
@@ -234,7 +234,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	var totalL1CommitGas uint64
 	for _, block := range chunk.Blocks {
 		totalL2TxGas += block.Header.GasUsed
-		totalL2TxNum += block.L2TxsNum()
+		totalL2TxNum += block.NumL2Transactions()
 		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
 		totalL1CommitGas += block.EstimateL1CommitGas()
 	}
@@ -285,7 +285,7 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["prover_assigned_at"] = time.Now()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskProved, types.ProvingTaskVerified:
+	case types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
 	}
 	db := o.db
@@ -298,6 +298,22 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 
 	if err := db.Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("Chunk.UpdateProvingStatus error: %w, chunk hash: %v, status: %v", err, hash, status.String())
+	}
+	return nil
+}
+
+// UpdateProvingStatusFromProverError updates chunk proving status when prover prove failed
+func (o *Chunk) UpdateProvingStatusFromProverError(ctx context.Context, hash string, status types.ProvingStatus) error {
+	updateFields := make(map[string]interface{})
+	updateFields["proving_status"] = int(status)
+	updateFields["prover_assigned_at"] = nil
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash", hash).Where("proving_status", types.ProvingTaskAssigned)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Chunk.UpdateProvingStatusOptimistic error: %w, chunk hash: %v, status: %v", err, hash, status.String())
 	}
 	return nil
 }
