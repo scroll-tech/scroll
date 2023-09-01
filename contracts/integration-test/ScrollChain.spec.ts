@@ -1,5 +1,6 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
+import { concat } from "ethers/lib/utils";
 import { constants } from "ethers";
 import { concat } from "ethers/lib/utils";
 import { ethers } from "hardhat";
@@ -32,7 +33,7 @@ describe("ScrollChain", async () => {
     await chainProxy.deployed();
     chain = await ethers.getContractAt("ScrollChain", chainProxy.address, deployer);
 
-    await chain.initialize(queue.address, constants.AddressZero, 44);
+    await chain.initialize(queue.address, constants.AddressZero, 100);
     await chain.addSequencer(deployer.address);
     await queue.initialize(
       constants.AddressZero,
@@ -50,11 +51,11 @@ describe("ScrollChain", async () => {
     await chain.importGenesisBatch(batchHeader0, "0x0000000000000000000000000000000000000000000000000000000000000001");
     const parentBatchHash = await chain.committedBatches(0);
     console.log("genesis batch hash:", parentBatchHash);
-
-    for (let numChunks = 1; numChunks <= 3; ++numChunks) {
-      for (let numBlocks = 1; numBlocks <= 3; ++numBlocks) {
-        for (let numTx = 1; numTx <= 10; ++numTx) {
-          for (let txLength = 100; txLength <= 1000; txLength += 100) {
+    console.log(`ChunkPerBatch`, `BlockPerChunk`, `TxPerBlock`, `BytesPerTx`, `TotalBytes`, `EstimateGas`);
+    for (let numChunks = 3; numChunks <= 6; ++numChunks) {
+      for (let numBlocks = 1; numBlocks <= 5; ++numBlocks) {
+        for (let numTx = 20; numTx <= Math.min(30, 100 / numBlocks); ++numTx) {
+          for (let txLength = 800; txLength <= 1000; txLength += 100) {
             const txs: Array<Uint8Array> = [];
             for (let i = 0; i < numTx; i++) {
               const tx = new Uint8Array(4 + txLength);
@@ -82,12 +83,12 @@ describe("ScrollChain", async () => {
 
             const estimateGas = await chain.estimateGas.commitBatch(0, batchHeader0, chunks, "0x");
             console.log(
-              `ChunkPerBatch[${numChunks}]`,
-              `BlockPerChunk[${numBlocks}]`,
-              `TxPerBlock[${numTx}]`,
-              `BytesPerTx[${txLength}]`,
-              `TotalBytes[${numChunks * numBlocks * numTx * (txLength + 1)}]`,
-              `EstimateGas[${estimateGas.toString()}]`
+              `${numChunks}`,
+              `${numBlocks}`,
+              `${numTx}`,
+              `${txLength}`,
+              `${numChunks * numBlocks * numTx * (txLength + 1)}`,
+              `${estimateGas.toString()}`
             );
           }
         }
