@@ -22,8 +22,6 @@ import (
 	"scroll-tech/bridge/internal/utils"
 )
 
-const contractEventsBlocksFetchLimit = int64(10)
-
 type rollupEvent struct {
 	batchHash common.Hash
 	txHash    common.Hash

@@ -103,7 +103,6 @@ func convertAndCheck(key string, uniqueAddressesSet map[string]struct{}) (*ecdsa
 func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	var privateKeysConfig struct {
 		relayerConfigAlias
-		MessageSenderPrivateKey   string `json:"message_sender_private_key"`
 		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
 		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
 		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
@@ -140,7 +139,6 @@ func (r *RelayerConfig) MarshalJSON() ([]byte, error) {
 	privateKeysConfig := struct {
 		relayerConfigAlias
 		// The private key of the relayer
-		MessageSenderPrivateKey   string `json:"message_sender_private_key"`
 		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
 		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
 		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`

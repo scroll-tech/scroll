@@ -51,7 +51,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 	l1cfg := cfg.L1Config
 	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
-	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.MessageSenderPrivateKey, "test", "test", nil)
+	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.CommitSenderPrivateKey, "test", "test", nil)
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
@@ -72,7 +72,7 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 	_, db := setupL2Watcher(t)
 	defer database.CloseDB(db)
 
-	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.MessageSenderPrivateKey)
+	auth := prepareAuth(t, l2Cli, cfg.L2Config.RelayerConfig.CommitSenderPrivateKey)
 
 	// deploy mock bridge
 	_, tx, _, err := mock_bridge.DeployMockBridgeL2(auth, l2Cli)

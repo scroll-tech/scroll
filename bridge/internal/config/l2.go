@@ -14,6 +14,8 @@ type L2Config struct {
 	Endpoint string `json:"endpoint"`
 	// The L2MessageQueue contract address deployed on layer 2 chain.
 	L2MessageQueueAddress common.Address `json:"l2_message_queue_address"`
+	// The L2ScrollMessenger contract address deployed on layer 2 chain.
+	L2MessengerAddress common.Address `json:"l2_messenger_address"`
 	// The WithdrawTrieRootSlot in L2MessageQueue contract.
 	WithdrawTrieRootSlot common.Hash `json:"withdraw_trie_root_slot,omitempty"`
 	// The relayer config
