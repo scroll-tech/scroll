@@ -10,7 +10,7 @@ on:
     paths:
       - 'bridge/**'
       - 'common/**'
-      - '!common/version/**'
+      - '!common/version/version.go'
       - 'database/**'
       - '.github/workflows/bridge.yml'
   pull_request:
@@ -22,7 +22,7 @@ on:
     paths:
       - 'bridge/**'
       - 'common/**'
-      - '!common/version/**'
+      - '!common/version/version.go'
       - 'database/**'
       - '.github/workflows/bridge.yml'
 

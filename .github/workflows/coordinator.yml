@@ -10,7 +10,7 @@ on:
     paths:
       - 'coordinator/**'
       - 'common/**'
-      - '!common/version/**'
+      - '!common/version/version.go'
       - 'database/**'
       - '.github/workflows/coordinator.yml'
   pull_request:
@@ -22,7 +22,7 @@ on:
     paths:
       - 'coordinator/**'
       - 'common/**'
-      - '!common/version/**'
+      - '!common/version/version.go'
       - 'database/**'
       - '.github/workflows/coordinator.yml'
 
