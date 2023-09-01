@@ -16,7 +16,6 @@ func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Add
 		log.Error("estimateLegacyGas SuggestGasPrice failure", "error", err)
 		return nil, err
 	}
-
 	gasLimit, err := s.estimateGasLimit(auth, contract, input, gasPrice, nil, nil, value, minGasLimit)
 	if err != nil {
 		log.Error("estimateLegacyGas estimateGasLimit failure", "gasPrice", gasPrice, "error", err)

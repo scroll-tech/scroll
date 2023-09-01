@@ -523,7 +523,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 					"RollupContractAddress", r.cfg.RollupContractAddress,
 					"err", err,
 				)
-
 				log.Debug(
 					"finalizeBatchWithProof in layer1 failed",
 					"index", batch.Index,
