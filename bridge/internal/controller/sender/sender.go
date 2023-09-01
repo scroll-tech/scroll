@@ -207,13 +207,13 @@ func (s *Sender) cacheMaxFeeData(feeData *FeeData) {
 		return
 	}
 
-	if feeData.gasFeeCap.Cmp(s.cachedMaxFeeData.gasFeeCap) > 0 {
+	if feeData.gasFeeCap != nil && feeData.gasFeeCap.Cmp(s.cachedMaxFeeData.gasFeeCap) > 0 {
 		s.cachedMaxFeeData.gasFeeCap = feeData.gasFeeCap
 	}
-	if feeData.gasTipCap.Cmp(s.cachedMaxFeeData.gasTipCap) > 0 {
+	if feeData.gasTipCap != nil && feeData.gasTipCap.Cmp(s.cachedMaxFeeData.gasTipCap) > 0 {
 		s.cachedMaxFeeData.gasTipCap = feeData.gasTipCap
 	}
-	if feeData.gasPrice.Cmp(s.cachedMaxFeeData.gasPrice) > 0 {
+	if feeData.gasPrice != nil && feeData.gasPrice.Cmp(s.cachedMaxFeeData.gasPrice) > 0 {
 		s.cachedMaxFeeData.gasPrice = feeData.gasPrice
 	}
 	if feeData.gasLimit > s.cachedMaxFeeData.gasLimit {
