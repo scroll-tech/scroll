@@ -36,10 +36,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @param newVerifier The address of new rollup verifier.
     event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
 
-    /// @notice Emitted when the value of `maxNumL2TxInChunk` is updated.
-    /// @param oldMaxNumL2TxInChunk The old value of `maxNumL2TxInChunk`.
-    /// @param newMaxNumL2TxInChunk The new value of `maxNumL2TxInChunk`.
-    event UpdateMaxNumL2TxInChunk(uint256 oldMaxNumL2TxInChunk, uint256 newMaxNumL2TxInChunk);
+    /// @notice Emitted when the value of `maxNumTxInChunk` is updated.
+    /// @param oldMaxNumTxInChunk The old value of `maxNumTxInChunk`.
+    /// @param newMaxNumTxInChunk The new value of `maxNumTxInChunk`.
+    event UpdateMaxNumTxInChunk(uint256 oldMaxNumTxInChunk, uint256 newMaxNumTxInChunk);
 
     /*************
      * Constants *
@@ -53,7 +53,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
      *************/
 
     /// @notice The maximum number of transactions allowed in each chunk.
-    uint256 public maxNumL2TxInChunk;
+    uint256 public maxNumTxInChunk;
 
     /// @notice The address of L1MessageQueue.
     address public messageQueue;
@@ -107,16 +107,16 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     function initialize(
         address _messageQueue,
         address _verifier,
-        uint256 _maxNumL2TxInChunk
+        uint256 _maxNumTxInChunk
     ) public initializer {
         OwnableUpgradeable.__Ownable_init();
 
         messageQueue = _messageQueue;
         verifier = _verifier;
-        maxNumL2TxInChunk = _maxNumL2TxInChunk;
+        maxNumTxInChunk = _maxNumTxInChunk;
 
         emit UpdateVerifier(address(0), _verifier);
-        emit UpdateMaxNumL2TxInChunk(0, _maxNumL2TxInChunk);
+        emit UpdateMaxNumTxInChunk(0, _maxNumTxInChunk);
     }
 
     /*************************
@@ -398,13 +398,13 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         emit UpdateVerifier(_oldVerifier, _newVerifier);
     }
 
-    /// @notice Update the value of `maxNumL2TxInChunk`.
-    /// @param _maxNumL2TxInChunk The new value of `maxNumL2TxInChunk`.
-    function updateMaxNumL2TxInChunk(uint256 _maxNumL2TxInChunk) external onlyOwner {
-        uint256 _oldMaxNumL2TxInChunk = maxNumL2TxInChunk;
-        maxNumL2TxInChunk = _maxNumL2TxInChunk;
+    /// @notice Update the value of `maxNumTxInChunk`.
+    /// @param _maxNumTxInChunk The new value of `maxNumTxInChunk`.
+    function updateMaxNumTxInChunk(uint256 _maxNumTxInChunk) external onlyOwner {
+        uint256 _oldMaxNumTxInChunk = maxNumTxInChunk;
+        maxNumTxInChunk = _maxNumTxInChunk;
 
-        emit UpdateMaxNumL2TxInChunk(_oldMaxNumL2TxInChunk, _maxNumL2TxInChunk);
+        emit UpdateMaxNumTxInChunk(_oldMaxNumTxInChunk, _maxNumTxInChunk);
     }
 
     /// @notice Pause the contract
@@ -521,8 +521,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         }
 
         // check the actual number of transactions in the chunk
-        // (dataPtr - startDataPtr - _numBlocks * 58) / 32;
-        require((dataPtr - txHashStartDataPtr) / 32 <= maxNumL2TxInChunk, "too many txs in one chunk");
+        require((dataPtr - txHashStartDataPtr) / 32 <= maxNumTxInChunk, "too many txs in one chunk");
 
         // check chunk has correct length
         require(l2TxPtr - chunkPtr == _chunk.length, "incomplete l2 transaction data");
