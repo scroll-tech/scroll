@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity =0.8.16;
 
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import {EnumerableSet} from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -85,7 +85,7 @@ contract ScrollOwner is AccessControlEnumerable {
         uint256 _value,
         bytes calldata _data,
         bytes32 _role
-    ) public payable onlyRole(_role) hasAccess(_target, bytes4(_data[0:4]), _role) {
+    ) external payable onlyRole(_role) hasAccess(_target, bytes4(_data[0:4]), _role) {
         _execute(_target, _value, _data);
     }
 
@@ -134,9 +134,9 @@ contract ScrollOwner is AccessControlEnumerable {
         address _target,
         uint256 _value,
         bytes calldata _data
-    ) internal {
+    ) private {
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = address(_target).call{value: _value}(_data);
+        (bool success, ) = _target.call{value: _value}(_data);
         if (!success) {
             // solhint-disable-next-line no-inline-assembly
             assembly {
