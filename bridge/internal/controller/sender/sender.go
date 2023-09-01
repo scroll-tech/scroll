@@ -193,7 +193,9 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 }
 
 func (s *Sender) cacheGasLimitData(gasLimit uint64) {
-	s.cachedMaxGasLimit = gasLimit
+	if gasLimit > s.cachedMaxGasLimit {
+		s.cachedMaxGasLimit = gasLimit
+	}
 }
 
 // SendTransaction send a signed L2tL1 transaction.
