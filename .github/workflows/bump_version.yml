@@ -2,19 +2,18 @@ name: Bump Version
 
 on:
   pull_request:
-    branches: [develop]
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - ready_for_review
+    branches: [ develop ]
+    types: [ labeled ]
 
 jobs:
   try-to-bump:
+    if: ${{ github.event.label.name == 'bump-version' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
       - name: check diff
         id: check_diff
         run: |
@@ -49,7 +48,11 @@ jobs:
       - name: bump version in common/version/version.go
         if: steps.check_diff.outputs.result == 'bump'
         run: node .github/scripts/bump_version_dot_go.mjs
+
+        # Commits made by this Action do not trigger new Workflow runs
       - uses: stefanzweifel/git-auto-commit-action@3ea6ae190baf489ba007f7c92608f33ce20ef04a
         if: steps.check_diff.outputs.result == 'bump'
         with:
+          skip_fetch: true # already did fetch in check diff
+          file_pattern: "common/version/version.go"
           commit_message: "chore: auto version bump [bot]"

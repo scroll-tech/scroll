@@ -11,7 +11,11 @@ package verifier
 import "C" //nolint:typecheck
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"io"
+	"os"
+	"path"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
@@ -20,14 +24,6 @@ import (
 
 	"scroll-tech/common/types/message"
 )
-
-// InvalidTestProof invalid proof used in tests
-const InvalidTestProof = "this is a invalid proof"
-
-// Verifier represents a rust ffi to a halo2 verifier.
-type Verifier struct {
-	cfg *config.VerifierConfig
-}
 
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
@@ -44,7 +40,21 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	C.init_batch_verifier(paramsPathStr, assetsPathStr)
 	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
 
-	return &Verifier{cfg: cfg}, nil
+	batchVK, err := readVK(path.Join(cfg.AssetsPath, "agg_vk.vkey"))
+	if err != nil {
+		return nil, err
+	}
+
+	chunkVK, err := readVK(path.Join(cfg.AssetsPath, "chunk_vk.vkey"))
+	if err != nil {
+		return nil, err
+	}
+
+	return &Verifier{
+		cfg:     cfg,
+		BatchVK: batchVK,
+		ChunkVK: chunkVK,
+	}, nil
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
@@ -95,4 +105,16 @@ func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
 	log.Info("Start to verify chunk proof ...")
 	verified := C.verify_chunk_proof(proofStr)
 	return verified != 0, nil
+}
+
+func readVK(filePat string) (string, error) {
+	f, err := os.Open(filePat)
+	if err != nil {
+		return "", err
+	}
+	byt, err := io.ReadAll(f)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(byt), nil
 }

@@ -52,7 +52,7 @@ contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback 
         address _to,
         uint256 _amount,
         uint256 _gasLimit
-    ) public payable override {
+    ) external payable override {
         _deposit(_to, _amount, new bytes(0), _gasLimit);
     }
 

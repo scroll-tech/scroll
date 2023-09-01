@@ -5,8 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"sync"
+	"sync/atomic"
 
+	"github.com/docker/docker/pkg/reexec"
 	cmap "github.com/orcaman/concurrent-map"
 )
 
@@ -26,8 +27,9 @@ type Cmd struct {
 	name string
 	args []string
 
-	mu  sync.Mutex
-	cmd *exec.Cmd
+	isRunning uint64
+	cmd       *exec.Cmd
+	app       *exec.Cmd
 
 	checkFuncs cmap.ConcurrentMap //map[string]checkFunc
 
@@ -38,13 +40,23 @@ type Cmd struct {
 }
 
 // NewCmd create Cmd instance.
-func NewCmd(name string, args ...string) *Cmd {
-	return &Cmd{
+func NewCmd(name string, params ...string) *Cmd {
+	cmd := &Cmd{
 		checkFuncs: cmap.New(),
 		name:       name,
-		args:       args,
+		args:       params,
 		ErrChan:    make(chan error, 10),
+		cmd:        exec.Command(name, params...),
+		app: &exec.Cmd{
+			Path: reexec.Self(),
+			Args: append([]string{name}, params...),
+		},
 	}
+	cmd.cmd.Stdout = cmd
+	cmd.cmd.Stderr = cmd
+	cmd.app.Stdout = cmd
+	cmd.app.Stderr = cmd
+	return cmd
 }
 
 // RegistFunc register check func
@@ -58,15 +70,14 @@ func (c *Cmd) UnRegistFunc(key string) {
 }
 
 func (c *Cmd) runCmd() {
-	cmd := exec.Command(c.args[0], c.args[1:]...) //nolint:gosec
-	cmd.Stdout = c
-	cmd.Stderr = c
-	c.ErrChan <- cmd.Run()
+	fmt.Println("cmd:", append([]string{c.name}, c.args...))
+	if atomic.CompareAndSwapUint64(&c.isRunning, 0, 1) {
+		c.ErrChan <- c.cmd.Run()
+	}
 }
 
 // RunCmd parallel running when parallel is true.
 func (c *Cmd) RunCmd(parallel bool) {
-	fmt.Println("cmd:", c.args)
 	if parallel {
 		go c.runCmd()
 	} else {

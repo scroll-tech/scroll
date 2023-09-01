@@ -4,6 +4,7 @@
 package core_test
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"io"
@@ -22,9 +23,12 @@ import (
 
 var (
 	paramsPath    = flag.String("params", "/assets/test_params", "params dir")
+	assetsPath    = flag.String("assets", "/assets/test_assets", "assets dir")
 	proofDumpPath = flag.String("dump", "/assets/proof_data", "the path proofs dump to")
 	tracePath1    = flag.String("trace1", "/assets/traces/1_transfer.json", "chunk trace 1")
 	tracePath2    = flag.String("trace2", "/assets/traces/10_transfer.json", "chunk trace 2")
+	batchVkPath   = flag.String("batch-vk", "/assets/test_assets/agg_vk.vkey", "batch vk")
+	chunkVkPath   = flag.String("chunk-vk", "/assets/test_assets/chunk_vk.vkey", "chunk vk")
 )
 
 func TestFFI(t *testing.T) {
@@ -33,6 +37,7 @@ func TestFFI(t *testing.T) {
 	chunkProverConfig := &config.ProverCoreConfig{
 		DumpDir:    *proofDumpPath,
 		ParamsPath: *paramsPath,
+		AssetsPath: *assetsPath,
 		ProofType:  message.ProofTypeChunk,
 	}
 	chunkProverCore, err := core.NewProverCore(chunkProverConfig)
@@ -83,9 +88,13 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Generated and dumped chunk proof 2")
 
+	as.Equal(chunkProverCore.GetVk(), readVk(*chunkVkPath, as))
+	t.Log("Chunk VKs are equal")
+
 	batchProverConfig := &config.ProverCoreConfig{
 		DumpDir:    *proofDumpPath,
 		ParamsPath: *paramsPath,
+		AssetsPath: *assetsPath,
 		ProofType:  message.ProofTypeBatch,
 	}
 	batchProverCore, err := core.NewProverCore(batchProverConfig)
@@ -96,6 +105,9 @@ func TestFFI(t *testing.T) {
 	_, err = batchProverCore.ProveBatch("batch_proof", chunkInfos, chunkProofs)
 	as.NoError(err)
 	t.Log("Generated and dumped batch proof")
+
+	as.Equal(batchProverCore.GetVk(), readVk(*batchVkPath, as))
+	t.Log("Batch VKs are equal")
 }
 
 func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
@@ -108,4 +120,13 @@ func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
 	as.NoError(json.Unmarshal(byt, trace))
 
 	return []*types.BlockTrace{trace}
+}
+
+func readVk(filePat string, as *assert.Assertions) string {
+	f, err := os.Open(filePat)
+	as.NoError(err)
+	byt, err := io.ReadAll(f)
+	as.NoError(err)
+
+	return base64.StdEncoding.EncodeToString(byt)
 }
