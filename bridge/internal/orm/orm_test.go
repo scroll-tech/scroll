@@ -211,7 +211,7 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(2), count)
 
-	pendingBatches, err := batchOrm.GetPendingBatches(context.Background(), 100)
+	pendingBatches, err := batchOrm.GetPendingAndCommitFailedBatches(context.Background(), 100)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(pendingBatches))
 

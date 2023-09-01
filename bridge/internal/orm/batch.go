@@ -192,22 +192,24 @@ func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 	return statuses, nil
 }
 
-// GetPendingBatches retrieves pending batches up to the specified limit.
+// GetPendingAndCommitFailedBatches retrieves pending and commitFailed batches up to the specified limit.
+// Pending batches because we need to process unprocessed batches,
+// commitFailed because we want to retry failed batches.
 // The returned batches are sorted in ascending order by their index.
-func (o *Batch) GetPendingBatches(ctx context.Context, limit int) ([]*Batch, error) {
+func (o *Batch) GetPendingAndCommitFailedBatches(ctx context.Context, limit int) ([]*Batch, error) {
 	if limit <= 0 {
 		return nil, errors.New("limit must be greater than zero")
 	}
 
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
-	db = db.Where("rollup_status = ?", types.RollupPending)
+	db = db.Where("rollup_status = ? OR rollup_status = ?", types.RollupPending, types.RollupCommitFailed)
 	db = db.Order("index ASC")
 	db = db.Limit(limit)
 
 	var batches []*Batch
 	if err := db.Find(&batches).Error; err != nil {
-		return nil, fmt.Errorf("Batch.GetPendingBatches error: %w", err)
+		return nil, fmt.Errorf("Batch.GetPendingAndCommitFailedBatches error: %w", err)
 	}
 	return batches, nil
 }
