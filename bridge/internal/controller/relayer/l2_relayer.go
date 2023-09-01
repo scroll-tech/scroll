@@ -402,6 +402,13 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				"index", batch.Index,
 				"hash", batch.Hash,
 				"RollupContractAddress", r.cfg.RollupContractAddress,
+				"err", err,
+			)
+			log.Debug(
+				"Failed to send commitBatch tx to layer1",
+				"index", batch.Index,
+				"hash", batch.Hash,
+				"RollupContractAddress", r.cfg.RollupContractAddress,
 				"calldata", common.Bytes2Hex(calldata),
 				"err", err,
 			)
@@ -510,6 +517,14 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 				// the client does not see the 1st tx's updates at this point.
 				// TODO: add more fine-grained error handling
 				log.Error(
+					"finalizeBatchWithProof in layer1 failed",
+					"index", batch.Index,
+					"hash", batch.Hash,
+					"RollupContractAddress", r.cfg.RollupContractAddress,
+					"err", err,
+				)
+
+				log.Debug(
 					"finalizeBatchWithProof in layer1 failed",
 					"index", batch.Index,
 					"hash", batch.Hash,
