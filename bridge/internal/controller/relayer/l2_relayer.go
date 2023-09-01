@@ -332,7 +332,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
-	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 1)
+	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 5)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -395,9 +395,17 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		// send transaction
 		txID := batch.Hash + "-commit"
-		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+		minGasLimit := uint64(float64(batch.TotalL1CommitGas) * r.cfg.GasCostIncreaseMultiplier)
+		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, minGasLimit)
 		if err != nil {
 			log.Error(
+				"Failed to send commitBatch tx to layer1",
+				"index", batch.Index,
+				"hash", batch.Hash,
+				"RollupContractAddress", r.cfg.RollupContractAddress,
+				"err", err,
+			)
+			log.Debug(
 				"Failed to send commitBatch tx to layer1",
 				"index", batch.Index,
 				"hash", batch.Hash,
@@ -451,17 +459,17 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		r.metrics.bridgeL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 
 		// Check batch status before send `finalizeBatchWithProof` tx.
-		batchStatus, err := r.getBatchStatusByIndex(batch.Index)
-		if err != nil {
-			r.metrics.bridgeL2ChainMonitorLatestFailedCall.Inc()
-			log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
-			return
-		}
-		if !batchStatus {
-			r.metrics.bridgeL2ChainMonitorLatestFailedBatchStatus.Inc()
-			log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
-			return
-		}
+		//batchStatus, err := r.getBatchStatusByIndex(batch.Index)
+		//if err != nil {
+		//	r.metrics.bridgeL2ChainMonitorLatestFailedCall.Inc()
+		//	log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
+		//	return
+		//}
+		//if !batchStatus {
+		//	r.metrics.bridgeL2ChainMonitorLatestFailedBatchStatus.Inc()
+		//	log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
+		//	return
+		//}
 
 		var parentBatchStateRoot string
 		if batch.Index > 0 {
@@ -510,6 +518,13 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 				// the client does not see the 1st tx's updates at this point.
 				// TODO: add more fine-grained error handling
 				log.Error(
+					"finalizeBatchWithProof in layer1 failed",
+					"index", batch.Index,
+					"hash", batch.Hash,
+					"RollupContractAddress", r.cfg.RollupContractAddress,
+					"err", err,
+				)
+				log.Debug(
 					"finalizeBatchWithProof in layer1 failed",
 					"index", batch.Index,
 					"hash", batch.Hash,

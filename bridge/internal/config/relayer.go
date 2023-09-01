@@ -63,6 +63,8 @@ type RelayerConfig struct {
 	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit,omitempty"`
 	// ChainMonitor config of monitoring service
 	ChainMonitor *ChainMonitor `json:"chain_monitor,omitempty"`
+	// GasCostIncreaseMultiplier multiplier for min gas limit estimation
+	GasCostIncreaseMultiplier float64 `json:"gas_cost_increase_multiplier,omitempty"`
 	// The private key of the relayer
 	MessageSenderPrivateKey   *ecdsa.PrivateKey `json:"-"`
 	GasOracleSenderPrivateKey *ecdsa.PrivateKey `json:"-"`

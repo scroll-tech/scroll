@@ -217,6 +217,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 
 	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
+		log.Error("failed to get fee data", "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 
