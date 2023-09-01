@@ -7,6 +7,8 @@ import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {ScrollOwner} from "../misc/ScrollOwner.sol";
 
 contract ScrollOwnerTest is DSTestPlus {
+    event GrantAccess(bytes32 indexed role, address indexed target, bytes4[] selectors);
+    event RevokeAccess(bytes32 indexed role, address indexed target, bytes4[] selectors);
     event Call();
 
     ScrollOwner private owner;
@@ -32,10 +34,18 @@ contract ScrollOwnerTest is DSTestPlus {
         assertEq(0, _roles.length);
         _selectors = new bytes4[](1);
         _selectors[0] = ScrollOwnerTest.revertOnCall.selector;
+
+        hevm.expectEmit(true, true, false, true);
+        emit GrantAccess(bytes32(uint256(1)), address(this), _selectors);
+
         owner.updateAccess(address(this), _selectors, bytes32(uint256(1)), true);
         _roles = owner.callableRoles(address(this), ScrollOwnerTest.revertOnCall.selector);
         assertEq(1, _roles.length);
         assertEq(_roles[0], bytes32(uint256(1)));
+
+        hevm.expectEmit(true, true, false, true);
+        emit RevokeAccess(bytes32(uint256(1)), address(this), _selectors);
+
         owner.updateAccess(address(this), _selectors, bytes32(uint256(1)), false);
         _roles = owner.callableRoles(address(this), ScrollOwnerTest.revertOnCall.selector);
         assertEq(0, _roles.length);

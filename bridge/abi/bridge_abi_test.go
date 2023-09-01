@@ -11,20 +11,12 @@ import (
 func TestEventSignature(t *testing.T) {
 	assert := assert.New(t)
 
-	assert.Equal(L1SentMessageEventSignature, common.HexToHash("104371f3b442861a2a7b82a070afbbaab748bb13757bf47769e170e37809ec1e"))
-	assert.Equal(L1RelayedMessageEventSignature, common.HexToHash("4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"))
-	assert.Equal(L1FailedRelayedMessageEventSignature, common.HexToHash("99d0e048484baa1b1540b1367cb128acd7ab2946d1ed91ec10e3c85e4bf51b8f"))
-
 	assert.Equal(L1CommitBatchEventSignature, common.HexToHash("2c32d4ae151744d0bf0b9464a3e897a1d17ed2f1af71f7c9a75f12ce0d28238f"))
 	assert.Equal(L1FinalizeBatchEventSignature, common.HexToHash("26ba82f907317eedc97d0cbef23de76a43dd6edb563bdb6e9407645b950a7a2d"))
-
-	assert.Equal(L1QueueTransactionEventSignature, common.HexToHash("69cfcb8e6d4192b8aba9902243912587f37e550d75c1fa801491fce26717f37e"))
 
 	assert.Equal(L2SentMessageEventSignature, common.HexToHash("104371f3b442861a2a7b82a070afbbaab748bb13757bf47769e170e37809ec1e"))
 	assert.Equal(L2RelayedMessageEventSignature, common.HexToHash("4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"))
 	assert.Equal(L2FailedRelayedMessageEventSignature, common.HexToHash("99d0e048484baa1b1540b1367cb128acd7ab2946d1ed91ec10e3c85e4bf51b8f"))
-
-	assert.Equal(L2ImportBlockEventSignature, common.HexToHash("a7823f45e1ee21f9530b77959b57507ad515a14fa9fa24d262ee80e79b2b5745"))
 
 	assert.Equal(L2AppendMessageEventSignature, common.HexToHash("faa617c2d8ce12c62637dbce76efcc18dae60574aa95709bdcedce7e76071693"))
 }
@@ -115,14 +107,5 @@ func TestPackSetL2BaseFee(t *testing.T) {
 
 	baseFee := big.NewInt(2333)
 	_, err = l2GasOracleABI.Pack("setL2BaseFee", baseFee)
-	assert.NoError(err)
-}
-
-func TestPackImportBlock(t *testing.T) {
-	assert := assert.New(t)
-
-	l1BlockContainerABI := L1BlockContainerABI
-
-	_, err := l1BlockContainerABI.Pack("importBlockHeader", common.Hash{}, []byte{}, false)
 	assert.NoError(err)
 }

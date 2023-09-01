@@ -55,14 +55,10 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
             revert PeriodIsZero();
         }
 
-        if (_totalLimit == 0) {
-            revert TotalLimitIsZero();
-        }
-
         periodDuration = _periodDuration;
         spender = _spender;
 
-        currentPeriod.limit = _totalLimit;
+        _updateTotalLimit(_totalLimit);
     }
 
     /*****************************
@@ -104,6 +100,16 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
     /// @notice Update the total ETH amount limit.
     /// @param _newTotalLimit The new total limit.
     function updateTotalLimit(uint104 _newTotalLimit) external onlyOwner {
+        _updateTotalLimit(_newTotalLimit);
+    }
+
+    /**********************
+     * Internal Functions *
+     **********************/
+
+    /// @dev Internal function to update the total token amount limit.
+    /// @param _newTotalLimit The new total limit.
+    function _updateTotalLimit(uint104 _newTotalLimit) private {
         if (_newTotalLimit == 0) {
             revert TotalLimitIsZero();
         }
