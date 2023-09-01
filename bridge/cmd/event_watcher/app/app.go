@@ -90,12 +90,6 @@ func action(ctx *cli.Context) error {
 	go utils.Loop(subCtx, 2*time.Second, l2watcher.FetchContractEvent)
 	// Finish start all l2 functions
 
-	go utils.Loop(subCtx, 10*time.Second, func() {
-		if loopErr := l1watcher.FetchContractEvent(); loopErr != nil {
-			log.Error("Failed to fetch bridge contract", "err", loopErr)
-		}
-	})
-
 	log.Info("Start event-watcher successfully")
 
 	// Catch CTRL-C to ensure a graceful shutdown.
