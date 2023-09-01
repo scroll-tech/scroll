@@ -57,14 +57,20 @@
         "min_gas_price": 0,
         "gas_price_diff": 50000
       },
+      "chain_monitor": {
+        "timeout": 3,
+        "try_times": 5,
+        "base_url": "http://localhost:8750"
+      },
       "finalize_batch_interval_sec": 0,
       "message_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
       "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
-      "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515"
+      "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",
+      "gas_cost_increase_multiplier": 1.2
     },
     "chunk_proposer_config": {
-      "max_l2_tx_num_per_chunk": 1123,
+      "max_tx_num_per_chunk": 1123,
       "max_l1_commit_gas_per_chunk": 11234567,
       "max_l1_commit_calldata_size_per_chunk": 112345,
       "chunk_timeout_sec": 300,

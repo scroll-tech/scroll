@@ -18,5 +18,5 @@ interface IFiatToken {
      * amount is less than or equal to the minter's account balance
      * @param _amount uint256 the amount of tokens to be burned
      */
-    function burn(uint256 _amount) external returns (bool);
+    function burn(uint256 _amount) external;
 }

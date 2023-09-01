@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -33,6 +34,12 @@ var (
 	ErrValidatorFailureProofTimeout = errors.New("validator failure submit proof timeout")
 	// ErrValidatorFailureTaskHaveVerifiedSuccess have proved success and verified success
 	ErrValidatorFailureTaskHaveVerifiedSuccess = errors.New("validator failure chunk/batch have proved and verified success")
+	// ErrValidatorFailureVerifiedFailed failed to verify and the verifier returns error
+	ErrValidatorFailureVerifiedFailed = fmt.Errorf("verification failed, verifier returns error")
+	// ErrValidatorSuccessInvalidProof successful verified and the proof is invalid
+	ErrValidatorSuccessInvalidProof = fmt.Errorf("verification succeeded, it's an invalid proof")
+	// ErrCoordinatorInternalFailure coordinator internal db failure
+	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
 )
 
 // ProofReceiverLogic the proof receiver logic
@@ -59,11 +66,7 @@ type ProofReceiverLogic struct {
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
-func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, reg prometheus.Registerer) *ProofReceiverLogic {
-	vf, err := verifier.NewVerifier(cfg.Verifier)
-	if err != nil {
-		panic("proof receiver new verifier failure")
-	}
+func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *ProofReceiverLogic {
 	return &ProofReceiverLogic{
 		chunkOrm:      orm.NewChunk(db),
 		batchOrm:      orm.NewBatch(db),
@@ -132,10 +135,21 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return fmt.Errorf("get ProverVersion from context failed")
 	}
 
-	proverTask, err := m.proverTaskOrm.GetProverTaskByTaskIDAndProver(ctx, proofMsg.ID, pk, pv)
-	if proverTask == nil || err != nil {
-		log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
-		return ErrValidatorFailureProverTaskEmpty
+	var proverTask *orm.ProverTask
+	var err error
+	if proofParameter.UUID != "" {
+		proverTask, err = m.proverTaskOrm.GetProverTaskByUUIDAndPublicKey(ctx, proofParameter.UUID, pk)
+		if proverTask == nil || err != nil {
+			log.Error("get none prover task for the proof", "uuid", proofParameter.UUID, "key", pk, "taskID", proofMsg.ID, "error", err)
+			return ErrValidatorFailureProverTaskEmpty
+		}
+	} else {
+		// TODO When prover all have upgrade, need delete this logic
+		proverTask, err = m.proverTaskOrm.GetAssignedProverTaskByTaskIDAndProver(ctx, proofMsg.Type, proofMsg.ID, pk, pv)
+		if proverTask == nil || err != nil {
+			log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
+			return ErrValidatorFailureProverTaskEmpty
+		}
 	}
 
 	proofTime := time.Since(proverTask.CreatedAt)
@@ -160,15 +174,15 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 
 	if verifyErr != nil || !success {
 		m.verifierFailureTotal.WithLabelValues(pv).Inc()
-		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg)
+		m.proofRecover(ctx, proverTask, proofMsg)
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
 
-		if verifyErr == nil {
-			verifyErr = fmt.Errorf("verification succeeded and it's an invalid proof")
+		if verifyErr != nil {
+			return ErrValidatorFailureVerifiedFailed
 		}
-		return verifyErr
+		return ErrValidatorSuccessInvalidProof
 	}
 
 	m.proverTaskProveDuration.Observe(time.Since(proverTask.CreatedAt).Seconds())
@@ -176,10 +190,10 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	log.Info("proof verified and valid", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 		"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec)
 
-	if err := m.closeProofTask(ctx, proofMsg.ID, pk, proofMsg, proofTimeSec); err != nil {
+	if err := m.closeProofTask(ctx, proverTask, proofMsg, proofTimeSec); err != nil {
 		m.proofSubmitFailure.Inc()
-		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg)
-		return err
+		m.proofRecover(ctx, proverTask, proofMsg)
+		return ErrCoordinatorInternalFailure
 	}
 
 	return nil
@@ -231,12 +245,19 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 	proofTimeSec := uint64(proofTime.Seconds())
 
 	if proofMsg.Status != message.StatusOk {
-		m.proofRecover(ctx, proofMsg.ID, pk, proofMsg)
+		// Temporarily replace "panic" with "pa-nic" to prevent triggering the alert based on logs.
+		failureMsg := strings.Replace(proofParameter.FailureMsg, "panic", "pa-nic", -1)
+		// Verify if the proving task has already been assigned to another prover.
+		// Upon receiving an error message, it's possible the proving status has been reset by another prover
+		// and the task has been reassigned. In this case, the coordinator should avoid resetting the proving status.
+		m.processProverErr(ctx, proverTask)
+
 		m.validateFailureProverTaskStatusNotOk.Inc()
+
 		log.Info("proof generated by prover failed",
-			"taskType", proofMsg.Type, "hash", proofMsg.ID,
-			"proverName", proverTask.ProverName, "proverVersion", proverTask.ProverVersion,
-			"proverPublicKey", pk, "failureType", proofParameter.FailureType, "failureMessage", proofParameter.FailureMsg)
+			"taskType", proofMsg.Type, "hash", proofMsg.ID, "proverName", proverTask.ProverName,
+			"proverVersion", proverTask.ProverVersion, "proverPublicKey", pk, "failureType", proofParameter.FailureType,
+			"failureMessage", failureMsg)
 		return ErrValidatorFailureProofMsgStatusNotOk
 	}
 
@@ -249,7 +270,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 	}
 
 	// store the proof to prover task
-	if updateTaskProofErr := m.updateProverTaskProof(ctx, pk, proofMsg); updateTaskProofErr != nil {
+	if updateTaskProofErr := m.updateProverTaskProof(ctx, proverTask, proofMsg); updateTaskProofErr != nil {
 		log.Warn("update prover task proof failure", "hash", proofMsg.ID, "proverPublicKey", pk,
 			"taskType", proverTask.TaskType, "proverName", proverTask.ProverName, "error", updateTaskProofErr)
 	}
@@ -264,37 +285,28 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 	return nil
 }
 
-//func (m *ProofReceiverLogic) proofFailure(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) {
-//	log.Info("proof failure update proof status", "hash", hash, "public key", pubKey,
-//		"proof type", proofMsg.Type.String(), "status", types.ProvingTaskFailed.String())
-//
-//	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsg, types.ProvingTaskFailed, 0); err != nil {
-//		log.Error("failed to updated proof status ProvingTaskFailed", "hash", hash, "pubKey", pubKey, "error", err)
-//	}
-//}
-
-func (m *ProofReceiverLogic) proofRecover(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg) {
-	log.Info("proof recover update proof status", "hash", hash, "proverPublicKey", pubKey,
+func (m *ProofReceiverLogic) proofRecover(ctx context.Context, proverTask *orm.ProverTask, proofMsg *message.ProofMsg) {
+	log.Info("proof recover update proof status", "hash", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey,
 		"taskType", proofMsg.Type.String(), "status", types.ProvingTaskUnassigned.String())
 
-	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsg, types.ProvingTaskUnassigned, 0); err != nil {
-		log.Error("failed to updated proof status ProvingTaskUnassigned", "hash", hash, "pubKey", pubKey, "error", err)
+	if err := m.updateProofStatus(ctx, proverTask, proofMsg, types.ProvingTaskUnassigned, 0); err != nil {
+		log.Error("failed to updated proof status ProvingTaskUnassigned", "hash", proverTask.TaskID, "pubKey", proverTask.ProverPublicKey, "error", err)
 	}
 }
 
-func (m *ProofReceiverLogic) closeProofTask(ctx context.Context, hash string, pubKey string, proofMsg *message.ProofMsg, proofTimeSec uint64) error {
-	log.Info("proof close task update proof status", "hash", hash, "proverPublicKey", pubKey,
+func (m *ProofReceiverLogic) closeProofTask(ctx context.Context, proverTask *orm.ProverTask, proofMsg *message.ProofMsg, proofTimeSec uint64) error {
+	log.Info("proof close task update proof status", "hash", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey,
 		"taskType", proofMsg.Type.String(), "status", types.ProvingTaskVerified.String())
 
-	if err := m.updateProofStatus(ctx, hash, pubKey, proofMsg, types.ProvingTaskVerified, proofTimeSec); err != nil {
-		log.Error("failed to updated proof status ProvingTaskVerified", "hash", hash, "proverPublicKey", pubKey, "error", err)
+	if err := m.updateProofStatus(ctx, proverTask, proofMsg, types.ProvingTaskVerified, proofTimeSec); err != nil {
+		log.Error("failed to updated proof status ProvingTaskVerified", "hash", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey, "error", err)
 		return err
 	}
 	return nil
 }
 
 // UpdateProofStatus update the chunk/batch task and session info status
-func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, hash string, proverPublicKey string, proofMsg *message.ProofMsg, status types.ProvingStatus, proofTimeSec uint64) error {
+func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, proverTask *orm.ProverTask, proofMsg *message.ProofMsg, status types.ProvingStatus, proofTimeSec uint64) error {
 	var proverTaskStatus types.ProverProveStatus
 	switch status {
 	case types.ProvingTaskFailed, types.ProvingTaskUnassigned:
@@ -304,13 +316,13 @@ func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, hash string,
 	}
 
 	err := m.db.Transaction(func(tx *gorm.DB) error {
-		if updateErr := m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, proofMsg.Type, hash, proverPublicKey, proverTaskStatus, tx); updateErr != nil {
+		if updateErr := m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, proverTask.UUID, proverTaskStatus, tx); updateErr != nil {
 			return updateErr
 		}
 
 		// if the block batch has proof verified, so the failed status not update block batch proving status
-		if m.checkIsTaskSuccess(ctx, hash, proofMsg.Type) {
-			log.Info("update proof status skip because this chunk / batch has been verified", "hash", hash, "public key", proverPublicKey)
+		if m.checkIsTaskSuccess(ctx, proverTask.TaskID, proofMsg.Type) {
+			log.Info("update proof status skip because this chunk / batch has been verified", "hash", proverTask.TaskID, "public key", proverTask.ProverPublicKey)
 			return nil
 		}
 
@@ -323,20 +335,20 @@ func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, hash string,
 				storeProofErr = m.batchOrm.UpdateProofByHash(ctx, proofMsg.ID, proofMsg.BatchProof, proofTimeSec, tx)
 			}
 			if storeProofErr != nil {
-				log.Error("failed to store chunk/batch proof into db", "hash", hash, "public key", proverPublicKey, "error", storeProofErr)
+				log.Error("failed to store chunk/batch proof into db", "hash", proverTask.TaskID, "public key", proverTask.ProverPublicKey, "error", storeProofErr)
 				return storeProofErr
 			}
 		}
 
 		switch proofMsg.Type {
 		case message.ProofTypeChunk:
-			if err := m.chunkOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
-				log.Error("failed to update chunk proving_status as failed", "msg.ID", hash, "error", err)
+			if err := m.chunkOrm.UpdateProvingStatus(ctx, proverTask.TaskID, status, tx); err != nil {
+				log.Error("failed to update chunk proving_status as failed", "hash", proverTask.TaskID, "error", err)
 				return err
 			}
 		case message.ProofTypeBatch:
-			if err := m.batchOrm.UpdateProvingStatus(ctx, hash, status, tx); err != nil {
-				log.Error("failed to update batch proving_status as failed", "msg.ID", hash, "error", err)
+			if err := m.batchOrm.UpdateProvingStatus(ctx, proverTask.TaskID, status, tx); err != nil {
+				log.Error("failed to update batch proving_status as failed", "hash", proverTask.TaskID, "error", err)
 				return err
 			}
 		}
@@ -348,7 +360,7 @@ func (m *ProofReceiverLogic) updateProofStatus(ctx context.Context, hash string,
 	}
 
 	if status == types.ProvingTaskVerified && proofMsg.Type == message.ProofTypeChunk {
-		if checkReadyErr := m.checkAreAllChunkProofsReady(ctx, hash); checkReadyErr != nil {
+		if checkReadyErr := m.checkAreAllChunkProofsReady(ctx, proverTask.TaskID); checkReadyErr != nil {
 			log.Error("failed to check are all chunk proofs ready", "error", checkReadyErr)
 			return checkReadyErr
 		}
@@ -377,7 +389,35 @@ func (m *ProofReceiverLogic) checkIsTaskSuccess(ctx context.Context, hash string
 	return provingStatus == types.ProvingTaskVerified
 }
 
-func (m *ProofReceiverLogic) updateProverTaskProof(ctx context.Context, pk string, proofMsg *message.ProofMsg) error {
+func (m *ProofReceiverLogic) processProverErr(ctx context.Context, proverTask *orm.ProverTask) {
+	if updateErr := m.proverTaskOrm.UpdateProverTaskProvingStatus(ctx, proverTask.UUID, types.ProverProofInvalid); updateErr != nil {
+		log.Error("update prover task proving status failure", "uuid", proverTask.UUID, "taskID", proverTask.TaskID, "proverPublicKey",
+			proverTask.ProverPublicKey, "taskType", message.ProofType(proverTask.TaskType).String(), "error", updateErr)
+	}
+
+	proverTasks, err := m.proverTaskOrm.GetAssignedTaskOfOtherProvers(ctx, message.ProofType(proverTask.TaskType), proverTask.TaskID, proverTask.ProverPublicKey)
+	if err != nil {
+		log.Warn("checkIsAssignedToOtherProver failure", "taskID", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey, "taskType", message.ProofType(proverTask.TaskType).String(), "error", err)
+		return
+	}
+
+	if len(proverTasks) > 0 {
+		return
+	}
+
+	switch message.ProofType(proverTask.TaskType) {
+	case message.ProofTypeChunk:
+		if err := m.chunkOrm.UpdateProvingStatusFromProverError(ctx, proverTask.TaskID, types.ProvingTaskUnassigned); err != nil {
+			log.Error("failed to update chunk proving_status as failed", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey, "taskType", message.ProofType(proverTask.TaskType).String(), "error", err)
+		}
+	case message.ProofTypeBatch:
+		if err := m.batchOrm.UpdateProvingStatusFromProverError(ctx, proverTask.TaskID, types.ProvingTaskUnassigned); err != nil {
+			log.Error("failed to update batch proving_status as failed", proverTask.TaskID, "proverPublicKey", proverTask.ProverPublicKey, "taskType", message.ProofType(proverTask.TaskType).String(), "error", err)
+		}
+	}
+}
+
+func (m *ProofReceiverLogic) updateProverTaskProof(ctx context.Context, proverTask *orm.ProverTask, proofMsg *message.ProofMsg) error {
 	// store the proof to prover task
 	var proofBytes []byte
 	var marshalErr error
@@ -391,5 +431,5 @@ func (m *ProofReceiverLogic) updateProverTaskProof(ctx context.Context, pk strin
 	if len(proofBytes) == 0 || marshalErr != nil {
 		return fmt.Errorf("updateProverTaskProof marshal proof error:%w", marshalErr)
 	}
-	return m.proverTaskOrm.UpdateProverTaskProof(ctx, proofMsg.Type, proofMsg.ID, pk, proofBytes)
+	return m.proverTaskOrm.UpdateProverTaskProof(ctx, proverTask.UUID, proofBytes)
 }

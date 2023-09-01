@@ -28,6 +28,9 @@ interface IScrollChain {
      * Public View Functions *
      *************************/
 
+    /// @notice The latest finalized batch index.
+    function lastFinalizedBatchIndex() external view returns (uint256);
+
     /// @notice Return the batch hash of a committed batch.
     /// @param batchIndex The index of the batch.
     function committedBatches(uint256 batchIndex) external view returns (bytes32);

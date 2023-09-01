@@ -53,9 +53,11 @@ type Batch struct {
 	OracleTxHash string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
 
 	// metadata
-	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
-	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
-	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
+	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas;default:0"`
+	TotalL1CommitCalldataSize uint32         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size;default:0"`
+	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt                 time.Time      `json:"updated_at" gorm:"column:updated_at"`
+	DeletedAt                 gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
 // NewBatch creates a new Batch database instance.
@@ -142,6 +144,21 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 	return &latestBatch, nil
 }
 
+// GetFirstUnbatchedChunkIndex retrieves the first unbatched chunk index.
+func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error) {
+	// Get the latest batch
+	latestBatch, err := o.GetLatestBatch(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("Chunk.GetChunkedBlockHeight error: %w", err)
+	}
+	// if parentBatch==nil then err==gorm.ErrRecordNotFound,
+	// which means there is not batched chunk yet, thus returns 0
+	if latestBatch == nil {
+		return 0, nil
+	}
+	return latestBatch.EndChunkIndex + 1, nil
+}
+
 // GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
 func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) ([]types.RollupStatus, error) {
 	if len(hashes) == 0 {
@@ -209,7 +226,7 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, chunks []*types.Chunk, batchMeta *types.BatchMeta, dbTX ...*gorm.DB) (*Batch, error) {
 	if len(chunks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -255,20 +272,22 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 
 	newBatch := Batch{
-		Index:             batchIndex,
-		Hash:              batchHeader.Hash().Hex(),
-		StartChunkHash:    startChunkHash,
-		StartChunkIndex:   startChunkIndex,
-		EndChunkHash:      endChunkHash,
-		EndChunkIndex:     endChunkIndex,
-		StateRoot:         chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:      chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawRoot.Hex(),
-		ParentBatchHash:   parentBatchHash.Hex(),
-		BatchHeader:       batchHeader.Encode(),
-		ChunkProofsStatus: int16(types.ChunkProofsStatusPending),
-		ProvingStatus:     int16(types.ProvingTaskUnassigned),
-		RollupStatus:      int16(types.RollupPending),
-		OracleStatus:      int16(types.GasOraclePending),
+		Index:                     batchIndex,
+		Hash:                      batchHeader.Hash().Hex(),
+		StartChunkHash:            batchMeta.StartChunkHash,
+		StartChunkIndex:           batchMeta.StartChunkIndex,
+		EndChunkHash:              batchMeta.EndChunkHash,
+		EndChunkIndex:             batchMeta.EndChunkIndex,
+		StateRoot:                 chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
+		WithdrawRoot:              chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawRoot.Hex(),
+		ParentBatchHash:           parentBatchHash.Hex(),
+		BatchHeader:               batchHeader.Encode(),
+		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
+		ProvingStatus:             int16(types.ProvingTaskUnassigned),
+		RollupStatus:              int16(types.RollupPending),
+		OracleStatus:              int16(types.GasOraclePending),
+		TotalL1CommitGas:          batchMeta.TotalL1CommitGas,
+		TotalL1CommitCalldataSize: batchMeta.TotalL1CommitCalldataSize,
 	}
 
 	db := o.db
@@ -311,7 +330,7 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 		updateFields["prover_assigned_at"] = time.Now()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
-	case types.ProvingTaskProved, types.ProvingTaskVerified:
+	case types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
 	}
 

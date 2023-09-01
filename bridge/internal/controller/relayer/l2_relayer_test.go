@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"math/big"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
@@ -56,8 +59,14 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	assert.NoError(t, err)
 	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
+	batchMeta := &types.BatchMeta{
+		StartChunkIndex: 0,
+		StartChunkHash:  dbChunk1.Hash,
+		EndChunkIndex:   1,
+		EndChunkHash:    dbChunk2.Hash,
+	}
 	batchOrm := orm.NewBatch(db)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, dbChunk1.Hash, dbChunk2.Hash, []*types.Chunk{chunk1, chunk2})
+	batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
 	assert.NoError(t, err)
 
 	relayer.ProcessPendingBatches()
@@ -75,8 +84,14 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
+	batchMeta := &types.BatchMeta{
+		StartChunkIndex: 0,
+		StartChunkHash:  chunkHash1.Hex(),
+		EndChunkIndex:   1,
+		EndChunkHash:    chunkHash2.Hex(),
+	}
 	batchOrm := orm.NewBatch(db)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk1, chunk2})
+	batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
 	assert.NoError(t, err)
 
 	err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, types.RollupCommitted)
@@ -124,7 +139,13 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	batchOrm := orm.NewBatch(db)
 	batchHashes := make([]string, len(processingKeys))
 	for i := range batchHashes {
-		batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk1, chunk2})
+		batchMeta := &types.BatchMeta{
+			StartChunkIndex: 0,
+			StartChunkHash:  chunkHash1.Hex(),
+			EndChunkIndex:   1,
+			EndChunkHash:    chunkHash2.Hex(),
+		}
+		batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
 		assert.NoError(t, err)
 		batchHashes[i] = batch.Hash
 	}
@@ -174,7 +195,13 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	batchOrm := orm.NewBatch(db)
 	batchHashes := make([]string, len(processingKeys))
 	for i := range batchHashes {
-		batch, err := batchOrm.InsertBatch(context.Background(), 0, 1, chunkHash1.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk1, chunk2})
+		batchMeta := &types.BatchMeta{
+			StartChunkIndex: 0,
+			StartChunkHash:  chunkHash1.Hex(),
+			EndChunkIndex:   1,
+			EndChunkHash:    chunkHash2.Hex(),
+		}
+		batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
 		assert.NoError(t, err)
 		batchHashes[i] = batch.Hash
 	}
@@ -210,11 +237,23 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
+	batchMeta1 := &types.BatchMeta{
+		StartChunkIndex: 0,
+		StartChunkHash:  chunkHash1.Hex(),
+		EndChunkIndex:   0,
+		EndChunkHash:    chunkHash1.Hex(),
+	}
 	batchOrm := orm.NewBatch(db)
-	batch1, err := batchOrm.InsertBatch(context.Background(), 0, 0, chunkHash1.Hex(), chunkHash1.Hex(), []*types.Chunk{chunk1})
+	batch1, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1}, batchMeta1)
 	assert.NoError(t, err)
 
-	batch2, err := batchOrm.InsertBatch(context.Background(), 1, 1, chunkHash2.Hex(), chunkHash2.Hex(), []*types.Chunk{chunk2})
+	batchMeta2 := &types.BatchMeta{
+		StartChunkIndex: 1,
+		StartChunkHash:  chunkHash2.Hex(),
+		EndChunkIndex:   1,
+		EndChunkHash:    chunkHash2.Hex(),
+	}
+	batch2, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk2}, batchMeta2)
 	assert.NoError(t, err)
 
 	// Create and set up the Layer2 Relayer.
@@ -330,4 +369,34 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 		return nil
 	})
 	relayer.ProcessGasPriceOracle()
+}
+
+func mockChainMonitorServer(baseURL string) (*http.Server, error) {
+	router := gin.New()
+	r := router.Group("/v1")
+	r.GET("/batch_status", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, struct {
+			ErrCode int    `json:"errcode"`
+			ErrMsg  string `json:"errmsg"`
+			Data    bool   `json:"data"`
+		}{
+			ErrCode: 0,
+			ErrMsg:  "",
+			Data:    true,
+		})
+	})
+	return utils.StartHTTPServer(strings.Split(baseURL, "//")[1], router)
+}
+
+func testGetBatchStatusByIndex(t *testing.T) {
+	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
+
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, relayer)
+
+	status, err := relayer.getBatchStatusByIndex(1)
+	assert.NoError(t, err)
+	assert.Equal(t, true, status)
 }

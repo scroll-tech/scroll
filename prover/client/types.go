@@ -43,6 +43,7 @@ type LoginResponse struct {
 type GetTaskRequest struct {
 	TaskType     message.ProofType `json:"task_type"`
 	ProverHeight uint64            `json:"prover_height,omitempty"`
+	VK           string            `json:"vk"`
 }
 
 // GetTaskResponse defines the response structure for GetTask API
@@ -50,6 +51,7 @@ type GetTaskResponse struct {
 	ErrCode int    `json:"errcode"`
 	ErrMsg  string `json:"errmsg"`
 	Data    *struct {
+		UUID     string `json:"uuid"`
 		TaskID   string `json:"task_id"`
 		TaskType int    `json:"task_type"`
 		TaskData string `json:"task_data"`
@@ -58,6 +60,7 @@ type GetTaskResponse struct {
 
 // SubmitProofRequest defines the request structure for the SubmitProof API.
 type SubmitProofRequest struct {
+	UUID        string `json:"uuid"`
 	TaskID      string `json:"task_id"`
 	TaskType    int    `json:"task_type"`
 	Status      int    `json:"status"`

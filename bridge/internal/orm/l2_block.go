@@ -64,18 +64,23 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (uint64, error) {
 	return maxNumber, nil
 }
 
-// GetUnchunkedBlocks get the l2 blocks that have not been put into a chunk.
+// GetL2WrappedBlocksGEHeight retrieves L2 blocks that have a block number greater than or equal to the given height.
+// The blocks are converted into WrappedBlock format for output.
 // The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock, error) {
+func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64, limit int) ([]*types.WrappedBlock, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("header, transactions, withdraw_root, row_consumption")
-	db = db.Where("chunk_hash IS NULL")
+	db = db.Where("number >= ?", height)
 	db = db.Order("number ASC")
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
 
 	var l2Blocks []L2Block
 	if err := db.Find(&l2Blocks).Error; err != nil {
-		return nil, fmt.Errorf("L2Block.GetUnchunkedBlocks error: %w", err)
+		return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
 	}
 
 	var wrappedBlocks []*types.WrappedBlock
@@ -83,18 +88,18 @@ func (o *L2Block) GetUnchunkedBlocks(ctx context.Context) ([]*types.WrappedBlock
 		var wrappedBlock types.WrappedBlock
 
 		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
-			return nil, fmt.Errorf("L2Block.GetUnchunkedBlocks error: %w", err)
+			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
 		}
 
 		wrappedBlock.Header = &gethTypes.Header{}
 		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
-			return nil, fmt.Errorf("L2Block.GetUnchunkedBlocks error: %w", err)
+			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
 		}
 
 		wrappedBlock.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
 
 		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
-			return nil, fmt.Errorf("L2Block.GetUnchunkedBlocks error: %w", err)
+			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
 		}
 
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)

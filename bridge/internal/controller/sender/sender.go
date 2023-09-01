@@ -217,6 +217,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 
 	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
+		log.Error("failed to get fee data", "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 
@@ -494,11 +495,6 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 					}
 				}
 			} else {
-				log.Debug("Transaction resubmitted successfully",
-					"original tx hash", pending.tx.Hash().String(),
-					"new tx hash", tx.Hash().String(),
-					"new submit block number", number)
-
 				// flush submitAt
 				pending.tx = tx
 				pending.submitAt = number
