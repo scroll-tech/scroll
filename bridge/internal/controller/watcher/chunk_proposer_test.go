@@ -23,7 +23,7 @@ func testChunkProposer(t *testing.T) {
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxL2TxNumPerChunk:              10000,
+		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MaxRowConsumptionPerChunk:       1048319,
@@ -38,7 +38,7 @@ func testChunkProposer(t *testing.T) {
 	assert.NoError(t, err)
 
 	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 1)
 	assert.Equal(t, expectedHash.Hex(), chunks[0].Hash)
@@ -53,7 +53,7 @@ func testChunkProposerRowConsumption(t *testing.T) {
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxL2TxNumPerChunk:              10000,
+		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MaxRowConsumptionPerChunk:       0, // !
@@ -62,7 +62,7 @@ func testChunkProposerRowConsumption(t *testing.T) {
 	cp.TryProposeChunk()
 
 	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetUnbatchedChunks(context.Background())
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
 	assert.Len(t, chunks, 0)
 }

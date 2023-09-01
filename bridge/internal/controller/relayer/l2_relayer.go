@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -58,6 +59,9 @@ type Layer2Relayer struct {
 	lastGasPrice uint64
 	minGasPrice  uint64
 	gasPriceDiff uint64
+
+	// Used to get batch status from chain_monitor api.
+	chainMonitorClient *resty.Client
 
 	// A list of processing message.
 	// key(string): confirmation ID, value(string): layer2 hash.
@@ -114,6 +118,11 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
 	}
 
+	// chain_monitor client
+	chainMonitorClient := resty.New()
+	chainMonitorClient.SetRetryCount(cfg.ChainMonitor.TryTimes)
+	chainMonitorClient.SetTimeout(time.Duration(cfg.ChainMonitor.TimeOut) * time.Second)
+
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
@@ -143,6 +152,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		processingMessage:      sync.Map{},
 		processingCommitment:   sync.Map{},
 		processingFinalization: sync.Map{},
+		chainMonitorClient:     chainMonitorClient,
 	}
 
 	// Initialize genesis before we do anything else
@@ -192,8 +202,14 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
 		}
 
+		batchMeta := &types.BatchMeta{
+			StartChunkIndex: 0,
+			StartChunkHash:  dbChunk.Hash,
+			EndChunkIndex:   0,
+			EndChunkHash:    dbChunk.Hash,
+		}
 		var batch *orm.Batch
-		batch, err = r.batchOrm.InsertBatch(r.ctx, 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk}, dbTX)
+		batch, err = r.batchOrm.InsertBatch(r.ctx, []*types.Chunk{chunk}, batchMeta, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
@@ -430,13 +446,22 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
 		// The proof for this block is not ready yet.
 		return
-	case types.ProvingTaskProved:
-		// It's an intermediate state. The prover manager received the proof but has not verified
-		// the proof yet. We don't roll up the proof until it's verified.
-		return
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
 		r.metrics.bridgeL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
+
+		// Check batch status before send `finalizeBatchWithProof` tx.
+		batchStatus, err := r.getBatchStatusByIndex(batch.Index)
+		if err != nil {
+			r.metrics.bridgeL2ChainMonitorLatestFailedCall.Inc()
+			log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
+			return
+		}
+		if !batchStatus {
+			r.metrics.bridgeL2ChainMonitorLatestFailedBatchStatus.Inc()
+			log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
+			return
+		}
 
 		var parentBatchStateRoot string
 		if batch.Index > 0 {
@@ -529,6 +554,29 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches", "proving status", status)
 	}
+}
+
+// batchStatusResponse the response schema
+type batchStatusResponse struct {
+	ErrCode int    `json:"errcode"`
+	ErrMsg  string `json:"errmsg"`
+	Data    bool   `json:"data"`
+}
+
+func (r *Layer2Relayer) getBatchStatusByIndex(batchIndex uint64) (bool, error) {
+	var response batchStatusResponse
+	resp, err := r.chainMonitorClient.R().SetResult(&response).Get(fmt.Sprintf("%s/v1/batch_status?batch_index=%d", r.cfg.ChainMonitor.BaseURL, batchIndex))
+	if err != nil {
+		return false, err
+	}
+	if resp.IsError() {
+		return false, resp.Error().(error)
+	}
+	if response.ErrCode != 0 {
+		return false, fmt.Errorf("failed to get batch status, errCode: %d, errMsg: %s", response.ErrCode, response.ErrMsg)
+	}
+
+	return response.Data, nil
 }
 
 func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {

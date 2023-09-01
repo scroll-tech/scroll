@@ -22,16 +22,20 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
+// ErrCoordinatorInternalFailure coordinator internal db failure
+var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
 	BaseProverTask
+	vk string
 
 	chunkAttemptsExceedTotal prometheus.Counter
 	chunkTaskGetTaskTotal    prometheus.Counter
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			db:            db,
@@ -40,7 +44,7 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Register
 			blockOrm:      orm.NewL2Block(db),
 			proverTaskOrm: orm.NewProverTask(db),
 		},
-
+		vk: vk,
 		chunkAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_chunk_attempts_exceed_total",
 			Help: "Total number of chunk attempts exceed.",
@@ -69,7 +73,15 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if !proverVersionExist {
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
-	if !version.CheckScrollProverVersion(proverVersion.(string)) {
+	if getTaskParameter.VK == "" { // allow vk being empty, because for the first time the prover may not know its vk
+		if !version.CheckScrollProverVersionTag(proverVersion.(string)) { // but reject too-old provers
+			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+		}
+	} else if getTaskParameter.VK != cp.vk { // non-empty vk but different
+		if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
+			return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
+		}
+		// different prover versions and different vks
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
 	}
 
@@ -85,7 +97,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	// load and send chunk tasks
 	chunkTasks, err := cp.chunkOrm.UpdateUnassignedChunkReturning(ctx, getTaskParameter.ProverHeight, 1)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get unassigned chunk proving tasks, error:%w", err)
+		log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	if len(chunkTasks) == 0 {
@@ -93,7 +106,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	if len(chunkTasks) != 1 {
-		return nil, fmt.Errorf("get unassigned chunk proving task len not 1, chunk tasks:%v", chunkTasks)
+		log.Error("get unassigned chunk proving task len not 1", "length", len(chunkTasks), "chunk tasks", chunkTasks)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	chunkTask := chunkTasks[0]
@@ -102,7 +116,9 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if !cp.checkAttemptsExceeded(chunkTask.Hash, message.ProofTypeChunk) {
 		cp.chunkAttemptsExceedTotal.Inc()
-		return nil, fmt.Errorf("chunk proof hash id:%s check attempts have reach the maximum", chunkTask.Hash)
+		// TODO: retry fetching unassigned chunk proving task
+		log.Error("chunk task proving attempts reach the maximum", "hash", chunkTask.Hash)
+		return nil, nil
 	}
 
 	proverTask := orm.ProverTask{
@@ -116,15 +132,18 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// here why need use UTC time. see scroll/common/databased/db.go
 		AssignedAt: utils.NowUTC(),
 	}
-	if err = cp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
+
+	if err = cp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
 		cp.recoverProvingStatus(ctx, chunkTask)
-		return nil, fmt.Errorf("db set session info fail, session id:%s , public key:%s, err:%w", chunkTask.Hash, publicKey, err)
+		log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", publicKey, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := cp.formatProverTask(ctx, chunkTask.Hash)
+	taskMsg, err := cp.formatProverTask(ctx, &proverTask)
 	if err != nil {
 		cp.recoverProvingStatus(ctx, chunkTask)
-		return nil, fmt.Errorf("format prover task failure, id:%s error:%w", chunkTask.Hash, err)
+		log.Error("format prover task failure", "hash", chunkTask.Hash, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	cp.chunkTaskGetTaskTotal.Inc()
@@ -132,11 +151,11 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
-	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, hash)
+	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, task.TaskID)
 	if wrappedErr != nil || len(wrappedBlocks) == 0 {
-		return nil, fmt.Errorf("failed to fetch wrapped blocks, batch hash:%s err:%w", hash, wrappedErr)
+		return nil, fmt.Errorf("failed to fetch wrapped blocks, chunk hash:%s err:%w", task.TaskID, wrappedErr)
 	}
 
 	blockHashes := make([]common.Hash, len(wrappedBlocks))
@@ -149,11 +168,12 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, hash string) (*
 	}
 	blockHashesBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", hash, err)
+		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
 	}
 
 	proverTaskSchema := &coordinatorType.GetTaskSchema{
-		TaskID:   hash,
+		UUID:     task.UUID.String(),
+		TaskID:   task.TaskID,
 		TaskType: int(message.ProofTypeChunk),
 		TaskData: string(blockHashesBytes),
 	}

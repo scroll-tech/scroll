@@ -58,8 +58,8 @@ func TestProvingStatus(t *testing.T) {
 			"assigned",
 		},
 		{
-			"ProvingTaskProved",
-			ProvingTaskProved,
+			"ProvingTaskProvedDEPRECATED",
+			ProvingTaskProvedDEPRECATED,
 			"proved",
 		},
 		{

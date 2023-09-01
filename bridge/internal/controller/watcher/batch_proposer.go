@@ -44,6 +44,12 @@ type BatchProposer struct {
 
 // NewBatchProposer creates a new BatchProposer instance.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
+	log.Debug("new batch proposer",
+		"maxChunkNumPerBatch", cfg.MaxChunkNumPerBatch,
+		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
+		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
+		"batchTimeoutSec", cfg.BatchTimeoutSec)
+
 	return &BatchProposer{
 		ctx:                             ctx,
 		db:                              db,
@@ -98,19 +104,19 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 // TryProposeBatch tries to propose a new batches.
 func (p *BatchProposer) TryProposeBatch() {
 	p.batchProposerCircleTotal.Inc()
-	dbChunks, err := p.proposeBatchChunks()
+	dbChunks, batchMeta, err := p.proposeBatchChunks()
 	if err != nil {
 		p.proposeBatchFailureTotal.Inc()
 		log.Error("proposeBatchChunks failed", "err", err)
 		return
 	}
-	if err := p.updateBatchInfoInDB(dbChunks); err != nil {
+	if err := p.updateBatchInfoInDB(dbChunks, batchMeta); err != nil {
 		p.proposeBatchUpdateInfoFailureTotal.Inc()
 		log.Error("update batch info in db failed", "err", err)
 	}
 }
 
-func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk) error {
+func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk, batchMeta *types.BatchMeta) error {
 	p.proposeBatchUpdateInfoTotal.Inc()
 	numChunks := len(dbChunks)
 	if numChunks <= 0 {
@@ -121,17 +127,18 @@ func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk) error {
 		return err
 	}
 
-	startChunkIndex := dbChunks[0].Index
-	startChunkHash := dbChunks[0].Hash
-	endChunkIndex := dbChunks[numChunks-1].Index
-	endChunkHash := dbChunks[numChunks-1].Hash
+	batchMeta.StartChunkIndex = dbChunks[0].Index
+	batchMeta.StartChunkHash = dbChunks[0].Hash
+	batchMeta.EndChunkIndex = dbChunks[numChunks-1].Index
+	batchMeta.EndChunkHash = dbChunks[numChunks-1].Hash
 	err = p.db.Transaction(func(dbTX *gorm.DB) error {
-		batch, dbErr := p.batchOrm.InsertBatch(p.ctx, startChunkIndex, endChunkIndex, startChunkHash, endChunkHash, chunks, dbTX)
+		batch, dbErr := p.batchOrm.InsertBatch(p.ctx, chunks, batchMeta, dbTX)
 		if dbErr != nil {
-			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "error", "start chunk index", startChunkIndex, "end chunk index", endChunkIndex, dbErr)
+			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure",
+				"start chunk index", batchMeta.StartChunkIndex, "end chunk index", batchMeta.EndChunkIndex, "error", dbErr)
 			return dbErr
 		}
-		dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, startChunkIndex, endChunkIndex, batch.Hash, dbTX)
+		dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, batchMeta.StartChunkIndex, batchMeta.EndChunkIndex, batch.Hash, dbTX)
 		if dbErr != nil {
 			log.Warn("BatchProposer.UpdateBatchHashInRange update the chunk's batch hash failure", "hash", batch.Hash, "error", dbErr)
 			return dbErr
@@ -141,24 +148,30 @@ func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk) error {
 	return err
 }
 
-func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
-	dbChunks, err := p.chunkOrm.GetUnbatchedChunks(p.ctx)
+func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, error) {
+	unbatchedChunkIndex, err := p.batchOrm.GetFirstUnbatchedChunkIndex(p.ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, unbatchedChunkIndex, int(p.maxChunkNumPerBatch)+1)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if len(dbChunks) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	var totalL1CommitCalldataSize uint32
 	var totalL1CommitGas uint64
 	var totalChunks uint64
 	var totalL1MessagePopped uint64
+	var batchMeta types.BatchMeta
 
 	parentBatch, err := p.batchOrm.GetLatestBatch(p.ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Add extra gas costs
@@ -177,6 +190,10 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 	}
 
 	for i, chunk := range dbChunks {
+		// metric values
+		batchMeta.TotalL1CommitGas = totalL1CommitGas
+		batchMeta.TotalL1CommitCalldataSize = totalL1CommitCalldataSize
+
 		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
 		totalL1CommitGas += chunk.TotalL1CommitGas
 		// adjust batch data hash gas cost
@@ -197,7 +214,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 			// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
 			if i == 0 {
 				if totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {
-					return nil, fmt.Errorf(
+					return nil, nil, fmt.Errorf(
 						"the first chunk exceeds l1 commit gas limit; start block number: %v, end block number: %v, commit gas: %v, max commit gas limit: %v",
 						dbChunks[0].StartBlockNumber,
 						dbChunks[0].EndBlockNumber,
@@ -206,7 +223,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 					)
 				}
 				if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch {
-					return nil, fmt.Errorf(
+					return nil, nil, fmt.Errorf(
 						"the first chunk exceeds l1 commit calldata size limit; start block number: %v, end block number %v, calldata size: %v, max calldata size limit: %v",
 						dbChunks[0].StartBlockNumber,
 						dbChunks[0].EndBlockNumber,
@@ -216,10 +233,18 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 				}
 			}
 
-			p.totalL1CommitGas.Set(float64(totalL1CommitGas))
-			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
-			p.batchChunksNum.Set(float64(len(dbChunks)))
-			return dbChunks[:i], nil
+			log.Debug("breaking limit condition in batching",
+				"currentTotalChunks", totalChunks,
+				"maxChunkNumPerBatch", p.maxChunkNumPerBatch,
+				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
+				"maxL1CommitCalldataSizePerBatch", p.maxL1CommitCalldataSizePerBatch,
+				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
+				"maxL1CommitGasPerBatch", p.maxL1CommitGasPerBatch)
+
+			p.totalL1CommitGas.Set(float64(batchMeta.TotalL1CommitGas))
+			p.totalL1CommitCalldataSize.Set(float64(batchMeta.TotalL1CommitCalldataSize))
+			p.batchChunksNum.Set(float64(i))
+			return dbChunks[:i], &batchMeta, nil
 		}
 	}
 
@@ -230,16 +255,18 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, error) {
 			"first block timestamp", dbChunks[0].StartBlockTime,
 			"chunk outdated time threshold", currentTimeSec,
 		)
+		batchMeta.TotalL1CommitGas = totalL1CommitGas
+		batchMeta.TotalL1CommitCalldataSize = totalL1CommitCalldataSize
 		p.batchFirstBlockTimeoutReached.Inc()
-		p.totalL1CommitGas.Set(float64(totalL1CommitGas))
-		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
+		p.totalL1CommitGas.Set(float64(batchMeta.TotalL1CommitGas))
+		p.totalL1CommitCalldataSize.Set(float64(batchMeta.TotalL1CommitCalldataSize))
 		p.batchChunksNum.Set(float64(len(dbChunks)))
-		return dbChunks, nil
+		return dbChunks, &batchMeta, nil
 	}
 
 	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")
 	p.batchChunksProposeNotEnoughTotal.Inc()
-	return nil, nil
+	return nil, nil, nil
 }
 
 func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*types.Chunk, error) {

@@ -98,6 +98,9 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
 
         rollup = _rollup;
         messageQueue = _messageQueue;
+
+        maxReplayTimes = 3;
+        emit UpdateMaxReplayTimes(0, 3);
     }
 
     /*****************************

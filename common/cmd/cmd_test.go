@@ -12,7 +12,7 @@ import (
 )
 
 func TestCmd(t *testing.T) {
-	app := cmd.NewCmd("curTime", "date", "+%Y-%m-%d")
+	app := cmd.NewCmd("date", "+%Y-%m-%d")
 
 	tm := time.Now()
 	curTime := fmt.Sprintf("%d-%02d-%02d", tm.Year(), tm.Month(), tm.Day())

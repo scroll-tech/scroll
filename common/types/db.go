@@ -126,8 +126,8 @@ const (
 	ProvingTaskUnassigned
 	// ProvingTaskAssigned : proving_task is assigned to be proved
 	ProvingTaskAssigned
-	// ProvingTaskProved DEPRECATED: proof has been returned by prover
-	ProvingTaskProved
+	// ProvingTaskProvedDEPRECATED DEPRECATED: proof has been returned by prover
+	ProvingTaskProvedDEPRECATED
 	// ProvingTaskVerified : proof is valid
 	ProvingTaskVerified
 	// ProvingTaskFailed : fail to generate proof
@@ -140,7 +140,7 @@ func (ps ProvingStatus) String() string {
 		return "unassigned"
 	case ProvingTaskAssigned:
 		return "assigned"
-	case ProvingTaskProved:
+	case ProvingTaskProvedDEPRECATED:
 		return "proved"
 	case ProvingTaskVerified:
 		return "verified"
