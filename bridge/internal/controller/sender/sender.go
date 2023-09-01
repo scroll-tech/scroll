@@ -56,6 +56,15 @@ type FeeData struct {
 	gasLimit uint64
 }
 
+func newEmptyFeeData() *FeeData {
+	return &FeeData{
+		gasFeeCap: big.NewInt(0),
+		gasTipCap: big.NewInt(0),
+		gasPrice: big.NewInt(0),
+		gasLimit:0,
+	}
+}
+
 // PendingTransaction submitted but pending transactions
 type PendingTransaction struct {
 	submitAt uint64
@@ -85,6 +94,8 @@ type Sender struct {
 	stopCh chan struct{}
 
 	metrics *senderMetrics
+
+	cachedMaxFeeData *FeeData // hacky way to avoid getFeeData error
 }
 
 // NewSender returns a new instance of transaction sender
@@ -142,6 +153,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 		stopCh:        make(chan struct{}),
 		name:          name,
 		service:       service,
+		cachedMaxFeeData: newEmptyFeeData(),
 	}
 	sender.metrics = initSenderMetrics(reg)
 
@@ -189,6 +201,26 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 	return s.estimateLegacyGas(auth, target, value, data, minGasLimit)
 }
 
+func (s *Sender) cacheMaxFeeData(feeData *FeeData) {
+	if feeData == nil {
+		log.Error("cacheMaxFeeData", "err", "feeData must not be nil")
+		return
+	}
+
+	if feeData.gasFeeCap.Cmp(s.cachedMaxFeeData.gasFeeCap) > 0 {
+		s.cachedMaxFeeData.gasFeeCap = feeData.gasFeeCap
+	}
+	if feeData.gasTipCap.Cmp(s.cachedMaxFeeData.gasTipCap) > 0 {
+		s.cachedMaxFeeData.gasTipCap = feeData.gasTipCap
+	}
+	if feeData.gasPrice.Cmp(s.cachedMaxFeeData.gasPrice) > 0 {
+		s.cachedMaxFeeData.gasPrice = feeData.gasPrice
+	}
+	if feeData.gasLimit > s.cachedMaxFeeData.gasLimit {
+		s.cachedMaxFeeData.gasLimit = feeData.gasLimit
+	}
+}
+
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (common.Hash, error) {
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
@@ -217,7 +249,13 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 
 	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
-		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
+		log.Error("failed to get fee data", "error", err)
+		if s.cachedMaxFeeData.gasLimit == 0{ // if no MaxFeeData cached, and getFeeData fails
+			return common.Hash{}, fmt.Errorf("failed to get fee data for the first time, err: %w", err)
+		}
+		feeData = s.cachedMaxFeeData
+	} else {
+		s.cacheMaxFeeData(feeData)
 	}
 
 	if tx, err = s.createAndSendTx(s.auth, feeData, target, value, data, nil); err != nil {
