@@ -1,4 +1,7 @@
-use crate::utils::{c_char_to_str, c_char_to_vec, string_to_c_char, vec_to_c_char, OUTPUT_DIR};
+use crate::{
+    types::ProofResult,
+    utils::{c_char_to_str, c_char_to_vec, string_to_c_char, vec_to_c_char, OUTPUT_DIR},
+};
 use libc::c_char;
 use prover::{
     utils::init_env_and_log,
@@ -55,20 +58,33 @@ pub unsafe extern "C" fn get_chunk_vk() -> *const c_char {
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const c_char {
-    let block_traces = c_char_to_vec(block_traces);
-    let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces).unwrap();
+    let proof_result: Result<Vec<u8>, String> = panic::catch_unwind(|| {
+        let block_traces = c_char_to_vec(block_traces);
+        let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces)
+            .map_err(|e| format!("failed to deserialize block traces: {e:?}"))?;
 
-    let proof_result = panic::catch_unwind(|| {
         let proof = PROVER
             .get_mut()
-            .unwrap()
+            .expect("failed to get mutable reference to PROVER.")
             .gen_chunk_proof(block_traces, None, OUTPUT_DIR.as_deref())
-            .unwrap();
+            .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 
-        serde_json::to_vec(&proof).unwrap()
-    });
+        serde_json::to_vec(&proof).map_err(|e| format!("failed to serialize the proof: {e:?}"))
+    })
+    .unwrap_or_else(|e| Err(format!("unwind error: {e:?}")));
 
-    proof_result.map_or(null(), vec_to_c_char)
+    let r = match proof_result {
+        Ok(proof_bytes) => ProofResult {
+            message: Some(proof_bytes),
+            error: None,
+        },
+        Err(err) => ProofResult {
+            message: None,
+            error: Some(err),
+        },
+    };
+
+    serde_json::to_vec(&r).map_or(null(), vec_to_c_char)
 }
 
 /// # Safety
