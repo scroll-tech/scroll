@@ -457,7 +457,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("Start to roll up zk proof", "hash", hash)
 		r.metrics.bridgeL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 
-		Check batch status before send `finalizeBatchWithProof` tx.
+		// Check batch status before send `finalizeBatchWithProof` tx.
 		batchStatus, err := r.getBatchStatusByIndex(batch.Index)
 		if err != nil {
 			r.metrics.bridgeL2ChainMonitorLatestFailedCall.Inc()
