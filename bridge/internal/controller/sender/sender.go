@@ -85,8 +85,6 @@ type Sender struct {
 	stopCh chan struct{}
 
 	metrics *senderMetrics
-
-	cachedMaxGasLimit uint64 // hacky way to avoid getGasLimit error
 }
 
 // NewSender returns a new instance of transaction sender
@@ -131,20 +129,19 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	}
 
 	sender := &Sender{
-		ctx:               ctx,
-		config:            config,
-		client:            client,
-		chainID:           chainID,
-		auth:              auth,
-		minBalance:        config.MinBalance,
-		confirmCh:         make(chan *Confirmation, 128),
-		blockNumber:       header.Number.Uint64(),
-		baseFeePerGas:     baseFeePerGas,
-		pendingTxs:        cmapV2.New[*PendingTransaction](),
-		stopCh:            make(chan struct{}),
-		name:              name,
-		service:           service,
-		cachedMaxGasLimit: 3000000,
+		ctx:           ctx,
+		config:        config,
+		client:        client,
+		chainID:       chainID,
+		auth:          auth,
+		minBalance:    config.MinBalance,
+		confirmCh:     make(chan *Confirmation, 128),
+		blockNumber:   header.Number.Uint64(),
+		baseFeePerGas: baseFeePerGas,
+		pendingTxs:    cmapV2.New[*PendingTransaction](),
+		stopCh:        make(chan struct{}),
+		name:          name,
+		service:       service,
 	}
 	sender.metrics = initSenderMetrics(reg)
 
@@ -190,12 +187,6 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 		return s.estimateDynamicGas(auth, target, value, data, minGasLimit)
 	}
 	return s.estimateLegacyGas(auth, target, value, data, minGasLimit)
-}
-
-func (s *Sender) cacheGasLimitData(gasLimit uint64) {
-	if gasLimit > s.cachedMaxGasLimit {
-		s.cachedMaxGasLimit = gasLimit
-	}
 }
 
 // SendTransaction send a signed L2tL1 transaction.
@@ -419,7 +410,6 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	}
 
 	log.Debug("Transaction gas adjustment details", txInfo)
-	s.cacheGasLimitData(uint64(float64(s.cachedMaxGasLimit) * 1.2))
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
