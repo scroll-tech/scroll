@@ -70,6 +70,8 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 		if err != nil {
 			return nil, err
 		}
+		//
+		l2GethClient.SetHeader("Content-Encoding", "gzip")
 	}
 
 	// Create prover_core instance
