@@ -8,11 +8,13 @@ This directory contains the three essential rollup services for the Scroll chain
 
 ## Dependency
 
-Install `abigen`
+1. `abigen`
 
 ``` bash
 go install -v github.com/scroll-tech/go-ethereum/cmd/abigen
 ```
+
+2. `solc`
 
 ## Build
 
