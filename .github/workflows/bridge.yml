@@ -1,4 +1,4 @@
-name: Bridge
+name: Rollup
 
 on:
   push:
@@ -8,11 +8,11 @@ on:
       - develop
       - alpha
     paths:
-      - 'bridge/**'
+      - 'rollup/**'
       - 'common/**'
       - '!common/version/version.go'
       - 'database/**'
-      - '.github/workflows/bridge.yml'
+      - '.github/workflows/rollup.yml'
   pull_request:
     types:
       - opened
@@ -20,11 +20,11 @@ on:
       - synchronize
       - ready_for_review
     paths:
-      - 'bridge/**'
+      - 'rollup/**'
       - 'common/**'
       - '!common/version/version.go'
       - 'database/**'
-      - '.github/workflows/bridge.yml'
+      - '.github/workflows/rollup.yml'
 
 jobs:
   check:
@@ -46,7 +46,7 @@ jobs:
     - name: Install Geth Tools
       uses: gacts/install-geth-tools@v1
     - name: Lint
-      working-directory: 'bridge'
+      working-directory: 'rollup'
       run: |
         rm -rf $HOME/.cache/golangci-lint
         make mock_abi
@@ -64,14 +64,14 @@ jobs:
     - name: Install goimports
       run: go install golang.org/x/tools/cmd/goimports
     - name: Run goimports lint
-      run: goimports -local scroll-tech/bridge/ -w .
-      working-directory: 'bridge'
+      run: goimports -local scroll-tech/rollup/ -w .
+      working-directory: 'rollup'
     - name: Run go mod tidy
       run: go mod tidy
-      working-directory: 'bridge'
+      working-directory: 'rollup'
     # If there are any diffs from goimports or go mod tidy, fail.
     - name: Verify no changes from goimports and go mod tidy
-      working-directory: 'bridge'
+      working-directory: 'rollup'
       run: |
         if [ -n "$(git status --porcelain)" ]; then
           exit 1
@@ -97,13 +97,13 @@ jobs:
     - name: Build prerequisites
       run: |
         make dev_docker
-        make -C bridge mock_abi
-    - name: Build bridge binaries
-      working-directory: 'bridge'
+        make -C rollup mock_abi
+    - name: Build rollup binaries
+      working-directory: 'rollup'
       run: |
-        make bridge_bins
-    - name: Test bridge packages
-      working-directory: 'bridge'
+        make rollup_bins
+    - name: Test rollup packages
+      working-directory: 'rollup'
       run: |
         go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...
     - name: Upload coverage reports to Codecov
@@ -111,7 +111,7 @@ jobs:
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       with:
-        flags: bridge
+        flags: rollup
   # docker-build:
   #   if: github.event.pull_request.draft == false
   #   runs-on: ubuntu-latest
