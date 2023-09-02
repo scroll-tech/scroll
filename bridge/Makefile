@@ -11,7 +11,6 @@ mock_abi:
 bridge_bins: ## Builds the Bridge bins.
 	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
 	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
-	go build -o $(PWD)/build/bin/message_relayer ./cmd/msg_relayer/
 	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
 
 event_watcher: ## Builds the event_watcher bin
@@ -19,9 +18,6 @@ event_watcher: ## Builds the event_watcher bin
 
 gas_oracle: ## Builds the gas_oracle bin
 	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
-
-message_relayer: ## Builds the message_relayer bin
-	go build -o $(PWD)/build/bin/message_relayer ./cmd/msg_relayer/
 
 rollup_relayer: ## Builds the rollup_relayer bin
 	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
@@ -39,10 +35,8 @@ docker_push:
 	docker docker push scrolltech/gas-oracle:${IMAGE_VERSION}
 	docker docker push scrolltech/event-watcher:${IMAGE_VERSION}
 	docker docker push scrolltech/rollup-relayer:${IMAGE_VERSION}
-	docker docker push scrolltech/msg-relayer:${IMAGE_VERSION}
 
 docker:
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/gas-oracle:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/gas_oracle.Dockerfile
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/event-watcher:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/event_watcher.Dockerfile
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/rollup-relayer:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/rollup_relayer.Dockerfile
-	DOCKER_BUILDKIT=1 docker build -t scrolltech/msg-relayer:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/msg_relayer.Dockerfile
