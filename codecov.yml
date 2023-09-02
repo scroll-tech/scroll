@@ -6,7 +6,7 @@ flag_management:
   default_rules:
     carryforward: true
   individual_flags:
-    - name: bridge
+    - name: rollup
       statuses:
         - type: project
           target: auto
