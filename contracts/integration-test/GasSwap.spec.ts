@@ -1,7 +1,7 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
 import { ethers } from "hardhat";
-import { GasSwap, MinimalForwarder, MockERC20, MockGasSwapTarget } from "../typechain";
+import { GasSwap, ERC2771Forwarder, MockERC20, MockGasSwapTarget } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, constants } from "ethers";
@@ -11,7 +11,7 @@ describe("GasSwap.spec", async () => {
   let deployer: SignerWithAddress;
   let signer: SignerWithAddress;
 
-  let forwarder: MinimalForwarder;
+  let forwarder: ERC2771Forwarder;
   let swap: GasSwap;
   let target: MockGasSwapTarget;
   let token: MockERC20;
@@ -19,8 +19,8 @@ describe("GasSwap.spec", async () => {
   beforeEach(async () => {
     [deployer, signer] = await ethers.getSigners();
 
-    const MinimalForwarder = await ethers.getContractFactory("MinimalForwarder", deployer);
-    forwarder = await MinimalForwarder.deploy();
+    const ERC2771Forwarder = await ethers.getContractFactory("ERC2771Forwarder", deployer);
+    forwarder = await ERC2771Forwarder.deploy("ERC2771Forwarder");
     await forwarder.deployed();
 
     const GasSwap = await ethers.getContractFactory("GasSwap", deployer);
@@ -253,12 +253,13 @@ describe("GasSwap.spec", async () => {
           await swap.updateFeeRatio(ethers.utils.parseEther(feeRatio).div(100));
           const fee = amountOut.mul(feeRatio).div(100);
 
-          const req = {
+          const reqWithoutSignature = {
             from: signer.address,
             to: swap.address,
             value: constants.Zero,
             gas: 1000000,
-            nonce: 0,
+            nonce: await forwarder.nonces(signer.address),
+            deadline: 2000000000,
             data: swap.interface.encodeFunctionData("swap", [
               {
                 token: token.address,
@@ -278,8 +279,8 @@ describe("GasSwap.spec", async () => {
 
           const signature = await signer._signTypedData(
             {
-              name: "MinimalForwarder",
-              version: "0.0.1",
+              name: "ERC2771Forwarder",
+              version: "1",
               chainId: (await ethers.provider.getNetwork()).chainId,
               verifyingContract: forwarder.address,
             },
@@ -306,16 +307,28 @@ describe("GasSwap.spec", async () => {
                   type: "uint256",
                 },
                 {
+                  name: "deadline",
+                  type: "uint48",
+                },
+                {
                   name: "data",
                   type: "bytes",
                 },
               ],
             },
-            req
+            reqWithoutSignature
           );
 
           const balanceBefore = await signer.getBalance();
-          await forwarder.execute(req, signature);
+          await forwarder.execute({
+            from: reqWithoutSignature.from,
+            to: reqWithoutSignature.to,
+            value: reqWithoutSignature.value,
+            gas: reqWithoutSignature.gas,
+            deadline: reqWithoutSignature.deadline,
+            data: reqWithoutSignature.data,
+            signature,
+          });
           const balanceAfter = await signer.getBalance();
           expect(balanceAfter.sub(balanceBefore)).to.eq(amountOut.sub(fee));
           expect(await token.balanceOf(signer.address)).to.eq(amountIn.mul(refundRatio).div(100));
