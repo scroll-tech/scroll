@@ -30,14 +30,14 @@ import (
 
 var (
 	base      *docker.App
-	bridgeApp *bcmd.MockApp
+	rollupApp *bcmd.MockApp
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
-	bridgeApp = bcmd.NewBridgeApp(base, "../../rollup/conf/config.json")
+	rollupApp = bcmd.NewRollupApp(base, "../../rollup/conf/config.json")
 	m.Run()
-	bridgeApp.Free()
+	rollupApp.Free()
 	base.Free()
 }
 

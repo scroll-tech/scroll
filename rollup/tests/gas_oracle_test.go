@@ -23,7 +23,7 @@ func testImportL1GasPrice(t *testing.T) {
 
 	prepareContracts(t)
 
-	l1Cfg := bridgeApp.Config.L1Config
+	l1Cfg := rollupApp.Config.L1Config
 
 	// Create L1Relayer
 	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, nil)
@@ -66,7 +66,7 @@ func testImportL2GasPrice(t *testing.T) {
 	defer database.CloseDB(db)
 	prepareContracts(t)
 
-	l2Cfg := bridgeApp.Config.L2Config
+	l2Cfg := rollupApp.Config.L2Config
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 

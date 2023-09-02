@@ -98,51 +98,51 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 
 		chunkProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_chunk_circle_total",
+			Name: "rollup_propose_chunk_circle_total",
 			Help: "Total number of propose chunk total.",
 		}),
 		proposeChunkFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_chunk_failure_circle_total",
+			Name: "rollup_propose_chunk_failure_circle_total",
 			Help: "Total number of propose chunk failure total.",
 		}),
 		proposeChunkUpdateInfoTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_chunk_update_info_total",
+			Name: "rollup_propose_chunk_update_info_total",
 			Help: "Total number of propose chunk update info total.",
 		}),
 		proposeChunkUpdateInfoFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_chunk_update_info_failure_total",
+			Name: "rollup_propose_chunk_update_info_failure_total",
 			Help: "Total number of propose chunk update info failure total.",
 		}),
 		chunkTxNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_chunk_tx_num",
+			Name: "rollup_propose_chunk_tx_num",
 			Help: "The chunk tx num",
 		}),
 		chunkEstimateL1CommitGas: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_chunk_estimate_l1_commit_gas",
+			Name: "rollup_propose_chunk_estimate_l1_commit_gas",
 			Help: "The chunk estimate l1 commit gas",
 		}),
 		totalL1CommitCalldataSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_chunk_total_l1_commit_call_data_size",
+			Name: "rollup_propose_chunk_total_l1_commit_call_data_size",
 			Help: "The total l1 commit call data size",
 		}),
 		totalTxGasUsed: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_chunk_total_tx_gas_used",
+			Name: "rollup_propose_chunk_total_tx_gas_used",
 			Help: "The total tx gas used",
 		}),
 		maxTxConsumption: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_chunk_max_tx_consumption",
+			Name: "rollup_propose_chunk_max_tx_consumption",
 			Help: "The max tx consumption",
 		}),
 		chunkBlocksNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_chunk_chunk_block_number",
+			Name: "rollup_propose_chunk_chunk_block_number",
 			Help: "The number of blocks in the chunk",
 		}),
 		chunkFirstBlockTimeoutReached: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_chunk_first_block_timeout_reached_total",
+			Name: "rollup_propose_chunk_first_block_timeout_reached_total",
 			Help: "Total times of chunk's first block timeout reached",
 		}),
 		chunkBlocksProposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_chunk_blocks_propose_not_enough_total",
+			Name: "rollup_propose_chunk_blocks_propose_not_enough_total",
 			Help: "Total number of chunk block propose not enough",
 		}),
 	}

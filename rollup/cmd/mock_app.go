@@ -22,29 +22,29 @@ type MockApp struct {
 	mockApps map[utils.MockAppName]docker.AppAPI
 
 	originFile string
-	bridgeFile string
+	rollupFile string
 
 	args []string
 }
 
-// NewBridgeApp return a new bridgeApp manager, name mush be one them.
-func NewBridgeApp(base *docker.App, file string) *MockApp {
+// NewRollupApp return a new rollupApp manager, name mush be one them.
+func NewRollupApp(base *docker.App, file string) *MockApp {
 
-	bridgeFile := fmt.Sprintf("/tmp/%d_bridge-config.json", base.Timestamp)
-	bridgeApp := &MockApp{
+	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", base.Timestamp)
+	rollupApp := &MockApp{
 		base:       base,
 		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
 		originFile: file,
-		bridgeFile: bridgeFile,
-		args:       []string{"--log.debug", "--config", bridgeFile},
+		rollupFile: rollupFile,
+		args:       []string{"--log.debug", "--config", rollupFile},
 	}
-	if err := bridgeApp.MockConfig(true); err != nil {
+	if err := rollupApp.MockConfig(true); err != nil {
 		panic(err)
 	}
-	return bridgeApp
+	return rollupApp
 }
 
-// RunApp run bridge-test child process by multi parameters.
+// RunApp run rollup-test child process by multi parameters.
 func (b *MockApp) RunApp(t *testing.T, name utils.MockAppName, args ...string) {
 	if !(name == utils.EventWatcherApp ||
 		name == utils.GasOracleApp ||
@@ -72,16 +72,16 @@ func (b *MockApp) WaitExit() {
 	b.mockApps = make(map[utils.MockAppName]docker.AppAPI)
 }
 
-// Free stop and release bridge mocked apps.
+// Free stop and release rollup mocked apps.
 func (b *MockApp) Free() {
 	b.WaitExit()
-	_ = os.Remove(b.bridgeFile)
+	_ = os.Remove(b.rollupFile)
 }
 
-// MockConfig creates a new bridge config.
+// MockConfig creates a new rollup config.
 func (b *MockApp) MockConfig(store bool) error {
 	base := b.base
-	// Load origin bridge config file.
+	// Load origin rollup config file.
 	cfg, err := config.NewConfig(b.originFile)
 	if err != nil {
 		return err
@@ -97,10 +97,10 @@ func (b *MockApp) MockConfig(store bool) error {
 	if !store {
 		return nil
 	}
-	// Store changed bridge config into a temp file.
+	// Store changed rollup config into a temp file.
 	data, err := json.Marshal(b.Config)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(b.bridgeFile, data, 0600)
+	return os.WriteFile(b.rollupFile, data, 0600)
 }

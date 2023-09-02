@@ -264,7 +264,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 
 // ProcessGasPriceOracle imports gas price to layer1
 func (r *Layer2Relayer) ProcessGasPriceOracle() {
-	r.metrics.bridgeL2RelayerGasPriceOraclerRunTotal.Inc()
+	r.metrics.rollupL2RelayerGasPriceOraclerRunTotal.Inc()
 	batch, err := r.batchOrm.GetLatestBatch(r.ctx)
 	if batch == nil || err != nil {
 		log.Error("Failed to GetLatestBatch", "batch", batch, "err", err)
@@ -302,7 +302,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 			r.lastGasPrice = suggestGasPriceUint64
-			r.metrics.bridgeL2RelayerLastGasPrice.Set(float64(r.lastGasPrice))
+			r.metrics.rollupL2RelayerLastGasPrice.Set(float64(r.lastGasPrice))
 			log.Info("Update l2 gas price", "txHash", hash.String(), "GasPrice", suggestGasPrice)
 		}
 	}
@@ -317,7 +317,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		return
 	}
 	for _, batch := range pendingBatches {
-		r.metrics.bridgeL2RelayerProcessPendingBatchTotal.Inc()
+		r.metrics.rollupL2RelayerProcessPendingBatchTotal.Inc()
 		// get current header and parent header.
 		currentBatchHeader, err := types.DecodeBatchHeader(batch.BatchHeader)
 		if err != nil {
@@ -400,7 +400,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", batch.Hash, "index", batch.Index, "err", err)
 			return
 		}
-		r.metrics.bridgeL2RelayerProcessPendingBatchSuccessTotal.Inc()
+		r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Inc()
 		r.processingCommitment.Store(txID, batch.Hash)
 		log.Info("Sent the commitBatch tx to layer1", "batch index", batch.Index, "batch hash", batch.Hash, "tx hash", txHash.Hex())
 	}
@@ -424,7 +424,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		return
 	}
 
-	r.metrics.bridgeL2RelayerProcessCommittedBatchesTotal.Inc()
+	r.metrics.rollupL2RelayerProcessCommittedBatchesTotal.Inc()
 
 	batch := batches[0]
 	hash := batch.Hash
@@ -435,17 +435,17 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		return
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", hash)
-		r.metrics.bridgeL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
+		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 
 		// Check batch status before send `finalizeBatchWithProof` tx.
 		//batchStatus, err := r.getBatchStatusByIndex(batch.Index)
 		//if err != nil {
-		//	r.metrics.bridgeL2ChainMonitorLatestFailedCall.Inc()
+		//	r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
 		//	log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
 		//	return
 		//}
 		//if !batchStatus {
-		//	r.metrics.bridgeL2ChainMonitorLatestFailedBatchStatus.Inc()
+		//	r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
 		//	log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
 		//	return
 		//}
@@ -524,7 +524,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 				"tx hash", finalizeTxHash.String(), "err", err)
 		}
 		r.processingFinalization.Store(txID, hash)
-		r.metrics.bridgeL2RelayerProcessCommittedBatchesFinalizedSuccessTotal.Inc()
+		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal.Inc()
 
 	case types.ProvingTaskFailed:
 		// We were unable to prove this batch. There are two possibilities:
@@ -592,7 +592,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 				"batch hash", batchHash.(string),
 				"tx hash", confirmation.TxHash.String(), "err", err)
 		}
-		r.metrics.bridgeL2BatchesCommittedConfirmedTotal.Inc()
+		r.metrics.rollupL2BatchesCommittedConfirmedTotal.Inc()
 		r.processingCommitment.Delete(confirmation.ID)
 	}
 
@@ -614,7 +614,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 				"batch hash", batchHash.(string),
 				"tx hash", confirmation.TxHash.String(), "err", err)
 		}
-		r.metrics.bridgeL2BatchesFinalizedConfirmedTotal.Inc()
+		r.metrics.rollupL2BatchesFinalizedConfirmedTotal.Inc()
 		r.processingFinalization.Delete(confirmation.ID)
 	}
 	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
@@ -630,7 +630,7 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		case confirmation := <-r.finalizeSender.ConfirmChan():
 			r.handleConfirmation(confirmation)
 		case cfm := <-r.gasOracleSender.ConfirmChan():
-			r.metrics.bridgeL2BatchesGasOraclerConfirmedTotal.Inc()
+			r.metrics.rollupL2BatchesGasOraclerConfirmedTotal.Inc()
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
 				err := r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())

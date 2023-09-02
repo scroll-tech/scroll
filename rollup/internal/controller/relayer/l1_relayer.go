@@ -80,7 +80,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
-	r.metrics.bridgeL1RelayerGasPriceOraclerRunTotal.Inc()
+	r.metrics.rollupL1RelayerGasPriceOraclerRunTotal.Inc()
 	latestBlockHeight, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
 	if err != nil {
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
@@ -125,7 +125,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 			r.lastGasPrice = block.BaseFee
-			r.metrics.bridgeL1RelayerLastGasPrice.Set(float64(r.lastGasPrice))
+			r.metrics.rollupL1RelayerLastGasPrice.Set(float64(r.lastGasPrice))
 			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee)
 		}
 	}
@@ -137,7 +137,7 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case cfm := <-r.gasOracleSender.ConfirmChan():
-			r.metrics.bridgeL1GasOraclerConfirmedTotal.Inc()
+			r.metrics.rollupL1GasOraclerConfirmedTotal.Inc()
 			if !cfm.IsSuccessful {
 				// @discuss: maybe make it pending again?
 				err := r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())

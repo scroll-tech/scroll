@@ -18,7 +18,7 @@ func TestConfig(t *testing.T) {
 		data, err := json.Marshal(cfg)
 		assert.NoError(t, err)
 
-		tmpJSON := fmt.Sprintf("/tmp/%d_bridge_config.json", time.Now().Nanosecond())
+		tmpJSON := fmt.Sprintf("/tmp/%d_rollup_config.json", time.Now().Nanosecond())
 		defer func() {
 			if _, err = os.Stat(tmpJSON); err == nil {
 				assert.NoError(t, os.Remove(tmpJSON))

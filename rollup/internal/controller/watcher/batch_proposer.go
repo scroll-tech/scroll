@@ -63,39 +63,39 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_batch_circle_total",
+			Name: "rollup_propose_batch_circle_total",
 			Help: "Total number of propose batch total.",
 		}),
 		proposeBatchFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_batch_failure_circle_total",
+			Name: "rollup_propose_batch_failure_circle_total",
 			Help: "Total number of propose batch total.",
 		}),
 		proposeBatchUpdateInfoTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_batch_update_info_total",
+			Name: "rollup_propose_batch_update_info_total",
 			Help: "Total number of propose batch update info total.",
 		}),
 		proposeBatchUpdateInfoFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_batch_update_info_failure_total",
+			Name: "rollup_propose_batch_update_info_failure_total",
 			Help: "Total number of propose batch update info failure total.",
 		}),
 		totalL1CommitGas: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_batch_total_l1_commit_gas",
+			Name: "rollup_propose_batch_total_l1_commit_gas",
 			Help: "The total l1 commit gas",
 		}),
 		totalL1CommitCalldataSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_batch_total_l1_call_data_size",
+			Name: "rollup_propose_batch_total_l1_call_data_size",
 			Help: "The total l1 call data size",
 		}),
 		batchChunksNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "bridge_propose_batch_chunks_number",
+			Name: "rollup_propose_batch_chunks_number",
 			Help: "The number of chunks in the batch",
 		}),
 		batchFirstBlockTimeoutReached: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_batch_first_block_timeout_reached_total",
+			Name: "rollup_propose_batch_first_block_timeout_reached_total",
 			Help: "Total times of batch's first block timeout reached",
 		}),
 		batchChunksProposeNotEnoughTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "bridge_propose_batch_chunks_propose_not_enough_total",
+			Name: "rollup_propose_batch_chunks_propose_not_enough_total",
 			Help: "Total number of batch chunk propose not enough",
 		}),
 	}
@@ -122,7 +122,7 @@ func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk, batchMeta *ty
 	if numChunks <= 0 {
 		return nil
 	}
-	chunks, err := p.dbChunksToBridgeChunks(dbChunks)
+	chunks, err := p.dbChunksToRollupChunks(dbChunks)
 	if err != nil {
 		return err
 	}
@@ -269,7 +269,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	return nil, nil, nil
 }
 
-func (p *BatchProposer) dbChunksToBridgeChunks(dbChunks []*orm.Chunk) ([]*types.Chunk, error) {
+func (p *BatchProposer) dbChunksToRollupChunks(dbChunks []*orm.Chunk) ([]*types.Chunk, error) {
 	chunks := make([]*types.Chunk, len(dbChunks))
 	for i, c := range dbChunks {
 		wrappedBlocks, err := p.l2BlockOrm.GetL2BlocksInRange(p.ctx, c.StartBlockNumber, c.EndBlockNumber)

@@ -26,7 +26,7 @@ import (
 
 var (
 	base      *docker.App
-	bridgeApp *bcmd.MockApp
+	rollupApp *bcmd.MockApp
 
 	// clients
 	l1Client *ethclient.Client
@@ -58,8 +58,8 @@ func setupDB(t *testing.T) *gorm.DB {
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
-	bridgeApp = bcmd.NewBridgeApp(base, "../conf/config.json")
-	defer bridgeApp.Free()
+	rollupApp = bcmd.NewRollupApp(base, "../conf/config.json")
+	defer rollupApp.Free()
 	defer base.Free()
 	m.Run()
 }
@@ -73,16 +73,16 @@ func setupEnv(t *testing.T) {
 	l2Client, err = base.L2Client()
 	assert.NoError(t, err)
 
-	l1Cfg, l2Cfg := bridgeApp.Config.L1Config, bridgeApp.Config.L2Config
+	l1Cfg, l2Cfg := rollupApp.Config.L1Config, rollupApp.Config.L2Config
 	l1Cfg.Confirmations = 0
 	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
-	l1Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L1gethImg.ChainID())
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L1gethImg.ChainID())
 	assert.NoError(t, err)
 
-	l2Auth, err = bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKey, base.L2gethImg.ChainID())
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKey, base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 }
 
@@ -113,7 +113,7 @@ func prepareContracts(t *testing.T) {
 	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
 
-	l1Config, l2Config := bridgeApp.Config.L1Config, bridgeApp.Config.L2Config
+	l1Config, l2Config := rollupApp.Config.L1Config, rollupApp.Config.L2Config
 	l1Config.ScrollChainContractAddress = scrollChainAddress
 
 	l2Config.RelayerConfig.RollupContractAddress = scrollChainAddress
@@ -121,7 +121,7 @@ func prepareContracts(t *testing.T) {
 
 func TestFunction(t *testing.T) {
 	setupEnv(t)
-	srv, err := mockChainMonitorServer(bridgeApp.Config.L2Config.RelayerConfig.ChainMonitor.BaseURL)
+	srv, err := mockChainMonitorServer(rollupApp.Config.L2Config.RelayerConfig.ChainMonitor.BaseURL)
 	assert.NoError(t, err)
 	defer srv.Close()
 

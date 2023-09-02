@@ -20,11 +20,11 @@ func testProcessStart(t *testing.T) {
 	db := setupDB(t)
 	defer database.CloseDB(db)
 
-	bridgeApp.RunApp(t, cutils.EventWatcherApp)
-	bridgeApp.RunApp(t, cutils.GasOracleApp)
-	bridgeApp.RunApp(t, cutils.RollupRelayerApp)
+	rollupApp.RunApp(t, cutils.EventWatcherApp)
+	rollupApp.RunApp(t, cutils.GasOracleApp)
+	rollupApp.RunApp(t, cutils.RollupRelayerApp)
 
-	bridgeApp.WaitExit()
+	rollupApp.WaitExit()
 }
 
 func testProcessStartEnableMetrics(t *testing.T) {
@@ -34,17 +34,17 @@ func testProcessStartEnableMetrics(t *testing.T) {
 	port, err := rand.Int(rand.Reader, big.NewInt(2000))
 	assert.NoError(t, err)
 	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
-	bridgeApp.RunApp(t, cutils.EventWatcherApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
+	rollupApp.RunApp(t, cutils.EventWatcherApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
 
 	port, err = rand.Int(rand.Reader, big.NewInt(2000))
 	assert.NoError(t, err)
 	svrPort = strconv.FormatInt(port.Int64()+50000, 10)
-	bridgeApp.RunApp(t, cutils.GasOracleApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
+	rollupApp.RunApp(t, cutils.GasOracleApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
 
 	port, err = rand.Int(rand.Reader, big.NewInt(2000))
 	assert.NoError(t, err)
 	svrPort = strconv.FormatInt(port.Int64()+50000, 10)
-	bridgeApp.RunApp(t, cutils.RollupRelayerApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
+	rollupApp.RunApp(t, cutils.RollupRelayerApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
 
-	bridgeApp.WaitExit()
+	rollupApp.WaitExit()
 }
