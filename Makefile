@@ -1,6 +1,6 @@
 .PHONY: check update dev_docker build_test_docker run_test_docker clean
 
-L2GETH_TAG=scroll-v4.3.34
+L2GETH_TAG=scroll-v4.3.55
 
 help: ## Display this help message
 	@grep -h \
