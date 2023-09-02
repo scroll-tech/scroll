@@ -2,11 +2,6 @@
 
 This repo contains the Scroll bridge.
 
-In addition, launching the bridge will launch a separate instance of l2geth, and sets up a communication channel
-between the two, over JSON-RPC sockets.
-
-Something we should pay attention is that all private keys inside sender instance cannot be duplicated.
-
 ## Dependency
 
 + install `abigen`
@@ -19,18 +14,26 @@ go install -v github.com/scroll-tech/go-ethereum/cmd/abigen
 
 ```bash
 make clean
-make bridge
+make mock_abi
+make bridge_bins
 ```
 
 ## Start
-* use default ports and config.json
+
+(Note: make sure you use different private keys for different senders in config.json.)
+
+* use default ports and config.json.
 
 ```bash
-./build/bin/bridge --http
+./build/bin/event_watcher --http
+./build/bin/gas_oracle --http
+./build/bin/rollup_relayer --http
 ```
 
 * use specified ports and config.json
 
 ```bash
-./build/bin/bridge --config ./config.json --http --http.addr localhost --http.port 8290
+./build/bin/event_watcher --config ./config.json --http --http.addr localhost --http.port 8290
+./build/bin/gas_oracle --config ./config.json --http --http.addr localhost --http.port 8290
+./build/bin/rollup_relayer --config ./config.json --http --http.addr localhost --http.port 8290
 ```

@@ -1,6 +1,5 @@
-.PHONY: lint docker clean bridge
+.PHONY: mock_abi bridge_bins event_watcher gas_oracle rollup_relayer test lint clean docker
 
-IMAGE_NAME=bridge
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
