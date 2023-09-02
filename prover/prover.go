@@ -70,6 +70,7 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Use gzip compression.
 		l2GethClient.SetHeader("Accept-Encoding", "gzip")
 	}
 
