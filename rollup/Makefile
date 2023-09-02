@@ -1,4 +1,4 @@
-.PHONY: mock_abi bridge_bins event_watcher gas_oracle rollup_relayer test lint clean docker
+.PHONY: mock_abi rollup_bins event_watcher gas_oracle rollup_relayer test lint clean docker
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
@@ -7,7 +7,7 @@ mock_abi:
 	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --sol ./rollup/mock_bridge/MockBridgeL1.sol --pkg mock_bridge --out ./rollup/mock_bridge/MockBridgeL1.go
 	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --sol ./rollup/mock_bridge/MockBridgeL2.sol --pkg mock_bridge --out ./rollup/mock_bridge/MockBridgeL2.go
 
-bridge_bins: ## Builds the Bridge bins.
+rollup_bins: ## Builds the Rollup bins.
 	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
 	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
 	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
