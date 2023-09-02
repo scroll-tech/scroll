@@ -1,6 +1,6 @@
-# Bridge
+# Rollup
 
-This repo contains the Scroll bridge.
+This repo contains the Scroll rollup.
 
 ## Dependency
 
@@ -15,7 +15,7 @@ go install -v github.com/scroll-tech/go-ethereum/cmd/abigen
 ```bash
 make clean
 make mock_abi
-make bridge_bins
+make rollup_bins
 ```
 
 ## Start
