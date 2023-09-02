@@ -16,6 +16,8 @@ go install -v github.com/scroll-tech/go-ethereum/cmd/abigen
 
 2. `solc`
 
+See https://docs.soliditylang.org/en/latest/installing-solidity.html
+
 ## Build
 
 ```bash
