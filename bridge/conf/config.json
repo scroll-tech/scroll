@@ -2,12 +2,10 @@
   "l1_config": {
     "confirmations": "0x6",
     "endpoint": "DUMMY_ENDPOINT",
-    "l1_messenger_address": "0x0000000000000000000000000000000000000000",
     "l1_message_queue_address": "0x0000000000000000000000000000000000000000",
     "scroll_chain_address": "0x0000000000000000000000000000000000000000",
     "start_height": 0,
     "relayer_config": {
-      "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "/var/lib/jenkins/workspace/SequencerPipeline/MyPrivateNetwork/geth.ipc",
@@ -27,7 +25,6 @@
         "gas_price_diff": 50000
       },
       "finalize_batch_interval_sec": 0,
-      "message_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }
   },
@@ -38,7 +35,6 @@
     "l2_message_queue_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
-      "messenger_contract_address": "0x0000000000000000000000000000000000000000",
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "DUMMY_ENDPOINT",
@@ -63,7 +59,6 @@
         "base_url": "http://localhost:8750"
       },
       "finalize_batch_interval_sec": 0,
-      "message_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
       "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
       "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",

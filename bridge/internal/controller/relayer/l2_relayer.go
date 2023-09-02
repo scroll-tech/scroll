@@ -44,17 +44,12 @@ type Layer2Relayer struct {
 
 	cfg *config.RelayerConfig
 
-	messageSender  *sender.Sender
-	l1MessengerABI *abi.ABI
-
 	commitSender   *sender.Sender
 	finalizeSender *sender.Sender
 	l1RollupABI    *abi.ABI
 
 	gasOracleSender *sender.Sender
 	l2GasOracleABI  *abi.ABI
-
-	minGasLimitForMessageRelay uint64
 
 	lastGasPrice uint64
 	minGasPrice  uint64
@@ -80,12 +75,6 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool, reg prometheus.Registerer) (*Layer2Relayer, error) {
-	messageSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.MessageSenderPrivateKey, "l2_relayer", "message_sender", reg)
-	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.MessageSenderPrivateKey.PublicKey)
-		return nil, fmt.Errorf("new message sender failed for address %s, err: %w", addr.Hex(), err)
-	}
-
 	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey, "l2_relayer", "commit_sender", reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
@@ -113,11 +102,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
-	minGasLimitForMessageRelay := uint64(defaultL2MessageRelayMinGasLimit)
-	if cfg.MessageRelayMinGasLimit != 0 {
-		minGasLimitForMessageRelay = cfg.MessageRelayMinGasLimit
-	}
-
 	// chain_monitor client
 	chainMonitorClient := resty.New()
 	chainMonitorClient.SetRetryCount(cfg.ChainMonitor.TryTimes)
@@ -133,17 +117,12 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 		l2Client: l2Client,
 
-		messageSender:  messageSender,
-		l1MessengerABI: bridgeAbi.L1ScrollMessengerABI,
-
 		commitSender:   commitSender,
 		finalizeSender: finalizeSender,
 		l1RollupABI:    bridgeAbi.ScrollChainABI,
 
 		gasOracleSender: gasOracleSender,
 		l2GasOracleABI:  bridgeAbi.L2GasPriceOracleABI,
-
-		minGasLimitForMessageRelay: minGasLimitForMessageRelay,
 
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
@@ -646,8 +625,6 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case confirmation := <-r.messageSender.ConfirmChan():
-			r.handleConfirmation(confirmation)
 		case confirmation := <-r.commitSender.ConfirmChan():
 			r.handleConfirmation(confirmation)
 		case confirmation := <-r.finalizeSender.ConfirmChan():

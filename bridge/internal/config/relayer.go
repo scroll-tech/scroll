@@ -49,8 +49,6 @@ type ChainMonitor struct {
 type RelayerConfig struct {
 	// RollupContractAddress store the rollup contract address.
 	RollupContractAddress common.Address `json:"rollup_contract_address,omitempty"`
-	// MessengerContractAddress store the scroll messenger contract address.
-	MessengerContractAddress common.Address `json:"messenger_contract_address"`
 	// GasPriceOracleContractAddress store the scroll messenger contract address.
 	GasPriceOracleContractAddress common.Address `json:"gas_price_oracle_contract_address"`
 	// sender config
@@ -66,7 +64,6 @@ type RelayerConfig struct {
 	// GasCostIncreaseMultiplier multiplier for min gas limit estimation
 	GasCostIncreaseMultiplier float64 `json:"gas_cost_increase_multiplier,omitempty"`
 	// The private key of the relayer
-	MessageSenderPrivateKey   *ecdsa.PrivateKey `json:"-"`
 	GasOracleSenderPrivateKey *ecdsa.PrivateKey `json:"-"`
 	CommitSenderPrivateKey    *ecdsa.PrivateKey `json:"-"`
 	FinalizeSenderPrivateKey  *ecdsa.PrivateKey `json:"-"`
@@ -106,7 +103,6 @@ func convertAndCheck(key string, uniqueAddressesSet map[string]struct{}) (*ecdsa
 func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	var privateKeysConfig struct {
 		relayerConfigAlias
-		MessageSenderPrivateKey   string `json:"message_sender_private_key"`
 		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
 		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
 		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
@@ -119,11 +115,6 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	*r = RelayerConfig(privateKeysConfig.relayerConfigAlias)
 
 	uniqueAddressesSet := make(map[string]struct{})
-
-	r.MessageSenderPrivateKey, err = convertAndCheck(privateKeysConfig.MessageSenderPrivateKey, uniqueAddressesSet)
-	if err != nil {
-		return fmt.Errorf("error converting and checking message sender private key: %w", err)
-	}
 
 	r.GasOracleSenderPrivateKey, err = convertAndCheck(privateKeysConfig.GasOracleSenderPrivateKey, uniqueAddressesSet)
 	if err != nil {
@@ -148,14 +139,12 @@ func (r *RelayerConfig) MarshalJSON() ([]byte, error) {
 	privateKeysConfig := struct {
 		relayerConfigAlias
 		// The private key of the relayer
-		MessageSenderPrivateKey   string `json:"message_sender_private_key"`
 		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
 		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
 		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
 	}{}
 
 	privateKeysConfig.relayerConfigAlias = relayerConfigAlias(*r)
-	privateKeysConfig.MessageSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.MessageSenderPrivateKey))
 	privateKeysConfig.GasOracleSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.GasOracleSenderPrivateKey))
 	privateKeysConfig.CommitSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.CommitSenderPrivateKey))
 	privateKeysConfig.FinalizeSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.FinalizeSenderPrivateKey))

@@ -8,7 +8,6 @@ import (
 
 	_ "scroll-tech/bridge/cmd/event_watcher/app"
 	_ "scroll-tech/bridge/cmd/gas_oracle/app"
-	_ "scroll-tech/bridge/cmd/msg_relayer/app"
 	_ "scroll-tech/bridge/cmd/rollup_relayer/app"
 
 	"scroll-tech/common/database"
@@ -23,7 +22,6 @@ func testProcessStart(t *testing.T) {
 
 	bridgeApp.RunApp(t, cutils.EventWatcherApp)
 	bridgeApp.RunApp(t, cutils.GasOracleApp)
-	bridgeApp.RunApp(t, cutils.MessageRelayerApp)
 	bridgeApp.RunApp(t, cutils.RollupRelayerApp)
 
 	bridgeApp.WaitExit()
@@ -42,11 +40,6 @@ func testProcessStartEnableMetrics(t *testing.T) {
 	assert.NoError(t, err)
 	svrPort = strconv.FormatInt(port.Int64()+50000, 10)
 	bridgeApp.RunApp(t, cutils.GasOracleApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
-
-	port, err = rand.Int(rand.Reader, big.NewInt(2000))
-	assert.NoError(t, err)
-	svrPort = strconv.FormatInt(port.Int64()+50000, 10)
-	bridgeApp.RunApp(t, cutils.MessageRelayerApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
 
 	port, err = rand.Int(rand.Reader, big.NewInt(2000))
 	assert.NoError(t, err)
