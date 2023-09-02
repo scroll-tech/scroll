@@ -7,7 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230812030736-25fe3ba69a28
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230829000527-f883dcdc21fc
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
