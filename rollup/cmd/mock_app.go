@@ -11,7 +11,7 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
 
-	"scroll-tech/bridge/internal/config"
+	"scroll-tech/rollup/internal/config"
 )
 
 // MockApp mockApp-test client manager.

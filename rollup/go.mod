@@ -1,4 +1,4 @@
-module scroll-tech/bridge
+module scroll-tech/rollup
 
 go 1.19
 

@@ -22,8 +22,8 @@ import (
 
 	"scroll-tech/database/migrate"
 
-	"scroll-tech/bridge/internal/controller/sender"
-	"scroll-tech/bridge/internal/orm"
+	"scroll-tech/rollup/internal/controller/sender"
+	"scroll-tech/rollup/internal/orm"
 )
 
 func setupL2RelayerDB(t *testing.T) *gorm.DB {

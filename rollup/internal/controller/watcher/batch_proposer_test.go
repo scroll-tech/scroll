@@ -9,8 +9,8 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 
-	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/orm"
+	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/orm"
 )
 
 // TODO: Add unit tests that the limits are enforced correctly.

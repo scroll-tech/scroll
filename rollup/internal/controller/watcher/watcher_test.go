@@ -15,7 +15,7 @@ import (
 
 	"scroll-tech/database/migrate"
 
-	"scroll-tech/bridge/internal/config"
+	"scroll-tech/rollup/internal/config"
 )
 
 var (

@@ -17,8 +17,8 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/controller/watcher"
+	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/controller/watcher"
 )
 
 var app *cli.App

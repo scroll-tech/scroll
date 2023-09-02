@@ -19,9 +19,9 @@ import (
 
 	"scroll-tech/common/types"
 
-	bridgeAbi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/utils"
+	bridgeAbi "scroll-tech/rollup/abi"
+	"scroll-tech/rollup/internal/orm"
+	"scroll-tech/rollup/internal/utils"
 )
 
 // L2WatcherClient provide APIs which support others to subscribe to various event from l2geth

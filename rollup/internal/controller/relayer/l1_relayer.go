@@ -14,10 +14,10 @@ import (
 
 	"scroll-tech/common/types"
 
-	bridgeAbi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/controller/sender"
-	"scroll-tech/bridge/internal/orm"
+	bridgeAbi "scroll-tech/rollup/abi"
+	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/controller/sender"
+	"scroll-tech/rollup/internal/orm"
 )
 
 // Layer1Relayer is responsible for

@@ -12,8 +12,8 @@ import (
 
 	"scroll-tech/common/types"
 
-	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/orm"
+	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/orm"
 )
 
 // BatchProposer proposes batches based on available unbatched chunks.

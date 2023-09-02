@@ -14,10 +14,10 @@ import (
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 
-	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/controller/relayer"
-	"scroll-tech/bridge/internal/controller/watcher"
-	"scroll-tech/bridge/internal/orm"
+	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/controller/relayer"
+	"scroll-tech/rollup/internal/controller/watcher"
+	"scroll-tech/rollup/internal/orm"
 )
 
 func testCommitBatchAndFinalizeBatch(t *testing.T) {

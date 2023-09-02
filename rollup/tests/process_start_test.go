@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"testing"
 
-	_ "scroll-tech/bridge/cmd/event_watcher/app"
-	_ "scroll-tech/bridge/cmd/gas_oracle/app"
-	_ "scroll-tech/bridge/cmd/rollup_relayer/app"
+	_ "scroll-tech/rollup/cmd/event_watcher/app"
+	_ "scroll-tech/rollup/cmd/gas_oracle/app"
+	_ "scroll-tech/rollup/cmd/rollup_relayer/app"
 
 	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"

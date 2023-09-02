@@ -17,10 +17,10 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	"scroll-tech/bridge/internal/config"
-	"scroll-tech/bridge/internal/controller/relayer"
-	"scroll-tech/bridge/internal/controller/watcher"
-	butils "scroll-tech/bridge/internal/utils"
+	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/controller/relayer"
+	"scroll-tech/rollup/internal/controller/watcher"
+	butils "scroll-tech/rollup/internal/utils"
 )
 
 var app *cli.App

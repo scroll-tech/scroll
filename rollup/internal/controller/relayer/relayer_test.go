@@ -13,7 +13,7 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 
-	"scroll-tech/bridge/internal/config"
+	"scroll-tech/rollup/internal/config"
 )
 
 var (

@@ -24,11 +24,11 @@ import (
 	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
-	bridgeAbi "scroll-tech/bridge/abi"
-	"scroll-tech/bridge/internal/controller/sender"
-	"scroll-tech/bridge/internal/orm"
-	"scroll-tech/bridge/internal/utils"
-	"scroll-tech/bridge/mock_bridge"
+	bridgeAbi "scroll-tech/rollup/abi"
+	"scroll-tech/rollup/internal/controller/sender"
+	"scroll-tech/rollup/internal/orm"
+	"scroll-tech/rollup/internal/utils"
+	"scroll-tech/rollup/mock_bridge"
 )
 
 func setupL2Watcher(t *testing.T) (*L2WatcherClient, *gorm.DB) {

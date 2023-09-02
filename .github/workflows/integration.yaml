@@ -36,7 +36,7 @@ jobs:
     - name: Build prerequisites
       run: |
         make dev_docker
-        make -C bridge mock_abi
+        make -C rollup mock_abi
         make -C common/bytecode all
     - name: Run integration tests
       run: |

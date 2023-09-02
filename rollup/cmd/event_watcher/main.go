@@ -1,6 +1,6 @@
 package main
 
-import "scroll-tech/bridge/cmd/event_watcher/app"
+import "scroll-tech/rollup/cmd/event_watcher/app"
 
 func main() {
 	app.Run()

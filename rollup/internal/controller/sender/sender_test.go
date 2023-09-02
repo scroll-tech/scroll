@@ -19,7 +19,7 @@ import (
 
 	"scroll-tech/common/docker"
 
-	"scroll-tech/bridge/internal/config"
+	"scroll-tech/rollup/internal/config"
 )
 
 const TXBatch = 50

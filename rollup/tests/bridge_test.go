@@ -20,8 +20,8 @@ import (
 
 	"scroll-tech/database/migrate"
 
-	bcmd "scroll-tech/bridge/cmd"
-	"scroll-tech/bridge/mock_bridge"
+	bcmd "scroll-tech/rollup/cmd"
+	"scroll-tech/rollup/mock_bridge"
 )
 
 var (
