@@ -63,7 +63,7 @@ func TestGreeter(t *testing.T) {
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
 
-	auth, err := bind.NewKeyedTransactorWithChainID(bridgeApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L2gethImg.ChainID())
+	auth, err := bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L2gethImg.ChainID())
 	assert.NoError(t, err)
 
 	token, err := greeter.NewGreeter(greeterAddress, l2Cli)

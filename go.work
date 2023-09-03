@@ -1,7 +1,7 @@
 go 1.19
 
 use (
-	./bridge
+	./rollup
 	./bridge-history-api
 	./common
 	./coordinator
