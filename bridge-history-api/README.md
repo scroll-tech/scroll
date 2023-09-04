@@ -13,7 +13,7 @@ If want to run `bridgehistoryapi-db-cli`， which connects the DB and provide se
     ./build/bin/bridgehistoryapi-db-cli [command]
 ```
 
-If want to run `bridgehistoryapi-cross-msg-fetcher`, which connects the DB and fetches txs from both l1 and l2:
+If want to run `bridgehistoryapi-cross-msg-fetcher`, which connects the DB and fetches txs from both l1 and l2
 2. Build and start the `bridgehistoryapi-cross-msg-fetcher` service.
 ```
     cd ./bridge-history-api
@@ -21,7 +21,7 @@ If want to run `bridgehistoryapi-cross-msg-fetcher`, which connects the DB and f
     ./build/bin/bridgehistoryapi-cross-msg-fetcher
 ```
 
-If want to run `bridgehistoryapi-server`, which connected to DB and provides REST APIs:
+If want to run `bridgehistoryapi-server`, which connected to DB and provides REST APIs
 3. Build and start the `bridgehistoryapi-server` service.
 ```
     cd ./bridge-history-api
