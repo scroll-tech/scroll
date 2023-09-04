@@ -15,7 +15,7 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
      * Structs *
      ***********/
 
-    struct TokenAmount {
+    struct ETHAmount {
         // The timestamp when the amount is updated.
         uint48 lastUpdateTs;
         // The ETH limit in wei.
@@ -39,8 +39,8 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
      * Variables *
      *************/
 
-    /// @notice The token amount used in current period.
-    TokenAmount public currentPeriod;
+    /// @notice The ETH amount used in current period.
+    ETHAmount public currentPeriod;
 
     /***************
      * Constructor *
@@ -55,14 +55,10 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
             revert PeriodIsZero();
         }
 
-        if (_totalLimit == 0) {
-            revert TotalLimitIsZero();
-        }
-
         periodDuration = _periodDuration;
         spender = _spender;
 
-        currentPeriod.limit = _totalLimit;
+        _updateTotalLimit(_totalLimit);
     }
 
     /*****************************
@@ -80,9 +76,9 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
 
         // check total limit
         uint256 _currentTotalAmount;
-        TokenAmount memory _currentPeriod = currentPeriod;
+        ETHAmount memory _currentPeriod = currentPeriod;
 
-        if (_currentPeriod.lastUpdateTs < _currentPeriodStart) {
+        if (uint256(_currentPeriod.lastUpdateTs) < _currentPeriodStart) {
             _currentTotalAmount = _amount;
         } else {
             _currentTotalAmount = _currentPeriod.amount + _amount;
@@ -101,9 +97,19 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
      * Restricted Functions *
      ************************/
 
-    /// @notice Update the total token amount limit.
+    /// @notice Update the total ETH amount limit.
     /// @param _newTotalLimit The new total limit.
     function updateTotalLimit(uint104 _newTotalLimit) external onlyOwner {
+        _updateTotalLimit(_newTotalLimit);
+    }
+
+    /**********************
+     * Internal Functions *
+     **********************/
+
+    /// @dev Internal function to update the total token amount limit.
+    /// @param _newTotalLimit The new total limit.
+    function _updateTotalLimit(uint104 _newTotalLimit) private {
         if (_newTotalLimit == 0) {
             revert TotalLimitIsZero();
         }

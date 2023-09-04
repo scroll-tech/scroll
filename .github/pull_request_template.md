@@ -20,7 +20,7 @@ Your PR title must follow [conventional commits](https://www.conventionalcommits
 
 ### Deployment tag versioning
 
-Has `tag` in `common/version.go` been updated?
+Has `tag` in `common/version.go` been updated or have you added `bump-version` label to this PR?
 
 - [ ] No, this PR doesn't involve a new deployment, git tag, docker image tag
 - [ ] Yes

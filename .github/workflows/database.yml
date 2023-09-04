@@ -10,6 +10,7 @@ on:
     paths:
       - 'database/**'
       - 'common/**'
+      - '!common/version/version.go'
       - '.github/workflows/database.yml'
   pull_request:
     types:
@@ -20,6 +21,7 @@ on:
     paths:
       - 'database/**'
       - 'common/**'
+      - '!common/version/version.go'
       - '.github/workflows/database.yml'
 
 jobs:

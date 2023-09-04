@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/appleboy/gin-jwt/v2 v2.9.1
 	github.com/gin-gonic/gin v1.9.1
+	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.3
 	gorm.io/gorm v1.25.2
 )
@@ -46,7 +47,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230812030736-25fe3ba69a28
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230829000527-f883dcdc21fc
 	github.com/shopspring/decimal v1.3.1
 	github.com/swaggo/files v1.0.1
 	github.com/swaggo/gin-swagger v1.6.0
@@ -57,7 +58,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/arch v0.4.0 // indirect
 	golang.org/x/crypto v0.12.0 // indirect
-	golang.org/x/net v0.12.0 // indirect
+	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/tools v0.11.0 // indirect

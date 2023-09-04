@@ -19,7 +19,7 @@ contract ScrollChainTest is DSTestPlus {
     event UpdateSequencer(address indexed account, bool status);
     event UpdateProver(address indexed account, bool status);
     event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
-    event UpdateMaxNumL2TxInChunk(uint256 oldMaxNumL2TxInChunk, uint256 newMaxNumL2TxInChunk);
+    event UpdateMaxNumTxInChunk(uint256 oldMaxNumTxInChunk, uint256 newMaxNumTxInChunk);
 
     event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
     event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
@@ -429,6 +429,15 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(bitmap, add(0x20, 32)), 42) // bitmap1
         }
 
+        // too many txs in one chunk, revert
+        rollup.updateMaxNumTxInChunk(2); // 3 - 1
+        hevm.expectRevert("too many txs in one chunk");
+        rollup.commitBatch(0, batchHeader1, chunks, bitmap); // first chunk with too many txs
+        rollup.updateMaxNumTxInChunk(185); // 5+10+300 - 2 - 127
+        hevm.expectRevert("too many txs in one chunk");
+        rollup.commitBatch(0, batchHeader1, chunks, bitmap); // second chunk with too many txs
+
+        rollup.updateMaxNumTxInChunk(186);
         hevm.expectEmit(true, true, false, true);
         emit CommitBatch(2, bytes32(0x03a9cdcb9d582251acf60937db006ec99f3505fd4751b7c1f92c9a8ef413e873));
         rollup.commitBatch(0, batchHeader1, chunks, bitmap);
@@ -631,20 +640,20 @@ contract ScrollChainTest is DSTestPlus {
         assertEq(rollup.verifier(), _newVerifier);
     }
 
-    function testUpdateMaxNumL2TxInChunk(uint256 _maxNumL2TxInChunk) public {
+    function testUpdateMaxNumTxInChunk(uint256 _maxNumTxInChunk) public {
         // set by non-owner, should revert
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
-        rollup.updateMaxNumL2TxInChunk(_maxNumL2TxInChunk);
+        rollup.updateMaxNumTxInChunk(_maxNumTxInChunk);
         hevm.stopPrank();
 
         // change to random operator
         hevm.expectEmit(false, false, false, true);
-        emit UpdateMaxNumL2TxInChunk(100, _maxNumL2TxInChunk);
+        emit UpdateMaxNumTxInChunk(100, _maxNumTxInChunk);
 
-        assertEq(rollup.maxNumL2TxInChunk(), 100);
-        rollup.updateMaxNumL2TxInChunk(_maxNumL2TxInChunk);
-        assertEq(rollup.maxNumL2TxInChunk(), _maxNumL2TxInChunk);
+        assertEq(rollup.maxNumTxInChunk(), 100);
+        rollup.updateMaxNumTxInChunk(_maxNumTxInChunk);
+        assertEq(rollup.maxNumTxInChunk(), _maxNumTxInChunk);
     }
 
     function testImportGenesisBlock() public {
