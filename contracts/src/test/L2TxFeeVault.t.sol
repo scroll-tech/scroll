@@ -30,6 +30,13 @@ contract L2TxFeeVaultTest is DSTestPlus {
         vault.withdraw(amount);
     }
 
+    function testCantWithdrawMoreThanBalance(uint256 amount) public {
+        hevm.assume(amount >= 10 ether);
+        hevm.deal(address(vault), amount - 1);
+        hevm.expectRevert(new bytes(0));
+        vault.withdraw(amount);
+    }
+
     function testWithdrawOnce() public {
         hevm.deal(address(vault), 11 ether);
         vault.withdraw();
