@@ -92,7 +92,7 @@ See [`contracts`](/contracts) for more details on the contracts.
 
 ## Contributing
 
-We welcome community contributions to this repository. Before you submit any issues or PRs, please read the [Code of Conduct](CODE_OF_CONDUCT.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+We welcome community contributions to this repository. Before you submit any issues or PRs, please read the [Code of Conduct](CODE_OF_CONDUCT.md) and [Contribution Guideline](CONTRIBUTING.md).
 
 ## License
 
