@@ -7,27 +7,27 @@ The bridge-history-api contains 3 different components
 
 If want to run `bridgehistoryapi-db-cli`， which connects the DB and provide several operations(migrate, reset...)
 1. Build and run the `bridgehistoryapi-db-cli`
-    ```
+```
     cd ./bridge-history-api
     make bridgehistoryapi-db-cli
     ./build/bin/bridgehistoryapi-db-cli [command]
-    ```
+```
 
 If want to run `bridgehistoryapi-cross-msg-fetcher`, which connects the DB and fetches txs from both l1 and l2:
 2. Build and start the `bridgehistoryapi-cross-msg-fetcher` service.
-    ```
+```
     cd ./bridge-history-api
     make bridgehistoryapi-cross-msg-fetcher
     ./build/bin/bridgehistoryapi-cross-msg-fetcher
-    ```
+```
 
 If want to run `bridgehistoryapi-server`, which connected to DB and provides REST APIs:
 3. Build and start the `bridgehistoryapi-server` service.
-    ```
+```
     cd ./bridge-history-api
     make bridgehistoryapi-server
     ./build/bin/bridgehistoryapi-server
-    ```
+```
 
 ## APIs provided by bridgehistoryapi-server
 assume `bridgehistoryapi-server` listening on `https://localhost:8080`
