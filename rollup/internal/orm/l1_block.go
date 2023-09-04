@@ -78,12 +78,15 @@ func (o *L1Block) InsertL1Blocks(ctx context.Context, blocks []L1Block) error {
 	}
 
 	return o.db.Transaction(func(tx *gorm.DB) error {
+		var blockNumbers []uint64
+		for _, block := range blocks {
+			blockNumbers = append(blockNumbers, block.Number)
+		}
+
 		db := tx.WithContext(ctx)
 		db = db.Model(&L1Block{})
-		for _, block := range blocks {
-			if err := db.Where("number = ?", block.Number).Delete(&L1Block{}).Error; err != nil {
-				return fmt.Errorf("L1Block.InsertL1Blocks error: soft deleting existing block with number: %d. Error: %w", block.Number, err)
-			}
+		if err := db.Where("number IN (?)", blockNumbers).Delete(&L1Block{}).Error; err != nil {
+			return fmt.Errorf("L1Block.InsertL1Blocks error: soft deleting blocks failed, block numbers: %v, error: %w", blockNumbers, err)
 		}
 
 		if err := db.Create(&blocks).Error; err != nil {
