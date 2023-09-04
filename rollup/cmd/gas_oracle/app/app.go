@@ -20,6 +20,7 @@ import (
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"
+	butils "scroll-tech/rollup/internal/utils"
 )
 
 var app *cli.App
@@ -92,7 +93,8 @@ func action(ctx *cli.Context) error {
 	// Start l1 watcher process
 	go utils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
 		// Fetch the latest block number to decrease the delay when fetching gas prices
-		number, loopErr := l1client.BlockNumber(ctx)
+		// Use latest block number - 1 to prevent frequent reorg
+		number, loopErr := butils.GetLatestConfirmedBlockNumber(ctx, l1client, -2)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
 			return
