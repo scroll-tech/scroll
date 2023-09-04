@@ -252,8 +252,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 		if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
 			log.Warn("first block timeout",
 				"start block number", dbChunks[0].StartBlockNumber,
-				"first block timestamp", dbChunks[0].StartBlockTime,
-				"chunk outdated time threshold", currentTimeSec,
+				"start block timestamp", dbChunks[0].StartBlockTime,
+				"current time", currentTimeSec,
 			)
 		} else {
 			log.Info("reached maximum number of chunks in batch",
