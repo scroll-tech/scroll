@@ -93,7 +93,7 @@ func action(ctx *cli.Context) error {
 	go utils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
 		// Fetch the latest block number to decrease the delay when fetching gas prices
 		number, loopErr := l1client.BlockNumber(ctx)
-		if err != nil {
+		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
 			return
 		}
