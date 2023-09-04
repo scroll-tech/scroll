@@ -59,7 +59,7 @@ can change this port thru modify `config.json`
 // @Summary    	 get all claimable txs under given address
 // @Accept       plain
 // @Produce      plain
-// @Param        hashes  query string  true  "wallet address"
+// @Param        address  query string  true  "wallet address"
 // @Success      200
 // @Router       https://localhost:8080//api/claimable?address=0x0000000000000000000000000000000000000000&page_size=10&page=1 [get]
 ```
