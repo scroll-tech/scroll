@@ -716,12 +716,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         assertEq(l1Token.ownerOf(tokenId), address(this));
         uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
         uint256 feeVaultBalance = address(feeVault).balance;
-        assertEq(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+        assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         gateway.depositERC721{value: feeToPay + extraValue}(address(l1Token), tokenId, gasLimit);
         assertEq(address(gateway), l1Token.ownerOf(tokenId));
         assertEq(1 + gatewayBalance, l1Token.balanceOf(address(gateway)));
         assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-        assertGt(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+        assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
     }
 
     function _testDepositERC721WithRecipient(
@@ -779,12 +779,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         assertEq(l1Token.ownerOf(tokenId), address(this));
         uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
         uint256 feeVaultBalance = address(feeVault).balance;
-        assertEq(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+        assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         gateway.depositERC721{value: feeToPay + extraValue}(address(l1Token), recipient, tokenId, gasLimit);
         assertEq(address(gateway), l1Token.ownerOf(tokenId));
         assertEq(1 + gatewayBalance, l1Token.balanceOf(address(gateway)));
         assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-        assertGt(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+        assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
     }
 
     function _testBatchDepositERC721(
@@ -851,14 +851,14 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         }
         uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
         uint256 feeVaultBalance = address(feeVault).balance;
-        assertEq(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+        assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         gateway.batchDepositERC721{value: feeToPay + extraValue}(address(l1Token), _tokenIds, gasLimit);
         for (uint256 i = 0; i < tokenCount; i++) {
             assertEq(l1Token.ownerOf(i), address(gateway));
         }
         assertEq(tokenCount + gatewayBalance, l1Token.balanceOf(address(gateway)));
         assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-        assertGt(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+        assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
     }
 
     function _testBatchDepositERC721WithRecipient(
@@ -926,14 +926,14 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         }
         uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
         uint256 feeVaultBalance = address(feeVault).balance;
-        assertEq(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+        assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         gateway.batchDepositERC721{value: feeToPay + extraValue}(address(l1Token), recipient, _tokenIds, gasLimit);
         for (uint256 i = 0; i < tokenCount; i++) {
             assertEq(l1Token.ownerOf(i), address(gateway));
         }
         assertEq(tokenCount + gatewayBalance, l1Token.balanceOf(address(gateway)));
         assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-        assertGt(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+        assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
     }
 
     function _deployGateway() internal returns (L1ERC721Gateway) {

@@ -105,28 +105,6 @@ Mapping from L1 message hash to drop status.
 |---|---|---|
 | _0 | bool | undefined |
 
-### isL1MessageSent
-
-```solidity
-function isL1MessageSent(bytes32) external view returns (uint256)
-```
-
-Mapping from L1 message hash to the timestamp when the message is sent.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
 ### isL2MessageExecuted
 
 ```solidity
@@ -182,6 +160,28 @@ The address of L1MessageQueue contract.
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
+
+### messageSendTimestamp
+
+```solidity
+function messageSendTimestamp(bytes32) external view returns (uint256)
+```
+
+Mapping from L1 message hash to the timestamp when the message is sent.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### owner
 

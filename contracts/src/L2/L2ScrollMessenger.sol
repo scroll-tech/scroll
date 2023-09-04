@@ -36,7 +36,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
      *************/
 
     /// @notice Mapping from L2 message hash to the timestamp when the message is sent.
-    mapping(bytes32 => uint256) public isL2MessageSent;
+    mapping(bytes32 => uint256) public messageSendTimestamp;
 
     /// @notice Mapping from L1 message hash to a boolean value indicating if the message has been successfully executed.
     mapping(bytes32 => bool) public isL1MessageExecuted;
@@ -120,8 +120,8 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
 
         // normally this won't happen, since each message has different nonce, but just in case.
-        require(isL2MessageSent[_xDomainCalldataHash] == 0, "Duplicated message");
-        isL2MessageSent[_xDomainCalldataHash] = block.timestamp;
+        require(messageSendTimestamp[_xDomainCalldataHash] == 0, "Duplicated message");
+        messageSendTimestamp[_xDomainCalldataHash] = block.timestamp;
 
         L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 

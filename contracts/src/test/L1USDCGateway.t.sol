@@ -429,7 +429,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             uint256 gatewayBalance = l1USDC.balanceOf(address(gateway));
             uint256 totalBridgedUSDCBefore = gateway.totalBridgedUSDC();
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertEq(0, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(0, l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)));
             if (useRouter) {
                 router.depositERC20{value: feeToPay + extraValue}(address(l1USDC), amount, gasLimit);
             } else {
@@ -438,7 +438,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             assertEq(amount + gatewayBalance, l1USDC.balanceOf(address(gateway)));
             assertEq(amount + totalBridgedUSDCBefore, gateway.totalBridgedUSDC());
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertGt(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -506,7 +506,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             uint256 gatewayBalance = l1USDC.balanceOf(address(gateway));
             uint256 totalBridgedUSDCBefore = gateway.totalBridgedUSDC();
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertEq(0, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(0, l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)));
             if (useRouter) {
                 router.depositERC20{value: feeToPay + extraValue}(address(l1USDC), recipient, amount, gasLimit);
             } else {
@@ -515,7 +515,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             assertEq(amount + gatewayBalance, l1USDC.balanceOf(address(gateway)));
             assertEq(amount + totalBridgedUSDCBefore, gateway.totalBridgedUSDC());
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertGt(l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)), 0);
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 

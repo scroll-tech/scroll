@@ -392,7 +392,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
 
             uint256 gatewayBalance = l2Token.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertEq(l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)), 0);
+            assertEq(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.withdrawERC20{value: feeToPay}(address(l2Token), amount, gasLimit);
             } else {
@@ -400,7 +400,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
             }
             assertEq(gatewayBalance, l2Token.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertGt(l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)), 0);
+            assertGt(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -469,7 +469,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
 
             uint256 gatewayBalance = l2Token.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertEq(l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)), 0);
+            assertEq(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.withdrawERC20{value: feeToPay}(address(l2Token), recipient, amount, gasLimit);
             } else {
@@ -477,7 +477,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
             }
             assertEq(gatewayBalance, l2Token.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertGt(l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)), 0);
+            assertGt(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -559,7 +559,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
 
             uint256 gatewayBalance = l2Token.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertEq(l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)), 0);
+            assertEq(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.withdrawERC20AndCall{value: feeToPay}(address(l2Token), recipient, amount, dataToCall, gasLimit);
             } else {
@@ -573,7 +573,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
             }
             assertEq(gatewayBalance, l2Token.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertGt(l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)), 0);
+            assertGt(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
