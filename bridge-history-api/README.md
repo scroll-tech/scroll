@@ -6,7 +6,7 @@ This directory contains the `bridge-history-api` service that provides REST APIs
 The bridge-history-api contains 3 different components
 
 If want to run `bridgehistoryapi-db-cli`， which connects the DB and provide several operations(migrate, reset...)
-1. Build and run the `bridgehistoryapi-db-cli`
+Build and run the `bridgehistoryapi-db-cli`
 ```
     cd ./bridge-history-api
     make bridgehistoryapi-db-cli
@@ -14,7 +14,7 @@ If want to run `bridgehistoryapi-db-cli`， which connects the DB and provide se
 ```
 
 If want to run `bridgehistoryapi-cross-msg-fetcher`, which connects the DB and fetches txs from both l1 and l2
-2. Build and start the `bridgehistoryapi-cross-msg-fetcher` service.
+Build and start the `bridgehistoryapi-cross-msg-fetcher` service.
 ```
     cd ./bridge-history-api
     make bridgehistoryapi-cross-msg-fetcher
@@ -22,7 +22,7 @@ If want to run `bridgehistoryapi-cross-msg-fetcher`, which connects the DB and f
 ```
 
 If want to run `bridgehistoryapi-server`, which connected to DB and provides REST APIs
-3. Build and start the `bridgehistoryapi-server` service.
+Build and start the `bridgehistoryapi-server` service.
 ```
     cd ./bridge-history-api
     make bridgehistoryapi-server
