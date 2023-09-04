@@ -2,12 +2,9 @@
 
 pragma solidity =0.8.16;
 
-import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
+import {ClonesUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/ClonesUpgradeable.sol";
+import {IERC20MetadataUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 
-import {IERC20Metadata} from "../../interfaces/IERC20Metadata.sol";
 import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
@@ -21,9 +18,7 @@ import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 /// @dev The deposited ERC20 tokens are held in this gateway. On finalizing withdraw, the corresponding
 /// token will be transfer to the recipient directly. Any ERC20 that requires non-standard functionality
 /// should use a separate gateway.
-contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gateway {
-    using SafeERC20 for IERC20;
-
+contract L1StandardERC20Gateway is L1ERC20Gateway {
     /*************
      * Variables *
      *************/
@@ -81,7 +76,7 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
         // we can calculate the l2 address directly.
         bytes32 _salt = keccak256(abi.encodePacked(counterpart, keccak256(abi.encodePacked(_l1Token))));
 
-        return Clones.predictDeterministicAddress(l2TokenImplementation, _salt, l2TokenFactory);
+        return ClonesUpgradeable.predictDeterministicAddress(l2TokenImplementation, _salt, l2TokenFactory);
     }
 
     /**********************
@@ -143,9 +138,9 @@ contract L1StandardERC20Gateway is Initializable, ScrollGatewayBase, L1ERC20Gate
             _l2Token = getL2ERC20Address(_token);
 
             // passing symbol/name/decimal in order to deploy in L2.
-            string memory _symbol = IERC20Metadata(_token).symbol();
-            string memory _name = IERC20Metadata(_token).name();
-            uint8 _decimals = IERC20Metadata(_token).decimals();
+            string memory _symbol = IERC20MetadataUpgradeable(_token).symbol();
+            string memory _name = IERC20MetadataUpgradeable(_token).name();
+            uint8 _decimals = IERC20MetadataUpgradeable(_token).decimals();
             _l2Data = abi.encode(true, abi.encode(_data, abi.encode(_symbol, _name, _decimals)));
         } else {
             _l2Data = abi.encode(false, _data);

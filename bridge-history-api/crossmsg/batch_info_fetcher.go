@@ -95,6 +95,9 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 	} else {
 		startHeight = latestBatchHeight + 1
 	}
+	if startHeight < b.batchInfoStartNumber {
+		startHeight = b.batchInfoStartNumber
+	}
 	for from := startHeight; number >= from; from += fetchLimit {
 		to := from + fetchLimit - 1
 		// number - confirmation can never less than 0 since the for loop condition

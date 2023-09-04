@@ -20,9 +20,9 @@ import {TransferReentrantToken} from "./mocks/tokens/TransferReentrantToken.sol"
 
 contract L1GatewayRouterTest is L1GatewayTestBase {
     // from L1GatewayRouter
-    event SetETHGateway(address indexed ethGateway);
-    event SetDefaultERC20Gateway(address indexed defaultERC20Gateway);
-    event SetERC20Gateway(address indexed token, address indexed gateway);
+    event SetETHGateway(address indexed oldETHGateway, address indexed newEthGateway);
+    event SetDefaultERC20Gateway(address indexed oldDefaultERC20Gateway, address indexed newDefaultERC20Gateway);
+    event SetERC20Gateway(address indexed token, address indexed oldGateway, address indexed newGateway);
 
     ScrollStandardERC20 private template;
     ScrollStandardERC20Factory private factory;
@@ -94,8 +94,8 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
         hevm.stopPrank();
 
         // set by owner, should succeed
-        hevm.expectEmit(true, false, false, true);
-        emit SetDefaultERC20Gateway(address(l1StandardERC20Gateway));
+        hevm.expectEmit(true, true, false, true);
+        emit SetDefaultERC20Gateway(address(0), address(l1StandardERC20Gateway));
 
         assertEq(address(0), router.getERC20Gateway(address(l1Token)));
         assertEq(address(0), router.defaultERC20Gateway());
@@ -121,8 +121,8 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
         _tokens[0] = address(l1Token);
         _gateways[0] = address(l1StandardERC20Gateway);
 
-        hevm.expectEmit(true, true, false, true);
-        emit SetERC20Gateway(address(l1Token), address(l1StandardERC20Gateway));
+        hevm.expectEmit(true, true, true, true);
+        emit SetERC20Gateway(address(l1Token), address(0), address(l1StandardERC20Gateway));
 
         assertEq(address(0), router.getERC20Gateway(address(l1Token)));
         router.setERC20Gateway(_tokens, _gateways);

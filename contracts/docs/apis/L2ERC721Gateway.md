@@ -180,6 +180,23 @@ function owner() external view returns (address)
 |---|---|---|
 | _0 | address | undefined |
 
+### rateLimiter
+
+```solidity
+function rateLimiter() external view returns (address)
+```
+
+The address of token rate limiter contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
 ### renounceOwnership
 
 ```solidity
@@ -245,6 +262,22 @@ function transferOwnership(address newOwner) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | newOwner | address | undefined |
+
+### updateRateLimiter
+
+```solidity
+function updateRateLimiter(address _newRateLimiter) external nonpayable
+```
+
+Update rate limiter contract.
+
+*This function can only called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _newRateLimiter | address | The address of new rate limiter contract. |
 
 ### updateTokenMapping
 
@@ -397,10 +430,27 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
 
+### UpdateRateLimiter
+
+```solidity
+event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
+```
+
+Emitted when owner updates rate limiter contract.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _oldRateLimiter `indexed` | address | undefined |
+| _newRateLimiter `indexed` | address | undefined |
+
 ### UpdateTokenMapping
 
 ```solidity
-event UpdateTokenMapping(address _l2Token, address _l1Token)
+event UpdateTokenMapping(address indexed l2Token, address indexed oldL1Token, address indexed newL1Token)
 ```
 
 Emitted when token mapping for ERC721 token is updated.
@@ -411,8 +461,9 @@ Emitted when token mapping for ERC721 token is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| _l2Token  | address | The address of corresponding ERC721 token on layer 2. |
-| _l1Token  | address | The address of ERC721 token on layer 1. |
+| l2Token `indexed` | address | The address of corresponding ERC721 token in layer 2. |
+| oldL1Token `indexed` | address | The address of the old corresponding ERC721 token in layer 1. |
+| newL1Token `indexed` | address | The address of the new corresponding ERC721 token in layer 1. |
 
 ### WithdrawERC721
 

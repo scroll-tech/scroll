@@ -38,11 +38,15 @@ func TestChunkEncode(t *testing.T) {
 	wrappedBlock := &WrappedBlock{}
 	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
 	assert.Equal(t, uint64(0), wrappedBlock.NumL1Messages(0))
+	assert.Equal(t, uint64(298), wrappedBlock.EstimateL1CommitCalldataSize())
+	assert.Equal(t, uint64(2), wrappedBlock.NumL2Transactions())
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
 			wrappedBlock,
 		},
 	}
+	assert.Equal(t, uint64(0), chunk.NumL1Messages(0))
+	assert.Equal(t, uint64(6006), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString := hex.EncodeToString(bytes)
 	assert.NoError(t, err)
@@ -56,29 +60,36 @@ func TestChunkEncode(t *testing.T) {
 	wrappedBlock2 := &WrappedBlock{}
 	assert.NoError(t, json.Unmarshal(templateBlockTrace2, wrappedBlock2))
 	assert.Equal(t, uint64(11), wrappedBlock2.NumL1Messages(0)) // 0..=9 skipped, 10 included
+	assert.Equal(t, uint64(96), wrappedBlock2.EstimateL1CommitCalldataSize())
+	assert.Equal(t, uint64(1), wrappedBlock2.NumL2Transactions())
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
 			wrappedBlock2,
 		},
 	}
+	assert.Equal(t, uint64(11), chunk.NumL1Messages(0))
+	assert.Equal(t, uint64(5002), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, 97, len(bytes))
-	assert.Equal(t, "01000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a12000002000b00000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", hexString)
+	assert.Equal(t, "01000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a1200000c000b00000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", hexString)
 
 	// Test case 5: when the chunk contains two blocks each with 1 L1MsgTx
+	// TODO: revise this test, we cannot reuse the same L1MsgTx twice
 	chunk = &Chunk{
 		Blocks: []*WrappedBlock{
 			wrappedBlock2,
 			wrappedBlock2,
 		},
 	}
+	assert.Equal(t, uint64(11), chunk.NumL1Messages(0))
+	assert.Equal(t, uint64(9958), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
 	assert.Equal(t, 193, len(bytes))
-	assert.Equal(t, "02000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a12000002000b000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a12000002000000000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e105808080808000000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", hexString)
+	assert.Equal(t, "02000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a1200000c000b000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a12000001000000000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e105808080808000000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", hexString)
 }
 
 func TestChunkHash(t *testing.T) {
@@ -133,5 +144,83 @@ func TestChunkHash(t *testing.T) {
 	}
 	hash, err = chunk.Hash(0)
 	assert.NoError(t, err)
-	assert.Equal(t, "0x42967825696a129e7a83f082097aca982747480956dcaa448c9296e795c9a91a", hash.Hex())
+	assert.Equal(t, "0x2eb7dd63bf8fc29a0f8c10d16c2ae6f9da446907c79d50f5c164d30dc8526b60", hash.Hex())
+}
+
+func TestErrorPaths(t *testing.T) {
+	// test 1: Header.Number is not a uint64
+	templateBlockTrace, err := os.ReadFile("../testdata/blockTrace_02.json")
+	assert.NoError(t, err)
+
+	wrappedBlock := &WrappedBlock{}
+
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
+	wrappedBlock.Header.Number = wrappedBlock.Header.Number.Lsh(wrappedBlock.Header.Number, 64)
+	bytes, err := wrappedBlock.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "block number is not uint64")
+
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
+	for i := 0; i < 65537; i++ {
+		wrappedBlock.Transactions = append(wrappedBlock.Transactions, wrappedBlock.Transactions[0])
+	}
+
+	bytes, err = wrappedBlock.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of transactions exceeds max uint16")
+
+	chunk := &Chunk{
+		Blocks: []*WrappedBlock{
+			wrappedBlock,
+		},
+	}
+
+	bytes, err = chunk.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of transactions exceeds max uint16")
+
+	wrappedBlock.Transactions = wrappedBlock.Transactions[:1]
+	wrappedBlock.Transactions[0].Data = "not-a-hex"
+	bytes, err = chunk.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "hex string without 0x prefix")
+
+	assert.NoError(t, json.Unmarshal(templateBlockTrace, wrappedBlock))
+	wrappedBlock.Transactions[0].TxHash = "not-a-hex"
+	_, err = chunk.Hash(0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid byte")
+
+	templateBlockTrace2, err := os.ReadFile("../testdata/blockTrace_04.json")
+	assert.NoError(t, err)
+
+	wrappedBlock2 := &WrappedBlock{}
+	assert.NoError(t, json.Unmarshal(templateBlockTrace2, wrappedBlock2))
+	for i := 0; i < 65535; i++ {
+		tx := &wrappedBlock2.Transactions[i]
+		txCopy := *tx
+		txCopy.Nonce = uint64(i + 1)
+		wrappedBlock2.Transactions = append(wrappedBlock2.Transactions, txCopy)
+	}
+
+	bytes, err = wrappedBlock2.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of L1 messages exceeds max uint16")
+
+	chunk = &Chunk{
+		Blocks: []*WrappedBlock{
+			wrappedBlock2,
+		},
+	}
+
+	bytes, err = chunk.Encode(0)
+	assert.Nil(t, bytes)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of L1 messages exceeds max uint16")
+
 }

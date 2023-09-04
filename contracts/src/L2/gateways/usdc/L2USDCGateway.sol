@@ -7,6 +7,7 @@ import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import {IFiatToken} from "../../../interfaces/IFiatToken.sol";
+import {IUSDCDestinationBridge} from "../../../interfaces/IUSDCDestinationBridge.sol";
 import {IL1ERC20Gateway} from "../../../L1/gateways/IL1ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../../IL2ScrollMessenger.sol";
 import {IL2ERC20Gateway} from "../IL2ERC20Gateway.sol";
@@ -17,7 +18,7 @@ import {L2ERC20Gateway} from "../L2ERC20Gateway.sol";
 /// @title L2USDCGateway
 /// @notice The `L2USDCGateway` contract is used to withdraw `USDC` token on layer 2 and
 /// finalize deposit `USDC` from layer 1.
-contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway {
+contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /*************
@@ -34,8 +35,15 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
      * Variables *
      *************/
 
+    /// @notice The address of caller from Circle.
+    address public circleCaller;
+
+    /// @notice The flag indicates whether USDC deposit is paused.
+    /// @dev This is not necessary to be set `true` since we will set `L1USDCGateway.depositPaused` first.
+    ///      This is kept just in case and will be set after all pending messages are relayed.
     bool public depositPaused;
 
+    /// @notice The flag indicates whether USDC withdrawal is paused.
     bool public withdrawPaused;
 
     /***************
@@ -56,8 +64,6 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
     ) external initializer {
         require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
-
-        OwnableUpgradeable.__Ownable_init();
     }
 
     /*************************
@@ -94,7 +100,8 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
 
         require(IFiatToken(_l2Token).mint(_to, _amount), "mint USDC failed");
 
-        _doCallback(_to, _data);
+        // disable call for USDC
+        // _doCallback(_to, _data);
 
         emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
     }
@@ -102,6 +109,19 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
     /*******************************
      * Public Restricted Functions *
      *******************************/
+
+    /// @inheritdoc IUSDCDestinationBridge
+    function transferUSDCRoles(address _owner) external {
+        require(msg.sender == circleCaller, "only circle caller");
+
+        OwnableUpgradeable(l2USDC).transferOwnership(_owner);
+    }
+
+    /// @notice Update the Circle EOA address.
+    /// @param _caller The address to update.
+    function updateCircleCaller(address _caller) external onlyOwner {
+        circleCaller = _caller;
+    }
 
     /// @notice Change the deposit pause status of this contract.
     /// @param _paused The new status, `true` means paused and `false` means not paused.
@@ -131,15 +151,16 @@ contract L2USDCGateway is OwnableUpgradeable, ScrollGatewayBase, L2ERC20Gateway 
         require(_token == l2USDC, "only USDC is allowed");
         require(!withdrawPaused, "withdraw paused");
 
-        // 1. Extract real sender if this call is from L1GatewayRouter.
+        // 1. Extract real sender if this call is from L2GatewayRouter.
         address _from = msg.sender;
         if (router == msg.sender) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
+        require(_data.length == 0, "call is not allowed");
 
         // 2. Transfer token into this contract.
         IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
-        require(IFiatToken(_token).burn(_amount), "burn USDC failed");
+        IFiatToken(_token).burn(_amount);
 
         // 3. Generate message passed to L1USDCGateway.
         address _l1USDC = l1USDC;

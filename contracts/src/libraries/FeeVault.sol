@@ -103,27 +103,32 @@ abstract contract FeeVault is OwnableBase {
     receive() external payable {}
 
     /// @notice Triggers a withdrawal of funds to the L1 fee wallet.
-    function withdraw() external {
-        uint256 value = address(this).balance;
-
+    /// @param _value The amount of ETH to withdraw.
+    function withdraw(uint256 _value) public {
         require(
-            value >= minWithdrawAmount,
+            _value >= minWithdrawAmount,
             "FeeVault: withdrawal amount must be greater than minimum withdrawal amount"
         );
 
         unchecked {
-            totalProcessed += value;
+            totalProcessed += _value;
         }
 
-        emit Withdrawal(value, recipient, msg.sender);
+        emit Withdrawal(_value, recipient, msg.sender);
 
         // no fee provided
-        IL2ScrollMessenger(messenger).sendMessage{value: value}(
+        IL2ScrollMessenger(messenger).sendMessage{value: _value}(
             recipient,
-            value,
+            _value,
             bytes(""), // no message (simple eth transfer)
             0 // _gasLimit can be zero for fee vault.
         );
+    }
+
+    /// @notice Triggers a withdrawal of all available funds to the L1 fee wallet.
+    function withdraw() external {
+        uint256 value = address(this).balance;
+        withdraw(value);
     }
 
     /************************

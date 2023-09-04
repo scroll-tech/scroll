@@ -47,7 +47,7 @@ The address of fee vault, collecting cross domain messaging fee.
 ### initialize
 
 ```solidity
-function initialize(address _counterpart, address _feeVault) external nonpayable
+function initialize(address _counterpart) external nonpayable
 ```
 
 
@@ -59,7 +59,6 @@ function initialize(address _counterpart, address _feeVault) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | _counterpart | address | undefined |
-| _feeVault | address | undefined |
 
 ### isL1MessageExecuted
 
@@ -104,45 +103,6 @@ Mapping from L2 message hash to sent status.
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
-
-### l1MessageFailedTimes
-
-```solidity
-function l1MessageFailedTimes(bytes32) external view returns (uint256)
-```
-
-Mapping from L1 message hash to the number of failure times.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### maxFailedExecutionTimes
-
-```solidity
-function maxFailedExecutionTimes() external view returns (uint256)
-```
-
-The maximum number of times each L1 message can fail on L2.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
 
 ### messageQueue
 
@@ -194,6 +154,23 @@ function paused() external view returns (bool)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
+
+### rateLimiter
+
+```solidity
+function rateLimiter() external view returns (address)
+```
+
+The address of ETH rate limiter contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 ### relayMessage
 
@@ -313,13 +290,13 @@ Update fee vault contract.
 |---|---|---|
 | _newFeeVault | address | The address of new fee vault contract. |
 
-### updateMaxFailedExecutionTimes
+### updateRateLimiter
 
 ```solidity
-function updateMaxFailedExecutionTimes(uint256 _maxFailedExecutionTimes) external nonpayable
+function updateRateLimiter(address _newRateLimiter) external nonpayable
 ```
 
-Update max failed execution times.
+Update rate limiter contract.
 
 *This function can only called by contract owner.*
 
@@ -327,7 +304,7 @@ Update max failed execution times.
 
 | Name | Type | Description |
 |---|---|---|
-| _maxFailedExecutionTimes | uint256 | The new max failed execution times. |
+| _newRateLimiter | address | The address of new rate limiter contract. |
 
 ### xDomainMessageSender
 
@@ -488,7 +465,7 @@ Emitted when owner updates fee vault contract.
 ### UpdateMaxFailedExecutionTimes
 
 ```solidity
-event UpdateMaxFailedExecutionTimes(uint256 maxFailedExecutionTimes)
+event UpdateMaxFailedExecutionTimes(uint256 oldMaxFailedExecutionTimes, uint256 newMaxFailedExecutionTimes)
 ```
 
 Emitted when the maximum number of times each message can fail in L2 is updated.
@@ -499,7 +476,25 @@ Emitted when the maximum number of times each message can fail in L2 is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| maxFailedExecutionTimes  | uint256 | The new maximum number of times each message can fail in L2. |
+| oldMaxFailedExecutionTimes  | uint256 | undefined |
+| newMaxFailedExecutionTimes  | uint256 | undefined |
+
+### UpdateRateLimiter
+
+```solidity
+event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
+```
+
+Emitted when owner updates rate limiter contract.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _oldRateLimiter `indexed` | address | undefined |
+| _newRateLimiter `indexed` | address | undefined |
 
 
 

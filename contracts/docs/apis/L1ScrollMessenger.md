@@ -239,6 +239,23 @@ Mapping from queue index to previous replay queue index.
 |---|---|---|
 | _0 | uint256 | undefined |
 
+### rateLimiter
+
+```solidity
+function rateLimiter() external view returns (address)
+```
+
+The address of ETH rate limiter contract.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
 ### relayMessageWithProof
 
 ```solidity
@@ -423,7 +440,7 @@ Update fee vault contract.
 ### updateMaxReplayTimes
 
 ```solidity
-function updateMaxReplayTimes(uint256 _maxReplayTimes) external nonpayable
+function updateMaxReplayTimes(uint256 _newMaxReplayTimes) external nonpayable
 ```
 
 Update max replay times.
@@ -434,7 +451,23 @@ Update max replay times.
 
 | Name | Type | Description |
 |---|---|---|
-| _maxReplayTimes | uint256 | The new max replay times. |
+| _newMaxReplayTimes | uint256 | The new max replay times. |
+
+### updateRateLimiter
+
+```solidity
+function updateRateLimiter(address _newRateLimiter) external nonpayable
+```
+
+Update rate limiter contract.
+
+*This function can only called by contract owner.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _newRateLimiter | address | The address of new rate limiter contract. |
 
 ### xDomainMessageSender
 
@@ -595,7 +628,7 @@ Emitted when owner updates fee vault contract.
 ### UpdateMaxReplayTimes
 
 ```solidity
-event UpdateMaxReplayTimes(uint256 maxReplayTimes)
+event UpdateMaxReplayTimes(uint256 oldMaxReplayTimes, uint256 newMaxReplayTimes)
 ```
 
 Emitted when the maximum number of times each message can be replayed is updated.
@@ -606,7 +639,25 @@ Emitted when the maximum number of times each message can be replayed is updated
 
 | Name | Type | Description |
 |---|---|---|
-| maxReplayTimes  | uint256 | undefined |
+| oldMaxReplayTimes  | uint256 | undefined |
+| newMaxReplayTimes  | uint256 | undefined |
+
+### UpdateRateLimiter
+
+```solidity
+event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
+```
+
+Emitted when owner updates rate limiter contract.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _oldRateLimiter `indexed` | address | undefined |
+| _newRateLimiter `indexed` | address | undefined |
 
 
 

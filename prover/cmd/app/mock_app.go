@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
-	"golang.org/x/sync/errgroup"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
-	proverConfig "scroll-tech/prover/config"
+	"scroll-tech/prover/config"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
 
@@ -28,7 +28,7 @@ func getIndex() int {
 
 // ProverApp prover-test client manager.
 type ProverApp struct {
-	Config *proverConfig.Config
+	Config *config.Config
 
 	base *docker.App
 
@@ -43,26 +43,36 @@ type ProverApp struct {
 }
 
 // NewProverApp return a new proverApp manager.
-func NewProverApp(base *docker.App, file string, wsURL string) *ProverApp {
-	proverFile := fmt.Sprintf("/tmp/%d_prover-config.json", base.Timestamp)
+func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, httpURL string) *ProverApp {
+	var proofType message.ProofType
+	switch mockName {
+	case utils.ChunkProverApp:
+		proofType = message.ProofTypeChunk
+	case utils.BatchProverApp:
+		proofType = message.ProofTypeBatch
+	default:
+		return nil
+	}
+	name := string(mockName)
+	proverFile := fmt.Sprintf("/tmp/%d_%s-config.json", base.Timestamp, name)
 	proverApp := &ProverApp{
 		base:       base,
 		originFile: file,
 		proverFile: proverFile,
-		bboltDB:    fmt.Sprintf("/tmp/%d_bbolt_db", base.Timestamp),
+		bboltDB:    fmt.Sprintf("/tmp/%d_%s_bbolt_db", base.Timestamp, name),
 		index:      getIndex(),
-		name:       string(utils.ProverApp),
+		name:       name,
 		args:       []string{"--log.debug", "--config", proverFile},
 	}
-	if err := proverApp.MockConfig(true, wsURL); err != nil {
+	proverApp.AppAPI = cmd.NewCmd(proverApp.name, proverApp.args...)
+	if err := proverApp.MockConfig(true, httpURL, proofType); err != nil {
 		panic(err)
 	}
 	return proverApp
 }
 
 // RunApp run prover-test child process by multi parameters.
-func (r *ProverApp) RunApp(t *testing.T, args ...string) {
-	r.AppAPI = cmd.NewCmd(r.name, append(r.args, args...)...)
+func (r *ProverApp) RunApp(t *testing.T) {
 	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
@@ -77,14 +87,15 @@ func (r *ProverApp) Free() {
 }
 
 // MockConfig creates a new prover config.
-func (r *ProverApp) MockConfig(store bool, wsURL string) error {
-	cfg, err := proverConfig.NewConfig(r.originFile)
+func (r *ProverApp) MockConfig(store bool, httpURL string, proofType message.ProofType) error {
+	cfg, err := config.NewConfig(r.originFile)
 	if err != nil {
 		return err
 	}
 	cfg.ProverName = fmt.Sprintf("%s_%d", r.name, r.index)
 	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.ProverName)
-	cfg.TraceEndpoint = r.base.L2gethImg.Endpoint()
+	cfg.L2Geth.Endpoint = r.base.L2gethImg.Endpoint()
+	cfg.L2Geth.Confirmations = rpc.LatestBlockNumber
 	// Reuse l1geth's keystore file
 	cfg.KeystorePassword = "scrolltest"
 	cfg.DBPath = r.bboltDB
@@ -93,7 +104,11 @@ func (r *ProverApp) MockConfig(store bool, wsURL string) error {
 	if err != nil {
 		return err
 	}
-	cfg.CoordinatorURL = wsURL
+	cfg.Coordinator.BaseURL = httpURL
+	cfg.Coordinator.RetryCount = 10
+	cfg.Coordinator.RetryWaitTimeSec = 10
+	cfg.Coordinator.ConnectionTimeoutSec = 30
+	cfg.Core.ProofType = proofType
 	r.Config = cfg
 
 	if !store {
@@ -105,60 +120,4 @@ func (r *ProverApp) MockConfig(store bool, wsURL string) error {
 		return err
 	}
 	return os.WriteFile(r.proverFile, data, 0600)
-}
-
-// ProverApps proverApp list.
-type ProverApps []*ProverApp
-
-// RunApps starts all the proverApps.
-func (r ProverApps) RunApps(t *testing.T, args ...string) {
-	var eg errgroup.Group
-	for i := range r {
-		i := i
-		eg.Go(func() error {
-			r[i].RunApp(t, args...)
-			return nil
-		})
-	}
-	_ = eg.Wait()
-}
-
-// MockConfigs creates all the proverApps' configs.
-func (r ProverApps) MockConfigs(store bool, wsURL string) error {
-	var eg errgroup.Group
-	for _, prover := range r {
-		prover := prover
-		eg.Go(func() error {
-			return prover.MockConfig(store, wsURL)
-		})
-	}
-	return eg.Wait()
-}
-
-// Free releases proverApps.
-func (r ProverApps) Free() {
-	var wg sync.WaitGroup
-	wg.Add(len(r))
-	for i := range r {
-		i := i
-		go func() {
-			r[i].Free()
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-}
-
-// WaitExit wait proverApps stopped.
-func (r ProverApps) WaitExit() {
-	var wg sync.WaitGroup
-	wg.Add(len(r))
-	for i := range r {
-		i := i
-		go func() {
-			r[i].WaitExit()
-			wg.Done()
-		}()
-	}
-	wg.Wait()
 }

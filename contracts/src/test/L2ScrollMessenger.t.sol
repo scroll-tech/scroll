@@ -40,7 +40,7 @@ contract L2ScrollMessengerTest is DSTestPlus {
         );
 
         // Initialize L2 contracts
-        l2Messenger.initialize(address(l1Messenger), feeVault);
+        l2Messenger.initialize(address(l1Messenger));
         l2MessageQueue.initialize(address(l2Messenger));
         l1GasOracle.updateWhitelist(address(whitelist));
     }
@@ -51,9 +51,14 @@ contract L2ScrollMessengerTest is DSTestPlus {
     }
 
     function testForbidCallFromL1() external {
+        l2Messenger.updateRateLimiter(address(1));
+
         hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         hevm.expectRevert("Forbid to call message queue");
         l2Messenger.relayMessage(address(this), address(l2MessageQueue), 0, 0, new bytes(0));
+
+        hevm.expectRevert("Forbid to call rate limiter");
+        l2Messenger.relayMessage(address(this), address(1), 0, 0, new bytes(0));
 
         hevm.expectRevert("Forbid to call self");
         l2Messenger.relayMessage(address(this), address(l2Messenger), 0, 0, new bytes(0));

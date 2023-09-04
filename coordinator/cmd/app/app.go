@@ -2,15 +2,18 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
+	"time"
 
-	// enable the pprof
-	_ "net/http/pprof"
-
+	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/metrics"
@@ -20,7 +23,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/controller/cron"
-	"scroll-tech/coordinator/internal/logic/provermanager"
+	"scroll-tech/coordinator/internal/route"
 )
 
 var app *cli.App
@@ -49,15 +52,15 @@ func action(ctx *cli.Context) error {
 	}
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
-	db, err := database.InitDB(cfg.DBConfig)
+	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
 
-	proofCollector := cron.NewCollector(subCtx, db, cfg)
+	registry := prometheus.DefaultRegisterer
+	metrics.Server(ctx, registry.(*prometheus.Registry))
 
-	provermanager.InitProverManager(db)
-
+	proofCollector := cron.NewCollector(subCtx, db, cfg, registry)
 	defer func() {
 		proofCollector.Stop()
 		cancel()
@@ -66,34 +69,12 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
-	// Start metrics server.
-	metrics.Serve(subCtx, ctx)
+	apiSrv := apiServer(ctx, cfg, db, registry)
 
-	apis := api.RegisterAPIs(cfg, db)
-	// Register api and start rpc service.
-	if ctx.Bool(httpEnabledFlag.Name) {
-		handler, addr, err := utils.StartHTTPEndpoint(fmt.Sprintf("%s:%d", ctx.String(httpListenAddrFlag.Name), ctx.Int(httpPortFlag.Name)), apis)
-		if err != nil {
-			log.Crit("Could not start RPC api", "error", err)
-		}
-		defer func() {
-			_ = handler.Shutdown(ctx.Context)
-			log.Info("HTTP endpoint closed", "url", fmt.Sprintf("http://%v/", addr))
-		}()
-		log.Info("HTTP endpoint opened", "url", fmt.Sprintf("http://%v/", addr))
-	}
-	// Register api and start ws service.
-	if ctx.Bool(wsEnabledFlag.Name) {
-		handler, addr, err := utils.StartWSEndpoint(fmt.Sprintf("%s:%d", ctx.String(wsListenAddrFlag.Name), ctx.Int(wsPortFlag.Name)), apis, cfg.ProverManagerConfig.CompressionLevel)
-		if err != nil {
-			log.Crit("Could not start WS api", "error", err)
-		}
-		defer func() {
-			_ = handler.Shutdown(ctx.Context)
-			log.Info("WS endpoint closed", "url", fmt.Sprintf("ws://%v/", addr))
-		}()
-		log.Info("WS endpoint opened", "url", fmt.Sprintf("ws://%v/", addr))
-	}
+	log.Info(
+		"coordinator start successfully",
+		"version", version.Version,
+	)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -101,11 +82,40 @@ func action(ctx *cli.Context) error {
 
 	// Wait until the interrupt signal is received from an OS signal.
 	<-interrupt
+	log.Info("start shutdown coordinator server ...")
 
+	closeCtx, cancelExit := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelExit()
+	if err = apiSrv.Shutdown(closeCtx); err != nil {
+		log.Warn("shutdown coordinator server failure", "error", err)
+		return nil
+	}
+
+	<-closeCtx.Done()
+	log.Info("coordinator server exiting success")
 	return nil
 }
 
-// Run run coordinator.
+func apiServer(ctx *cli.Context, cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *http.Server {
+	router := gin.New()
+	api.InitController(cfg, db, reg)
+	route.Route(router, cfg, reg)
+	port := ctx.String(httpPortFlag.Name)
+	srv := &http.Server{
+		Addr:              fmt.Sprintf(":%s", port),
+		Handler:           router,
+		ReadHeaderTimeout: time.Minute,
+	}
+
+	go func() {
+		if runServerErr := srv.ListenAndServe(); runServerErr != nil && !errors.Is(runServerErr, http.ErrServerClosed) {
+			log.Crit("run coordinator http server failure", "error", runServerErr)
+		}
+	}()
+	return srv
+}
+
+// Run coordinator.
 func Run() {
 	// RunApp the coordinator.
 	if err := app.Run(os.Args); err != nil {

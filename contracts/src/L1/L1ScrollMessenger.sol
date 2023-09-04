@@ -2,15 +2,12 @@
 
 pragma solidity =0.8.16;
 
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-
 import {IScrollChain} from "./rollup/IScrollChain.sol";
 import {IL1MessageQueue} from "./rollup/IL1MessageQueue.sol";
 import {IL1ScrollMessenger} from "./IL1ScrollMessenger.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
-import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {WithdrawTrieVerifier} from "../libraries/verifier/WithdrawTrieVerifier.sol";
 
 import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.sol";
@@ -28,7 +25,7 @@ import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.
 ///
 /// @dev All deposited Ether (including `WETH` deposited throng `L1WETHGateway`) will locked in
 /// this contract.
-contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1ScrollMessenger {
+contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
     /***********
      * Structs *
      ***********/
@@ -97,11 +94,13 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         address _rollup,
         address _messageQueue
     ) public initializer {
-        PausableUpgradeable.__Pausable_init();
-        ScrollMessengerBase._initialize(_counterpart, _feeVault);
+        ScrollMessengerBase.__ScrollMessengerBase_init(_counterpart, _feeVault);
 
         rollup = _rollup;
         messageQueue = _messageQueue;
+
+        maxReplayTimes = 3;
+        emit UpdateMaxReplayTimes(0, 3);
     }
 
     /*****************************
@@ -153,7 +152,7 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
 
         // @note check more `_to` address to avoid attack in the future when we add more gateways.
         require(_to != messageQueue, "Forbid to call message queue");
-        require(_to != address(this), "Forbid to call self");
+        _validateTargetAddress(_to);
 
         // @note This usually will never happen, just in case.
         require(_from != xDomainMessageSender, "Invalid message sender");
@@ -295,24 +294,14 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
      * Restricted Functions *
      ************************/
 
-    /// @notice Pause the contract
-    /// @dev This function can only called by contract owner.
-    /// @param _status The pause status to update.
-    function setPause(bool _status) external onlyOwner {
-        if (_status) {
-            _pause();
-        } else {
-            _unpause();
-        }
-    }
-
     /// @notice Update max replay times.
     /// @dev This function can only called by contract owner.
-    /// @param _maxReplayTimes The new max replay times.
-    function updateMaxReplayTimes(uint256 _maxReplayTimes) external onlyOwner {
-        maxReplayTimes = _maxReplayTimes;
+    /// @param _newMaxReplayTimes The new max replay times.
+    function updateMaxReplayTimes(uint256 _newMaxReplayTimes) external onlyOwner {
+        uint256 _oldMaxReplayTimes = maxReplayTimes;
+        maxReplayTimes = _newMaxReplayTimes;
 
-        emit UpdateMaxReplayTimes(_maxReplayTimes);
+        emit UpdateMaxReplayTimes(_oldMaxReplayTimes, _newMaxReplayTimes);
     }
 
     /**********************
@@ -326,6 +315,8 @@ contract L1ScrollMessenger is PausableUpgradeable, ScrollMessengerBase, IL1Scrol
         uint256 _gasLimit,
         address _refundAddress
     ) internal nonReentrant {
+        _addUsedAmount(_value);
+
         address _messageQueue = messageQueue; // gas saving
         address _counterpart = counterpart; // gas saving
 

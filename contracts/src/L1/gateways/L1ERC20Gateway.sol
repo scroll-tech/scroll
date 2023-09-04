@@ -2,13 +2,11 @@
 
 pragma solidity ^0.8.16;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
 import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
-
-import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 
 import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
 import {IScrollMessenger} from "../../libraries/IScrollMessenger.sol";
@@ -16,10 +14,8 @@ import {ScrollConstants} from "../../libraries/constants/ScrollConstants.sol";
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallback.sol";
 
-// solhint-disable no-empty-blocks
-
 abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, ScrollGatewayBase {
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /*************
      * Variables *
@@ -70,12 +66,12 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart nonReentrant {
+    ) external payable virtual override onlyCallByCounterpart nonReentrant {
         _beforeFinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
 
         // @note can possible trigger reentrant call to this contract or messenger,
         // but it seems not a big problem.
-        IERC20(_l1Token).safeTransfer(_to, _amount);
+        IERC20Upgradeable(_l1Token).safeTransfer(_to, _amount);
 
         _doCallback(_to, _data);
 
@@ -96,7 +92,7 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         // do dome check for each custom gateway
         _beforeDropMessage(_token, _receiver, _amount);
 
-        IERC20(_token).safeTransfer(_receiver, _amount);
+        IERC20Upgradeable(_token).safeTransfer(_receiver, _amount);
 
         emit RefundERC20(_token, _receiver, _amount);
     }
@@ -154,14 +150,17 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
             _amount = IL1GatewayRouter(msg.sender).requestERC20(_from, _token, _amount);
         } else {
             // common practice to handle fee on transfer token.
-            uint256 _before = IERC20(_token).balanceOf(address(this));
-            IERC20(_token).safeTransferFrom(_from, address(this), _amount);
-            uint256 _after = IERC20(_token).balanceOf(address(this));
+            uint256 _before = IERC20Upgradeable(_token).balanceOf(address(this));
+            IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
+            uint256 _after = IERC20Upgradeable(_token).balanceOf(address(this));
             // no unchecked here, since some weird token may return arbitrary balance.
             _amount = _after - _before;
         }
         // ignore weird fee on transfer token
         require(_amount > 0, "deposit zero amount");
+
+        // rate limit
+        _addUsedAmount(_token, _amount);
 
         return (_from, _amount, _data);
     }

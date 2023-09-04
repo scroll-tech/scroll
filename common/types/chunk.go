@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 )
@@ -65,23 +64,7 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 			if txData.Type == types.L1MessageTxType {
 				continue
 			}
-			data, err := hexutil.Decode(txData.Data)
-			if err != nil {
-				return nil, err
-			}
-			// right now we only support legacy tx
-			tx := types.NewTx(&types.LegacyTx{
-				Nonce:    txData.Nonce,
-				To:       txData.To,
-				Value:    txData.Value.ToInt(),
-				Gas:      txData.Gas,
-				GasPrice: txData.GasPrice.ToInt(),
-				Data:     data,
-				V:        txData.V.ToInt(),
-				R:        txData.R.ToInt(),
-				S:        txData.S.ToInt(),
-			})
-			rlpTxData, err := tx.MarshalBinary()
+			rlpTxData, err := convertTxDataToRLPEncoding(txData)
 			if err != nil {
 				return nil, err
 			}
@@ -146,14 +129,10 @@ func (c *Chunk) EstimateL1CommitGas() uint64 {
 	}
 
 	numBlocks := uint64(len(c.Blocks))
-	totalL1CommitGas += 100 * numBlocks     // numBlocks times warm sload
-	totalL1CommitGas += 16                  // numBlocks field of chunk encoding in calldata
-	totalL1CommitGas += 16 * 60 * numBlocks // BlockContext in chunk
+	totalL1CommitGas += 100 * numBlocks                         // numBlocks times warm sload
+	totalL1CommitGas += CalldataNonZeroByteGas                  // numBlocks field of chunk encoding in calldata
+	totalL1CommitGas += CalldataNonZeroByteGas * numBlocks * 60 // numBlocks of BlockContext in chunk
 
-	getKeccakGas := func(size uint64) uint64 {
-		return 30 + 6*((size+31)/32) // 30 + 6 * ceil(size / 32)
-	}
-
-	totalL1CommitGas += getKeccakGas(58*numBlocks + 32*totalTxNum) // chunk hash
+	totalL1CommitGas += GetKeccak256Gas(58*numBlocks + 32*totalTxNum) // chunk hash
 	return totalL1CommitGas
 }
