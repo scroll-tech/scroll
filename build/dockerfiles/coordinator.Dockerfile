@@ -20,7 +20,7 @@ RUN find ./ | grep libzktrie.so | xargs -I{} cp {} /app/target/release/
 FROM scrolltech/go-rust-builder:go-1.19-rust-nightly-2022-12-10 as base
 WORKDIR /src
 COPY go.work* ./
-COPY ./bridge/go.* ./bridge/
+COPY ./rollup/go.* ./rollup/
 COPY ./common/go.* ./common/
 COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
