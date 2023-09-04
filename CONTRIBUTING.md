@@ -11,7 +11,7 @@ Please note that this project is released with a [Contributor Code of Conduct][c
 
 ## Contribute to Scroll
 
-Did you know there are many ways of contributing to Scroll? If you are looking to contribute to by adding Scroll to existing Dev Tools or by doing integrations please go to the [Contribute to Scroll](https://github.com/scroll-tech/contribute-to-scroll) instead. If you are looking to contribute to Scroll's zkEVM circuits on Halo2 refer to the [zkEVM circuits](https://github.com/scroll-tech/zkevm-circuits) repo. This repository covers the Scroll infrastructure and smart contracts, if you want to contribute to these areas continue reading this document.
+Did you know there are many ways of contributing to Scroll? If you are looking to contribute to by adding Scroll to existing Dev Tools or by doing integrations please go to the [Contribute to Scroll](https://github.com/scroll-tech/contribute-to-scroll) repo instead. If you are looking to contribute to Scroll's Halo2 zkEVM circuits please refer to the [zkEVM circuits](https://github.com/scroll-tech/zkevm-circuits) repo. This repository covers the Scroll infrastructure and smart contracts, if you want to contribute to these areas continue reading this document.
 
 ## Issues and PRs
 
@@ -25,7 +25,7 @@ We'd also love PRs. If you're thinking of a large PR, we advise opening up an is
 1. Create a new branch: `git checkout -b my-branch-name`.
 1. Make your change, add tests, and make sure the tests still pass.
 1. Push to your fork and [submit a pull request][pr].
-1. Pat your self on the back and wait for your pull request to be reviewed and merged.
+1. Pat yourself on the back and wait for your pull request to be reviewed and merged.
 
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:
 
@@ -33,7 +33,7 @@ Here are a few things you can do that will increase the likelihood of your pull 
 - Keep your changes as focused as possible. If there are multiple changes you would like to make that are not dependent upon each other, consider submitting them as separate pull requests.
 - Write a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
-Work in Progress pull requests are also welcome to get feedback early on, or if there is something blocked you.
+Work in Progress pull requests are also welcome to get feedback early on, or if there is something that blocked you.
 
 ## Resources
 

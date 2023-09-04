@@ -90,6 +90,10 @@ You can find the unit tests in [`contracts/src/test/`](/contracts/src/test/), an
 
 See [`contracts`](/contracts) for more details on the contracts.
 
+## Contributing
+
+We welcome community contributions to this repository. Before you submit any issues or PRs, please read the [Code of Conduct](CODE_OF_CONDUCT.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
 Scroll Monorepo is licensed under the [MIT](./LICENSE) license.
