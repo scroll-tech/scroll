@@ -10,6 +10,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
@@ -92,14 +93,16 @@ func action(ctx *cli.Context) error {
 	}
 	// Start l1 watcher process
 	go utils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
-		number, loopErr := butils.GetLatestConfirmedBlockNumber(ctx, l1client, cfg.L1Config.Confirmations)
+		// Fetch the latest block number to decrease the delay when fetching gas prices
+		// Use latest block number - 1 to prevent frequent reorg
+		number, loopErr := butils.GetLatestConfirmedBlockNumber(ctx, l1client, rpc.LatestBlockNumber)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
 			return
 		}
 
-		if loopErr = l1watcher.FetchBlockHeader(number); loopErr != nil {
-			log.Error("Failed to fetch L1 block header", "lastest", number, "err", loopErr)
+		if loopErr = l1watcher.FetchBlockHeader(number - 1); loopErr != nil {
+			log.Error("Failed to fetch L1 block header", "lastest", number-1, "err", loopErr)
 		}
 	})
 
