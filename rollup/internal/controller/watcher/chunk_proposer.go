@@ -18,10 +18,6 @@ import (
 	"scroll-tech/rollup/internal/orm"
 )
 
-// maxNumBlockPerChunk is the maximum number of blocks we allow per chunk.
-// Normally we will pack much fewer blocks because of other limits.
-const maxNumBlockPerChunk int = 100
-
 // chunkRowConsumption is map(sub-circuit name => sub-circuit row count)
 type chunkRowConsumption map[string]uint64
 
@@ -55,6 +51,7 @@ type ChunkProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
+	maxBlockNumPerChunk             uint64
 	maxTxNumPerChunk                uint64
 	maxL1CommitGasPerChunk          uint64
 	maxL1CommitCalldataSizePerChunk uint64
@@ -90,6 +87,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
+		maxBlockNumPerChunk:             cfg.MaxBlockNumPerChunk,
 		maxTxNumPerChunk:                cfg.MaxTxNumPerChunk,
 		maxL1CommitGasPerChunk:          cfg.MaxL1CommitGasPerChunk,
 		maxL1CommitCalldataSizePerChunk: cfg.MaxL1CommitCalldataSizePerChunk,
@@ -191,7 +189,8 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, err
 	}
 
-	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight, maxNumBlockPerChunk)
+	// select at most p.maxBlockNumPerChunk blocks
+	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight, int(p.maxBlockNumPerChunk))
 	if err != nil {
 		return nil, err
 	}
@@ -293,12 +292,21 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
-	if blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec {
-		log.Warn("first block timeout",
-			"block number", blocks[0].Header.Number,
-			"block timestamp", blocks[0].Header.Time,
-			"block outdated time threshold", currentTimeSec,
-		)
+	if chunk.Blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec ||
+		uint64(len(chunk.Blocks)) == p.maxBlockNumPerChunk {
+		if chunk.Blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec {
+			log.Warn("first block timeout",
+				"block number", chunk.Blocks[0].Header.Number,
+				"block timestamp", chunk.Blocks[0].Header.Time,
+				"current time", currentTimeSec,
+			)
+		} else {
+			log.Info("reached maximum number of blocks in chunk",
+				"start block number", chunk.Blocks[0].Header.Number,
+				"block count", len(chunk.Blocks),
+			)
+		}
+
 		p.chunkFirstBlockTimeoutReached.Inc()
 		p.chunkTxNum.Set(float64(totalTxNum))
 		p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))
