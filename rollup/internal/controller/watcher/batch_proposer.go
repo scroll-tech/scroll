@@ -48,7 +48,8 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		"maxChunkNumPerBatch", cfg.MaxChunkNumPerBatch,
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
 		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
-		"batchTimeoutSec", cfg.BatchTimeoutSec)
+		"batchTimeoutSec", cfg.BatchTimeoutSec,
+		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier)
 
 	return &BatchProposer{
 		ctx:                             ctx,
@@ -178,6 +179,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	// Add extra gas costs
 	totalL1CommitGas += 4 * 2100                     // 4 one-time cold sload for commitBatch
 	totalL1CommitGas += 20000                        // 1 time sstore
+	totalL1CommitGas += 21000                        // base fee for tx
 	totalL1CommitGas += types.CalldataNonZeroByteGas // version in calldata
 
 	// adjusting gas:
