@@ -121,6 +121,8 @@ func (r ProverTaskFailureType) String() string {
 		return "prover task failure validated submit proof status not ok"
 	case ProverTaskFailureTypeVerifiedFailed:
 		return "prover task failure verified failed"
+	case ProverTaskFailureTypeServerError:
+		return "prover task failure server exception"
 	default:
 		return fmt.Sprintf("illegal prover task failure type (%d)", int32(r))
 	}
