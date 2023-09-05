@@ -99,38 +99,41 @@ func TestL1BlockOrm(t *testing.T) {
 	// mock blocks
 	block1 := L1Block{Number: 1, Hash: "hash1"}
 	block2 := L1Block{Number: 2, Hash: "hash2"}
-	block1AfterReorg := L1Block{Number: 1, Hash: "hash3"}
+	block3 := L1Block{Number: 3, Hash: "hash3"}
+	block2AfterReorg := L1Block{Number: 2, Hash: "hash2-reorg"}
 
-	err = l1BlockOrm.InsertL1Blocks(context.Background(), []L1Block{block1, block2})
+	err = l1BlockOrm.InsertL1Blocks(context.Background(), []L1Block{block1, block2, block3})
 	assert.NoError(t, err)
 
 	height, err := l1BlockOrm.GetLatestL1BlockHeight(context.Background())
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(2), height)
+	assert.Equal(t, uint64(3), height)
 
 	blocks, err := l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{})
 	assert.NoError(t, err)
-	assert.Len(t, blocks, 2)
+	assert.Len(t, blocks, 3)
 	assert.Equal(t, "hash1", blocks[0].Hash)
 	assert.Equal(t, "hash2", blocks[1].Hash)
+	assert.Equal(t, "hash3", blocks[2].Hash)
 
 	// reorg handling: insert another block with same height and different hash
-	err = l1BlockOrm.InsertL1Blocks(context.Background(), []L1Block{block1AfterReorg})
+	err = l1BlockOrm.InsertL1Blocks(context.Background(), []L1Block{block2AfterReorg})
 	assert.NoError(t, err)
 
 	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{})
 	assert.NoError(t, err)
-	assert.Len(t, blocks, 1)
-	assert.Equal(t, "hash3", blocks[0].Hash)
+	assert.Len(t, blocks, 2)
+	assert.Equal(t, "hash1", blocks[0].Hash)
+	assert.Equal(t, "hash2-reorg", blocks[1].Hash)
 
-	err = l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(context.Background(), "hash3", types.GasOracleImported, "txhash3")
+	err = l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(context.Background(), "hash1", types.GasOracleImported, "txhash1")
 	assert.NoError(t, err)
 
 	updatedBlocks, err := l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{})
 	assert.NoError(t, err)
-	assert.Len(t, updatedBlocks, 1)
+	assert.Len(t, updatedBlocks, 2)
 	assert.Equal(t, types.GasOracleImported, types.GasOracleStatus(updatedBlocks[0].GasOracleStatus))
-	assert.Equal(t, "txhash3", updatedBlocks[0].OracleTxHash)
+	assert.Equal(t, "txhash1", updatedBlocks[0].OracleTxHash)
 }
 
 func TestL2BlockOrm(t *testing.T) {
