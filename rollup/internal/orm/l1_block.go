@@ -78,15 +78,26 @@ func (o *L1Block) InsertL1Blocks(ctx context.Context, blocks []L1Block) error {
 	}
 
 	return o.db.Transaction(func(tx *gorm.DB) error {
-		var blockNumbers []uint64
-		for _, block := range blocks {
-			blockNumbers = append(blockNumbers, block.Number)
+		minBlockNumber := blocks[0].Number
+		for _, block := range blocks[1:] {
+			if block.Number < minBlockNumber {
+				minBlockNumber = block.Number
+			}
 		}
 
 		db := tx.WithContext(ctx)
 		db = db.Model(&L1Block{})
-		if err := db.Where("number IN (?)", blockNumbers).Delete(&L1Block{}).Error; err != nil {
-			return fmt.Errorf("L1Block.InsertL1Blocks error: soft deleting blocks failed, block numbers: %v, error: %w", blockNumbers, err)
+		db = db.Where("number >= ?", minBlockNumber)
+		result := db.Delete(&L1Block{})
+
+		if result.Error != nil {
+			return fmt.Errorf("L1Block.InsertL1Blocks error: soft deleting blocks failed, block numbers starting from: %v, error: %w", minBlockNumber, result.Error)
+		}
+
+		// If the number of deleted blocks exceeds the limit (input length + 64), treat it as an anomaly.
+		// Because reorg with >= 64 blocks is very unlikely to happen.
+		if result.RowsAffected >= int64(len(blocks)+64) {
+			return fmt.Errorf("L1Block.InsertL1Blocks error: too many blocks were deleted, count: %d", result.RowsAffected)
 		}
 
 		if err := db.Create(&blocks).Error; err != nil {
