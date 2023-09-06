@@ -15,7 +15,6 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
@@ -28,7 +27,6 @@ var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
 	BaseProverTask
-	vk string
 
 	chunkAttemptsExceedTotal prometheus.Counter
 	chunkTaskGetTaskTotal    prometheus.Counter
@@ -38,13 +36,13 @@ type ChunkProverTask struct {
 func NewChunkProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
+			vk:            vk,
 			db:            db,
 			cfg:           cfg,
 			chunkOrm:      orm.NewChunk(db),
 			blockOrm:      orm.NewL2Block(db),
 			proverTaskOrm: orm.NewProverTask(db),
 		},
-		vk: vk,
 		chunkAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_chunk_attempts_exceed_total",
 			Help: "Total number of chunk attempts exceed.",
@@ -59,74 +57,31 @@ func NewChunkProverTask(cfg *config.Config, db *gorm.DB, vk string, reg promethe
 
 // Assign the chunk proof which need to prove
 func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
-	if !publicKeyExist {
-		return nil, fmt.Errorf("get public key from context failed")
+	taskCtx, err := cp.checkParameter(ctx, getTaskParameter)
+	if err != nil || taskCtx == nil {
+		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
-	if !proverNameExist {
-		return nil, fmt.Errorf("get prover name from context failed")
-	}
-
-	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
-	if !proverVersionExist {
-		return nil, fmt.Errorf("get prover version from context failed")
-	}
-	if getTaskParameter.VK == "" { // allow vk being empty, because for the first time the prover may not know its vk
-		if !version.CheckScrollProverVersionTag(proverVersion.(string)) { // but reject too-old provers
-			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
-		}
-	} else if getTaskParameter.VK != cp.vk { // non-empty vk but different
-		if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
-			return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
-		}
-		// different prover versions and different vks
-		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
-	}
-
-	isAssigned, err := cp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
-	if err != nil {
-		return nil, fmt.Errorf("failed to check if prover is assigned a task: %w", err)
-	}
-
-	if isAssigned {
-		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
-	}
-
-	// load and send chunk tasks
-	chunkTasks, err := cp.chunkOrm.UpdateUnassignedChunkReturning(ctx, getTaskParameter.ProverHeight, 1)
+	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
+	maxTotalAttempts := cp.cfg.ProverManager.SessionAttempts
+	chunkTask, err := cp.chunkOrm.UpdateChunkAttemptsReturning(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
 	if err != nil {
 		log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	if len(chunkTasks) == 0 {
+	if chunkTask == nil {
 		return nil, nil
 	}
 
-	if len(chunkTasks) != 1 {
-		log.Error("get unassigned chunk proving task len not 1", "length", len(chunkTasks), "chunk tasks", chunkTasks)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
-	chunkTask := chunkTasks[0]
-
-	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", publicKey, "prover name", proverName)
-
-	if !cp.checkAttemptsExceeded(chunkTask.Hash, message.ProofTypeChunk) {
-		cp.chunkAttemptsExceedTotal.Inc()
-		// TODO: retry fetching unassigned chunk proving task
-		log.Error("chunk task proving attempts reach the maximum", "hash", chunkTask.Hash)
-		return nil, nil
-	}
+	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 
 	proverTask := orm.ProverTask{
 		TaskID:          chunkTask.Hash,
-		ProverPublicKey: publicKey.(string),
+		ProverPublicKey: taskCtx.PublicKey,
 		TaskType:        int16(message.ProofTypeChunk),
-		ProverName:      proverName.(string),
-		ProverVersion:   proverVersion.(string),
+		ProverName:      taskCtx.ProverName,
+		ProverVersion:   taskCtx.ProverVersion,
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 		// here why need use UTC time. see scroll/common/databased/db.go
@@ -134,14 +89,14 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	if err = cp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
-		cp.recoverProvingStatus(ctx, chunkTask)
-		log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", publicKey, "err", err)
+		cp.recoverActiveAttempts(ctx, chunkTask)
+		log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := cp.formatProverTask(ctx, &proverTask)
 	if err != nil {
-		cp.recoverProvingStatus(ctx, chunkTask)
+		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("format prover task failure", "hash", chunkTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
@@ -181,10 +136,8 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	return proverTaskSchema, nil
 }
 
-// recoverProvingStatus if not return the batch task to prover success,
-// need recover the proving status to unassigned
-func (cp *ChunkProverTask) recoverProvingStatus(ctx *gin.Context, chunkTask *orm.Chunk) {
-	if err := cp.chunkOrm.UpdateProvingStatus(ctx, chunkTask.Hash, types.ProvingTaskUnassigned); err != nil {
-		log.Warn("failed to recover chunk proving status", "hash:", chunkTask.Hash, "error", err)
+func (cp *ChunkProverTask) recoverActiveAttempts(ctx *gin.Context, chunkTask *orm.Chunk) {
+	if err := cp.chunkOrm.DecreaseActiveAttemptsByHash(ctx, chunkTask.Hash); err != nil {
+		log.Error("failed to recover chunk active attempts", "hash", chunkTask.Hash, "error", err)
 	}
 }
