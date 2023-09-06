@@ -15,15 +15,19 @@
 <pre>
 ├── <a href="./bridge-history-api/">bridge-history-api</a>: Bridge history service that collects deposit and withdraw events from both L1 and L2 chain and generates withdrawal proofs
 ├── <a href="./common/">common</a>: Common libraries and types
-├── <a href="./coordinator/">coordinator</a>: Prover coorindator service that dispatches proving tasks to provers
+├── <a href="./coordinator/">coordinator</a>: Prover coordinator service that dispatches proving tasks to provers
 ├── <a href="./database">database</a>: Database client and schema definition
 ├── <a href="./src">l2geth</a>: Scroll execution node
 ├── <a href="./prover">prover</a>: Prover client that runs proof generation for zkEVM circuit and aggregation circuit
 ├── <a href="./prover-stats-api">prover-stats-api</a>: Collect and show prover statistics
-├── <a href="./prover-stats-api">rollup</a>: Rollup-related services
+├── <a href="./rollup">rollup</a>: Rollup-related services
 ├── <a href="./rpc-gateway">rpc-gateway</a>: RPC gateway external repo
 └── <a href="./tests">tests</a>: Integration tests
 </pre>
+
+## Contributing
+
+We welcome community contributions to this repository. Before you submit any issues or PRs, please read the [Code of Conduct](CODE_OF_CONDUCT.md) and the [Contribution Guideline](CONTRIBUTING.md).
 
 ## Prerequisites
 + Go 1.19
