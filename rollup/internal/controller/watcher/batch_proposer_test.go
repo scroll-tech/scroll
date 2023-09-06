@@ -120,6 +120,7 @@ func testBatchProposerLimits(t *testing.T) {
 
 				dbChunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, tt.expectedChunksInFirstBatch-1)
 				assert.NoError(t, err)
+				assert.Len(t, dbChunks, int(tt.expectedChunksInFirstBatch))
 				for _, chunk := range dbChunks {
 					assert.Equal(t, batches[0].Hash, chunk.BatchHash)
 					assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(chunk.ProvingStatus))

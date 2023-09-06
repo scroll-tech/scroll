@@ -15,24 +15,24 @@ import (
 
 func testChunkProposerLimits(t *testing.T) {
 	tests := []struct {
-		name                    string
-		maxBlockNum             uint64
-		maxTxNum                uint64
-		maxL1CommitGas          uint64
-		maxL1CommitCalldataSize uint64
-		maxRowConsumption       uint64
-		expectedChunksLen       int
-		expectedBlocksNum       uint64
+		name                       string
+		maxBlockNum                uint64
+		maxTxNum                   uint64
+		maxL1CommitGas             uint64
+		maxL1CommitCalldataSize    uint64
+		maxRowConsumption          uint64
+		expectedChunksLen          int
+		expectedBlocksInFirstChunk int
 	}{
 		{
-			name:                    "Timeout",
-			maxBlockNum:             100,
-			maxTxNum:                10000,
-			maxL1CommitGas:          50000000000,
-			maxL1CommitCalldataSize: 1000000,
-			maxRowConsumption:       1000000,
-			expectedChunksLen:       1,
-			expectedBlocksNum:       2,
+			name:                       "Timeout",
+			maxBlockNum:                100,
+			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 2,
 		},
 		{
 			name:                    "MaxTxNumPerChunkIs0",
@@ -71,54 +71,54 @@ func testChunkProposerLimits(t *testing.T) {
 			expectedChunksLen:       0,
 		},
 		{
-			name:                    "MaxBlockNumPerChunkIs1",
-			maxBlockNum:             1,
-			maxTxNum:                10000,
-			maxL1CommitGas:          50000000000,
-			maxL1CommitCalldataSize: 1000000,
-			maxRowConsumption:       1000000,
-			expectedChunksLen:       1,
-			expectedBlocksNum:       1,
+			name:                       "MaxBlockNumPerChunkIs1",
+			maxBlockNum:                1,
+			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
 		},
 		{
-			name:                    "MaxTxNumPerChunkIsFirstBlock",
-			maxBlockNum:             10,
-			maxTxNum:                2,
-			maxL1CommitGas:          50000000000,
-			maxL1CommitCalldataSize: 1000000,
-			maxRowConsumption:       1000000,
-			expectedChunksLen:       1,
-			expectedBlocksNum:       1,
+			name:                       "MaxTxNumPerChunkIsFirstBlock",
+			maxBlockNum:                10,
+			maxTxNum:                   2,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
 		},
 		{
-			name:                    "MaxL1CommitGasPerChunkIsFirstBlock",
-			maxBlockNum:             10,
-			maxTxNum:                10000,
-			maxL1CommitGas:          60,
-			maxL1CommitCalldataSize: 1000000,
-			maxRowConsumption:       1000000,
-			expectedChunksLen:       1,
-			expectedBlocksNum:       1,
+			name:                       "MaxL1CommitGasPerChunkIsFirstBlock",
+			maxBlockNum:                10,
+			maxTxNum:                   10000,
+			maxL1CommitGas:             60,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
 		},
 		{
-			name:                    "MaxL1CommitCalldataSizePerChunkIsFirstBlock",
-			maxBlockNum:             10,
-			maxTxNum:                10000,
-			maxL1CommitGas:          50000000000,
-			maxL1CommitCalldataSize: 298,
-			maxRowConsumption:       1000000,
-			expectedChunksLen:       1,
-			expectedBlocksNum:       1,
+			name:                       "MaxL1CommitCalldataSizePerChunkIsFirstBlock",
+			maxBlockNum:                10,
+			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    298,
+			maxRowConsumption:          1000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
 		},
 		{
-			name:                    "MaxRowConsumptionPerChunkIs1",
-			maxBlockNum:             10,
-			maxTxNum:                10000,
-			maxL1CommitGas:          50000000000,
-			maxL1CommitCalldataSize: 1000000,
-			maxRowConsumption:       1,
-			expectedChunksLen:       1,
-			expectedBlocksNum:       1,
+			name:                       "MaxRowConsumptionPerChunkIs1",
+			maxBlockNum:                10,
+			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
 		},
 	}
 
@@ -148,18 +148,13 @@ func testChunkProposerLimits(t *testing.T) {
 			assert.Len(t, chunks, tt.expectedChunksLen)
 
 			if len(chunks) > 0 {
-				var expectedChunk types.Chunk
-
-				switch tt.expectedBlocksNum {
-				case 1:
-					expectedChunk.Blocks = []*types.WrappedBlock{wrappedBlock1}
-				case 2:
-					expectedChunk.Blocks = []*types.WrappedBlock{wrappedBlock1, wrappedBlock2}
-				}
-
-				expectedHash, err := expectedChunk.Hash(0)
+				blockOrm := orm.NewL2Block(db)
+				blocks, err := blockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{"number ASC"}, tt.expectedBlocksInFirstChunk)
 				assert.NoError(t, err)
-				assert.Equal(t, expectedHash.Hex(), chunks[0].Hash)
+				assert.Len(t, blocks, tt.expectedBlocksInFirstChunk)
+				for _, block := range blocks {
+					assert.Equal(t, chunks[0].Hash, block.ChunkHash)
+				}
 			}
 		})
 	}
