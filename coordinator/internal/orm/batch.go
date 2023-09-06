@@ -345,8 +345,13 @@ func (o *Batch) DecreaseActiveAttemptsByHash(ctx context.Context, batchHash stri
 	db = db.Model(&Batch{})
 	db = db.Where("hash = ?", batchHash)
 	db = db.Where("proving_status != ?", int(types.ProvingTaskVerified))
-	if err := db.UpdateColumn("active_attempts", gorm.Expr("active_attempts - 1")).Error; err != nil {
-		return fmt.Errorf("Batch.DecreaseActiveAttemptsByHash error: %w, batch hash: %v", err, batchHash)
+	db = db.Where("active_attempts > ?", 0)
+	result := db.UpdateColumn("active_attempts", gorm.Expr("active_attempts - 1"))
+	if result.Error != nil {
+		return fmt.Errorf("Chunk.DecreaseActiveAttemptsByHash error: %w, batch hash: %v", result.Error, batchHash)
+	}
+	if result.RowsAffected == 0 {
+		log.Warn("No rows were affected in DecreaseActiveAttemptsByHash", "batch hash", batchHash)
 	}
 	return nil
 }
