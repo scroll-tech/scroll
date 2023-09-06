@@ -21,9 +21,20 @@ func testChunkProposerLimits(t *testing.T) {
 		maxL1CommitGas             uint64
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
+		chunkTimeoutSec            uint64
 		expectedChunksLen          int
-		expectedBlocksInFirstChunk int
+		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
+		{
+			name:                    "NoLimitReached",
+			maxBlockNum:             100,
+			maxTxNum:                10000,
+			maxL1CommitGas:          50000000000,
+			maxL1CommitCalldataSize: 1000000,
+			maxRowConsumption:       1000000,
+			chunkTimeoutSec:         1000000000000,
+			expectedChunksLen:       0,
+		},
 		{
 			name:                       "Timeout",
 			maxBlockNum:                100,
@@ -31,6 +42,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            0,
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 2,
 		},
@@ -41,6 +53,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:          50000000000,
 			maxL1CommitCalldataSize: 1000000,
 			maxRowConsumption:       1000000,
+			chunkTimeoutSec:         1000000000000,
 			expectedChunksLen:       0,
 		},
 		{
@@ -50,6 +63,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:          0,
 			maxL1CommitCalldataSize: 1000000,
 			maxRowConsumption:       1000000,
+			chunkTimeoutSec:         1000000000000,
 			expectedChunksLen:       0,
 		},
 		{
@@ -59,6 +73,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:          50000000000,
 			maxL1CommitCalldataSize: 0,
 			maxRowConsumption:       1000000,
+			chunkTimeoutSec:         1000000000000,
 			expectedChunksLen:       0,
 		},
 		{
@@ -68,6 +83,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:          50000000000,
 			maxL1CommitCalldataSize: 1000000,
 			maxRowConsumption:       0,
+			chunkTimeoutSec:         1000000000000,
 			expectedChunksLen:       0,
 		},
 		{
@@ -77,6 +93,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
@@ -87,6 +104,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
@@ -97,6 +115,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:             60,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
@@ -107,6 +126,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    298,
 			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
@@ -117,6 +137,7 @@ func testChunkProposerLimits(t *testing.T) {
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1,
+			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
@@ -137,7 +158,7 @@ func testChunkProposerLimits(t *testing.T) {
 				MaxL1CommitGasPerChunk:          tt.maxL1CommitGas,
 				MaxL1CommitCalldataSizePerChunk: tt.maxL1CommitCalldataSize,
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
-				ChunkTimeoutSec:                 300,
+				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
 			}, db, nil)
 			cp.TryProposeChunk()

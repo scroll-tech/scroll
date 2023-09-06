@@ -19,14 +19,24 @@ func testBatchProposerLimits(t *testing.T) {
 		maxChunkNum                uint64
 		maxL1CommitGas             uint64
 		maxL1CommitCalldataSize    uint32
+		batchTimeoutSec            uint64
 		expectedBatchesLen         int
-		expectedChunksInFirstBatch uint64
+		expectedChunksInFirstBatch uint64 // only be checked when expectedBatchesLen > 0
 	}{
+		{
+			name:                    "NoLimitReached",
+			maxChunkNum:             10,
+			maxL1CommitGas:          50000000000,
+			maxL1CommitCalldataSize: 1000000,
+			batchTimeoutSec:         1000000000000,
+			expectedBatchesLen:      0,
+		},
 		{
 			name:                       "Timeout",
 			maxChunkNum:                10,
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
+			batchTimeoutSec:            0,
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 2,
 		},
@@ -35,6 +45,7 @@ func testBatchProposerLimits(t *testing.T) {
 			maxChunkNum:             10,
 			maxL1CommitGas:          0,
 			maxL1CommitCalldataSize: 1000000,
+			batchTimeoutSec:         1000000000000,
 			expectedBatchesLen:      0,
 		},
 		{
@@ -42,6 +53,7 @@ func testBatchProposerLimits(t *testing.T) {
 			maxChunkNum:             10,
 			maxL1CommitGas:          50000000000,
 			maxL1CommitCalldataSize: 0,
+			batchTimeoutSec:         1000000000000,
 			expectedBatchesLen:      0,
 		},
 		{
@@ -49,22 +61,25 @@ func testBatchProposerLimits(t *testing.T) {
 			maxChunkNum:                1,
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    1000000,
+			batchTimeoutSec:            1000000000000,
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 1,
 		},
 		{
 			name:                       "MaxL1CommitGasPerBatchIsFirstChunk",
-			maxChunkNum:                1,
+			maxChunkNum:                10,
 			maxL1CommitGas:             100000,
 			maxL1CommitCalldataSize:    1000000,
+			batchTimeoutSec:            1000000000000,
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 1,
 		},
 		{
 			name:                       "MaxL1CommitCalldataSizePerBatchIsFirstChunk",
-			maxChunkNum:                1,
+			maxChunkNum:                10,
 			maxL1CommitGas:             50000000000,
 			maxL1CommitCalldataSize:    298,
+			batchTimeoutSec:            1000000000000,
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 1,
 		},
@@ -103,7 +118,7 @@ func testBatchProposerLimits(t *testing.T) {
 				MaxChunkNumPerBatch:             tt.maxChunkNum,
 				MaxL1CommitGasPerBatch:          tt.maxL1CommitGas,
 				MaxL1CommitCalldataSizePerBatch: tt.maxL1CommitCalldataSize,
-				BatchTimeoutSec:                 300,
+				BatchTimeoutSec:                 tt.batchTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
 			}, db, nil)
 			bp.TryProposeBatch()
