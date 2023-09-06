@@ -6,6 +6,8 @@ This directory contains the `bridge-history-api` service that provides REST APIs
 The bridge-history-api contains three distinct components
 
 ### bridgehistoryapi-db-cli
+
+Provide init, show version, rollback, check status services of DB
 ```
     cd ./bridge-history-api
     make bridgehistoryapi-db-cli
@@ -13,6 +15,8 @@ The bridge-history-api contains three distinct components
 ```
 
 ### bridgehistoryapi-cross-msg-fetcher
+
+Fetch the transactions from both l1 and l2
 ```
     cd ./bridge-history-api
     make bridgehistoryapi-cross-msg-fetcher
@@ -21,6 +25,7 @@ The bridge-history-api contains three distinct components
 
 ### bridgehistoryapi-server
 
+provides REST APIs. Please refer to the API details below.
 ```
     cd ./bridge-history-api
     make bridgehistoryapi-server
@@ -28,6 +33,7 @@ The bridge-history-api contains three distinct components
 ```
 
 ## APIs provided by bridgehistoryapi-server
+
 assume `bridgehistoryapi-server` listening on `https://localhost:8080`
 can change this port thru modify `config.json`
 
