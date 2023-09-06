@@ -115,4 +115,5 @@ func TestFunction(t *testing.T) {
 
 	// Run chunk proposer test cases.
 	t.Run("TestBatchProposerLimits", testBatchProposerLimits)
+	t.Run("TestBatchCommitGasAndCalldataSizeEstimation", testBatchCommitGasAndCalldataSizeEstimation)
 }
