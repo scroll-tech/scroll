@@ -169,7 +169,7 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
             (_l1USDC, _token, _from, _to, _amount, _data)
         );
 
-        // 4. Send message to L1ScrollMessenger.
+        // 4. Send message to L2ScrollMessenger.
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
 
         emit WithdrawERC20(_l1USDC, _token, _from, _to, _amount, _data);
