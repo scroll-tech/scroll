@@ -12,7 +12,7 @@ import {IL1ERC20Gateway} from "../../../L1/gateways/IL1ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../../IL2ScrollMessenger.sol";
 import {IL2ERC20Gateway} from "../IL2ERC20Gateway.sol";
 
-import {ScrollGatewayBase, IScrollGateway} from "../../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../../libraries/gateway/ScrollGatewayBase.sol";
 import {L2ERC20Gateway} from "../L2ERC20Gateway.sol";
 
 /// @title L2USDCGateway
