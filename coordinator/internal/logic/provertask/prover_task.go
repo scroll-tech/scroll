@@ -58,16 +58,14 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 	}
 	ptc.ProverVersion = proverVersion.(string)
 
-	if getTaskParameter.VK == "" { // allow vk being empty, because for the first time the prover may not know its vk
-		if !version.CheckScrollProverVersionTag(proverVersion.(string)) { // but reject too-old provers
+	// if the prover has a different vk
+	if getTaskParameter.VK != b.vk {
+		// if the prover reports a different prover version
+		if !version.CheckScrollProverVersion(proverVersion.(string)) {
 			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
 		}
-	} else if getTaskParameter.VK != b.vk { // non-empty vk but different
-		if version.CheckScrollProverVersion(proverVersion.(string)) { // same prover version but different vks
-			return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
-		}
-		// different prover versions and different vks
-		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
+		// if the prover reports a same prover version
+		return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
 	}
 
 	isAssigned, err := b.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))

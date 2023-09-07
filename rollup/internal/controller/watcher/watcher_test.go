@@ -110,10 +110,10 @@ func TestFunction(t *testing.T) {
 	t.Run("TestParseBridgeEventLogsL2RelayedMessageEventSignature", testParseBridgeEventLogsL2RelayedMessageEventSignature)
 	t.Run("TestParseBridgeEventLogsL2FailedRelayedMessageEventSignature", testParseBridgeEventLogsL2FailedRelayedMessageEventSignature)
 
-	// Run chunk-proposer test cases.
-	t.Run("TestChunkProposer", testChunkProposer)
-	t.Run("TestChunkProposerRowConsumption", testChunkProposerRowConsumption)
+	// Run chunk proposer test cases.
+	t.Run("TestChunkProposerLimits", testChunkProposerLimits)
 
-	// Run batch-proposer test cases.
-	t.Run("TestBatchProposer", testBatchProposer)
+	// Run chunk proposer test cases.
+	t.Run("TestBatchProposerLimits", testBatchProposerLimits)
+	t.Run("TestBatchCommitGasAndCalldataSizeEstimation", testBatchCommitGasAndCalldataSizeEstimation)
 }
