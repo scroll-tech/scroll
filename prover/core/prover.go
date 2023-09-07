@@ -28,7 +28,7 @@ import (
 // ProverCore sends block-traces to rust-prover through ffi and get back the zk-proof.
 type ProverCore struct {
 	cfg *config.ProverCoreConfig
-	vk  string
+	VK  string
 }
 
 // NewProverCore inits a ProverCore object.
@@ -40,10 +40,18 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 		C.free(unsafe.Pointer(assetsPathStr))
 	}()
 
+	var vk string
+	var rawVK *C.char
 	if cfg.ProofType == message.ProofTypeBatch {
 		C.init_batch_prover(paramsPathStr, assetsPathStr)
+		rawVK = C.get_batch_vk()
 	} else if cfg.ProofType == message.ProofTypeChunk {
 		C.init_chunk_prover(paramsPathStr, assetsPathStr)
+		rawVK = C.get_chunk_vk()
+	}
+
+	if rawVK != nil {
+		vk = C.GoString(rawVK)
 	}
 
 	if cfg.DumpDir != "" {
@@ -54,27 +62,7 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 		log.Info("Enabled dump_proof", "dir", cfg.DumpDir)
 	}
 
-	return &ProverCore{cfg: cfg}, nil
-}
-
-// GetVk get Base64 format of vk.
-func (p *ProverCore) GetVk() string {
-	if p.vk != "" { // cached
-		return p.vk
-	}
-
-	var raw *C.char
-	if p.cfg.ProofType == message.ProofTypeBatch {
-		raw = C.get_batch_vk()
-	} else if p.cfg.ProofType == message.ProofTypeChunk {
-		raw = C.get_chunk_vk()
-	}
-
-	if raw != nil {
-		p.vk = C.GoString(raw) // cache it
-	}
-
-	return p.vk
+	return &ProverCore{cfg: cfg, VK: vk}, nil
 }
 
 // ProveBatch call rust ffi to generate batch proof.
