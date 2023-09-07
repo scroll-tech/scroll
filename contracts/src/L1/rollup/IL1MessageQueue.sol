@@ -72,6 +72,14 @@ interface IL1MessageQueue {
         bytes calldata data
     ) external view returns (bytes32);
 
+    /// @notice Return whether the message is skipped.
+    /// @param queueIndex The queue index of the message to check.
+    function isMessageSkipped(uint256 queueIndex) external view returns (bool);
+
+    /// @notice Return whether the message is dropped.
+    /// @param queueIndex The queue index of the message to check.
+    function isMessageDropped(uint256 queueIndex) external view returns (bool);
+
     /*****************************
      * Public Mutating Functions *
      *****************************/

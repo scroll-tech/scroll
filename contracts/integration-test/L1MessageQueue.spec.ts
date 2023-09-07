@@ -264,8 +264,8 @@ describe("L1MessageQueue", async () => {
     });
 
     it("should succeed", async () => {
-      // append 100 messages
-      for (let i = 0; i < 100; i++) {
+      // append 512 messages
+      for (let i = 0; i < 256 * 2; i++) {
         await queue.connect(messenger).appendCrossDomainMessage(constants.AddressZero, 1000000, "0x");
       }
 
@@ -274,7 +274,8 @@ describe("L1MessageQueue", async () => {
         .to.emit(queue, "DequeueTransaction")
         .withArgs(0, 50, 0);
       for (let i = 0; i < 50; i++) {
-        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+        expect(await queue.isMessageSkipped(i)).to.eq(false);
+        expect(await queue.isMessageDropped(i)).to.eq(false);
       }
       expect(await queue.pendingQueueIndex()).to.eq(50);
 
@@ -284,7 +285,8 @@ describe("L1MessageQueue", async () => {
         .withArgs(50, 10, 1023);
       expect(await queue.pendingQueueIndex()).to.eq(60);
       for (let i = 50; i < 60; i++) {
-        expect(BigNumber.from(await queue.getCrossDomainMessage(i))).to.gt(constants.Zero);
+        expect(await queue.isMessageSkipped(i)).to.eq(true);
+        expect(await queue.isMessageDropped(i)).to.eq(false);
       }
 
       // pop 20 messages, skip first 5
@@ -293,10 +295,27 @@ describe("L1MessageQueue", async () => {
         .withArgs(60, 20, 31);
       expect(await queue.pendingQueueIndex()).to.eq(80);
       for (let i = 60; i < 65; i++) {
-        expect(BigNumber.from(await queue.getCrossDomainMessage(i))).to.gt(constants.Zero);
+        expect(await queue.isMessageSkipped(i)).to.eq(true);
+        expect(await queue.isMessageDropped(i)).to.eq(false);
       }
       for (let i = 65; i < 80; i++) {
-        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+        expect(await queue.isMessageSkipped(i)).to.eq(false);
+        expect(await queue.isMessageDropped(i)).to.eq(false);
+      }
+
+      // pop 256 messages with random skip
+      const bitmap = BigNumber.from("0x496525059c3f33758d17030403e45afe067b8a0ae1317cda0487fd2932cbea1a");
+      const tx = await queue.connect(scrollChain).popCrossDomainMessage(80, 256, bitmap);
+      await expect(tx).to.emit(queue, "DequeueTransaction").withArgs(80, 256, bitmap);
+      console.log("gas used:", (await tx.wait()).gasUsed.toString());
+      for (let i = 80; i < 80 + 256; i++) {
+        expect(await queue.isMessageSkipped(i)).to.eq(
+          bitmap
+            .shr(i - 80)
+            .and(1)
+            .eq(1)
+        );
+        expect(await queue.isMessageDropped(i)).to.eq(false);
       }
     });
   });
@@ -308,7 +327,7 @@ describe("L1MessageQueue", async () => {
       );
     });
 
-    it("should revert, when drop executed message", async () => {
+    it("should revert, when drop non-skipped message", async () => {
       // append 10 messages
       for (let i = 0; i < 10; i++) {
         await queue.connect(messenger).appendCrossDomainMessage(constants.AddressZero, 1000000, "0x");
@@ -318,14 +337,13 @@ describe("L1MessageQueue", async () => {
         .to.emit(queue, "DequeueTransaction")
         .withArgs(0, 5, 0);
       for (let i = 0; i < 5; i++) {
-        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+        expect(await queue.isMessageSkipped(i)).to.eq(false);
+        expect(await queue.isMessageDropped(i)).to.eq(false);
       }
       expect(await queue.pendingQueueIndex()).to.eq(5);
 
       for (let i = 0; i < 5; i++) {
-        await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.revertedWith(
-          "message already dropped or executed"
-        );
+        await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.revertedWith("drop non-skipped message");
       }
 
       // drop pending message
@@ -345,9 +363,12 @@ describe("L1MessageQueue", async () => {
         .withArgs(0, 10, 0x3ff);
 
       for (let i = 0; i < 10; i++) {
-        expect(BigNumber.from(await queue.getCrossDomainMessage(i))).to.gt(constants.Zero);
+        expect(await queue.isMessageSkipped(i)).to.eq(true);
+        expect(await queue.isMessageDropped(i)).to.eq(false);
         await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.emit(queue, "DropTransaction").withArgs(i);
-        expect(await queue.getCrossDomainMessage(i)).to.eq(constants.HashZero);
+        await expect(queue.connect(messenger).dropCrossDomainMessage(i)).to.revertedWith("message already dropped");
+        expect(await queue.isMessageSkipped(i)).to.eq(true);
+        expect(await queue.isMessageDropped(i)).to.eq(true);
       }
     });
   });

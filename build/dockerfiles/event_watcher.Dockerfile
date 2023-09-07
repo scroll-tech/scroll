@@ -3,7 +3,7 @@ FROM scrolltech/go-alpine-builder:1.19 as base
 
 WORKDIR /src
 COPY go.work* ./
-COPY ./bridge/go.* ./bridge/
+COPY ./rollup/go.* ./rollup/
 COPY ./common/go.* ./common/
 COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
@@ -18,7 +18,7 @@ FROM base as builder
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/bridge/cmd/event_watcher/ && go build -v -p 4 -o /bin/event_watcher
+    cd /src/rollup/cmd/event_watcher/ && go build -v -p 4 -o /bin/event_watcher
 
 # Pull event_watcher into a second stage deploy alpine container
 FROM alpine:latest

@@ -70,6 +70,8 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Use gzip compression.
+		l2GethClient.SetHeader("Accept-Encoding", "gzip")
 	}
 
 	// Create prover_core instance
@@ -179,7 +181,7 @@ func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 		TaskType: r.Type(),
 		// we may not be able to get the vk at the first time, so we should pass vk to the coordinator every time we getTask
 		// instead of passing vk when we login
-		VK: r.proverCore.GetVk(),
+		VK: r.proverCore.VK,
 	}
 
 	if req.TaskType == message.ProofTypeChunk {

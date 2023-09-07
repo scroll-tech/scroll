@@ -16,6 +16,7 @@ import (
 // ProverCore sends block-traces to rust-prover through socket and get back the zk-proof.
 type ProverCore struct {
 	cfg *config.ProverCoreConfig
+	VK  string
 }
 
 // NewProverCore inits a ProverCore object.
@@ -41,8 +42,4 @@ func (p *ProverCore) ProveBatch(taskID string, chunkInfos []*message.ChunkInfo, 
 		Instances: _empty[:],
 		Vk:        _empty[:],
 	}, nil
-}
-
-func (p *ProverCore) GetVk() string {
-	return ""
 }

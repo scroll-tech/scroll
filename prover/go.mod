@@ -5,7 +5,7 @@ go 1.19
 require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/google/uuid v1.3.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230812030736-25fe3ba69a28
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230829000527-f883dcdc21fc
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
 	go.etcd.io/bbolt v1.3.7

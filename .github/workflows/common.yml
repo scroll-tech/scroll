@@ -9,6 +9,7 @@ on:
       - alpha
     paths:
       - 'common/**'
+      - '!common/version/version.go'
       - '.github/workflows/common.yml'
   pull_request:
     types:
@@ -18,6 +19,7 @@ on:
       - ready_for_review
     paths:
       - 'common/**'
+      - '!common/version/version.go'
       - '.github/workflows/common.yml'
 
 jobs:
