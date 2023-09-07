@@ -246,8 +246,14 @@ func testValidProof(t *testing.T) {
 		tickStop = time.Tick(time.Minute)
 	)
 
-	var chunkProofStatus types.ProvingStatus
-	var batchProofStatus types.ProvingStatus
+	var (
+		chunkProofStatus    types.ProvingStatus
+		batchProofStatus    types.ProvingStatus
+		chunkActiveAttempts int16
+		chunkMaxAttempts    int16
+		batchActiveAttempts int16
+		batchMaxAttempts    int16
+	)
 
 	for {
 		select {
@@ -259,6 +265,17 @@ func testValidProof(t *testing.T) {
 			if chunkProofStatus == types.ProvingTaskVerified && batchProofStatus == types.ProvingTaskVerified {
 				return
 			}
+
+			chunkActiveAttempts, chunkMaxAttempts, err = chunkOrm.GetAttemptsByHash(context.Background(), dbChunk.Hash)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, int(chunkMaxAttempts))
+			assert.Equal(t, 0, int(chunkActiveAttempts))
+
+			batchActiveAttempts, batchMaxAttempts, err = batchOrm.GetAttemptsByHash(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, int(batchMaxAttempts))
+			assert.Equal(t, 0, int(batchActiveAttempts))
+
 		case <-tickStop:
 			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
 			return
@@ -307,8 +324,14 @@ func testInvalidProof(t *testing.T) {
 		tickStop = time.Tick(time.Minute)
 	)
 
-	var chunkProofStatus types.ProvingStatus
-	var batchProofStatus types.ProvingStatus
+	var (
+		chunkProofStatus    types.ProvingStatus
+		batchProofStatus    types.ProvingStatus
+		chunkActiveAttempts int16
+		chunkMaxAttempts    int16
+		batchActiveAttempts int16
+		batchMaxAttempts    int16
+	)
 
 	for {
 		select {
@@ -317,9 +340,18 @@ func testInvalidProof(t *testing.T) {
 			assert.NoError(t, err)
 			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
-			if chunkProofStatus == types.ProvingTaskUnassigned && batchProofStatus == types.ProvingTaskUnassigned {
+			if chunkProofStatus == types.ProvingTaskAssigned && batchProofStatus == types.ProvingTaskAssigned {
 				return
 			}
+			chunkActiveAttempts, chunkMaxAttempts, err = chunkOrm.GetAttemptsByHash(context.Background(), dbChunk.Hash)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, int(chunkMaxAttempts))
+			assert.Equal(t, 0, int(chunkActiveAttempts))
+
+			batchActiveAttempts, batchMaxAttempts, err = batchOrm.GetAttemptsByHash(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, int(batchMaxAttempts))
+			assert.Equal(t, 0, int(batchActiveAttempts))
 		case <-tickStop:
 			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
 			return
@@ -373,6 +405,10 @@ func testProofGeneratedFailed(t *testing.T) {
 		batchProofStatus             types.ProvingStatus
 		chunkProverTaskProvingStatus types.ProverProveStatus
 		batchProverTaskProvingStatus types.ProverProveStatus
+		chunkActiveAttempts          int16
+		chunkMaxAttempts             int16
+		batchActiveAttempts          int16
+		batchMaxAttempts             int16
 	)
 
 	for {
@@ -385,6 +421,16 @@ func testProofGeneratedFailed(t *testing.T) {
 			if chunkProofStatus == types.ProvingTaskAssigned && batchProofStatus == types.ProvingTaskAssigned {
 				return
 			}
+
+			chunkActiveAttempts, chunkMaxAttempts, err = chunkOrm.GetAttemptsByHash(context.Background(), dbChunk.Hash)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, int(chunkMaxAttempts))
+			assert.Equal(t, 0, int(chunkActiveAttempts))
+
+			batchActiveAttempts, batchMaxAttempts, err = batchOrm.GetAttemptsByHash(context.Background(), batch.Hash)
+			assert.NoError(t, err)
+			assert.Equal(t, 1, int(batchMaxAttempts))
+			assert.Equal(t, 0, int(batchActiveAttempts))
 
 			chunkProverTaskProvingStatus, err = proverTaskOrm.GetProvingStatusByTaskID(context.Background(), message.ProofTypeChunk, dbChunk.Hash)
 			assert.NoError(t, err)
@@ -408,6 +454,13 @@ func testTimeoutProof(t *testing.T) {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
+
+	var (
+		chunkActiveAttempts int16
+		chunkMaxAttempts    int16
+		batchActiveAttempts int16
+		batchMaxAttempts    int16
+	)
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
@@ -438,6 +491,16 @@ func testTimeoutProof(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, batchProofStatus, types.ProvingTaskAssigned)
 
+	chunkActiveAttempts, chunkMaxAttempts, err = chunkOrm.GetAttemptsByHash(context.Background(), dbChunk.Hash)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, int(chunkMaxAttempts))
+	assert.Equal(t, 1, int(chunkActiveAttempts))
+
+	batchActiveAttempts, batchMaxAttempts, err = batchOrm.GetAttemptsByHash(context.Background(), batch.Hash)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, int(batchMaxAttempts))
+	assert.Equal(t, 1, int(batchActiveAttempts))
+
 	// wait coordinator to reset the prover task proving status
 	time.Sleep(time.Duration(conf.ProverManager.BatchCollectionTimeSec*2) * time.Second)
 
@@ -460,4 +523,14 @@ func testTimeoutProof(t *testing.T) {
 	batchProofStatus2, err := batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 	assert.NoError(t, err)
 	assert.Equal(t, batchProofStatus2, types.ProvingTaskVerified)
+
+	chunkActiveAttempts, chunkMaxAttempts, err = chunkOrm.GetAttemptsByHash(context.Background(), dbChunk.Hash)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, int(chunkMaxAttempts))
+	assert.Equal(t, 0, int(chunkActiveAttempts))
+
+	batchActiveAttempts, batchMaxAttempts, err = batchOrm.GetAttemptsByHash(context.Background(), batch.Hash)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, int(batchMaxAttempts))
+	assert.Equal(t, 0, int(batchActiveAttempts))
 }
