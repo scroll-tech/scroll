@@ -3,6 +3,7 @@ use std::{
     env,
     ffi::{CStr, CString},
     os::raw::c_char,
+    path::PathBuf,
 };
 
 // Only used for debugging.
@@ -25,4 +26,11 @@ pub(crate) fn string_to_c_char(string: String) -> *const c_char {
 
 pub(crate) fn vec_to_c_char(bytes: Vec<u8>) -> *const c_char {
     CString::new(bytes).unwrap().into_raw()
+}
+
+pub(crate) fn file_exists(dir: &str, filename: &str) -> bool {
+    let mut path = PathBuf::from(dir);
+    path.push(filename);
+
+    path.exists()
 }
