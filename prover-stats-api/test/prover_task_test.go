@@ -26,7 +26,6 @@ import (
 	"scroll-tech/prover-stats-api/internal/controller"
 	"scroll-tech/prover-stats-api/internal/orm"
 	"scroll-tech/prover-stats-api/internal/route"
-	apitypes "scroll-tech/prover-stats-api/internal/types"
 )
 
 var (
@@ -120,7 +119,7 @@ func getResp(t *testing.T, url string) interface{} {
 	res := new(types.Response)
 	assert.NoError(t, json.Unmarshal(byt, res))
 	t.Log("----byt is ", string(byt))
-	assert.Equal(t, apitypes.Success, res.ErrCode)
+	assert.Equal(t, types.Success, res.ErrCode)
 	return res.Data
 }
 

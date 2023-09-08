@@ -41,14 +41,14 @@ func (c *ProverTaskController) ProverTasks(ctx *gin.Context) {
 	var pp types.ProverTasksPaginationParameter
 	if err := ctx.ShouldBind(&pp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		ctype.RenderFailure(ctx, types.ErrParameterInvalidNo, nerr)
+		ctype.RenderFailure(ctx, ctype.ErrProverStatsApiParameterInvalidNo, nerr)
 		return
 	}
 
 	tasks, err := c.logic.GetTasksByProver(ctx, pp.PublicKey, pp.Page, pp.PageSize)
 	if err != nil {
 		nerr := fmt.Errorf("controller.ProverTasks err:%w", err)
-		ctype.RenderFailure(ctx, types.ErrProverTaskFailure, nerr)
+		ctype.RenderFailure(ctx, ctype.ErrProverStatsApiProverTaskFailure, nerr)
 		return
 	}
 
@@ -82,14 +82,14 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 	var pp types.ProverTotalRewardsParameter
 	if err := ctx.ShouldBind(&pp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		ctype.RenderFailure(ctx, types.ErrParameterInvalidNo, nerr)
+		ctype.RenderFailure(ctx, ctype.ErrProverStatsApiParameterInvalidNo, nerr)
 		return
 	}
 
 	rewards, err := c.logic.GetTotalRewards(ctx, pp.PublicKey)
 	if err != nil {
 		nerr := fmt.Errorf("controller.GetTotalRewards, err:%w", err)
-		ctype.RenderFailure(ctx, types.ErrProverTotalRewardFailure, nerr)
+		ctype.RenderFailure(ctx, ctype.ErrProverStatsApiProverTotalRewardFailure, nerr)
 		return
 	}
 
@@ -114,14 +114,14 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 	var pp types.ProverTaskParameter
 	if err := ctx.ShouldBind(&pp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		ctype.RenderFailure(ctx, types.ErrParameterInvalidNo, nerr)
+		ctype.RenderFailure(ctx, ctype.ErrProverStatsApiParameterInvalidNo, nerr)
 		return
 	}
 
 	task, err := c.logic.GetTask(ctx, pp.TaskID)
 	if err != nil {
 		nerr := fmt.Errorf("controller.GetTask, err:%w", err)
-		ctype.RenderFailure(ctx, types.ErrProverTotalRewardFailure, nerr)
+		ctype.RenderFailure(ctx, ctype.ErrProverStatsApiProverTotalRewardFailure, nerr)
 		return
 	}
 

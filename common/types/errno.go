@@ -11,6 +11,13 @@ const (
 	// ErrJWTTokenExpired jwt token expired
 	ErrJWTTokenExpired = 50001
 
+	// ErrProverStatsApiParameterInvalidNo is invalid params
+	ErrProverStatsApiParameterInvalidNo = 10001
+	// ErrProverStatsApiProverTaskFailure is getting prover task  error
+	ErrProverStatsApiProverTaskFailure = 10002
+	// ErrProverStatsApiProverTotalRewardFailure is getting total rewards error
+	ErrProverStatsApiProverTotalRewardFailure = 10003
+
 	// ErrCoordinatorParameterInvalidNo is invalid params
 	ErrCoordinatorParameterInvalidNo = 20001
 	// ErrCoordinatorGetTaskFailure is getting prover task error
