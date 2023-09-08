@@ -42,7 +42,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	var getTaskParameter coordinatorType.GetTaskParameter
 	if err := ctx.ShouldBind(&getTaskParameter); err != nil {
 		nerr := fmt.Errorf("prover task parameter invalid, err:%w", err)
-		types.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 		return
 	}
 
@@ -50,24 +50,24 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	proverTask, isExist := ptc.proverTasks[proofType]
 	if !isExist {
 		nerr := fmt.Errorf("parameter wrong proof type:%v", proofType)
-		types.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 		return
 	}
 
 	result, err := proverTask.Assign(ctx, &getTaskParameter)
 	if err != nil {
 		nerr := fmt.Errorf("return prover task err:%w", err)
-		types.RenderJSON(ctx, types.ErrCoordinatorGetTaskFailure, nerr, nil)
+		types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, nerr)
 		return
 	}
 
 	if result == nil {
 		nerr := fmt.Errorf("get empty prover task")
-		types.RenderJSON(ctx, types.ErrCoordinatorEmptyProofData, nerr, nil)
+		types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, nerr)
 		return
 	}
 
-	types.RenderJSON(ctx, types.Success, nil, result)
+	types.RenderSuccess(ctx, result)
 }
 
 func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) message.ProofType {

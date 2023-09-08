@@ -10,7 +10,7 @@ import (
 const (
 	// Success shows OK.
 	Success = 0
-	// InternalServerError show server fatal
+	// InternalServerError shows a fatal error in the server
 	InternalServerError = 500
 	// ErrParameterInvalidNo is invalid params
 	ErrParameterInvalidNo = 40001
@@ -106,17 +106,27 @@ func RenderJSON(ctx *gin.Context, errCode int, err error, data interface{}) {
 	ctx.JSON(http.StatusOK, renderData)
 }
 
+// RenderSuccess renders success response with json
+func RenderSuccess(ctx *gin.Context, data interface{}) {
+	RenderJSON(ctx, Success, nil, data)
+}
+
+// RenderFailure renders failure response with json
+func RenderFailure(ctx *gin.Context, errCode int, err error) {
+	RenderJSON(ctx, errCode, err, nil)
+}
+
 // RenderFatal renders fatal response with json
-func RenderFatal(ctx *gin.Context, status int, errCode int, err error, data interface{}) {
+func RenderFatal(ctx *gin.Context, err error) {
 	var errMsg string
 	if err != nil {
 		errMsg = err.Error()
 	}
 	renderData := Response{
-		ErrCode: errCode,
+		ErrCode: InternalServerError,
 		ErrMsg:  errMsg,
-		Data:    data,
+		Data:    nil,
 	}
-	ctx.Set("errcode", errCode)
-	ctx.JSON(status, renderData)
+	ctx.Set("errcode", InternalServerError)
+	ctx.JSON(http.StatusInternalServerError, renderData)
 }

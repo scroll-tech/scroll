@@ -17,5 +17,5 @@ func NewReadyController() *ReadyController {
 
 // Ready the api controller for coordinator ready
 func (r *ReadyController) Ready(c *gin.Context) {
-	types.RenderJSON(c, types.Success, nil, nil)
+	types.RenderSuccess(c, nil)
 }

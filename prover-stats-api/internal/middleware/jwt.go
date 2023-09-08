@@ -49,7 +49,7 @@ func AuthMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 // Unauthorized response Unauthorized error message to client
 func Unauthorized(c *gin.Context, code int, message string) {
 	err := errors.New(message)
-	ctype.RenderJSON(c, code, err, nil)
+	ctype.RenderFailure(c, code, err)
 }
 
 // PayloadFunc returns jwt.MapClaims with public key.

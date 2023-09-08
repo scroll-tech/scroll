@@ -54,5 +54,5 @@ func (a *AuthController) LoginResponse(c *gin.Context, code int, message string,
 		Time:  time,
 		Token: message,
 	}
-	ctype.RenderJSON(c, code, nil, resp)
+	ctype.RenderSuccess(c, resp)
 }

@@ -41,14 +41,14 @@ func (c *ProverTaskController) ProverTasks(ctx *gin.Context) {
 	var pp types.ProverTasksPaginationParameter
 	if err := ctx.ShouldBind(&pp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		ctype.RenderJSON(ctx, types.ErrParameterInvalidNo, nerr, nil)
+		ctype.RenderFailure(ctx, types.ErrParameterInvalidNo, nerr)
 		return
 	}
 
 	tasks, err := c.logic.GetTasksByProver(ctx, pp.PublicKey, pp.Page, pp.PageSize)
 	if err != nil {
 		nerr := fmt.Errorf("controller.ProverTasks err:%w", err)
-		ctype.RenderJSON(ctx, types.ErrProverTaskFailure, nerr, nil)
+		ctype.RenderFailure(ctx, types.ErrProverTaskFailure, nerr)
 		return
 	}
 
@@ -65,7 +65,7 @@ func (c *ProverTaskController) ProverTasks(ctx *gin.Context) {
 		proverTaskSchemas = append(proverTaskSchemas, proverTaskSchema)
 	}
 
-	ctype.RenderJSON(ctx, types.Success, nil, proverTaskSchemas)
+	ctype.RenderSuccess(ctx, proverTaskSchemas)
 }
 
 // GetTotalRewards godoc
@@ -82,14 +82,14 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 	var pp types.ProverTotalRewardsParameter
 	if err := ctx.ShouldBind(&pp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		ctype.RenderJSON(ctx, types.ErrParameterInvalidNo, nerr, nil)
+		ctype.RenderFailure(ctx, types.ErrParameterInvalidNo, nerr)
 		return
 	}
 
 	rewards, err := c.logic.GetTotalRewards(ctx, pp.PublicKey)
 	if err != nil {
 		nerr := fmt.Errorf("controller.GetTotalRewards, err:%w", err)
-		ctype.RenderJSON(ctx, types.ErrProverTotalRewardFailure, nerr, nil)
+		ctype.RenderFailure(ctx, types.ErrProverTotalRewardFailure, nerr)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (c *ProverTaskController) GetTotalRewards(ctx *gin.Context) {
 		Rewards: rewards.String(),
 	}
 
-	ctype.RenderJSON(ctx, types.Success, nil, resp)
+	ctype.RenderSuccess(ctx, resp)
 }
 
 // GetTask godoc
@@ -114,14 +114,14 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 	var pp types.ProverTaskParameter
 	if err := ctx.ShouldBind(&pp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		ctype.RenderJSON(ctx, types.ErrParameterInvalidNo, nerr, nil)
+		ctype.RenderFailure(ctx, types.ErrParameterInvalidNo, nerr)
 		return
 	}
 
 	task, err := c.logic.GetTask(ctx, pp.TaskID)
 	if err != nil {
 		nerr := fmt.Errorf("controller.GetTask, err:%w", err)
-		ctype.RenderJSON(ctx, types.ErrProverTotalRewardFailure, nerr, nil)
+		ctype.RenderFailure(ctx, types.ErrProverTotalRewardFailure, nerr)
 		return
 	}
 
@@ -134,5 +134,5 @@ func (c *ProverTaskController) GetTask(ctx *gin.Context) {
 		CreatedAt:     task.CreatedAt,
 	}
 
-	ctype.RenderJSON(ctx, types.Success, nil, schema)
+	ctype.RenderSuccess(ctx, schema)
 }

@@ -34,7 +34,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 	var spp coordinatorType.SubmitProofParameter
 	if err := ctx.ShouldBind(&spp); err != nil {
 		nerr := fmt.Errorf("parameter invalid, err:%w", err)
-		types.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 		return
 	}
 
@@ -52,7 +52,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 			var tmpChunkProof message.ChunkProof
 			if err := json.Unmarshal([]byte(spp.Proof), &tmpChunkProof); err != nil {
 				nerr := fmt.Errorf("unmarshal parameter chunk proof invalid, err:%w", err)
-				types.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+				types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 				return
 			}
 			proofMsg.ChunkProof = &tmpChunkProof
@@ -60,7 +60,7 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 			var tmpBatchProof message.BatchProof
 			if err := json.Unmarshal([]byte(spp.Proof), &tmpBatchProof); err != nil {
 				nerr := fmt.Errorf("unmarshal parameter batch proof invalid, err:%w", err)
-				types.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+				types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 				return
 			}
 			proofMsg.BatchProof = &tmpBatchProof
@@ -69,8 +69,8 @@ func (spc *SubmitProofController) SubmitProof(ctx *gin.Context) {
 
 	if err := spc.submitProofReceiverLogic.HandleZkProof(ctx, &proofMsg, spp); err != nil {
 		nerr := fmt.Errorf("handle zk proof failure, err:%w", err)
-		types.RenderJSON(ctx, types.ErrCoordinatorHandleZkProofFailure, nerr, nil)
+		types.RenderFailure(ctx, types.ErrCoordinatorHandleZkProofFailure, nerr)
 		return
 	}
-	types.RenderJSON(ctx, types.Success, nil, nil)
+	types.RenderSuccess(ctx, nil)
 }

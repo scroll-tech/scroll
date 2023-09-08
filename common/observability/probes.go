@@ -1,8 +1,6 @@
 package observability
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
@@ -25,13 +23,13 @@ func NewProbesController(db *gorm.DB) *ProbesController {
 // HealthCheck the api controller for health check
 func (a *ProbesController) HealthCheck(c *gin.Context) {
 	if _, err := database.Ping(a.db); err != nil {
-		types.RenderFatal(c, http.StatusInternalServerError, types.InternalServerError, nil, nil)
+		types.RenderFatal(c, err)
 		return
 	}
-	types.RenderJSON(c, types.Success, nil, nil)
+	types.RenderSuccess(c, nil)
 }
 
 // Ready the api controller for ready check
 func (a *ProbesController) Ready(c *gin.Context) {
-	types.RenderJSON(c, types.Success, nil, nil)
+	types.RenderSuccess(c, nil)
 }
