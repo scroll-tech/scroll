@@ -120,7 +120,7 @@ contract InitializeL1ScrollOwner is Script {
         _selectors[0] = ScrollChain.revertBatch.selector;
         _selectors[1] = ScrollChain.removeSequencer.selector;
         _selectors[2] = ScrollChain.removeProver.selector;
-        _selectors[3] = ScrollChain.updateMaxNumL2TxInChunk.selector;
+        _selectors[3] = ScrollChain.updateMaxNumTxInChunk.selector;
         _selectors[4] = ScrollChain.setPause.selector;
         owner.updateAccess(L1_SCROLL_CHAIN_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
 
