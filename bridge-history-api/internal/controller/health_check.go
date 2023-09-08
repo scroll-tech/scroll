@@ -3,11 +3,11 @@ package controller
 import (
 	"net/http"
 
-	"bridge-history-api/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
 	"bridge-history-api/internal/types"
+	"bridge-history-api/utils"
 )
 
 // HealthCheckController is health check API
