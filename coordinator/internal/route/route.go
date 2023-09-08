@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"scroll-tech/common/metrics"
+	"scroll-tech/common/observability"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
@@ -15,12 +15,9 @@ import (
 func Route(router *gin.Engine, cfg *config.Config, reg prometheus.Registerer) {
 	router.Use(gin.Recovery())
 
-	metrics.Use(router, "coordinator", reg)
+	observability.Use(router, "coordinator", reg)
 
 	r := router.Group("coordinator")
-
-	r.GET("/health", api.HealthCheck.HealthCheck)
-	r.GET("/ready", api.Ready.Ready)
 
 	v1(r, cfg)
 }

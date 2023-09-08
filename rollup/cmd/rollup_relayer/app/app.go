@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"scroll-tech/common/observability"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -13,7 +14,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/metrics"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -64,7 +64,7 @@ func action(ctx *cli.Context) error {
 	}()
 
 	registry := prometheus.DefaultRegisterer
-	metrics.Server(ctx, registry.(*prometheus.Registry))
+	observability.Server(ctx, registry.(*prometheus.Registry), db)
 
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)

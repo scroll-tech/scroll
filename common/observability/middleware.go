@@ -1,10 +1,10 @@
-package metrics
+package observability
 
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"scroll-tech/common/metrics/ginmetrics"
+	"scroll-tech/common/observability/ginmetrics"
 )
 
 // Use register the gin metric
