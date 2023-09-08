@@ -125,7 +125,7 @@ func testMinGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
-		assert.Equal(t, tx1.Gas(), uint64(150000))
+		assert.Equal(t, tx1.Gas(), uint64(100000))
 
 		newSender.Stop()
 	}
