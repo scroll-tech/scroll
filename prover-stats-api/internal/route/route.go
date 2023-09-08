@@ -14,6 +14,9 @@ import (
 func Route(router *gin.Engine, conf *config.Config) {
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
+	router.GET("api/health", controller.HealthCheck.HealthCheck)
+	router.GET("api/ready", controller.Ready.Ready)
+
 	r := router.Group("api/prover_task")
 
 	v1(r, conf)

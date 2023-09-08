@@ -3,6 +3,8 @@ package types
 const (
 	// Success shows OK.
 	Success = 0
+	// InternalServerError show server fatal
+	InternalServerError = 500
 
 	// ErrJWTCommonErr jwt common error
 	ErrJWTCommonErr = 50000

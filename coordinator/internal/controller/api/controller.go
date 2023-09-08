@@ -15,10 +15,12 @@ var (
 	GetTask *GetTaskController
 	// SubmitProof the submit proof controller
 	SubmitProof *SubmitProofController
-	// HealthCheck the health check controller
-	HealthCheck *HealthCheckController
 	// Auth the auth controller
 	Auth *AuthController
+	// HealthCheck the health check controller
+	HealthCheck *HealthCheckController
+	// Ready the ready controller
+	Ready *ReadyController
 
 	initControllerOnce sync.Once
 )
@@ -32,8 +34,9 @@ func InitController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) 
 		}
 
 		Auth = NewAuthController(db)
-		HealthCheck = NewHealthCheckController()
+		HealthCheck = NewHealthCheckController(db)
 		GetTask = NewGetTaskController(cfg, db, vf, reg)
 		SubmitProof = NewSubmitProofController(cfg, db, vf, reg)
+		Ready = NewReadyController()
 	})
 }

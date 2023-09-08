@@ -19,13 +19,14 @@ func Route(router *gin.Engine, cfg *config.Config, reg prometheus.Registerer) {
 
 	r := router.Group("coordinator")
 
+	r.GET("/health", api.HealthCheck.HealthCheck)
+	r.GET("/ready", api.Ready.Ready)
+
 	v1(r, cfg)
 }
 
 func v1(router *gin.RouterGroup, conf *config.Config) {
 	r := router.Group("/v1")
-
-	r.GET("/health", api.HealthCheck.HealthCheck)
 
 	challengeMiddleware := middleware.ChallengeMiddleware(conf)
 	r.GET("/challenge", challengeMiddleware.LoginHandler)

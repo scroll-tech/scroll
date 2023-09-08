@@ -10,6 +10,8 @@ import (
 const (
 	// Success shows OK.
 	Success = 0
+	// InternalServerError show server fatal
+	InternalServerError = 500
 	// ErrParameterInvalidNo is invalid params
 	ErrParameterInvalidNo = 40001
 	// ErrGetClaimablesFailure is getting all claimables txs error
@@ -102,4 +104,19 @@ func RenderJSON(ctx *gin.Context, errCode int, err error, data interface{}) {
 		Data:    data,
 	}
 	ctx.JSON(http.StatusOK, renderData)
+}
+
+// RenderFatal renders fatal response with json
+func RenderFatal(ctx *gin.Context, status int, errCode int, err error, data interface{}) {
+	var errMsg string
+	if err != nil {
+		errMsg = err.Error()
+	}
+	renderData := Response{
+		ErrCode: errCode,
+		ErrMsg:  errMsg,
+		Data:    data,
+	}
+	ctx.Set("errcode", errCode)
+	ctx.JSON(status, renderData)
 }

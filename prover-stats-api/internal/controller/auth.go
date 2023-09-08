@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	ctype "scroll-tech/common/types"
+
 	"scroll-tech/prover-stats-api/internal/types"
 )
 
@@ -52,5 +54,5 @@ func (a *AuthController) LoginResponse(c *gin.Context, code int, message string,
 		Time:  time,
 		Token: message,
 	}
-	types.RenderJSON(c, code, nil, resp)
+	ctype.RenderJSON(c, code, nil, resp)
 }

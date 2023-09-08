@@ -26,3 +26,18 @@ func RenderJSON(ctx *gin.Context, errCode int, err error, data interface{}) {
 	}
 	ctx.JSON(http.StatusOK, renderData)
 }
+
+// RenderFatal renders fatal response with json
+func RenderFatal(ctx *gin.Context, status int, errCode int, err error, data interface{}) {
+	var errMsg string
+	if err != nil {
+		errMsg = err.Error()
+	}
+	renderData := Response{
+		ErrCode: errCode,
+		ErrMsg:  errMsg,
+		Data:    data,
+	}
+	ctx.Set("errcode", errCode)
+	ctx.JSON(status, renderData)
+}

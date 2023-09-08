@@ -22,7 +22,7 @@ func unauthorized(c *gin.Context, _ int, message string) {
 	} else {
 		errCode = types.ErrJWTCommonErr
 	}
-	coordinatorType.RenderJSON(c, errCode, err, nil)
+	types.RenderJSON(c, errCode, err, nil)
 }
 
 func loginResponse(c *gin.Context, code int, message string, time time.Time) {
@@ -30,5 +30,5 @@ func loginResponse(c *gin.Context, code int, message string, time time.Time) {
 		Time:  time,
 		Token: message,
 	}
-	coordinatorType.RenderJSON(c, types.Success, nil, resp)
+	types.RenderJSON(c, types.Success, nil, resp)
 }

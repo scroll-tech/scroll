@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -63,17 +64,15 @@ func InitDB(config *Config) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		return nil, err
+
+	sqlDB, pingErr := Ping(db)
+	if pingErr != nil {
+		return nil, pingErr
 	}
 
 	sqlDB.SetMaxOpenConns(config.MaxOpenNum)
 	sqlDB.SetMaxIdleConns(config.MaxIdleNum)
 
-	if err = sqlDB.Ping(); err != nil {
-		return nil, err
-	}
 	return db, nil
 }
 
@@ -87,4 +86,17 @@ func CloseDB(db *gorm.DB) error {
 		return err
 	}
 	return nil
+}
+
+// Ping check db status
+func Ping(db *gorm.DB) (*sql.DB, error) {
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, err
+	}
+
+	if err = sqlDB.Ping(); err != nil {
+		return nil, err
+	}
+	return sqlDB, nil
 }
