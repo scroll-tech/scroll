@@ -76,5 +76,7 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 		gasLimit = minGasLimit
 	}
 
+	gasLimit = gasLimit * 12 / 10 // 20% extra gas to avoid out of gas error
+
 	return gasLimit, nil
 }

@@ -374,8 +374,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		// send transaction
 		txID := batch.Hash + "-commit"
-		minGasLimit := uint64(float64(batch.TotalL1CommitGas) * r.cfg.GasCostIncreaseMultiplier)
-		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, minGasLimit)
+		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, batch.TotalL1CommitGas)
 		if err != nil {
 			log.Error(
 				"Failed to send commitBatch tx to layer1",
