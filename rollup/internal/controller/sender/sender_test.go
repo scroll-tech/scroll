@@ -59,7 +59,7 @@ func TestSender(t *testing.T) {
 
 	t.Run("test new sender", testNewSender)
 	t.Run("test pending limit", testPendLimit)
-	t.Run("test min gas limit", testMinGasLimit)
+	t.Run("test fallback gas limit", testFallbackGasLimit)
 	t.Run("test resubmit transaction", testResubmitTransaction)
 	t.Run("test resubmit transaction with rising base fee", testResubmitTransactionWithRisingBaseFee)
 	t.Run("test check pending transaction", testCheckPendingTransaction)
@@ -102,7 +102,7 @@ func testPendLimit(t *testing.T) {
 	}
 }
 
-func testMinGasLimit(t *testing.T) {
+func testFallbackGasLimit(t *testing.T) {
 	for _, txType := range txTypes {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
@@ -113,19 +113,19 @@ func testMinGasLimit(t *testing.T) {
 		client, err := ethclient.Dial(cfgCopy.Endpoint)
 		assert.NoError(t, err)
 
-		// MinGasLimit = 0
+		// FallbackGasLimit = 0
 		txHash0, err := newSender.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
 		assert.NoError(t, err)
 		tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
 		assert.NoError(t, err)
 		assert.Greater(t, tx0.Gas(), uint64(0))
 
-		// MinGasLimit = 100000
+		// FallbackGasLimit = 100000
 		txHash1, err := newSender.SendTransaction("1", &common.Address{}, big.NewInt(1), nil, 100000)
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
-		assert.Equal(t, tx1.Gas(), uint64(120000))
+		assert.Equal(t, tx1.Gas(), uint64(100000))
 
 		newSender.Stop()
 	}
