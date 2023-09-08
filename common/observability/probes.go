@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	
+
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 )
