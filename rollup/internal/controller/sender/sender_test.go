@@ -107,27 +107,34 @@ func testFallbackGasLimit(t *testing.T) {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.Confirmations = rpc.LatestBlockNumber
-		newSender, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
 		assert.NoError(t, err)
 
 		client, err := ethclient.Dial(cfgCopy.Endpoint)
 		assert.NoError(t, err)
 
 		// FallbackGasLimit = 0
-		txHash0, err := newSender.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
+		txHash0, err := s.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
 		assert.NoError(t, err)
 		tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
 		assert.NoError(t, err)
 		assert.Greater(t, tx0.Gas(), uint64(0))
 
 		// FallbackGasLimit = 100000
-		txHash1, err := newSender.SendTransaction("1", &common.Address{}, big.NewInt(1), nil, 100000)
+		patchGuard := gomonkey.ApplyPrivateMethod(s, "estimateGasLimit",
+			func(opts *bind.TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, error) {
+				return 0, errors.New("estimateGasLimit error")
+			},
+		)
+
+		txHash1, err := s.SendTransaction("1", &common.Address{}, big.NewInt(1), nil, 100000)
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
-		assert.Equal(t, tx1.Gas(), uint64(100000))
+		assert.Equal(t, uint64(100000), tx1.Gas())
 
-		newSender.Stop()
+		s.Stop()
+		patchGuard.Reset()
 	}
 }
 

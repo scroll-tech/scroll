@@ -18,7 +18,9 @@ func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Add
 	}
 	gasLimit, err := s.estimateGasLimit(auth, contract, input, gasPrice, nil, nil, value)
 	if err != nil {
-		log.Error("estimateLegacyGas estimateGasLimit failure", "gasPrice", gasPrice, "error", err)
+		log.Error("estimateLegacyGas estimateGasLimit failure",
+			"gasPrice", gasPrice, "fallbackGasLimit", "from", auth.From.Hex(),
+			"contract address", contract.Hex(), "fallback gas limit", fallbackGasLimit, "error", err)
 		if fallbackGasLimit == 0 {
 			return nil, err
 		}
@@ -47,7 +49,9 @@ func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Ad
 	)
 	gasLimit, err := s.estimateGasLimit(auth, contract, input, nil, gasTipCap, gasFeeCap, value)
 	if err != nil {
-		log.Error("estimateDynamicGas estimateGasLimit failure", "error", err)
+		log.Error("estimateDynamicGas estimateGasLimit failure",
+			"from", auth.From.Hex(), "contract address", contract.Hex(),
+			"fallback gas limit", fallbackGasLimit, "error", err)
 		if fallbackGasLimit == 0 {
 			return nil, err
 		}
