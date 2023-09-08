@@ -58,10 +58,6 @@ type Layer2Relayer struct {
 	// Used to get batch status from chain_monitor api.
 	chainMonitorClient *resty.Client
 
-	// A list of processing message.
-	// key(string): confirmation ID, value(string): layer2 hash.
-	processingMessage sync.Map
-
 	// A list of processing batches commitment.
 	// key(string): confirmation ID, value(string): batch hash.
 	processingCommitment sync.Map
@@ -128,7 +124,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		gasPriceDiff: gasPriceDiff,
 
 		cfg:                    cfg,
-		processingMessage:      sync.Map{},
 		processingCommitment:   sync.Map{},
 		processingFinalization: sync.Map{},
 		chainMonitorClient:     chainMonitorClient,
@@ -374,8 +369,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		// send transaction
 		txID := batch.Hash + "-commit"
-		minGasLimit := uint64(float64(batch.TotalL1CommitGas) * r.cfg.GasCostIncreaseMultiplier)
-		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, minGasLimit)
+		fallbackGasLimit := uint64(float64(batch.TotalL1CommitGas) * r.cfg.L1CommitGasLimitMultiplier)
+		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, fallbackGasLimit)
 		if err != nil {
 			log.Error(
 				"Failed to send commitBatch tx to layer1",
