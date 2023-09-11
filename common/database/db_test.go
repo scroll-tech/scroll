@@ -39,10 +39,8 @@ func TestGormLogger(t *testing.T) {
 }
 
 func TestDB(t *testing.T) {
-	base := docker.NewDockerApp()
 	version.Version = "v4.1.98-aaa-bbb-ccc"
-
-	base = docker.NewDockerApp()
+	base := docker.NewDockerApp()
 	base.RunDBImage(t)
 
 	dbCfg := &Config{
