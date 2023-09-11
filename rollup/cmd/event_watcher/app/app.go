@@ -61,7 +61,7 @@ func action(ctx *cli.Context) error {
 	}()
 
 	registry := prometheus.DefaultRegisterer
-	observability.Server(ctx, registry.(*prometheus.Registry), db)
+	observability.Server(ctx, db)
 	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
 		log.Error("failed to connect l1 geth", "config file", cfgFile, "error", err)

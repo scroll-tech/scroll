@@ -64,7 +64,7 @@ func action(ctx *cli.Context) error {
 	}()
 
 	registry := prometheus.DefaultRegisterer
-	observability.Server(ctx, registry.(*prometheus.Registry), db)
+	observability.Server(ctx, db)
 
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)

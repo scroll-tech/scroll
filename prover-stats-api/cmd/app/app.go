@@ -56,7 +56,7 @@ func action(ctx *cli.Context) error {
 	}()
 
 	registry := prometheus.DefaultRegisterer
-	observability.Server(ctx, registry.(*prometheus.Registry), db)
+	observability.Server(ctx, db)
 
 	// init Prover Stats API
 	port := ctx.String(httpPortFlag.Name)

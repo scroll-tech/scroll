@@ -118,7 +118,6 @@ func getResp(t *testing.T, url string) interface{} {
 
 	res := new(types.Response)
 	assert.NoError(t, json.Unmarshal(byt, res))
-	t.Log("----byt is ", string(byt))
 	assert.Equal(t, types.Success, res.ErrCode)
 	return res.Data
 }

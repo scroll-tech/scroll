@@ -11,7 +11,6 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -22,7 +21,7 @@ import (
 
 // Server starts the metrics server on the given address, will be closed when the given
 // context is canceled.
-func Server(c *cli.Context, reg *prometheus.Registry, db *gorm.DB) {
+func Server(c *cli.Context, db *gorm.DB) {
 	if !c.Bool(utils.MetricsEnabled.Name) {
 		return
 	}

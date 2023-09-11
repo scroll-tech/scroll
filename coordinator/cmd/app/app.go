@@ -58,7 +58,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	registry := prometheus.DefaultRegisterer
-	observability.Server(ctx, registry.(*prometheus.Registry), db)
+	observability.Server(ctx, db)
 
 	proofCollector := cron.NewCollector(subCtx, db, cfg, registry)
 	defer func() {
