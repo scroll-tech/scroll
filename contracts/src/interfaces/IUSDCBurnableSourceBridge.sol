@@ -2,7 +2,8 @@
 
 pragma solidity ^0.8.16;
 
-// Implement this on the source chain (Ethereum).
+/// @title IUSDCBurnableSourceBridge
+/// @notice The interface of `USDCBurnableSourceBridge` of Circle's upgrader in L1 (Ethereum).
 interface IUSDCBurnableSourceBridge {
     /**
      * @notice Called by Circle, this executes a burn on the source
