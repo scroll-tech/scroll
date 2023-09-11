@@ -1,9 +1,22 @@
-.idea
+# Asset files
 assets/params*
 assets/seed
-coverage.txt
+
+# Built binaries
 build/bin
+
+coverage.txt
 *.integration.txt
+
+# Visual Studio Code
+.vscode
+
+# IntelliJ
+.idea
+
+# MacOS
+.DS_Store
 
 # misc
 sftp-config.json
+*~

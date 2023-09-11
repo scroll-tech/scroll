@@ -103,6 +103,12 @@ const (
 	ProverTaskFailureTypeUndefined ProverTaskFailureType = iota
 	// ProverTaskFailureTypeTimeout prover task failure of timeout
 	ProverTaskFailureTypeTimeout
+	// ProverTaskFailureTypeSubmitStatusNotOk prover task failure of validated failed by coordinator
+	ProverTaskFailureTypeSubmitStatusNotOk
+	// ProverTaskFailureTypeVerifiedFailed prover task failure of verified failed by coordinator
+	ProverTaskFailureTypeVerifiedFailed
+	// ProverTaskFailureTypeServerError collect occur error
+	ProverTaskFailureTypeServerError
 )
 
 func (r ProverTaskFailureType) String() string {
@@ -111,8 +117,14 @@ func (r ProverTaskFailureType) String() string {
 		return "prover task failure undefined"
 	case ProverTaskFailureTypeTimeout:
 		return "prover task failure timeout"
+	case ProverTaskFailureTypeSubmitStatusNotOk:
+		return "prover task failure validated submit proof status not ok"
+	case ProverTaskFailureTypeVerifiedFailed:
+		return "prover task failure verified failed"
+	case ProverTaskFailureTypeServerError:
+		return "prover task failure server exception"
 	default:
-		return "illegal prover task failure type"
+		return fmt.Sprintf("illegal prover task failure type (%d)", int32(r))
 	}
 }
 

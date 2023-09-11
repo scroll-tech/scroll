@@ -159,32 +159,39 @@ func (c *Collector) check(assignedProverTasks []orm.ProverTask, timeout promethe
 		}
 
 		timeout.Inc()
+
 		log.Warn("proof task have reach the timeout", "task id", assignedProverTask.TaskID,
 			"prover public key", assignedProverTask.ProverPublicKey, "prover name", assignedProverTask.ProverName, "task type", assignedProverTask.TaskType)
+
 		err := c.db.Transaction(func(tx *gorm.DB) error {
-			// update prover task proving status as ProverProofInvalid
-			if err := c.proverTaskOrm.UpdateProverTaskProvingStatus(c.ctx, assignedProverTask.UUID, types.ProverProofInvalid, tx); err != nil {
+			if err := c.proverTaskOrm.UpdateProverTaskProvingStatusAndFailureType(c.ctx, assignedProverTask.UUID, types.ProverProofInvalid, types.ProverTaskFailureTypeTimeout, tx); err != nil {
 				log.Error("update prover task proving status failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 				return err
 			}
 
-			// update prover task failure type
-			if err := c.proverTaskOrm.UpdateProverTaskFailureType(c.ctx, assignedProverTask.UUID, types.ProverTaskFailureTypeTimeout, tx); err != nil {
-				log.Error("update prover task failure type failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
-				return err
+			switch message.ProofType(assignedProverTask.TaskType) {
+			case message.ProofTypeChunk:
+				if err := c.chunkOrm.DecreaseActiveAttemptsByHash(c.ctx, assignedProverTask.TaskID, tx); err != nil {
+					log.Error("decrease chunk active attempts failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+					return err
+				}
+
+				if err := c.chunkOrm.UpdateProvingStatusFailed(c.ctx, assignedProverTask.TaskID, c.cfg.ProverManager.SessionAttempts, tx); err != nil {
+					log.Error("update proving status failed failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+					return err
+				}
+			case message.ProofTypeBatch:
+				if err := c.batchOrm.DecreaseActiveAttemptsByHash(c.ctx, assignedProverTask.TaskID, tx); err != nil {
+					log.Error("decrease batch active attempts failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+					return err
+				}
+
+				if err := c.batchOrm.UpdateProvingStatusFailed(c.ctx, assignedProverTask.TaskID, c.cfg.ProverManager.SessionAttempts, tx); err != nil {
+					log.Error("update proving status failed failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+					return err
+				}
 			}
 
-			// update the task to unassigned, let collector restart it
-			if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeChunk {
-				if err := c.chunkOrm.UpdateProvingStatus(c.ctx, assignedProverTask.TaskID, types.ProvingTaskUnassigned, tx); err != nil {
-					log.Error("update chunk proving status to unassigned to restart it failure", "hash", assignedProverTask.TaskID, "err", err)
-				}
-			}
-			if message.ProofType(assignedProverTask.TaskType) == message.ProofTypeBatch {
-				if err := c.batchOrm.UpdateProvingStatus(c.ctx, assignedProverTask.TaskID, types.ProvingTaskUnassigned, tx); err != nil {
-					log.Error("update batch proving status to unassigned to restart it failure", "hash", assignedProverTask.TaskID, "err", err)
-				}
-			}
 			return nil
 		})
 		if err != nil {

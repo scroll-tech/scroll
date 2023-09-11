@@ -1,28 +1,23 @@
 # prover-stats-api
 
-## how to get the prover-stats-api docs
+This directory contains the `prover-stats-api` service that provides REST APIs to query the status of proving tasks assigned to the prover.
 
-### 1. start the prover-stats-api server
+## Instructions
 
-```
-cd ./prover-stats-api
-make build
-./prover-stats --config=./conf/config.json
-```
+1. Build and start the `prover-stats-api` service.
 
-you will get server run log
-```
-Listening and serving HTTP on :8990
-```
+    ```
+    cd ./prover-stats-api
+    make build
+    ./build/bin/prover-stats --config=./conf/config.json
+    ```
 
-### 2. browse the documents
+2. Open this URL in your browser to view the API documents.
+    ```
+    http://localhost:8990/swagger/index.html
+    ```
 
-open this documents in your browser
-```
-http://localhost:8990/swagger/index.html
-```
-
-## how to update the prover-stats-api docs
+## How to update the prover-stats-api docs
 
 ```
 cd ./prover-stats-api

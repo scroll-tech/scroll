@@ -182,15 +182,15 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
-func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (*FeeData, error) {
+func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (*FeeData, error) {
 	if s.config.TxType == DynamicFeeTxType {
-		return s.estimateDynamicGas(auth, target, value, data, minGasLimit)
+		return s.estimateDynamicGas(auth, target, value, data, fallbackGasLimit)
 	}
-	return s.estimateLegacyGas(auth, target, value, data, minGasLimit)
+	return s.estimateLegacyGas(auth, target, value, data, fallbackGasLimit)
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (common.Hash, error) {
+func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (common.Hash, error) {
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	if s.IsFull() {
 		s.metrics.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(1)
@@ -215,7 +215,7 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		}
 	}()
 
-	if feeData, err = s.getFeeData(s.auth, target, value, data, minGasLimit); err != nil {
+	if feeData, err = s.getFeeData(s.auth, target, value, data, fallbackGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
 		log.Error("failed to get fee data", "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)

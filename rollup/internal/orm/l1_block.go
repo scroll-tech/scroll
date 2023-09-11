@@ -70,19 +70,41 @@ func (o *L1Block) GetL1Blocks(ctx context.Context, fields map[string]interface{}
 	return l1Blocks, nil
 }
 
-// InsertL1Blocks batch insert l1 blocks
+// InsertL1Blocks batch inserts l1 blocks.
+// If there's a block number conflict (e.g., due to reorg), soft deletes the existing block and inserts the new one.
 func (o *L1Block) InsertL1Blocks(ctx context.Context, blocks []L1Block) error {
 	if len(blocks) == 0 {
 		return nil
 	}
 
-	db := o.db.WithContext(ctx)
-	db = db.Model(&L1Block{})
+	return o.db.Transaction(func(tx *gorm.DB) error {
+		minBlockNumber := blocks[0].Number
+		for _, block := range blocks[1:] {
+			if block.Number < minBlockNumber {
+				minBlockNumber = block.Number
+			}
+		}
 
-	if err := db.Create(&blocks).Error; err != nil {
-		return fmt.Errorf("L1Block.InsertL1Blocks error: %w", err)
-	}
-	return nil
+		db := tx.WithContext(ctx)
+		db = db.Model(&L1Block{})
+		db = db.Where("number >= ?", minBlockNumber)
+		result := db.Delete(&L1Block{})
+
+		if result.Error != nil {
+			return fmt.Errorf("L1Block.InsertL1Blocks error: soft deleting blocks failed, block numbers starting from: %v, error: %w", minBlockNumber, result.Error)
+		}
+
+		// If the number of deleted blocks exceeds the limit (input length + 64), treat it as an anomaly.
+		// Because reorg with >= 64 blocks is very unlikely to happen.
+		if result.RowsAffected >= int64(len(blocks)+64) {
+			return fmt.Errorf("L1Block.InsertL1Blocks error: too many blocks were deleted, count: %d", result.RowsAffected)
+		}
+
+		if err := db.Create(&blocks).Error; err != nil {
+			return fmt.Errorf("L1Block.InsertL1Blocks error: %w", err)
+		}
+		return nil
+	})
 }
 
 // UpdateL1GasOracleStatusAndOracleTxHash update l1 gas oracle status and oracle tx hash

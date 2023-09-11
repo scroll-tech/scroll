@@ -244,8 +244,8 @@ func (o *ProverTask) UpdateProverTaskProof(ctx context.Context, uuid uuid.UUID, 
 	return nil
 }
 
-// UpdateProverTaskProvingStatus updates the proving_status of a specific ProverTask record.
-func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, uuid uuid.UUID, status types.ProverProveStatus, dbTX ...*gorm.DB) error {
+// UpdateProverTaskProvingStatusAndFailureType updates the proving_status of a specific ProverTask record.
+func (o *ProverTask) UpdateProverTaskProvingStatusAndFailureType(ctx context.Context, uuid uuid.UUID, status types.ProverProveStatus, failureType types.ProverTaskFailureType, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -254,7 +254,12 @@ func (o *ProverTask) UpdateProverTaskProvingStatus(ctx context.Context, uuid uui
 	db = db.Model(&ProverTask{})
 	db = db.Where("uuid = ?", uuid)
 
-	if err := db.Update("proving_status", status).Error; err != nil {
+	updates := make(map[string]interface{})
+	updates["proving_status"] = int(status)
+	if status == types.ProverProofInvalid {
+		updates["failure_type"] = int(failureType)
+	}
+	if err := db.Updates(updates).Error; err != nil {
 		return fmt.Errorf("ProverTask.UpdateProverTaskProvingStatus error: %w, uuid:%s, status: %v", err, uuid, status.String())
 	}
 	return nil

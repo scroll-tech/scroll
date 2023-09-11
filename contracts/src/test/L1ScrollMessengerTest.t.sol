@@ -280,13 +280,15 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         assertEq(messageQueue.pendingQueueIndex(), 2);
         hevm.stopPrank();
         for (uint256 i = 0; i < 2; ++i) {
-            assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
+            assertBoolEq(messageQueue.isMessageSkipped(i), true);
+            assertBoolEq(messageQueue.isMessageDropped(i), false);
         }
         hevm.expectEmit(false, false, false, true);
         emit OnDropMessageCalled(new bytes(0));
         l1Messenger.dropMessage(address(this), address(0), 0, 0, new bytes(0));
         for (uint256 i = 0; i < 2; ++i) {
-            assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
+            assertBoolEq(messageQueue.isMessageSkipped(i), true);
+            assertBoolEq(messageQueue.isMessageDropped(i), true);
         }
 
         // send one message with nonce 2 and replay 3 times
@@ -302,9 +304,13 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         messageQueue.popCrossDomainMessage(2, 4, 0x7);
         assertEq(messageQueue.pendingQueueIndex(), 6);
         hevm.stopPrank();
+        for (uint256 i = 2; i < 6; i++) {
+            assertBoolEq(messageQueue.isMessageSkipped(i), i < 5);
+            assertBoolEq(messageQueue.isMessageDropped(i), false);
+        }
 
-        // message already dropped or executed, revert
-        hevm.expectRevert("message already dropped or executed");
+        // drop non-skipped message, revert
+        hevm.expectRevert("drop non-skipped message");
         l1Messenger.dropMessage(address(this), address(0), 0, 2, new bytes(0));
 
         // send one message with nonce 6 and replay 4 times
@@ -320,13 +326,15 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         assertEq(messageQueue.pendingQueueIndex(), 11);
         hevm.stopPrank();
         for (uint256 i = 6; i < 11; ++i) {
-            assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
+            assertBoolEq(messageQueue.isMessageSkipped(i), true);
+            assertBoolEq(messageQueue.isMessageDropped(i), false);
         }
         hevm.expectEmit(false, false, false, true);
         emit OnDropMessageCalled(new bytes(0));
         l1Messenger.dropMessage(address(this), address(0), 0, 6, new bytes(0));
         for (uint256 i = 6; i < 11; ++i) {
-            assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
+            assertBoolEq(messageQueue.isMessageSkipped(i), true);
+            assertBoolEq(messageQueue.isMessageDropped(i), true);
         }
 
         // Message already dropped, revert

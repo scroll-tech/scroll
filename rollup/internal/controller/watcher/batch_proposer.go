@@ -48,7 +48,8 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		"maxChunkNumPerBatch", cfg.MaxChunkNumPerBatch,
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
 		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
-		"batchTimeoutSec", cfg.BatchTimeoutSec)
+		"batchTimeoutSec", cfg.BatchTimeoutSec,
+		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier)
 
 	return &BatchProposer{
 		ctx:                             ctx,
@@ -154,7 +155,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 		return nil, nil, err
 	}
 
-	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, unbatchedChunkIndex, int(p.maxChunkNumPerBatch)+1)
+	// select at most p.maxChunkNumPerBatch chunks
+	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, unbatchedChunkIndex, int(p.maxChunkNumPerBatch))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,6 +179,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	// Add extra gas costs
 	totalL1CommitGas += 4 * 2100                     // 4 one-time cold sload for commitBatch
 	totalL1CommitGas += 20000                        // 1 time sstore
+	totalL1CommitGas += 21000                        // base fee for tx
 	totalL1CommitGas += types.CalldataNonZeroByteGas // version in calldata
 
 	// adjusting gas:
@@ -207,8 +210,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 		totalL1CommitGas += types.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
 		totalL1CommitGas += types.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
 		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
-		if totalChunks > p.maxChunkNumPerBatch ||
-			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
+		if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {
 			// Check if the first chunk breaks hard limits.
 			// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
@@ -234,8 +236,6 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 			}
 
 			log.Debug("breaking limit condition in batching",
-				"currentTotalChunks", totalChunks,
-				"maxChunkNumPerBatch", p.maxChunkNumPerBatch,
 				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
 				"maxL1CommitCalldataSizePerBatch", p.maxL1CommitCalldataSizePerBatch,
 				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
@@ -249,12 +249,20 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
-	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
-		log.Warn("first block timeout",
-			"start block number", dbChunks[0].StartBlockNumber,
-			"first block timestamp", dbChunks[0].StartBlockTime,
-			"chunk outdated time threshold", currentTimeSec,
-		)
+	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec ||
+		totalChunks == p.maxChunkNumPerBatch {
+		if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
+			log.Warn("first block timeout",
+				"start block number", dbChunks[0].StartBlockNumber,
+				"start block timestamp", dbChunks[0].StartBlockTime,
+				"current time", currentTimeSec,
+			)
+		} else {
+			log.Info("reached maximum number of chunks in batch",
+				"chunk count", totalChunks,
+			)
+		}
+
 		batchMeta.TotalL1CommitGas = totalL1CommitGas
 		batchMeta.TotalL1CommitCalldataSize = totalL1CommitCalldataSize
 		p.batchFirstBlockTimeoutReached.Inc()

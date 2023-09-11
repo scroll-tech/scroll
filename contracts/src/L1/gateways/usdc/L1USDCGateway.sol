@@ -2,9 +2,6 @@
 
 pragma solidity =0.8.16;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-
 import {IFiatToken} from "../../../interfaces/IFiatToken.sol";
 import {IUSDCBurnableSourceBridge} from "../../../interfaces/IUSDCBurnableSourceBridge.sol";
 import {IL2ERC20Gateway} from "../../../L2/gateways/IL2ERC20Gateway.sol";
