@@ -158,7 +158,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
             amount,
             dataToCall
         );
-        gateway.depositETHAndCall{value: amount}(recipient, amount, dataToCall, 0);
+        gateway.depositETHAndCall{value: amount}(recipient, amount, dataToCall, defaultGasLimit);
 
         // skip message 0
         hevm.startPrank(address(rollup));
@@ -231,7 +231,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, address(this).balance / 2);
 
         // deposit some ETH to L1ScrollMessenger
-        gateway.depositETH{value: amount}(amount, 0);
+        gateway.depositETH{value: amount}(amount, defaultGasLimit);
 
         // do finalize withdraw eth
         bytes memory message = abi.encodeWithSelector(
@@ -286,7 +286,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, address(this).balance / 2);
 
         // deposit some ETH to L1ScrollMessenger
-        gateway.depositETH{value: amount}(amount, 0);
+        gateway.depositETH{value: amount}(amount, defaultGasLimit);
 
         // do finalize withdraw eth
         bytes memory message = abi.encodeWithSelector(
@@ -338,7 +338,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, address(this).balance / 2);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -407,7 +407,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, address(this).balance / 2);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -477,7 +477,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, address(this).balance / 2);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);

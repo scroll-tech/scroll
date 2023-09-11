@@ -328,7 +328,7 @@ contract ScrollChainTest is DSTestPlus {
         assertEq(rollup.finalizedStateRoots(1), bytes32(uint256(2)));
         assertEq(rollup.withdrawRoots(1), bytes32(uint256(3)));
         assertEq(rollup.lastFinalizedBatchIndex(), 1);
-        assertEq(messageQueue.getCrossDomainMessage(0), bytes32(0));
+        assertBoolEq(messageQueue.isMessageSkipped(0), false);
         assertEq(messageQueue.pendingQueueIndex(), 1);
 
         // commit batch2 with two chunks, correctly
@@ -462,22 +462,22 @@ contract ScrollChainTest is DSTestPlus {
         assertEq(messageQueue.pendingQueueIndex(), 265);
         // 1 ~ 4, zero
         for (uint256 i = 1; i < 4; i++) {
-            assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
+            assertBoolEq(messageQueue.isMessageSkipped(i), false);
         }
         // 4 ~ 9, even is nonzero, odd is zero
         for (uint256 i = 4; i < 9; i++) {
             if (i % 2 == 1 || i == 8) {
-                assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
+                assertBoolEq(messageQueue.isMessageSkipped(i), false);
             } else {
-                assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
+                assertBoolEq(messageQueue.isMessageSkipped(i), true);
             }
         }
         // 9 ~ 265, even is nonzero, odd is zero
         for (uint256 i = 9; i < 265; i++) {
             if (i % 2 == 1 || i == 264) {
-                assertEq(messageQueue.getCrossDomainMessage(i), bytes32(0));
+                assertBoolEq(messageQueue.isMessageSkipped(i), false);
             } else {
-                assertGt(uint256(messageQueue.getCrossDomainMessage(i)), 0);
+                assertBoolEq(messageQueue.isMessageSkipped(i), true);
             }
         }
     }

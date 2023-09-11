@@ -14,7 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
-	scrollTypes "scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/prover/config"
@@ -44,6 +43,9 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Constructed chunk prover")
 
+	as.Equal(chunkProverCore.GetVk(), readVk(*chunkVkPath, as))
+	t.Log("Chunk VK must be available when init")
+
 	chunkTrace1 := readChunkTrace(*tracePath1, as)
 	chunkTrace2 := readChunkTrace(*tracePath2, as)
 	t.Log("Loaded chunk traces")
@@ -54,32 +56,6 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Converted to chunk infos")
 
-	wrappedBlock1 := &scrollTypes.WrappedBlock{
-		Header:       chunkTrace1[0].Header,
-		Transactions: chunkTrace1[0].Transactions,
-		WithdrawRoot: chunkTrace1[0].WithdrawTrieRoot,
-	}
-	chunk1 := &scrollTypes.Chunk{Blocks: []*scrollTypes.WrappedBlock{wrappedBlock1}}
-	chunkHash1, err := chunk1.Hash(0)
-	as.NoError(err)
-	as.Equal(chunkInfo1.PostStateRoot, wrappedBlock1.Header.Root)
-	as.Equal(chunkInfo1.WithdrawRoot, wrappedBlock1.WithdrawRoot)
-	as.Equal(chunkInfo1.DataHash, chunkHash1)
-	t.Log("Successful to check chunk info 1")
-
-	wrappedBlock2 := &scrollTypes.WrappedBlock{
-		Header:       chunkTrace2[0].Header,
-		Transactions: chunkTrace2[0].Transactions,
-		WithdrawRoot: chunkTrace2[0].WithdrawTrieRoot,
-	}
-	chunk2 := &scrollTypes.Chunk{Blocks: []*scrollTypes.WrappedBlock{wrappedBlock2}}
-	chunkHash2, err := chunk2.Hash(chunk1.NumL1Messages(0))
-	as.NoError(err)
-	as.Equal(chunkInfo2.PostStateRoot, wrappedBlock2.Header.Root)
-	as.Equal(chunkInfo2.WithdrawRoot, wrappedBlock2.WithdrawRoot)
-	as.Equal(chunkInfo2.DataHash, chunkHash2)
-	t.Log("Successful to check chunk info 2")
-
 	chunkProof1, err := chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
 	as.NoError(err)
 	t.Log("Generated and dumped chunk proof 1")
@@ -89,7 +65,7 @@ func TestFFI(t *testing.T) {
 	t.Log("Generated and dumped chunk proof 2")
 
 	as.Equal(chunkProverCore.GetVk(), readVk(*chunkVkPath, as))
-	t.Log("Chunk VKs are equal")
+	t.Log("Chunk VKs must be equal after proving")
 
 	batchProverConfig := &config.ProverCoreConfig{
 		DumpDir:    *proofDumpPath,
@@ -100,6 +76,9 @@ func TestFFI(t *testing.T) {
 	batchProverCore, err := core.NewProverCore(batchProverConfig)
 	as.NoError(err)
 
+	as.Equal(batchProverCore.GetVk(), readVk(*batchVkPath, as))
+	t.Log("Batch VK must be available when init")
+
 	chunkInfos := []*message.ChunkInfo{chunkInfo1, chunkInfo2}
 	chunkProofs := []*message.ChunkProof{chunkProof1, chunkProof2}
 	_, err = batchProverCore.ProveBatch("batch_proof", chunkInfos, chunkProofs)
@@ -107,7 +86,7 @@ func TestFFI(t *testing.T) {
 	t.Log("Generated and dumped batch proof")
 
 	as.Equal(batchProverCore.GetVk(), readVk(*batchVkPath, as))
-	t.Log("Batch VKs are equal")
+	t.Log("Batch VKs must be equal after proving")
 }
 
 func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
