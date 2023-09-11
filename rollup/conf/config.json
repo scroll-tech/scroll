@@ -62,7 +62,7 @@
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
       "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
       "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",
-      "gas_cost_increase_multiplier": 1.2
+      "l1_commit_gas_limit_multiplier": 1.2
     },
     "chunk_proposer_config": {
       "max_block_num_per_chunk": 100,
