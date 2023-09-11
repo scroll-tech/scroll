@@ -25,18 +25,18 @@ func NewHistoryController(db *gorm.DB) *HistoryController {
 func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 	var req types.QueryByAddressRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
+		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
 		return
 	}
 	offset := (req.Page - 1) * req.PageSize
 	limit := req.PageSize
 	txs, total, err := c.historyLogic.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
 	if err != nil {
-		types.RenderJSON(ctx, types.ErrGetClaimablesFailure, err, nil)
+		types.RenderFailure(ctx, types.ErrGetClaimablesFailure, err)
 		return
 	}
 
-	types.RenderJSON(ctx, types.Success, nil, &types.ResultData{Result: txs, Total: total})
+	types.RenderSuccess(ctx, &types.ResultData{Result: txs, Total: total})
 }
 
 // GetAllTxsByAddr defines the http get method behavior
@@ -50,23 +50,23 @@ func (c *HistoryController) GetAllTxsByAddr(ctx *gin.Context) {
 	limit := req.PageSize
 	message, total, err := c.historyLogic.GetTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
 	if err != nil {
-		types.RenderJSON(ctx, types.ErrGetTxsByAddrFailure, err, nil)
+		types.RenderFailure(ctx, types.ErrGetTxsByAddrFailure, err)
 		return
 	}
-	types.RenderJSON(ctx, types.Success, nil, &types.ResultData{Result: message, Total: total})
+	types.RenderSuccess(ctx, &types.ResultData{Result: message, Total: total})
 }
 
 // PostQueryTxsByHash defines the http post method behavior
 func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 	var req types.QueryByHashRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
+		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
 		return
 	}
 	result, err := c.historyLogic.GetTxsByHashes(ctx, req.Txs)
 	if err != nil {
-		types.RenderJSON(ctx, types.ErrGetTxsByHashFailure, err, nil)
+		types.RenderFailure(ctx, types.ErrGetTxsByHashFailure, err)
 		return
 	}
-	types.RenderJSON(ctx, types.Success, nil, &types.ResultData{Result: result, Total: 0})
+	types.RenderSuccess(ctx, &types.ResultData{Result: result, Total: 0})
 }
