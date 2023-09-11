@@ -43,6 +43,9 @@ abstract contract CCTPGatewayBase is ScrollGatewayBase {
     /// @notice Mapping from destination domain CCTP nonce to status.
     mapping(uint256 => CCTPMessageStatus) public status;
 
+    /// @dev The storage slots for future usage.
+    uint256[47] private __gap;
+
     /***************
      * Constructor *
      ***************/
