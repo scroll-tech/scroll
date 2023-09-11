@@ -205,7 +205,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
             address(this),
             tokenId
         );
-        gateway.depositERC721(address(l1Token), tokenId, 0);
+        gateway.depositERC721(address(l1Token), tokenId, defaultGasLimit);
 
         // skip message 0
         hevm.startPrank(address(rollup));
@@ -239,7 +239,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
             address(this),
             _tokenIds
         );
-        gateway.batchDepositERC721(address(l1Token), _tokenIds, 0);
+        gateway.batchDepositERC721(address(l1Token), _tokenIds, defaultGasLimit);
 
         // skip message 0
         hevm.startPrank(address(rollup));
@@ -315,7 +315,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
 
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
-        gateway.depositERC721(address(l1Token), tokenId, 0);
+        gateway.depositERC721(address(l1Token), tokenId, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -378,7 +378,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
 
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
-        gateway.depositERC721(address(l1Token), tokenId, 0);
+        gateway.depositERC721(address(l1Token), tokenId, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -489,7 +489,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         }
 
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
-        gateway.batchDepositERC721(address(l1Token), _tokenIds, 0);
+        gateway.batchDepositERC721(address(l1Token), _tokenIds, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -560,7 +560,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         }
 
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
-        gateway.batchDepositERC721(address(l1Token), _tokenIds, 0);
+        gateway.batchDepositERC721(address(l1Token), _tokenIds, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -622,12 +622,17 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
 
         // deposit first
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
-        gateway.depositERC721(address(l1Token), tokenId, 0);
+        gateway.depositERC721(address(l1Token), tokenId, defaultGasLimit);
 
         mockRecipient.setCall(
             address(gateway),
             0,
-            abi.encodeWithSignature("depositERC721(address,uint256,uint256)", address(l1Token), tokenId, 0)
+            abi.encodeWithSignature(
+                "depositERC721(address,uint256,uint256)",
+                address(l1Token),
+                tokenId,
+                defaultGasLimit
+            )
         );
         // finalize withdraw
         mockMessenger.setXDomainMessageSender(address(counterpartGateway));
@@ -668,7 +673,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         uint256 feePerGas
     ) internal {
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -731,7 +736,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         uint256 feePerGas
     ) internal {
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -793,7 +798,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         uint256 feePerGas
     ) internal {
         tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -868,7 +873,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         uint256 feePerGas
     ) internal {
         tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
