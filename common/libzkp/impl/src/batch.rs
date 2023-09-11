@@ -1,15 +1,18 @@
 use crate::{
     types::{CheckChunkProofsResponse, ProofResult},
-    utils::{c_char_to_str, c_char_to_vec, string_to_c_char, vec_to_c_char, OUTPUT_DIR},
+    utils::{
+        c_char_to_str, c_char_to_vec, file_exists, string_to_c_char, vec_to_c_char, OUTPUT_DIR,
+    },
 };
 use libc::c_char;
 use prover::{
     aggregator::{Prover, Verifier},
+    consts::AGG_VK_FILENAME,
+    types::eth::BlockTrace,
     utils::{chunk_trace_to_witness_block, init_env_and_log},
     BatchProof, ChunkHash, ChunkProof,
 };
 use std::{cell::OnceCell, env, panic, ptr::null};
-use types::eth::BlockTrace;
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
 static mut VERIFIER: OnceCell<Verifier> = OnceCell::new();
@@ -24,6 +27,12 @@ pub unsafe extern "C" fn init_batch_prover(params_dir: *const c_char, assets_dir
 
     // TODO: add a settings in scroll-prover.
     env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
+
+    // VK file must exist, it is optional and logged as a warning in prover.
+    if !file_exists(assets_dir, &AGG_VK_FILENAME) {
+        panic!("{} must exist in folder {}", *AGG_VK_FILENAME, assets_dir);
+    }
+
     let prover = Prover::from_dirs(params_dir, assets_dir);
 
     PROVER.set(prover).unwrap();

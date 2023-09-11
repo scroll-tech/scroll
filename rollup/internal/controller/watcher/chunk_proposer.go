@@ -80,7 +80,8 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
 		"maxL1CommitCalldataSizePerChunk", cfg.MaxL1CommitCalldataSizePerChunk,
 		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
-		"chunkTimeoutSec", cfg.ChunkTimeoutSec)
+		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
+		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier)
 
 	return &ChunkProposer{
 		ctx:                             ctx,

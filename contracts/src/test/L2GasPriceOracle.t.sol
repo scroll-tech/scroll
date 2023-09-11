@@ -20,7 +20,7 @@ contract L2GasPriceOracleTest is DSTestPlus {
         whitelist = new Whitelist(address(this));
         oracle = L2GasPriceOracle(address(new ERC1967Proxy(address(new L2GasPriceOracle()), new bytes(0))));
 
-        oracle.initialize(0, 0, 0, 0);
+        oracle.initialize(1, 2, 1, 1);
         oracle.updateWhitelist(address(whitelist));
 
         address[] memory _accounts = new address[](1);
@@ -30,7 +30,7 @@ contract L2GasPriceOracleTest is DSTestPlus {
 
     function testCalculateIntrinsicGasFee() external {
         uint256 intrinsicGasFee = oracle.calculateIntrinsicGasFee(hex"00");
-        assertEq(intrinsicGasFee, 0);
+        assertEq(intrinsicGasFee, 2);
         uint64 zeroGas = 5;
         uint64 nonZeroGas = 10;
         oracle.setIntrinsicParams(20000, 50000, zeroGas, nonZeroGas);
