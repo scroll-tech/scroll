@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^v4.9.3",
-    "@openzeppelin/contracts-upgradeable": "^v4.9.2"
+    "@openzeppelin/contracts-upgradeable": "^v4.9.3"
   },
   "lint-staged": {
     "*.{js,ts}": "npx eslint --cache --fix",
