@@ -4,8 +4,11 @@ pragma solidity ^0.8.10;
 import {Script} from "forge-std/Script.sol";
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControlEnumerable} from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
+import {L2USDCGateway} from "../../src/L2/gateways/usdc/L2USDCGateway.sol";
+import {L2CustomERC20Gateway} from "../../src/L2/gateways/L2CustomERC20Gateway.sol";
 import {L2CustomERC20Gateway} from "../../src/L2/gateways/L2CustomERC20Gateway.sol";
 import {L2ERC1155Gateway} from "../../src/L2/gateways/L2ERC1155Gateway.sol";
 import {L2ERC721Gateway} from "../../src/L2/gateways/L2ERC721Gateway.sol";
@@ -15,6 +18,8 @@ import {L1GasPriceOracle} from "../../src/L2/predeploys/L1GasPriceOracle.sol";
 import {FeeVault} from "../../src/libraries/FeeVault.sol";
 import {Whitelist} from "../../src/L2/predeploys/Whitelist.sol";
 import {ScrollOwner} from "../../src/misc/ScrollOwner.sol";
+import {ETHRateLimiter} from "../../src/rate-limiter/ETHRateLimiter.sol";
+import {TokenRateLimiter} from "../../src/rate-limiter/TokenRateLimiter.sol";
 
 // solhint-disable max-states-count
 // solhint-disable state-visibility
@@ -45,8 +50,15 @@ contract InitializeL2ScrollOwner is Script {
     address L2_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_PROXY_ADDR");
     address L2_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L2_GATEWAY_ROUTER_PROXY_ADDR");
     address L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
+    address L2_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ETH_GATEWAY_PROXY_ADDR");
+    address L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
+    // address L2_USDC_GATEWAY_PROXY_ADDR = vm.envAddress("L2_USDC_GATEWAY_PROXY_ADDR");
+    address L2_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L2_WETH_GATEWAY_PROXY_ADDR");
     address L2_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC721_GATEWAY_PROXY_ADDR");
     address L2_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC1155_GATEWAY_PROXY_ADDR");
+
+    address L2_ETH_RATE_LIMITER_ADDR = vm.envAddress("L2_ETH_RATE_LIMITER_ADDR");
+    address L2_TOKEN_RATE_LIMITER_ADDR = vm.envAddress("L2_TOKEN_RATE_LIMITER_ADDR");
 
     ScrollOwner owner;
 
@@ -65,6 +77,11 @@ contract InitializeL2ScrollOwner is Script {
         configL2CustomERC20Gateway();
         configL2ERC721Gateway();
         configL2ERC1155Gateway();
+        configETHRateLimiter();
+        configTokenRateLimiter();
+
+        // @note comments out for testnet
+        // configL2USDCGateway();
 
         grantRoles();
         transferOwnership();
@@ -80,8 +97,17 @@ contract InitializeL2ScrollOwner is Script {
         Ownable(L2_SCROLL_MESSENGER_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L2_GATEWAY_ROUTER_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L2_ETH_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L2_WETH_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L2_ERC721_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L2_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+
+        // Ownable(L2_USDC_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+
+        Ownable(L2_ETH_RATE_LIMITER_ADDR).transferOwnership(address(owner));
+        AccessControlEnumerable(L2_TOKEN_RATE_LIMITER_ADDR).grantRole(bytes32(0), address(owner));
+        AccessControlEnumerable(L2_TOKEN_RATE_LIMITER_ADDR).revokeRole(bytes32(0), vm.addr(L2_DEPLOYER_PRIVATE_KEY));
     }
 
     function grantRoles() internal {
@@ -160,6 +186,19 @@ contract InitializeL2ScrollOwner is Script {
         owner.updateAccess(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
     }
 
+    /*
+    function configL2USDCGateway() internal {
+        bytes4[] memory _selectors;
+
+        // delay 7 day, scroll multisig
+        _selectors = new bytes4[](3);
+        _selectors[0] = L2USDCGateway.updateCircleCaller.selector;
+        _selectors[1] = L2USDCGateway.pauseDeposit.selector;
+        _selectors[2] = L2USDCGateway.pauseWithdraw.selector;
+        owner.updateAccess(L2_USDC_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
+    }
+    */
+
     function configL2ERC721Gateway() internal {
         bytes4[] memory _selectors;
 
@@ -176,5 +215,23 @@ contract InitializeL2ScrollOwner is Script {
         _selectors = new bytes4[](1);
         _selectors[0] = L2ERC1155Gateway.updateTokenMapping.selector;
         owner.updateAccess(L2_ERC1155_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
+    }
+
+    function configETHRateLimiter() internal {
+        bytes4[] memory _selectors;
+
+        // delay 1 day, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = ETHRateLimiter.updateTotalLimit.selector;
+        owner.updateAccess(L2_ETH_RATE_LIMITER_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
+    }
+
+    function configTokenRateLimiter() internal {
+        bytes4[] memory _selectors;
+
+        // delay 1 day, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = TokenRateLimiter.updateTotalLimit.selector;
+        owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
     }
 }

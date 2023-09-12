@@ -6,6 +6,7 @@ import {Script} from "forge-std/Script.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
+import {L1USDCGateway} from "../../src/L1/gateways/usdc/L1USDCGateway.sol";
 import {EnforcedTxGateway} from "../../src/L1/gateways/EnforcedTxGateway.sol";
 import {L1CustomERC20Gateway} from "../../src/L1/gateways/L1CustomERC20Gateway.sol";
 import {L1ERC1155Gateway} from "../../src/L1/gateways/L1ERC1155Gateway.sol";
@@ -46,6 +47,10 @@ contract InitializeL1ScrollOwner is Script {
     address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
     address L1_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L1_GATEWAY_ROUTER_PROXY_ADDR");
     address L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
+    address L1_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ETH_GATEWAY_PROXY_ADDR");
+    address L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
+    // address L1_USDC_GATEWAY_PROXY_ADDR = vm.envAddress("L1_USDC_GATEWAY_PROXY_ADDR");
+    address L1_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_WETH_GATEWAY_PROXY_ADDR");
     address L1_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC721_GATEWAY_PROXY_ADDR");
     address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
     address L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR = vm.envAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR");
@@ -71,6 +76,9 @@ contract InitializeL1ScrollOwner is Script {
         configL1ERC721Gateway();
         configL1ERC1155Gateway();
 
+        // @note comments out for testnet
+        // configL1USDCGateway();
+
         grantRoles();
         transferOwnership();
 
@@ -87,6 +95,10 @@ contract InitializeL1ScrollOwner is Script {
         Ownable(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR).transferOwnership(address(owner));
         Ownable(L1_GATEWAY_ROUTER_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L1_ETH_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        // Ownable(L1_USDC_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L1_WETH_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_ERC721_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
     }
@@ -178,6 +190,11 @@ contract InitializeL1ScrollOwner is Script {
         _selectors[1] = Ownable.transferOwnership.selector;
         _selectors[2] = Ownable.renounceOwnership.selector;
         owner.updateAccess(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR, _selectors, SECURITY_COUNCIL_NO_DELAY_ROLE, true);
+
+        // delay 7 day, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = MultipleVersionRollupVerifier.updateVerifier.selector;
+        owner.updateAccess(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
     }
 
     function configL1GatewayRouter() internal {
@@ -192,11 +209,24 @@ contract InitializeL1ScrollOwner is Script {
     function configL1CustomERC20Gateway() internal {
         bytes4[] memory _selectors;
 
-        // delay 7 day, scroll multisig
+        // delay 1 day, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = L1CustomERC20Gateway.updateTokenMapping.selector;
-        owner.updateAccess(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
+        owner.updateAccess(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
     }
+
+    /*
+    function configL1USDCGateway() internal {
+        bytes4[] memory _selectors;
+
+        // delay 7 day, scroll multisig
+        _selectors = new bytes4[](3);
+        _selectors[0] = L1USDCGateway.updateCircleCaller.selector;
+        _selectors[1] = L1USDCGateway.pauseDeposit.selector;
+        _selectors[2] = L1USDCGateway.pauseWithdraw.selector;
+        owner.updateAccess(L1_USDC_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
+    }
+    */
 
     function configL1ERC721Gateway() internal {
         bytes4[] memory _selectors;
