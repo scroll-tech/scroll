@@ -10,6 +10,38 @@ This contract maintains data for the Scroll rollup.
 
 ## Methods
 
+### addProver
+
+```solidity
+function addProver(address _account) external nonpayable
+```
+
+Add an account to the prover list.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _account | address | The address of account to add. |
+
+### addSequencer
+
+```solidity
+function addSequencer(address _account) external nonpayable
+```
+
+Add an account to the sequencer list.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _account | address | The address of account to add. |
+
 ### commitBatch
 
 ```solidity
@@ -113,7 +145,7 @@ Import layer 2 genesis block
 ### initialize
 
 ```solidity
-function initialize(address _messageQueue, address _verifier, uint256 _maxNumL2TxInChunk) external nonpayable
+function initialize(address _messageQueue, address _verifier, uint256 _maxNumTxInChunk) external nonpayable
 ```
 
 
@@ -126,7 +158,7 @@ function initialize(address _messageQueue, address _verifier, uint256 _maxNumL2T
 |---|---|---|
 | _messageQueue | address | undefined |
 | _verifier | address | undefined |
-| _maxNumL2TxInChunk | uint256 | undefined |
+| _maxNumTxInChunk | uint256 | undefined |
 
 ### isBatchFinalized
 
@@ -228,10 +260,10 @@ The chain id of the corresponding layer 2 chain.
 |---|---|---|
 | _0 | uint64 | undefined |
 
-### maxNumL2TxInChunk
+### maxNumTxInChunk
 
 ```solidity
-function maxNumL2TxInChunk() external view returns (uint256)
+function maxNumTxInChunk() external view returns (uint256)
 ```
 
 The maximum number of transactions allowed in each chunk.
@@ -279,6 +311,55 @@ function owner() external view returns (address)
 |---|---|---|
 | _0 | address | undefined |
 
+### paused
+
+```solidity
+function paused() external view returns (bool)
+```
+
+
+
+*Returns true if the contract is paused, and false otherwise.*
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bool | undefined |
+
+### removeProver
+
+```solidity
+function removeProver(address _account) external nonpayable
+```
+
+Add an account from the prover list.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _account | address | The address of account to remove. |
+
+### removeSequencer
+
+```solidity
+function removeSequencer(address _account) external nonpayable
+```
+
+Remove an account from the sequencer list.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _account | address | The address of account to remove. |
+
 ### renounceOwnership
 
 ```solidity
@@ -287,7 +368,7 @@ function renounceOwnership() external nonpayable
 
 
 
-*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.*
+*Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.*
 
 
 ### revertBatch
@@ -298,7 +379,7 @@ function revertBatch(bytes _batchHeader, uint256 _count) external nonpayable
 
 Revert a pending batch.
 
-*one can only revert unfinalized batches.*
+*If the owner want to revert a sequence of batches by sending multiple transactions,      make sure to revert recent batches first.*
 
 #### Parameters
 
@@ -306,6 +387,22 @@ Revert a pending batch.
 |---|---|---|
 | _batchHeader | bytes | undefined |
 | _count | uint256 | undefined |
+
+### setPause
+
+```solidity
+function setPause(bool _status) external nonpayable
+```
+
+Pause the contract
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _status | bool | The pause status to update. |
 
 ### transferOwnership
 
@@ -323,13 +420,13 @@ function transferOwnership(address newOwner) external nonpayable
 |---|---|---|
 | newOwner | address | undefined |
 
-### updateMaxNumL2TxInChunk
+### updateMaxNumTxInChunk
 
 ```solidity
-function updateMaxNumL2TxInChunk(uint256 _maxNumL2TxInChunk) external nonpayable
+function updateMaxNumTxInChunk(uint256 _maxNumTxInChunk) external nonpayable
 ```
 
-Update the value of `maxNumL2TxInChunk`.
+Update the value of `maxNumTxInChunk`.
 
 
 
@@ -337,41 +434,7 @@ Update the value of `maxNumL2TxInChunk`.
 
 | Name | Type | Description |
 |---|---|---|
-| _maxNumL2TxInChunk | uint256 | The new value of `maxNumL2TxInChunk`. |
-
-### updateProver
-
-```solidity
-function updateProver(address _account, bool _status) external nonpayable
-```
-
-Update the status of prover.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _account | address | The address of account to update. |
-| _status | bool | The status of the account to update. |
-
-### updateSequencer
-
-```solidity
-function updateSequencer(address _account, bool _status) external nonpayable
-```
-
-Update the status of sequencer.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _account | address | The address of account to update. |
-| _status | bool | The status of the account to update. |
+| _maxNumTxInChunk | uint256 | The new value of `maxNumTxInChunk`. |
 
 ### updateVerifier
 
@@ -435,7 +498,7 @@ Return the message root of a committed batch.
 ### CommitBatch
 
 ```solidity
-event CommitBatch(bytes32 indexed batchHash)
+event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash)
 ```
 
 Emitted when a new batch is committed.
@@ -446,12 +509,13 @@ Emitted when a new batch is committed.
 
 | Name | Type | Description |
 |---|---|---|
+| batchIndex `indexed` | uint256 | undefined |
 | batchHash `indexed` | bytes32 | undefined |
 
 ### FinalizeBatch
 
 ```solidity
-event FinalizeBatch(bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot)
+event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot)
 ```
 
 Emitted when a batch is finalized.
@@ -462,9 +526,26 @@ Emitted when a batch is finalized.
 
 | Name | Type | Description |
 |---|---|---|
+| batchIndex `indexed` | uint256 | undefined |
 | batchHash `indexed` | bytes32 | undefined |
 | stateRoot  | bytes32 | undefined |
 | withdrawRoot  | bytes32 | undefined |
+
+### Initialized
+
+```solidity
+event Initialized(uint8 version)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| version  | uint8 | undefined |
 
 ### OwnershipTransferred
 
@@ -483,10 +564,26 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
 
+### Paused
+
+```solidity
+event Paused(address account)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| account  | address | undefined |
+
 ### RevertBatch
 
 ```solidity
-event RevertBatch(bytes32 indexed batchHash)
+event RevertBatch(uint256 indexed batchIndex, bytes32 indexed batchHash)
 ```
 
 revert a pending batch.
@@ -497,15 +594,16 @@ revert a pending batch.
 
 | Name | Type | Description |
 |---|---|---|
+| batchIndex `indexed` | uint256 | undefined |
 | batchHash `indexed` | bytes32 | undefined |
 
-### UpdateMaxNumL2TxInChunk
+### Unpaused
 
 ```solidity
-event UpdateMaxNumL2TxInChunk(uint256 oldMaxNumL2TxInChunk, uint256 newMaxNumL2TxInChunk)
+event Unpaused(address account)
 ```
 
-Emitted when the value of `maxNumL2TxInChunk` is updated.
+
 
 
 
@@ -513,8 +611,24 @@ Emitted when the value of `maxNumL2TxInChunk` is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| oldMaxNumL2TxInChunk  | uint256 | The old value of `maxNumL2TxInChunk`. |
-| newMaxNumL2TxInChunk  | uint256 | The new value of `maxNumL2TxInChunk`. |
+| account  | address | undefined |
+
+### UpdateMaxNumTxInChunk
+
+```solidity
+event UpdateMaxNumTxInChunk(uint256 oldMaxNumTxInChunk, uint256 newMaxNumTxInChunk)
+```
+
+Emitted when the value of `maxNumTxInChunk` is updated.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| oldMaxNumTxInChunk  | uint256 | The old value of `maxNumTxInChunk`. |
+| newMaxNumTxInChunk  | uint256 | The new value of `maxNumTxInChunk`. |
 
 ### UpdateProver
 
@@ -553,7 +667,7 @@ Emitted when owner updates the status of sequencer.
 ### UpdateVerifier
 
 ```solidity
-event UpdateVerifier(address oldVerifier, address newVerifier)
+event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier)
 ```
 
 Emitted when the address of rollup verifier is updated.
@@ -564,8 +678,8 @@ Emitted when the address of rollup verifier is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| oldVerifier  | address | The address of old rollup verifier. |
-| newVerifier  | address | The address of new rollup verifier. |
+| oldVerifier `indexed` | address | The address of old rollup verifier. |
+| newVerifier `indexed` | address | The address of new rollup verifier. |
 
 
 

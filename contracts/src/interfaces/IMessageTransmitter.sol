@@ -2,7 +2,11 @@
 
 pragma solidity ^0.8.16;
 
+/// @title IMessageTransmitter
+/// @notice The interface of `MessageTransmitter` of Circle's Cross-Chain Transfer Protocol (CCTP).
 interface IMessageTransmitter {
+    /// @notice Compute the nonce of a message.
+    /// @param _sourceAndNonce The bytes contains source and nonce.
     function usedNonces(bytes32 _sourceAndNonce) external view returns (uint256);
 
     /**
