@@ -13,7 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/metrics"
+	"scroll-tech/common/observability"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -61,7 +61,7 @@ func action(ctx *cli.Context) error {
 	}()
 
 	registry := prometheus.DefaultRegisterer
-	metrics.Server(ctx, registry.(*prometheus.Registry))
+	observability.Server(ctx, db)
 	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
 		log.Error("failed to connect l1 geth", "config file", cfgFile, "error", err)

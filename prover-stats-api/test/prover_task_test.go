@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -25,7 +26,6 @@ import (
 	"scroll-tech/prover-stats-api/internal/controller"
 	"scroll-tech/prover-stats-api/internal/orm"
 	"scroll-tech/prover-stats-api/internal/route"
-	apitypes "scroll-tech/prover-stats-api/internal/types"
 )
 
 var (
@@ -42,7 +42,7 @@ func mockHTTPServer(cfg *config.Config, db *gorm.DB) (*http.Server, error) {
 	// run Prover Stats APIs
 	router := gin.Default()
 	controller.InitController(db)
-	route.Route(router, cfg)
+	route.Route(router, cfg, prometheus.DefaultRegisterer)
 	return utils.StartHTTPServer(addr, router)
 }
 
@@ -116,10 +116,9 @@ func getResp(t *testing.T, url string) interface{} {
 	byt, err := io.ReadAll(resp.Body)
 	assert.NoError(t, err)
 
-	res := new(apitypes.Response)
+	res := new(types.Response)
 	assert.NoError(t, json.Unmarshal(byt, res))
-	t.Log("----byt is ", string(byt))
-	assert.Equal(t, apitypes.Success, res.ErrCode)
+	assert.Equal(t, types.Success, res.ErrCode)
 	return res.Data
 }
 

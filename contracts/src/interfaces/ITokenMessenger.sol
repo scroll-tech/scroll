@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.16;
 
+/// @title ITokenMessenger
+/// @notice The interface of `TokenMessenger` of Circle's Cross-Chain Transfer Protocol (CCTP).
 interface ITokenMessenger {
     /**
      * @notice Deposits and burns tokens from sender to be minted on destination domain. The mint

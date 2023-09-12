@@ -6,10 +6,12 @@ import (
 	"os/signal"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
+	"scroll-tech/common/observability"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -53,12 +55,15 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
+	registry := prometheus.DefaultRegisterer
+	observability.Server(ctx, db)
+
 	// init Prover Stats API
 	port := ctx.String(httpPortFlag.Name)
 
 	router := gin.Default()
 	controller.InitController(db)
-	route.Route(router, cfg)
+	route.Route(router, cfg, registry)
 
 	go func() {
 		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {

@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/metrics"
+	"scroll-tech/common/observability"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -58,7 +58,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	registry := prometheus.DefaultRegisterer
-	metrics.Server(ctx, registry.(*prometheus.Registry))
+	observability.Server(ctx, db)
 
 	proofCollector := cron.NewCollector(subCtx, db, cfg, registry)
 	defer func() {

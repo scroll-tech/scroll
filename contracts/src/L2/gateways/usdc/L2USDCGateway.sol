@@ -57,6 +57,10 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
         l2USDC = _l2USDC;
     }
 
+    /// @notice Initializer for `L2USDCGateway`.
+    /// @param _counterpart The address of `L1USDCGateway` contract in L1.
+    /// @param _router The address of `L2GatewayRouter` contract in L2.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
     function initialize(
         address _counterpart,
         address _router,
@@ -157,6 +161,9 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
         require(_data.length == 0, "call is not allowed");
+
+        // rate limit
+        _addUsedAmount(_token, _amount);
 
         // 2. Transfer token into this contract.
         IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
