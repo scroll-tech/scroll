@@ -90,11 +90,11 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
 
         // Insufficient msg.value
         hevm.expectRevert("Insufficient msg.value");
-        l1Messenger.sendMessage(address(0), 1, new bytes(0), 0, refundAddress);
+        l1Messenger.sendMessage(address(0), 1, new bytes(0), defaultGasLimit, refundAddress);
 
         // refund exceed fee
         uint256 balanceBefore = refundAddress.balance;
-        l1Messenger.sendMessage{value: 1 + exceedValue}(address(0), 1, new bytes(0), 0, refundAddress);
+        l1Messenger.sendMessage{value: 1 + exceedValue}(address(0), 1, new bytes(0), defaultGasLimit, refundAddress);
         assertEq(balanceBefore + exceedValue, refundAddress.balance);
     }
 
@@ -109,22 +109,30 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         l1Messenger.updateMaxReplayTimes(0);
 
         // append a message
-        l1Messenger.sendMessage{value: 100}(address(0), 100, new bytes(0), 0, refundAddress);
+        l1Messenger.sendMessage{value: 100}(address(0), 100, new bytes(0), defaultGasLimit, refundAddress);
 
         // Provided message has not been enqueued
         hevm.expectRevert("Provided message has not been enqueued");
-        l1Messenger.replayMessage(address(this), address(0), 101, 0, new bytes(0), 1, refundAddress);
+        l1Messenger.replayMessage(address(this), address(0), 101, 0, new bytes(0), defaultGasLimit, refundAddress);
 
         gasOracle.setL2BaseFee(1);
         // Insufficient msg.value
         hevm.expectRevert("Insufficient msg.value for fee");
-        l1Messenger.replayMessage(address(this), address(0), 100, 0, new bytes(0), 1, refundAddress);
+        l1Messenger.replayMessage(address(this), address(0), 100, 0, new bytes(0), defaultGasLimit, refundAddress);
 
-        uint256 _fee = gasOracle.l2BaseFee() * 100;
+        uint256 _fee = gasOracle.l2BaseFee() * defaultGasLimit;
 
         // Exceed maximum replay times
         hevm.expectRevert("Exceed maximum replay times");
-        l1Messenger.replayMessage{value: _fee}(address(this), address(0), 100, 0, new bytes(0), 100, refundAddress);
+        l1Messenger.replayMessage{value: _fee}(
+            address(this),
+            address(0),
+            100,
+            0,
+            new bytes(0),
+            defaultGasLimit,
+            refundAddress
+        );
 
         l1Messenger.updateMaxReplayTimes(1);
 
@@ -137,7 +145,7 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
             100,
             0,
             new bytes(0),
-            100,
+            defaultGasLimit,
             refundAddress
         );
         assertEq(balanceBefore + exceedValue, refundAddress.balance);
@@ -146,8 +154,9 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         // test replay list
         // 1. send a message with nonce 2
         // 2. replay 3 times
+        gasOracle.setL2BaseFee(0);
         l1Messenger.updateMaxReplayTimes(100);
-        l1Messenger.sendMessage{value: 100}(address(0), 100, new bytes(0), 0, refundAddress);
+        l1Messenger.sendMessage{value: 100}(address(0), 100, new bytes(0), defaultGasLimit, refundAddress);
         bytes32 hash = keccak256(
             abi.encodeWithSignature(
                 "relayMessage(address,address,uint256,uint256,bytes)",
@@ -162,7 +171,7 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         assertEq(_replayTimes, 0);
         assertEq(_lastIndex, 0);
         for (uint256 i = 0; i < 3; i++) {
-            l1Messenger.replayMessage(address(this), address(0), 100, 2, new bytes(0), 0, refundAddress);
+            l1Messenger.replayMessage(address(this), address(0), 100, 2, new bytes(0), defaultGasLimit, refundAddress);
             (_replayTimes, _lastIndex) = l1Messenger.replayStates(hash);
             assertEq(_replayTimes, i + 1);
             assertEq(_lastIndex, i + 3);
@@ -200,9 +209,9 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         assertBoolEq(true, l1Messenger.paused());
 
         hevm.expectRevert("Pausable: paused");
-        l1Messenger.sendMessage(address(0), 0, new bytes(0), 0);
+        l1Messenger.sendMessage(address(0), 0, new bytes(0), defaultGasLimit);
         hevm.expectRevert("Pausable: paused");
-        l1Messenger.sendMessage(address(0), 0, new bytes(0), 0, address(0));
+        l1Messenger.sendMessage(address(0), 0, new bytes(0), defaultGasLimit, address(0));
         hevm.expectRevert("Pausable: paused");
         IL1ScrollMessenger.L2MessageProof memory _proof;
         l1Messenger.relayMessageWithProof(address(0), address(0), 0, 0, new bytes(0), _proof);
@@ -252,7 +261,7 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         l1Messenger.dropMessage(address(0), address(0), 0, 0, new bytes(0));
 
         // send one message with nonce 0
-        l1Messenger.sendMessage(address(0), 0, new bytes(0), 0);
+        l1Messenger.sendMessage(address(0), 0, new bytes(0), defaultGasLimit);
         assertEq(messageQueue.nextCrossDomainMessageIndex(), 1);
 
         // drop pending message, revert
@@ -262,7 +271,7 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         l1Messenger.updateMaxReplayTimes(10);
 
         // replay 1 time
-        l1Messenger.replayMessage(address(this), address(0), 0, 0, new bytes(0), 0, address(0));
+        l1Messenger.replayMessage(address(this), address(0), 0, 0, new bytes(0), defaultGasLimit, address(0));
         assertEq(messageQueue.nextCrossDomainMessageIndex(), 2);
 
         // skip all 2 messages
@@ -283,10 +292,10 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         }
 
         // send one message with nonce 2 and replay 3 times
-        l1Messenger.sendMessage(address(0), 0, new bytes(0), 0);
+        l1Messenger.sendMessage(address(0), 0, new bytes(0), defaultGasLimit);
         assertEq(messageQueue.nextCrossDomainMessageIndex(), 3);
         for (uint256 i = 0; i < 3; i++) {
-            l1Messenger.replayMessage(address(this), address(0), 0, 2, new bytes(0), 0, address(0));
+            l1Messenger.replayMessage(address(this), address(0), 0, 2, new bytes(0), defaultGasLimit, address(0));
         }
         assertEq(messageQueue.nextCrossDomainMessageIndex(), 6);
 
@@ -305,9 +314,9 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         l1Messenger.dropMessage(address(this), address(0), 0, 2, new bytes(0));
 
         // send one message with nonce 6 and replay 4 times
-        l1Messenger.sendMessage(address(0), 0, new bytes(0), 0);
+        l1Messenger.sendMessage(address(0), 0, new bytes(0), defaultGasLimit);
         for (uint256 i = 0; i < 4; i++) {
-            l1Messenger.replayMessage(address(this), address(0), 0, 6, new bytes(0), 0, address(0));
+            l1Messenger.replayMessage(address(this), address(0), 0, 6, new bytes(0), defaultGasLimit, address(0));
         }
         assertEq(messageQueue.nextCrossDomainMessageIndex(), 11);
 
@@ -336,9 +345,9 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
 
         // replay dropped message, revert
         hevm.expectRevert("Message already dropped");
-        l1Messenger.replayMessage(address(this), address(0), 0, 0, new bytes(0), 0, address(0));
+        l1Messenger.replayMessage(address(this), address(0), 0, 0, new bytes(0), defaultGasLimit, address(0));
         hevm.expectRevert("Message already dropped");
-        l1Messenger.replayMessage(address(this), address(0), 0, 6, new bytes(0), 0, address(0));
+        l1Messenger.replayMessage(address(this), address(0), 0, 6, new bytes(0), defaultGasLimit, address(0));
     }
 
     function onDropMessage(bytes memory message) external payable {

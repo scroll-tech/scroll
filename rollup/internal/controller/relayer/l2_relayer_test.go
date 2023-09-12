@@ -347,13 +347,13 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("Failed to send setL2BaseFee tx to layer2", t, func() {
 		targetErr := errors.New("failed to send setL2BaseFee tx to layer2 error")
-		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
 		relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, minGasLimit uint64) (hash common.Hash, err error) {
+	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
 		return common.HexToHash("0x56789abcdef1234"), nil
 	})
 

@@ -24,14 +24,14 @@ func NewBatchController(db *gorm.DB) *BatchController {
 func (b *BatchController) GetWithdrawRootByBatchIndex(ctx *gin.Context) {
 	var req types.QueryByBatchIndexRequest
 	if err := ctx.ShouldBind(&req); err != nil {
-		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
+		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
 		return
 	}
 	result, err := b.batchLogic.GetWithdrawRootByBatchIndex(ctx, req.BatchIndex)
 	if err != nil {
-		types.RenderJSON(ctx, types.ErrGetWithdrawRootByBatchIndexFailure, err, nil)
+		types.RenderFailure(ctx, types.ErrGetWithdrawRootByBatchIndexFailure, err)
 		return
 	}
 
-	types.RenderJSON(ctx, types.Success, nil, result)
+	types.RenderSuccess(ctx, result)
 }
