@@ -39,10 +39,10 @@ type SenderConfig struct {
 
 // ChainMonitor this config is used to get batch status from chain_monitor API.
 type ChainMonitor struct {
-	EnableChainMonitor bool   `json:"enable_chain_monitor"`
-	TimeOut            int    `json:"timeout"`
-	TryTimes           int    `json:"try_times"`
-	BaseURL            string `json:"base_url"`
+	Enable   bool   `json:"enable"`
+	TimeOut  int    `json:"timeout"`
+	TryTimes int    `json:"try_times"`
+	BaseURL  string `json:"base_url"`
 }
 
 // RelayerConfig loads relayer configuration items.
