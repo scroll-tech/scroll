@@ -39,6 +39,7 @@ type SenderConfig struct {
 
 // ChainMonitor this config is used to get batch status from chain_monitor API.
 type ChainMonitor struct {
+	Enabled  bool   `json:"enabled"`
 	TimeOut  int    `json:"timeout"`
 	TryTimes int    `json:"try_times"`
 	BaseURL  string `json:"base_url"`
@@ -55,14 +56,10 @@ type RelayerConfig struct {
 	SenderConfig *SenderConfig `json:"sender_config"`
 	// gas oracle config
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
-	// The interval in which we send finalize batch transactions.
-	FinalizeBatchIntervalSec uint64 `json:"finalize_batch_interval_sec"`
-	// MessageRelayMinGasLimit to avoid OutOfGas error
-	MessageRelayMinGasLimit uint64 `json:"message_relay_min_gas_limit,omitempty"`
 	// ChainMonitor config of monitoring service
-	ChainMonitor *ChainMonitor `json:"chain_monitor,omitempty"`
-	// GasCostIncreaseMultiplier multiplier for min gas limit estimation
-	GasCostIncreaseMultiplier float64 `json:"gas_cost_increase_multiplier,omitempty"`
+	ChainMonitor *ChainMonitor `json:"chain_monitor"`
+	// L1CommitGasLimitMultiplier multiplier for fallback gas limit in commitBatch txs
+	L1CommitGasLimitMultiplier float64 `json:"l1_commit_gas_limit_multiplier,omitempty"`
 	// The private key of the relayer
 	GasOracleSenderPrivateKey *ecdsa.PrivateKey `json:"-"`
 	CommitSenderPrivateKey    *ecdsa.PrivateKey `json:"-"`

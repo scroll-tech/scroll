@@ -10,16 +10,20 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
-func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Address, value *big.Int, input []byte, minGasLimit uint64) (*FeeData, error) {
+func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Address, value *big.Int, input []byte, fallbackGasLimit uint64) (*FeeData, error) {
 	gasPrice, err := s.client.SuggestGasPrice(s.ctx)
 	if err != nil {
 		log.Error("estimateLegacyGas SuggestGasPrice failure", "error", err)
 		return nil, err
 	}
-	gasLimit, err := s.estimateGasLimit(auth, contract, input, gasPrice, nil, nil, value, minGasLimit)
+	gasLimit, err := s.estimateGasLimit(auth, contract, input, gasPrice, nil, nil, value)
 	if err != nil {
-		log.Error("estimateLegacyGas estimateGasLimit failure", "gasPrice", gasPrice, "error", err)
-		return nil, err
+		log.Error("estimateLegacyGas estimateGasLimit failure", "gas price", gasPrice, "from", auth.From.Hex(),
+			"nonce", auth.Nonce.Uint64(), "contract address", contract.Hex(), "fallback gas limit", fallbackGasLimit, "error", err)
+		if fallbackGasLimit == 0 {
+			return nil, err
+		}
+		gasLimit = fallbackGasLimit
 	}
 	return &FeeData{
 		gasPrice: gasPrice,
@@ -27,7 +31,7 @@ func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Add
 	}, nil
 }
 
-func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Address, value *big.Int, input []byte, minGasLimit uint64) (*FeeData, error) {
+func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Address, value *big.Int, input []byte, fallbackGasLimit uint64) (*FeeData, error) {
 	gasTipCap, err := s.client.SuggestGasTipCap(s.ctx)
 	if err != nil {
 		log.Error("estimateDynamicGas SuggestGasTipCap failure", "error", err)
@@ -42,13 +46,15 @@ func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Ad
 		gasTipCap,
 		new(big.Int).Mul(baseFee, big.NewInt(2)),
 	)
-	gasLimit, err := s.estimateGasLimit(auth, contract, input, nil, gasTipCap, gasFeeCap, value, minGasLimit)
+	gasLimit, err := s.estimateGasLimit(auth, contract, input, nil, gasTipCap, gasFeeCap, value)
 	if err != nil {
-		log.Error("estimateDynamicGas estimateGasLimit failure", "error", err)
-		if minGasLimit == 0 {
+		log.Error("estimateDynamicGas estimateGasLimit failure",
+			"from", auth.From.Hex(), "nonce", auth.Nonce.Uint64(), "contract address", contract.Hex(),
+			"fallback gas limit", fallbackGasLimit, "error", err)
+		if fallbackGasLimit == 0 {
 			return nil, err
 		}
-		gasLimit = minGasLimit
+		gasLimit = fallbackGasLimit
 	}
 	return &FeeData{
 		gasLimit:  gasLimit,
@@ -57,7 +63,7 @@ func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Ad
 	}, nil
 }
 
-func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int, minGasLimit uint64) (uint64, error) {
+func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, error) {
 	msg := ethereum.CallMsg{
 		From:      opts.From,
 		To:        contract,
@@ -72,11 +78,8 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 		log.Error("estimateGasLimit EstimateGas failure", "error", err)
 		return 0, err
 	}
-	if minGasLimit > gasLimit {
-		gasLimit = minGasLimit
-	}
 
-	gasLimit = gasLimit * 15 / 10 // 50% extra gas to avoid out of gas error
+	gasLimit = gasLimit * 12 / 10 // 20% extra gas to avoid out of gas error
 
 	return gasLimit, nil
 }

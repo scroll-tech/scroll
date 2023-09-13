@@ -219,7 +219,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
             amount,
             dataToCall
         );
-        gateway.depositERC20AndCall(address(l1weth), recipient, amount, dataToCall, 0);
+        gateway.depositERC20AndCall(address(l1weth), recipient, amount, dataToCall, defaultGasLimit);
 
         // skip message 0
         hevm.startPrank(address(rollup));
@@ -328,7 +328,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, l1weth.balanceOf(address(this)));
 
         // deposit some WETH to L1ScrollMessenger
-        gateway.depositERC20(address(l1weth), amount, 0);
+        gateway.depositERC20(address(l1weth), amount, defaultGasLimit);
 
         // do finalize withdraw eth
         bytes memory message = abi.encodeWithSelector(
@@ -385,7 +385,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, l1weth.balanceOf(address(this)));
 
         // deposit some WETH to L1ScrollMessenger
-        gateway.depositERC20(address(l1weth), amount, 0);
+        gateway.depositERC20(address(l1weth), amount, defaultGasLimit);
 
         // do finalize withdraw eth
         bytes memory message = abi.encodeWithSelector(
@@ -446,7 +446,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, l1weth.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -521,7 +521,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, l1weth.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -597,7 +597,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, l1weth.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);

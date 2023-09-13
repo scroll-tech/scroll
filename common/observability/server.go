@@ -1,4 +1,4 @@
-package metrics
+package observability
 
 import (
 	"errors"
@@ -11,17 +11,17 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/utils"
 )
 
 // Server starts the metrics server on the given address, will be closed when the given
 // context is canceled.
-func Server(c *cli.Context, reg *prometheus.Registry) {
+func Server(c *cli.Context, db *gorm.DB) {
 	if !c.Bool(utils.MetricsEnabled.Name) {
 		return
 	}
@@ -32,6 +32,10 @@ func Server(c *cli.Context, reg *prometheus.Registry) {
 	r.GET("/metrics", func(context *gin.Context) {
 		promhttp.Handler().ServeHTTP(context.Writer, context.Request)
 	})
+
+	probeController := NewProbesController(db)
+	r.GET("/health", probeController.HealthCheck)
+	r.GET("/ready", probeController.Ready)
 
 	address := fmt.Sprintf(":%s", c.String(utils.MetricsPort.Name))
 	server := &http.Server{
