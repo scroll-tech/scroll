@@ -463,7 +463,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
             uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.depositERC20{value: feeToPay + extraValue}(address(l1Token), amount, gasLimit);
             } else {
@@ -471,7 +471,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
             }
             assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -542,7 +542,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
             uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.depositERC20{value: feeToPay + extraValue}(address(l1Token), recipient, amount, gasLimit);
             } else {
@@ -550,7 +550,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
             }
             assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -634,7 +634,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
             uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.depositERC20AndCall{value: feeToPay + extraValue}(
                     address(l1Token),
@@ -654,7 +654,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
             }
             assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
