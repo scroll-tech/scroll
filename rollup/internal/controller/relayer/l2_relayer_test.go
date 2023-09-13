@@ -392,6 +392,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
+	cfg.L2Config.RelayerConfig.ChainMonitor.EnableChainMonitor = true
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
