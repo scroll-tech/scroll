@@ -19,7 +19,6 @@
 ├── <a href="./database">database</a>: Database client and schema definition
 ├── <a href="./src">l2geth</a>: Scroll execution node
 ├── <a href="./prover">prover</a>: Prover client that runs proof generation for zkEVM circuit and aggregation circuit
-├── <a href="./prover-stats-api">prover-stats-api</a>: Collect and show prover statistics
 ├── <a href="./rollup">rollup</a>: Rollup-related services
 ├── <a href="./rpc-gateway">rpc-gateway</a>: RPC gateway external repo
 └── <a href="./tests">tests</a>: Integration tests

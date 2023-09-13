@@ -6,7 +6,6 @@ use (
 	./coordinator
 	./database
 	./prover
-	./prover-stats-api
 	./rollup
 	./tests/integration-test
 )
