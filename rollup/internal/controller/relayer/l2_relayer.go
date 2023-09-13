@@ -435,7 +435,8 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 
 		// Check batch status before send `finalizeBatchWithProof` tx.
 		if r.cfg.ChainMonitor.EnableChainMonitor {
-			batchStatus, err := r.getBatchStatusByIndex(batch.Index)
+			var batchStatus bool
+			batchStatus, err = r.getBatchStatusByIndex(batch.Index)
 			if err != nil {
 				r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
 				log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
