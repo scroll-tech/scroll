@@ -98,7 +98,7 @@ contract DeployL2BridgeContracts is Script {
         }
 
         address owner = vm.addr(L2_DEPLOYER_PRIVATE_KEY);
-        L2TxFeeVault feeVault = new L2TxFeeVault(address(owner), L1_TX_FEE_RECIPIENT_ADDR);
+        L2TxFeeVault feeVault = new L2TxFeeVault(address(owner), L1_TX_FEE_RECIPIENT_ADDR, 10 ether);
 
         logAddress("L2_TX_FEE_VAULT_ADDR", address(feeVault));
     }

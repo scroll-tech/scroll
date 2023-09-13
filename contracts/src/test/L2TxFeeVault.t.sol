@@ -13,7 +13,7 @@ contract L2TxFeeVaultTest is DSTestPlus {
 
     function setUp() public {
         messenger = new MockScrollMessenger();
-        vault = new L2TxFeeVault(address(this), address(1));
+        vault = new L2TxFeeVault(address(this), address(1), 10 ether);
         vault.updateMessenger(address(messenger));
     }
 
