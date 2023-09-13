@@ -124,7 +124,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	}
 
 	// chain_monitor client
-	if cfg.ChainMonitor.Enable {
+	if cfg.ChainMonitor.Enabled {
 		layer2Relayer.chainMonitorClient = resty.New()
 		layer2Relayer.chainMonitorClient.SetRetryCount(cfg.ChainMonitor.TryTimes)
 		layer2Relayer.chainMonitorClient.SetTimeout(time.Duration(cfg.ChainMonitor.TimeOut) * time.Second)
@@ -434,7 +434,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 
 		// Check batch status before send `finalizeBatchWithProof` tx.
-		if r.cfg.ChainMonitor.Enable {
+		if r.cfg.ChainMonitor.Enabled {
 			var batchStatus bool
 			batchStatus, err = r.getBatchStatusByIndex(batch.Index)
 			if err != nil {
