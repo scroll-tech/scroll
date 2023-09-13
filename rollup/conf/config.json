@@ -54,6 +54,7 @@
         "gas_price_diff": 50000
       },
       "chain_monitor": {
+        "enable_chain_monitor": false,
         "timeout": 3,
         "try_times": 5,
         "base_url": "http://localhost:8750"
