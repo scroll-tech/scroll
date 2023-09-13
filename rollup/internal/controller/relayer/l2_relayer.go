@@ -434,16 +434,18 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 
 		// Check batch status before send `finalizeBatchWithProof` tx.
-		batchStatus, err := r.getBatchStatusByIndex(batch.Index)
-		if err != nil {
-			r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
-			log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
-			return
-		}
-		if !batchStatus {
-			r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
-			log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
-			return
+		if r.cfg.ChainMonitor.EnableChainMonitor {
+			batchStatus, err := r.getBatchStatusByIndex(batch.Index)
+			if err != nil {
+				r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
+				log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
+				return
+			}
+			if !batchStatus {
+				r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
+				log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
+				return
+			}
 		}
 
 		var parentBatchStateRoot string
@@ -554,9 +556,6 @@ type batchStatusResponse struct {
 }
 
 func (r *Layer2Relayer) getBatchStatusByIndex(batchIndex uint64) (bool, error) {
-	if !r.cfg.ChainMonitor.EnableChainMonitor {
-		return true, nil
-	}
 	var response batchStatusResponse
 	resp, err := r.chainMonitorClient.R().SetResult(&response).Get(fmt.Sprintf("%s/v1/batch_status?batch_index=%d", r.cfg.ChainMonitor.BaseURL, batchIndex))
 	if err != nil {
