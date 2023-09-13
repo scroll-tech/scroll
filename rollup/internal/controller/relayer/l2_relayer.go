@@ -98,11 +98,6 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		gasPriceDiff = defaultGasPriceDiff
 	}
 
-	// chain_monitor client
-	chainMonitorClient := resty.New()
-	chainMonitorClient.SetRetryCount(cfg.ChainMonitor.TryTimes)
-	chainMonitorClient.SetTimeout(time.Duration(cfg.ChainMonitor.TimeOut) * time.Second)
-
 	layer2Relayer := &Layer2Relayer{
 		ctx: ctx,
 		db:  db,
@@ -126,7 +121,13 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		cfg:                    cfg,
 		processingCommitment:   sync.Map{},
 		processingFinalization: sync.Map{},
-		chainMonitorClient:     chainMonitorClient,
+	}
+
+	// chain_monitor client
+	if cfg.ChainMonitor.Enabled {
+		layer2Relayer.chainMonitorClient = resty.New()
+		layer2Relayer.chainMonitorClient.SetRetryCount(cfg.ChainMonitor.TryTimes)
+		layer2Relayer.chainMonitorClient.SetTimeout(time.Duration(cfg.ChainMonitor.TimeOut) * time.Second)
 	}
 
 	// Initialize genesis before we do anything else
@@ -433,17 +434,20 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 
 		// Check batch status before send `finalizeBatchWithProof` tx.
-		//batchStatus, err := r.getBatchStatusByIndex(batch.Index)
-		//if err != nil {
-		//	r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
-		//	log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
-		//	return
-		//}
-		//if !batchStatus {
-		//	r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
-		//	log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
-		//	return
-		//}
+		if r.cfg.ChainMonitor.Enabled {
+			var batchStatus bool
+			batchStatus, err = r.getBatchStatusByIndex(batch.Index)
+			if err != nil {
+				r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
+				log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
+				return
+			}
+			if !batchStatus {
+				r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
+				log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
+				return
+			}
+		}
 
 		var parentBatchStateRoot string
 		if batch.Index > 0 {
