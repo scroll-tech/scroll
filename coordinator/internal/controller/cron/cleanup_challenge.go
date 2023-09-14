@@ -22,7 +22,6 @@ func (c *Collector) cleanupChallenge() {
 			expiredTime := utils.NowUTC().Add(time.Hour)
 			if err := c.challenge.DeleteExpireChallenge(c.ctx, expiredTime); err != nil {
 				log.Error("delete expired challenge failure", "error", err)
-				break
 			}
 		case <-c.ctx.Done():
 			if c.ctx.Err() != nil {
