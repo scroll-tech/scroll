@@ -31,7 +31,7 @@ type L2 struct {
 	ChainID uint64 `json:"chain_id"`
 }
 
-// Auth provides the auth of prover-stats-api
+// Auth provides the auth coordinator
 type Auth struct {
 	Secret                     string `json:"secret"`
 	ChallengeExpireDurationSec int    `json:"challenge_expire_duration_sec"`

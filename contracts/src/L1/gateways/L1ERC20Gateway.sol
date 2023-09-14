@@ -12,6 +12,9 @@ import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallback.sol";
 
+/// @title L1ERC20Gateway
+/// @notice The `L1ERC20Gateway` as a base contract for ERC20 gateways in L1.
+/// It has implementation of common used functions for ERC20 gateways.
 abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, ScrollGatewayBase {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
