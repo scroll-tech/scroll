@@ -8,9 +8,8 @@ use libc::c_char;
 use prover::{
     aggregator::{Prover, Verifier},
     consts::AGG_VK_FILENAME,
-    types::eth::BlockTrace,
     utils::{chunk_trace_to_witness_block, init_env_and_log},
-    BatchProof, ChunkHash, ChunkProof,
+    BatchProof, BlockTrace, ChunkHash, ChunkProof,
 };
 use std::{cell::OnceCell, env, panic, ptr::null};
 

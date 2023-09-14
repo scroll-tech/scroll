@@ -43,7 +43,7 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Constructed chunk prover")
 
-	as.Equal(chunkProverCore.GetVk(), readVk(*chunkVkPath, as))
+	as.Equal(chunkProverCore.VK, readVk(*chunkVkPath, as))
 	t.Log("Chunk VK must be available when init")
 
 	chunkTrace1 := readChunkTrace(*tracePath1, as)
@@ -64,7 +64,7 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Generated and dumped chunk proof 2")
 
-	as.Equal(chunkProverCore.GetVk(), readVk(*chunkVkPath, as))
+	as.Equal(chunkProverCore.VK, readVk(*chunkVkPath, as))
 	t.Log("Chunk VKs must be equal after proving")
 
 	batchProverConfig := &config.ProverCoreConfig{
@@ -76,7 +76,7 @@ func TestFFI(t *testing.T) {
 	batchProverCore, err := core.NewProverCore(batchProverConfig)
 	as.NoError(err)
 
-	as.Equal(batchProverCore.GetVk(), readVk(*batchVkPath, as))
+	as.Equal(batchProverCore.VK, readVk(*batchVkPath, as))
 	t.Log("Batch VK must be available when init")
 
 	chunkInfos := []*message.ChunkInfo{chunkInfo1, chunkInfo2}
@@ -85,7 +85,7 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 	t.Log("Generated and dumped batch proof")
 
-	as.Equal(batchProverCore.GetVk(), readVk(*batchVkPath, as))
+	as.Equal(batchProverCore.VK, readVk(*batchVkPath, as))
 	t.Log("Batch VKs must be equal after proving")
 }
 
