@@ -7,10 +7,9 @@ use crate::{
 use libc::c_char;
 use prover::{
     consts::CHUNK_VK_FILENAME,
-    types::eth::BlockTrace,
     utils::init_env_and_log,
     zkevm::{Prover, Verifier},
-    ChunkProof,
+    BlockTrace, ChunkProof,
 };
 use std::{cell::OnceCell, env, panic, ptr::null};
 
@@ -75,7 +74,7 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
         let proof = PROVER
             .get_mut()
             .expect("failed to get mutable reference to PROVER.")
-            .gen_chunk_proof(block_traces, None, OUTPUT_DIR.as_deref())
+            .gen_chunk_proof(block_traces, None, None, OUTPUT_DIR.as_deref())
             .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 
         serde_json::to_vec(&proof).map_err(|e| format!("failed to serialize the proof: {e:?}"))
