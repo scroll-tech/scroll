@@ -7,22 +7,12 @@ on:
       - staging
       - develop
       - alpha
-    paths:
-      - 'prover-stats-api/**'
-      - '.github/workflows/prover_stats_api.yml'
   pull_request:
     types:
       - opened
       - reopened
       - synchronize
       - ready_for_review
-    paths:
-      - 'prover-stats-api/**'
-      - '.github/workflows/prover_stats_api.yml'
-
-defaults:
-  run:
-    working-directory: 'prover-stats-api'
 
 jobs:
   check:
