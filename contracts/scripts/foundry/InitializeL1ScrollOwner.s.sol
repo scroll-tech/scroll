@@ -54,7 +54,7 @@ contract InitializeL1ScrollOwner is Script {
     address L1_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC721_GATEWAY_PROXY_ADDR");
     address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
     address L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR = vm.envAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR");
-    address L1_ENFORCED_TX_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ENFORCED_TX_GATEWAY_PROXY_ADDR");
+    // address L1_ENFORCED_TX_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ENFORCED_TX_GATEWAY_PROXY_ADDR");
 
     ScrollOwner owner;
 
@@ -68,7 +68,6 @@ contract InitializeL1ScrollOwner is Script {
         configScrollChain();
         configL1MessageQueue();
         configL1ScrollMessenger();
-        configEnforcedTxGateway();
         configL2GasPriceOracle();
         configMultipleVersionRollupVerifier();
         configL1GatewayRouter();
@@ -77,6 +76,7 @@ contract InitializeL1ScrollOwner is Script {
         configL1ERC1155Gateway();
 
         // @note comments out for testnet
+        // configEnforcedTxGateway();
         // configL1USDCGateway();
 
         grantRoles();
@@ -90,7 +90,7 @@ contract InitializeL1ScrollOwner is Script {
         Ownable(L1_SCROLL_CHAIN_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_MESSAGE_QUEUE_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_SCROLL_MESSENGER_PROXY_ADDR).transferOwnership(address(owner));
-        Ownable(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        // Ownable(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L2_GAS_PRICE_ORACLE_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR).transferOwnership(address(owner));
         Ownable(L1_GATEWAY_ROUTER_PROXY_ADDR).transferOwnership(address(owner));
@@ -117,10 +117,12 @@ contract InitializeL1ScrollOwner is Script {
         bytes4[] memory _selectors;
 
         // no delay, security council
-        _selectors = new bytes4[](3);
-        _selectors[0] = ProxyAdmin.upgradeAndCall.selector;
-        _selectors[1] = Ownable.transferOwnership.selector;
-        _selectors[2] = Ownable.renounceOwnership.selector;
+        _selectors = new bytes4[](5);
+        _selectors[0] = ProxyAdmin.changeProxyAdmin.selector;
+        _selectors[1] = ProxyAdmin.upgrade.selector;
+        _selectors[2] = ProxyAdmin.upgradeAndCall.selector;
+        _selectors[3] = Ownable.transferOwnership.selector;
+        _selectors[4] = Ownable.renounceOwnership.selector;
         owner.updateAccess(L1_PROXY_ADMIN_ADDR, _selectors, SECURITY_COUNCIL_NO_DELAY_ROLE, true);
     }
 
@@ -162,15 +164,6 @@ contract InitializeL1ScrollOwner is Script {
         owner.updateAccess(L1_SCROLL_MESSENGER_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
     }
 
-    function configEnforcedTxGateway() internal {
-        bytes4[] memory _selectors;
-
-        // no delay, scroll multisig
-        _selectors = new bytes4[](1);
-        _selectors[0] = EnforcedTxGateway.setPause.selector;
-        owner.updateAccess(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
-    }
-
     function configL2GasPriceOracle() internal {
         bytes4[] memory _selectors;
 
@@ -203,7 +196,7 @@ contract InitializeL1ScrollOwner is Script {
         // delay 7 day, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = L1GatewayRouter.setERC20Gateway.selector;
-        owner.updateAccess(L1_GATEWAY_ROUTER_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
+        owner.updateAccess(L1_GATEWAY_ROUTER_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
     }
 
     function configL1CustomERC20Gateway() internal {
@@ -213,6 +206,24 @@ contract InitializeL1ScrollOwner is Script {
         _selectors = new bytes4[](1);
         _selectors[0] = L1CustomERC20Gateway.updateTokenMapping.selector;
         owner.updateAccess(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
+    }
+
+    function configL1ERC721Gateway() internal {
+        bytes4[] memory _selectors;
+
+        // delay 7 day, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = L1ERC721Gateway.updateTokenMapping.selector;
+        owner.updateAccess(L1_ERC721_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
+    }
+
+    function configL1ERC1155Gateway() internal {
+        bytes4[] memory _selectors;
+
+        // delay 7 day, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = L1ERC1155Gateway.updateTokenMapping.selector;
+        owner.updateAccess(L1_ERC1155_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
     }
 
     /*
@@ -226,23 +237,14 @@ contract InitializeL1ScrollOwner is Script {
         _selectors[2] = L1USDCGateway.pauseWithdraw.selector;
         owner.updateAccess(L1_USDC_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
     }
+
+    function configEnforcedTxGateway() internal {
+        bytes4[] memory _selectors;
+
+        // no delay, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = EnforcedTxGateway.setPause.selector;
+        owner.updateAccess(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+    }
     */
-
-    function configL1ERC721Gateway() internal {
-        bytes4[] memory _selectors;
-
-        // delay 7 day, scroll multisig
-        _selectors = new bytes4[](1);
-        _selectors[0] = L1ERC721Gateway.updateTokenMapping.selector;
-        owner.updateAccess(L1_ERC721_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
-    }
-
-    function configL1ERC1155Gateway() internal {
-        bytes4[] memory _selectors;
-
-        // delay 7 day, scroll multisig
-        _selectors = new bytes4[](1);
-        _selectors[0] = L1ERC1155Gateway.updateTokenMapping.selector;
-        owner.updateAccess(L1_ERC1155_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
-    }
 }
