@@ -55,3 +55,14 @@ func (r *Challenge) InsertChallenge(ctx context.Context, challengeString string)
 
 	return fmt.Errorf("insert challenge string affected rows more than 1")
 }
+
+// DeleteExpireChallenge delete the expire challenge
+func (r *Challenge) DeleteExpireChallenge(ctx context.Context, expiredTime time.Time) error {
+	db := r.db.WithContext(ctx)
+	db = db.Model(&Challenge{})
+	db = db.Where("created_at < ?", expiredTime)
+	if err := db.Unscoped().Delete(&Challenge{}).Error; err != nil {
+		return fmt.Errorf("Challenge.DeleteExpireChallenge err: %w", err)
+	}
+	return nil
+}
