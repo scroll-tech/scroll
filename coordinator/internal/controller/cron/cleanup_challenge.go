@@ -2,9 +2,11 @@ package cron
 
 import (
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/log"
-	"scroll-tech/common/utils"
 	"time"
+
+	"github.com/scroll-tech/go-ethereum/log"
+
+	"scroll-tech/common/utils"
 )
 
 func (c *Collector) cleanupChallenge() {
