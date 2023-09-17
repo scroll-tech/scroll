@@ -103,7 +103,7 @@ const (
 	ProverTaskFailureTypeUndefined ProverTaskFailureType = iota
 	// ProverTaskFailureTypeTimeout prover task failure of timeout
 	ProverTaskFailureTypeTimeout
-	// ProverTaskFailureTypeSubmitStatusNotOk prover task failure of validated failed by coordinator
+	// ProverTaskFailureTypeSubmitStatusNotOk prover task failure of submit status not ok
 	ProverTaskFailureTypeSubmitStatusNotOk
 	// ProverTaskFailureTypeVerifiedFailed prover task failure of verified failed by coordinator
 	ProverTaskFailureTypeVerifiedFailed
