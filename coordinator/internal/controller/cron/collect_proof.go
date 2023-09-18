@@ -28,6 +28,7 @@ type Collector struct {
 	proverTaskOrm *orm.ProverTask
 	chunkOrm      *orm.Chunk
 	batchOrm      *orm.Batch
+	challenge     *orm.Challenge
 
 	timeoutBatchCheckerRunTotal     prometheus.Counter
 	batchProverTaskTimeoutTotal     prometheus.Counter
@@ -72,6 +73,7 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config, reg prom
 	go c.timeoutBatchProofTask()
 	go c.timeoutChunkProofTask()
 	go c.checkBatchAllChunkReady()
+	go c.cleanupChallenge()
 
 	log.Info("Start coordinator successfully.")
 
