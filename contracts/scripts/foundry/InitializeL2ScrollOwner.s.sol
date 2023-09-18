@@ -212,7 +212,7 @@ contract InitializeL2ScrollOwner is Script {
         // delay 1 day, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = ETHRateLimiter.updateTotalLimit.selector;
-        owner.updateAccess(L2_ETH_RATE_LIMITER_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
+        owner.updateAccess(L2_ETH_RATE_LIMITER_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
     }
 
     function configTokenRateLimiter() internal {
@@ -221,7 +221,7 @@ contract InitializeL2ScrollOwner is Script {
         // delay 1 day, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = TokenRateLimiter.updateTotalLimit.selector;
-        owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
+        owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
     }
 
     /*
