@@ -9,13 +9,12 @@ import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
 import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
 
 import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
-import {IScrollMessenger} from "../../libraries/IScrollMessenger.sol";
-import {ScrollConstants} from "../../libraries/constants/ScrollConstants.sol";
 import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallback.sol";
 
-// solhint-disable no-empty-blocks
-
+/// @title L1ERC20Gateway
+/// @notice The `L1ERC20Gateway` as a base contract for ERC20 gateways in L1.
+/// It has implementation of common used functions for ERC20 gateways.
 abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, ScrollGatewayBase {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -68,7 +67,7 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         address _to,
         uint256 _amount,
         bytes calldata _data
-    ) external payable override onlyCallByCounterpart nonReentrant {
+    ) external payable virtual override onlyCallByCounterpart nonReentrant {
         _beforeFinalizeWithdrawERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
 
         // @note can possible trigger reentrant call to this contract or messenger,

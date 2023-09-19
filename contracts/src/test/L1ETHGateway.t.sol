@@ -158,7 +158,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
             amount,
             dataToCall
         );
-        gateway.depositETHAndCall{value: amount}(recipient, amount, dataToCall, 0);
+        gateway.depositETHAndCall{value: amount}(recipient, amount, dataToCall, defaultGasLimit);
 
         // skip message 0
         hevm.startPrank(address(rollup));
@@ -231,7 +231,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, address(this).balance / 2);
 
         // deposit some ETH to L1ScrollMessenger
-        gateway.depositETH{value: amount}(amount, 0);
+        gateway.depositETH{value: amount}(amount, defaultGasLimit);
 
         // do finalize withdraw eth
         bytes memory message = abi.encodeWithSelector(
@@ -286,7 +286,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, address(this).balance / 2);
 
         // deposit some ETH to L1ScrollMessenger
-        gateway.depositETH{value: amount}(amount, 0);
+        gateway.depositETH{value: amount}(amount, defaultGasLimit);
 
         // do finalize withdraw eth
         bytes memory message = abi.encodeWithSelector(
@@ -338,7 +338,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, address(this).balance / 2);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -387,7 +387,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
             uint256 messengerBalance = address(l1Messenger).balance;
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.depositETH{value: amount + feeToPay + extraValue}(amount, gasLimit);
             } else {
@@ -395,7 +395,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
             }
             assertEq(amount + messengerBalance, address(l1Messenger).balance);
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -407,7 +407,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, address(this).balance / 2);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -456,7 +456,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
             uint256 messengerBalance = address(l1Messenger).balance;
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.depositETH{value: amount + feeToPay + extraValue}(recipient, amount, gasLimit);
             } else {
@@ -464,7 +464,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
             }
             assertEq(amount + messengerBalance, address(l1Messenger).balance);
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -477,7 +477,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, address(this).balance / 2);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -526,7 +526,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
             uint256 messengerBalance = address(l1Messenger).balance;
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.depositETHAndCall{value: amount + feeToPay + extraValue}(
                     recipient,
@@ -544,7 +544,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
             }
             assertEq(amount + messengerBalance, address(l1Messenger).balance);
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 

@@ -55,7 +55,7 @@ func (r *mockProver) connectToCoordinator(t *testing.T) string {
 }
 
 func (r *mockProver) challenge(t *testing.T) string {
-	var result types.Response
+	var result ctypes.Response
 	client := resty.New()
 	resp, err := client.R().
 		SetResult(&result).
@@ -87,7 +87,7 @@ func (r *mockProver) login(t *testing.T, challengeString string) string {
 	body := fmt.Sprintf("{\"message\":{\"challenge\":\"%s\",\"prover_name\":\"%s\", \"prover_version\":\"%s\"},\"signature\":\"%s\"}",
 		authMsg.Identity.Challenge, authMsg.Identity.ProverName, authMsg.Identity.ProverVersion, authMsg.Signature)
 
-	var result types.Response
+	var result ctypes.Response
 	client := resty.New()
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
@@ -110,11 +110,11 @@ func (r *mockProver) login(t *testing.T, challengeString string) string {
 }
 
 func (r *mockProver) healthCheckSuccess(t *testing.T) bool {
-	var result types.Response
+	var result ctypes.Response
 	client := resty.New()
 	resp, err := client.R().
 		SetResult(&result).
-		Get("http://" + r.coordinatorURL + "/coordinator/v1/health")
+		Get("http://" + r.coordinatorURL + "/coordinator/v1/challenge")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
 	assert.Equal(t, ctypes.Success, result.ErrCode)
@@ -122,11 +122,11 @@ func (r *mockProver) healthCheckSuccess(t *testing.T) bool {
 }
 
 func (r *mockProver) healthCheckFailure(t *testing.T) bool {
-	var result types.Response
+	var result ctypes.Response
 	client := resty.New()
 	resp, err := client.R().
 		SetResult(&result).
-		Get("http://" + r.coordinatorURL + "/coordinator/v1/health")
+		Get("http://" + r.coordinatorURL + "/coordinator/v1/challenge")
 	assert.Error(t, err)
 	assert.Equal(t, 0, resp.StatusCode())
 	assert.Equal(t, 0, result.ErrCode)
@@ -212,7 +212,7 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 	assert.NoError(t, err)
 	assert.NotNil(t, submitProofData)
 
-	var result types.Response
+	var result ctypes.Response
 	client := resty.New()
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").

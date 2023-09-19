@@ -103,6 +103,12 @@ const (
 	ProverTaskFailureTypeUndefined ProverTaskFailureType = iota
 	// ProverTaskFailureTypeTimeout prover task failure of timeout
 	ProverTaskFailureTypeTimeout
+	// ProverTaskFailureTypeSubmitStatusNotOk prover task failure of submit status not ok
+	ProverTaskFailureTypeSubmitStatusNotOk
+	// ProverTaskFailureTypeVerifiedFailed prover task failure of verified failed by coordinator
+	ProverTaskFailureTypeVerifiedFailed
+	// ProverTaskFailureTypeServerError collect occur error
+	ProverTaskFailureTypeServerError
 )
 
 func (r ProverTaskFailureType) String() string {
@@ -111,8 +117,14 @@ func (r ProverTaskFailureType) String() string {
 		return "prover task failure undefined"
 	case ProverTaskFailureTypeTimeout:
 		return "prover task failure timeout"
+	case ProverTaskFailureTypeSubmitStatusNotOk:
+		return "prover task failure validated submit proof status not ok"
+	case ProverTaskFailureTypeVerifiedFailed:
+		return "prover task failure verified failed"
+	case ProverTaskFailureTypeServerError:
+		return "prover task failure server exception"
 	default:
-		return "illegal prover task failure type"
+		return fmt.Sprintf("illegal prover task failure type (%d)", int32(r))
 	}
 }
 
@@ -126,8 +138,8 @@ const (
 	ProvingTaskUnassigned
 	// ProvingTaskAssigned : proving_task is assigned to be proved
 	ProvingTaskAssigned
-	// ProvingTaskProved DEPRECATED: proof has been returned by prover
-	ProvingTaskProved
+	// ProvingTaskProvedDEPRECATED DEPRECATED: proof has been returned by prover
+	ProvingTaskProvedDEPRECATED
 	// ProvingTaskVerified : proof is valid
 	ProvingTaskVerified
 	// ProvingTaskFailed : fail to generate proof
@@ -140,7 +152,7 @@ func (ps ProvingStatus) String() string {
 		return "unassigned"
 	case ProvingTaskAssigned:
 		return "assigned"
-	case ProvingTaskProved:
+	case ProvingTaskProvedDEPRECATED:
 		return "proved"
 	case ProvingTaskVerified:
 		return "verified"

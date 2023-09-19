@@ -56,7 +56,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         router = L2GatewayRouter(address(new ERC1967Proxy(address(new L2GatewayRouter()), new bytes(0))));
 
         // Deploy L1 contracts
-        counterpartGateway = new L1USDCGateway();
+        counterpartGateway = new L1USDCGateway(address(l1USDC), address(l2USDC));
 
         // Initialize L2 contracts
         gateway.initialize(address(counterpartGateway), address(router), address(l2Messenger));
@@ -128,16 +128,6 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         _withdrawERC20WithRecipient(false, amount, recipient, gasLimit, feePerGas);
     }
 
-    function testWithdrawERC20WithRecipientAndCalldata(
-        uint256 amount,
-        address recipient,
-        bytes memory dataToCall,
-        uint256 gasLimit,
-        uint256 feePerGas
-    ) public {
-        _withdrawERC20WithRecipientAndCalldata(false, amount, recipient, dataToCall, gasLimit, feePerGas);
-    }
-
     function testRouterWithdrawERC20(
         uint256 amount,
         uint256 gasLimit,
@@ -153,16 +143,6 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         uint256 feePerGas
     ) public {
         _withdrawERC20WithRecipient(true, amount, recipient, gasLimit, feePerGas);
-    }
-
-    function testRouterWithdrawERC20WithRecipientAndCalldata(
-        uint256 amount,
-        address recipient,
-        bytes memory dataToCall,
-        uint256 gasLimit,
-        uint256 feePerGas
-    ) public {
-        _withdrawERC20WithRecipientAndCalldata(true, amount, recipient, dataToCall, gasLimit, feePerGas);
     }
 
     function testFinalizeDepositERC20FailedMocking(
@@ -356,7 +336,6 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, l2USDC.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
         feePerGas = 0;
 
         setL1BaseFee(feePerGas);
@@ -411,7 +390,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
             uint256 senderBalance = l2USDC.balanceOf(address(this));
             uint256 gatewayBalance = l2USDC.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.withdrawERC20{value: feeToPay}(address(l2USDC), amount, gasLimit);
             } else {
@@ -420,7 +399,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
             assertEq(senderBalance - amount, l2USDC.balanceOf(address(this)));
             assertEq(gatewayBalance, l2USDC.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -433,7 +412,6 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
     ) private {
         amount = bound(amount, 0, l2USDC.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
         feePerGas = 0;
 
         setL1BaseFee(feePerGas);
@@ -488,7 +466,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
             uint256 senderBalance = l2USDC.balanceOf(address(this));
             uint256 gatewayBalance = l2USDC.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.withdrawERC20{value: feeToPay}(address(l2USDC), recipient, amount, gasLimit);
             } else {
@@ -497,86 +475,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
             assertEq(senderBalance - amount, l2USDC.balanceOf(address(this)));
             assertEq(gatewayBalance, l2USDC.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
-        }
-    }
-
-    function _withdrawERC20WithRecipientAndCalldata(
-        bool useRouter,
-        uint256 amount,
-        address recipient,
-        bytes memory dataToCall,
-        uint256 gasLimit,
-        uint256 feePerGas
-    ) private {
-        amount = bound(amount, 0, l2USDC.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 21000, 1000000);
-        feePerGas = bound(feePerGas, 0, 1000);
-        // we don't charge fee now.
-        feePerGas = 0;
-
-        setL1BaseFee(feePerGas);
-
-        uint256 feeToPay = feePerGas * gasLimit;
-        bytes memory message = abi.encodeWithSelector(
-            IL1ERC20Gateway.finalizeWithdrawERC20.selector,
-            address(l1USDC),
-            address(l2USDC),
-            address(this),
-            recipient,
-            amount,
-            dataToCall
-        );
-        bytes memory xDomainCalldata = abi.encodeWithSignature(
-            "relayMessage(address,address,uint256,uint256,bytes)",
-            address(gateway),
-            address(counterpartGateway),
-            0,
-            0,
-            message
-        );
-
-        if (amount == 0) {
-            hevm.expectRevert("withdraw zero amount");
-            if (useRouter) {
-                router.withdrawERC20AndCall{value: feeToPay}(address(l2USDC), recipient, amount, dataToCall, gasLimit);
-            } else {
-                gateway.withdrawERC20AndCall{value: feeToPay}(address(l2USDC), recipient, amount, dataToCall, gasLimit);
-            }
-        } else {
-            // token is not l1USDC
-            hevm.expectRevert("only USDC is allowed");
-            gateway.withdrawERC20AndCall(address(l1USDC), recipient, amount, dataToCall, gasLimit);
-
-            // emit AppendMessage from L2MessageQueue
-            {
-                hevm.expectEmit(false, false, false, true);
-                emit AppendMessage(0, keccak256(xDomainCalldata));
-            }
-
-            // emit SentMessage from L2ScrollMessenger
-            {
-                hevm.expectEmit(true, true, false, true);
-                emit SentMessage(address(gateway), address(counterpartGateway), 0, 0, gasLimit, message);
-            }
-
-            // emit WithdrawERC20 from L2USDCGateway
-            hevm.expectEmit(true, true, true, true);
-            emit WithdrawERC20(address(l1USDC), address(l2USDC), address(this), recipient, amount, dataToCall);
-
-            uint256 senderBalance = l2USDC.balanceOf(address(this));
-            uint256 gatewayBalance = l2USDC.balanceOf(address(gateway));
-            uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
-            if (useRouter) {
-                router.withdrawERC20AndCall{value: feeToPay}(address(l2USDC), recipient, amount, dataToCall, gasLimit);
-            } else {
-                gateway.withdrawERC20AndCall{value: feeToPay}(address(l2USDC), recipient, amount, dataToCall, gasLimit);
-            }
-            assertEq(senderBalance - amount, l2USDC.balanceOf(address(this)));
-            assertEq(gatewayBalance, l2USDC.balanceOf(address(gateway)));
-            assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 

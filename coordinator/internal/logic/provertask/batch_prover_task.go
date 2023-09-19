@@ -15,7 +15,6 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
@@ -31,9 +30,10 @@ type BatchProverTask struct {
 }
 
 // NewBatchProverTask new a batch collector
-func NewBatchProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *BatchProverTask {
+func NewBatchProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
+			vk:            vk,
 			db:            db,
 			cfg:           cfg,
 			chunkOrm:      orm.NewChunk(db),
@@ -54,60 +54,31 @@ func NewBatchProverTask(cfg *config.Config, db *gorm.DB, reg prometheus.Register
 
 // Assign load and assign batch tasks
 func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
-	if !publicKeyExist {
-		return nil, fmt.Errorf("get public key from context failed")
+	taskCtx, err := bp.checkParameter(ctx, getTaskParameter)
+	if err != nil || taskCtx == nil {
+		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
-	if !proverNameExist {
-		return nil, fmt.Errorf("get prover name from context failed")
-	}
-
-	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
-	if !proverVersionExist {
-		return nil, fmt.Errorf("get prover version from context failed")
-	}
-	if !version.CheckScrollProverVersion(proverVersion.(string)) {
-		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
-	}
-
-	isAssigned, err := bp.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
+	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
+	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
+	batchTask, err := bp.batchOrm.UpdateBatchAttemptsReturning(ctx, maxActiveAttempts, maxTotalAttempts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if prover is assigned a task: %w", err)
+		log.Error("failed to get unassigned batch proving tasks", "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
-	if isAssigned {
-		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
-	}
-
-	batchTasks, err := bp.batchOrm.UpdateUnassignedBatchReturning(ctx, 1)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get unassigned batch proving tasks, error:%w", err)
-	}
-
-	if len(batchTasks) == 0 {
+	if batchTask == nil {
 		return nil, nil
 	}
 
-	if len(batchTasks) != 1 {
-		return nil, fmt.Errorf("get unassigned batch proving task len not 1, batch tasks:%v", batchTasks)
-	}
-
-	batchTask := batchTasks[0]
-	log.Info("start batch proof generation session", "id", batchTask.Hash, "public key", publicKey, "prover name", proverName)
-
-	if !bp.checkAttemptsExceeded(batchTask.Hash, message.ProofTypeBatch) {
-		bp.batchAttemptsExceedTotal.Inc()
-		return nil, fmt.Errorf("the batch task id:%s check attempts have reach the maximum", batchTask.Hash)
-	}
+	log.Info("start batch proof generation session", "id", batchTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
-		ProverPublicKey: publicKey.(string),
+		ProverPublicKey: taskCtx.PublicKey,
 		TaskType:        int16(message.ProofTypeBatch),
-		ProverName:      proverName.(string),
-		ProverVersion:   proverVersion.(string),
+		ProverName:      taskCtx.ProverName,
+		ProverVersion:   taskCtx.ProverVersion,
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 		// here why need use UTC time. see scroll/common/databased/db.go
@@ -115,15 +86,17 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	// Store session info.
-	if err = bp.proverTaskOrm.SetProverTask(ctx, &proverTask); err != nil {
-		bp.recoverProvingStatus(ctx, batchTask)
-		return nil, fmt.Errorf("db set session info fail, session id:%s, error:%w", proverTask.TaskID, err)
+	if err = bp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
+		bp.recoverActiveAttempts(ctx, batchTask)
+		log.Error("insert batch prover task info fail", "taskID", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx, batchTask.Hash)
+	taskMsg, err := bp.formatProverTask(ctx, &proverTask)
 	if err != nil {
-		bp.recoverProvingStatus(ctx, batchTask)
-		return nil, fmt.Errorf("format prover failure, id:%s error:%w", batchTask.Hash, err)
+		bp.recoverActiveAttempts(ctx, batchTask)
+		log.Error("format prover task failure", "hash", batchTask.Hash, "err", err)
+		return nil, ErrCoordinatorInternalFailure
 	}
 
 	bp.batchTaskGetTaskTotal.Inc()
@@ -131,11 +104,11 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
 	// get chunk from db
-	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, taskID)
+	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, task.TaskID)
 	if err != nil {
-		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", taskID, err)
+		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", task.TaskID, err)
 		return nil, err
 	}
 
@@ -144,7 +117,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 	for _, chunk := range chunks {
 		var proof message.ChunkProof
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, taskID, chunk.Hash)
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
 		}
 		chunkProofs = append(chunkProofs, &proof)
 
@@ -166,21 +139,20 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, taskID string) 
 
 	chunkProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", taskID, err)
+		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", task.TaskID, err)
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		TaskID:   taskID,
+		UUID:     task.UUID.String(),
+		TaskID:   task.TaskID,
 		TaskType: int(message.ProofTypeBatch),
 		TaskData: string(chunkProofsBytes),
 	}
 	return taskMsg, nil
 }
 
-// recoverProvingStatus if not return the batch task to prover success,
-// need recover the proving status to unassigned
-func (bp *BatchProverTask) recoverProvingStatus(ctx *gin.Context, batchTask *orm.Batch) {
-	if err := bp.batchOrm.UpdateProvingStatus(ctx, batchTask.Hash, types.ProvingTaskUnassigned); err != nil {
-		log.Warn("failed to recover batch proving status", "hash:", batchTask.Hash, "error", err)
+func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *orm.Batch) {
+	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx, batchTask.Hash); err != nil {
+		log.Error("failed to recover batch active attempts", "hash", batchTask.Hash, "error", err)
 	}
 }

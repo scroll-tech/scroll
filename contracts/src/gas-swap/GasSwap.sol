@@ -7,7 +7,6 @@ import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol"
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
@@ -15,6 +14,7 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Permit;
 
     /**********
      * Events *
@@ -92,7 +92,7 @@ contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
         address _sender = _msgSender();
 
         // do permit
-        IERC20Permit(_permit.token).permit(
+        IERC20Permit(_permit.token).safePermit(
             _sender,
             address(this),
             _permit.value,
@@ -101,6 +101,9 @@ contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
             _permit.r,
             _permit.s
         );
+
+        // record token balance in this contract
+        uint256 _balance = IERC20(_permit.token).balanceOf(address(this));
 
         // transfer token
         IERC20(_permit.token).safeTransferFrom(_sender, address(this), _permit.value);
@@ -126,7 +129,7 @@ contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
         require(_success, "transfer ETH failed");
 
         // refund rest token
-        uint256 _dust = IERC20(_permit.token).balanceOf(address(this));
+        uint256 _dust = IERC20(_permit.token).balanceOf(address(this)) - _balance;
         if (_dust > 0) {
             IERC20(_permit.token).safeTransfer(_sender, _dust);
         }

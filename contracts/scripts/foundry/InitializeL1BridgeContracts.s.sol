@@ -12,6 +12,7 @@ import {L1ScrollMessenger} from "../../src/L1/L1ScrollMessenger.sol";
 import {L1StandardERC20Gateway} from "../../src/L1/gateways/L1StandardERC20Gateway.sol";
 import {L1WETHGateway} from "../../src/L1/gateways/L1WETHGateway.sol";
 import {L1DAIGateway} from "../../src/L1/gateways/L1DAIGateway.sol";
+import {MultipleVersionRollupVerifier} from "../../src/L1/rollup/MultipleVersionRollupVerifier.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
 import {L1MessageQueue} from "../../src/L1/rollup/L1MessageQueue.sol";
 import {L2GasPriceOracle} from "../../src/L1/rollup/L2GasPriceOracle.sol";
@@ -21,7 +22,7 @@ contract InitializeL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
 
     uint256 CHAIN_ID_L2 = vm.envUint("CHAIN_ID_L2");
-    uint256 MAX_L2_TX_IN_CHUNK = vm.envUint("MAX_L2_TX_IN_CHUNK");
+    uint256 MAX_TX_IN_CHUNK = vm.envUint("MAX_TX_IN_CHUNK");
     uint256 MAX_L1_MESSAGE_GAS_LIMIT = vm.envUint("MAX_L1_MESSAGE_GAS_LIMIT");
     address L1_COMMIT_SENDER_ADDRESS = vm.envAddress("L1_COMMIT_SENDER_ADDRESS");
     address L1_FINALIZE_SENDER_ADDRESS = vm.envAddress("L1_FINALIZE_SENDER_ADDRESS");
@@ -66,10 +67,13 @@ contract InitializeL1BridgeContracts is Script {
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).initialize(
             L1_MESSAGE_QUEUE_PROXY_ADDR,
             L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR,
-            MAX_L2_TX_IN_CHUNK
+            MAX_TX_IN_CHUNK
         );
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addSequencer(L1_COMMIT_SENDER_ADDRESS);
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addProver(L1_FINALIZE_SENDER_ADDRESS);
+
+        // initialize MultipleVersionRollupVerifier
+        MultipleVersionRollupVerifier(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR).initialize(L1_SCROLL_CHAIN_PROXY_ADDR);
 
         // initialize L2GasPriceOracle
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize(

@@ -13,6 +13,7 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/provertask"
+	"scroll-tech/coordinator/internal/logic/verifier"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
@@ -22,9 +23,9 @@ type GetTaskController struct {
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, db, reg)
-	batchProverTask := provertask.NewBatchProverTask(cfg, db, reg)
+func NewGetTaskController(cfg *config.Config, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
+	chunkProverTask := provertask.NewChunkProverTask(cfg, db, vf.ChunkVK, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, db, vf.BatchVK, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),
@@ -40,33 +41,33 @@ func NewGetTaskController(cfg *config.Config, db *gorm.DB, reg prometheus.Regist
 func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	var getTaskParameter coordinatorType.GetTaskParameter
 	if err := ctx.ShouldBind(&getTaskParameter); err != nil {
-		nerr := fmt.Errorf("prover tasks parameter invalid, err:%w", err)
-		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+		nerr := fmt.Errorf("prover task parameter invalid, err:%w", err)
+		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 		return
 	}
 
 	proofType := ptc.proofType(&getTaskParameter)
 	proverTask, isExist := ptc.proverTasks[proofType]
 	if !isExist {
-		nerr := fmt.Errorf("parameter wrong proof type")
-		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorParameterInvalidNo, nerr, nil)
+		nerr := fmt.Errorf("parameter wrong proof type:%v", proofType)
+		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 		return
 	}
 
 	result, err := proverTask.Assign(ctx, &getTaskParameter)
 	if err != nil {
 		nerr := fmt.Errorf("return prover task err:%w", err)
-		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorGetTaskFailure, nerr, nil)
+		types.RenderFailure(ctx, types.ErrCoordinatorGetTaskFailure, nerr)
 		return
 	}
 
 	if result == nil {
 		nerr := fmt.Errorf("get empty prover task")
-		coordinatorType.RenderJSON(ctx, types.ErrCoordinatorEmptyProofData, nerr, nil)
+		types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, nerr)
 		return
 	}
 
-	coordinatorType.RenderJSON(ctx, types.Success, nil, result)
+	types.RenderSuccess(ctx, result)
 }
 
 func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) message.ProofType {

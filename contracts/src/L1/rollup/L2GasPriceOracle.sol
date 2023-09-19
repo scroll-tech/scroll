@@ -8,6 +8,8 @@ import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
 
 import {IL2GasPriceOracle} from "./IL2GasPriceOracle.sol";
 
+// solhint-disable reason-string
+
 contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /**********
      * Events *
@@ -41,9 +43,13 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     IWhitelist public whitelist;
 
     struct IntrinsicParams {
+        // The intrinsic gas for transaction.
         uint64 txGas;
+        // The intrinsic gas for contract creation. It is reserved for future use.
         uint64 txGasContractCreation;
+        // The intrinsic gas for each zero byte.
         uint64 zeroGas;
+        // The intrinsic gas for each nonzero byte.
         uint64 nonZeroGas;
     }
 
@@ -66,12 +72,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     ) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
-        intrinsicParams = IntrinsicParams({
-            txGas: _txGas,
-            txGasContractCreation: _txGasContractCreation,
-            zeroGas: _zeroGas,
-            nonZeroGas: _nonZeroGas
-        });
+        _setIntrinsicParams(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
     }
 
     /*************************
@@ -117,17 +118,10 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
         uint64 _txGasContractCreation,
         uint64 _zeroGas,
         uint64 _nonZeroGas
-    ) public {
+    ) external {
         require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
 
-        intrinsicParams = IntrinsicParams({
-            txGas: _txGas,
-            txGasContractCreation: _txGasContractCreation,
-            zeroGas: _zeroGas,
-            nonZeroGas: _nonZeroGas
-        });
-
-        emit IntrinsicParamsUpdated(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
+        _setIntrinsicParams(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
     }
 
     /// @notice Allows the owner to modify the l2 base fee.
@@ -153,5 +147,35 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
 
         whitelist = IWhitelist(_newWhitelist);
         emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
+    }
+
+    /**********************
+     * Internal Functions *
+     **********************/
+
+    /// @dev Internal function to update parameters for intrinsic gas calculation.
+    /// @param _txGas The intrinsic gas for transaction.
+    /// @param _txGasContractCreation The intrinsic gas for contract creation.
+    /// @param _zeroGas The intrinsic gas for each zero byte.
+    /// @param _nonZeroGas The intrinsic gas for each nonzero byte.
+    function _setIntrinsicParams(
+        uint64 _txGas,
+        uint64 _txGasContractCreation,
+        uint64 _zeroGas,
+        uint64 _nonZeroGas
+    ) internal {
+        require(_txGas > 0, "txGas is zero");
+        require(_zeroGas > 0, "zeroGas is zero");
+        require(_nonZeroGas > 0, "nonZeroGas is zero");
+        require(_txGasContractCreation > _txGas, "txGasContractCreation is less than txGas");
+
+        intrinsicParams = IntrinsicParams({
+            txGas: _txGas,
+            txGasContractCreation: _txGasContractCreation,
+            zeroGas: _zeroGas,
+            nonZeroGas: _nonZeroGas
+        });
+
+        emit IntrinsicParamsUpdated(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
     }
 }

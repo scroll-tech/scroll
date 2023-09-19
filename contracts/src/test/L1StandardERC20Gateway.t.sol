@@ -184,7 +184,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         );
         amount = bound(amount, 1, reentrantToken.balanceOf(address(this)));
         hevm.expectRevert("ReentrancyGuard: reentrant call");
-        gateway.depositERC20(address(reentrantToken), amount, 0);
+        gateway.depositERC20(address(reentrantToken), amount, defaultGasLimit);
 
         // should revert, reentrant after transfer
         reentrantToken.setReentrantCall(
@@ -195,14 +195,14 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         );
         amount = bound(amount, 1, reentrantToken.balanceOf(address(this)));
         hevm.expectRevert("ReentrancyGuard: reentrant call");
-        gateway.depositERC20(address(reentrantToken), amount, 0);
+        gateway.depositERC20(address(reentrantToken), amount, defaultGasLimit);
     }
 
     function testFeeOnTransferTokenFailed(uint256 amount) public {
         feeToken.setFeeRate(1e9);
         amount = bound(amount, 1, feeToken.balanceOf(address(this)));
         hevm.expectRevert("deposit zero amount");
-        gateway.depositERC20(address(feeToken), amount, 0);
+        gateway.depositERC20(address(feeToken), amount, defaultGasLimit);
     }
 
     function testFeeOnTransferTokenSucceed(uint256 amount, uint256 feeRate) public {
@@ -213,7 +213,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         // should succeed, for valid amount
         uint256 balanceBefore = feeToken.balanceOf(address(gateway));
         uint256 fee = (amount * feeRate) / 1e9;
-        gateway.depositERC20(address(feeToken), amount, 0);
+        gateway.depositERC20(address(feeToken), amount, defaultGasLimit);
         uint256 balanceAfter = feeToken.balanceOf(address(gateway));
         assertEq(balanceBefore + amount - fee, balanceAfter);
     }
@@ -282,8 +282,8 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             amount,
             abi.encode(true, abi.encode(dataToCall, abi.encode(l1Token.symbol(), l1Token.name(), l1Token.decimals())))
         );
-        gateway.depositERC20AndCall(address(l1Token), recipient, amount, dataToCall, 0);
-        gateway.depositERC20AndCall(address(l1Token), recipient, amount, dataToCall, 0);
+        gateway.depositERC20AndCall(address(l1Token), recipient, amount, dataToCall, defaultGasLimit);
+        gateway.depositERC20AndCall(address(l1Token), recipient, amount, dataToCall, defaultGasLimit);
 
         // skip message 0 and 1
         hevm.startPrank(address(rollup));
@@ -367,7 +367,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, l1Token.balanceOf(address(this)));
 
         // deposit some token to L1StandardERC20Gateway
-        gateway.depositERC20(address(l1Token), amount, 0);
+        gateway.depositERC20(address(l1Token), amount, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -424,7 +424,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, l1Token.balanceOf(address(this)));
 
         // deposit some token to L1StandardERC20Gateway
-        gateway.depositERC20(address(l1Token), amount, 0);
+        gateway.depositERC20(address(l1Token), amount, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -485,7 +485,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, l1Token.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -536,7 +536,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
 
             uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.depositERC20{value: feeToPay + extraValue}(address(l1Token), amount, gasLimit);
             } else {
@@ -544,7 +544,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             }
             assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -556,7 +556,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, l1Token.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -607,7 +607,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
 
             uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.depositERC20{value: feeToPay + extraValue}(address(l1Token), recipient, amount, gasLimit);
             } else {
@@ -615,7 +615,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             }
             assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -628,7 +628,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, l1Token.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -691,7 +691,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
 
             uint256 gatewayBalance = l1Token.balanceOf(address(gateway));
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.depositERC20AndCall{value: feeToPay + extraValue}(
                     address(l1Token),
@@ -711,7 +711,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
             }
             assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway)));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 

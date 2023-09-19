@@ -391,7 +391,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
 
             uint256 messengerBalance = address(l2Messenger).balance;
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.withdrawERC20{value: feeToPay}(address(l2weth), amount, gasLimit);
             } else {
@@ -399,7 +399,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
             }
             assertEq(amount + messengerBalance, address(l2Messenger).balance);
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -410,7 +410,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         uint256 gasLimit,
         uint256 feePerGas
     ) private {
-        amount = bound(amount, 0, l1weth.balanceOf(address(this)));
+        amount = bound(amount, 0, l2weth.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
         feePerGas = 0;
 
@@ -465,7 +465,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
 
             uint256 messengerBalance = address(l2Messenger).balance;
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.withdrawERC20{value: feeToPay}(address(l2weth), recipient, amount, gasLimit);
             } else {
@@ -473,7 +473,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
             }
             assertEq(amount + messengerBalance, address(l2Messenger).balance);
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -485,7 +485,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         uint256 gasLimit,
         uint256 feePerGas
     ) private {
-        amount = bound(amount, 0, l1weth.balanceOf(address(this)));
+        amount = bound(amount, 0, l2weth.balanceOf(address(this)));
         gasLimit = bound(gasLimit, 21000, 1000000);
         feePerGas = 0;
 
@@ -540,7 +540,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
 
             uint256 messengerBalance = address(l2Messenger).balance;
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             if (useRouter) {
                 router.withdrawERC20AndCall{value: feeToPay}(address(l2weth), recipient, amount, dataToCall, gasLimit);
             } else {
@@ -548,7 +548,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
             }
             assertEq(amount + messengerBalance, address(l2Messenger).balance);
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l2Messenger.isL2MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l2Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 

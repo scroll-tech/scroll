@@ -82,67 +82,6 @@ Mapping from L1 message hash to a boolean value indicating if the message has be
 |---|---|---|
 | _0 | bool | undefined |
 
-### isL2MessageSent
-
-```solidity
-function isL2MessageSent(bytes32) external view returns (bool)
-```
-
-Mapping from L2 message hash to sent status.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
-
-### l1MessageFailedTimes
-
-```solidity
-function l1MessageFailedTimes(bytes32) external view returns (uint256)
-```
-
-Mapping from L1 message hash to the number of failure times.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### maxFailedExecutionTimes
-
-```solidity
-function maxFailedExecutionTimes() external view returns (uint256)
-```
-
-The maximum number of times each L1 message can fail on L2.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
 ### messageQueue
 
 ```solidity
@@ -159,6 +98,28 @@ The address of L2MessageQueue.
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
+
+### messageSendTimestamp
+
+```solidity
+function messageSendTimestamp(bytes32) external view returns (uint256)
+```
+
+Mapping from L2 message hash to the timestamp when the message is sent.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### owner
 
@@ -328,22 +289,6 @@ Update fee vault contract.
 | Name | Type | Description |
 |---|---|---|
 | _newFeeVault | address | The address of new fee vault contract. |
-
-### updateMaxFailedExecutionTimes
-
-```solidity
-function updateMaxFailedExecutionTimes(uint256 _newMaxFailedExecutionTimes) external nonpayable
-```
-
-Update max failed execution times.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newMaxFailedExecutionTimes | uint256 | The new max failed execution times. |
 
 ### updateRateLimiter
 

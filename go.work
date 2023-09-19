@@ -1,12 +1,11 @@
 go 1.19
 
 use (
-	./bridge
 	./bridge-history-api
 	./common
 	./coordinator
 	./database
 	./prover
-	./prover-stats-api
+	./rollup
 	./tests/integration-test
 )

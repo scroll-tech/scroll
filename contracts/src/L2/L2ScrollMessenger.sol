@@ -12,6 +12,7 @@ import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 
 // solhint-disable reason-string
+// solhint-disable not-rely-on-time
 
 /// @title L2ScrollMessenger
 /// @notice The `L2ScrollMessenger` contract can:
@@ -34,17 +35,14 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
      * Variables *
      *************/
 
-    /// @notice Mapping from L2 message hash to sent status.
-    mapping(bytes32 => bool) public isL2MessageSent;
+    /// @notice Mapping from L2 message hash to the timestamp when the message is sent.
+    mapping(bytes32 => uint256) public messageSendTimestamp;
 
     /// @notice Mapping from L1 message hash to a boolean value indicating if the message has been successfully executed.
     mapping(bytes32 => bool) public isL1MessageExecuted;
 
-    /// @notice Mapping from L1 message hash to the number of failure times.
-    mapping(bytes32 => uint256) public l1MessageFailedTimes;
-
-    /// @notice The maximum number of times each L1 message can fail on L2.
-    uint256 public maxFailedExecutionTimes;
+    /// @dev The storage slots used by previous versions of this contract.
+    uint256[2] private __used;
 
     /***************
      * Constructor *
@@ -58,8 +56,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
 
     function initialize(address _counterpart) external initializer {
         ScrollMessengerBase.__ScrollMessengerBase_init(_counterpart, address(0));
-
-        maxFailedExecutionTimes = 3;
     }
 
     /*****************************
@@ -105,22 +101,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         _executeMessage(_from, _to, _value, _message, _xDomainCalldataHash);
     }
 
-    /************************
-     * Restricted Functions *
-     ************************/
-
-    /// @notice Update max failed execution times.
-    /// @dev This function can only called by contract owner.
-    /// @param _newMaxFailedExecutionTimes The new max failed execution times.
-    function updateMaxFailedExecutionTimes(uint256 _newMaxFailedExecutionTimes) external onlyOwner {
-        require(_newMaxFailedExecutionTimes > 0, "maxFailedExecutionTimes cannot be zero");
-
-        uint256 _oldMaxFailedExecutionTimes = maxFailedExecutionTimes;
-        maxFailedExecutionTimes = _newMaxFailedExecutionTimes;
-
-        emit UpdateMaxFailedExecutionTimes(_oldMaxFailedExecutionTimes, _newMaxFailedExecutionTimes);
-    }
-
     /**********************
      * Internal Functions *
      **********************/
@@ -143,8 +123,8 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(msg.sender, _to, _value, _nonce, _message));
 
         // normally this won't happen, since each message has different nonce, but just in case.
-        require(!isL2MessageSent[_xDomainCalldataHash], "Duplicated message");
-        isL2MessageSent[_xDomainCalldataHash] = true;
+        require(messageSendTimestamp[_xDomainCalldataHash] == 0, "Duplicated message");
+        messageSendTimestamp[_xDomainCalldataHash] = block.timestamp;
 
         L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
@@ -181,11 +161,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
             isL1MessageExecuted[_xDomainCalldataHash] = true;
             emit RelayedMessage(_xDomainCalldataHash);
         } else {
-            unchecked {
-                uint256 _failedTimes = l1MessageFailedTimes[_xDomainCalldataHash] + 1;
-                require(_failedTimes <= maxFailedExecutionTimes, "Exceed maximum failure times");
-                l1MessageFailedTimes[_xDomainCalldataHash] = _failedTimes;
-            }
             emit FailedRelayedMessage(_xDomainCalldataHash);
         }
     }

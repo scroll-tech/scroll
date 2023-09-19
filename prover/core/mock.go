@@ -16,6 +16,7 @@ import (
 // ProverCore sends block-traces to rust-prover through socket and get back the zk-proof.
 type ProverCore struct {
 	cfg *config.ProverCoreConfig
+	VK  string
 }
 
 // NewProverCore inits a ProverCore object.

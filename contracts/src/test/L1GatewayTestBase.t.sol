@@ -44,6 +44,8 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     // pay 0.1 extra ETH to test refund
     uint256 internal constant extraValue = 1e17;
 
+    uint32 internal constant defaultGasLimit = 1000000;
+
     L1ScrollMessenger internal l1Messenger;
     L1MessageQueue internal messageQueue;
     L2GasPriceOracle internal gasOracle;
@@ -91,13 +93,16 @@ abstract contract L1GatewayTestBase is DSTestPlus {
             address(gasOracle),
             10000000
         );
-        gasOracle.initialize(0, 0, 0, 0);
+        gasOracle.initialize(1, 2, 1, 1);
         gasOracle.updateWhitelist(address(whitelist));
         rollup.initialize(address(messageQueue), address(verifier), 44);
 
         address[] memory _accounts = new address[](1);
         _accounts[0] = address(this);
         whitelist.updateWhitelistStatus(_accounts, true);
+
+        // make nonzero block.timestamp
+        hevm.warp(1);
     }
 
     function prepareL2MessageRoot(bytes32 messageHash) internal {

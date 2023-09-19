@@ -217,7 +217,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
             tokenId,
             amount
         );
-        gateway.depositERC1155(address(l1Token), tokenId, amount, 0);
+        gateway.depositERC1155(address(l1Token), tokenId, amount, defaultGasLimit);
 
         // skip message 0
         hevm.startPrank(address(rollup));
@@ -255,7 +255,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
             _tokenIds,
             _amounts
         );
-        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, 0);
+        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, defaultGasLimit);
 
         // skip message 0
         hevm.startPrank(address(rollup));
@@ -338,7 +338,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         amount = bound(amount, 1, MAX_TOKEN_BALANCE);
 
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
-        gateway.depositERC1155(address(l1Token), tokenId, amount, 0);
+        gateway.depositERC1155(address(l1Token), tokenId, amount, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -402,7 +402,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         amount = bound(amount, 1, MAX_TOKEN_BALANCE);
 
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
-        gateway.depositERC1155(address(l1Token), tokenId, amount, 0);
+        gateway.depositERC1155(address(l1Token), tokenId, amount, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -529,7 +529,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         }
 
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
-        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, 0);
+        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -605,7 +605,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         }
 
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
-        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, 0);
+        gateway.batchDepositERC1155(address(l1Token), _tokenIds, _amounts, defaultGasLimit);
 
         // do finalize withdraw token
         bytes memory message = abi.encodeWithSelector(
@@ -680,7 +680,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         gateway.updateTokenMapping(address(l1Token), address(l2Token));
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
         amount = bound(amount, 1, MAX_TOKEN_BALANCE);
-        gateway.depositERC1155(address(l1Token), tokenId, amount, 0);
+        gateway.depositERC1155(address(l1Token), tokenId, amount, defaultGasLimit);
 
         mockRecipient.setCall(
             address(gateway),
@@ -739,7 +739,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
     ) internal {
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
         amount = bound(amount, 0, MAX_TOKEN_BALANCE);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -790,11 +790,11 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
 
             uint256 gatewayBalance = l1Token.balanceOf(address(gateway), tokenId);
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             gateway.depositERC1155{value: feeToPay + extraValue}(address(l1Token), tokenId, amount, gasLimit);
             assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway), tokenId));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -807,7 +807,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
     ) internal {
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
         amount = bound(amount, 0, MAX_TOKEN_BALANCE);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -864,7 +864,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
 
             uint256 gatewayBalance = l1Token.balanceOf(address(gateway), tokenId);
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
             gateway.depositERC1155{value: feeToPay + extraValue}(
                 address(l1Token),
                 recipient,
@@ -874,7 +874,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
             );
             assertEq(amount + gatewayBalance, l1Token.balanceOf(address(gateway), tokenId));
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -886,7 +886,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
     ) internal {
         tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
         amount = bound(amount, 1, MAX_TOKEN_BALANCE);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -953,13 +953,13 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
             gatewayBalances[i] = l1Token.balanceOf(address(gateway), i);
         }
         uint256 feeVaultBalance = address(feeVault).balance;
-        assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+        assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         gateway.batchDepositERC1155{value: feeToPay + extraValue}(address(l1Token), _tokenIds, _amounts, gasLimit);
         for (uint256 i = 0; i < tokenCount; i++) {
             assertEq(gatewayBalances[i] + amount, l1Token.balanceOf(address(gateway), i));
         }
         assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-        assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+        assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
     }
 
     function _testBatchDepositERC1155WithRecipient(
@@ -971,7 +971,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
     ) internal {
         tokenCount = bound(tokenCount, 1, TOKEN_COUNT);
         amount = bound(amount, 1, MAX_TOKEN_BALANCE);
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -1038,7 +1038,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
             gatewayBalances[i] = l1Token.balanceOf(address(gateway), i);
         }
         uint256 feeVaultBalance = address(feeVault).balance;
-        assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+        assertEq(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         gateway.batchDepositERC1155{value: feeToPay + extraValue}(
             address(l1Token),
             recipient,
@@ -1050,7 +1050,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
             assertEq(gatewayBalances[i] + amount, l1Token.balanceOf(address(gateway), i));
         }
         assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-        assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+        assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
     }
 
     function _deployGateway() internal returns (L1ERC1155Gateway) {
