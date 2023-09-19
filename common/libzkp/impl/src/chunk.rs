@@ -1,15 +1,18 @@
 use crate::{
     types::ProofResult,
-    utils::{c_char_to_str, c_char_to_vec, string_to_c_char, vec_to_c_char, OUTPUT_DIR},
+    utils::{
+        c_char_to_str, c_char_to_vec, file_exists, panic_catch, string_to_c_char, vec_to_c_char,
+        OUTPUT_DIR,
+    },
 };
 use libc::c_char;
 use prover::{
+    consts::CHUNK_VK_FILENAME,
     utils::init_env_and_log,
     zkevm::{Prover, Verifier},
-    ChunkProof,
+    BlockTrace, ChunkProof,
 };
-use std::{cell::OnceCell, env, panic, ptr::null};
-use types::eth::BlockTrace;
+use std::{cell::OnceCell, env, ptr::null};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
 static mut VERIFIER: OnceCell<Verifier> = OnceCell::new();
@@ -24,7 +27,13 @@ pub unsafe extern "C" fn init_chunk_prover(params_dir: *const c_char, assets_dir
 
     // TODO: add a settings in scroll-prover.
     env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
-    let prover = Prover::from_params_dir(params_dir);
+
+    // VK file must exist, it is optional and logged as a warning in prover.
+    if !file_exists(assets_dir, &CHUNK_VK_FILENAME) {
+        panic!("{} must exist in folder {}", *CHUNK_VK_FILENAME, assets_dir);
+    }
+
+    let prover = Prover::from_dirs(params_dir, assets_dir);
 
     PROVER.set(prover).unwrap();
 }
@@ -47,7 +56,7 @@ pub unsafe extern "C" fn init_chunk_verifier(params_dir: *const c_char, assets_d
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn get_chunk_vk() -> *const c_char {
-    let vk_result = panic::catch_unwind(|| PROVER.get_mut().unwrap().get_vk());
+    let vk_result = panic_catch(|| PROVER.get_mut().unwrap().get_vk());
 
     vk_result
         .ok()
@@ -58,7 +67,7 @@ pub unsafe extern "C" fn get_chunk_vk() -> *const c_char {
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const c_char {
-    let proof_result: Result<Vec<u8>, String> = panic::catch_unwind(|| {
+    let proof_result: Result<Vec<u8>, String> = panic_catch(|| {
         let block_traces = c_char_to_vec(block_traces);
         let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces)
             .map_err(|e| format!("failed to deserialize block traces: {e:?}"))?;
@@ -66,7 +75,7 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
         let proof = PROVER
             .get_mut()
             .expect("failed to get mutable reference to PROVER.")
-            .gen_chunk_proof(block_traces, None, OUTPUT_DIR.as_deref())
+            .gen_chunk_proof(block_traces, None, None, OUTPUT_DIR.as_deref())
             .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 
         serde_json::to_vec(&proof).map_err(|e| format!("failed to serialize the proof: {e:?}"))
@@ -93,6 +102,6 @@ pub unsafe extern "C" fn verify_chunk_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<ChunkProof>(proof.as_slice()).unwrap();
 
-    let verified = panic::catch_unwind(|| VERIFIER.get().unwrap().verify_chunk_proof(proof));
+    let verified = panic_catch(|| VERIFIER.get().unwrap().verify_chunk_proof(proof));
     verified.unwrap_or(false) as c_char
 }

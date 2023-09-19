@@ -82,28 +82,6 @@ Mapping from L1 message hash to a boolean value indicating if the message has be
 |---|---|---|
 | _0 | bool | undefined |
 
-### isL2MessageSent
-
-```solidity
-function isL2MessageSent(bytes32) external view returns (bool)
-```
-
-Mapping from L2 message hash to sent status.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
-
 ### messageQueue
 
 ```solidity
@@ -120,6 +98,28 @@ The address of L2MessageQueue.
 | Name | Type | Description |
 |---|---|---|
 | _0 | address | undefined |
+
+### messageSendTimestamp
+
+```solidity
+function messageSendTimestamp(bytes32) external view returns (uint256)
+```
+
+Mapping from L2 message hash to the timestamp when the message is sent.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | bytes32 | undefined |
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### owner
 

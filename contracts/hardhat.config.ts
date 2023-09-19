@@ -91,7 +91,7 @@ const config: HardhatUserConfig = {
     runOnCompile: true,
     keepFileStructure: false,
     include: [
-      "ZKRollup",
+      "ScrollChain",
       "L1ScrollMessenger",
       "L2ScrollMessenger",
       "L1GatewayRouter",
@@ -118,8 +118,9 @@ const config: HardhatUserConfig = {
       "IL1ERC1155Gateway",
       "IL2ERC1155Gateway",
       "IScrollStandardERC20Factory",
-      "IZKRollup",
-      "WrappedEther",
+      "IScrollChain",
+      "ScrollChainCommitmentVerifier",
+      "WETH9",
     ],
   },
 };

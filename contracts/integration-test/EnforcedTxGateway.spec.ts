@@ -54,7 +54,7 @@ describe("EnforcedTxGateway.spec", async () => {
 
     await queue.initialize(constants.AddressZero, constants.AddressZero, gateway.address, oracle.address, 10000000);
     await gateway.initialize(queue.address, feeVault.address);
-    await oracle.initialize(21000, 0, 8, 16);
+    await oracle.initialize(21000, 51000, 8, 16);
 
     const Whitelist = await ethers.getContractFactory("Whitelist", deployer);
     const whitelist = await Whitelist.deploy(deployer.address);

@@ -54,7 +54,7 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
             revert PeriodIsZero();
         }
 
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
 
         periodDuration = _periodDuration;
     }
@@ -72,7 +72,7 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
         // check total limit, `0` means no limit at all.
         uint256 _currentTotalAmount;
         TokenAmount memory _currentPeriod = currentPeriod[_token];
-        if (_currentPeriod.lastUpdateTs < _currentPeriodStart) {
+        if (uint256(_currentPeriod.lastUpdateTs) < _currentPeriodStart) {
             _currentTotalAmount = _amount;
         } else {
             _currentTotalAmount = _currentPeriod.amount + _amount;

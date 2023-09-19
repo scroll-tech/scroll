@@ -13,6 +13,7 @@ import {WithdrawTrieVerifier} from "../libraries/verifier/WithdrawTrieVerifier.s
 import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.sol";
 
 // solhint-disable avoid-low-level-calls
+// solhint-disable not-rely-on-time
 // solhint-disable reason-string
 
 /// @title L1ScrollMessenger
@@ -41,8 +42,8 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
      * Variables *
      *************/
 
-    /// @notice Mapping from L1 message hash to sent status.
-    mapping(bytes32 => bool) public isL1MessageSent;
+    /// @notice Mapping from L1 message hash to the timestamp when the message is sent.
+    mapping(bytes32 => uint256) public messageSendTimestamp;
 
     /// @notice Mapping from L2 message hash to a boolean value indicating if the message has been successfully executed.
     mapping(bytes32 => bool) public isL2MessageExecuted;
@@ -189,7 +190,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _messageNonce, _message);
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
 
-        require(isL1MessageSent[_xDomainCalldataHash], "Provided message has not been enqueued");
+        require(messageSendTimestamp[_xDomainCalldataHash] > 0, "Provided message has not been enqueued");
         // cannot replay dropped message
         require(!isL1MessageDropped[_xDomainCalldataHash], "Message already dropped");
 
@@ -261,7 +262,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         // check message exists
         bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _messageNonce, _message);
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
-        require(isL1MessageSent[_xDomainCalldataHash], "Provided message has not been enqueued");
+        require(messageSendTimestamp[_xDomainCalldataHash] > 0, "Provided message has not been enqueued");
 
         // check message not dropped
         require(!isL1MessageDropped[_xDomainCalldataHash], "Message already dropped");
@@ -339,8 +340,8 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
 
         // normally this won't happen, since each message has different nonce, but just in case.
-        require(!isL1MessageSent[_xDomainCalldataHash], "Duplicated message");
-        isL1MessageSent[_xDomainCalldataHash] = true;
+        require(messageSendTimestamp[_xDomainCalldataHash] == 0, "Duplicated message");
+        messageSendTimestamp[_xDomainCalldataHash] = block.timestamp;
 
         emit SentMessage(_msgSender(), _to, _value, _messageNonce, _gasLimit, _message);
 

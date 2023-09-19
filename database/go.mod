@@ -6,7 +6,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/pressly/goose/v3 v3.7.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20230812030736-25fe3ba69a28
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20230829000527-f883dcdc21fc
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
 )

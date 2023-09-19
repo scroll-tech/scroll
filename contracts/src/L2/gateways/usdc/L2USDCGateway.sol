@@ -12,7 +12,7 @@ import {IL1ERC20Gateway} from "../../../L1/gateways/IL1ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../../IL2ScrollMessenger.sol";
 import {IL2ERC20Gateway} from "../IL2ERC20Gateway.sol";
 
-import {ScrollGatewayBase, IScrollGateway} from "../../../libraries/gateway/ScrollGatewayBase.sol";
+import {ScrollGatewayBase} from "../../../libraries/gateway/ScrollGatewayBase.sol";
 import {L2ERC20Gateway} from "../L2ERC20Gateway.sol";
 
 /// @title L2USDCGateway
@@ -57,6 +57,10 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
         l2USDC = _l2USDC;
     }
 
+    /// @notice Initializer for `L2USDCGateway`.
+    /// @param _counterpart The address of `L1USDCGateway` contract in L1.
+    /// @param _router The address of `L2GatewayRouter` contract in L2.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
     function initialize(
         address _counterpart,
         address _router,
@@ -158,6 +162,9 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
         }
         require(_data.length == 0, "call is not allowed");
 
+        // rate limit
+        _addUsedAmount(_token, _amount);
+
         // 2. Transfer token into this contract.
         IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
         IFiatToken(_token).burn(_amount);
@@ -169,7 +176,7 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
             (_l1USDC, _token, _from, _to, _amount, _data)
         );
 
-        // 4. Send message to L1ScrollMessenger.
+        // 4. Send message to L2ScrollMessenger.
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
 
         emit WithdrawERC20(_l1USDC, _token, _from, _to, _amount, _data);

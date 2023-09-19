@@ -1,15 +1,18 @@
 use crate::{
     types::{CheckChunkProofsResponse, ProofResult},
-    utils::{c_char_to_str, c_char_to_vec, string_to_c_char, vec_to_c_char, OUTPUT_DIR},
+    utils::{
+        c_char_to_str, c_char_to_vec, file_exists, panic_catch, string_to_c_char, vec_to_c_char,
+        OUTPUT_DIR,
+    },
 };
 use libc::c_char;
 use prover::{
     aggregator::{Prover, Verifier},
+    consts::AGG_VK_FILENAME,
     utils::{chunk_trace_to_witness_block, init_env_and_log},
-    BatchProof, ChunkHash, ChunkProof,
+    BatchProof, BlockTrace, ChunkHash, ChunkProof,
 };
-use std::{cell::OnceCell, env, panic, ptr::null};
-use types::eth::BlockTrace;
+use std::{cell::OnceCell, env, ptr::null};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
 static mut VERIFIER: OnceCell<Verifier> = OnceCell::new();
@@ -24,6 +27,12 @@ pub unsafe extern "C" fn init_batch_prover(params_dir: *const c_char, assets_dir
 
     // TODO: add a settings in scroll-prover.
     env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
+
+    // VK file must exist, it is optional and logged as a warning in prover.
+    if !file_exists(assets_dir, &AGG_VK_FILENAME) {
+        panic!("{} must exist in folder {}", *AGG_VK_FILENAME, assets_dir);
+    }
+
     let prover = Prover::from_dirs(params_dir, assets_dir);
 
     PROVER.set(prover).unwrap();
@@ -47,7 +56,7 @@ pub unsafe extern "C" fn init_batch_verifier(params_dir: *const c_char, assets_d
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn get_batch_vk() -> *const c_char {
-    let vk_result = panic::catch_unwind(|| PROVER.get_mut().unwrap().get_vk());
+    let vk_result = panic_catch(|| PROVER.get_mut().unwrap().get_vk());
 
     vk_result
         .ok()
@@ -58,7 +67,7 @@ pub unsafe extern "C" fn get_batch_vk() -> *const c_char {
 /// # Safety
 #[no_mangle]
 pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *const c_char {
-    let check_result: Result<bool, String> = panic::catch_unwind(|| {
+    let check_result: Result<bool, String> = panic_catch(|| {
         let chunk_proofs = c_char_to_vec(chunk_proofs);
         let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
             .map_err(|e| format!("failed to deserialize chunk proofs: {e:?}"))?;
@@ -94,7 +103,7 @@ pub unsafe extern "C" fn gen_batch_proof(
     chunk_hashes: *const c_char,
     chunk_proofs: *const c_char,
 ) -> *const c_char {
-    let proof_result: Result<Vec<u8>, String> = panic::catch_unwind(|| {
+    let proof_result: Result<Vec<u8>, String> = panic_catch(|| {
         let chunk_hashes = c_char_to_vec(chunk_hashes);
         let chunk_proofs = c_char_to_vec(chunk_proofs);
 
@@ -143,7 +152,7 @@ pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
 
-    let verified = panic::catch_unwind(|| VERIFIER.get().unwrap().verify_agg_evm_proof(proof));
+    let verified = panic_catch(|| VERIFIER.get().unwrap().verify_agg_evm_proof(proof));
     verified.unwrap_or(false) as c_char
 }
 

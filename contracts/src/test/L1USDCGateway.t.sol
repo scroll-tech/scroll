@@ -94,11 +94,11 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
 
         // deposit paused, should revert
         hevm.expectRevert("deposit paused");
-        gateway.depositERC20(address(l1USDC), 1, 0);
+        gateway.depositERC20(address(l1USDC), 1, defaultGasLimit);
         hevm.expectRevert("deposit paused");
-        gateway.depositERC20(address(l1USDC), address(this), 1, 0);
+        gateway.depositERC20(address(l1USDC), address(this), 1, defaultGasLimit);
         hevm.expectRevert("deposit paused");
-        gateway.depositERC20AndCall(address(l1USDC), address(this), 1, new bytes(0), 0);
+        gateway.depositERC20AndCall(address(l1USDC), address(this), 1, new bytes(0), defaultGasLimit);
     }
 
     function testPauseWithdraw() public {
@@ -253,7 +253,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, l1USDC.balanceOf(address(this)));
 
         // deposit some USDC to L1ScrollMessenger
-        gateway.depositERC20(address(l1USDC), amount, 0);
+        gateway.depositERC20(address(l1USDC), amount, defaultGasLimit);
 
         // do finalize withdraw usdc
         bytes memory message = abi.encodeWithSelector(
@@ -310,7 +310,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, l1USDC.balanceOf(address(this)));
 
         // deposit some USDC to gateway
-        gateway.depositERC20(address(l1USDC), amount, 0);
+        gateway.depositERC20(address(l1USDC), amount, defaultGasLimit);
 
         // do finalize withdraw usdc
         bytes memory message = abi.encodeWithSelector(
@@ -373,7 +373,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, l1USDC.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -429,7 +429,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             uint256 gatewayBalance = l1USDC.balanceOf(address(gateway));
             uint256 totalBridgedUSDCBefore = gateway.totalBridgedUSDC();
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(0, l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)));
             if (useRouter) {
                 router.depositERC20{value: feeToPay + extraValue}(address(l1USDC), amount, gasLimit);
             } else {
@@ -438,7 +438,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             assertEq(amount + gatewayBalance, l1USDC.balanceOf(address(gateway)));
             assertEq(amount + totalBridgedUSDCBefore, gateway.totalBridgedUSDC());
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 
@@ -450,7 +450,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         uint256 feePerGas
     ) private {
         amount = bound(amount, 0, l1USDC.balanceOf(address(this)));
-        gasLimit = bound(gasLimit, 0, 1000000);
+        gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
         gasOracle.setL2BaseFee(feePerGas);
@@ -506,7 +506,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             uint256 gatewayBalance = l1USDC.balanceOf(address(gateway));
             uint256 totalBridgedUSDCBefore = gateway.totalBridgedUSDC();
             uint256 feeVaultBalance = address(feeVault).balance;
-            assertBoolEq(false, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertEq(0, l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)));
             if (useRouter) {
                 router.depositERC20{value: feeToPay + extraValue}(address(l1USDC), recipient, amount, gasLimit);
             } else {
@@ -515,7 +515,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
             assertEq(amount + gatewayBalance, l1USDC.balanceOf(address(gateway)));
             assertEq(amount + totalBridgedUSDCBefore, gateway.totalBridgedUSDC());
             assertEq(feeToPay + feeVaultBalance, address(feeVault).balance);
-            assertBoolEq(true, l1Messenger.isL1MessageSent(keccak256(xDomainCalldata)));
+            assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         }
     }
 

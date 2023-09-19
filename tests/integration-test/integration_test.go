@@ -25,19 +25,19 @@ import (
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
-	bcmd "scroll-tech/bridge/cmd"
+	bcmd "scroll-tech/rollup/cmd"
 )
 
 var (
 	base      *docker.App
-	bridgeApp *bcmd.MockApp
+	rollupApp *bcmd.MockApp
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
-	bridgeApp = bcmd.NewBridgeApp(base, "../../bridge/conf/config.json")
+	rollupApp = bcmd.NewRollupApp(base, "../../rollup/conf/config.json")
 	m.Run()
-	bridgeApp.Free()
+	rollupApp.Free()
 	base.Free()
 }
 

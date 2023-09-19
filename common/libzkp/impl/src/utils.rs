@@ -3,6 +3,8 @@ use std::{
     env,
     ffi::{CStr, CString},
     os::raw::c_char,
+    panic::{catch_unwind, AssertUnwindSafe},
+    path::PathBuf,
 };
 
 // Only used for debugging.
@@ -25,4 +27,23 @@ pub(crate) fn string_to_c_char(string: String) -> *const c_char {
 
 pub(crate) fn vec_to_c_char(bytes: Vec<u8>) -> *const c_char {
     CString::new(bytes).unwrap().into_raw()
+}
+
+pub(crate) fn file_exists(dir: &str, filename: &str) -> bool {
+    let mut path = PathBuf::from(dir);
+    path.push(filename);
+
+    path.exists()
+}
+
+pub(crate) fn panic_catch<F: FnOnce() -> R, R>(f: F) -> Result<R, String> {
+    catch_unwind(AssertUnwindSafe(f)).map_err(|err| {
+        if let Some(s) = err.downcast_ref::<String>() {
+            s.to_string()
+        } else if let Some(s) = err.downcast_ref::<&str>() {
+            s.to_string()
+        } else {
+            format!("unable to get panic info {err:?}")
+        }
+    })
 }
