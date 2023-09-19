@@ -3,6 +3,7 @@ use std::{
     env,
     ffi::{CStr, CString},
     os::raw::c_char,
+    panic::{catch_unwind, AssertUnwindSafe},
     path::PathBuf,
 };
 
@@ -33,4 +34,16 @@ pub(crate) fn file_exists(dir: &str, filename: &str) -> bool {
     path.push(filename);
 
     path.exists()
+}
+
+pub(crate) fn panic_catch<F: FnOnce() -> R, R>(f: F) -> Result<R, String> {
+    catch_unwind(AssertUnwindSafe(f)).map_err(|err| {
+        if let Some(s) = err.downcast_ref::<String>() {
+            s.to_string()
+        } else if let Some(s) = err.downcast_ref::<&str>() {
+            s.to_string()
+        } else {
+            format!("unable to get panic info {err:?}")
+        }
+    })
 }
