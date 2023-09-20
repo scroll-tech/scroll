@@ -117,7 +117,7 @@ contract InitializeL1ScrollOwner is Script {
         bytes4[] memory _selectors;
 
         // no delay, security council
-        _selectors = new bytes4[](5);
+        _selectors = new bytes4[](3);
         _selectors[0] = ProxyAdmin.changeProxyAdmin.selector;
         _selectors[1] = ProxyAdmin.upgrade.selector;
         _selectors[2] = ProxyAdmin.upgradeAndCall.selector;
