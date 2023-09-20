@@ -124,12 +124,10 @@ contract InitializeL2ScrollOwner is Script {
         bytes4[] memory _selectors;
 
         // no delay, security council
-        _selectors = new bytes4[](5);
+        _selectors = new bytes4[](3);
         _selectors[0] = ProxyAdmin.changeProxyAdmin.selector;
         _selectors[1] = ProxyAdmin.upgrade.selector;
         _selectors[2] = ProxyAdmin.upgradeAndCall.selector;
-        _selectors[3] = Ownable.transferOwnership.selector;
-        _selectors[4] = Ownable.renounceOwnership.selector;
         owner.updateAccess(L2_PROXY_ADMIN_ADDR, _selectors, SECURITY_COUNCIL_NO_DELAY_ROLE, true);
     }
 

@@ -121,8 +121,6 @@ contract InitializeL1ScrollOwner is Script {
         _selectors[0] = ProxyAdmin.changeProxyAdmin.selector;
         _selectors[1] = ProxyAdmin.upgrade.selector;
         _selectors[2] = ProxyAdmin.upgradeAndCall.selector;
-        _selectors[3] = Ownable.transferOwnership.selector;
-        _selectors[4] = Ownable.renounceOwnership.selector;
         owner.updateAccess(L1_PROXY_ADMIN_ADDR, _selectors, SECURITY_COUNCIL_NO_DELAY_ROLE, true);
     }
 
