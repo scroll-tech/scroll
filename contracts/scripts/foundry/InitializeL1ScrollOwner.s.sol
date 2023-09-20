@@ -193,7 +193,7 @@ contract InitializeL1ScrollOwner is Script {
     function configL1GatewayRouter() internal {
         bytes4[] memory _selectors;
 
-        // delay 7 day, scroll multisig
+        // delay 1 day, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = L1GatewayRouter.setERC20Gateway.selector;
         owner.updateAccess(L1_GATEWAY_ROUTER_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
