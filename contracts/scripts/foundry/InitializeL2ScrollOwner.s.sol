@@ -209,7 +209,7 @@ contract InitializeL2ScrollOwner is Script {
     function configETHRateLimiter() internal {
         bytes4[] memory _selectors;
 
-        // delay 1 day, scroll multisig
+        // no delay, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = ETHRateLimiter.updateTotalLimit.selector;
         owner.updateAccess(L2_ETH_RATE_LIMITER_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
