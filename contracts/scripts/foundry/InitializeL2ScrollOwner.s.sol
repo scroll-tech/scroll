@@ -71,7 +71,7 @@ contract InitializeL2ScrollOwner is Script {
         configProxyAdmin();
         configL1GasPriceOracle();
         configL2TxFeeVault();
-        configWhitelist();
+        configL2Whitelist();
         configL2ScrollMessenger();
         configL2GatewayRouter();
         configL2CustomERC20Gateway();
@@ -150,7 +150,7 @@ contract InitializeL2ScrollOwner is Script {
         owner.updateAccess(L2_TX_FEE_VAULT_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
     }
 
-    function configWhitelist() internal {
+    function configL2Whitelist() internal {
         bytes4[] memory _selectors;
 
         // delay 1 day, scroll multisig

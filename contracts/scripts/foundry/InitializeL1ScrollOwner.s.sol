@@ -18,6 +18,7 @@ import {L2GasPriceOracle} from "../../src/L1/rollup/L2GasPriceOracle.sol";
 import {MultipleVersionRollupVerifier} from "../../src/L1/rollup/MultipleVersionRollupVerifier.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
 import {ScrollOwner} from "../../src/misc/ScrollOwner.sol";
+import {Whitelist} from "../../src/L2/predeploys/Whitelist.sol";
 
 // solhint-disable max-states-count
 // solhint-disable state-visibility
@@ -55,6 +56,7 @@ contract InitializeL1ScrollOwner is Script {
     address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
     address L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR = vm.envAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR");
     // address L1_ENFORCED_TX_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ENFORCED_TX_GATEWAY_PROXY_ADDR");
+    address L1_WHITELIST_ADDR = vm.envAddress("L1_WHITELIST_ADDR");
 
     ScrollOwner owner;
 
@@ -69,6 +71,7 @@ contract InitializeL1ScrollOwner is Script {
         configL1MessageQueue();
         configL1ScrollMessenger();
         configL2GasPriceOracle();
+        configL1Whitelist();
         configMultipleVersionRollupVerifier();
         configL1GatewayRouter();
         configL1CustomERC20Gateway();
@@ -92,6 +95,7 @@ contract InitializeL1ScrollOwner is Script {
         Ownable(L1_SCROLL_MESSENGER_PROXY_ADDR).transferOwnership(address(owner));
         // Ownable(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L2_GAS_PRICE_ORACLE_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L1_WHITELIST_ADDR).transferOwnership(address(owner));
         Ownable(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR).transferOwnership(address(owner));
         Ownable(L1_GATEWAY_ROUTER_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
@@ -170,6 +174,15 @@ contract InitializeL1ScrollOwner is Script {
         _selectors[0] = L2GasPriceOracle.updateWhitelist.selector;
         _selectors[1] = L2GasPriceOracle.setIntrinsicParams.selector;
         owner.updateAccess(L2_GAS_PRICE_ORACLE_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+    }
+
+    function configL1Whitelist() internal {
+        bytes4[] memory _selectors;
+
+        // delay 1 day, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = Whitelist.updateWhitelistStatus.selector;
+        owner.updateAccess(L1_WHITELIST_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
     }
 
     function configMultipleVersionRollupVerifier() internal {
