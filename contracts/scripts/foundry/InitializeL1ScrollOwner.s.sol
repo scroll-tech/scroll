@@ -6,6 +6,7 @@ import {Script} from "forge-std/Script.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
+import {L1ScrollMessenger} from "../../src/L1/L1ScrollMessenger.sol";
 import {L1USDCGateway} from "../../src/L1/gateways/usdc/L1USDCGateway.sol";
 import {EnforcedTxGateway} from "../../src/L1/gateways/EnforcedTxGateway.sol";
 import {L1CustomERC20Gateway} from "../../src/L1/gateways/L1CustomERC20Gateway.sol";
@@ -164,6 +165,11 @@ contract InitializeL1ScrollOwner is Script {
         _selectors = new bytes4[](1);
         _selectors[0] = ScrollMessengerBase.setPause.selector;
         owner.updateAccess(L1_SCROLL_MESSENGER_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+
+        // delay 1 day, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = L1ScrollMessenger.updateMaxReplayTimes.selector;
+        owner.updateAccess(L1_SCROLL_MESSENGER_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
     }
 
     function configL2GasPriceOracle() internal {
