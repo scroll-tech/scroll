@@ -176,10 +176,8 @@ contract InitializeL1ScrollOwner is Script {
         bytes4[] memory _selectors;
 
         // no delay, security council
-        _selectors = new bytes4[](3);
+        _selectors = new bytes4[](1);
         _selectors[0] = MultipleVersionRollupVerifier.updateVerifier.selector;
-        _selectors[1] = Ownable.transferOwnership.selector;
-        _selectors[2] = Ownable.renounceOwnership.selector;
         owner.updateAccess(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR, _selectors, SECURITY_COUNCIL_NO_DELAY_ROLE, true);
 
         // delay 7 day, scroll multisig
