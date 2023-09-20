@@ -47,6 +47,7 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config, reg prom
 		proverTaskOrm:   orm.NewProverTask(db),
 		chunkOrm:        orm.NewChunk(db),
 		batchOrm:        orm.NewBatch(db),
+		challenge:       orm.NewChallenge(db),
 
 		timeoutBatchCheckerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_batch_timeout_checker_run_total",
