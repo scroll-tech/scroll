@@ -33,7 +33,7 @@ contract L2TxFeeVaultTest is DSTestPlus {
     function testCantWithdrawMoreThanBalance(uint256 amount) public {
         hevm.assume(amount >= 10 ether);
         hevm.deal(address(vault), amount - 1);
-        hevm.expectRevert(new bytes(0));
+        hevm.expectRevert("FeeVault: insufficient balance to withdraw");
         vault.withdraw(amount);
     }
 
