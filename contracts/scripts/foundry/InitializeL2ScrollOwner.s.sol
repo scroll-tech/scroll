@@ -191,7 +191,7 @@ contract InitializeL2ScrollOwner is Script {
     function configL2ERC721Gateway() internal {
         bytes4[] memory _selectors;
 
-        // delay 7 day, scroll multisig
+        // delay 1 day, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = L2ERC721Gateway.updateTokenMapping.selector;
         owner.updateAccess(L2_ERC721_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
