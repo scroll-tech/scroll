@@ -218,7 +218,7 @@ contract InitializeL2ScrollOwner is Script {
     function configTokenRateLimiter() internal {
         bytes4[] memory _selectors;
 
-        // delay 1 day, scroll multisig
+        // no delay, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = TokenRateLimiter.updateTotalLimit.selector;
         owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
