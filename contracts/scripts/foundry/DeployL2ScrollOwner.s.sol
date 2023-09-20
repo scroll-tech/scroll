@@ -29,14 +29,14 @@ contract DeployL2ScrollOwner is Script {
 
         if (keccak256(abi.encodePacked(NETWORK)) == keccak256(abi.encodePacked("sepolia"))) {
             // for sepolia
-            deployMinuteDelayTimelockController(1);
-            deployMinuteDelayTimelockController(7);
-            deployMinuteDelayTimelockController(14);
+            deployTimelockController("1D", 1 minutes);
+            deployTimelockController("7D", 7 minutes);
+            deployTimelockController("14D", 14 minutes);
         } else if (keccak256(abi.encodePacked(NETWORK)) == keccak256(abi.encodePacked("mainnet"))) {
             // for mainnet
-            deployDayDelayTimelockController(1);
-            deployDayDelayTimelockController(7);
-            deployDayDelayTimelockController(14);
+            deployTimelockController("1D", 1 days);
+            deployTimelockController("7D", 7 days);
+            deployTimelockController("14D", 14 days);
         }
 
         vm.stopBroadcast();
@@ -48,38 +48,16 @@ contract DeployL2ScrollOwner is Script {
         logAddress("L2_SCROLL_OWNER_ADDR", address(owner));
     }
 
-    function deployDayDelayTimelockController(uint256 delayInDay) internal {
+    function deployTimelockController(string memory label, uint256 delay) internal {
         address[] memory proposers = new address[](1);
         address[] memory executors = new address[](1);
 
         proposers[0] = SCROLL_MULTISIG_ADDR;
         executors[0] = L2_PROPOSAL_EXECUTOR_ADDR;
 
-        TimelockController timelock = new TimelockController(
-            delayInDay * 1 days,
-            proposers,
-            executors,
-            SECURITY_COUNCIL_ADDR
-        );
+        TimelockController timelock = new TimelockController(delay, proposers, executors, SECURITY_COUNCIL_ADDR);
 
-        logAddress(string(abi.encodePacked("L2_", vm.toString(delayInDay), "D_TIMELOCK_ADDR")), address(timelock));
-    }
-
-    function deployMinuteDelayTimelockController(uint256 delayInMinute) internal {
-        address[] memory proposers = new address[](1);
-        address[] memory executors = new address[](1);
-
-        proposers[0] = SCROLL_MULTISIG_ADDR;
-        executors[0] = L2_PROPOSAL_EXECUTOR_ADDR;
-
-        TimelockController timelock = new TimelockController(
-            delayInMinute * 1 minutes,
-            proposers,
-            executors,
-            SECURITY_COUNCIL_ADDR
-        );
-
-        logAddress(string(abi.encodePacked("L2_", vm.toString(delayInMinute), "M_TIMELOCK_ADDR")), address(timelock));
+        logAddress(string(abi.encodePacked("L2_", label, "_TIMELOCK_ADDR")), address(timelock));
     }
 
     function logAddress(string memory name, address addr) internal view {
