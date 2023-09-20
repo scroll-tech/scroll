@@ -113,8 +113,8 @@ contract InitializeL1ScrollOwner is Script {
         owner.grantRole(TIMELOCK_1DAY_DELAY_ROLE, L1_1D_TIMELOCK_ADDR);
         owner.grantRole(TIMELOCK_7DAY_DELAY_ROLE, L1_7D_TIMELOCK_ADDR);
 
-        owner.grantRole(bytes32(0), L1_14D_TIMELOCK_ADDR);
-        owner.revokeRole(bytes32(0), vm.addr(L1_DEPLOYER_PRIVATE_KEY));
+        owner.grantRole(owner.DEFAULT_ADMIN_ROLE(), L1_14D_TIMELOCK_ADDR);
+        owner.revokeRole(owner.DEFAULT_ADMIN_ROLE(), vm.addr(L1_DEPLOYER_PRIVATE_KEY));
     }
 
     function configProxyAdmin() internal {

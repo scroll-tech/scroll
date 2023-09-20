@@ -106,8 +106,10 @@ contract InitializeL2ScrollOwner is Script {
         // Ownable(L2_USDC_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
 
         Ownable(L2_ETH_RATE_LIMITER_ADDR).transferOwnership(address(owner));
-        AccessControlEnumerable(L2_TOKEN_RATE_LIMITER_ADDR).grantRole(bytes32(0), address(owner));
-        AccessControlEnumerable(L2_TOKEN_RATE_LIMITER_ADDR).revokeRole(bytes32(0), vm.addr(L2_DEPLOYER_PRIVATE_KEY));
+
+        TokenRateLimiter tokenRateLimiter = TokenRateLimiter(L2_TOKEN_RATE_LIMITER_ADDR);
+        tokenRateLimiter.grantRole(tokenRateLimiter.DEFAULT_ADMIN_ROLE(), address(owner));
+        tokenRateLimiter.revokeRole(tokenRateLimiter.DEFAULT_ADMIN_ROLE(), vm.addr(L2_DEPLOYER_PRIVATE_KEY));
     }
 
     function grantRoles() internal {
@@ -116,8 +118,8 @@ contract InitializeL2ScrollOwner is Script {
         owner.grantRole(TIMELOCK_1DAY_DELAY_ROLE, L2_1D_TIMELOCK_ADDR);
         owner.grantRole(TIMELOCK_7DAY_DELAY_ROLE, L2_7D_TIMELOCK_ADDR);
 
-        owner.grantRole(bytes32(0), L2_14D_TIMELOCK_ADDR);
-        owner.revokeRole(bytes32(0), vm.addr(L2_DEPLOYER_PRIVATE_KEY));
+        owner.grantRole(owner.DEFAULT_ADMIN_ROLE(), L2_14D_TIMELOCK_ADDR);
+        owner.revokeRole(owner.DEFAULT_ADMIN_ROLE(), vm.addr(L2_DEPLOYER_PRIVATE_KEY));
     }
 
     function configProxyAdmin() internal {
