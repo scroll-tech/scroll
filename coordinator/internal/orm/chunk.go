@@ -71,7 +71,7 @@ func (*Chunk) TableName() string {
 func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
-	db = db.Where("proving_status not in (?)", []int{int(types.ProvingTaskVerified), int(types.ProvingTaskFailed)})
+	db = db.Where("proving_status in (?)", []int{int(types.ProvingTaskUnassigned), int(types.ProvingTaskAssigned)})
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("end_block_number <= ?", height)
