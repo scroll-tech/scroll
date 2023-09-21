@@ -35,6 +35,7 @@ func TestGetClaimableL2SentMsgByAddressWithOffset(t *testing.T) {
 	count, msgs, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(context.Background(), "sender1", 0, 10)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(0), count)
+	assert.Len(t, msgs, 0)
 
 	l2SentMsgs := []*L2SentMsg{
 		{
