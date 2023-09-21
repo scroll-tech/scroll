@@ -80,6 +80,7 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context
 	db = db.Where("original_sender = ? OR sender = ?", address, address)
 	db = db.Where("msg_proof != ''")
 	db = db.Where("deleted_at IS NULL")
+	db = db.Order("id DESC")
 	if err := db.Find(&totalMsgs).Error; err != nil {
 		return 0, nil, err
 	}
