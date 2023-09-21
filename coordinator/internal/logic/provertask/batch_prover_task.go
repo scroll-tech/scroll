@@ -69,6 +69,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if unassignedBatch == nil {
+			log.Debug("get empty unassigned batch", "height", getTaskParameter.ProverHeight)
 			return nil, nil
 		}
 
@@ -87,6 +88,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	if batchTask == nil {
+		log.Debug("get empty unassigned batch for retry 100 times", "height", getTaskParameter.ProverHeight)
 		return nil, nil
 	}
 

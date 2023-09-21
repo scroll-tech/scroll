@@ -73,6 +73,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 
 		if unassignedChunk == nil {
+			log.Debug("get empty unassigned chunk", "height", getTaskParameter.ProverHeight)
 			return nil, nil
 		}
 
@@ -91,6 +92,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	if chunkTask == nil {
+		log.Debug("get empty unassigned chunk for retry 100 times", "height", getTaskParameter.ProverHeight)
 		return nil, nil
 	}
 
