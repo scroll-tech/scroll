@@ -61,13 +61,34 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
-	batchTask, err := bp.batchOrm.UpdateBatchAttemptsReturning(ctx, maxActiveAttempts, maxTotalAttempts)
-	if err != nil {
-		log.Error("failed to get unassigned batch proving tasks", "err", err)
-		return nil, ErrCoordinatorInternalFailure
+	var batchTask *orm.Batch
+	for i := 0; i < 100; i++ {
+		unassignedBatch, getUnassignedErr := bp.batchOrm.GetUnassignedBatch(ctx, maxActiveAttempts, maxTotalAttempts)
+		if getUnassignedErr != nil {
+			log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getUnassignedErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		if unassignedBatch == nil {
+			log.Debug("get empty unassigned batch", "height", getTaskParameter.ProverHeight)
+			return nil, nil
+		}
+
+		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx, unassignedBatch.Index, unassignedBatch.ActiveAttempts, unassignedBatch.TotalAttempts)
+		if updateAttemptsErr != nil {
+			log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+
+		if rowsAffected == 0 {
+			continue
+		}
+
+		batchTask = unassignedBatch
+		break
 	}
 
 	if batchTask == nil {
+		log.Debug("get empty unassigned batch after retry 100 times", "height", getTaskParameter.ProverHeight)
 		return nil, nil
 	}
 
