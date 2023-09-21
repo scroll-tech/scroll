@@ -80,10 +80,9 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTo
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
 	db = db.Order("index ASC")
-	db = db.Limit(1)
 
 	var batch Batch
-	err := db.Find(&batch).Error
+	err := db.First(&batch).Error
 	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, nil
 	}
