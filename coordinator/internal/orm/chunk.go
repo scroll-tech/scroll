@@ -75,7 +75,6 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAtt
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("end_block_number <= ?", height)
-	db = db.Order("index ASC")
 
 	var chunk Chunk
 	err := db.First(&chunk).Error
