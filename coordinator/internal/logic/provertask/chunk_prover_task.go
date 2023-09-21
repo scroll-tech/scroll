@@ -67,18 +67,30 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	maxTotalAttempts := cp.cfg.ProverManager.SessionAttempts
 	var chunkTask *orm.Chunk
 	for i := 0; i < 5; i++ {
-		unassignedChunk, getUnsignedChunkErr := cp.chunkOrm.GetUnassignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
-		if getUnsignedChunkErr != nil {
-			log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getUnsignedChunkErr)
+		var getTaskError error
+		var tmpChunkTask *orm.Chunk
+		tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
+		if getTaskError != nil {
+			log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 
-		if unassignedChunk == nil {
-			log.Debug("get empty unassigned chunk", "height", getTaskParameter.ProverHeight)
+		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
+		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
+		if tmpChunkTask == nil {
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
+			if getTaskError != nil {
+				log.Error("failed to get assigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			}
+		}
+
+		if tmpChunkTask == nil {
+			log.Debug("get empty chunk", "height", getTaskParameter.ProverHeight)
 			return nil, nil
 		}
 
-		rowsAffected, updateAttemptsErr := cp.chunkOrm.UpdateChunkAttempts(ctx, unassignedChunk.Index, unassignedChunk.ActiveAttempts, unassignedChunk.TotalAttempts)
+		rowsAffected, updateAttemptsErr := cp.chunkOrm.UpdateChunkAttempts(ctx, tmpChunkTask.Index, tmpChunkTask.ActiveAttempts, tmpChunkTask.TotalAttempts)
 		if updateAttemptsErr != nil {
 			log.Error("failed to update chunk attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 			return nil, ErrCoordinatorInternalFailure
@@ -89,12 +101,12 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			continue
 		}
 
-		chunkTask = unassignedChunk
+		chunkTask = tmpChunkTask
 		break
 	}
 
 	if chunkTask == nil {
-		log.Debug("get empty unassigned chunk after retry 100 times", "height", getTaskParameter.ProverHeight)
+		log.Debug("get empty unassigned chunk after retry 5 times", "height", getTaskParameter.ProverHeight)
 		return nil, nil
 	}
 
