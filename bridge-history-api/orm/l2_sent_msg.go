@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -82,19 +83,21 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context
 	db = db.Where("msg_proof != ''")
 	db = db.Where("deleted_at IS NULL")
 	db = db.Order("id DESC")
-	if err := db.Find(&totalMsgs).Error; err != nil {
-		return 0, nil, err
+	tx := db.Find(&totalMsgs)
+	if tx.Error != nil || tx.RowsAffected == 0 {
+		return 0, nil, tx.Error
 	}
 
-	msgHashes := []string{}
+	var valuesStr string
 	for _, msg := range totalMsgs {
-		msgHashes = append(msgHashes, msg.MsgHash)
+		valuesStr += fmt.Sprintf("('%s'),", msg.MsgHash)
 	}
+	valuesStr = strings.TrimSuffix(valuesStr, ",")
 
 	var claimedMsgHashes []string
 	db = l.db.WithContext(ctx)
 	db = db.Table("relayed_msg")
-	db = db.Where("msg_hash IN (?)", msgHashes)
+	db = db.Where(fmt.Sprintf("msg_hash IN (VALUES %s)", valuesStr))
 	db = db.Where("deleted_at IS NULL")
 	if err := db.Pluck("msg_hash", &claimedMsgHashes).Error; err != nil {
 		return 0, nil, err

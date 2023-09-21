@@ -32,12 +32,16 @@ func TestGetClaimableL2SentMsgByAddressWithOffset(t *testing.T) {
 	l2SentMsgOrm := NewL2SentMsg(db)
 	relayedMsgOrm := NewRelayedMsg(db)
 
+	count, msgs, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(context.Background(), "sender1", 0, 10)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(0), count)
+
 	l2SentMsgs := []*L2SentMsg{
 		{
-			OriginalSender: "sender1",
-			MsgHash:        "hash1",
-			MsgProof:       "proof1",
-			Nonce:          0,
+			Sender:   "sender1",
+			MsgHash:  "hash1",
+			MsgProof: "proof1",
+			Nonce:    0,
 		},
 		{
 			OriginalSender: "sender1",
@@ -65,7 +69,7 @@ func TestGetClaimableL2SentMsgByAddressWithOffset(t *testing.T) {
 	err = relayedMsgOrm.InsertRelayedMsg(context.Background(), relayedMsgs)
 	assert.NoError(t, err)
 
-	count, msgs, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(context.Background(), "sender1", 0, 10)
+	count, msgs, err = l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(context.Background(), "sender1", 0, 10)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), count)
 	assert.Equal(t, "hash1", msgs[0].MsgHash)
