@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -72,26 +73,70 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, err
 	return result.Height, nil
 }
 
-// GetClaimableL2SentMsgByAddressWithOffset get claimable l2 sent msg by address with offset
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context, address string, offset int, limit int) ([]*L2SentMsg, error) {
-	var results []*L2SentMsg
-	err := l.db.WithContext(ctx).Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
-		Scan(&results).Error
-	if err != nil {
-		return nil, fmt.Errorf("L2SentMsg.GetClaimableL2SentMsgByAddressWithOffset error: %w", err)
+// GetClaimableL2SentMsgByAddressWithOffset returns both the total number of unclaimed messages and a paginated list of those messages.
+// TODO: Add metrics about the result set sizes (total/claimed/unclaimed messages).
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context, address string, offset int, limit int) (uint64, []*L2SentMsg, error) {
+	var totalMsgs []*L2SentMsg
+	db := l.db.WithContext(ctx)
+	db = db.Table("l2_sent_msg")
+	db = db.Where("original_sender = ? OR sender = ?", address, address)
+	db = db.Where("msg_proof != ''")
+	db = db.Where("deleted_at IS NULL")
+	db = db.Order("id DESC")
+	tx := db.Find(&totalMsgs)
+	if tx.Error != nil || tx.RowsAffected == 0 {
+		return 0, nil, tx.Error
 	}
-	return results, nil
-}
 
-// GetClaimableL2SentMsgByAddressTotalNum get claimable l2 sent msg by address total num
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(ctx context.Context, address string) (uint64, error) {
-	var count uint64
-	err := l.db.WithContext(ctx).Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).
-		Scan(&count).Error
-	if err != nil {
-		return 0, fmt.Errorf("L2SentMsg.GetClaimableL2SentMsgByAddressTotalNum error: %w", err)
+	// Note on the use of IN vs VALUES in SQL Queries:
+	// ------------------------------------------------
+	// When using the IN predicate with a large list (>100) of values, performance may suffer.
+	// An alternative approach is to use constant subqueries with the VALUES construct.
+	// For more details and optimization tips, visit:
+	// https://postgres.cz/wiki/PostgreSQL_SQL_Tricks_I#Predicate_IN_optimalization
+	//
+	// Example using IN:
+	// SELECT * FROM tab WHERE x IN (1,2,3,...,n);  -- where n > 70
+	//
+	// Optimized example using VALUES:
+	// SELECT * FROM tab WHERE x IN (VALUES(10), (20));
+	//
+	var valuesStr string
+	for _, msg := range totalMsgs {
+		valuesStr += fmt.Sprintf("('%s'),", msg.MsgHash)
 	}
-	return count, nil
+	valuesStr = strings.TrimSuffix(valuesStr, ",")
+
+	var claimedMsgHashes []string
+	db = l.db.WithContext(ctx)
+	db = db.Table("relayed_msg")
+	db = db.Where(fmt.Sprintf("msg_hash IN (VALUES %s)", valuesStr))
+	db = db.Where("deleted_at IS NULL")
+	if err := db.Pluck("msg_hash", &claimedMsgHashes).Error; err != nil {
+		return 0, nil, err
+	}
+
+	claimedMsgHashSet := make(map[string]struct{})
+	for _, hash := range claimedMsgHashes {
+		claimedMsgHashSet[hash] = struct{}{}
+	}
+	var unclaimedL2Msgs []*L2SentMsg
+	for _, msg := range totalMsgs {
+		if _, found := claimedMsgHashSet[msg.MsgHash]; !found {
+			unclaimedL2Msgs = append(unclaimedL2Msgs, msg)
+		}
+	}
+
+	// pagination
+	start := offset
+	end := offset + limit
+	if start > len(unclaimedL2Msgs) {
+		start = len(unclaimedL2Msgs)
+	}
+	if end > len(unclaimedL2Msgs) {
+		end = len(unclaimedL2Msgs)
+	}
+	return uint64(len(unclaimedL2Msgs)), unclaimedL2Msgs[start:end], nil
 }
 
 // GetLatestL2SentMsgBatchIndex get latest l2 sent msg batch index

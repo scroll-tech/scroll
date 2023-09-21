@@ -78,12 +78,8 @@ func (h *HistoryLogic) GetClaimableTxsByAddress(ctx context.Context, address com
 	var txHistories []*types.TxHistoryInfo
 	l2SentMsgOrm := orm.NewL2SentMsg(h.db)
 	l2CrossMsgOrm := orm.NewCrossMsg(h.db)
-	total, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressTotalNum(ctx, address.Hex())
-	if err != nil || total == 0 {
-		return txHistories, 0, err
-	}
-	results, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(ctx, address.Hex(), offset, limit)
-	if err != nil || len(results) == 0 {
+	total, results, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(ctx, address.Hex(), offset, limit)
+	if err != nil || total == 0 || len(results) == 0 {
 		return txHistories, 0, err
 	}
 	var msgHashList []string
