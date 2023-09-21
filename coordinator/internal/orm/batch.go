@@ -79,7 +79,6 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTo
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
-	db = db.Order("index ASC")
 
 	var batch Batch
 	err := db.First(&batch).Error
