@@ -73,25 +73,52 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, err
 }
 
 // GetClaimableL2SentMsgByAddressWithOffset get claimable l2 sent msg by address with offset
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context, address string, offset int, limit int) ([]*L2SentMsg, error) {
-	var results []*L2SentMsg
-	err := l.db.WithContext(ctx).Raw(`SELECT * FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='' ORDER BY id DESC LIMIT $2 OFFSET $3;`, address, limit, offset).
-		Scan(&results).Error
-	if err != nil {
-		return nil, fmt.Errorf("L2SentMsg.GetClaimableL2SentMsgByAddressWithOffset error: %w", err)
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context, address string, offset int, limit int) (uint64, []*L2SentMsg, error) {
+	var totalMsgs []*L2SentMsg
+	db := l.db.WithContext(ctx)
+	db = db.Table("l2_sent_msg")
+	db = db.Where("original_sender = ? OR sender = ?", address, address)
+	db = db.Where("msg_proof != ''")
+	db = db.Where("deleted_at IS NULL")
+	if err := db.Find(&totalMsgs).Error; err != nil {
+		return 0, nil, err
 	}
-	return results, nil
-}
 
-// GetClaimableL2SentMsgByAddressTotalNum get claimable l2 sent msg by address total num
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressTotalNum(ctx context.Context, address string) (uint64, error) {
-	var count uint64
-	err := l.db.WithContext(ctx).Raw(`SELECT COUNT(*) FROM l2_sent_msg WHERE id NOT IN (SELECT l2_sent_msg.id FROM l2_sent_msg INNER JOIN relayed_msg ON l2_sent_msg.msg_hash = relayed_msg.msg_hash WHERE l2_sent_msg.deleted_at IS NULL AND relayed_msg.deleted_at IS NULL) AND (original_sender=$1 OR sender = $1) AND msg_proof !='';`, address).
-		Scan(&count).Error
-	if err != nil {
-		return 0, fmt.Errorf("L2SentMsg.GetClaimableL2SentMsgByAddressTotalNum error: %w", err)
+	msgHashes := make([]string, len(totalMsgs))
+	for i, msg := range totalMsgs {
+		msgHashes[i] = msg.MsgHash
 	}
-	return count, nil
+
+	var claimedMsgHahes []string
+	db = l.db.WithContext(ctx)
+	db = db.Table("relayed_msg")
+	db = db.Where("msg_hash IN ?", msgHashes)
+	db = db.Where("deleted_at IS NULL")
+	if err := db.Pluck("msg_hash", &claimedMsgHahes).Error; err != nil {
+		return 0, nil, err
+	}
+
+	claimedMsgHashSet := make(map[string]struct{})
+	for _, hash := range claimedMsgHahes {
+		claimedMsgHashSet[hash] = struct{}{}
+	}
+	var unclaimedL2Msgs []*L2SentMsg
+	for _, msg := range totalMsgs {
+		if _, found := claimedMsgHashSet[msg.MsgHash]; !found {
+			unclaimedL2Msgs = append(unclaimedL2Msgs, msg)
+		}
+	}
+
+	// pagination
+	start := offset
+	end := offset + limit
+	if start > len(unclaimedL2Msgs) {
+		start = len(unclaimedL2Msgs)
+	}
+	if end > len(unclaimedL2Msgs) {
+		end = len(unclaimedL2Msgs)
+	}
+	return uint64(len(unclaimedL2Msgs)), unclaimedL2Msgs[start:end], nil
 }
 
 // GetLatestL2SentMsgBatchIndex get latest l2 sent msg batch index
