@@ -88,6 +88,19 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context
 		return 0, nil, tx.Error
 	}
 
+	// Note on the use of IN vs VALUES in SQL Queries:
+	// ------------------------------------------------
+	// When using the IN predicate with a large list (>100) of values, performance may suffer.
+	// An alternative approach is to use constant subqueries with the VALUES construct.
+	// For more details and optimization tips, visit:
+	// https://postgres.cz/wiki/PostgreSQL_SQL_Tricks_I#Predicate_IN_optimalization
+	//
+	// Example using IN:
+	// SELECT * FROM tab WHERE x IN (1,2,3,...,n);  -- where n > 70
+	//
+	// Optimized example using VALUES:
+	// SELECT * FROM tab WHERE x IN (VALUES(10), (20));
+	//
 	var valuesStr string
 	for _, msg := range totalMsgs {
 		valuesStr += fmt.Sprintf("('%s'),", msg.MsgHash)
