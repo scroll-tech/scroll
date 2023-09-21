@@ -67,7 +67,6 @@ func (*Chunk) TableName() string {
 }
 
 // GetUnassignedChunk retrieves unassigned chunk based on the specified limit.
-// The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
