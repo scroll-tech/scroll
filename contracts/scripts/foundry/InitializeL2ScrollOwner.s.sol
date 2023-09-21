@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {Script} from "forge-std/Script.sol";
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {AccessControlEnumerable} from "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
@@ -126,10 +127,9 @@ contract InitializeL2ScrollOwner is Script {
         bytes4[] memory _selectors;
 
         // no delay, security council
-        _selectors = new bytes4[](3);
-        _selectors[0] = ProxyAdmin.changeProxyAdmin.selector;
-        _selectors[1] = ProxyAdmin.upgrade.selector;
-        _selectors[2] = ProxyAdmin.upgradeAndCall.selector;
+        _selectors = new bytes4[](2);
+        _selectors[0] = ProxyAdmin.upgrade.selector;
+        _selectors[1] = ProxyAdmin.upgradeAndCall.selector;
         owner.updateAccess(L2_PROXY_ADMIN_ADDR, _selectors, SECURITY_COUNCIL_NO_DELAY_ROLE, true);
     }
 
@@ -146,10 +146,10 @@ contract InitializeL2ScrollOwner is Script {
     function configL2TxFeeVault() internal {
         bytes4[] memory _selectors;
 
-        // delay 7 day, scroll multisig
+        // no delay, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = L2TxFeeVault.updateMinWithdrawAmount.selector;
-        owner.updateAccess(L2_TX_FEE_VAULT_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
+        owner.updateAccess(L2_TX_FEE_VAULT_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
     }
 
     function configL2Whitelist() internal {
@@ -222,6 +222,16 @@ contract InitializeL2ScrollOwner is Script {
         _selectors = new bytes4[](1);
         _selectors[0] = TokenRateLimiter.updateTotalLimit.selector;
         owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+
+        // delay 1 day, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = AccessControl.grantRole.selector;
+        owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
+
+        // delay 7 day, scroll multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = AccessControl.revokeRole.selector;
+        owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
     }
 
     /*

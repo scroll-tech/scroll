@@ -122,10 +122,9 @@ contract InitializeL1ScrollOwner is Script {
         bytes4[] memory _selectors;
 
         // no delay, security council
-        _selectors = new bytes4[](3);
-        _selectors[0] = ProxyAdmin.changeProxyAdmin.selector;
-        _selectors[1] = ProxyAdmin.upgrade.selector;
-        _selectors[2] = ProxyAdmin.upgradeAndCall.selector;
+        _selectors = new bytes4[](2);
+        _selectors[0] = ProxyAdmin.upgrade.selector;
+        _selectors[1] = ProxyAdmin.upgradeAndCall.selector;
         owner.updateAccess(L1_PROXY_ADMIN_ADDR, _selectors, SECURITY_COUNCIL_NO_DELAY_ROLE, true);
     }
 
@@ -176,9 +175,8 @@ contract InitializeL1ScrollOwner is Script {
         bytes4[] memory _selectors;
 
         // no delay, scroll multisig
-        _selectors = new bytes4[](2);
-        _selectors[0] = L2GasPriceOracle.updateWhitelist.selector;
-        _selectors[1] = L2GasPriceOracle.setIntrinsicParams.selector;
+        _selectors = new bytes4[](1);
+        _selectors[0] = L2GasPriceOracle.setIntrinsicParams.selector;
         owner.updateAccess(L2_GAS_PRICE_ORACLE_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
     }
 
