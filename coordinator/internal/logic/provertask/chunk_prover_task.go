@@ -75,6 +75,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, ErrCoordinatorInternalFailure
 		}
 
+		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
+		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpChunkTask == nil {
 			tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {

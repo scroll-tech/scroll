@@ -72,9 +72,10 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, ErrCoordinatorInternalFailure
 		}
 
-		// Why here need get again? because use `proving_status in (1, 2)` will not use the postgres index.
+		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
+		// batch to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpBatchTask == nil {
-			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx, maxActiveAttempts, maxTotalAttempts)
+			tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx, maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
 				log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
