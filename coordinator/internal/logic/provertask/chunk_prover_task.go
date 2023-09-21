@@ -66,7 +66,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := cp.cfg.ProverManager.SessionAttempts
 	var chunkTask *orm.Chunk
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 5; i++ {
 		unassignedChunk, getUnsignedChunkErr := cp.chunkOrm.GetUnassignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
 		if getUnsignedChunkErr != nil {
 			log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getUnsignedChunkErr)
