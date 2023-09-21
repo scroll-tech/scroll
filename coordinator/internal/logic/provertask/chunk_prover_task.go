@@ -64,10 +64,30 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := cp.cfg.ProverManager.SessionAttempts
-	chunkTask, err := cp.chunkOrm.UpdateChunkAttemptsReturning(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
-	if err != nil {
-		log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", err)
-		return nil, ErrCoordinatorInternalFailure
+	var chunkTask *orm.Chunk
+	for i := 0; i < 100; i++ {
+		unassignedChunk, getUnsignedChunkErr := cp.chunkOrm.GetUnassignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
+		if getUnsignedChunkErr != nil {
+			log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getUnsignedChunkErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+
+		if unassignedChunk == nil {
+			return nil, nil
+		}
+
+		rowsAffected, updateAttemptsErr := cp.chunkOrm.UpdateChunkAttempts(ctx, unassignedChunk.Index, unassignedChunk.ActiveAttempts, unassignedChunk.TotalAttempts)
+		if updateAttemptsErr != nil {
+			log.Error("failed to update chunk attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+
+		if rowsAffected == 0 {
+			continue
+		}
+
+		chunkTask = unassignedChunk
+		break
 	}
 
 	if chunkTask == nil {
