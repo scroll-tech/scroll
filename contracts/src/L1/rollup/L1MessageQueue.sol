@@ -64,7 +64,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @notice The max gas limit of L1 transactions.
     uint256 public maxGasLimit;
 
-    /// @dev The bitmap for skipped messages.
+    /// @dev The bitmap for dropped messages, where `droppedMessageBitmap[i]` keeps the bits from `[i*256, (i+1)*256)`.
     BitMapsUpgradeable.BitMap private droppedMessageBitmap;
 
     /// @dev The bitmap for skipped messages, where `skippedMessageBitmap[i]` keeps the bits from `[i*256, (i+1)*256)`.
