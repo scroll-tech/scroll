@@ -47,6 +47,7 @@ contract InitializeL2ScrollOwner is Script {
     address L2_TX_FEE_VAULT_ADDR = vm.envAddress("L2_TX_FEE_VAULT_ADDR");
     address L1_GAS_PRICE_ORACLE_ADDR = vm.envAddress("L1_GAS_PRICE_ORACLE_ADDR");
     address L2_WHITELIST_ADDR = vm.envAddress("L2_WHITELIST_ADDR");
+    address L2_MESSAGE_QUEUE_ADDR = vm.envAddress("L2_MESSAGE_QUEUE_ADDR");
 
     address L2_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_PROXY_ADDR");
     address L2_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L2_GATEWAY_ROUTER_PROXY_ADDR");
@@ -92,6 +93,7 @@ contract InitializeL2ScrollOwner is Script {
 
     function transferOwnership() internal {
         Ownable(L2_PROXY_ADMIN_ADDR).transferOwnership(address(owner));
+        Ownable(L2_MESSAGE_QUEUE_ADDR).transferOwnership(address(owner));
         Ownable(L1_GAS_PRICE_ORACLE_ADDR).transferOwnership(address(owner));
         Ownable(L2_TX_FEE_VAULT_ADDR).transferOwnership(address(owner));
         Ownable(L2_WHITELIST_ADDR).transferOwnership(address(owner));
