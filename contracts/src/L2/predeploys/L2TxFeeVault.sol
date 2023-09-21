@@ -110,6 +110,9 @@ contract L2TxFeeVault is OwnableBase {
             "FeeVault: withdrawal amount must be greater than minimum withdrawal amount"
         );
 
+        uint256 _balance = address(this).balance;
+        require(_value <= _balance, "FeeVault: insufficient balance to withdraw");
+
         unchecked {
             totalProcessed += _value;
         }
