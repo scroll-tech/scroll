@@ -63,7 +63,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
 	var batchTask *orm.Batch
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 5; i++ {
 		unassignedBatch, getUnassignedErr := bp.batchOrm.GetUnassignedBatch(ctx, maxActiveAttempts, maxTotalAttempts)
 		if getUnassignedErr != nil {
 			log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getUnassignedErr)

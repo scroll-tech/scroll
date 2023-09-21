@@ -75,7 +75,7 @@ func (*Batch) TableName() string {
 // The returned batch are sorted in ascending order by their index.
 func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status not in (?)", []int{int(types.ProvingTaskVerified), int(types.ProvingTaskFailed)})
+	db = db.Where("proving_status in (?)", []int{int(types.ProvingTaskUnassigned), int(types.ProvingTaskAssigned)})
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))

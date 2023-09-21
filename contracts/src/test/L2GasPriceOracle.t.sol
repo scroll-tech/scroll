@@ -50,7 +50,7 @@ contract L2GasPriceOracleTest is DSTestPlus {
 
     function testSetIntrinsicParamsAccess() external {
         hevm.startPrank(address(4));
-        hevm.expectRevert("Not whitelisted sender");
+        hevm.expectRevert("Ownable: caller is not the owner");
         oracle.setIntrinsicParams(1, 0, 0, 1);
     }
 
