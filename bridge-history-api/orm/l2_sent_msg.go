@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -72,7 +73,8 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, err
 	return result.Height, nil
 }
 
-// GetClaimableL2SentMsgByAddressWithOffset get claimable l2 sent msg by address with offset
+// GetClaimableL2SentMsgByAddressWithOffset returns both the total number of unclaimed messages and a paginated list of those messages.
+// TODO: Add metrics about the result set sizes (total/claimed/unclaimed messages).
 func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context, address string, offset int, limit int) (uint64, []*L2SentMsg, error) {
 	var totalMsgs []*L2SentMsg
 	db := l.db.WithContext(ctx)
@@ -85,22 +87,23 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context
 		return 0, nil, err
 	}
 
-	msgHashes := make([]string, len(totalMsgs))
-	for i, msg := range totalMsgs {
-		msgHashes[i] = msg.MsgHash
+	var valuesStr string
+	for _, msg := range totalMsgs {
+		valuesStr += fmt.Sprintf("(\"%s\"),", msg.MsgHash)
 	}
+	valuesStr = strings.TrimSuffix(valuesStr, ",")
 
-	var claimedMsgHahes []string
+	var claimedMsgHashes []string
 	db = l.db.WithContext(ctx)
 	db = db.Table("relayed_msg")
-	db = db.Where("msg_hash IN ?", msgHashes)
+	db = db.Where(fmt.Sprintf("msg_hash IN (VALUES %s)", valuesStr))
 	db = db.Where("deleted_at IS NULL")
-	if err := db.Pluck("msg_hash", &claimedMsgHahes).Error; err != nil {
+	if err := db.Pluck("msg_hash", &claimedMsgHashes).Error; err != nil {
 		return 0, nil, err
 	}
 
 	claimedMsgHashSet := make(map[string]struct{})
-	for _, hash := range claimedMsgHahes {
+	for _, hash := range claimedMsgHashes {
 		claimedMsgHashSet[hash] = struct{}{}
 	}
 	var unclaimedL2Msgs []*L2SentMsg
