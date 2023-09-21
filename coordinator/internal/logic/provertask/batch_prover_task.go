@@ -64,17 +64,29 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
 	var batchTask *orm.Batch
 	for i := 0; i < 5; i++ {
-		unassignedBatch, getUnassignedErr := bp.batchOrm.GetUnassignedBatch(ctx, maxActiveAttempts, maxTotalAttempts)
-		if getUnassignedErr != nil {
-			log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getUnassignedErr)
+		var getTaskError error
+		var tmpBatchTask *orm.Batch
+		tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx, maxActiveAttempts, maxTotalAttempts)
+		if getTaskError != nil {
+			log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
-		if unassignedBatch == nil {
-			log.Debug("get empty unassigned batch", "height", getTaskParameter.ProverHeight)
+
+		// Why here need get again? because use `proving_status in (1, 2)` will not use the postgres index.
+		if tmpBatchTask == nil {
+			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx, maxActiveAttempts, maxTotalAttempts)
+			if getTaskError != nil {
+				log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			}
+		}
+
+		if tmpBatchTask == nil {
+			log.Debug("get empty batch", "height", getTaskParameter.ProverHeight)
 			return nil, nil
 		}
 
-		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx, unassignedBatch.Index, unassignedBatch.ActiveAttempts, unassignedBatch.TotalAttempts)
+		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx, tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
 		if updateAttemptsErr != nil {
 			log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 			return nil, ErrCoordinatorInternalFailure
@@ -85,7 +97,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			continue
 		}
 
-		batchTask = unassignedBatch
+		batchTask = tmpBatchTask
 		break
 	}
 

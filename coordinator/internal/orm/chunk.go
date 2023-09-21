@@ -71,7 +71,7 @@ func (*Chunk) TableName() string {
 func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
-	db = db.Where("proving_status in (?)", []int{int(types.ProvingTaskUnassigned), int(types.ProvingTaskAssigned)})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("end_block_number <= ?", height)
@@ -84,6 +84,28 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAtt
 
 	if err != nil {
 		return nil, fmt.Errorf("Chunk.GetUnassignedChunks error: %w", err)
+	}
+	return &chunk, nil
+}
+
+// GetAssignedChunk retrieves assigned chunk based on the specified limit.
+// The returned chunks are sorted in ascending order by their index.
+func (o *Chunk) GetAssignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
+	db = db.Where("total_attempts < ?", maxTotalAttempts)
+	db = db.Where("active_attempts < ?", maxActiveAttempts)
+	db = db.Where("end_block_number <= ?", height)
+
+	var chunk Chunk
+	err := db.First(&chunk).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("Chunk.GetAssignedChunks error: %w", err)
 	}
 	return &chunk, nil
 }
