@@ -350,7 +350,7 @@ func (o *Chunk) UpdateChunkAttempts(ctx context.Context, index uint64, curActive
 	})
 
 	if result.Error != nil {
-		return 0, fmt.Errorf("failed to update chunk, err:%v", result.Error)
+		return 0, fmt.Errorf("failed to update chunk, err:%w", result.Error)
 	}
 	return result.RowsAffected, nil
 }

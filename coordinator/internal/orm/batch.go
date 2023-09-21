@@ -316,7 +316,7 @@ func (o *Batch) UpdateBatchAttempts(ctx context.Context, index uint64, curActive
 	})
 
 	if result.Error != nil {
-		return 0, fmt.Errorf("failed to update batch, err:%v", result.Error)
+		return 0, fmt.Errorf("failed to update batch, err:%w", result.Error)
 	}
 	return result.RowsAffected, nil
 }
