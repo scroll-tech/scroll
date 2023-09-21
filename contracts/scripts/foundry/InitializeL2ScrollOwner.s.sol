@@ -219,14 +219,10 @@ contract InitializeL2ScrollOwner is Script {
         bytes4[] memory _selectors;
 
         // no delay, scroll multisig
-        _selectors = new bytes4[](1);
+        _selectors = new bytes4[](2);
         _selectors[0] = TokenRateLimiter.updateTotalLimit.selector;
+        _selectors[1] = AccessControl.grantRole.selector;
         owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
-
-        // delay 1 day, scroll multisig
-        _selectors = new bytes4[](1);
-        _selectors[0] = AccessControl.grantRole.selector;
-        owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
 
         // delay 7 day, scroll multisig
         _selectors = new bytes4[](1);
