@@ -50,7 +50,7 @@ func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 			types.RenderSuccess(ctx, resultData)
 			return
 		}
-		// Unexpected case: log and continue to fetch data from the database
+		// Log error for unexpected type, then fetch data from the database.
 		log.Error("unexpected type in cache", "expected", "*types.ResultData", "got", reflect.TypeOf(cachedData))
 	}
 
@@ -106,13 +106,12 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, errors.New("the number of hashes in the request exceeds the allowed maximum"))
 		return
 	}
-
-	// deduplicate
 	hashesMap := make(map[string]struct{}, len(req.Txs))
 	results := make([]*types.TxHistoryInfo, 0, len(req.Txs))
 	uncachedHashes := make([]string, 0, len(req.Txs))
 	for _, hash := range req.Txs {
 		if _, exists := hashesMap[hash]; exists {
+			// Skip duplicate tx hash values.
 			continue
 		}
 		hashesMap[hash] = struct{}{}
@@ -138,7 +137,7 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 				<-releaseChan
 				return nil, nil
 			})
-			// add this check to fix golint: log and continue.
+			// Add this check to fix golint: log and continue.
 			if err != nil {
 				log.Warn("unexpected error", "err", err)
 			}
