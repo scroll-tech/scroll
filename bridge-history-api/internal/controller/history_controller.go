@@ -110,19 +110,15 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 	}
 
 	// deduplicate
-	hashesMap := make(map[string]struct{})
+	hashesMap := make(map[string]struct{}, len(req.Txs))
+	results := make([]*types.TxHistoryInfo, 0, len(req.Txs))
+	uncachedHashes := make([]string, 0, len(req.Txs))
 	for _, hash := range req.Txs {
+		if _, exists := hashesMap[hash]; exists {
+			continue
+		}
 		hashesMap[hash] = struct{}{}
-	}
 
-	txHashes := make([]string, 0, len(hashesMap))
-	for hash := range hashesMap {
-		txHashes = append(txHashes, hash)
-	}
-
-	results := make([]*types.TxHistoryInfo, 0, len(txHashes))
-	uncachedHashes := make([]string, 0, len(txHashes))
-	for _, hash := range txHashes {
 		cacheKey := cacheKeyPrefixQueryTxsByHash + hash
 		if cachedData, found := c.cache.Get(cacheKey); found {
 			if txInfo, ok := cachedData.(*types.TxHistoryInfo); ok {
