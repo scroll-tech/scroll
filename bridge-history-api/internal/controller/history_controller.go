@@ -138,9 +138,9 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 				<-releaseChan
 				return nil, nil
 			})
-			// add this check to fix golint.
+			// add this check to fix golint: log and continue.
 			if err != nil {
-				log.Error("unexpected error", "err", err)
+				log.Warn("unexpected error", "err", err)
 			}
 		}
 	}
@@ -150,6 +150,7 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 
 		dbResults, err := c.historyLogic.GetTxsByHashes(ctx, uncachedHashes)
 		if err != nil {
+			types.RenderFailure(ctx, types.ErrGetTxsByHashFailure, err)
 			return
 		}
 
