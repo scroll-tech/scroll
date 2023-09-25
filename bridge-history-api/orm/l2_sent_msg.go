@@ -73,9 +73,9 @@ func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, err
 	return result.Height, nil
 }
 
-// GetClaimableL2SentMsgByAddressWithOffset returns both the total number of unclaimed messages and a paginated list of those messages.
+// GetClaimableL2SentMsgByAddress returns both the total number of unclaimed messages and a paginated list of those messages.
 // TODO: Add metrics about the result set sizes (total/claimed/unclaimed messages).
-func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context, address string, offset int, limit int) (uint64, []*L2SentMsg, error) {
+func (l *L2SentMsg) GetClaimableL2SentMsgByAddress(ctx context.Context, address string) ([]*L2SentMsg, error) {
 	var totalMsgs []*L2SentMsg
 	db := l.db.WithContext(ctx)
 	db = db.Table("l2_sent_msg")
@@ -85,7 +85,7 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context
 	db = db.Order("id DESC")
 	tx := db.Find(&totalMsgs)
 	if tx.Error != nil || tx.RowsAffected == 0 {
-		return 0, nil, tx.Error
+		return nil, tx.Error
 	}
 
 	// Note on the use of IN vs VALUES in SQL Queries:
@@ -113,7 +113,7 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context
 	db = db.Where(fmt.Sprintf("msg_hash IN (VALUES %s)", valuesStr))
 	db = db.Where("deleted_at IS NULL")
 	if err := db.Pluck("msg_hash", &claimedMsgHashes).Error; err != nil {
-		return 0, nil, err
+		return nil, err
 	}
 
 	claimedMsgHashSet := make(map[string]struct{})
@@ -127,16 +127,7 @@ func (l *L2SentMsg) GetClaimableL2SentMsgByAddressWithOffset(ctx context.Context
 		}
 	}
 
-	// pagination
-	start := offset
-	end := offset + limit
-	if start > len(unclaimedL2Msgs) {
-		start = len(unclaimedL2Msgs)
-	}
-	if end > len(unclaimedL2Msgs) {
-		end = len(unclaimedL2Msgs)
-	}
-	return uint64(len(unclaimedL2Msgs)), unclaimedL2Msgs[start:end], nil
+	return unclaimedL2Msgs, nil
 }
 
 // GetLatestL2SentMsgBatchIndex get latest l2 sent msg batch index

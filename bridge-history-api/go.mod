@@ -9,6 +9,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.19
 	github.com/modern-go/reflect2 v1.0.2
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.7.0
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7

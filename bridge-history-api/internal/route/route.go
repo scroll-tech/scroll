@@ -21,10 +21,10 @@ func Route(router *gin.Engine, conf *config.Config) {
 	}))
 
 	r := router.Group("api/")
-	r.GET("/txs", controller.HistoryCtrler.GetAllTxsByAddr)
+	//r.GET("/txs", controller.HistoryCtrler.GetAllTxsByAddr)
 	r.POST("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHash)
 	r.GET("/claimable", controller.HistoryCtrler.GetAllClaimableTxsByAddr)
-	r.GET("/withdraw_root", controller.BatchCtrler.GetWithdrawRootByBatchIndex)
+	//r.GET("/withdraw_root", controller.BatchCtrler.GetWithdrawRootByBatchIndex)
 	r.GET("/health", controller.HealthCheck.HealthCheck)
 	r.GET("/ready", controller.Ready.Ready)
 }

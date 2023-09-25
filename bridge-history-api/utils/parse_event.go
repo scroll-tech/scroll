@@ -14,14 +14,6 @@ import (
 	"bridge-history-api/orm"
 )
 
-// CachedParsedTxCalldata store parsed batch infos
-type CachedParsedTxCalldata struct {
-	CallDataIndex uint64
-	BatchIndices  []uint64
-	StartBlocks   []uint64
-	EndBlocks     []uint64
-}
-
 // ParseBackendL1EventLogs parses L1 watched events
 func ParseBackendL1EventLogs(logs []types.Log) ([]*orm.CrossMsg, []*orm.RelayedMsg, error) {
 	// Need use contract abi to parse event Log
