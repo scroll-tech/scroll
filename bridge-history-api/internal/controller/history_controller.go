@@ -89,7 +89,7 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 		return
 	}
 
-	if len(req.Txs) >= 10 {
+	if len(req.Txs) > 10 {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, errors.New("the number of hashes in the request exceeds the allowed maximum"))
 		return
 	}

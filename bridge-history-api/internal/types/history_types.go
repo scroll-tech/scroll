@@ -27,8 +27,8 @@ const (
 // QueryByAddressRequest the request parameter of address api
 type QueryByAddressRequest struct {
 	Address  string `form:"address" binding:"required"`
-	Page     int    `form:"page" binding:"required"`
-	PageSize int    `form:"page_size" binding:"required"`
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=10"`
 }
 
 // QueryByHashRequest the request parameter of hash api
