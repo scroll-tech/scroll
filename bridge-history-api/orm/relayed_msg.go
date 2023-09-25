@@ -53,7 +53,7 @@ func (r *RelayedMsg) GetRelayedMsgByHash(ctx context.Context, msgHash string) (*
 func (r *RelayedMsg) GetRelayedMsgsByHashes(ctx context.Context, msgHashes []string) ([]*RelayedMsg, error) {
 	var results []*RelayedMsg
 	err := r.db.WithContext(ctx).Model(&RelayedMsg{}).
-		Where("msg_hash IN ?", msgHashes).
+		Where("msg_hash IN (?)", msgHashes).
 		Find(&results).
 		Error
 	if err != nil {

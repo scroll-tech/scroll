@@ -74,7 +74,7 @@ func (r *RollupBatch) GetRollupBatchByIndex(ctx context.Context, index uint64) (
 // GetRollupBatchesByIndexes return the rollup batches by indexes
 func (r *RollupBatch) GetRollupBatchesByIndexes(ctx context.Context, indexes []uint64) ([]*RollupBatch, error) {
 	var results []*RollupBatch
-	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index IN ?", indexes).Find(&results).Error
+	err := r.db.WithContext(ctx).Model(&RollupBatch{}).Where("batch_index IN (?)", indexes).Find(&results).Error
 	if err != nil {
 		return nil, fmt.Errorf("RollupBatch.GetRollupBatchesByIndexes error: %w", err)
 	}
