@@ -24,30 +24,30 @@ func NewHistoryLogic(db *gorm.DB) *HistoryLogic {
 }
 
 // getCrossTxClaimInfo get UserClaimInfos by address
-func getCrossTxClaimInfo(ctx context.Context, msgHash string, db *gorm.DB) *types.UserClaimInfo {
-	l2SentMsgOrm := orm.NewL2SentMsg(db)
-	rollupOrm := orm.NewRollupBatch(db)
-	l2sentMsg, err := l2SentMsgOrm.GetL2SentMsgByHash(ctx, msgHash)
-	if err != nil || l2sentMsg == nil {
-		log.Debug("getCrossTxClaimInfo failed", "error", err)
-		return &types.UserClaimInfo{}
-	}
-	batch, err := rollupOrm.GetRollupBatchByIndex(ctx, l2sentMsg.BatchIndex)
-	if err != nil {
-		log.Debug("getCrossTxClaimInfo failed", "error", err)
-		return &types.UserClaimInfo{}
-	}
-	return &types.UserClaimInfo{
-		From:       l2sentMsg.Sender,
-		To:         l2sentMsg.Target,
-		Value:      l2sentMsg.Value,
-		Nonce:      strconv.FormatUint(l2sentMsg.Nonce, 10),
-		Message:    l2sentMsg.MsgData,
-		Proof:      "0x" + l2sentMsg.MsgProof,
-		BatchHash:  batch.BatchHash,
-		BatchIndex: strconv.FormatUint(l2sentMsg.BatchIndex, 10),
-	}
-}
+//func getCrossTxClaimInfo(ctx context.Context, msgHash string, db *gorm.DB) *types.UserClaimInfo {
+//	l2SentMsgOrm := orm.NewL2SentMsg(db)
+//	rollupOrm := orm.NewRollupBatch(db)
+//	l2sentMsg, err := l2SentMsgOrm.GetL2SentMsgByHash(ctx, msgHash)
+//	if err != nil || l2sentMsg == nil {
+//		log.Debug("getCrossTxClaimInfo failed", "error", err)
+//		return &types.UserClaimInfo{}
+//	}
+//	batch, err := rollupOrm.GetRollupBatchByIndex(ctx, l2sentMsg.BatchIndex)
+//	if err != nil {
+//		log.Debug("getCrossTxClaimInfo failed", "error", err)
+//		return &types.UserClaimInfo{}
+//	}
+//	return &types.UserClaimInfo{
+//		From:       l2sentMsg.Sender,
+//		To:         l2sentMsg.Target,
+//		Value:      l2sentMsg.Value,
+//		Nonce:      strconv.FormatUint(l2sentMsg.Nonce, 10),
+//		Message:    l2sentMsg.MsgData,
+//		Proof:      "0x" + l2sentMsg.MsgProof,
+//		BatchHash:  batch.BatchHash,
+//		BatchIndex: strconv.FormatUint(l2sentMsg.BatchIndex, 10),
+//	}
+//}
 
 // updateL2TxClaimInfo updates UserClaimInfos for each transaction history.
 func updateL2TxClaimInfo(ctx context.Context, txHistories []*types.TxHistoryInfo, db *gorm.DB) {

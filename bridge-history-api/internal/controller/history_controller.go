@@ -134,10 +134,14 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 		releaseChan := make(chan struct{})
 		for _, hash := range uncachedHashes {
 			go func(hash string) {
-				c.singleFlight.Do(hash, func() (interface{}, error) {
+				_, err, _ := c.singleFlight.Do(hash, func() (interface{}, error) {
 					<-releaseChan
 					return nil, nil
 				})
+				// add this check to fix golint.
+				if err != nil {
+					log.Error("unexpected error", "err", err)
+				}
 			}(hash)
 		}
 		defer close(releaseChan)
