@@ -3,8 +3,6 @@ package controller
 import (
 	"errors"
 	"reflect"
-	"sort"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -133,29 +131,26 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 	}
 
 	if len(uncachedHashes) > 0 {
-		sort.Strings(uncachedHashes)
-		singleFlightKey := strings.Join(uncachedHashes, ",")
-		result, err, _ := c.singleFlight.Do(singleFlightKey, func() (interface{}, error) {
-			dbResults, err := c.historyLogic.GetTxsByHashes(ctx, uncachedHashes)
-			if err != nil {
-				return nil, err
-			}
-			return dbResults, nil
-		})
+		releaseChan := make(chan struct{})
+		for _, hash := range uncachedHashes {
+			go func(hash string) {
+				c.singleFlight.Do(hash, func() (interface{}, error) {
+					<-releaseChan
+					return nil, nil
+				})
+			}(hash)
+		}
+		defer close(releaseChan)
+
+		dbResults, err := c.historyLogic.GetTxsByHashes(ctx, uncachedHashes)
 		if err != nil {
-			types.RenderFailure(ctx, types.ErrGetTxsByHashFailure, err)
 			return
 		}
 
-		if dbResults, ok := result.([]*types.TxHistoryInfo); ok {
-			for _, result := range dbResults {
-				results = append(results, result)
-				cacheKey := cacheKeyPrefixQueryTxsByHash + result.Hash
-				c.cache.Set(cacheKey, result, cache.DefaultExpiration)
-			}
-		} else {
-			log.Error("unexpected type from singleflight", "expected", "[]*types.TxHistoryInfo", "got", reflect.TypeOf(result))
-			types.RenderFailure(ctx, types.ErrGetTxsByHashFailure, errors.New("unexpected error"))
+		for _, result := range dbResults {
+			results = append(results, result)
+			cacheKey := cacheKeyPrefixQueryTxsByHash + result.Hash
+			c.cache.Set(cacheKey, result, cache.DefaultExpiration)
 		}
 	}
 
