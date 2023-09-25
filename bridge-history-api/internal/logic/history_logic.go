@@ -124,23 +124,20 @@ func updateCrossTxHashes(ctx context.Context, txHistories []*types.TxHistoryInfo
 
 	relayed := orm.NewRelayedMsg(db)
 	relayedMsgs, err := relayed.GetRelayedMsgsByHashes(ctx, msgHashes)
-	if err != nil {
-		log.Debug("GetRelayedMsgsByHashes failed", "msg hashes", msgHashes, "error", err)
+	if err != nil || len(relayedMsgs) == 0 {
+		log.Debug("GetRelayedMsgsByHashes failed", "msg hashes", msgHashes, "relayed msgs", relayedMsgs, "error", err)
 		return
 	}
 
+	relayedMsgMap := make(map[string]*orm.RelayedMsg, len(relayedMsgs))
 	for _, relayedMsg := range relayedMsgs {
-		for _, txHistory := range txHistories {
-			if txHistory.MsgHash == relayedMsg.MsgHash {
-				if relayedMsg.Layer1Hash != "" {
-					txHistory.FinalizeTx.Hash = relayedMsg.Layer1Hash
-					txHistory.FinalizeTx.BlockNumber = relayedMsg.Height
-				}
-				if relayedMsg.Layer2Hash != "" {
-					txHistory.FinalizeTx.Hash = relayedMsg.Layer2Hash
-					txHistory.FinalizeTx.BlockNumber = relayedMsg.Height
-				}
-			}
+		relayedMsgMap[relayedMsg.MsgHash] = relayedMsg
+	}
+
+	for _, txHistory := range txHistories {
+		if relayedMsg, found := relayedMsgMap[txHistory.MsgHash]; found {
+			txHistory.FinalizeTx.Hash = relayedMsg.Layer1Hash + relayedMsg.Layer2Hash
+			txHistory.FinalizeTx.BlockNumber = relayedMsg.Height
 		}
 	}
 }
