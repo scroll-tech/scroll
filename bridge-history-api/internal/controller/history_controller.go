@@ -15,6 +15,11 @@ import (
 	"bridge-history-api/internal/types"
 )
 
+const (
+	cacheKeyPrefixClaimableTxsByAddr = "claimableTxsByAddr:"
+	cacheKeyPrefixQueryTxsByHash     = "queryTxsByHash:"
+)
+
 // HistoryController contains the query claimable txs service
 type HistoryController struct {
 	historyLogic *logic.HistoryLogic
@@ -37,7 +42,7 @@ func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 		return
 	}
 
-	cacheKey := "claimableTxsByAddr:" + req.Address
+	cacheKey := cacheKeyPrefixClaimableTxsByAddr + req.Address
 	if cachedData, found := c.cache.Get(cacheKey); found {
 		if resultData, ok := cachedData.(*types.ResultData); ok {
 			types.RenderSuccess(ctx, resultData)
@@ -89,11 +94,10 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 		return
 	}
 
-	const cacheKeyPrefix = "queryTxsByHash:"
 	results := make([]*types.TxHistoryInfo, 0, len(req.Txs))
 	uncachedHashes := make([]string, 0, len(req.Txs))
 	for _, hash := range req.Txs {
-		cacheKey := cacheKeyPrefix + hash
+		cacheKey := cacheKeyPrefixQueryTxsByHash + hash
 		if cachedData, found := c.cache.Get(cacheKey); found {
 			if txInfo, ok := cachedData.(*types.TxHistoryInfo); ok {
 				results = append(results, txInfo)
@@ -114,7 +118,7 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 		}
 
 		for _, result := range dbResults {
-			cacheKey := cacheKeyPrefix + result.Hash
+			cacheKey := cacheKeyPrefixQueryTxsByHash + result.Hash
 			results = append(results, result)
 			c.cache.Set(cacheKey, result, cache.DefaultExpiration)
 		}
