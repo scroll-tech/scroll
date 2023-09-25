@@ -62,13 +62,15 @@ func updateL2TxClaimInfo(ctx context.Context, txHistories []*types.TxHistoryInfo
 	}
 
 	l2sentMsgs, err := l2SentMsgOrm.GetL2SentMsgsByHashes(ctx, l2MsgHashes)
-	if err != nil {
-		log.Debug("GetL2SentMsgsByHashes failed", "error", err)
+	if err != nil || len(l2sentMsgs) == 0 {
+		log.Debug("GetL2SentMsgsByHashes failed", "l2 sent msgs", l2sentMsgs, "error", err)
 		return
 	}
 
+	l2MsgMap := make(map[string]*orm.L2SentMsg, len(l2sentMsgs))
 	var batchIndexes []uint64
 	for _, l2sentMsg := range l2sentMsgs {
+		l2MsgMap[l2sentMsg.MsgHash] = l2sentMsg
 		batchIndexes = append(batchIndexes, l2sentMsg.BatchIndex)
 	}
 
@@ -78,30 +80,19 @@ func updateL2TxClaimInfo(ctx context.Context, txHistories []*types.TxHistoryInfo
 		return
 	}
 
+	batchMap := make(map[uint64]*orm.RollupBatch, len(batches))
+	for _, batch := range batches {
+		batchMap[batch.BatchIndex] = batch
+	}
+
 	for _, txHistory := range txHistories {
 		if txHistory.IsL1 {
 			continue
 		}
 
-		var l2sentMsg *orm.L2SentMsg
-		var batch *orm.RollupBatch
-		for _, msg := range l2sentMsgs {
-			if msg.MsgHash == txHistory.MsgHash {
-				l2sentMsg = msg
-				break
-			}
-		}
-
-		if l2sentMsg != nil {
-			for _, b := range batches {
-				if b.BatchIndex == l2sentMsg.BatchIndex {
-					batch = b
-					break
-				}
-			}
-		}
-
-		if l2sentMsg != nil && batch != nil {
+		l2sentMsg, foundL2SentMsg := l2MsgMap[txHistory.MsgHash]
+		batch, foundBatch := batchMap[l2sentMsg.BatchIndex]
+		if foundL2SentMsg && foundBatch {
 			txHistory.ClaimInfo = &types.UserClaimInfo{
 				From:       l2sentMsg.Sender,
 				To:         l2sentMsg.Target,
@@ -229,7 +220,6 @@ func (h *HistoryLogic) GetClaimableTxsByAddress(ctx context.Context, address com
 // GetTxsByHashes get tx infos under given tx hashes
 func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, hashes []string) ([]*types.TxHistoryInfo, error) {
 	CrossMsgOrm := orm.NewCrossMsg(h.db)
-
 	results, err := CrossMsgOrm.GetCrossMsgsByHashes(ctx, hashes)
 	if err != nil {
 		return nil, err
