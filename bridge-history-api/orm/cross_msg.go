@@ -368,3 +368,14 @@ func (c *CrossMsg) GetCrossMsgsByAddressWithOffset(ctx context.Context, sender s
 	}
 	return messages, nil
 }
+
+// GetCrossMsgsByHashes retrieves a list of cross messages identified by their Layer 1 or Layer 2 hashes.
+func (c *CrossMsg) GetCrossMsgsByHashes(ctx context.Context, hashes []string) ([]*CrossMsg, error) {
+	var results []*CrossMsg
+	err := c.db.WithContext(ctx).Model(&CrossMsg{}).Where("layer1_hash IN ? OR layer2_hash IN ?", hashes, hashes).Find(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("CrossMsg.GetCrossMsgsByHashes error: %w", err)
+	}
+
+	return results, nil
+}

@@ -55,6 +55,19 @@ func (l *L2SentMsg) GetL2SentMsgByHash(ctx context.Context, msgHash string) (*L2
 	return &result, nil
 }
 
+// GetL2SentMsgsByHashes get l2 sent msgs by hashes
+func (l *L2SentMsg) GetL2SentMsgsByHashes(ctx context.Context, msgHashes []string) ([]*L2SentMsg, error) {
+	var results []*L2SentMsg
+	err := l.db.WithContext(ctx).Model(&L2SentMsg{}).
+		Where("msg_hash IN ?", msgHashes).
+		Find(&results).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("L2SentMsg.GetL2SentMsgsByHashes error: %w", err)
+	}
+	return results, nil
+}
+
 // GetLatestSentMsgHeightOnL2 get latest sent msg height on l2
 func (l *L2SentMsg) GetLatestSentMsgHeightOnL2(ctx context.Context) (uint64, error) {
 	var result L2SentMsg

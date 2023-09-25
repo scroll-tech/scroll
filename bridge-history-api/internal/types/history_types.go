@@ -80,6 +80,7 @@ type UserClaimInfo struct {
 // TxHistoryInfo the schema of tx history infos
 type TxHistoryInfo struct {
 	Hash           string         `json:"hash"`
+	MsgHash        string         `json:"msgHash"`
 	Amount         string         `json:"amount"`
 	To             string         `json:"to"` // useless
 	IsL1           bool           `json:"isL1"`

@@ -65,20 +65,20 @@ func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 }
 
 // GetAllTxsByAddr defines the http get method behavior
-// func (c *HistoryController) GetAllTxsByAddr(ctx *gin.Context) {
-//	 var req types.QueryByAddressRequest
-//	 if err := ctx.ShouldBind(&req); err != nil {
-//		 types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
-//		 return
-//	 }
-//	 offset := (req.Page - 1) * req.PageSize
-//	 limit := req.PageSize
-//	 message, total, err := c.historyLogic.GetTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
-//	 if err != nil {
-//		 types.RenderFailure(ctx, types.ErrGetTxsByAddrFailure, err)
-//		 return
-//	 }
-//	 types.RenderSuccess(ctx, &types.ResultData{Result: message, Total: total})
+//func (c *HistoryController) GetAllTxsByAddr(ctx *gin.Context) {
+//	var req types.QueryByAddressRequest
+//	if err := ctx.ShouldBind(&req); err != nil {
+//		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
+//		return
+//	}
+//	offset := (req.Page - 1) * req.PageSize
+//	limit := req.PageSize
+//	message, total, err := c.historyLogic.GetTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
+//	if err != nil {
+//		types.RenderFailure(ctx, types.ErrGetTxsByAddrFailure, err)
+//      return
+//  }
+//  types.RenderSuccess(ctx, &types.ResultData{Result: message, Total: total})
 //}
 
 // PostQueryTxsByHash defines the http post method behavior
@@ -94,9 +94,20 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 		return
 	}
 
-	results := make([]*types.TxHistoryInfo, 0, len(req.Txs))
-	uncachedHashes := make([]string, 0, len(req.Txs))
+	// deduplicate
+	hashesMap := make(map[string]struct{})
 	for _, hash := range req.Txs {
+		hashesMap[hash] = struct{}{}
+	}
+
+	txHashes := make([]string, 0, len(hashesMap))
+	for hash := range hashesMap {
+		txHashes = append(txHashes, hash)
+	}
+
+	results := make([]*types.TxHistoryInfo, 0, len(txHashes))
+	uncachedHashes := make([]string, 0, len(txHashes))
+	for _, hash := range txHashes {
 		cacheKey := cacheKeyPrefixQueryTxsByHash + hash
 		if cachedData, found := c.cache.Get(cacheKey); found {
 			if txInfo, ok := cachedData.(*types.TxHistoryInfo); ok {
