@@ -16,7 +16,7 @@ import (
 	"github.com/urfave/cli/v2"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/utils"
+	"bridge-history-api/utils"
 )
 
 // Server starts the metrics server on the given address, will be closed when the given
