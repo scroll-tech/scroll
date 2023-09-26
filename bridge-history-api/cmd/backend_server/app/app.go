@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/urfave/cli/v2"
 
 	"bridge-history-api/config"
@@ -55,7 +56,9 @@ func action(ctx *cli.Context) error {
 
 	router := gin.Default()
 	controller.InitController(db)
-	route.Route(router, cfg)
+
+	registry := prometheus.DefaultRegisterer
+	route.Route(router, cfg, registry)
 
 	go func() {
 		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
