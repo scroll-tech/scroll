@@ -11,10 +11,6 @@ var (
 	HistoryCtrler *HistoryController
 	// BatchCtrler is controller instance
 	BatchCtrler *BatchController
-	// HealthCheck the health check controller
-	HealthCheck *HealthCheckController
-	// Ready the ready controller
-	Ready *ReadyController
 
 	initControllerOnce sync.Once
 )
@@ -24,7 +20,5 @@ func InitController(db *gorm.DB) {
 	initControllerOnce.Do(func() {
 		HistoryCtrler = NewHistoryController(db)
 		BatchCtrler = NewBatchController(db)
-		HealthCheck = NewHealthCheckController(db)
-		Ready = NewReadyController()
 	})
 }
