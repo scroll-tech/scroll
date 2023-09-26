@@ -22,14 +22,14 @@ func initCacheMetrics() *cacheMetrics {
 		cm = &cacheMetrics{
 			cacheHits: promauto.NewCounterVec(
 				prometheus.CounterOpts{
-					Name: "cache_hits_total",
+					Name: "bridge_history_api_cache_hits_total",
 					Help: "The total number of cache hits",
 				},
 				[]string{"api"},
 			),
 			cacheMisses: promauto.NewCounterVec(
 				prometheus.CounterOpts{
-					Name: "cache_misses_total",
+					Name: "bridge_history_api_cache_misses_total",
 					Help: "The total number of cache misses",
 				},
 				[]string{"api"},

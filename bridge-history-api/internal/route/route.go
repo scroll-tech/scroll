@@ -22,7 +22,7 @@ func Route(router *gin.Engine, conf *config.Config, reg prometheus.Registerer) {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	observability.Use(router, "bridge_history", reg)
+	observability.Use(router, "bridge_history_api", reg)
 
 	r := router.Group("api/")
 	r.POST("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHash)
