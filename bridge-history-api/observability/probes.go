@@ -5,7 +5,7 @@ import (
 	"gorm.io/gorm"
 
 	"bridge-history-api/internal/types"
-	"scroll-tech/common/database"
+	"bridge-history-api/utils"
 )
 
 // ProbesController probe check controller
@@ -22,7 +22,7 @@ func NewProbesController(db *gorm.DB) *ProbesController {
 
 // HealthCheck the api controller for health check
 func (a *ProbesController) HealthCheck(c *gin.Context) {
-	if _, err := database.Ping(a.db); err != nil {
+	if _, err := utils.Ping(a.db); err != nil {
 		types.RenderFatal(c, err)
 		return
 	}
