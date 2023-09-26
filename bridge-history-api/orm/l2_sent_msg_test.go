@@ -7,11 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"bridge-history-api/orm/migrate"
+
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 )
 
-func TestGetClaimableL2SentMsgByAddressWithOffset(t *testing.T) {
+func TestGetClaimableL2SentMsgByAddress(t *testing.T) {
 	base := docker.NewDockerApp()
 	base.RunDBImage(t)
 
@@ -32,9 +33,8 @@ func TestGetClaimableL2SentMsgByAddressWithOffset(t *testing.T) {
 	l2SentMsgOrm := NewL2SentMsg(db)
 	relayedMsgOrm := NewRelayedMsg(db)
 
-	count, msgs, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(context.Background(), "sender1", 0, 10)
+	msgs, err := l2SentMsgOrm.GetClaimableL2SentMsgByAddress(context.Background(), "sender1")
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(0), count)
 	assert.Len(t, msgs, 0)
 
 	l2SentMsgs := []*L2SentMsg{
@@ -70,8 +70,8 @@ func TestGetClaimableL2SentMsgByAddressWithOffset(t *testing.T) {
 	err = relayedMsgOrm.InsertRelayedMsg(context.Background(), relayedMsgs)
 	assert.NoError(t, err)
 
-	count, msgs, err = l2SentMsgOrm.GetClaimableL2SentMsgByAddressWithOffset(context.Background(), "sender1", 0, 10)
+	msgs, err = l2SentMsgOrm.GetClaimableL2SentMsgByAddress(context.Background(), "sender1")
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(1), count)
+	assert.Len(t, msgs, 1)
 	assert.Equal(t, "hash1", msgs[0].MsgHash)
 }

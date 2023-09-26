@@ -9,9 +9,11 @@ require (
 	github.com/mattn/go-colorable v0.1.13
 	github.com/mattn/go-isatty v0.0.19
 	github.com/modern-go/reflect2 v1.0.2
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pressly/goose/v3 v3.7.0
 	github.com/stretchr/testify v1.8.3
 	github.com/urfave/cli/v2 v2.25.7
+	golang.org/x/sync v0.3.0
 	gorm.io/driver/postgres v1.5.0
 	gorm.io/gorm v1.25.2
 )
@@ -117,7 +119,6 @@ require (
 	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/exp v0.0.0-20230810033253-352e893a4cad // indirect
 	golang.org/x/net v0.14.0 // indirect
-	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
 	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
