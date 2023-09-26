@@ -129,24 +129,7 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 		}
 	}
 
-	releaseChan := make(chan struct{})
-	defer close(releaseChan)
-	doSingleFlight := func(hashes []string) {
-		for _, hash := range hashes {
-			_, err, _ := c.singleFlight.Do(hash, func() (interface{}, error) {
-				<-releaseChan
-				return nil, nil
-			})
-			// Add this check to fix golint: log and continue.
-			if err != nil {
-				log.Warn("unexpected error", "err", err)
-			}
-		}
-	}
-
 	if len(uncachedHashes) > 0 {
-		go doSingleFlight(uncachedHashes)
-
 		dbResults, err := c.historyLogic.GetTxsByHashes(ctx, uncachedHashes)
 		if err != nil {
 			types.RenderFailure(ctx, types.ErrGetTxsByHashFailure, err)
