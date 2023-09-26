@@ -77,23 +77,6 @@ func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 	}
 }
 
-// GetAllTxsByAddr defines the http get method behavior
-//func (c *HistoryController) GetAllTxsByAddr(ctx *gin.Context) {
-//	var req types.QueryByAddressRequest
-//	if err := ctx.ShouldBind(&req); err != nil {
-//		types.RenderJSON(ctx, types.ErrParameterInvalidNo, err, nil)
-//		return
-//	}
-//	offset := (req.Page - 1) * req.PageSize
-//	limit := req.PageSize
-//	message, total, err := c.historyLogic.GetTxsByAddress(ctx, common.HexToAddress(req.Address), offset, limit)
-//	if err != nil {
-//		types.RenderFailure(ctx, types.ErrGetTxsByAddrFailure, err)
-//      return
-//  }
-//  types.RenderSuccess(ctx, &types.ResultData{Result: message, Total: total})
-//}
-
 // PostQueryTxsByHash defines the http post method behavior
 func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 	var req types.QueryByHashRequest
