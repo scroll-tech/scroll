@@ -4,8 +4,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"bridge-history-api/internal/types"
 	"scroll-tech/common/database"
-	"scroll-tech/common/types"
 )
 
 // ProbesController probe check controller
