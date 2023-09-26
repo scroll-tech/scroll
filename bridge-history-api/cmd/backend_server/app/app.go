@@ -12,6 +12,7 @@ import (
 	"bridge-history-api/config"
 	"bridge-history-api/internal/controller"
 	"bridge-history-api/internal/route"
+	"bridge-history-api/observability"
 	"bridge-history-api/utils"
 )
 
@@ -64,6 +65,8 @@ func action(ctx *cli.Context) error {
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
+
+	observability.Server(ctx, db)
 
 	// Wait until the interrupt signal is received from an OS signal.
 	<-interrupt

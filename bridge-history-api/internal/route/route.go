@@ -23,6 +23,4 @@ func Route(router *gin.Engine, conf *config.Config) {
 	r := router.Group("api/")
 	r.POST("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHash)
 	r.GET("/claimable", controller.HistoryCtrler.GetAllClaimableTxsByAddr)
-	r.GET("/health", controller.HealthCheck.HealthCheck)
-	r.GET("/ready", controller.Ready.Ready)
 }
