@@ -7,11 +7,13 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/urfave/cli/v2"
 
 	"bridge-history-api/config"
 	"bridge-history-api/internal/controller"
 	"bridge-history-api/internal/route"
+	"bridge-history-api/observability"
 	"bridge-history-api/utils"
 )
 
@@ -54,13 +56,18 @@ func action(ctx *cli.Context) error {
 
 	router := gin.Default()
 	controller.InitController(db)
-	route.Route(router, cfg)
+
+	registry := prometheus.DefaultRegisterer
+	route.Route(router, cfg, registry)
 
 	go func() {
 		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
 			log.Crit("run http server failure", "error", runServerErr)
 		}
 	}()
+
+	observability.Server(ctx, db)
+
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
