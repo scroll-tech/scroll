@@ -65,11 +65,12 @@ func action(ctx *cli.Context) error {
 			log.Crit("run http server failure", "error", runServerErr)
 		}
 	}()
+
+	observability.Server(ctx, db)
+
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
-
-	observability.Server(ctx, db)
 
 	// Wait until the interrupt signal is received from an OS signal.
 	<-interrupt
