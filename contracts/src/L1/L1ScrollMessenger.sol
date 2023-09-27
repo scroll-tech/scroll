@@ -104,6 +104,31 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         emit UpdateMaxReplayTimes(0, 3);
     }
 
+    /*************************
+     * Public View Functions *
+     *************************/
+
+    function isProofValid(
+        address _from,
+        address _to,
+        uint256 _value,
+        uint256 _nonce,
+        bytes memory _message,
+        L2MessageProof memory _proof
+    ) external view {
+        bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
+        require(!isL2MessageExecuted[_xDomainCalldataHash], "Message was already successfully executed");
+
+        address _rollup = rollup;
+        require(IScrollChain(_rollup).isBatchFinalized(_proof.batchIndex), "Batch is not finalized");
+        bytes32 _messageRoot = IScrollChain(_rollup).withdrawRoots(_proof.batchIndex);
+
+        require(
+            WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
+            "Invalid proof"
+        );
+    }
+
     /*****************************
      * Public Mutating Functions *
      *****************************/
