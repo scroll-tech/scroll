@@ -49,8 +49,8 @@ func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 	cacheKey := cacheKeyPrefixClaimableTxsByAddr + req.Address
 	if cachedData, found := c.cache.Get(cacheKey); found {
 		c.cacheMetrics.cacheHits.WithLabelValues("GetAllClaimableTxsByAddr").Inc()
-		// Log cache hit along with request address.
-		log.Info("cache hit", "request address", req.Address)
+		// Log cache hit along with request param.
+		log.Info("cache hit", "request", req)
 		if cachedData == nil {
 			types.RenderSuccess(ctx, &types.ResultData{})
 			return
@@ -62,8 +62,8 @@ func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
 		log.Error("unexpected type in cache", "expected", "*types.ResultData", "got", reflect.TypeOf(cachedData))
 	} else {
 		c.cacheMetrics.cacheMisses.WithLabelValues("GetAllClaimableTxsByAddr").Inc()
-		// Log cache miss along with request address.
-		log.Info("cache miss", "request address", req.Address)
+		// Log cache miss along with request param.
+		log.Info("cache miss", "request", req)
 	}
 
 	result, err, _ := c.singleFlight.Do(cacheKey, func() (interface{}, error) {
