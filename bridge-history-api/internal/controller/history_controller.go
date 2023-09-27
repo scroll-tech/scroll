@@ -130,7 +130,6 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 			log.Info("cache miss", "tx hash", hash)
 			uncachedHashes = append(uncachedHashes, hash)
 		}
-
 	}
 
 	if len(uncachedHashes) > 0 {
