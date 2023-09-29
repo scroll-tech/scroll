@@ -582,6 +582,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			status = types.RollupCommitted
 		} else {
 			status = types.RollupCommitFailed
+			r.metrics.rollupL2BatchesCommittedConfirmedFailedTotal.Inc()
 			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 		// @todo handle db error
@@ -603,6 +604,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 			status = types.RollupFinalized
 		} else {
 			status = types.RollupFinalizeFailed
+			r.metrics.rollupL2BatchesFinalizedConfirmedFailedTotal.Inc()
 			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 
