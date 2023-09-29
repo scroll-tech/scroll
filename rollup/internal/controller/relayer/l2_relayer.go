@@ -583,7 +583,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		} else {
 			status = types.RollupCommitFailed
 			r.metrics.rollupL2BatchesCommittedConfirmedFailedTotal.Inc()
-			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
+			log.Warn("commitBatch transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 		// @todo handle db error
 		err := r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), status)
@@ -605,7 +605,7 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 		} else {
 			status = types.RollupFinalizeFailed
 			r.metrics.rollupL2BatchesFinalizedConfirmedFailedTotal.Inc()
-			log.Warn("transaction confirmed but failed in layer1", "confirmation", confirmation)
+			log.Warn("finalizeBatchWithProof transaction confirmed but failed in layer1", "confirmation", confirmation)
 		}
 
 		// @todo handle db error
