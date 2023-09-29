@@ -30,12 +30,14 @@ contract InitializeL1ScrollOwner is Script {
 
     bytes32 constant SECURITY_COUNCIL_NO_DELAY_ROLE = keccak256("SECURITY_COUNCIL_NO_DELAY_ROLE");
     bytes32 constant SCROLL_MULTISIG_NO_DELAY_ROLE = keccak256("SCROLL_MULTISIG_NO_DELAY_ROLE");
+    bytes32 constant EMERGENCY_MULTISIG_NO_DELAY_ROLE = keccak256("EMERGENCY_MULTISIG_NO_DELAY_ROLE");
 
     bytes32 constant TIMELOCK_1DAY_DELAY_ROLE = keccak256("TIMELOCK_1DAY_DELAY_ROLE");
     bytes32 constant TIMELOCK_7DAY_DELAY_ROLE = keccak256("TIMELOCK_7DAY_DELAY_ROLE");
 
     address SCROLL_MULTISIG_ADDR = vm.envAddress("L1_SCROLL_MULTISIG_ADDR");
     address SECURITY_COUNCIL_ADDR = vm.envAddress("L1_SECURITY_COUNCIL_ADDR");
+    address EMERGENCY_MULTISIG_ADDR = vm.envAddress("L1_EMERGENCY_MULTISIG_ADDR");
 
     address L1_SCROLL_OWNER_ADDR = vm.envAddress("L1_SCROLL_OWNER_ADDR");
     address L1_1D_TIMELOCK_ADDR = vm.envAddress("L1_1D_TIMELOCK_ADDR");
@@ -111,6 +113,7 @@ contract InitializeL1ScrollOwner is Script {
     function grantRoles() internal {
         owner.grantRole(SECURITY_COUNCIL_NO_DELAY_ROLE, SECURITY_COUNCIL_ADDR);
         owner.grantRole(SCROLL_MULTISIG_NO_DELAY_ROLE, SCROLL_MULTISIG_ADDR);
+        owner.grantRole(EMERGENCY_MULTISIG_NO_DELAY_ROLE, EMERGENCY_MULTISIG_ADDR);
         owner.grantRole(TIMELOCK_1DAY_DELAY_ROLE, L1_1D_TIMELOCK_ADDR);
         owner.grantRole(TIMELOCK_7DAY_DELAY_ROLE, L1_7D_TIMELOCK_ADDR);
 
@@ -164,6 +167,11 @@ contract InitializeL1ScrollOwner is Script {
         _selectors = new bytes4[](1);
         _selectors[0] = ScrollMessengerBase.setPause.selector;
         owner.updateAccess(L1_SCROLL_MESSENGER_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+
+        // no delay, emergency multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = ScrollMessengerBase.setPause.selector;
+        owner.updateAccess(L1_SCROLL_MESSENGER_PROXY_ADDR, _selectors, EMERGENCY_MULTISIG_NO_DELAY_ROLE, true);
 
         // delay 1 day, scroll multisig
         _selectors = new bytes4[](1);
