@@ -49,6 +49,19 @@ func (r *RelayedMsg) GetRelayedMsgByHash(ctx context.Context, msgHash string) (*
 	return &result, nil
 }
 
+// GetRelayedMsgsByHashes get relayed msg by hash array
+func (r *RelayedMsg) GetRelayedMsgsByHashes(ctx context.Context, msgHashes []string) ([]*RelayedMsg, error) {
+	var results []*RelayedMsg
+	err := r.db.WithContext(ctx).Model(&RelayedMsg{}).
+		Where("msg_hash IN (?)", msgHashes).
+		Find(&results).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("RelayedMsg.GetRelayedMsgsByHashes error: %w", err)
+	}
+	return results, nil
+}
+
 // GetLatestRelayedHeightOnL1 get latest relayed height on l1
 func (r *RelayedMsg) GetLatestRelayedHeightOnL1(ctx context.Context) (uint64, error) {
 	var result RelayedMsg

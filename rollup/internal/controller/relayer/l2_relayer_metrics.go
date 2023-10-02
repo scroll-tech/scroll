@@ -16,7 +16,9 @@ type l2RelayerMetrics struct {
 	rollupL2RelayerProcessCommittedBatchesFinalizedTotal        prometheus.Counter
 	rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal prometheus.Counter
 	rollupL2BatchesCommittedConfirmedTotal                      prometheus.Counter
+	rollupL2BatchesCommittedConfirmedFailedTotal                prometheus.Counter
 	rollupL2BatchesFinalizedConfirmedTotal                      prometheus.Counter
+	rollupL2BatchesFinalizedConfirmedFailedTotal                prometheus.Counter
 	rollupL2BatchesGasOraclerConfirmedTotal                     prometheus.Counter
 	rollupL2ChainMonitorLatestFailedCall                        prometheus.Counter
 	rollupL2ChainMonitorLatestFailedBatchStatus                 prometheus.Counter
@@ -62,9 +64,17 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 				Name: "rollup_layer2_process_committed_batches_confirmed_total",
 				Help: "The total number of layer2 process committed batches confirmed total",
 			}),
+			rollupL2BatchesCommittedConfirmedFailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_layer2_process_committed_batches_confirmed_failed_total",
+				Help: "The total number of layer2 process committed batches confirmed failed total",
+			}),
 			rollupL2BatchesFinalizedConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer2_process_finalized_batches_confirmed_total",
 				Help: "The total number of layer2 process finalized batches confirmed total",
+			}),
+			rollupL2BatchesFinalizedConfirmedFailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_layer2_process_finalized_batches_confirmed_failed_total",
+				Help: "The total number of layer2 process finalized batches confirmed failed total",
 			}),
 			rollupL2BatchesGasOraclerConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer2_process_gras_oracler_confirmed_total",

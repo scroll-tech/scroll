@@ -12,7 +12,7 @@ import (
 func (c *Collector) cleanupChallenge() {
 	defer func() {
 		if err := recover(); err != nil {
-			nerr := fmt.Errorf("clean challenge panic error:%v", err)
+			nerr := fmt.Errorf("clean challenge panic error: %v", err)
 			log.Warn(nerr.Error())
 		}
 	}()
@@ -21,7 +21,7 @@ func (c *Collector) cleanupChallenge() {
 	for {
 		select {
 		case <-ticker.C:
-			expiredTime := utils.NowUTC().Add(time.Hour)
+			expiredTime := utils.NowUTC().Add(-time.Hour)
 			if err := c.challenge.DeleteExpireChallenge(c.ctx, expiredTime); err != nil {
 				log.Error("delete expired challenge failure", "error", err)
 			}
