@@ -143,6 +143,11 @@ contract InitializeL1ScrollOwner is Script {
         _selectors[4] = ScrollChain.setPause.selector;
         owner.updateAccess(L1_SCROLL_CHAIN_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
 
+        // no delay, emergency multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = ScrollChain.setPause.selector;
+        owner.updateAccess(L1_SCROLL_CHAIN_PROXY_ADDR, _selectors, EMERGENCY_MULTISIG_NO_DELAY_ROLE, true);
+
         // delay 1 day, scroll multisig
         _selectors = new bytes4[](2);
         _selectors[0] = ScrollChain.addSequencer.selector;
@@ -266,6 +271,11 @@ contract InitializeL1ScrollOwner is Script {
         _selectors = new bytes4[](1);
         _selectors[0] = EnforcedTxGateway.setPause.selector;
         owner.updateAccess(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+
+        // no delay, emergency multisig
+        _selectors = new bytes4[](1);
+        _selectors[0] = EnforcedTxGateway.setPause.selector;
+        owner.updateAccess(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR, _selectors, EMERGENCY_MULTISIG_NO_DELAY_ROLE, true);
     }
     */
 }
