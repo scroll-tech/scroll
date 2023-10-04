@@ -66,7 +66,7 @@ contract L1ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL1ERC
         uint256 _amount,
         uint256 _gasLimit
     ) external payable override {
-        _depositERC1155(_token, msg.sender, _tokenId, _amount, _gasLimit);
+        _depositERC1155(_token, _msgSender(), _tokenId, _amount, _gasLimit);
     }
 
     /// @inheritdoc IL1ERC1155Gateway
@@ -87,7 +87,7 @@ contract L1ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL1ERC
         uint256[] calldata _amounts,
         uint256 _gasLimit
     ) external payable override {
-        _batchDepositERC1155(_token, msg.sender, _tokenIds, _amounts, _gasLimit);
+        _batchDepositERC1155(_token, _msgSender(), _tokenIds, _amounts, _gasLimit);
     }
 
     /// @inheritdoc IL1ERC1155Gateway
@@ -198,19 +198,21 @@ contract L1ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL1ERC
         address _l2Token = tokenMapping[_token];
         require(_l2Token != address(0), "no corresponding l2 token");
 
+        address _sender = _msgSender();
+
         // 1. transfer token to this contract
-        IERC1155Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _tokenId, _amount, "");
+        IERC1155Upgradeable(_token).safeTransferFrom(_sender, address(this), _tokenId, _amount, "");
 
         // 2. Generate message passed to L2ERC1155Gateway.
         bytes memory _message = abi.encodeCall(
             IL2ERC1155Gateway.finalizeDepositERC1155,
-            (_token, _l2Token, msg.sender, _to, _tokenId, _amount)
+            (_token, _l2Token, _sender, _to, _tokenId, _amount)
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _sender);
 
-        emit DepositERC1155(_token, _l2Token, msg.sender, _to, _tokenId, _amount);
+        emit DepositERC1155(_token, _l2Token, _sender, _to, _tokenId, _amount);
     }
 
     /// @dev Internal function to batch deposit ERC1155 NFT to layer 2.
@@ -236,18 +238,20 @@ contract L1ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL1ERC
         address _l2Token = tokenMapping[_token];
         require(_l2Token != address(0), "no corresponding l2 token");
 
+        address _sender = _msgSender();
+
         // 1. transfer token to this contract
-        IERC1155Upgradeable(_token).safeBatchTransferFrom(msg.sender, address(this), _tokenIds, _amounts, "");
+        IERC1155Upgradeable(_token).safeBatchTransferFrom(_sender, address(this), _tokenIds, _amounts, "");
 
         // 2. Generate message passed to L2ERC1155Gateway.
         bytes memory _message = abi.encodeCall(
             IL2ERC1155Gateway.finalizeBatchDepositERC1155,
-            (_token, _l2Token, msg.sender, _to, _tokenIds, _amounts)
+            (_token, _l2Token, _sender, _to, _tokenIds, _amounts)
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _sender);
 
-        emit BatchDepositERC1155(_token, _l2Token, msg.sender, _to, _tokenIds, _amounts);
+        emit BatchDepositERC1155(_token, _l2Token, _sender, _to, _tokenIds, _amounts);
     }
 }
