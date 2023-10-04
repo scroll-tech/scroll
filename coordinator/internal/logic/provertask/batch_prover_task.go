@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -61,13 +62,48 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
-	batchTask, err := bp.batchOrm.UpdateBatchAttemptsReturning(ctx, maxActiveAttempts, maxTotalAttempts)
-	if err != nil {
-		log.Error("failed to get unassigned batch proving tasks", "err", err)
-		return nil, ErrCoordinatorInternalFailure
+	var batchTask *orm.Batch
+	for i := 0; i < 5; i++ {
+		var getTaskError error
+		var tmpBatchTask *orm.Batch
+		tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx, maxActiveAttempts, maxTotalAttempts)
+		if getTaskError != nil {
+			log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+			return nil, ErrCoordinatorInternalFailure
+		}
+
+		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
+		// batch to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
+		if tmpBatchTask == nil {
+			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx, maxActiveAttempts, maxTotalAttempts)
+			if getTaskError != nil {
+				log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+				return nil, ErrCoordinatorInternalFailure
+			}
+		}
+
+		if tmpBatchTask == nil {
+			log.Debug("get empty batch", "height", getTaskParameter.ProverHeight)
+			return nil, nil
+		}
+
+		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx, tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
+		if updateAttemptsErr != nil {
+			log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+
+		if rowsAffected == 0 {
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		batchTask = tmpBatchTask
+		break
 	}
 
 	if batchTask == nil {
+		log.Debug("get empty unassigned batch after retry 5 times", "height", getTaskParameter.ProverHeight)
 		return nil, nil
 	}
 

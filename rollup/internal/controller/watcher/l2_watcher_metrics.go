@@ -8,12 +8,13 @@ import (
 )
 
 type l2WatcherMetrics struct {
-	fetchRunningMissingBlocksTotal  prometheus.Counter
-	fetchRunningMissingBlocksHeight prometheus.Gauge
-	fetchContractEventTotal         prometheus.Counter
-	fetchContractEventHeight        prometheus.Gauge
-	rollupL2MsgsRelayedEventsTotal  prometheus.Counter
-	rollupL2BlocksFetchedGap        prometheus.Gauge
+	fetchRunningMissingBlocksTotal    prometheus.Counter
+	fetchRunningMissingBlocksHeight   prometheus.Gauge
+	fetchContractEventTotal           prometheus.Counter
+	fetchContractEventHeight          prometheus.Gauge
+	rollupL2MsgsRelayedEventsTotal    prometheus.Counter
+	rollupL2BlocksFetchedGap          prometheus.Gauge
+	rollupL2BlockL1CommitCalldataSize prometheus.Gauge
 }
 
 var (
@@ -47,6 +48,10 @@ func initL2WatcherMetrics(reg prometheus.Registerer) *l2WatcherMetrics {
 			rollupL2BlocksFetchedGap: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 				Name: "rollup_l2_watcher_blocks_fetched_gap",
 				Help: "The gap of l2 fetch",
+			}),
+			rollupL2BlockL1CommitCalldataSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+				Name: "rollup_l2_block_l1_commit_calldata_size",
+				Help: "The l1 commitBatch calldata size of the l2 block",
 			}),
 		}
 	})

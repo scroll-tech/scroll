@@ -26,9 +26,7 @@ const (
 
 // QueryByAddressRequest the request parameter of address api
 type QueryByAddressRequest struct {
-	Address  string `form:"address" binding:"required"`
-	Page     int    `form:"page" binding:"required"`
-	PageSize int    `form:"page_size" binding:"required"`
+	Address string `form:"address" binding:"required"`
 }
 
 // QueryByHashRequest the request parameter of hash api
@@ -80,6 +78,7 @@ type UserClaimInfo struct {
 // TxHistoryInfo the schema of tx history infos
 type TxHistoryInfo struct {
 	Hash           string         `json:"hash"`
+	MsgHash        string         `json:"msgHash"`
 	Amount         string         `json:"amount"`
 	To             string         `json:"to"` // useless
 	IsL1           bool           `json:"isL1"`

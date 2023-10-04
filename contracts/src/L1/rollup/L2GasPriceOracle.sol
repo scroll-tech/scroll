@@ -108,23 +108,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
      * Public Mutating Functions *
      *****************************/
 
-    /// @notice Allows the owner to update parameters for intrinsic gas calculation.
-    /// @param _txGas The intrinsic gas for transaction.
-    /// @param _txGasContractCreation The intrinsic gas for contract creation.
-    /// @param _zeroGas The intrinsic gas for each zero byte.
-    /// @param _nonZeroGas The intrinsic gas for each nonzero byte.
-    function setIntrinsicParams(
-        uint64 _txGas,
-        uint64 _txGasContractCreation,
-        uint64 _zeroGas,
-        uint64 _nonZeroGas
-    ) external {
-        require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
-
-        _setIntrinsicParams(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
-    }
-
-    /// @notice Allows the owner to modify the l2 base fee.
+    /// @notice Allows whitelisted caller to modify the l2 base fee.
     /// @param _newL2BaseFee The new l2 base fee.
     function setL2BaseFee(uint256 _newL2BaseFee) external {
         require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
@@ -147,6 +131,20 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
 
         whitelist = IWhitelist(_newWhitelist);
         emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
+    }
+
+    /// @notice Allows the owner to update parameters for intrinsic gas calculation.
+    /// @param _txGas The intrinsic gas for transaction.
+    /// @param _txGasContractCreation The intrinsic gas for contract creation.
+    /// @param _zeroGas The intrinsic gas for each zero byte.
+    /// @param _nonZeroGas The intrinsic gas for each nonzero byte.
+    function setIntrinsicParams(
+        uint64 _txGas,
+        uint64 _txGasContractCreation,
+        uint64 _zeroGas,
+        uint64 _nonZeroGas
+    ) external onlyOwner {
+        _setIntrinsicParams(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
     }
 
     /**********************
