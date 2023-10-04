@@ -144,10 +144,10 @@ contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
     /// @param _amount The amount of token to withdraw.
     function withdraw(address _token, uint256 _amount) external onlyOwner {
         if (_token == address(0)) {
-            (bool success, ) = msg.sender.call{value: _amount}("");
+            (bool success, ) = _msgSender().call{value: _amount}("");
             require(success, "ETH transfer failed");
         } else {
-            IERC20(_token).safeTransfer(msg.sender, _amount);
+            IERC20(_token).safeTransfer(_msgSender(), _amount);
         }
     }
 

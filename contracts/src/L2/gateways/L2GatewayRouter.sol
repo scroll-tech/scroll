@@ -91,7 +91,7 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         uint256 _amount,
         uint256 _gasLimit
     ) external payable override {
-        withdrawERC20AndCall(_token, msg.sender, _amount, new bytes(0), _gasLimit);
+        withdrawERC20AndCall(_token, _msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL2ERC20Gateway
@@ -116,14 +116,14 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         require(_gateway != address(0), "no gateway available");
 
         // encode msg.sender with _data
-        bytes memory _routerData = abi.encode(msg.sender, _data);
+        bytes memory _routerData = abi.encode(_msgSender(), _data);
 
         IL2ERC20Gateway(_gateway).withdrawERC20AndCall{value: msg.value}(_token, _to, _amount, _routerData, _gasLimit);
     }
 
     /// @inheritdoc IL2ETHGateway
     function withdrawETH(uint256 _amount, uint256 _gasLimit) external payable override {
-        withdrawETHAndCall(msg.sender, _amount, new bytes(0), _gasLimit);
+        withdrawETHAndCall(_msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL2ETHGateway
@@ -146,7 +146,7 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         require(_gateway != address(0), "eth gateway available");
 
         // encode msg.sender with _data
-        bytes memory _routerData = abi.encode(msg.sender, _data);
+        bytes memory _routerData = abi.encode(_msgSender(), _data);
 
         IL2ETHGateway(_gateway).withdrawETHAndCall{value: msg.value}(_to, _amount, _routerData, _gasLimit);
     }

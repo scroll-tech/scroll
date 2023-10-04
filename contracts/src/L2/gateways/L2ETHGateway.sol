@@ -40,7 +40,7 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
 
     /// @inheritdoc IL2ETHGateway
     function withdrawETH(uint256 _amount, uint256 _gasLimit) external payable override {
-        _withdraw(msg.sender, _amount, new bytes(0), _gasLimit);
+        _withdraw(_msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL2ETHGateway
@@ -93,8 +93,8 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
         require(msg.value > 0, "withdraw zero eth");
 
         // 1. Extract real sender if this call is from L1GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
+        address _from = _msgSender();
+        if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
 
