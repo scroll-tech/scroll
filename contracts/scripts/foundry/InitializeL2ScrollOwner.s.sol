@@ -141,20 +141,22 @@ contract InitializeL2ScrollOwner is Script {
     function configL1GasPriceOracle() internal {
         bytes4[] memory _selectors;
 
-        // no delay, scroll multisig
+        // no delay, scroll multisig and emergency multisig
         _selectors = new bytes4[](2);
         _selectors[0] = L1GasPriceOracle.setOverhead.selector;
         _selectors[1] = L1GasPriceOracle.setScalar.selector;
         owner.updateAccess(L1_GAS_PRICE_ORACLE_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+        owner.updateAccess(L1_GAS_PRICE_ORACLE_ADDR, _selectors, EMERGENCY_MULTISIG_NO_DELAY_ROLE, true);
     }
 
     function configL2TxFeeVault() internal {
         bytes4[] memory _selectors;
 
-        // no delay, scroll multisig
+        // no delay, scroll multisig and emergency multisig
         _selectors = new bytes4[](1);
         _selectors[0] = L2TxFeeVault.updateMinWithdrawAmount.selector;
         owner.updateAccess(L2_TX_FEE_VAULT_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+        owner.updateAccess(L2_TX_FEE_VAULT_ADDR, _selectors, EMERGENCY_MULTISIG_NO_DELAY_ROLE, true);
     }
 
     function configL2Whitelist() internal {
@@ -169,14 +171,10 @@ contract InitializeL2ScrollOwner is Script {
     function configL2ScrollMessenger() internal {
         bytes4[] memory _selectors;
 
-        // no delay, scroll multisig
+        // no delay, scroll multisig and emergency multisig
         _selectors = new bytes4[](1);
         _selectors[0] = ScrollMessengerBase.setPause.selector;
         owner.updateAccess(L2_SCROLL_MESSENGER_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
-
-        // no delay, emergency multisig
-        _selectors = new bytes4[](1);
-        _selectors[0] = ScrollMessengerBase.setPause.selector;
         owner.updateAccess(L2_SCROLL_MESSENGER_PROXY_ADDR, _selectors, EMERGENCY_MULTISIG_NO_DELAY_ROLE, true);
     }
 
@@ -219,20 +217,22 @@ contract InitializeL2ScrollOwner is Script {
     function configETHRateLimiter() internal {
         bytes4[] memory _selectors;
 
-        // no delay, scroll multisig
+        // no delay, scroll multisig and emergency multisig
         _selectors = new bytes4[](1);
         _selectors[0] = ETHRateLimiter.updateTotalLimit.selector;
         owner.updateAccess(L2_ETH_RATE_LIMITER_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+        owner.updateAccess(L2_ETH_RATE_LIMITER_ADDR, _selectors, EMERGENCY_MULTISIG_NO_DELAY_ROLE, true);
     }
 
     function configTokenRateLimiter() internal {
         bytes4[] memory _selectors;
 
-        // no delay, scroll multisig
+        // no delay, scroll multisig and emergency multisig
         _selectors = new bytes4[](2);
         _selectors[0] = TokenRateLimiter.updateTotalLimit.selector;
         _selectors[1] = AccessControl.grantRole.selector;
         owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
+        owner.updateAccess(L2_TOKEN_RATE_LIMITER_ADDR, _selectors, EMERGENCY_MULTISIG_NO_DELAY_ROLE, true);
 
         // delay 7 day, scroll multisig
         _selectors = new bytes4[](1);
