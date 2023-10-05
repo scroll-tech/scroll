@@ -162,9 +162,6 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
         }
         require(_data.length == 0, "call is not allowed");
 
-        // rate limit
-        _addUsedAmount(_token, _amount);
-
         // 2. Transfer token into this contract.
         IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);
         IFiatToken(_token).burn(_amount);

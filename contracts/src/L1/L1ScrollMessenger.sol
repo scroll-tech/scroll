@@ -316,8 +316,6 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         uint256 _gasLimit,
         address _refundAddress
     ) internal nonReentrant {
-        _addUsedAmount(_value);
-
         address _messageQueue = messageQueue; // gas saving
         address _counterpart = counterpart; // gas saving
 

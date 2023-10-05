@@ -117,7 +117,6 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         uint256 _gasLimit
     ) internal nonReentrant {
         require(msg.value == _value, "msg.value mismatch");
-        _addUsedAmount(_value);
 
         uint256 _nonce = L2MessageQueue(messageQueue).nextMessageIndex();
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_msgSender(), _to, _value, _nonce, _message));
