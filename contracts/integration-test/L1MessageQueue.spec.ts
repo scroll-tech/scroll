@@ -318,6 +318,53 @@ describe("L1MessageQueue", async () => {
         expect(await queue.isMessageDropped(i)).to.eq(false);
       }
     });
+
+    // @note skip this random benchmark tests
+    for (const count1 of [1, 2, 128, 129, 256]) {
+      for (const count2 of [1, 2, 128, 129, 256]) {
+        for (const count3 of [1, 2, 128, 129, 256]) {
+          it.skip(`should succeed on random tests, pop three times each with ${count1} ${count2} ${count3} msgs`, async () => {
+            // append count1 + count2 + count3 messages
+            for (let i = 0; i < count1 + count2 + count3; i++) {
+              await queue.connect(messenger).appendCrossDomainMessage(constants.AddressZero, 1000000, "0x");
+            }
+
+            // first pop `count1` messages
+            const bitmap1 = BigNumber.from(randomBytes(32));
+            let tx = await queue.connect(scrollChain).popCrossDomainMessage(0, count1, bitmap1);
+            await expect(tx)
+              .to.emit(queue, "DequeueTransaction")
+              .withArgs(0, count1, bitmap1.and(constants.One.shl(count1).sub(1)));
+            for (let i = 0; i < count1; i++) {
+              expect(await queue.isMessageSkipped(i)).to.eq(bitmap1.shr(i).and(1).eq(1));
+              expect(await queue.isMessageDropped(i)).to.eq(false);
+            }
+
+            // then pop `count2` messages
+            const bitmap2 = BigNumber.from(randomBytes(32));
+            tx = await queue.connect(scrollChain).popCrossDomainMessage(count1, count2, bitmap2);
+            await expect(tx)
+              .to.emit(queue, "DequeueTransaction")
+              .withArgs(count1, count2, bitmap2.and(constants.One.shl(count2).sub(1)));
+            for (let i = 0; i < count2; i++) {
+              expect(await queue.isMessageSkipped(i + count1)).to.eq(bitmap2.shr(i).and(1).eq(1));
+              expect(await queue.isMessageDropped(i + count1)).to.eq(false);
+            }
+
+            // last pop `count3` messages
+            const bitmap3 = BigNumber.from(randomBytes(32));
+            tx = await queue.connect(scrollChain).popCrossDomainMessage(count1 + count2, count3, bitmap3);
+            await expect(tx)
+              .to.emit(queue, "DequeueTransaction")
+              .withArgs(count1 + count2, count3, bitmap3.and(constants.One.shl(count3).sub(1)));
+            for (let i = 0; i < count3; i++) {
+              expect(await queue.isMessageSkipped(i + count1 + count2)).to.eq(bitmap3.shr(i).and(1).eq(1));
+              expect(await queue.isMessageDropped(i + count1 + count2)).to.eq(false);
+            }
+          });
+        }
+      }
+    }
   });
 
   context("#dropCrossDomainMessage", async () => {

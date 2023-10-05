@@ -52,7 +52,7 @@ contract ScrollOwner is AccessControlEnumerable {
      ***************/
 
     constructor() {
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 
     /*************************

@@ -64,7 +64,7 @@ contract L1ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC72
         uint256 _tokenId,
         uint256 _gasLimit
     ) external payable override {
-        _depositERC721(_token, msg.sender, _tokenId, _gasLimit);
+        _depositERC721(_token, _msgSender(), _tokenId, _gasLimit);
     }
 
     /// @inheritdoc IL1ERC721Gateway
@@ -83,7 +83,7 @@ contract L1ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC72
         uint256[] calldata _tokenIds,
         uint256 _gasLimit
     ) external payable override {
-        _batchDepositERC721(_token, msg.sender, _tokenIds, _gasLimit);
+        _batchDepositERC721(_token, _msgSender(), _tokenIds, _gasLimit);
     }
 
     /// @inheritdoc IL1ERC721Gateway
@@ -190,19 +190,21 @@ contract L1ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC72
         address _l2Token = tokenMapping[_token];
         require(_l2Token != address(0), "no corresponding l2 token");
 
+        address _sender = _msgSender();
+
         // 1. transfer token to this contract
-        IERC721Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _tokenId);
+        IERC721Upgradeable(_token).safeTransferFrom(_sender, address(this), _tokenId);
 
         // 2. Generate message passed to L2ERC721Gateway.
         bytes memory _message = abi.encodeCall(
             IL2ERC721Gateway.finalizeDepositERC721,
-            (_token, _l2Token, msg.sender, _to, _tokenId)
+            (_token, _l2Token, _sender, _to, _tokenId)
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _sender);
 
-        emit DepositERC721(_token, _l2Token, msg.sender, _to, _tokenId);
+        emit DepositERC721(_token, _l2Token, _sender, _to, _tokenId);
     }
 
     /// @dev Internal function to batch deposit ERC721 NFT to layer 2.
@@ -221,20 +223,22 @@ contract L1ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC72
         address _l2Token = tokenMapping[_token];
         require(_l2Token != address(0), "no corresponding l2 token");
 
+        address _sender = _msgSender();
+
         // 1. transfer token to this contract
         for (uint256 i = 0; i < _tokenIds.length; i++) {
-            IERC721Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _tokenIds[i]);
+            IERC721Upgradeable(_token).safeTransferFrom(_sender, address(this), _tokenIds[i]);
         }
 
         // 2. Generate message passed to L2ERC721Gateway.
         bytes memory _message = abi.encodeCall(
             IL2ERC721Gateway.finalizeBatchDepositERC721,
-            (_token, _l2Token, msg.sender, _to, _tokenIds)
+            (_token, _l2Token, _sender, _to, _tokenIds)
         );
 
         // 3. Send message to L1ScrollMessenger.
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, msg.sender);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit, _sender);
 
-        emit BatchDepositERC721(_token, _l2Token, msg.sender, _to, _tokenIds);
+        emit BatchDepositERC721(_token, _l2Token, _sender, _to, _tokenIds);
     }
 }
