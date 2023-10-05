@@ -15,7 +15,6 @@ import {L2GatewayRouter} from "../../src/L2/gateways/L2GatewayRouter.sol";
 import {L2ScrollMessenger} from "../../src/L2/L2ScrollMessenger.sol";
 import {L2StandardERC20Gateway} from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
 import {L2WETHGateway} from "../../src/L2/gateways/L2WETHGateway.sol";
-import {L2DAIGateway} from "../../src/L2/gateways/L2DAIGateway.sol";
 import {L1GasPriceOracle} from "../../src/L2/predeploys/L1GasPriceOracle.sol";
 import {L2MessageQueue} from "../../src/L2/predeploys/L2MessageQueue.sol";
 import {L2TxFeeVault} from "../../src/L2/predeploys/L2TxFeeVault.sol";
@@ -60,7 +59,6 @@ contract DeployL2BridgeContracts is Script {
         deployL2CustomERC20Gateway();
         deployL2ERC721Gateway();
         deployL2ERC1155Gateway();
-        deployL2DAIGateway();
 
         vm.stopBroadcast();
     }
@@ -199,18 +197,6 @@ contract DeployL2BridgeContracts is Script {
 
         logAddress("L2_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
         logAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR", address(proxy));
-    }
-
-    function deployL2DAIGateway() internal {
-        L2DAIGateway impl = new L2DAIGateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
-        );
-
-        logAddress("L2_DAI_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_DAI_GATEWAY_PROXY_ADDR", address(proxy));
     }
 
     function deployL2ERC721Gateway() internal {
