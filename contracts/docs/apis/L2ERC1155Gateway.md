@@ -211,23 +211,6 @@ function owner() external view returns (address)
 |---|---|---|
 | _0 | address | undefined |
 
-### rateLimiter
-
-```solidity
-function rateLimiter() external view returns (address)
-```
-
-The address of token rate limiter contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
 ### renounceOwnership
 
 ```solidity
@@ -315,22 +298,6 @@ function transferOwnership(address newOwner) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | newOwner | address | undefined |
-
-### updateRateLimiter
-
-```solidity
-function updateRateLimiter(address _newRateLimiter) external nonpayable
-```
-
-Update rate limiter contract.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newRateLimiter | address | The address of new rate limiter contract. |
 
 ### updateTokenMapping
 
@@ -487,23 +454,6 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 |---|---|---|
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
-
-### UpdateRateLimiter
-
-```solidity
-event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
-```
-
-Emitted when owner updates rate limiter contract.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldRateLimiter `indexed` | address | undefined |
-| _newRateLimiter `indexed` | address | undefined |
 
 ### UpdateTokenMapping
 
