@@ -17,7 +17,6 @@ import {L1MessageQueue} from "../../src/L1/rollup/L1MessageQueue.sol";
 import {L1ScrollMessenger} from "../../src/L1/L1ScrollMessenger.sol";
 import {L1StandardERC20Gateway} from "../../src/L1/gateways/L1StandardERC20Gateway.sol";
 import {L1WETHGateway} from "../../src/L1/gateways/L1WETHGateway.sol";
-import {L1DAIGateway} from "../../src/L1/gateways/L1DAIGateway.sol";
 import {L2GasPriceOracle} from "../../src/L1/rollup/L2GasPriceOracle.sol";
 import {MultipleVersionRollupVerifier} from "../../src/L1/rollup/MultipleVersionRollupVerifier.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
@@ -27,7 +26,7 @@ import {ZkEvmVerifierV1} from "../../src/libraries/verifier/ZkEvmVerifierV1.sol"
 contract DeployL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
 
-    uint32 CHAIN_ID_L2 = uint32(vm.envUint("CHAIN_ID_L2"));
+    uint64 CHAIN_ID_L2 = uint64(vm.envUint("CHAIN_ID_L2"));
 
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
@@ -56,7 +55,6 @@ contract DeployL1BridgeContracts is Script {
         deployL1CustomERC20Gateway();
         deployL1ERC721Gateway();
         deployL1ERC1155Gateway();
-        deployL1DAIGateway();
 
         vm.stopBroadcast();
     }
@@ -202,18 +200,6 @@ contract DeployL1BridgeContracts is Script {
 
         logAddress("L1_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
         logAddress("L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR", address(proxy));
-    }
-
-    function deployL1DAIGateway() internal {
-        L1DAIGateway impl = new L1DAIGateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
-        );
-
-        logAddress("L1_DAI_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L1_DAI_GATEWAY_PROXY_ADDR", address(proxy));
     }
 
     function deployL1ERC721Gateway() internal {

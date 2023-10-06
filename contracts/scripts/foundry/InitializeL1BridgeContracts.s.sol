@@ -11,7 +11,6 @@ import {L1GatewayRouter} from "../../src/L1/gateways/L1GatewayRouter.sol";
 import {L1ScrollMessenger} from "../../src/L1/L1ScrollMessenger.sol";
 import {L1StandardERC20Gateway} from "../../src/L1/gateways/L1StandardERC20Gateway.sol";
 import {L1WETHGateway} from "../../src/L1/gateways/L1WETHGateway.sol";
-import {L1DAIGateway} from "../../src/L1/gateways/L1DAIGateway.sol";
 import {MultipleVersionRollupVerifier} from "../../src/L1/rollup/MultipleVersionRollupVerifier.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
 import {L1MessageQueue} from "../../src/L1/rollup/L1MessageQueue.sol";
@@ -29,9 +28,6 @@ contract InitializeL1BridgeContracts is Script {
     address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
 
-    address L1_DAI_ADDR = vm.envAddress("L1_DAI_ADDR");
-    address L2_DAI_ADDR = vm.envAddress("L2_DAI_ADDR");
-
     address L1_WHITELIST_ADDR = vm.envAddress("L1_WHITELIST_ADDR");
     address L1_SCROLL_CHAIN_PROXY_ADDR = vm.envAddress("L1_SCROLL_CHAIN_PROXY_ADDR");
     address L1_MESSAGE_QUEUE_PROXY_ADDR = vm.envAddress("L1_MESSAGE_QUEUE_PROXY_ADDR");
@@ -44,7 +40,6 @@ contract InitializeL1BridgeContracts is Script {
     address L1_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ETH_GATEWAY_PROXY_ADDR");
     address L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L1_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_WETH_GATEWAY_PROXY_ADDR");
-    address L1_DAI_GATEWAY_PROXY_ADDR = vm.envAddress("L1_DAI_GATEWAY_PROXY_ADDR");
     address L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR = vm.envAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR");
     address L1_ENFORCED_TX_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ENFORCED_TX_GATEWAY_PROXY_ADDR");
 
@@ -56,7 +51,6 @@ contract InitializeL1BridgeContracts is Script {
     address L2_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ETH_GATEWAY_PROXY_ADDR");
     address L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L2_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L2_WETH_GATEWAY_PROXY_ADDR");
-    address L2_DAI_GATEWAY_PROXY_ADDR = vm.envAddress("L2_DAI_GATEWAY_PROXY_ADDR");
     address L2_SCROLL_STANDARD_ERC20_ADDR = vm.envAddress("L2_SCROLL_STANDARD_ERC20_ADDR");
     address L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR = vm.envAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR");
 
@@ -155,22 +149,12 @@ contract InitializeL1BridgeContracts is Script {
             L1_SCROLL_MESSENGER_PROXY_ADDR
         );
 
-        // initialize L1DAIGateway
-        L1DAIGateway(L1_DAI_GATEWAY_PROXY_ADDR).initialize(
-            L2_DAI_GATEWAY_PROXY_ADDR,
-            L1_GATEWAY_ROUTER_PROXY_ADDR,
-            L1_SCROLL_MESSENGER_PROXY_ADDR
-        );
-        L1DAIGateway(L1_DAI_GATEWAY_PROXY_ADDR).updateTokenMapping(L1_DAI_ADDR, L2_DAI_ADDR);
-
-        // set WETH and DAI gateways in router
+        // set WETH gateway in router
         {
-            address[] memory _tokens = new address[](2);
+            address[] memory _tokens = new address[](1);
             _tokens[0] = L1_WETH_ADDR;
-            _tokens[1] = L1_DAI_ADDR;
-            address[] memory _gateways = new address[](2);
+            address[] memory _gateways = new address[](1);
             _gateways[0] = L1_WETH_GATEWAY_PROXY_ADDR;
-            _gateways[1] = L1_DAI_GATEWAY_PROXY_ADDR;
             L1GatewayRouter(L1_GATEWAY_ROUTER_PROXY_ADDR).setERC20Gateway(_tokens, _gateways);
         }
 
