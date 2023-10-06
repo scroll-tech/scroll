@@ -61,7 +61,7 @@ contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC
         uint256 _amount,
         uint256 _gasLimit
     ) external payable override {
-        _withdrawERC1155(_token, msg.sender, _tokenId, _amount, _gasLimit);
+        _withdrawERC1155(_token, _msgSender(), _tokenId, _amount, _gasLimit);
     }
 
     /// @inheritdoc IL2ERC1155Gateway
@@ -82,7 +82,7 @@ contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC
         uint256[] calldata _amounts,
         uint256 _gasLimit
     ) external payable override {
-        _batchWithdrawERC1155(_token, msg.sender, _tokenIds, _amounts, _gasLimit);
+        _batchWithdrawERC1155(_token, _msgSender(), _tokenIds, _amounts, _gasLimit);
     }
 
     /// @inheritdoc IL2ERC1155Gateway
@@ -168,19 +168,21 @@ contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC
         address _l1Token = tokenMapping[_token];
         require(_l1Token != address(0), "no corresponding l1 token");
 
+        address _sender = _msgSender();
+
         // 1. burn token
-        IScrollERC1155(_token).burn(msg.sender, _tokenId, _amount);
+        IScrollERC1155(_token).burn(_sender, _tokenId, _amount);
 
         // 2. Generate message passed to L1ERC1155Gateway.
         bytes memory _message = abi.encodeCall(
             IL1ERC1155Gateway.finalizeWithdrawERC1155,
-            (_l1Token, _token, msg.sender, _to, _tokenId, _amount)
+            (_l1Token, _token, _sender, _to, _tokenId, _amount)
         );
 
         // 3. Send message to L2ScrollMessenger.
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
 
-        emit WithdrawERC1155(_l1Token, _token, msg.sender, _to, _tokenId, _amount);
+        emit WithdrawERC1155(_l1Token, _token, _sender, _to, _tokenId, _amount);
     }
 
     /// @dev Internal function to batch withdraw ERC1155 NFT to layer 2.
@@ -206,18 +208,20 @@ contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC
         address _l1Token = tokenMapping[_token];
         require(_l1Token != address(0), "no corresponding l1 token");
 
+        address _sender = _msgSender();
+
         // 1. transfer token to this contract
-        IScrollERC1155(_token).batchBurn(msg.sender, _tokenIds, _amounts);
+        IScrollERC1155(_token).batchBurn(_sender, _tokenIds, _amounts);
 
         // 2. Generate message passed to L1ERC1155Gateway.
         bytes memory _message = abi.encodeCall(
             IL1ERC1155Gateway.finalizeBatchWithdrawERC1155,
-            (_l1Token, _token, msg.sender, _to, _tokenIds, _amounts)
+            (_l1Token, _token, _sender, _to, _tokenIds, _amounts)
         );
 
         // 3. Send message to L2ScrollMessenger.
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
 
-        emit BatchWithdrawERC1155(_l1Token, _token, msg.sender, _to, _tokenIds, _amounts);
+        emit BatchWithdrawERC1155(_l1Token, _token, _sender, _to, _tokenIds, _amounts);
     }
 }

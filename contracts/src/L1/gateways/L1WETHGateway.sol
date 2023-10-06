@@ -54,7 +54,7 @@ contract L1WETHGateway is L1ERC20Gateway {
     }
 
     receive() external payable {
-        require(msg.sender == WETH, "only WETH");
+        require(_msgSender() == WETH, "only WETH");
     }
 
     /*************************

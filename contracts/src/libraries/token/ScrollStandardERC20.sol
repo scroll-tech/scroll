@@ -24,7 +24,7 @@ contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollERC20Upgradeable 
     uint8 private decimals_;
 
     modifier onlyGateway() {
-        require(gateway == msg.sender, "Only Gateway");
+        require(gateway == _msgSender(), "Only Gateway");
         _;
     }
 
@@ -72,7 +72,7 @@ contract ScrollStandardERC20 is ERC20PermitUpgradeable, IScrollERC20Upgradeable 
         bytes memory data
     ) private {
         IERC677Receiver receiver = IERC677Receiver(to);
-        receiver.onTokenTransfer(msg.sender, value, data);
+        receiver.onTokenTransfer(_msgSender(), value, data);
     }
 
     function isContract(address _addr) private view returns (bool hasCode) {

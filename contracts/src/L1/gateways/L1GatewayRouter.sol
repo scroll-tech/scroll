@@ -45,7 +45,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     }
 
     modifier onlyInContext() {
-        require(msg.sender == gatewayInContext, "Only in deposit context");
+        require(_msgSender() == gatewayInContext, "Only in deposit context");
         _;
     }
 
@@ -110,9 +110,10 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         address _token,
         uint256 _amount
     ) external onlyInContext returns (uint256) {
-        uint256 _balance = IERC20Upgradeable(_token).balanceOf(msg.sender);
-        IERC20Upgradeable(_token).safeTransferFrom(_sender, msg.sender, _amount);
-        _amount = IERC20Upgradeable(_token).balanceOf(msg.sender) - _balance;
+        address _caller = _msgSender();
+        uint256 _balance = IERC20Upgradeable(_token).balanceOf(_caller);
+        IERC20Upgradeable(_token).safeTransferFrom(_sender, _caller, _amount);
+        _amount = IERC20Upgradeable(_token).balanceOf(_caller) - _balance;
         return _amount;
     }
 
@@ -126,7 +127,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         uint256 _amount,
         uint256 _gasLimit
     ) external payable override {
-        depositERC20AndCall(_token, msg.sender, _amount, new bytes(0), _gasLimit);
+        depositERC20AndCall(_token, _msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL1ERC20Gateway
@@ -154,7 +155,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         gatewayInContext = _gateway;
 
         // encode msg.sender with _data
-        bytes memory _routerData = abi.encode(msg.sender, _data);
+        bytes memory _routerData = abi.encode(_msgSender(), _data);
 
         IL1ERC20Gateway(_gateway).depositERC20AndCall{value: msg.value}(_token, _to, _amount, _routerData, _gasLimit);
 
@@ -180,7 +181,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
 
     /// @inheritdoc IL1ETHGateway
     function depositETH(uint256 _amount, uint256 _gasLimit) external payable override {
-        depositETHAndCall(msg.sender, _amount, new bytes(0), _gasLimit);
+        depositETHAndCall(_msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL1ETHGateway
@@ -203,7 +204,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         require(_gateway != address(0), "eth gateway available");
 
         // encode msg.sender with _data
-        bytes memory _routerData = abi.encode(msg.sender, _data);
+        bytes memory _routerData = abi.encode(_msgSender(), _data);
 
         IL1ETHGateway(_gateway).depositETHAndCall{value: msg.value}(_to, _amount, _routerData, _gasLimit);
     }

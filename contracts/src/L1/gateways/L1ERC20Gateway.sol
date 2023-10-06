@@ -35,7 +35,7 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         uint256 _amount,
         uint256 _gasLimit
     ) external payable override {
-        _deposit(_token, msg.sender, _amount, new bytes(0), _gasLimit);
+        _deposit(_token, _msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL1ERC20Gateway
@@ -144,11 +144,12 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
             bytes memory
         )
     {
-        address _from = msg.sender;
-        if (router == msg.sender) {
+        address _sender = _msgSender();
+        address _from = _sender;
+        if (router == _sender) {
             // Extract real sender if this call is from L1GatewayRouter.
             (_from, _data) = abi.decode(_data, (address, bytes));
-            _amount = IL1GatewayRouter(msg.sender).requestERC20(_from, _token, _amount);
+            _amount = IL1GatewayRouter(_sender).requestERC20(_from, _token, _amount);
         } else {
             // common practice to handle fee on transfer token.
             uint256 _before = IERC20Upgradeable(_token).balanceOf(address(this));
@@ -159,9 +160,6 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
         }
         // ignore weird fee on transfer token
         require(_amount > 0, "deposit zero amount");
-
-        // rate limit
-        _addUsedAmount(_token, _amount);
 
         return (_from, _amount, _data);
     }

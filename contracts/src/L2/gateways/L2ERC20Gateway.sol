@@ -24,7 +24,7 @@ abstract contract L2ERC20Gateway is ScrollGatewayBase, IL2ERC20Gateway {
         uint256 _amount,
         uint256 _gasLimit
     ) external payable override {
-        _withdraw(_token, msg.sender, _amount, new bytes(0), _gasLimit);
+        _withdraw(_token, _msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL2ERC20Gateway
