@@ -68,7 +68,7 @@ func testBatchProposerLimits(t *testing.T) {
 		{
 			name:                       "MaxL1CommitGasPerBatchIsFirstChunk",
 			maxChunkNum:                10,
-			maxL1CommitGas:             100000,
+			maxL1CommitGas:             200000,
 			maxL1CommitCalldataSize:    1000000,
 			batchTimeoutSec:            1000000000000,
 			expectedBatchesLen:         1,
@@ -199,6 +199,6 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(chunk.ProvingStatus))
 	}
 
-	assert.Equal(t, uint64(153916), batches[0].TotalL1CommitGas)
+	assert.Equal(t, uint64(253916), batches[0].TotalL1CommitGas)
 	assert.Equal(t, uint32(6033), batches[0].TotalL1CommitCalldataSize)
 }
