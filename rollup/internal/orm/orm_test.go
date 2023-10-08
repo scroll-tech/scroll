@@ -258,14 +258,17 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(2), count)
 
-	pendingBatches, err := batchOrm.GetPendingBatches(context.Background(), 100)
+	err = batchOrm.UpdateRollupStatus(context.Background(), batchHash1, types.RollupCommitFailed)
+	assert.NoError(t, err)
+
+	pendingBatches, err := batchOrm.GetFailedAndPendingBatches(context.Background(), 100)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(pendingBatches))
 
 	rollupStatus, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash1, batchHash2})
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(rollupStatus))
-	assert.Equal(t, types.RollupPending, rollupStatus[0])
+	assert.Equal(t, types.RollupCommitFailed, rollupStatus[0])
 	assert.Equal(t, types.RollupPending, rollupStatus[1])
 
 	err = batchOrm.UpdateProvingStatus(context.Background(), batchHash2, types.ProvingTaskVerified)

@@ -307,12 +307,12 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
-	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 5)
+	batches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, 5)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
 	}
-	for _, batch := range pendingBatches {
+	for _, batch := range batches {
 		r.metrics.rollupL2RelayerProcessPendingBatchTotal.Inc()
 		// get current header and parent header.
 		currentBatchHeader, err := types.DecodeBatchHeader(batch.BatchHeader)
@@ -325,6 +325,12 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			parentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
 			if err != nil {
 				log.Error("Failed to get parent batch header", "index", batch.Index-1, "error", err)
+				return
+			}
+
+			if types.RollupStatus(parentBatch.RollupStatus) == types.RollupCommitFailed {
+				log.Error("Previous batch commit failed, halting further committing",
+					"index", parentBatch.Index, "tx hash", parentBatch.CommitTxHash)
 				return
 			}
 		}
@@ -371,6 +377,10 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// send transaction
 		txID := batch.Hash + "-commit"
 		fallbackGasLimit := uint64(float64(batch.TotalL1CommitGas) * r.cfg.L1CommitGasLimitMultiplier)
+		if types.RollupStatus(batch.RollupStatus) == types.RollupCommitFailed {
+			// use estimateGas if this batch has been committed failed.
+			fallbackGasLimit = 0
+		}
 		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, fallbackGasLimit)
 		if err != nil {
 			log.Error(
