@@ -20,7 +20,7 @@ func GetKeccak256Gas(size uint64) uint64 {
 	return GetMemoryExpansionCost(size) + 30 + 6*((size+31)/32) + GetMemoryExpansionCost(size)
 }
 
-// GetMemoryExpansionCost calculates the cost of memory expansion for a given memory_byte_size.
+// GetMemoryExpansionCost calculates the cost of memory expansion for a given memoryByteSize.
 func GetMemoryExpansionCost(memoryByteSize uint64) uint64 {
 	memorySizeWord := (memoryByteSize + 31) / 32
 	memoryCost := (memorySizeWord*memorySizeWord)/512 + (3 * memorySizeWord)
