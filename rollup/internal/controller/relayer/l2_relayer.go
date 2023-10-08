@@ -380,7 +380,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		if types.RollupStatus(batch.RollupStatus) == types.RollupCommitFailed {
 			// use eth_estimateGas if this batch has been committed failed.
 			fallbackGasLimit = 0
-			log.Warn("Batch commit previously failed, using eth_estimateGas for next submission", "hash", batch.Hash)
+			log.Warn("Batch commit previously failed, using eth_estimateGas for the re-submission", "hash", batch.Hash)
 		}
 		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, fallbackGasLimit)
 		if err != nil {
