@@ -21,10 +21,10 @@ func GetKeccak256Gas(size uint64) uint64 {
 }
 
 // GetMemoryExpansionCost calculates the cost of memory expansion for a given memory_byte_size.
-func GetMemoryExpansionCost(memory_byte_size uint64) uint64 {
-	memory_size_word := (memory_byte_size + 31) / 32
-	memory_cost := (memory_size_word*memory_size_word)/512 + (3 * memory_size_word)
-	return memory_cost
+func GetMemoryExpansionCost(memoryByteSize uint64) uint64 {
+	memorySizeWord := (memoryByteSize + 31) / 32
+	memoryCost := (memorySizeWord*memorySizeWord)/512 + (3 * memorySizeWord)
+	return memoryCost
 }
 
 // WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
