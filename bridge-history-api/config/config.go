@@ -31,6 +31,9 @@ type LayerConfig struct {
 	MessengerAddr          string `json:"MessengerAddr"`
 	ETHGatewayAddr         string `json:"ETHGatewayAddr"`
 	WETHGatewayAddr        string `json:"WETHGatewayAddr"`
+	USDCGatewayAddr        string `json:"USDCGatewayAddr"`
+	LIDOGatewayAddr        string `json:"LIDOGatewayAddr"`
+	DAIGatewayAddr         string `json:"DAIGatewayAddr"`
 	StandardERC20Gateway   string `json:"StandardERC20Gateway"`
 	ERC721GatewayAddr      string `json:"ERC721GatewayAddr"`
 	ERC1155GatewayAddr     string `json:"ERC1155GatewayAddr"`

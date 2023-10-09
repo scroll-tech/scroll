@@ -1,33 +1,39 @@
 {
 	"batchInfoFetcher": {
 		"batchIndexStartBlock": 9091265,
-		"ScrollChainAddr": "0xcD00DB804C819175B381b2B44Aa16A391c8a01D6"
+		"ScrollChainAddr": "0x1799c3Df650caB9DFBb228C971016707D8f8721D"
 	},
 	"l1": {
 		"confirmation": 64,
-		"endpoint": "https://rpc.ankr.com/eth_goerli",
-		"startHeight": 9090194 ,
+		"endpoint": "https://rpc.ankr.com/eth",
+		"startHeight": 18310747,
 		"blockTime": 10,
-		"MessengerAddr": "0x326517Eb8eB1Ce5eaB5b513C2e9A24839b402d90",
-		"ETHGatewayAddr": "0x8305cB7B8448677736095965B63d7431017328fe",
-		"WETHGatewayAddr": "0xe3bA3c60d99a2d9a5f817734bC85353470b23931",
-		"StandardERC20Gateway": "0x16c1079B27eD9c363B7D08aC5Ae937A398972A5C",
-		"CustomERC20GatewayAddr": "0x61f08caD3d6F77801167d3bA8669433701586643",
-		"ERC721GatewayAddr": "0x4A73D25A4C99CB912acaf6C5B5e554f2982201c5",
-		"ERC1155GatewayAddr": "0xa3F5DD3033698c2832C53f3C3Fe6E062F58cD808"
+		"MessengerAddr": "0x7318152B19c3c97c886D5ee6C2525E62ce8e2abA",
+		"ETHGatewayAddr": "0xd165b42d857eae2915625819464a2a1f91E5d0A5",
+		"WETHGatewayAddr": "0xb0255e4C1a919619D1CafBA51021d638c4F71b89",
+		"StandardERC20Gateway": "0x00fEc01A9b975bA37466B4E9006dF2C71BFE0e48",
+		"CustomERC20GatewayAddr": "0xD8874B0E6C3CC43C00B69D60c21Ef452d1159bDe",
+		"ERC721GatewayAddr": "0x131B46649F6882d686a766cb8b68c4cB0ACdeb24",
+		"ERC1155GatewayAddr": "0xCeE721789FAA05c7F4463efB664520656aB7C7d5",
+		"USDCGatewayAddr": "0x37ba659D6CC380D12Fb96567CC52FC8e1DF4E334",
+		"LIDOGatewayAddr": "0x892dDB2899325aBBA1fD00FDA8249B40Cbbc33F9",
+		"DAIGatewayAddr": "0xD8dD7787f89c7E6243AD32E0d0cCf460243C8130"
 	},
 	"l2": {
 		"confirmation": 1,
-		"endpoint": "http://staging-l2geth-rpc0.scroll.tech:8545",
+		"endpoint": "http://mainnet-l2geth-internal-1.mainnet.scroll.tech:8545",
 		"blockTime": 3,
 		"startHeight": 0,
-		"CustomERC20GatewayAddr": "0x905db21f836749fEeD12de781afc4A5Ab4Dd0d51",
-		"ERC721GatewayAddr": "0xC53D835514780664BCd7eCfcE7c2E5d9554dc41B",
-		"StandardERC20Gateway": "0x90271634BCB020e06ea4840C3f7aa61b8F860651",
-		"MessengerAddr": "0xE8b0956Ac75c65Aa1669e83888DA13afF2E108f4",
-		"ETHGatewayAddr": "0xD5938590D5dD8ce95812D4D515a219C12C551D67",
-		"WETHGatewayAddr": "0xb0aaA582564fade4232a16fdB1383004A6A7247F",
-		"ERC1155GatewayAddr": "0x4f33B1655619c2C0B7C450128Df760B4365Cb549"
+		"MessengerAddr": "0xda7c91Ed60DACD28Cb97B180108958c9ACC7698a",
+		"ETHGatewayAddr": "0x567671187b5FFbcDFe0B6EcF3e56C05508a31A87",
+		"WETHGatewayAddr": "0x3b03aE2F27d62E0B2b6740CA20Fc07Af4338B791",
+		"StandardERC20Gateway": "0xb00cb1F6f7C43D2EE8C4e2163a6bEA22441A5B7c",
+		"CustomERC20GatewayAddr": "0x63CCb38E9d21A72777b203267F2e4ba5C974fC62",
+		"ERC721GatewayAddr": "0xE2c36a2D8B5528719aE7A42A778b2D08b18d134a",
+		"ERC1155GatewayAddr": "0xfF14870512e42BFb85a9B7bEfDc06e9aB5A37269",
+		"USDCGatewayAddr": "0x97D5799CDC8eE2A7452913d7548c7cEE285719FA",
+		"LIDOGatewayAddr": "0xE9c5C9f67ec7B773fC76440845751F657bb953FF",
+		"DAIGatewayAddr": "0xC5034eB8F682b73F93C9246aa95A8eBbF82793aA"
 	},
 	"db": {
 		"dsn": "postgres://postgres:1234@localhost:5444/test?sslmode=disable",
