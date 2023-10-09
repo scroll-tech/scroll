@@ -82,6 +82,18 @@ func action(ctx *cli.Context) error {
 		common.HexToAddress(cfg.L1.WETHGatewayAddr),
 	}
 
+	if cfg.L1.USDCGatewayAddr != "" {
+		l1AddressList = append(l1AddressList, common.HexToAddress(cfg.L1.USDCGatewayAddr))
+	}
+
+	if cfg.L1.LIDOGatewayAddr != "" {
+		l1AddressList = append(l1AddressList, common.HexToAddress(cfg.L1.LIDOGatewayAddr))
+	}
+
+	if cfg.L2.DAIGatewayAddr != "" {
+		l1AddressList = append(l1AddressList, common.HexToAddress(cfg.L1.DAIGatewayAddr))
+	}
+
 	l2AddressList := []common.Address{
 		common.HexToAddress(cfg.L2.CustomERC20GatewayAddr),
 		common.HexToAddress(cfg.L2.ERC721GatewayAddr),
@@ -90,6 +102,18 @@ func action(ctx *cli.Context) error {
 		common.HexToAddress(cfg.L2.ETHGatewayAddr),
 		common.HexToAddress(cfg.L2.StandardERC20Gateway),
 		common.HexToAddress(cfg.L2.WETHGatewayAddr),
+	}
+
+	if cfg.L2.USDCGatewayAddr != "" {
+		l2AddressList = append(l2AddressList, common.HexToAddress(cfg.L2.USDCGatewayAddr))
+	}
+
+	if cfg.L2.LIDOGatewayAddr != "" {
+		l2AddressList = append(l2AddressList, common.HexToAddress(cfg.L2.LIDOGatewayAddr))
+	}
+
+	if cfg.L2.DAIGatewayAddr != "" {
+		l2AddressList = append(l2AddressList, common.HexToAddress(cfg.L2.DAIGatewayAddr))
 	}
 
 	l1crossMsgFetcher, err := crossmsg.NewMsgFetcher(subCtx, cfg.L1, db, l1client, l1worker, l1AddressList, crossmsg.L1ReorgHandling)
