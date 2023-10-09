@@ -109,9 +109,9 @@ func testBatchProposerLimits(t *testing.T) {
 			chunkOrm := orm.NewChunk(db)
 			chunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 1)
 			assert.NoError(t, err)
-			assert.Equal(t, uint64(6006), chunks[0].TotalL1CommitGas)
+			assert.Equal(t, uint64(6042), chunks[0].TotalL1CommitGas)
 			assert.Equal(t, uint32(298), chunks[0].TotalL1CommitCalldataSize)
-			assert.Equal(t, uint64(93982), chunks[1].TotalL1CommitGas)
+			assert.Equal(t, uint64(94586), chunks[1].TotalL1CommitGas)
 			assert.Equal(t, uint32(5735), chunks[1].TotalL1CommitCalldataSize)
 
 			bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
@@ -168,9 +168,9 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	chunkOrm := orm.NewChunk(db)
 	chunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 1)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(6006), chunks[0].TotalL1CommitGas)
+	assert.Equal(t, uint64(6042), chunks[0].TotalL1CommitGas)
 	assert.Equal(t, uint32(298), chunks[0].TotalL1CommitCalldataSize)
-	assert.Equal(t, uint64(93982), chunks[1].TotalL1CommitGas)
+	assert.Equal(t, uint64(94586), chunks[1].TotalL1CommitGas)
 	assert.Equal(t, uint32(5735), chunks[1].TotalL1CommitCalldataSize)
 
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
@@ -199,6 +199,6 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(chunk.ProvingStatus))
 	}
 
-	assert.Equal(t, uint64(253916), batches[0].TotalL1CommitGas)
+	assert.Equal(t, uint64(254562), batches[0].TotalL1CommitGas)
 	assert.Equal(t, uint32(6033), batches[0].TotalL1CommitCalldataSize)
 }
