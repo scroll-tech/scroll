@@ -46,7 +46,7 @@ func TestChunkEncode(t *testing.T) {
 		},
 	}
 	assert.Equal(t, uint64(0), chunk.NumL1Messages(0))
-	assert.Equal(t, uint64(6078), chunk.EstimateL1CommitGas())
+	assert.Equal(t, uint64(6042), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString := hex.EncodeToString(bytes)
 	assert.NoError(t, err)
@@ -68,7 +68,7 @@ func TestChunkEncode(t *testing.T) {
 		},
 	}
 	assert.Equal(t, uint64(11), chunk.NumL1Messages(0))
-	assert.Equal(t, uint64(5344), chunk.EstimateL1CommitGas())
+	assert.Equal(t, uint64(5329), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)
@@ -84,7 +84,7 @@ func TestChunkEncode(t *testing.T) {
 		},
 	}
 	assert.Equal(t, uint64(11), chunk.NumL1Messages(0))
-	assert.Equal(t, uint64(10642), chunk.EstimateL1CommitGas())
+	assert.Equal(t, uint64(10612), chunk.EstimateL1CommitGas())
 	bytes, err = chunk.Encode(0)
 	hexString = hex.EncodeToString(bytes)
 	assert.NoError(t, err)

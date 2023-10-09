@@ -17,7 +17,7 @@ const CalldataNonZeroByteGas = 16
 
 // GetKeccak256Gas calculates the gas cost for computing the keccak256 hash of a given size.
 func GetKeccak256Gas(size uint64) uint64 {
-	return GetMemoryExpansionCost(size) + 30 + 6*((size+31)/32) + GetMemoryExpansionCost(size)
+	return GetMemoryExpansionCost(size) + 30 + 6*((size+31)/32)
 }
 
 // GetMemoryExpansionCost calculates the cost of memory expansion for a given memoryByteSize.
