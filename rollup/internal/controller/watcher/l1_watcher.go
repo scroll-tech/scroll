@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -122,6 +123,11 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 	if err != nil {
 		log.Warn("Failed to get block", "height", blockHeight, "err", err)
 		return err
+	}
+
+	if block == nil {
+		log.Warn("Received nil block", "height", blockHeight)
+		return errors.New("received nil block")
 	}
 
 	var baseFee uint64
