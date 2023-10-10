@@ -1,9 +1,6 @@
 [submodule "l2geth"]
 	path = l2geth
 	url = git@github.com:scroll-tech/go-ethereum.git
-[submodule "rpc-gateway"]
-	path = rpc-gateway
-	url = git@github.com:scroll-tech/rpc-gateway.git
 [submodule "contracts/lib/ds-test"]
 	path = contracts/lib/ds-test
 	url = https://github.com/dapphub/ds-test
