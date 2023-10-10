@@ -53,12 +53,12 @@ contract InitializeL1ScrollOwner is Script {
     address L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
     address L1_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ETH_GATEWAY_PROXY_ADDR");
     address L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
-    // address L1_USDC_GATEWAY_PROXY_ADDR = vm.envAddress("L1_USDC_GATEWAY_PROXY_ADDR");
+    address L1_USDC_GATEWAY_PROXY_ADDR = vm.envAddress("L1_USDC_GATEWAY_PROXY_ADDR");
     address L1_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_WETH_GATEWAY_PROXY_ADDR");
     address L1_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC721_GATEWAY_PROXY_ADDR");
     address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
     address L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR = vm.envAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR");
-    // address L1_ENFORCED_TX_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ENFORCED_TX_GATEWAY_PROXY_ADDR");
+    address L1_ENFORCED_TX_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ENFORCED_TX_GATEWAY_PROXY_ADDR");
     address L1_WHITELIST_ADDR = vm.envAddress("L1_WHITELIST_ADDR");
 
     ScrollOwner owner;
@@ -81,9 +81,8 @@ contract InitializeL1ScrollOwner is Script {
         configL1ERC721Gateway();
         configL1ERC1155Gateway();
 
-        // @note comments out for testnet
-        // configEnforcedTxGateway();
-        // configL1USDCGateway();
+        configL1USDCGateway();
+        configEnforcedTxGateway();
 
         grantRoles();
         transferOwnership();
@@ -249,7 +248,6 @@ contract InitializeL1ScrollOwner is Script {
         owner.updateAccess(L1_ERC1155_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
     }
 
-    /*
     function configL1USDCGateway() internal {
         bytes4[] memory _selectors;
 
@@ -270,5 +268,4 @@ contract InitializeL1ScrollOwner is Script {
         owner.updateAccess(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR, _selectors, SCROLL_MULTISIG_NO_DELAY_ROLE, true);
         owner.updateAccess(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR, _selectors, EMERGENCY_MULTISIG_NO_DELAY_ROLE, true);
     }
-    */
 }

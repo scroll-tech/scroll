@@ -54,7 +54,7 @@ contract InitializeL2ScrollOwner is Script {
     address L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
     address L2_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ETH_GATEWAY_PROXY_ADDR");
     address L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
-    // address L2_USDC_GATEWAY_PROXY_ADDR = vm.envAddress("L2_USDC_GATEWAY_PROXY_ADDR");
+    address L2_USDC_GATEWAY_PROXY_ADDR = vm.envAddress("L2_USDC_GATEWAY_PROXY_ADDR");
     address L2_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L2_WETH_GATEWAY_PROXY_ADDR");
     address L2_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC721_GATEWAY_PROXY_ADDR");
     address L2_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC1155_GATEWAY_PROXY_ADDR");
@@ -77,8 +77,7 @@ contract InitializeL2ScrollOwner is Script {
         configL2ERC721Gateway();
         configL2ERC1155Gateway();
 
-        // @note comments out for testnet
-        // configL2USDCGateway();
+        configL2USDCGateway();
 
         grantRoles();
         transferOwnership();
@@ -201,7 +200,6 @@ contract InitializeL2ScrollOwner is Script {
         owner.updateAccess(L2_ERC1155_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_1DAY_DELAY_ROLE, true);
     }
 
-    /*
     function configL2USDCGateway() internal {
         bytes4[] memory _selectors;
 
@@ -212,5 +210,4 @@ contract InitializeL2ScrollOwner is Script {
         _selectors[2] = L2USDCGateway.pauseWithdraw.selector;
         owner.updateAccess(L2_USDC_GATEWAY_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
     }
-    */
 }
