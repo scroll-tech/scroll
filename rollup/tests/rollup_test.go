@@ -2,149 +2,143 @@ package tests
 
 import (
 	"context"
-	"math/big"
+	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
+	"scroll-tech/common/docker"
 	"scroll-tech/common/utils"
 
-	"scroll-tech/rollup/internal/config"
-	"scroll-tech/rollup/internal/controller/relayer"
-	"scroll-tech/rollup/internal/controller/watcher"
-	"scroll-tech/rollup/internal/orm"
+	"scroll-tech/database/migrate"
+
+	bcmd "scroll-tech/rollup/cmd"
+	"scroll-tech/rollup/mock_bridge"
 )
 
-func testCommitBatchAndFinalizeBatch(t *testing.T) {
-	db := setupDB(t)
-	defer database.CloseDB(db)
+var (
+	base      *docker.App
+	rollupApp *bcmd.MockApp
 
-	prepareContracts(t)
+	// clients
+	l1Client *ethclient.Client
+	l2Client *ethclient.Client
 
-	// Create L2Relayer
-	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
+	// auth
+	l1Auth *bind.TransactOpts
+	l2Auth *bind.TransactOpts
+
+	// l1 rollup contract
+	scrollChainInstance *mock_bridge.MockBridgeL1
+	scrollChainAddress  common.Address
+)
+
+func setupDB(t *testing.T) *gorm.DB {
+	cfg := &database.Config{
+		DSN:        base.DBConfig.DSN,
+		DriverName: base.DBConfig.DriverName,
+		MaxOpenNum: base.DBConfig.MaxOpenNum,
+		MaxIdleNum: base.DBConfig.MaxIdleNum,
+	}
+	db, err := database.InitDB(cfg)
+	assert.NoError(t, err)
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+	return db
+}
+
+func TestMain(m *testing.M) {
+	base = docker.NewDockerApp()
+	rollupApp = bcmd.NewRollupApp(base, "../conf/config.json")
+	defer rollupApp.Free()
+	defer base.Free()
+	m.Run()
+}
+
+func setupEnv(t *testing.T) {
+	base.RunImages(t)
+
+	var err error
+	l1Client, err = base.L1Client()
+	assert.NoError(t, err)
+	l2Client, err = base.L2Client()
 	assert.NoError(t, err)
 
-	// Create L1Watcher
-	l1Cfg := rollupApp.Config.L1Config
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
+	l1Cfg, l2Cfg := rollupApp.Config.L1Config, rollupApp.Config.L2Config
+	l1Cfg.Confirmations = 0
+	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+	l2Cfg.Confirmations = 0
+	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
-	// add some blocks to db
-	var wrappedBlocks []*types.WrappedBlock
-	for i := 0; i < 10; i++ {
-		header := gethTypes.Header{
-			Number:     big.NewInt(int64(i)),
-			ParentHash: common.Hash{},
-			Difficulty: big.NewInt(0),
-			BaseFee:    big.NewInt(0),
-		}
-		wrappedBlocks = append(wrappedBlocks, &types.WrappedBlock{
-			Header:         &header,
-			Transactions:   nil,
-			WithdrawRoot:   common.Hash{},
-			RowConsumption: &gethTypes.RowConsumption{},
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L1gethImg.ChainID())
+	assert.NoError(t, err)
+
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKey, base.L2gethImg.ChainID())
+	assert.NoError(t, err)
+}
+
+func mockChainMonitorServer(baseURL string) (*http.Server, error) {
+	router := gin.New()
+	r := router.Group("/v1")
+	r.GET("/batch_status", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, struct {
+			ErrCode int    `json:"errcode"`
+			ErrMsg  string `json:"errmsg"`
+			Data    bool   `json:"data"`
+		}{
+			ErrCode: 0,
+			ErrMsg:  "",
+			Data:    true,
 		})
-	}
-
-	l2BlockOrm := orm.NewL2Block(db)
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), wrappedBlocks)
-	assert.NoError(t, err)
-
-	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk:             100,
-		MaxTxNumPerChunk:                10000,
-		MaxL1CommitGasPerChunk:          50000000000,
-		MaxL1CommitCalldataSizePerChunk: 1000000,
-		MaxRowConsumptionPerChunk:       1048319,
-		ChunkTimeoutSec:                 300,
-	}, db, nil)
-	cp.TryProposeChunk()
-
-	batchOrm := orm.NewBatch(db)
-	unbatchedChunkIndex, err := batchOrm.GetFirstUnbatchedChunkIndex(context.Background())
-	assert.NoError(t, err)
-
-	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), unbatchedChunkIndex, 0)
-	assert.NoError(t, err)
-	assert.Len(t, chunks, 1)
-
-	bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxChunkNumPerBatch:             10,
-		MaxL1CommitGasPerBatch:          50000000000,
-		MaxL1CommitCalldataSizePerBatch: 1000000,
-		BatchTimeoutSec:                 300,
-	}, db, nil)
-	bp.TryProposeBatch()
-
-	l2Relayer.ProcessPendingBatches()
-
-	batch, err := batchOrm.GetLatestBatch(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, batch)
-	batchHash := batch.Hash
-	assert.NotEmpty(t, batch.CommitTxHash)
-	assert.Equal(t, types.RollupCommitting, types.RollupStatus(batch.RollupStatus))
-
-	success := utils.TryTimes(30, func() bool {
-		var receipt *gethTypes.Receipt
-		receipt, err = l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.CommitTxHash))
-		return err == nil && receipt.Status == 1
 	})
-	assert.True(t, success)
+	return utils.StartHTTPServer(strings.Split(baseURL, "//")[1], router)
+}
 
-	// fetch rollup events
-	success = utils.TryTimes(30, func() bool {
-		err = l1Watcher.FetchContractEvent()
-		assert.NoError(t, err)
-		var statuses []types.RollupStatus
-		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
-		return err == nil && len(statuses) == 1 && types.RollupCommitted == statuses[0]
-	})
-	assert.True(t, success)
+func prepareContracts(t *testing.T) {
+	var err error
+	var tx *types.Transaction
 
-	// add dummy proof
-	proof := &message.BatchProof{
-		Proof: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-	}
-	err = batchOrm.UpdateProofByHash(context.Background(), batchHash, proof, 100)
+	// L1 ScrolChain contract
+	_, tx, scrollChainInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
 	assert.NoError(t, err)
-	err = batchOrm.UpdateProvingStatus(context.Background(), batchHash, types.ProvingTaskVerified)
+	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
 
-	// process committed batch and check status
-	l2Relayer.ProcessCommittedBatches()
+	l1Config, l2Config := rollupApp.Config.L1Config, rollupApp.Config.L2Config
+	l1Config.ScrollChainContractAddress = scrollChainAddress
 
-	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
+	l2Config.RelayerConfig.RollupContractAddress = scrollChainAddress
+}
+
+func TestFunction(t *testing.T) {
+	setupEnv(t)
+	srv, err := mockChainMonitorServer(rollupApp.Config.L2Config.RelayerConfig.ChainMonitor.BaseURL)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupFinalizing, statuses[0])
+	defer srv.Close()
 
-	batch, err = batchOrm.GetLatestBatch(context.Background())
-	assert.NoError(t, err)
-	assert.NotNil(t, batch)
-	assert.NotEmpty(t, batch.FinalizeTxHash)
+	// process start test
+	t.Run("TestProcessStart", testProcessStart)
+	t.Run("TestProcessStartEnableMetrics", testProcessStartEnableMetrics)
 
-	success = utils.TryTimes(30, func() bool {
-		var receipt *gethTypes.Receipt
-		receipt, err = l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.FinalizeTxHash))
-		return err == nil && receipt.Status == 1
-	})
-	assert.True(t, success)
+	// l1 rollup and watch rollup events
+	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 
-	// fetch rollup events
-	success = utils.TryTimes(30, func() bool {
-		err = l1Watcher.FetchContractEvent()
-		assert.NoError(t, err)
-		var statuses []types.RollupStatus
-		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batchHash})
-		return err == nil && len(statuses) == 1 && types.RollupFinalized == statuses[0]
-	})
-	assert.True(t, success)
+	// l1 message
+
+	// l2 message
+	// TODO: add a "user relay l2msg Succeed" test
+
+	// l1/l2 gas oracle
+	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
+	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
+
 }
