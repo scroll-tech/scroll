@@ -116,52 +116,34 @@ func (w *L1WatcherClient) SetConfirmations(confirmations rpc.BlockNumber) {
 // FetchBlockHeader pull latest L1 blocks and save in DB
 func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 	w.metrics.l1WatcherFetchBlockHeaderTotal.Inc()
-	fromBlock := int64(w.processedBlockHeight) + 1
-	toBlock := int64(blockHeight)
-	if toBlock < fromBlock {
-		return nil
-	}
-	if toBlock > fromBlock+contractEventsBlocksFetchLimit {
-		toBlock = fromBlock + contractEventsBlocksFetchLimit - 1
-	}
 
-	var blocks []orm.L1Block
-	var err error
-	height := fromBlock
-	for ; height <= toBlock; height++ {
-		var block *gethTypes.Header
-		block, err = w.client.HeaderByNumber(w.ctx, big.NewInt(height))
-		if err != nil {
-			log.Warn("Failed to get block", "height", height, "err", err)
-			break
-		}
-		var baseFee uint64
-		if block.BaseFee != nil {
-			baseFee = block.BaseFee.Uint64()
-		}
-		blocks = append(blocks, orm.L1Block{
-			Number:          uint64(height),
-			Hash:            block.Hash().String(),
-			BaseFee:         baseFee,
-			GasOracleStatus: int16(types.GasOraclePending),
-		})
-	}
-
-	// failed at first block, return with the error
-	if height == fromBlock {
+	var block *gethTypes.Header
+	block, err := w.client.HeaderByNumber(w.ctx, big.NewInt(int64(blockHeight)))
+	if err != nil {
+		log.Warn("Failed to get block", "height", blockHeight, "err", err)
 		return err
 	}
-	toBlock = height - 1
 
-	// insert succeed blocks
-	err = w.l1BlockOrm.InsertL1Blocks(w.ctx, blocks)
+	var baseFee uint64
+	if block.BaseFee != nil {
+		baseFee = block.BaseFee.Uint64()
+	}
+
+	l1Block := orm.L1Block{
+		Number:          blockHeight,
+		Hash:            block.Hash().String(),
+		BaseFee:         baseFee,
+		GasOracleStatus: int16(types.GasOraclePending),
+	}
+
+	err = w.l1BlockOrm.InsertL1Blocks(w.ctx, []orm.L1Block{l1Block})
 	if err != nil {
-		log.Warn("Failed to insert L1 block to db", "fromBlock", fromBlock, "toBlock", toBlock, "err", err)
+		log.Warn("Failed to insert L1 block to db", "blockHeight", blockHeight, "err", err)
 		return err
 	}
 
 	// update processed height
-	w.processedBlockHeight = uint64(toBlock)
+	w.processedBlockHeight = blockHeight
 	w.metrics.l1WatcherFetchBlockHeaderProcessedBlockHeight.Set(float64(w.processedBlockHeight))
 	return nil
 }
