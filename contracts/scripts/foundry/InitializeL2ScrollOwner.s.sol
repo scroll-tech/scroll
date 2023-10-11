@@ -61,7 +61,7 @@ contract InitializeL2ScrollOwner is Script {
     address L2_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC721_GATEWAY_PROXY_ADDR");
     address L2_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC1155_GATEWAY_PROXY_ADDR");
 
-    address L2_USDC_ADDR = vm.envAddress("L2_USDC_ADDR");
+    address L2_USDC_PROXY_ADDR = vm.envAddress("L2_USDC_PROXY_ADDR");
     address L2_USDC_MASTER_MINTER_ADDR = vm.envAddress("L2_USDC_MASTER_MINTER_ADDR");
 
     ScrollOwner owner;
@@ -108,7 +108,7 @@ contract InitializeL2ScrollOwner is Script {
         Ownable(L2_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
 
         Ownable(L2_USDC_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
-        Ownable(L2_USDC_ADDR).transferOwnership(address(owner));
+        Ownable(L2_USDC_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L2_USDC_MASTER_MINTER_ADDR).transferOwnership(address(owner));
     }
 
@@ -222,7 +222,7 @@ contract InitializeL2ScrollOwner is Script {
         // delay 7 day, scroll multisig
         _selectors = new bytes4[](1);
         _selectors[0] = Ownable.transferOwnership.selector;
-        owner.updateAccess(L2_USDC_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
+        owner.updateAccess(L2_USDC_PROXY_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
         owner.updateAccess(L2_USDC_MASTER_MINTER_ADDR, _selectors, TIMELOCK_7DAY_DELAY_ROLE, true);
     }
 }
