@@ -51,6 +51,8 @@ contract InitializeL1ScrollOwner is Script {
     address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
     address L1_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L1_GATEWAY_ROUTER_PROXY_ADDR");
     address L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
+    address L1_DAI_GATEWAY_PROXY_ADDR = vm.envAddress("L1_DAI_GATEWAY_PROXY_ADDR");
+    address L1_LIDO_GATEWAY_PROXY_ADDR = vm.envAddress("L1_LIDO_GATEWAY_PROXY_ADDR");
     address L1_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ETH_GATEWAY_PROXY_ADDR");
     address L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L1_USDC_GATEWAY_PROXY_ADDR = vm.envAddress("L1_USDC_GATEWAY_PROXY_ADDR");
@@ -101,6 +103,8 @@ contract InitializeL1ScrollOwner is Script {
         Ownable(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR).transferOwnership(address(owner));
         Ownable(L1_GATEWAY_ROUTER_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L1_DAI_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L1_LIDO_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_ETH_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_USDC_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
