@@ -95,7 +95,7 @@ contract InitializeL1ScrollOwner is Script {
         Ownable(L1_SCROLL_CHAIN_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_MESSAGE_QUEUE_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_SCROLL_MESSENGER_PROXY_ADDR).transferOwnership(address(owner));
-        // Ownable(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L2_GAS_PRICE_ORACLE_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_WHITELIST_ADDR).transferOwnership(address(owner));
         Ownable(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR).transferOwnership(address(owner));
@@ -103,7 +103,7 @@ contract InitializeL1ScrollOwner is Script {
         Ownable(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_ETH_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
-        // Ownable(L1_USDC_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L1_USDC_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_WETH_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_ERC721_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L1_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));

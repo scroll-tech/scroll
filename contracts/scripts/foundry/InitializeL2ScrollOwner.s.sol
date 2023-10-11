@@ -100,7 +100,7 @@ contract InitializeL2ScrollOwner is Script {
         Ownable(L2_ERC721_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
         Ownable(L2_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
 
-        // Ownable(L2_USDC_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
+        Ownable(L2_USDC_GATEWAY_PROXY_ADDR).transferOwnership(address(owner));
     }
 
     function grantRoles() internal {
