@@ -219,6 +219,7 @@ func (p *ProverCore) proveChunk(tracesByt []byte) ([]byte, error) {
 		return nil, fmt.Errorf("failed to parse chunk proof result: %v", err)
 	}
 
+	log.Info("unmarshal proof")
 	if result.Error != "" {
 		return nil, fmt.Errorf("failed to generate chunk proof: %s", result.Error)
 	}
