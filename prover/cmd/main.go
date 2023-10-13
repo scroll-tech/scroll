@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "expvar"
 	"net/http"
 	_ "net/http/pprof"
 	"scroll-tech/prover/cmd/app"
