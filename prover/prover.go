@@ -166,6 +166,7 @@ func (r *Prover) proveAndSubmit() error {
 			log.Error("failed to prove task", "task_type", task.Task.Type, "task-id", task.Task.ID, "err", err)
 			return r.submitErr(task, message.ProofFailureNoPanic, err)
 		}
+		log.Info("submit proof")
 		return r.submitProof(proofMsg, task.Task.UUID)
 	}
 

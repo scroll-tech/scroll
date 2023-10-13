@@ -118,11 +118,13 @@ func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*mes
 		return nil, err
 	}
 
+	log.Info("dump proof")
 	err = p.mayDumpProof(taskID, proofByt)
 	if err != nil {
 		log.Error("Dump chunk proof failed", "task-id", taskID, "error", err)
 	}
 
+	log.Info("send proof back")
 	zkProof := &message.ChunkProof{}
 	return zkProof, json.Unmarshal(proofByt, zkProof)
 }
