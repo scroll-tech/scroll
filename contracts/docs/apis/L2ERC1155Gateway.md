@@ -6,7 +6,7 @@
 
 The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs on layer 2 and finalize deposit the NFTs from layer 1.
 
-*The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding NFT will be minted and transfered to the recipient. This will be changed if we have more specific scenarios.*
+*The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding NFT will be minted and transferred to the recipient. This will be changed if we have more specific scenarios.*
 
 ## Methods
 
@@ -365,7 +365,7 @@ Withdraw some ERC1155 NFT to caller&#39;s account on layer 1.
 event BatchWithdrawERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds, uint256[] amounts)
 ```
 
-Emitted when the ERC1155 NFT is batch transfered to gateway on layer 2.
+Emitted when the ERC1155 NFT is batch transferred to gateway on layer 2.
 
 
 
@@ -386,7 +386,7 @@ Emitted when the ERC1155 NFT is batch transfered to gateway on layer 2.
 event FinalizeBatchDepositERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256[] tokenIds, uint256[] amounts)
 ```
 
-Emitted when the ERC1155 NFT is batch transfered to recipient on layer 2.
+Emitted when the ERC1155 NFT is batch transferred to recipient on layer 2.
 
 
 
@@ -407,7 +407,7 @@ Emitted when the ERC1155 NFT is batch transfered to recipient on layer 2.
 event FinalizeDepositERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId, uint256 amount)
 ```
 
-Emitted when the ERC1155 NFT is transfered to recipient on layer 2.
+Emitted when the ERC1155 NFT is transferred to recipient on layer 2.
 
 
 
@@ -479,7 +479,7 @@ Emitted when token mapping for ERC1155 token is updated.
 event WithdrawERC1155(address indexed l1Token, address indexed l2Token, address indexed from, address to, uint256 tokenId, uint256 amount)
 ```
 
-Emitted when the ERC1155 NFT is transfered to gateway on layer 2.
+Emitted when the ERC1155 NFT is transferred to gateway on layer 2.
 
 
 

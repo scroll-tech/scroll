@@ -1,10 +1,10 @@
 A library for interacting with Scroll contracts.
 
-This library includes contracts and interfaces needed to interact with the Scroll Smart Contracts deployed on both Layer 1 and Layer 2. This includes deposting and withdrawing ETH, ERC20 tokens and NFTs or sending arbitrary messages.
+This library includes contracts and interfaces needed to interact with the Scroll Smart Contracts deployed on both Layer 1 and Layer 2. This includes depositing and withdrawing ETH, ERC20 tokens and NFTs or sending arbitrary messages.
 
 # Overview
 
-## Instalation
+## Installation
 
 ```bash
 npm install @scroll-tech/contracts

@@ -384,7 +384,7 @@ Emitted when the ERC721 NFT is deposited to gateway on layer 1.
 event FinalizeBatchWithdrawERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds)
 ```
 
-Emitted when the ERC721 NFT is batch transfered to recipient on layer 1.
+Emitted when the ERC721 NFT is batch transferred to recipient on layer 1.
 
 
 
@@ -404,7 +404,7 @@ Emitted when the ERC721 NFT is batch transfered to recipient on layer 1.
 event FinalizeWithdrawERC721(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId)
 ```
 
-Emitted when the ERC721 NFT is transfered to recipient on layer 1.
+Emitted when the ERC721 NFT is transferred to recipient on layer 1.
 
 
 
