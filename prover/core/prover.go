@@ -42,6 +42,7 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 
 	var vk string
 	var rawVK *C.char
+	defer C.free(unsafe.Pointer(rawVK))
 	if cfg.ProofType == message.ProofTypeBatch {
 		C.init_batch_prover(paramsPathStr, assetsPathStr)
 		rawVK = C.get_batch_vk()
@@ -242,12 +243,10 @@ func (p *ProverCore) mayDumpProof(id string, proofByt []byte) error {
 
 func (p *ProverCore) tracesToChunkInfo(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
-
-	defer func() {
-		C.free(unsafe.Pointer(tracesStr))
-	}()
+	defer C.free(unsafe.Pointer(tracesStr))
 
 	cChunkInfo := C.block_traces_to_chunk_info(tracesStr)
+	defer C.free(unsafe.Pointer(cChunkInfo))
 
 	chunkInfo := C.GoString(cChunkInfo)
 	return []byte(chunkInfo)
