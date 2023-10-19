@@ -34,7 +34,7 @@ func init() {
 		return utils.LogSetup(ctx)
 	}
 	// Register `coordinator-cron-test` app for integration-cron-test.
-	utils.RegisterSimulation(app, utils.CoordinatorCron)
+	utils.RegisterSimulation(app, utils.CoordinatorCronApp)
 }
 
 func action(ctx *cli.Context) error {
