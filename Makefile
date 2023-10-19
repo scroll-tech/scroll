@@ -1,6 +1,6 @@
 .PHONY: check update dev_docker build_test_docker run_test_docker clean
 
-L2GETH_TAG=scroll-v4.3.55
+L2GETH_TAG=scroll-v5.0.1
 
 help: ## Display this help message
 	@grep -h \
@@ -23,7 +23,6 @@ update: ## update dependencies
 	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/prover/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/prover-stats-api/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/tests/integration-test/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	goimports -local $(PWD)/rollup/ -w .
 	goimports -local $(PWD)/bridge-history-api/ -w .
@@ -31,12 +30,11 @@ update: ## update dependencies
 	goimports -local $(PWD)/coordinator/ -w .
 	goimports -local $(PWD)/database/ -w .
 	goimports -local $(PWD)/prover/ -w .
-	goimports -local $(PWD)/prover-stats-api/ -w .
 	goimports -local $(PWD)/tests/integration-test/ -w .
 
 dev_docker: ## build docker images for development/testing usages
-	docker build -t scroll_l1geth ./common/docker/l1geth/
-	docker build -t scroll_l2geth ./common/docker/l2geth/
+	docker build --platform linux/amd64 -t scroll_l1geth ./common/docker/l1geth/
+	docker build --platform linux/amd64 -t scroll_l2geth ./common/docker/l2geth/
 
 build_test_docker: ## build Docker image for local testing on M1/M2 Silicon Mac
 	docker build -t scroll_test_image -f ./build/dockerfiles/local_testing.Dockerfile $$(mktemp -d)
