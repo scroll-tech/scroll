@@ -32,8 +32,8 @@ require (
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
+	github.com/cockroachdb/pebble v0.0.0-20230209160836-829675f94811 // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
-	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
