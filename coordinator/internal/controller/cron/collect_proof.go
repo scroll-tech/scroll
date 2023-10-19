@@ -76,7 +76,7 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config, reg prom
 	go c.checkBatchAllChunkReady()
 	go c.cleanupChallenge()
 
-	log.Info("Start coordinator successfully.")
+	log.Info("Start coordinator cron successfully.")
 
 	return c
 }
