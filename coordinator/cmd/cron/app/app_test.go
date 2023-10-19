@@ -14,6 +14,6 @@ func TestRunCoordinatorCron(t *testing.T) {
 	defer coordinator.WaitExit()
 
 	// wait result
-	coordinator.ExpectWithTimeout(t, true, time.Second*3, fmt.Sprintf("coordinator version %s", version.Version))
+	coordinator.ExpectWithTimeout(t, true, time.Second*3, fmt.Sprintf("coordinator cron version %s", version.Version))
 	coordinator.RunApp(nil)
 }
