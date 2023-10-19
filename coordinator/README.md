@@ -12,7 +12,8 @@ See [monorepo prerequisites](../README.md#prerequisites).
 
 ```bash
 make clean
-make coordinator
+make coordinator_api
+make coordinator_cron
 ```
 The built coordinator binary is in the `build/bin` directory.
 
@@ -44,13 +45,15 @@ The coordinator behavior can be configured using [`config.json`](config.json). C
 
 * Using default ports and config.json:
 ```bash
-./build/bin/coordinator --http
+./build/bin/coordinator_api --http
+./build/bin/coordinator_cron 
 ```
 
 * Using manually specified ports and config.json:
 ```bash
-./build/bin/coordinator --config ./config.json --http --http.addr localhost --http.port 8390
+./build/bin/coordinator_api --config ./config.json --http --http.addr localhost --http.port 8390
+./build/bin/coordinator_cron --config ./config.json 
 ```
 
-* For other flags, refer to [`cmd/app/flags.go`](cmd/app/flags.go).
+* For other flcvgh bv cvbv ags, refer to [`cmd/api/app/flags.go`](cmd/api/app/flags.go).
 
