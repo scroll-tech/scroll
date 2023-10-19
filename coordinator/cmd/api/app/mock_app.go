@@ -56,7 +56,7 @@ func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 // RunApp run coordinator-test child process by multi parameters.
 func (c *CoordinatorApp) RunApp(t *testing.T, args ...string) {
 	c.AppAPI = cmd.NewCmd(string(utils.CoordinatorAPIApp), append(c.args, args...)...)
-	c.AppAPI.RunApp(func() bool { return c.AppAPI.WaitResult(t, time.Second*20, "Start coordinator successfully") })
+	c.AppAPI.RunApp(func() bool { return c.AppAPI.WaitResult(t, time.Second*20, "Start coordinator api successfully") })
 }
 
 // Free stop and release coordinator-test.

@@ -66,7 +66,7 @@ func action(ctx *cli.Context) error {
 	apiSrv := apiServer(ctx, cfg, db, registry)
 
 	log.Info(
-		"Start coordinator successfully.",
+		"Start coordinator api successfully.",
 		"version", version.Version,
 	)
 
