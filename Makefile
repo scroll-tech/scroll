@@ -1,5 +1,6 @@
 .PHONY: check update dev_docker build_test_docker run_test_docker clean
 
+L1GETH_TAG=v1.12.2
 L2GETH_TAG=scroll-v5.0.1
 
 help: ## Display this help message
@@ -18,7 +19,7 @@ lint: ## The code's format and security checks.
 update: ## update dependencies
 	go work sync
 	cd $(PWD)/rollup/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/bridge-history-api/ && go get -u github.com/ethereum/go-ethereum@latest && go mod tidy
+	cd $(PWD)/bridge-history-api/ && go get -u github.com/ethereum/go-ethereum@${L1GETH_TAG} && go mod tidy
 	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
