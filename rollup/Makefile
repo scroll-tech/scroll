@@ -24,7 +24,7 @@ rollup_relayer: ## Builds the rollup_relayer bin
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
-lint: ## Lint the files - used for CI
+lint: mock_abi ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
