@@ -19,5 +19,6 @@
   "L1WETHGateway": {
     "implementation": null,
     "proxy": null
-  }
+  },
+  "Whitelist": "0x048e0Df7311a1F57B7de09EEa695C1249D1Ae76E"
 }

@@ -52,7 +52,7 @@
     "toml": "^3.0.0",
     "ts-node": "^10.1.0",
     "typechain": "^5.1.2",
-    "typescript": "^4.5.2"
+    "typescript": "^4.6.3"
   },
   "dependencies": {
     "@openzeppelin/contracts": "^v4.9.3",

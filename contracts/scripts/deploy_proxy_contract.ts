@@ -16,6 +16,7 @@ async function main() {
   }
 
   const contractName = process.env.CONTRACT_NAME!;
+
   const ProxyAdmin = await ethers.getContractAt("ProxyAdmin", addressFile.get("ProxyAdmin"), deployer);
 
   if (!addressFile.get(`${contractName}.implementation`)) {
