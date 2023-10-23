@@ -143,12 +143,12 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 }
 
 func (r *Layer2Relayer) initializeGenesis() error {
-	if count, err := r.batchOrm.GetBatchCount(r.ctx); err != nil {
-		return fmt.Errorf("failed to get batch count: %v", err)
-	} else if count > 0 {
-		log.Info("genesis already imported", "batch count", count)
-		return nil
-	}
+	// if count, err := r.batchOrm.GetBatchCount(r.ctx); err != nil {
+	// 	return fmt.Errorf("failed to get batch count: %v", err)
+	// } else if count > 0 {
+	// 	log.Info("genesis already imported", "batch count", count)
+	// 	return nil
+	// }
 
 	genesis, err := r.l2Client.HeaderByNumber(r.ctx, big.NewInt(0))
 	if err != nil {

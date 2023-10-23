@@ -12,21 +12,20 @@ async function main() {
   const ScrollChainCommitmentVerifier = await ethers.getContractFactory("ScrollChainCommitmentVerifier", deployer);
 
   const L1ScrollChainAddress = process.env.L1_SCROLL_CHAIN_PROXY_ADDR!;
-  let PoseidonUnit2Address = process.env.POSEIDON_UNIT2_ADDR;
 
-  if (!PoseidonUnit2Address) {
-    const Poseidon2Elements = new ethers.ContractFactory(
-      poseidonUnit.generateABI(2),
-      poseidonUnit.createCode(2),
-      deployer
-    );
+  // if (!PoseidonUnit2Address) {
+  //   const Poseidon2Elements = new ethers.ContractFactory(
+  //     poseidonUnit.generateABI(2),
+  //     poseidonUnit.createCode(2),
+  //     deployer
+  //   );
 
-    const poseidon = await Poseidon2Elements.deploy();
-    console.log("Deploy PoseidonUnit2 contract, hash:", poseidon.deployTransaction.hash);
-    const receipt = await poseidon.deployTransaction.wait();
-    console.log(`✅ Deploy PoseidonUnit2 contract at: ${poseidon.address}, gas used: ${receipt.gasUsed}`);
-    PoseidonUnit2Address = poseidon.address;
-  }
+  //   const poseidon = await Poseidon2Elements.deploy();
+  //   console.log("Deploy PoseidonUnit2 contract, hash:", poseidon.deployTransaction.hash);
+  //   const receipt = await poseidon.deployTransaction.wait();
+  //   console.log(`✅ Deploy PoseidonUnit2 contract at: ${poseidon.address}, gas used: ${receipt.gasUsed}`);
+  //   PoseidonUnit2Address = poseidon.address;
+  // }
 
   const verifier = await ScrollChainCommitmentVerifier.deploy(PoseidonUnit2Address, L1ScrollChainAddress);
   console.log("Deploy ScrollChainCommitmentVerifier contract, hash:", verifier.deployTransaction.hash);

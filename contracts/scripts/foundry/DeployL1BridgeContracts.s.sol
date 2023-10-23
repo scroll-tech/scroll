@@ -46,11 +46,11 @@ contract DeployL1BridgeContracts is Script {
         deployL1MessageQueue();
         deployL2GasPriceOracle();
         deployScrollChain();
+        deployL1ScrollMessenger();
         deployL1ETHGateway();
         deployL1WETHGateway();
         deployL1StandardERC20Gateway();
         deployL1GatewayRouter();
-        deployL1ScrollMessenger();
         deployEnforcedTxGateway();
         deployL1CustomERC20Gateway();
         deployL1ERC721Gateway();

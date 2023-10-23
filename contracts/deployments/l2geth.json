@@ -4,7 +4,10 @@
   "Whitelist": null,
   "ScrollStandardERC20": null,
   "ScrollStandardERC20Factory": null,
-  "L2ScrollMessenger": null,
+  "L2ScrollMessenger": {
+    "implementation": null,
+    "proxy": null
+  },
   "L2GatewayRouter": {
     "implementation": null,
     "proxy": null
@@ -14,6 +17,26 @@
     "proxy": null
   },
   "L2WETHGateway": {
+    "implementation": null,
+    "proxy": null
+  },
+  "L1GasPriceOracle": null,
+  "L2MessageQueue": null,
+  "L2TxFeeVault": null,
+  "L1BlockContainer": null,
+  "L2CustomERC20Gateway": {
+    "implementation": null,
+    "proxy": null
+  },
+  "L2ERC721Gateway": {
+    "implementation": null,
+    "proxy": null
+  },
+  "L2ERC1155Gateway": {
+    "implementation": null,
+    "proxy": null
+  },
+  "L2ETHGateway": {
     "implementation": null,
     "proxy": null
   }
