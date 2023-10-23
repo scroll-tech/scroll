@@ -31,7 +31,7 @@ dependencies = [
 [[package]]
 name = "aggregator"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "ark-std",
  "env_logger 0.10.0",
@@ -333,7 +333,7 @@ checksum = "a3e2c3daef883ecc1b5d58c15adae93470a91d425f3532ba1695849656af3fc1"
 [[package]]
 name = "bus-mapping"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "eth-types",
  "ethers-core",
@@ -959,7 +959,7 @@ dependencies = [
 [[package]]
 name = "eth-types"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "ethers-core",
  "ethers-signers",
@@ -968,6 +968,7 @@ dependencies = [
  "itertools",
  "lazy_static",
  "libsecp256k1",
+ "log",
  "num",
  "num-bigint",
  "once_cell",
@@ -1116,7 +1117,7 @@ dependencies = [
 [[package]]
 name = "external-tracer"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "eth-types",
  "geth-utils",
@@ -1178,6 +1179,12 @@ checksum = "a62bc1cf6f830c2ec14a513a9fb124d0a213a629668a4186f329db21fe045652"
 dependencies = [
  "percent-encoding",
 ]
+
+[[package]]
+name = "fs_extra"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
 name = "funty"
@@ -1296,7 +1303,7 @@ dependencies = [
 [[package]]
 name = "gadgets"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "digest 0.7.6",
  "eth-types",
@@ -1328,7 +1335,7 @@ dependencies = [
 [[package]]
 name = "geth-utils"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "env_logger 0.9.3",
  "gobuild 0.1.0-alpha.2 (git+https://github.com/scroll-tech/gobuild.git)",
@@ -1519,7 +1526,7 @@ dependencies = [
 [[package]]
 name = "halo2_proofs"
 version = "0.2.0"
-source = "git+https://github.com/scroll-tech/halo2.git?branch=develop#e3fe25eadd714fd991f35190d17ff0b8fb031188"
+source = "git+https://github.com/scroll-tech/halo2.git?branch=develop#92fe9b3e2420ee51336b39513e397df7c8175cf9"
 dependencies = [
  "ark-std",
  "blake2b_simd",
@@ -1890,6 +1897,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
+name = "jemalloc-sys"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d3b9f3f5c9b31aa0f5ed3260385ac205db665baa41d49bb8338008ae94ede45"
+dependencies = [
+ "cc",
+ "fs_extra",
+ "libc",
+]
+
+[[package]]
+name = "jemallocator"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43ae63fcfc45e99ab3d1b29a46782ad679e98436c3169d15a167a1108a724b69"
+dependencies = [
+ "jemalloc-sys",
+ "libc",
+]
+
+[[package]]
 name = "js-sys"
 version = "0.3.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1937,7 +1965,7 @@ dependencies = [
 [[package]]
 name = "keccak256"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "env_logger 0.9.3",
  "eth-types",
@@ -2135,7 +2163,7 @@ dependencies = [
 [[package]]
 name = "mock"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "eth-types",
  "ethers-core",
@@ -2151,7 +2179,7 @@ dependencies = [
 [[package]]
 name = "mpt-zktrie"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "eth-types",
  "halo2-mpt-circuits",
@@ -2582,7 +2610,7 @@ dependencies = [
 [[package]]
 name = "prover"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "aggregator",
  "anyhow",
@@ -3196,9 +3224,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.104"
+version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "076066c5f1078eac5b722a31827a8832fe108bed65dfa75e233c89f8206e976c"
+checksum = "6b420ce6e3d8bd882e9b243c6eed35dbc9a6110c9769e74b584e0d68d1f20c65"
 dependencies = [
  "itoa",
  "ryu",
@@ -4125,7 +4153,7 @@ checksum = "2a0956f1ba7c7909bfb66c2e9e4124ab6f6482560f6628b5aaeba39207c9aad9"
 [[package]]
 name = "zkevm-circuits"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.9.7#2055cc0bb970aa28d597c945b6078e2469af8862"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=mem-leak-test#3502843bee8fd4e77350b85b6f1ad53ece6e6299"
 dependencies = [
  "array-init",
  "bus-mapping",
@@ -4173,6 +4201,7 @@ dependencies = [
  "base64 0.13.1",
  "env_logger 0.9.3",
  "halo2_proofs",
+ "jemallocator",
  "libc",
  "log",
  "once_cell",

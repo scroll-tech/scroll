@@ -19,7 +19,7 @@ else
 endif
 
 libzkp:
-	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
+	cd ../common/libzkp/impl && rm -f ./target/release/libzkp.so && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./core/lib && cp -r ../common/libzkp/interface ./core/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./core/lib/
 
