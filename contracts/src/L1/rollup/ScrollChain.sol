@@ -585,4 +585,75 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         return _ptr;
     }
+
+
+        function updateProofHashLiquidation( bytes32 _proofHash, uint64 finalNewBatch) internal {
+        // uint256 position = proverPosition[_proofHash];
+        ProverLiquidationInfo[] storage proverLiquidations = proverLiquidation[msg.sender];
+        proverLiquidations.push(ProverLiquidationInfo({
+            prover: msg.sender,
+            isSubmittedProofHash: true,
+            submitHashBlockNumber: block.number,
+            isSubmittedProof: false,
+            submitProofBlockNumber: block.number,
+            isLiquidated: false,
+            finalNewBatch: finalNewBatch
+        }));
+        proverPosition[_proofHash] = proverLiquidations.length - 1;
+        updateLiquidation(msg.sender);
+    }
+
+
+    function updateProofLiquidation(bytes32 _proofHash, bool _punished) internal {
+        uint256 position = proverPosition[_proofHash];
+        ProverLiquidationInfo[] storage proverLiquidations = proverLiquidation[msg.sender];
+        ProverLiquidationInfo storage proverLiquidationInfo = proverLiquidations[position];
+        proverLiquidationInfo.submitProofBlockNumber = block.number;
+        proverLiquidationInfo.isSubmittedProof = true;
+        if (_punished) {
+            proverLiquidationInfo.isLiquidated = true;
+        }
+        updateLiquidation(msg.sender);
+    }
+
+    function updateLiquidation(address _account) internal {
+        uint256 proverLastLiquidatedPosition = proverLastLiquidated[_account];
+        ProverLiquidationInfo[] storage proverLiquidations = proverLiquidation[_account];
+        for (uint256 i = proverLastLiquidatedPosition; i < proverLiquidations.length; i++) {
+            ProverLiquidationInfo storage proverLiquidationInfo = proverLiquidations[i];
+            if (!proverLiquidationInfo.isLiquidated) {
+                if (proverLiquidationInfo.isSubmittedProof) {
+                    if (!sequencedBatches[proverLiquidationInfo.finalNewBatch].proofSubmitted) {
+                        if ((proverLiquidationInfo.submitProofBlockNumber - proverLiquidationInfo.submitHashBlockNumber) > (proofHashCommitEpoch + proofCommitEpoch)) {
+                            proverLiquidationInfo.isLiquidated = true;
+                            proverLastLiquidated[_account]++;
+                            slotAdapter.punish(_account, ideDeposit, noProofPunishAmount);
+                        }
+                    } else {
+                        proverLiquidationInfo.isLiquidated = true;
+                        proverLastLiquidated[_account]++;
+                    }
+                } else {
+                    if ((block.number - proverLiquidationInfo.submitHashBlockNumber) > (proofHashCommitEpoch + proofCommitEpoch)) {
+                        proverLiquidationInfo.isLiquidated = true;
+                        proverLastLiquidated[_account]++;
+                        slotAdapter.punish(_account, ideDeposit, noProofPunishAmount);
+                    }
+                }
+
+            } else {
+                proverLastLiquidated[_account]++;
+            }
+        }
+    }
+
+    function isAllLiquidated() external view  returns(bool) {
+        ProverLiquidationInfo[] storage proverLiquidations = proverLiquidation[msg.sender];
+        return proverLiquidations[proverLiquidations.length-1].isLiquidated;
+    }
+
+    function settle(address _account) external onlyDeposit {
+        updateLiquidation(_account);
+    }
+
 }
