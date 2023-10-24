@@ -33,7 +33,7 @@ env CONTRACT_NAME=L2ERC1155Gateway npx hardhat run --network $layer2 scripts/dep
 env CONTRACT_NAME=L2ETHGateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
 env CONTRACT_NAME=L2WETHGateway npx hardhat run --network $layer2 scripts/deploy_proxy_contract.ts
 
-# initalize contracts in layer 1, should set proper bash env variables first
+# initialize contracts in layer 1, should set proper bash env variables first
 npx hardhat --network $layer1 run scripts/initialize_l1_erc20_gateway.ts
 npx hardhat --network $layer1 run scripts/initialize_l1_gateway_router.ts
 npx hardhat --network $layer1 run scripts/initialize_scroll_chain.ts
@@ -42,7 +42,7 @@ npx hardhat --network $layer1 run scripts/initialize_l1_custom_erc20_gateway.ts
 npx hardhat --network $layer1 run scripts/initialize_l1_erc1155_gateway.ts
 npx hardhat --network $layer1 run scripts/initialize_l1_erc721_gateway.ts
 
-# initalize contracts in layer 2, should set proper bash env variables first
+# initialize contracts in layer 2, should set proper bash env variables first
 npx hardhat --network $layer2 run scripts/initialize_l2_erc20_gateway.ts
 npx hardhat --network $layer2 run scripts/initialize_l2_gateway_router.ts
 npx hardhat --network $layer2 run scripts/initialize_l2_custom_erc20_gateway.ts
