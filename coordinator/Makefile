@@ -50,7 +50,7 @@ clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
 docker:
-	#DOCKER_BUILDKIT=1 docker build -t scrolltech/coordinator-api:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator-api.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/coordinator-api:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator-api.Dockerfile
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/coordinator-cron:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator-cron.Dockerfile
 
 docker_push:
