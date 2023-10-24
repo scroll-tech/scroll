@@ -12,3 +12,4 @@ char* gen_chunk_proof(char* block_traces);
 char verify_chunk_proof(char* proof);
 
 char* block_traces_to_chunk_info(char* block_traces);
+void free_c_chars(char* ptr);
