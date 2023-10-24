@@ -1,23 +1,6 @@
-# Build libzkp dependency
-FROM scrolltech/go-rust-builder:go-1.19-rust-nightly-2022-12-10 as chef
-WORKDIR app
-
-FROM chef as planner
-COPY ./common/libzkp/impl/ .
-RUN cargo chef prepare --recipe-path recipe.json
-
-FROM chef as zkp-builder
-COPY ./common/libzkp/impl/rust-toolchain ./
-COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --recipe-path recipe.json
-
-COPY ./common/libzkp/impl .
-RUN cargo build --release
-RUN find ./ | grep libzktrie.so | xargs -I{} cp {} /app/target/release/
-
-
 # Download Go dependencies
-FROM scrolltech/go-rust-builder:go-1.19-rust-nightly-2022-12-10 as base
+FROM scrolltech/go-alpine-builder:1.19 as base
+
 WORKDIR /src
 COPY go.work* ./
 COPY ./rollup/go.* ./rollup/
@@ -29,22 +12,14 @@ COPY ./tests/integration-test/go.* ./tests/integration-test/
 COPY ./bridge-history-api/go.* ./bridge-history-api/
 RUN go mod download -x
 
-
 # Build coordinator
 FROM base as builder
-COPY . .
-RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
-COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/logic/verifier/lib/
-COPY --from=zkp-builder /app/target/release/libzktrie.so ./coordinator/internal/logic/verifier/lib/
-RUN cd ./coordinator && make coordinator_cron_skip_libzkp && mv ./build/bin/coordinator_cron /bin/coordinator_cron && mv internal/logic/verifier/lib /bin/
+RUN --mount=target=. \
+    --mount=type=cache,target=/root/.cache/go-build \
+    cd /src/coordinator/cmd/cron/ && go build -v -p 4 -o /bin/coordinator_cron
 
 # Pull coordinator into a second stage deploy alpine container
-FROM ubuntu:20.04
-ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
-# ENV CHAIN_ID=534353
-RUN mkdir -p /src/coordinator/internal/logic/verifier/lib
-COPY --from=builder /bin/lib /src/coordinator/internal/logic/verifier/lib
+FROM alpine:latest
 COPY --from=builder /bin/coordinator_cron /bin/
-RUN /bin/coordinator_cron --version
 
-ENTRYPOINT ["/bin/coordinator_cron"]
+ENTRYPOINT ["coordinator_cron"]

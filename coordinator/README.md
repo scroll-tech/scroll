@@ -55,5 +55,5 @@ The coordinator behavior can be configured using [`config.json`](config.json). C
 ./build/bin/coordinator_cron --config ./config.json 
 ```
 
-* For other flcvgh bv cvbv ags, refer to [`cmd/api/app/flags.go`](cmd/api/app/flags.go).
+* For other flags, refer to [`cmd/api/app/flags.go`](cmd/api/app/flags.go).
 
