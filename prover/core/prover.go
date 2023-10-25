@@ -49,6 +49,7 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 		C.init_chunk_prover(paramsPathStr, assetsPathStr)
 		rawVK = C.get_chunk_vk()
 	}
+	defer C.free_c_chars(rawVK)
 
 	if rawVK != nil {
 		vk = C.GoString(rawVK)
@@ -161,7 +162,7 @@ func (p *ProverCore) checkChunkProofs(chunkProofsByt []byte) (bool, error) {
 
 	log.Info("Start to check chunk proofs ...")
 	cResult := C.check_chunk_proofs(chunkProofsStr)
-	defer C.free(unsafe.Pointer(cResult))
+	defer C.free_c_chars(cResult)
 	log.Info("Finish checking chunk proofs!")
 
 	var result CheckChunkProofsResponse
@@ -188,7 +189,7 @@ func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) ([]
 
 	log.Info("Start to create batch proof ...")
 	bResult := C.gen_batch_proof(chunkInfosStr, chunkProofsStr)
-	defer C.free(unsafe.Pointer(bResult))
+	defer C.free_c_chars(bResult)
 	log.Info("Finish creating batch proof!")
 
 	var result ProofResult
@@ -210,7 +211,7 @@ func (p *ProverCore) proveChunk(tracesByt []byte) ([]byte, error) {
 
 	log.Info("Start to create chunk proof ...")
 	cProof := C.gen_chunk_proof(tracesStr)
-	defer C.free(unsafe.Pointer(cProof))
+	defer C.free_c_chars(cProof)
 	log.Info("Finish creating chunk proof!")
 
 	var result ProofResult
@@ -242,12 +243,10 @@ func (p *ProverCore) mayDumpProof(id string, proofByt []byte) error {
 
 func (p *ProverCore) tracesToChunkInfo(tracesByt []byte) []byte {
 	tracesStr := C.CString(string(tracesByt))
-
-	defer func() {
-		C.free(unsafe.Pointer(tracesStr))
-	}()
+	defer C.free(unsafe.Pointer(tracesStr))
 
 	cChunkInfo := C.block_traces_to_chunk_info(tracesStr)
+	defer C.free_c_chars(cChunkInfo)
 
 	chunkInfo := C.GoString(cChunkInfo)
 	return []byte(chunkInfo)

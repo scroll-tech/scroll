@@ -11,6 +11,19 @@ use std::{
 pub(crate) static OUTPUT_DIR: Lazy<Option<String>> =
     Lazy::new(|| env::var("PROVER_OUTPUT_DIR").ok());
 
+/// # Safety
+#[no_mangle]
+pub extern "C" fn free_c_chars(ptr: *mut c_char) {
+    if ptr.is_null() {
+        log::warn!("Try to free an empty pointer!");
+        return;
+    }
+
+    unsafe {
+        let _ = CString::from_raw(ptr);
+    }
+}
+
 pub(crate) fn c_char_to_str(c: *const c_char) -> &'static str {
     let cstr = unsafe { CStr::from_ptr(c) };
     cstr.to_str().unwrap()
