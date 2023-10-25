@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.16;
 
 interface IPolygonZkEVMErrors {
     /**
@@ -234,4 +234,6 @@ interface IPolygonZkEVMErrors {
     error ErrCommitProof();
     
     error ErrSequencerRange(uint64 _initNumBatch, uint64 _previousLastBatchSequenced);
+
+    error ErrorBatchHash(bytes32);
 }
