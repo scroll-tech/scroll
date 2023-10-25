@@ -4,11 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -48,6 +50,8 @@ type ChunkProposer struct {
 	ctx context.Context
 	db  *gorm.DB
 
+	*ethclient.Client
+
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
@@ -74,7 +78,7 @@ type ChunkProposer struct {
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
-func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
+func NewChunkProposer(ctx context.Context, client *ethclient.Client, cfg *config.ChunkProposerConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
 	log.Debug("new chunk proposer",
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
@@ -85,6 +89,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 
 	return &ChunkProposer{
 		ctx:                             ctx,
+		Client:                          client,
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
@@ -149,28 +154,34 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 
 // TryProposeChunk tries to propose a new chunk.
 func (p *ChunkProposer) TryProposeChunk() {
+	parentChunk, err := p.chunkOrm.GetLatestChunk(p.ctx)
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+		log.Error("failed to get latest chunk", "err", err)
+		return
+	}
+
 	p.chunkProposerCircleTotal.Inc()
-	proposedChunk, err := p.proposeChunk()
+	proposedChunk, err := p.proposeChunk(parentChunk)
 	if err != nil {
 		p.proposeChunkFailureTotal.Inc()
 		log.Error("propose new chunk failed", "err", err)
 		return
 	}
 
-	if err := p.updateChunkInfoInDB(proposedChunk); err != nil {
+	if err := p.updateChunkInfoInDB(parentChunk, proposedChunk); err != nil {
 		p.proposeChunkUpdateInfoFailureTotal.Inc()
 		log.Error("update chunk info in orm failed", "err", err)
 	}
 }
 
-func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
+func (p *ChunkProposer) updateChunkInfoInDB(parentChunk *orm.Chunk, chunk *types.Chunk) error {
 	if chunk == nil {
 		return nil
 	}
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, dbTX)
+		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, parentChunk, chunk, dbTX)
 		if err != nil {
 			log.Warn("ChunkProposer.InsertChunk failed", "chunk hash", chunk.Hash)
 			return err
@@ -184,7 +195,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	return err
 }
 
-func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
+func (p *ChunkProposer) proposeChunk(parentChunk *orm.Chunk) (*types.Chunk, error) {
 	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
 	if err != nil {
 		return nil, err
@@ -206,6 +217,24 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	var totalL1CommitCalldataSize uint64
 	var totalL1CommitGas uint64
 	crc := chunkRowConsumption{}
+	lastAppliedL1Block := blocks[len(blocks)-1].LastAppliedL1Block
+	var l1BlockRangeHashFrom uint64
+
+	if parentChunk != nil {
+		l1BlockRangeHashFrom = parentChunk.LastAppliedL1Block
+		if l1BlockRangeHashFrom != 0 {
+			l1BlockRangeHashFrom++
+		}
+	}
+
+	l1BlockRangeHash, err := p.Client.GetL1BlockRangeHash(p.ctx, big.NewInt(int64(l1BlockRangeHashFrom)), big.NewInt(int64(lastAppliedL1Block)))
+	if err != nil {
+		log.Error("failed to get block range hash", "err", err)
+		return nil, fmt.Errorf("chunk-proposer failed to get block range hash error: %w", err)
+	}
+
+	chunk.LastAppliedL1Block = lastAppliedL1Block
+	chunk.L1BlockRangeHash = *l1BlockRangeHash
 
 	for i, block := range blocks {
 		// metric values

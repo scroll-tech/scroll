@@ -14,7 +14,9 @@ import (
 
 // Chunk contains blocks to be encoded
 type Chunk struct {
-	Blocks []*WrappedBlock `json:"blocks"`
+	Blocks             []*WrappedBlock `json:"blocks"`
+	LastAppliedL1Block uint64          `json:"latest_applied_l1_block"`
+	L1BlockRangeHash   common.Hash     `json:"l1_block_range_hash"`
 }
 
 // NumL1Messages returns the number of L1 messages in this chunk.
@@ -76,6 +78,9 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 	}
 
 	chunkBytes = append(chunkBytes, l2TxDataBytes...)
+
+	binary.BigEndian.AppendUint64(chunkBytes, c.LastAppliedL1Block)
+	chunkBytes = append(chunkBytes, c.L1BlockRangeHash.Bytes()...)
 
 	return chunkBytes, nil
 }

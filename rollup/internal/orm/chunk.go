@@ -30,6 +30,8 @@ type Chunk struct {
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
 	WithdrawRoot                 string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	LastAppliedL1Block           uint64 `json:"latest_applied_l1_block" gorm:"column:latest_applied_l1_block"`
+	L1BlockRangeHash             string `json:"l1_block_range_hash" gorm:"column:l1_block_range_hash"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -135,7 +137,7 @@ func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) (
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, parentChunk *Chunk, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -144,11 +146,6 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
-	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
-		log.Error("failed to get latest chunk", "err", err)
-		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
-	}
 
 	// if parentChunk==nil then err==gorm.ErrRecordNotFound, which means there's
 	// not chunk record in the db, we then use default empty values for the creating chunk;
@@ -194,6 +191,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
 		ParentChunkStateRoot:         parentChunkStateRoot,
 		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
+		LastAppliedL1Block:           chunk.LastAppliedL1Block,
+		L1BlockRangeHash:             chunk.L1BlockRangeHash.Hex(),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 

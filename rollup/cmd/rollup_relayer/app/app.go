@@ -80,7 +80,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db, registry)
+	chunkProposer := watcher.NewChunkProposer(subCtx, l2client, cfg.L2Config.ChunkProposerConfig, db, registry)
 	if err != nil {
 		log.Error("failed to create chunkProposer", "config file", cfgFile, "error", err)
 		return err

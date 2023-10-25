@@ -27,13 +27,14 @@ func GetMemoryExpansionCost(memoryByteSize uint64) uint64 {
 	return memoryCost
 }
 
-// WrappedBlock contains the block's Header, Transactions and WithdrawTrieRoot hash.
+// WrappedBlock contains the block's Header, Transactions, WithdrawTrieRoot hash and LastAppliedL1Block.
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
 	Transactions         []*types.TransactionData `json:"transactions"`
 	WithdrawRoot         common.Hash              `json:"withdraw_trie_root,omitempty"`
 	RowConsumption       *types.RowConsumption    `json:"row_consumption"`
+	LastAppliedL1Block   uint64                   `json:"latest_applied_l1_block"`
 	txPayloadLengthCache map[string]uint64
 }
 
@@ -67,7 +68,7 @@ func (w *WrappedBlock) NumL2Transactions() uint64 {
 
 // Encode encodes the WrappedBlock into RollupV2 BlockContext Encoding.
 func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
-	bytes := make([]byte, 60)
+	bytes := make([]byte, 68)
 
 	if !w.Header.Number.IsUint64() {
 		return nil, errors.New("block number is not uint64")
@@ -92,6 +93,7 @@ func (w *WrappedBlock) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error)
 	binary.BigEndian.PutUint64(bytes[48:], w.Header.GasLimit)
 	binary.BigEndian.PutUint16(bytes[56:], uint16(numTransactions))
 	binary.BigEndian.PutUint16(bytes[58:], uint16(numL1Messages))
+	binary.BigEndian.PutUint64(bytes[60:], w.LastAppliedL1Block)
 
 	return bytes, nil
 }

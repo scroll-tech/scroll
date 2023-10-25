@@ -220,7 +220,9 @@ type TaskMsg struct {
 
 // ChunkTaskDetail is a type containing ChunkTask detail.
 type ChunkTaskDetail struct {
-	BlockHashes []common.Hash `json:"block_hashes"`
+	BlockHashes            []common.Hash `json:"block_hashes"`
+	PrevLastAppliedL1Block uint64        `json:"prev_last_applied_l1_block"`
+	L1BlockRangeHash       common.Hash   `json:"l1_block_range_hash"`
 }
 
 // BatchTaskDetail is a type containing BatchTask detail.
@@ -253,12 +255,13 @@ func (z *ProofDetail) Hash() ([]byte, error) {
 
 // ChunkInfo is for calculating pi_hash for chunk
 type ChunkInfo struct {
-	ChainID       uint64      `json:"chain_id"`
-	PrevStateRoot common.Hash `json:"prev_state_root"`
-	PostStateRoot common.Hash `json:"post_state_root"`
-	WithdrawRoot  common.Hash `json:"withdraw_root"`
-	DataHash      common.Hash `json:"data_hash"`
-	IsPadding     bool        `json:"is_padding"`
+	ChainID          uint64      `json:"chain_id"`
+	PrevStateRoot    common.Hash `json:"prev_state_root"`
+	PostStateRoot    common.Hash `json:"post_state_root"`
+	L1BlockRangeHash common.Hash `json:"l1_block_range_hash"`
+	WithdrawRoot     common.Hash `json:"withdraw_root"`
+	DataHash         common.Hash `json:"data_hash"`
+	IsPadding        bool        `json:"is_padding"`
 }
 
 // ChunkProof includes the proof info that are required for chunk verification and rollup.

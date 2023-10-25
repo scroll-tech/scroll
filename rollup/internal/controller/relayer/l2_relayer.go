@@ -165,16 +165,17 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	chunk := &types.Chunk{
 		Blocks: []*types.WrappedBlock{{
-			Header:         genesis,
-			Transactions:   nil,
-			WithdrawRoot:   common.Hash{},
-			RowConsumption: &gethTypes.RowConsumption{},
+			Header:             genesis,
+			Transactions:       nil,
+			WithdrawRoot:       common.Hash{},
+			RowConsumption:     &gethTypes.RowConsumption{},
+			LastAppliedL1Block: 0,
 		}},
 	}
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		var dbChunk *orm.Chunk
-		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, dbTX)
+		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, nil, chunk, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
