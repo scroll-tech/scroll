@@ -83,6 +83,8 @@ func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) 
 			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 		}
 
+		wrappedBlock.LastAppliedL1Block = v.LastAppliedL1Block
+
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}
 

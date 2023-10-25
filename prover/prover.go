@@ -22,6 +22,7 @@ import (
 	"scroll-tech/prover/store"
 	putils "scroll-tech/prover/utils"
 
+	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
@@ -288,11 +289,14 @@ func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error
 	if err != nil {
 		return nil, fmt.Errorf("get traces from eth node failed, block hashes: %v, err: %v", task.Task.ChunkTaskDetail.BlockHashes, err)
 	}
+	chunkTrace := message.ChunkTrace{
+		BlockTraces:            traces,
+		PrevLastAppliedL1Block: task.Task.ChunkTaskDetail.PrevLastAppliedL1Block,
+		L1BlockRangeHash:       task.Task.ChunkTaskDetail.L1BlockRangeHash,
+	}
 	return r.proverCore.ProveChunk(
 		task.Task.ID,
-		traces,
-		task.Task.ChunkTaskDetail.PrevLastAppliedL1Block,
-		task.Task.ChunkTaskDetail.L1BlockRangeHash,
+		&chunkTrace,
 	)
 }
 

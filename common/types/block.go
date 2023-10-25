@@ -110,7 +110,7 @@ func (w *WrappedBlock) EstimateL1CommitCalldataSize() uint64 {
 		size += 4 // 4 bytes payload length
 		size += w.getTxPayloadLength(txData)
 	}
-	size += 60 //  60 bytes BlockContext
+	size += 68 //  68 bytes BlockContext
 	return size
 }
 
@@ -130,8 +130,8 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 		total += GetKeccak256Gas(txPayloadLength)         // l2 tx hash
 	}
 
-	// 60 bytes BlockContext calldata
-	total += CalldataNonZeroByteGas * 60
+	// 68 bytes BlockContext calldata
+	total += CalldataNonZeroByteGas * 68
 
 	// sload
 	total += 2100 * numL1Messages // numL1Messages times cold sload in L1MessageQueue

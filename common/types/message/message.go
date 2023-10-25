@@ -9,6 +9,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
@@ -274,6 +275,12 @@ type ChunkProof struct {
 	// cross-reference between cooridinator computation and prover compution
 	ChunkInfo  *ChunkInfo `json:"chunk_info,omitempty"`
 	GitVersion string     `json:"git_version,omitempty"`
+}
+
+type ChunkTrace struct {
+	BlockTraces            []*types.BlockTrace `json:"block_traces"`
+	PrevLastAppliedL1Block uint64              `json:"prev_last_applied_l1_block"`
+	L1BlockRangeHash       common.Hash         `json:"l1_block_range_hash"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.

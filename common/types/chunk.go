@@ -55,8 +55,8 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 		}
 		totalL1MessagePoppedBefore += block.NumL1Messages(totalL1MessagePoppedBefore)
 
-		if len(blockBytes) != 60 {
-			return nil, fmt.Errorf("block encoding is not 60 bytes long %x", len(blockBytes))
+		if len(blockBytes) != 68 {
+			return nil, fmt.Errorf("block encoding is not 68 bytes long %x", len(blockBytes))
 		}
 
 		chunkBytes = append(chunkBytes, blockBytes...)
@@ -136,7 +136,7 @@ func (c *Chunk) EstimateL1CommitGas() uint64 {
 	numBlocks := uint64(len(c.Blocks))
 	totalL1CommitGas += 100 * numBlocks                         // numBlocks times warm sload
 	totalL1CommitGas += CalldataNonZeroByteGas                  // numBlocks field of chunk encoding in calldata
-	totalL1CommitGas += CalldataNonZeroByteGas * numBlocks * 60 // numBlocks of BlockContext in chunk
+	totalL1CommitGas += CalldataNonZeroByteGas * numBlocks * 68 // numBlocks of BlockContext in chunk
 
 	totalL1CommitGas += GetKeccak256Gas(58*numBlocks + 32*totalTxNum) // chunk hash
 	return totalL1CommitGas

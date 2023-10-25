@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"unsafe"
 
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -108,19 +107,17 @@ func (p *ProverCore) ProveBatch(taskID string, chunkInfos []*message.ChunkInfo, 
 // ProveChunk call rust ffi to generate chunk proof.
 func (p *ProverCore) ProveChunk(
 	taskID string,
-	traces []*types.BlockTrace,
-	prevLastAppliedL1Block uint64,
-	l1BlockRangeHash common.Hash,
+	chunkTrace *message.ChunkTrace,
 ) (*message.ChunkProof, error) {
 	if p.cfg.ProofType != message.ProofTypeChunk {
 		return nil, fmt.Errorf("prover is not a chunk-prover (type: %v), but is trying to prove a chunk", p.cfg.ProofType)
 	}
 
-	tracesByt, err := json.Marshal(traces)
+	chunkTraceByt, err := json.Marshal(chunkTrace)
 	if err != nil {
 		return nil, err
 	}
-	proofByt, err := p.proveChunk(tracesByt, prevLastAppliedL1Block, l1BlockRangeHash.Bytes())
+	proofByt, err := p.proveChunk(chunkTraceByt)
 	if err != nil {
 		return nil, err
 	}
@@ -211,12 +208,9 @@ func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) ([]
 	return result.Message, nil
 }
 
-func (p *ProverCore) proveChunk(tracesByt []byte, prevLastAppliedL1Block uint64, l1BlockRangeHash []byte) ([]byte, error) {
-	tracesStr := C.CString(string(tracesByt))
-	defer C.free(unsafe.Pointer(tracesStr))
-
-	l1BlockRangeHashStr := C.CString(string(l1BlockRangeHash))
-	defer C.free(unsafe.Pointer(l1BlockRangeHashStr))
+func (p *ProverCore) proveChunk(chunkTraceByt []byte) ([]byte, error) {
+	chunkTraceBytStr := C.CString(string(chunkTraceByt))
+	defer C.free(unsafe.Pointer(chunkTraceBytStr))
 
 	log.Info("Start to create chunk proof ...")
 	cProof := C.gen_chunk_proof(tracesStr, C.uint64_t(prevLastAppliedL1Block), l1BlockRangeHashStr)
