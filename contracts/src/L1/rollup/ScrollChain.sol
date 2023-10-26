@@ -348,8 +348,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
     function submitProofHash(uint256 batchIndex, bytes32 _proofHash) external {
         isCommitProofHashAllowed(batchIndex);
-        // avoid duplicated verification
-        require(finalizedStateRoots[batchIndex] == bytes32(0), "batch already verified");
 
         if (ideDeposit.depositOf(msg.sender) < minDeposit) {
             revert InsufficientPledge();
@@ -480,60 +478,55 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
         // verify batch
         try IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash) {
-         
-        } catch Error(string memory reason) {
-            
-        } catch (bytes memory reason) {
-            
-        }
+            // authenticated proof, migrate state
+            proofNum[msg.sender]++;
+            slotAdapter.distributeRewards(msg.sender, uint64(_batchIndex), uint64(_batchIndex), ideDeposit);
+            updateProofLiquidation(proofHash, false);
 
+            if (!committedBatchInfo[_batchIndex].proofSubmitted) {
 
-
-        // check and update lastFinalizedBatchIndex
-        unchecked {
-            require(lastFinalizedBatchIndex + 1 == _batchIndex, "incorrect batch index");
-            lastFinalizedBatchIndex = _batchIndex;
-        }
-
-        // authenticated proof, migrate state
-        proofNum[msg.sender]++;
-        slotAdapter.distributeRewards(msg.sender, uint64(_batchIndex), uint64(_batchIndex), ideDeposit);
-        updateProofLiquidation(proofHash, false);
-
-        if (!committedBatchInfo[_batchIndex].proofSubmitted) {
-
-            // record state root and withdraw root
-            finalizedStateRoots[_batchIndex] = _postStateRoot;
-            withdrawRoots[_batchIndex] = _withdrawRoot;
-
-            // Pop finalized and non-skipped message from L1MessageQueue.
-            uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
-            if (_l1MessagePopped > 0) {
-                IL1MessageQueue _queue = IL1MessageQueue(messageQueue);
-
+                // check and update lastFinalizedBatchIndex
                 unchecked {
-                    uint256 _startIndex = BatchHeaderV0Codec.totalL1MessagePopped(memPtr) - _l1MessagePopped;
+                    require(lastFinalizedBatchIndex + 1 == _batchIndex, "incorrect batch index");
+                    lastFinalizedBatchIndex = _batchIndex;
+                }
 
-                    for (uint256 i = 0; i < _l1MessagePopped; i += 256) {
-                        uint256 _count = 256;
-                        if (_l1MessagePopped - i < _count) {
-                            _count = _l1MessagePopped - i;
+                // record state root and withdraw root
+                finalizedStateRoots[_batchIndex] = _postStateRoot;
+                withdrawRoots[_batchIndex] = _withdrawRoot;
+
+                emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
+
+                // Pop finalized and non-skipped message from L1MessageQueue.
+                uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
+                if (_l1MessagePopped > 0) {
+                    IL1MessageQueue _queue = IL1MessageQueue(messageQueue);
+
+                    unchecked {
+                        uint256 _startIndex = BatchHeaderV0Codec.totalL1MessagePopped(memPtr) - _l1MessagePopped;
+
+                        for (uint256 i = 0; i < _l1MessagePopped; i += 256) {
+                            uint256 _count = 256;
+                            if (_l1MessagePopped - i < _count) {
+                                _count = _l1MessagePopped - i;
+                            }
+                            uint256 _skippedBitmap = BatchHeaderV0Codec.skippedBitmap(memPtr, i / 256);
+
+                            _queue.popCrossDomainMessage(_startIndex, _count, _skippedBitmap);
+
+                            _startIndex += 256;
                         }
-                        uint256 _skippedBitmap = BatchHeaderV0Codec.skippedBitmap(memPtr, i / 256);
-
-                        _queue.popCrossDomainMessage(_startIndex, _count, _skippedBitmap);
-
-                        _startIndex += 256;
                     }
                 }
+                committedBatchInfo[_batchIndex].proofSubmitted = true;
             }
+            proverCommitProofHash[_batchIndex][msg.sender].proof = true;
 
-            committedBatchInfo[_batchIndex].proofSubmitted = true;
+        } catch {
+            slotAdapter.punish(msg.sender, ideDeposit, incorrectProofHashPunishAmount);
+            updateProofLiquidation(proofHash, true);
         }
 
-        proverCommitProofHash[_batchIndex][msg.sender].proof = true;
-
-        emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
     }
 
     function isCommitProofAllowed(uint256 batchIndex) internal {
