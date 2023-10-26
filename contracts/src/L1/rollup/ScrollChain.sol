@@ -431,8 +431,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
             _batchHash = committedBatches[_batchIndex];
             if (_batchHash == bytes32(0)) break;
-
-            
         }
     }
 
@@ -521,12 +519,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
                 committedBatchInfo[_batchIndex].proofSubmitted = true;
             }
             proverCommitProofHash[_batchIndex][msg.sender].proof = true;
-
         } catch {
             slotAdapter.punish(msg.sender, ideDeposit, incorrectProofHashPunishAmount);
             updateProofLiquidation(proofHash, true);
         }
-
     }
 
     function isCommitProofAllowed(uint256 batchIndex) internal view {
@@ -786,8 +782,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         return _ptr;
     }
 
-
-        function updateProofHashLiquidation(bytes32 _proofHash, uint64 finalNewBatch) internal {
+    function updateProofHashLiquidation(bytes32 _proofHash, uint64 finalNewBatch) internal {
         // uint256 position = proverPosition[_proofHash];
         ProverLiquidationInfo[] storage proverLiquidations = proverLiquidation[msg.sender];
         proverLiquidations.push(ProverLiquidationInfo({
@@ -802,7 +797,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         proverPosition[_proofHash] = proverLiquidations.length - 1;
         updateLiquidation(msg.sender);
     }
-
 
     function updateProofLiquidation(bytes32 _proofHash, bool _punished) internal {
         uint256 position = proverPosition[_proofHash];
