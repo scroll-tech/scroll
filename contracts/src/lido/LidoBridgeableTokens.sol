@@ -29,9 +29,6 @@ abstract contract LidoBridgeableTokens {
     /// @dev Thrown the `msg.value` is not zero.
     error ErrorNonZeroMsgValue();
 
-    /// @dev Thrown the `msg.value` is not match with the expected one.
-    error ErrorMsgValueMismatch();
-
     /**********************
      * Function Modifiers *
      **********************/

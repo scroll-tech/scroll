@@ -3,11 +3,12 @@
 pragma solidity =0.8.16;
 
 import {IL1ERC20Gateway} from "../L1/gateways/IL1ERC20Gateway.sol";
-import {IL2ScrollMessenger} from "../L2/IL2ScrollMessenger.sol";
 import {IL2ERC20Gateway} from "../L2/gateways/IL2ERC20Gateway.sol";
-import {IScrollERC20Upgradeable} from "../libraries/token/IScrollERC20Upgradeable.sol";
-
 import {L2ERC20Gateway} from "../L2/gateways/L2ERC20Gateway.sol";
+import {IL2ScrollMessenger} from "../L2/IL2ScrollMessenger.sol";
+import {IScrollERC20Upgradeable} from "../libraries/token/IScrollERC20Upgradeable.sol";
+import {ScrollGatewayBase} from "../libraries/gateway/ScrollGatewayBase.sol";
+
 import {LidoBridgeableTokens} from "./LidoBridgeableTokens.sol";
 import {LidoGatewayManager} from "./LidoGatewayManager.sol";
 
@@ -35,6 +36,22 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
     /// @param _l2Token The address of the token minted on the L2 chain when token bridged
     constructor(address _l1Token, address _l2Token) LidoBridgeableTokens(_l1Token, _l2Token) {
         _disableInitializers();
+    }
+
+    /// @notice Initialize the storage of L2LidoGateway v1.
+    function initialize(
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) external initializer {
+        require(_router != address(0), "zero router address");
+
+        ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
+    }
+
+    /// @notice Initialize the storage of L2LidoGateway v2.
+    function initializeV2() external reinitializer(2) {
+        __LidoGatewayManager_init();
     }
 
     /*************************
@@ -105,7 +122,15 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
         uint256 _amount,
         bytes memory _data,
         uint256 _gasLimit
-    ) internal virtual override nonReentrant onlySupportedL2Token(_l2Token) whenWithdrawalsEnabled {
+    )
+        internal
+        virtual
+        override
+        nonReentrant
+        onlySupportedL2Token(_l2Token)
+        onlyNonZeroAccount(_to)
+        whenWithdrawalsEnabled
+    {
         if (_amount == 0) revert ErrorWithdrawZeroAmount();
 
         // 1. Extract real sender if this call is from L2GatewayRouter.
@@ -117,7 +142,7 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
         // 2. Burn token.
         IScrollERC20Upgradeable(_l2Token).burn(_from, _amount);
 
-        // 3. Generate message passed to L1StandardERC20Gateway.
+        // 3. Generate message passed to L1LidoGateway.
         bytes memory _message = abi.encodeCall(
             IL1ERC20Gateway.finalizeWithdrawERC20,
             (l1Token, _l2Token, _from, _to, _amount, _data)

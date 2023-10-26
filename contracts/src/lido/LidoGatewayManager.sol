@@ -27,6 +27,26 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
     /// @param disabler The address of caller.
     event WithdrawalsDisabled(address indexed disabler);
 
+    /// @notice Emitted when the deposits enabler is updated.
+    /// @param oldEnabler The address of the previous deposits enabler.
+    /// @param newEnabler The address of the current deposits enabler.
+    event UpdateDepositsEnabler(address indexed oldEnabler, address indexed newEnabler);
+
+    /// @notice Emitted when the deposits disabler is updated.
+    /// @param oldDisabler The address of the previous deposits disabler.
+    /// @param newDisabler The address of the current deposits disabler.
+    event UpdateDepositsDisabler(address indexed oldDisabler, address indexed newDisabler);
+
+    /// @notice Emitted when the withdrawals enabler is updated.
+    /// @param oldEnabler The address of the previous withdrawals enabler.
+    /// @param newEnabler The address of the current withdrawals enabler.
+    event UpdateWithdrawalsEnabler(address indexed oldEnabler, address indexed newEnabler);
+
+    /// @notice Emitted when the withdrawals disabler is updated.
+    /// @param oldDisabler The address of the previous withdrawals disabler.
+    /// @param newDisabler The address of the current withdrawals disabler.
+    event UpdateWithdrawalsDisabler(address indexed oldDisabler, address indexed newDisabler);
+
     /**********
      * Errors *
      **********/
@@ -161,6 +181,46 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
 
         _loadState().isWithdrawalsEnabled = false;
         emit WithdrawalsDisabled(_msgSender());
+    }
+
+    /// @notice Update the address of deposits enabler.
+    /// @param _newEnabler The address of new deposits enabler.
+    function updateDepositsEnabler(address _newEnabler) external onlyOwner {
+        State storage s = _loadState();
+        address _oldEnabler = s.depositsEnabler;
+        s.depositsEnabler = _newEnabler;
+
+        emit UpdateDepositsEnabler(_oldEnabler, _newEnabler);
+    }
+
+    /// @notice Update the address of deposits disabler.
+    /// @param _newDisabler The address of new deposits disabler.
+    function updateDepositsDisabler(address _newDisabler) external onlyOwner {
+        State storage s = _loadState();
+        address _oldDisabler = s.depositsDisabler;
+        s.depositsDisabler = _newDisabler;
+
+        emit UpdateDepositsDisabler(_oldDisabler, _newDisabler);
+    }
+
+    /// @notice Update the address of withdrawals enabler.
+    /// @param _newEnabler The address of new withdrawals enabler.
+    function updateWithdrawalsEnabler(address _newEnabler) external onlyOwner {
+        State storage s = _loadState();
+        address _oldEnabler = s.withdrawalsEnabler;
+        s.withdrawalsEnabler = _newEnabler;
+
+        emit UpdateWithdrawalsEnabler(_oldEnabler, _newEnabler);
+    }
+
+    /// @notice Update the address of withdrawals disabler.
+    /// @param _newDisabler The address of new withdrawals disabler.
+    function updateWithdrawalsDisabler(address _newDisabler) external onlyOwner {
+        State storage s = _loadState();
+        address _oldDisabler = s.withdrawalsDisabler;
+        s.withdrawalsDisabler = _newDisabler;
+
+        emit UpdateWithdrawalsDisabler(_oldDisabler, _newDisabler);
     }
 
     /**********************

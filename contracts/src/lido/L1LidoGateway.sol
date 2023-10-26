@@ -3,10 +3,11 @@
 pragma solidity =0.8.16;
 
 import {IL1ERC20Gateway} from "../L1/gateways/IL1ERC20Gateway.sol";
+import {L1ERC20Gateway} from "../L1/gateways/L1ERC20Gateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
 import {IL2ERC20Gateway} from "../L2/gateways/IL2ERC20Gateway.sol";
+import {ScrollGatewayBase} from "../libraries/gateway/ScrollGatewayBase.sol";
 
-import {L1ERC20Gateway} from "../L1/gateways/L1ERC20Gateway.sol";
 import {LidoBridgeableTokens} from "./LidoBridgeableTokens.sol";
 import {LidoGatewayManager} from "./LidoGatewayManager.sol";
 
@@ -36,7 +37,18 @@ contract L1LidoGateway is L1ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
         _disableInitializers();
     }
 
-    /// @notice Initialize the storage of L1LidoGateway.
+    /// @notice Initialize the storage of L1LidoGateway v1.
+    function initialize(
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) external initializer {
+        require(_router != address(0), "zero router address");
+
+        ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
+    }
+
+    /// @notice Initialize the storage of L1LidoGateway v2.
     function initializeV2() external reinitializer(2) {
         __LidoGatewayManager_init();
     }
