@@ -385,7 +385,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         emit SubmitProofHash(msg.sender, batchIndex, _proofHash);
     }
 
-    function isCommitProofHashAllowed(uint256 batchIndex) internal {
+    function isCommitProofHashAllowed(uint256 batchIndex) internal view {
         ProofHashData memory proofHashData = proverCommitProofHash[batchIndex][msg.sender];
         if (lastFinalizedBatchIndex >= batchIndex || proofHashData.proof) {
             revert CommittedProof();
@@ -529,7 +529,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
     }
 
-    function isCommitProofAllowed(uint256 batchIndex) internal {
+    function isCommitProofAllowed(uint256 batchIndex) internal view {
         CommitInfo memory BatchInfo = committedBatchInfo[batchIndex];
         if (BatchInfo.blockNumber + proofHashCommitEpoch > block.number) {
             revert SubmitProofEarly();
