@@ -22,7 +22,6 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
-	"scroll-tech/coordinator/internal/controller/cron"
 	"scroll-tech/coordinator/internal/route"
 )
 
@@ -41,7 +40,7 @@ func init() {
 		return utils.LogSetup(ctx)
 	}
 	// Register `coordinator-test` app for integration-test.
-	utils.RegisterSimulation(app, utils.CoordinatorApp)
+	utils.RegisterSimulation(app, utils.CoordinatorAPIApp)
 }
 
 func action(ctx *cli.Context) error {
@@ -51,28 +50,23 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
 
-	subCtx, cancel := context.WithCancel(ctx.Context)
 	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
-
-	registry := prometheus.DefaultRegisterer
-	observability.Server(ctx, db)
-
-	proofCollector := cron.NewCollector(subCtx, db, cfg, registry)
 	defer func() {
-		proofCollector.Stop()
-		cancel()
 		if err = database.CloseDB(db); err != nil {
 			log.Error("can not close db connection", "error", err)
 		}
 	}()
 
+	registry := prometheus.DefaultRegisterer
+	observability.Server(ctx, db)
+
 	apiSrv := apiServer(ctx, cfg, db, registry)
 
 	log.Info(
-		"coordinator start successfully",
+		"Start coordinator api successfully.",
 		"version", version.Version,
 	)
 

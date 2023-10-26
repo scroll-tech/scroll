@@ -1,6 +1,5 @@
 .PHONY: lint docker clean coordinator coordinator_skip_libzkp mock_coordinator
 
-IMAGE_NAME=coordinator
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
@@ -22,14 +21,20 @@ libzkp:
 	rm -rf ./internal/logic/verifier/lib && cp -r ../common/libzkp/interface ./internal/logic/verifier/lib
 	find ../common | grep libzktrie.so | xargs -I{} cp {} ./internal/logic/verifier/lib
 
-coordinator: libzkp ## Builds the Coordinator instance.
-	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
+coordinator_api: libzkp ## Builds the Coordinator api instance.
+	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
 
-coordinator_skip_libzkp:
-	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator ./cmd
+coordinator_cron:
+	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_cron ./cmd/cron
 
-mock_coordinator: ## Builds the mocked Coordinator instance.
-	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator ./cmd
+coordinator_api_skip_libzkp:
+	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
+
+mock_coordinator_api: ## Builds the mocked Coordinator instance.
+	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator_api ./cmd/api
+
+mock_coordinator_cron: ## Builds the mocked Coordinator instance.
+	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator_cron ./cmd/cron
 
 test-verifier: libzkp
 	go test -tags ffi -timeout 0 -v ./internal/logic/verifier
@@ -45,7 +50,9 @@ clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
 docker:
-	DOCKER_BUILDKIT=1 docker build -t scrolltech/${IMAGE_NAME}:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/coordinator-api:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator-api.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/coordinator-cron:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator-cron.Dockerfile
 
 docker_push:
-	docker push scrolltech/${IMAGE_NAME}:${IMAGE_VERSION}
+	docker push scrolltech/coordinator-api:${IMAGE_VERSION}
+	docker push scrolltech/coordinator-cron:${IMAGE_VERSION}

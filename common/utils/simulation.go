@@ -24,8 +24,10 @@ var (
 	// DBCliApp the name of mock database app.
 	DBCliApp MockAppName = "db_cli-test"
 
-	// CoordinatorApp the name of mock coordinator app.
-	CoordinatorApp MockAppName = "coordinator-test"
+	// CoordinatorAPIApp the name of mock coordinator app.
+	CoordinatorAPIApp MockAppName = "coordinator-api-test"
+	// CoordinatorCronApp the name of mock coordinator cron app.
+	CoordinatorCronApp MockAppName = "coordinator-cron-test"
 
 	// ChunkProverApp the name of mock chunk prover app.
 	ChunkProverApp MockAppName = "chunkProver-test"

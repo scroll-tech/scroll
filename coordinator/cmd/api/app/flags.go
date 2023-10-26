@@ -8,10 +8,6 @@ var (
 		&httpEnabledFlag,
 		&httpListenAddrFlag,
 		&httpPortFlag,
-		// ws flags
-		&wsEnabledFlag,
-		&wsListenAddrFlag,
-		&wsPortFlag,
 	}
 	// httpEnabledFlag enable rpc server.
 	httpEnabledFlag = cli.BoolFlag{
@@ -30,20 +26,5 @@ var (
 		Name:  "http.port",
 		Usage: "HTTP-RPC server listening port",
 		Value: 8390,
-	}
-	wsEnabledFlag = cli.BoolFlag{
-		Name:  "ws",
-		Usage: "Enable the WS-RPC server",
-	}
-	wsListenAddrFlag = cli.StringFlag{
-		Name:  "ws.addr",
-		Usage: "WS-RPC server listening interface",
-		Value: "localhost",
-	}
-	// websocket port
-	wsPortFlag = cli.IntFlag{
-		Name:  "ws.port",
-		Usage: "WS-RPC server listening port",
-		Value: 8391,
 	}
 )
