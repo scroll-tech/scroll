@@ -1,6 +1,6 @@
 {
-  "ProxyAdmin": null,
-  "Whitelist": null,
+  "ProxyAdmin": "0x38c9e3f60a3704dEb3e806ff1486b4B741CC7561",
+  "Whitelist": "0x57890e67F9e90e4B781D7DD33D3b1423f48a194A",
   "L1MessageQueue": {
     "implementation": null,
     "proxy": null
@@ -30,7 +30,7 @@
     "proxy": null
   },
   "ScrollChain": {
-    "verifier": null,
+    "verifier": "0x1589E3239aB22C0ab061D968b8a9eb2aB4F4BA35",
     "implementation": null,
     "proxy": null
   },
