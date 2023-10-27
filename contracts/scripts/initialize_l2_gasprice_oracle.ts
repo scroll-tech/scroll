@@ -19,10 +19,12 @@ async function main() {
     deployer
   );
 
-  const tx = await L2GasPriceOracle.initialize( 21000, // _txGas
-                                                53000, // _txGasContractCreation
-                                                4, // _zeroGas
-                                                16)
+  const tx = await L2GasPriceOracle.initialize( 
+    21000, // _txGas
+    53000, // _txGasContractCreation
+    4, // _zeroGas
+    16
+  )
   console.log("initialize L2GasPriceOracle, hash:", tx.hash);
   const receipt = await tx.wait();
   console.log(`✅ Done, gas used: ${receipt.gasUsed}`);

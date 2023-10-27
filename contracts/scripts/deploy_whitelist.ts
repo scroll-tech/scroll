@@ -7,7 +7,7 @@ async function main() {
   const addressFile = selectAddressFile(hre.network.name);
 
   const [deployer] = await ethers.getSigners();
-  const owner = "0xe6F7E94BA0a1359D125e4226E390Ed9B419F72DF"
+  const owner = process.env.OWNER|| "1".repeat(40);
 
   if (!addressFile.get("Whitelist")) {
     console.log(">> Deploy ProxyAdmin");

@@ -3,6 +3,7 @@
 ## Deployment using Hardhat
 
 The scripts should run as below sequence:
+complete .env file
 $ source .env
 
 # deploy contracts in layer 1
@@ -41,10 +42,10 @@ env CONTRACT_NAME=L2ETHGateway npx hardhat run --network $layer2 scripts/deploy_
 
 # initalize contracts in layer 1, should set proper bash env variables first
 npx hardhat --network $layer1 run scripts/initialize_scroll_chain.ts
-npx hardhat --network $layer1 run scripts/initializeL2GasPriceOracle.ts
-npx hardhat --network $layer1 run scripts/initializeL1MessageQueue.ts
-npx hardhat --network $layer1 run scripts/initializeL1Messager.ts
-npx hardhat --network $layer1 run scripts/initializeL1ETHGateway.ts
+npx hardhat --network $layer1 run scripts/initialize_l2_gasprice_oracle.ts
+npx hardhat --network $layer1 run scripts/initialize_l1_message_queue.ts
+npx hardhat --network $layer1 run scripts/initialize_l1_messenger.ts
+npx hardhat --network $layer1 run scripts/initialize_l1_eth_gateway.ts
 # npx hardhat --network $layer1 run scripts/initialize_l1_erc20_gateway.ts
 # npx hardhat --network $layer1 run scripts/initialize_l1_gateway_router.ts
 # npx hardhat --network $layer1 run scripts/initialize_l1_messenger.ts
@@ -53,9 +54,9 @@ npx hardhat --network $layer1 run scripts/initializeL1ETHGateway.ts
 # npx hardhat --network $layer1 run scripts/initialize_l1_erc721_gateway.ts
 
 # initalize contracts in layer 2, should set proper bash env variables first
-npx hardhat --network $layer2 run scripts/initializeL2Predeploys.ts
-npx hardhat --network $layer2 run scripts/initializeL2ScrollMessenger.ts
-npx hardhat --network $layer2 run scripts/initializeL2ETHGateway.ts
+npx hardhat --network $layer2 run scripts/initialize_l2_predeploys.ts 
+npx hardhat --network $layer2 run scripts/initialize_l2_scroll_messenger.ts
+npx hardhat --network $layer2 run scripts/initialize_l2_eth_gateway.ts
 # npx hardhat --network $layer2 run scripts/initialize_l2_erc20_gateway.ts
 # npx hardhat --network $layer2 run scripts/initialize_l2_gateway_router.ts
 # npx hardhat --network $layer2 run scripts/initialize_l2_custom_erc20_gateway.ts

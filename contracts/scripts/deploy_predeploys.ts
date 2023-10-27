@@ -8,8 +8,8 @@ async function main() {
   const contractName = process.env.CONTRACT_NAME!;
   const [deployer] = await ethers.getSigners();
   const OWNER = process.env.owner
-  const TxFeeVault_recipient = process.env.TxFeeVault_recipient
-  const minWithdrawalAmount = process.env.minWithdrawalAmount
+  const TxFeeVault_recipient = process.env.TXFEEVAULT_RECIPIENT
+  const minWithdrawalAmount = process.env.MIN_WITHDRAWAL_AMOUNT 
 
   if (!addressFile.get(contractName)) {
     console.log(`>> Deploy ${contractName}`);
