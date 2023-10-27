@@ -44,7 +44,7 @@ describe("ScrollChain", async () => {
   });
 
   // @note skip this benchmark tests
-  it.skip("should succeed", async () => {
+  it("should succeed", async () => {
     const batchHeader0 = new Uint8Array(89);
     batchHeader0[25] = 1;
     await chain.importGenesisBatch(batchHeader0, "0x0000000000000000000000000000000000000000000000000000000000000001");
@@ -52,6 +52,7 @@ describe("ScrollChain", async () => {
     console.log("genesis batch hash:", parentBatchHash);
     console.log(`ChunkPerBatch`, `BlockPerChunk`, `TxPerBlock`, `BytesPerTx`, `TotalBytes`, `EstimateGas`);
     for (let numChunks = 3; numChunks <= 6; ++numChunks) {
+      console.log("---start---")
       for (let numBlocks = 1; numBlocks <= 5; ++numBlocks) {
         for (let numTx = 20; numTx <= Math.min(30, 100 / numBlocks); ++numTx) {
           for (let txLength = 800; txLength <= 1000; txLength += 100) {

@@ -31,8 +31,8 @@
   },
   "ScrollChain": {
     "verifier": "0x1589E3239aB22C0ab061D968b8a9eb2aB4F4BA35",
-    "implementation": null,
-    "proxy": null
+    "implementation": "0x2f53E1a4E39fAf9a66630c564451C027dD3E68f6",
+    "proxy": "0x4e39Ca0c2F11EA713fd9a8eD2BF571038A61571F"
   },
   "L1CustomERC20Gateway": {
     "implementation": null,

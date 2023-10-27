@@ -12,8 +12,8 @@ import {ChunkCodec} from "../../libraries/codec/ChunkCodec.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 
 // lumoz contracts import
-import "../../../lumoz-contracts/interfaces/ISlotAdapter.sol";
-import "../../../lumoz-contracts/ZkEVMContracts/interfaces/IPolygonZkEVMErrors.sol";
+import "../../lumoz-contracts/interfaces/ISlotAdapter.sol";
+import "../../lumoz-contracts/ZkEVMContracts/interfaces/IPolygonZkEVMErrors.sol";
 
 // solhint-disable no-inline-assembly
 // solhint-disable reason-string
