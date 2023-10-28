@@ -5,15 +5,15 @@ pragma solidity =0.8.16;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
-import {IL1MessageQueue} from "./IL1MessageQueue.sol";
-import {IScrollChain} from "./IScrollChain.sol";
-import {BatchHeaderV0Codec} from "../../libraries/codec/BatchHeaderV0Codec.sol";
-import {ChunkCodec} from "../../libraries/codec/ChunkCodec.sol";
-import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
+import {IL1MessageQueue} from "../L1/rollup/IL1MessageQueue.sol";
+import {IScrollChain} from "../L1/rollup/IScrollChain.sol";
+import {BatchHeaderV0Codec} from "../libraries/codec/BatchHeaderV0Codec.sol";
+import {ChunkCodec} from "../libraries/codec/ChunkCodec.sol";
+import {IRollupVerifier} from "../libraries/verifier/IRollupVerifier.sol";
 
 // lumoz contracts import
-import "../../interfaces/ISlotAdapter.sol";
-import "../../interfaces/IScrollChainErrors.sol";
+import "../interfaces/ISlotAdapter.sol";
+import "../interfaces/IScrollChainErrors.sol";
 
 // solhint-disable no-inline-assembly
 // solhint-disable reason-string
@@ -473,7 +473,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         );
 
         // verify batch
-        try IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash) {
+        // try IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash) {
             // authenticated proof, migrate state
             proofNum[msg.sender]++;
             slotAdapter.distributeRewards(msg.sender, uint64(_batchIndex), uint64(_batchIndex), ideDeposit);
@@ -517,10 +517,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
                 committedBatchInfo[_batchIndex].proofSubmitted = true;
             }
             proverCommitProofHash[_batchIndex][msg.sender].proof = true;
-        } catch {
-            slotAdapter.punish(msg.sender, ideDeposit, incorrectProofHashPunishAmount);
-            updateProofLiquidation(proofHash, true);
-        }
+        // } catch {
+        //     slotAdapter.punish(msg.sender, ideDeposit, incorrectProofHashPunishAmount);
+        //     updateProofLiquidation(proofHash, true);
+        // }
     }
 
     /************************

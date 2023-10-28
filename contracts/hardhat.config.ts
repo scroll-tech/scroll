@@ -10,6 +10,7 @@ import "hardhat-gas-reporter";
 import "solidity-coverage";
 import { readFileSync } from "fs";
 import { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } from "hardhat/builtin-tasks/task-names";
+import '@openzeppelin/hardhat-upgrades'
 
 dotenv.config();
 

@@ -2,78 +2,22 @@
 /* eslint-disable node/no-missing-import */
 import { concat } from "ethers/lib/utils";
 import { constants } from "ethers";
-const { ethers, upgrades } = require('hardhat');
-import { ScrollChain, L1MessageQueue } from "../typechain";
+import { ethers } from "hardhat";
+import { ScrollChainWithoutTwoStepCommit, L1MessageQueue } from "../typechain";
 
-describe("ScrollChain", async () => {
-  // Scroll contracts
+describe("ScrollChainWithoutTwoStepCommit", async () => {
   let queue: L1MessageQueue;
-  let chain: ScrollChain;
-  // Opside contracts
-  let deployer;
-  let trustedSequencer;
-  let trustedAggregator;
-  let admin;
-  let aggregator1;
-  let aggregator2;
-  let aggregator3;
-  let aggregator4;
-  let verifierContract;
-  let polygonZkEVMBridgeContract;
-  let ZkEVMContract;
-  let maticTokenContract;
-  let polygonZkEVMGlobalExitRoot;
-  let slotAdapterContract;
-  let depositContract;
-  let opsideSlotsContract;
-  let globalRewardDistributionContract;
-  let openRegistrarContract;
-  let globalRewardPoolContract;
+  let chain: ScrollChainWithoutTwoStepCommit;
+
 
   beforeEach(async () => {
     const [deployer] = await ethers.getSigners();
-    const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
 
-    // Opside contracts deployment
-    const globalRewardDistributionFactory = await ethers.getContractFactory("GlobalRewardDistribution", deployer);
-    globalRewardDistributionContract = await globalRewardDistributionFactory.deploy();
-    await globalRewardDistributionContract.deployed();
-
-    // deploy opsideSlotsFactory
-    const opsideSlotsFactory = await ethers.getContractFactory("OpsideSlots", deployer);
-    const opsideSlotsFactoryImpl = await opsideSlotsFactory.deploy();
-    await opsideSlotsFactoryImpl.deployed();
-    const opsideSlots = await TransparentUpgradeableProxy.deploy(opsideSlotsFactoryImpl.address, deployer.address, "0x");
-    await opsideSlots.deployed();
-
-    // deploy opsideSlotsFactory
-    const OpenRegistrarFactory = await ethers.getContractFactory("OpenRegistrar", deployer);
-    const OpenRegistrarFactoryImpl = await OpenRegistrarFactory.deploy();
-    await OpenRegistrarFactoryImpl.deployed();
-    const OpenRegistrarFactoryProxy = await TransparentUpgradeableProxy.deploy(OpenRegistrarFactoryImpl.address, deployer.address, "0x");
-    await OpenRegistrarFactoryProxy.deployed();
-
-
-    const globalRewardPoolFactory = await ethers.getContractFactory("GlobalRewardPool", deployer);
-    globalRewardPoolContract = await upgrades.deployProxy(
-        globalRewardPoolFactory,
-        [opsideSlotsContract.address, globalRewardDistributionContract.address],
-        {}
-      );
-
-    await opsideSlotsContract.initialize(openRegistrarContract.address, globalRewardPoolContract.address);
-
-    const SlotAdapterFactory = await ethers.getContractFactory('SlotAdapter');
-
-    const depositFactory = await ethers.getContractFactory('MinerDeposit');
-
-
-
-
-    // Scroll contracts deployment
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin", deployer);
     const admin = await ProxyAdmin.deploy();
     await admin.deployed();
+
+    const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
 
     const L1MessageQueue = await ethers.getContractFactory("L1MessageQueue", deployer);
     const queueImpl = await L1MessageQueue.deploy();
@@ -82,12 +26,12 @@ describe("ScrollChain", async () => {
     await queueProxy.deployed();
     queue = await ethers.getContractAt("L1MessageQueue", queueProxy.address, deployer);
 
-    const ScrollChain = await ethers.getContractFactory("ScrollChain", deployer);
+    const ScrollChain = await ethers.getContractFactory("ScrollChainWithoutTwoStepCommit", deployer);
     const chainImpl = await ScrollChain.deploy(0);
     await chainImpl.deployed();
     const chainProxy = await TransparentUpgradeableProxy.deploy(chainImpl.address, admin.address, "0x");
     await chainProxy.deployed();
-    chain = await ethers.getContractAt("ScrollChain", chainProxy.address, deployer);
+    chain = await ethers.getContractAt("ScrollChainWithoutTwoStepCommit", chainProxy.address, deployer);
 
     await chain.initialize(queue.address, constants.AddressZero, 100);
     await chain.addSequencer(deployer.address);
@@ -136,9 +80,8 @@ describe("ScrollChain", async () => {
               }
               chunks.push(concat([chunk, concat(txsInChunk)]));
             }
-            
-            const estimateGas = await chain.estimateGas.commitBatch(0, batchHeader0, chunks, "0x");
 
+            const estimateGas = await chain.estimateGas.commitBatch(0, batchHeader0, chunks, "0x");
             console.log(
               `${numChunks}`,
               `${numBlocks}`,

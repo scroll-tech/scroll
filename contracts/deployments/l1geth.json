@@ -30,9 +30,9 @@
     "proxy": null
   },
   "ScrollChain": {
-    "verifier": "0x1589E3239aB22C0ab061D968b8a9eb2aB4F4BA35",
-    "implementation": "0x2f53E1a4E39fAf9a66630c564451C027dD3E68f6",
-    "proxy": "0x4e39Ca0c2F11EA713fd9a8eD2BF571038A61571F"
+    "verifier": "0xB3dfF08baBade2818F0126157A6D76FeD68eAb31",
+    "implementation": "0x9DAb554F5b6a659d71a3793Ee464c254F119969C",
+    "proxy": "0xE6884e127d2e5b411640c6846D3f27f2B91111d8"
   },
   "L1CustomERC20Gateway": {
     "implementation": null,

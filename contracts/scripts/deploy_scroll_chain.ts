@@ -51,7 +51,9 @@ async function main() {
 
   // Export contract address to testnet.
   console.log(
-    `testnet-export: ${addressFile.get("ScrollChain.implementation")};${addressFile.get("ScrollChain.proxy")}`
+    `testnet-export: 
+    ScrollChain.implementation: ${addressFile.get("ScrollChain.implementation")};
+    ScrollChain.proxy: ${addressFile.get("ScrollChain.proxy")}`
   );
 }
 

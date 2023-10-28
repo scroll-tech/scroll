@@ -1,4 +1,4 @@
-# ScrollChain
+# ScrollChainWithoutTwoStepCommit
 
 
 
@@ -42,28 +42,6 @@ Add an account to the sequencer list.
 |---|---|---|
 | _account | address | The address of account to add. |
 
-### blockCommitBatches
-
-```solidity
-function blockCommitBatches(uint256) external view returns (bool)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
-
 ### commitBatch
 
 ```solidity
@@ -82,29 +60,6 @@ Commit a batch of transactions on layer 1.
 | _parentBatchHeader | bytes | undefined |
 | _chunks | bytes[] | undefined |
 | _skippedL1MessageBitmap | bytes | undefined |
-
-### committedBatchInfo
-
-```solidity
-function committedBatchInfo(uint256) external view returns (uint256 blockNumber, bool proofSubmitted)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| blockNumber | uint256 | undefined |
-| proofSubmitted | bool | undefined |
 
 ### committedBatches
 
@@ -170,23 +125,6 @@ Return the state root of a committed batch.
 |---|---|---|
 | _0 | bytes32 | undefined |
 
-### ideDeposit
-
-```solidity
-function ideDeposit() external view returns (contract IDeposit)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | contract IDeposit | undefined |
-
 ### importGenesisBatch
 
 ```solidity
@@ -203,23 +141,6 @@ Import layer 2 genesis block
 |---|---|---|
 | _batchHeader | bytes | undefined |
 | _stateRoot | bytes32 | undefined |
-
-### incorrectProofHashPunishAmount
-
-```solidity
-function incorrectProofHashPunishAmount() external view returns (uint256)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
 
 ### initialize
 
@@ -238,23 +159,6 @@ function initialize(address _messageQueue, address _verifier, uint256 _maxNumTxI
 | _messageQueue | address | undefined |
 | _verifier | address | undefined |
 | _maxNumTxInChunk | uint256 | undefined |
-
-### isAllLiquidated
-
-```solidity
-function isAllLiquidated() external view returns (bool)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined |
 
 ### isBatchFinalized
 
@@ -390,40 +294,6 @@ The address of L1MessageQueue.
 |---|---|---|
 | _0 | address | undefined |
 
-### minDeposit
-
-```solidity
-function minDeposit() external view returns (uint256)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### noProofPunishAmount
-
-```solidity
-function noProofPunishAmount() external view returns (uint256)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
 ### owner
 
 ```solidity
@@ -457,161 +327,6 @@ function paused() external view returns (bool)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
-
-### proofCommitEpoch
-
-```solidity
-function proofCommitEpoch() external view returns (uint8)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint8 | undefined |
-
-### proofHashCommitEpoch
-
-```solidity
-function proofHashCommitEpoch() external view returns (uint8)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint8 | undefined |
-
-### proofNum
-
-```solidity
-function proofNum(address) external view returns (uint256)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### proverCommitProofHash
-
-```solidity
-function proverCommitProofHash(uint256, address) external view returns (bytes32 proofHash, uint256 blockNumber, bool proof)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-| _1 | address | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| proofHash | bytes32 | undefined |
-| blockNumber | uint256 | undefined |
-| proof | bool | undefined |
-
-### proverLastLiquidated
-
-```solidity
-function proverLastLiquidated(address) external view returns (uint256)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
-
-### proverLiquidation
-
-```solidity
-function proverLiquidation(address, uint256) external view returns (address prover, bool isSubmittedProofHash, uint256 submitHashBlockNumber, bool isSubmittedProof, uint256 submitProofBlockNumber, bool isLiquidated, uint64 finalNewBatch)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-| _1 | uint256 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| prover | address | undefined |
-| isSubmittedProofHash | bool | undefined |
-| submitHashBlockNumber | uint256 | undefined |
-| isSubmittedProof | bool | undefined |
-| submitProofBlockNumber | uint256 | undefined |
-| isLiquidated | bool | undefined |
-| finalNewBatch | uint64 | undefined |
-
-### proverPosition
-
-```solidity
-function proverPosition(address, bytes32) external view returns (uint256)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-| _1 | bytes32 | undefined |
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined |
 
 ### removeProver
 
@@ -673,70 +388,6 @@ Revert a pending batch.
 | _batchHeader | bytes | undefined |
 | _count | uint256 | undefined |
 
-### setDeposit
-
-```solidity
-function setDeposit(contract IDeposit _ideDeposit) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _ideDeposit | contract IDeposit | undefined |
-
-### setIncorrectProofPunishAmount
-
-```solidity
-function setIncorrectProofPunishAmount(uint256 _amount) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _amount | uint256 | undefined |
-
-### setMinDeposit
-
-```solidity
-function setMinDeposit(uint256 _amount) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _amount | uint256 | undefined |
-
-### setNoProofPunishAmount
-
-```solidity
-function setNoProofPunishAmount(uint256 _amount) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _amount | uint256 | undefined |
-
 ### setPause
 
 ```solidity
@@ -752,104 +403,6 @@ Pause the contract
 | Name | Type | Description |
 |---|---|---|
 | _status | bool | The pause status to update. |
-
-### setProofCommitEpoch
-
-```solidity
-function setProofCommitEpoch(uint8 _newCommitEpoch) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newCommitEpoch | uint8 | undefined |
-
-### setProofHashCommitEpoch
-
-```solidity
-function setProofHashCommitEpoch(uint8 _newCommitEpoch) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newCommitEpoch | uint8 | undefined |
-
-### setSlotAdapter
-
-```solidity
-function setSlotAdapter(contract ISlotAdapter _slotAdapter) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _slotAdapter | contract ISlotAdapter | undefined |
-
-### settle
-
-```solidity
-function settle(address _account) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _account | address | undefined |
-
-### slotAdapter
-
-```solidity
-function slotAdapter() external view returns (contract ISlotAdapter)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | contract ISlotAdapter | undefined |
-
-### submitProofHash
-
-```solidity
-function submitProofHash(uint256 batchIndex, bytes32 _proofHash) external nonpayable
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| batchIndex | uint256 | undefined |
-| _proofHash | bytes32 | undefined |
 
 ### transferOwnership
 
@@ -1044,56 +597,6 @@ revert a pending batch.
 | batchIndex `indexed` | uint256 | undefined |
 | batchHash `indexed` | bytes32 | undefined |
 
-### SetProofCommitEpoch
-
-```solidity
-event SetProofCommitEpoch(uint8 newProofCommitEpoch)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| newProofCommitEpoch  | uint8 | undefined |
-
-### SetProofHashCommitEpoch
-
-```solidity
-event SetProofHashCommitEpoch(uint8 newProofHashCommitEpoch)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| newProofHashCommitEpoch  | uint8 | undefined |
-
-### SubmitProofHash
-
-```solidity
-event SubmitProofHash(address _prover, uint256 batchIndex, bytes32 _proofHash)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _prover  | address | undefined |
-| batchIndex  | uint256 | undefined |
-| _proofHash  | bytes32 | undefined |
-
 ### Unpaused
 
 ```solidity
@@ -1177,135 +680,6 @@ Emitted when the address of rollup verifier is updated.
 |---|---|---|
 | oldVerifier `indexed` | address | The address of old rollup verifier. |
 | newVerifier `indexed` | address | The address of new rollup verifier. |
-
-
-
-## Errors
-
-### CommittedProof
-
-```solidity
-error CommittedProof()
-```
-
-
-
-*Thrown when prover already committed proof*
-
-
-### CommittedProofHash
-
-```solidity
-error CommittedProofHash()
-```
-
-
-
-*Thrown when prover already committed proof hash*
-
-
-### CommittedTimeout
-
-```solidity
-error CommittedTimeout()
-```
-
-
-
-*Thrown when commit time out*
-
-
-### ErrCommitProof
-
-```solidity
-error ErrCommitProof()
-```
-
-
-
-*Thrown when prover submitted invalid proof*
-
-
-### ErrorBatchHash
-
-```solidity
-error ErrorBatchHash(bytes32)
-```
-
-
-
-*Thrown when commit wrong batch hash*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bytes32 | undefined |
-
-### InsufficientPledge
-
-```solidity
-error InsufficientPledge()
-```
-
-
-
-*Thrown when Caller has not deposited*
-
-
-### OnlyDeposit
-
-```solidity
-error OnlyDeposit()
-```
-
-
-
-*Thrown when Caller is not IDEposit contract*
-
-
-### SlotAdapterEmpty
-
-```solidity
-error SlotAdapterEmpty()
-```
-
-
-
-*Thrown when the SlotAdapter address is ZeroAddress*
-
-
-### SubmitProofEarly
-
-```solidity
-error SubmitProofEarly()
-```
-
-
-
-*Thrown when prover submit proof early*
-
-
-### SubmitProofTooLate
-
-```solidity
-error SubmitProofTooLate()
-```
-
-
-
-*Thrown when prover submitted proof too late*
-
-
-### ZeroAddress
-
-```solidity
-error ZeroAddress()
-```
-
-
-
-*Thrown when the address is ZeroAddress*
 
 
 
