@@ -1,8 +1,8 @@
 {
   "manifestVersion": "3.2",
   "admin": {
-    "address": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
-    "txHash": "0x838643c9edd6ffa553eacb5204df61517e2df97e1b28e2a228a35f203b932a9f"
+    "address": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
+    "txHash": "0x924bd566610634ea737000e0b80065505a725c9ba82b5f961c1cf55bc17cb9e1"
   },
   "proxies": [
     {
@@ -22,34 +22,69 @@
     },
     {
       "address": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
-      "txHash": "0xcae6881a270f49b3c8b803a83662b236b846be8ea38cbc22b7db9c2109c62e00",
-      "kind": "transparent"
-    },
-    {
-      "address": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
-      "txHash": "0x46bbd1cb736d58e1aa94dd203e1261cb14ea6081b18355579a49cd2c753f9e09",
-      "kind": "transparent"
-    },
-    {
-      "address": "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
-      "txHash": "0xee234ee19e6bd945a91b5656db04c2a9f51701f9dea115692d092457674c6f3f",
+      "txHash": "0x8ce13f1093bebdc3a1a2326c6c64b3c868e6e711dd466a01852b16014812a052",
       "kind": "transparent"
     },
     {
       "address": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
-      "txHash": "0xb75b2dd06789f7913093e988386c157a40a94141efc932b61235c225d4586aa5",
+      "txHash": "0x4884db2b093a2004a80699273f3825f7d274890cedd092112794dba8a41a3dd1",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+      "txHash": "0x82823769c719abd26fd6c4cd5c573b395613923816ec282422f59d7e67b53453",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
+      "txHash": "0x91938dfc30f904b2fe15bc369adf1ccbf8e32a2a3f4e2c873fe9b9f32173e2a2",
+      "kind": "transparent"
+    },
+    {
+      "address": "0xCD8a1C3ba11CF5ECfa6267617243239504a98d90",
+      "txHash": "0xd8bf589afe38b754ca8049e303155a08fab61a832fcbccb797e582036f3f255a",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x2bdCC0de6bE1f7D2ee689a0342D76F52E8EFABa3",
+      "txHash": "0xa1a69147882b4f2738b72cdf31240adb377bc74822c716f86a2de73253a09650",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x7969c5eD335650692Bc04293B07F5BF2e7A673C0",
+      "txHash": "0xcd392861a5c653453df95591d042ecf119770f5069ff5aa9a130e255da4e88ab",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
+      "txHash": "0x3505ed987cd6a274b065d9256b634ba2645d1315073158cdc60e40b0d8e76cda",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
+      "txHash": "0xcd088d704c63dc4424c445a180d9e967c982bb9a463d8721ef9ea486ad88b549",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
+      "txHash": "0xaf533026530e636b1323c6aea5ee50297f2579605505e9121fa19d2de82d8465",
       "kind": "transparent"
     },
     {
       "address": "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
-      "txHash": "0x8ad1441cd7460984be5184d11656cdc1a5620505cdcb9baf8ec73d32ec768a23",
+      "txHash": "0xd604713ce074b9cde5c6489b3a9ac381b822909a062ca2a346917dba3bc8b92d",
+      "kind": "transparent"
+    },
+    {
+      "address": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
+      "txHash": "0xe449c351fe01fd428341d9eb3ecd73c1c61809f337a9e1bb75e81481eeec9b13",
       "kind": "transparent"
     }
   ],
   "impls": {
     "5fc4012c9e60d12de450de42746b37d67f90506c23d3a1ee8c3a1c811c23febd": {
-      "address": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-      "txHash": "0x111435cc5b1fcbff03b6d18fef69e273acbbd45fba40ba73ca2d7ec7df356621",
+      "address": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
+      "txHash": "0x5242902abef52bcf54628b54902aacb389ccf3588317b474d1eff2c3f638f3e6",
       "layout": {
         "solcVersion": "0.8.16",
         "storage": [
@@ -114,7 +149,7 @@
             "label": "openRegistrar",
             "offset": 0,
             "slot": "151",
-            "type": "t_contract(IOpenRegistrar)44025",
+            "type": "t_contract(IOpenRegistrar)44247",
             "contract": "OpsideSlots",
             "src": "src/lumoz-contracts/OpsideSlots.sol:47"
           },
@@ -122,7 +157,7 @@
             "label": "globalRewardPool",
             "offset": 0,
             "slot": "152",
-            "type": "t_contract(GlobalRewardPool)33112",
+            "type": "t_contract(GlobalRewardPool)33334",
             "contract": "OpsideSlots",
             "src": "src/lumoz-contracts/OpsideSlots.sol:49"
           },
@@ -138,7 +173,7 @@
             "label": "slots",
             "offset": 0,
             "slot": "154",
-            "type": "t_mapping(t_uint256,t_struct(Slot)45468_storage)",
+            "type": "t_mapping(t_uint256,t_struct(Slot)45690_storage)",
             "contract": "OpsideSlots",
             "src": "src/lumoz-contracts/OpsideSlots.sol:53"
           },
@@ -154,7 +189,7 @@
             "label": "slotsStatus",
             "offset": 0,
             "slot": "156",
-            "type": "t_mapping(t_uint256,t_enum(SlotStatus)45455)",
+            "type": "t_mapping(t_uint256,t_enum(SlotStatus)45677)",
             "contract": "OpsideSlots",
             "src": "src/lumoz-contracts/OpsideSlots.sol:57"
           },
@@ -162,7 +197,7 @@
             "label": "slotAdapters",
             "offset": 0,
             "slot": "157",
-            "type": "t_mapping(t_uint256,t_contract(ISlotAdapter)44347)",
+            "type": "t_mapping(t_uint256,t_contract(ISlotAdapter)44569)",
             "contract": "OpsideSlots",
             "src": "src/lumoz-contracts/OpsideSlots.sol:59"
           },
@@ -216,19 +251,19 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(GlobalRewardPool)33112": {
+          "t_contract(GlobalRewardPool)33334": {
             "label": "contract GlobalRewardPool",
             "numberOfBytes": "20"
           },
-          "t_contract(IOpenRegistrar)44025": {
+          "t_contract(IOpenRegistrar)44247": {
             "label": "contract IOpenRegistrar",
             "numberOfBytes": "20"
           },
-          "t_contract(ISlotAdapter)44347": {
+          "t_contract(ISlotAdapter)44569": {
             "label": "contract ISlotAdapter",
             "numberOfBytes": "20"
           },
-          "t_enum(SlotStatus)45455": {
+          "t_enum(SlotStatus)45677": {
             "label": "enum SlotStatus",
             "members": [
               "Created",
@@ -243,15 +278,15 @@
             "label": "mapping(address => uint256)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_contract(ISlotAdapter)44347)": {
+          "t_mapping(t_uint256,t_contract(ISlotAdapter)44569)": {
             "label": "mapping(uint256 => contract ISlotAdapter)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_enum(SlotStatus)45455)": {
+          "t_mapping(t_uint256,t_enum(SlotStatus)45677)": {
             "label": "mapping(uint256 => enum SlotStatus)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(Slot)45468_storage)": {
+          "t_mapping(t_uint256,t_struct(Slot)45690_storage)": {
             "label": "mapping(uint256 => struct Slot)",
             "numberOfBytes": "32"
           },
@@ -263,7 +298,7 @@
             "label": "string",
             "numberOfBytes": "32"
           },
-          "t_struct(Slot)45468_storage": {
+          "t_struct(Slot)45690_storage": {
             "label": "struct Slot",
             "members": [
               {
@@ -317,9 +352,156 @@
         "namespaces": {}
       }
     },
+    "dc60a779ab507e965afdbfcdefe6d6dbdb77380cf9301b2361b93ade8f524078": {
+      "address": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+      "txHash": "0xb28b96d04dd4085292f5092f00b2a102cc72be2e6eb86b473d162b008c678126",
+      "layout": {
+        "solcVersion": "0.8.16",
+        "storage": [
+          {
+            "label": "_initialized",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint8",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
+            "retypedFrom": "bool"
+          },
+          {
+            "label": "_initializing",
+            "offset": 1,
+            "slot": "0",
+            "type": "t_bool",
+            "contract": "Initializable",
+            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_array(t_uint256)50_storage",
+            "contract": "ContextUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
+          },
+          {
+            "label": "_owner",
+            "offset": 0,
+            "slot": "51",
+            "type": "t_address",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
+          },
+          {
+            "label": "__gap",
+            "offset": 0,
+            "slot": "52",
+            "type": "t_array(t_uint256)49_storage",
+            "contract": "OwnableUpgradeable",
+            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
+          },
+          {
+            "label": "totalDeposits",
+            "offset": 0,
+            "slot": "101",
+            "type": "t_uint256",
+            "contract": "MinerDeposit",
+            "src": "src/lumoz-contracts/MinerDeposit.sol:24"
+          },
+          {
+            "label": "slotAdapter",
+            "offset": 0,
+            "slot": "102",
+            "type": "t_contract(ISlotAdapter)44569",
+            "contract": "MinerDeposit",
+            "src": "src/lumoz-contracts/MinerDeposit.sol:26"
+          },
+          {
+            "label": "depositAmounts",
+            "offset": 0,
+            "slot": "103",
+            "type": "t_mapping(t_address,t_uint256)",
+            "contract": "MinerDeposit",
+            "src": "src/lumoz-contracts/MinerDeposit.sol:27"
+          },
+          {
+            "label": "punishAmounts",
+            "offset": 0,
+            "slot": "104",
+            "type": "t_mapping(t_address,t_struct(PunishAmount)33605_storage)",
+            "contract": "MinerDeposit",
+            "src": "src/lumoz-contracts/MinerDeposit.sol:28"
+          },
+          {
+            "label": "_locked",
+            "offset": 0,
+            "slot": "105",
+            "type": "t_uint256",
+            "contract": "MinerDeposit",
+            "src": "src/lumoz-contracts/MinerDeposit.sol:30"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_array(t_uint256)49_storage": {
+            "label": "uint256[49]",
+            "numberOfBytes": "1568"
+          },
+          "t_array(t_uint256)50_storage": {
+            "label": "uint256[50]",
+            "numberOfBytes": "1600"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_contract(ISlotAdapter)44569": {
+            "label": "contract ISlotAdapter",
+            "numberOfBytes": "20"
+          },
+          "t_mapping(t_address,t_struct(PunishAmount)33605_storage)": {
+            "label": "mapping(address => struct MinerDeposit.PunishAmount)",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_address,t_uint256)": {
+            "label": "mapping(address => uint256)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(PunishAmount)33605_storage": {
+            "label": "struct MinerDeposit.PunishAmount",
+            "members": [
+              {
+                "label": "expect",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "real",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              }
+            ],
+            "numberOfBytes": "64"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint8": {
+            "label": "uint8",
+            "numberOfBytes": "1"
+          }
+        },
+        "namespaces": {}
+      }
+    },
     "ca7ff6fad1647548f837013e9d63537bc2fd04a953c1371edbfdbca93f94e86d": {
-      "address": "0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0",
-      "txHash": "0x20dac72d4b1e74308066c2cc6c643bb0fdea91ddf235918268f9ed572ecadd04",
+      "address": "0x9A676e781A523b5d0C0e43731313A708CB607508",
+      "txHash": "0x90f5ced7bdb5f2f8ed6da54cd75747d09101e313b9920de69de0e9f3b407f60b",
       "layout": {
         "solcVersion": "0.8.16",
         "storage": [
@@ -392,7 +574,7 @@
             "label": "opsideSlots",
             "offset": 0,
             "slot": "152",
-            "type": "t_contract(IOpsideSlots)44211",
+            "type": "t_contract(IOpsideSlots)44433",
             "contract": "OpenRegistrar",
             "src": "src/lumoz-contracts/OpenRegistrar.sol:32"
           },
@@ -400,7 +582,7 @@
             "label": "requests",
             "offset": 0,
             "slot": "153",
-            "type": "t_mapping(t_uint256,t_struct(Request)45449_storage)",
+            "type": "t_mapping(t_uint256,t_struct(Request)45671_storage)",
             "contract": "OpenRegistrar",
             "src": "src/lumoz-contracts/OpenRegistrar.sol:34"
           },
@@ -454,7 +636,7 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(IOpsideSlots)44211": {
+          "t_contract(IOpsideSlots)44433": {
             "label": "contract IOpsideSlots",
             "numberOfBytes": "20"
           },
@@ -466,7 +648,7 @@
             "label": "mapping(uint16 => uint256)",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint256,t_struct(Request)45449_storage)": {
+          "t_mapping(t_uint256,t_struct(Request)45671_storage)": {
             "label": "mapping(uint256 => struct Request)",
             "numberOfBytes": "32"
           },
@@ -478,7 +660,7 @@
             "label": "string",
             "numberOfBytes": "32"
           },
-          "t_struct(Request)45449_storage": {
+          "t_struct(Request)45671_storage": {
             "label": "struct Request",
             "members": [
               {
@@ -525,8 +707,8 @@
       }
     },
     "7cc71b5acd26015109d12eb7d2bc2d46b27027ddb760bb8641636cf90ffdc16f": {
-      "address": "0x9A676e781A523b5d0C0e43731313A708CB607508",
-      "txHash": "0x249e899c34d84c7a175abff1a5cc7f91a70a7d62b9f0b9ae5108e13b2b95fccc",
+      "address": "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
+      "txHash": "0x21487023765d6198a50420510dbea2cf1e94d5ebb06f0f759cb7a4783f04eaa9",
       "layout": {
         "solcVersion": "0.8.16",
         "storage": [
@@ -615,7 +797,7 @@
             "label": "rewardDistribution",
             "offset": 0,
             "slot": "154",
-            "type": "t_contract(IRewardDistribution)44231",
+            "type": "t_contract(IRewardDistribution)44453",
             "contract": "GlobalRewardPool",
             "src": "src/lumoz-contracts/GlobalRewardPool.sol:23"
           },
@@ -645,7 +827,7 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(IRewardDistribution)44231": {
+          "t_contract(IRewardDistribution)44453": {
             "label": "contract IRewardDistribution",
             "numberOfBytes": "20"
           },
@@ -665,156 +847,9 @@
         "namespaces": {}
       }
     },
-    "dc60a779ab507e965afdbfcdefe6d6dbdb77380cf9301b2361b93ade8f524078": {
-      "address": "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
-      "txHash": "0xa20d3929eabeffc795ac60c1f2f1cdd870766727e6daca00f0f1b3a081d40929",
-      "layout": {
-        "solcVersion": "0.8.16",
-        "storage": [
-          {
-            "label": "_initialized",
-            "offset": 0,
-            "slot": "0",
-            "type": "t_uint8",
-            "contract": "Initializable",
-            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:63",
-            "retypedFrom": "bool"
-          },
-          {
-            "label": "_initializing",
-            "offset": 1,
-            "slot": "0",
-            "type": "t_bool",
-            "contract": "Initializable",
-            "src": "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol:68"
-          },
-          {
-            "label": "__gap",
-            "offset": 0,
-            "slot": "1",
-            "type": "t_array(t_uint256)50_storage",
-            "contract": "ContextUpgradeable",
-            "src": "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol:36"
-          },
-          {
-            "label": "_owner",
-            "offset": 0,
-            "slot": "51",
-            "type": "t_address",
-            "contract": "OwnableUpgradeable",
-            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:22"
-          },
-          {
-            "label": "__gap",
-            "offset": 0,
-            "slot": "52",
-            "type": "t_array(t_uint256)49_storage",
-            "contract": "OwnableUpgradeable",
-            "src": "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol:94"
-          },
-          {
-            "label": "totalDeposits",
-            "offset": 0,
-            "slot": "101",
-            "type": "t_uint256",
-            "contract": "MinerDeposit",
-            "src": "src/lumoz-contracts/MinerDeposit.sol:24"
-          },
-          {
-            "label": "slotAdapter",
-            "offset": 0,
-            "slot": "102",
-            "type": "t_contract(ISlotAdapter)44347",
-            "contract": "MinerDeposit",
-            "src": "src/lumoz-contracts/MinerDeposit.sol:26"
-          },
-          {
-            "label": "depositAmounts",
-            "offset": 0,
-            "slot": "103",
-            "type": "t_mapping(t_address,t_uint256)",
-            "contract": "MinerDeposit",
-            "src": "src/lumoz-contracts/MinerDeposit.sol:27"
-          },
-          {
-            "label": "punishAmounts",
-            "offset": 0,
-            "slot": "104",
-            "type": "t_mapping(t_address,t_struct(PunishAmount)33383_storage)",
-            "contract": "MinerDeposit",
-            "src": "src/lumoz-contracts/MinerDeposit.sol:28"
-          },
-          {
-            "label": "_locked",
-            "offset": 0,
-            "slot": "105",
-            "type": "t_uint256",
-            "contract": "MinerDeposit",
-            "src": "src/lumoz-contracts/MinerDeposit.sol:30"
-          }
-        ],
-        "types": {
-          "t_address": {
-            "label": "address",
-            "numberOfBytes": "20"
-          },
-          "t_array(t_uint256)49_storage": {
-            "label": "uint256[49]",
-            "numberOfBytes": "1568"
-          },
-          "t_array(t_uint256)50_storage": {
-            "label": "uint256[50]",
-            "numberOfBytes": "1600"
-          },
-          "t_bool": {
-            "label": "bool",
-            "numberOfBytes": "1"
-          },
-          "t_contract(ISlotAdapter)44347": {
-            "label": "contract ISlotAdapter",
-            "numberOfBytes": "20"
-          },
-          "t_mapping(t_address,t_struct(PunishAmount)33383_storage)": {
-            "label": "mapping(address => struct MinerDeposit.PunishAmount)",
-            "numberOfBytes": "32"
-          },
-          "t_mapping(t_address,t_uint256)": {
-            "label": "mapping(address => uint256)",
-            "numberOfBytes": "32"
-          },
-          "t_struct(PunishAmount)33383_storage": {
-            "label": "struct MinerDeposit.PunishAmount",
-            "members": [
-              {
-                "label": "expect",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "0"
-              },
-              {
-                "label": "real",
-                "type": "t_uint256",
-                "offset": 0,
-                "slot": "1"
-              }
-            ],
-            "numberOfBytes": "64"
-          },
-          "t_uint256": {
-            "label": "uint256",
-            "numberOfBytes": "32"
-          },
-          "t_uint8": {
-            "label": "uint8",
-            "numberOfBytes": "1"
-          }
-        },
-        "namespaces": {}
-      }
-    },
     "f01ffdade455ad5c85356e13497ac7437388bfe392afe6e2083809cff10d4695": {
-      "address": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
-      "txHash": "0x18e619a99678e60543af8f61314c82b5289cdaf5a32f71954a9244df6a049a00",
+      "address": "0x59b670e9fA9D0A427751Af201D676719a970857b",
+      "txHash": "0xb5b0b08d81961785b7ed6e85c5a5f112fef93d5c60c93a97515ddd46fc86ce2f",
       "layout": {
         "solcVersion": "0.8.16",
         "storage": [
@@ -895,7 +930,7 @@
             "label": "opsideSlots",
             "offset": 0,
             "slot": "105",
-            "type": "t_contract(IOpsideSlots)44211",
+            "type": "t_contract(IOpsideSlots)44433",
             "contract": "SlotAdapter",
             "src": "src/lumoz-contracts/SlotAdapter.sol:50"
           },
@@ -903,7 +938,7 @@
             "label": "globalPool",
             "offset": 0,
             "slot": "106",
-            "type": "t_contract(IGlobalPool)43968",
+            "type": "t_contract(IGlobalPool)44190",
             "contract": "SlotAdapter",
             "src": "src/lumoz-contracts/SlotAdapter.sol:52"
           },
@@ -911,7 +946,7 @@
             "label": "status",
             "offset": 20,
             "slot": "106",
-            "type": "t_enum(SlotStatus)45455",
+            "type": "t_enum(SlotStatus)45677",
             "contract": "SlotAdapter",
             "src": "src/lumoz-contracts/SlotAdapter.sol:54"
           },
@@ -919,7 +954,7 @@
             "label": "proverReward",
             "offset": 0,
             "slot": "107",
-            "type": "t_mapping(t_uint64,t_struct(CurrentProverReward)35570_storage)",
+            "type": "t_mapping(t_uint64,t_struct(CurrentProverReward)35792_storage)",
             "contract": "SlotAdapter",
             "src": "src/lumoz-contracts/SlotAdapter.sol:56"
           },
@@ -943,7 +978,7 @@
             "label": "gasFreeContracts",
             "offset": 0,
             "slot": "110",
-            "type": "t_struct(gasFreeContractSet)35582_storage",
+            "type": "t_struct(gasFreeContractSet)35804_storage",
             "contract": "SlotAdapter",
             "src": "src/lumoz-contracts/SlotAdapter.sol:63"
           }
@@ -969,15 +1004,15 @@
             "label": "bool",
             "numberOfBytes": "1"
           },
-          "t_contract(IGlobalPool)43968": {
+          "t_contract(IGlobalPool)44190": {
             "label": "contract IGlobalPool",
             "numberOfBytes": "20"
           },
-          "t_contract(IOpsideSlots)44211": {
+          "t_contract(IOpsideSlots)44433": {
             "label": "contract IOpsideSlots",
             "numberOfBytes": "20"
           },
-          "t_enum(SlotStatus)45455": {
+          "t_enum(SlotStatus)45677": {
             "label": "enum SlotStatus",
             "members": [
               "Created",
@@ -1000,7 +1035,7 @@
             "label": "mapping(uint64 => mapping(address => uint256))",
             "numberOfBytes": "32"
           },
-          "t_mapping(t_uint64,t_struct(CurrentProverReward)35570_storage)": {
+          "t_mapping(t_uint64,t_struct(CurrentProverReward)35792_storage)": {
             "label": "mapping(uint64 => struct SlotAdapter.CurrentProverReward)",
             "numberOfBytes": "32"
           },
@@ -1008,7 +1043,7 @@
             "label": "mapping(uint64 => uint256)",
             "numberOfBytes": "32"
           },
-          "t_struct(CurrentProverReward)35570_storage": {
+          "t_struct(CurrentProverReward)35792_storage": {
             "label": "struct SlotAdapter.CurrentProverReward",
             "members": [
               {
@@ -1026,7 +1061,7 @@
             ],
             "numberOfBytes": "64"
           },
-          "t_struct(gasFreeContractSet)35582_storage": {
+          "t_struct(gasFreeContractSet)35804_storage": {
             "label": "struct SlotAdapter.gasFreeContractSet",
             "members": [
               {

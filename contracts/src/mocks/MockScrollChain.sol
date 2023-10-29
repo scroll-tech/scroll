@@ -20,7 +20,7 @@ import "../interfaces/IScrollChainErrors.sol";
 
 /// @title ScrollChain
 /// @notice This contract maintains data for the Scroll rollup.
-contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, IScrollChainErrors {
+contract MockScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, IScrollChainErrors {
 
     /**********
      * Structs *
@@ -284,7 +284,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(batchPtr);
         uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
-        require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch hash");
+        // require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch hash");
         require(committedBatches[_batchIndex + 1] == 0, "batch already committed");
 
         // load `dataPtr` and reserve the memory region for chunk data hashes
@@ -365,6 +365,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
             revert ErrorBatchHash(committedBatches[batchIndex]);
         }
 
+        // exceed the proofHashCommitEpoch + proofCommitEpoch, but still haven't proved. need to reset.
         uint256 _finalNewBatchNumber = committedBatchInfo[batchIndex].blockNumber;
         if ( _finalNewBatchNumber > 0 && (block.number - _finalNewBatchNumber) > (proofHashCommitEpoch + proofCommitEpoch)) {
             if (!committedBatchInfo[batchIndex].proofSubmitted) {
@@ -448,7 +449,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
         bytes32 _dataHash = BatchHeaderV0Codec.dataHash(memPtr);
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
-        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
+        // require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
 
         // make sure committing proof complies with the two step commitment rule
         isCommitProofAllowed(_batchIndex);
