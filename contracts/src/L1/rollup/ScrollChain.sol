@@ -587,10 +587,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         }
     }
 
-    //////////////////
-    // admin functions
-    //////////////////
-
     function setSlotAdapter(ISlotAdapter _slotAdapter) public onlyOwner isZeroAddress(address(_slotAdapter)) {
         // require(address(_slotAdapter) != address(0), "set 0 address");
         slotAdapter = _slotAdapter;
