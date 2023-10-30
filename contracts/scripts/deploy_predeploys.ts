@@ -7,7 +7,6 @@ async function main() {
   const addressFile = selectAddressFile(hre.network.name);
   const contractName = process.env.CONTRACT_NAME!;
   const [deployer] = await ethers.getSigners();
-  const OWNER = process.env.owner;
   const txFeeVaultRecipient = process.env.TxFeeVaultRecipient;
   const minWithdrawalAmount = process.env.MinWithdrawalAmount;
 
@@ -16,9 +15,9 @@ async function main() {
     const contractFactory = await ethers.getContractFactory(contractName, deployer);
     let contract;
     if (contractName === "L2TxFeeVault") {
-      contract = await contractFactory.deploy(OWNER, txFeeVaultRecipient, minWithdrawalAmount);
+      contract = await contractFactory.deploy(deployer.address, txFeeVaultRecipient, minWithdrawalAmount);
     } else {
-      contract = await contractFactory.deploy(OWNER);
+      contract = await contractFactory.deploy(deployer.address);
     }
 
     console.log(`>> waiting for transaction: ${contract.deployTransaction.hash}`);

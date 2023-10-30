@@ -1,9 +1,9 @@
 {
-  "ProxyAdmin": "0x1BfBd8730027C111A87eb226E5D2B06151301967",
-  "Whitelist": "0x594a09180B7490345Ed04282a8Ae61B4EF7B89cc",
+  "ProxyAdmin": null,
+  "Whitelist": null,
   "L1MessageQueue": {
-    "implementation": "0x5E4629B578651Bc047E3875EBd29499aEff6e3d2",
-    "proxy": "0x8BdF57c0559BcC19fd7D2aBBbC9B25ABa496326F"
+    "implementation": null,
+    "proxy": null
   },
   "L2GasPriceOracle": {
     "implementation": null,
