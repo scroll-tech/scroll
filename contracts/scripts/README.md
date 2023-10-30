@@ -3,8 +3,7 @@
 ## Deployment using Hardhat
 
 The scripts should run as below sequence:
-complete .env file
-source .env
+complete .env file from .env.example
 
 # deploy contracts in layer 1
 
