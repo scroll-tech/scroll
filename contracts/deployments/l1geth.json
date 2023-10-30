@@ -53,6 +53,5 @@
   "EnforcedTxGateway": {
     "implementation": null,
     "proxy": null
-  },
-  "L2TxFeeVault": null
+  }
 }
