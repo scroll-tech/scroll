@@ -22,7 +22,14 @@ async function main() {
   if (!addressFile.get(`${contractName}.implementation`)) {
     console.log(`>> Deploy ${contractName} implementation`);
     const ContractImpl = await ethers.getContractFactory(contractName, deployer);
-    const impl = await ContractImpl.deploy();
+    let impl;
+    if (contractName === "L1WETHGateway") {
+      impl = await ContractImpl.deploy(process.env.L1_WETH_ADDR, "0x5300000000000000000000000000000000000004");
+    } else if (contractName === "L2WETHGateway") {
+      impl = await ContractImpl.deploy("0x5300000000000000000000000000000000000004", process.env.L1_WETH_ADDR);
+    } else {
+      impl = await ContractImpl.deploy();
+    }
     console.log(`>> waiting for transaction: ${impl.deployTransaction.hash}`);
     await impl.deployed();
     console.log(`✅ ${contractName} implementation deployed at ${impl.address}`);

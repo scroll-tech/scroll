@@ -21,7 +21,6 @@ import "../../interfaces/IScrollChainErrors.sol";
 /// @title ScrollChain
 /// @notice This contract maintains data for the Scroll rollup.
 contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, IScrollChainErrors {
-
     /**********
      * Structs *
      **********/
@@ -46,7 +45,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         uint256 blockNumber;
         bool proofSubmitted;
     }
-    
+
     /**********
      * Events *
      **********/
@@ -115,14 +114,14 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
     /// @inheritdoc IScrollChain
     mapping(uint256 => bytes32) public override withdrawRoots;
 
-    mapping(uint256 => CommitInfo) public  committedBatchInfo;
+    mapping(uint256 => CommitInfo) public committedBatchInfo;
 
     // An mapping records the record of miners submitting proofhash and proof
-    mapping(address => ProverLiquidationInfo[])  public proverLiquidation;
+    mapping(address => ProverLiquidationInfo[]) public proverLiquidation;
     //The array position of the prover's final liquidation
-    mapping(address => uint256) public  proverLastLiquidated;
+    mapping(address => uint256) public proverLastLiquidated;
 
-    mapping(address => mapping(bytes32 => uint256))public  proverPosition;
+    mapping(address => mapping(bytes32 => uint256)) public proverPosition;
 
     uint256 public minDeposit;
 
@@ -135,7 +134,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
     IDeposit public ideDeposit;
 
     // blocknumber --> true
-    mapping(uint => bool) public blockCommitBatches;
+    mapping(uint256 => bool) public blockCommitBatches;
 
     // finalNewBatch --> proofHash
     mapping(uint256 => mapping(address => ProofHashData)) public proverCommitProofHash;
@@ -146,8 +145,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
     // here presents time to submit proof since the first proof hash, would be proofHashCommitEpoch + set proofEpoch
     /*         {--proofHashCommitEpoch---}{--proofCommitEpoch--}
-    *          |-------------------------|---------------------|
-    *        proofHash              proof start         proof end   */
+     *          |-------------------------|---------------------|
+     *        proofHash              proof start         proof end   */
     uint8 public proofCommitEpoch;
 
     /**********************
@@ -173,7 +172,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
     }
 
     modifier isZeroAddress(address account) {
-        if ( account == address(0) ) {
+        if (account == address(0)) {
             revert ZeroAddress();
         }
         _;
@@ -344,10 +343,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
         committedBatches[_batchIndex] = _batchHash;
 
-        committedBatchInfo[_batchIndex] = CommitInfo({
-            blockNumber: 0,
-            proofSubmitted: false
-        });
+        committedBatchInfo[_batchIndex] = CommitInfo({blockNumber: 0, proofSubmitted: false});
 
         slotAdapter.calcSlotReward(uint64(_batchIndex), ideDeposit);
 
@@ -366,7 +362,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         }
 
         uint256 _finalNewBatchNumber = committedBatchInfo[batchIndex].blockNumber;
-        if ( _finalNewBatchNumber > 0 && (block.number - _finalNewBatchNumber) > (proofHashCommitEpoch + proofCommitEpoch)) {
+        if (
+            _finalNewBatchNumber > 0 &&
+            (block.number - _finalNewBatchNumber) > (proofHashCommitEpoch + proofCommitEpoch)
+        ) {
             if (!committedBatchInfo[batchIndex].proofSubmitted) {
                 committedBatchInfo[batchIndex].blockNumber = 0;
                 slotAdapter.calcCurrentTotalDeposit(uint64(batchIndex), ideDeposit, msg.sender, true);
@@ -393,7 +392,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         emit SubmitProofHash(msg.sender, batchIndex, _proofHash);
     }
 
-
     /// @inheritdoc IScrollChain
     /// @dev If the owner want to revert a sequence of batches by sending multiple transactions,
     ///      make sure to revert recent batches first.
@@ -417,10 +415,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
             emit RevertBatch(_batchIndex, _batchHash);
 
             // revert lumoz committedBatchInfo
-            committedBatchInfo[_batchIndex] = CommitInfo({
-                blockNumber: 0,
-                proofSubmitted: false
-            });
+            committedBatchInfo[_batchIndex] = CommitInfo({blockNumber: 0, proofSubmitted: false});
 
             unchecked {
                 _batchIndex += 1;
@@ -455,7 +450,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
         // verify previous state root.
         require(finalizedStateRoots[_batchIndex - 1] == _prevStateRoot, "incorrect previous state root");
-        
+
         // suit the two step commitment rule
         // // avoid duplicated verification
         // require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
@@ -472,15 +467,27 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
             abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
         );
 
+        bool ifVerifySucceed = true;
+        // #if DUMMY_VERIFIER
         // verify batch
-        try IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash) {
+        if (_aggrProof.length > 0) {
+            try IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash) {} catch {
+                ifVerifySucceed = false;
+            }
+        }
+        // #else
+        try IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash) {} catch {
+            ifVerifySucceed = false;
+        }
+        // #endif
+
+        if (ifVerifySucceed) {
             // authenticated proof, migrate state
             proofNum[msg.sender]++;
             slotAdapter.distributeRewards(msg.sender, uint64(_batchIndex), uint64(_batchIndex), ideDeposit);
             updateProofLiquidation(proofHash, false);
 
             if (!committedBatchInfo[_batchIndex].proofSubmitted) {
-
                 // check and update lastFinalizedBatchIndex
                 unchecked {
                     require(lastFinalizedBatchIndex + 1 == _batchIndex, "incorrect batch index");
@@ -517,7 +524,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
                 committedBatchInfo[_batchIndex].proofSubmitted = true;
             }
             proverCommitProofHash[_batchIndex][msg.sender].proof = true;
-        } catch {
+        } else {
             slotAdapter.punish(msg.sender, ideDeposit, incorrectProofHashPunishAmount);
             updateProofLiquidation(proofHash, true);
         }
@@ -622,14 +629,16 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
     /**********************
      * Internal Functions *
      **********************/
-    
 
     function isCommitProofHashAllowed(uint256 batchIndex) internal view {
         ProofHashData memory proofHashData = proverCommitProofHash[batchIndex][msg.sender];
         if (lastFinalizedBatchIndex >= batchIndex || proofHashData.proof) {
             revert CommittedProof();
         }
-        if (proofHashData.proofHash != bytes32(0) && (proofHashData.blockNumber + proofHashCommitEpoch + proofCommitEpoch) > block.number) {
+        if (
+            proofHashData.proofHash != bytes32(0) &&
+            (proofHashData.blockNumber + proofHashCommitEpoch + proofCommitEpoch) > block.number
+        ) {
             revert CommittedProofHash();
         }
     }
@@ -645,7 +654,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
             revert ErrCommitProof();
         }
 
-        if (!BatchInfo.proofSubmitted && (_proofHashData.blockNumber + proofHashCommitEpoch + proofCommitEpoch) < block.number) {
+        if (
+            !BatchInfo.proofSubmitted &&
+            (_proofHashData.blockNumber + proofHashCommitEpoch + proofCommitEpoch) < block.number
+        ) {
             revert SubmitProofTooLate();
         }
 
@@ -825,15 +837,17 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
 
     function updateProofHashLiquidation(bytes32 _proofHash, uint64 finalNewBatch) internal {
         ProverLiquidationInfo[] storage proverLiquidations = proverLiquidation[msg.sender];
-        proverLiquidations.push(ProverLiquidationInfo({
-            prover: msg.sender,
-            isSubmittedProofHash: true,
-            submitHashBlockNumber: block.number,
-            isSubmittedProof: false,
-            submitProofBlockNumber: block.number,
-            isLiquidated: false,
-            finalNewBatch: finalNewBatch
-        }));
+        proverLiquidations.push(
+            ProverLiquidationInfo({
+                prover: msg.sender,
+                isSubmittedProofHash: true,
+                submitHashBlockNumber: block.number,
+                isSubmittedProof: false,
+                submitProofBlockNumber: block.number,
+                isLiquidated: false,
+                finalNewBatch: finalNewBatch
+            })
+        );
         proverPosition[msg.sender][_proofHash] = proverLiquidations.length - 1;
         updateLiquidation(msg.sender);
     }
@@ -858,7 +872,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
             if (!proverLiquidationInfo.isLiquidated) {
                 if (proverLiquidationInfo.isSubmittedProof) {
                     if (!committedBatchInfo[proverLiquidationInfo.finalNewBatch].proofSubmitted) {
-                        if ((proverLiquidationInfo.submitProofBlockNumber - proverLiquidationInfo.submitHashBlockNumber) > (proofHashCommitEpoch + proofCommitEpoch)) {
+                        if (
+                            (proverLiquidationInfo.submitProofBlockNumber -
+                                proverLiquidationInfo.submitHashBlockNumber) > (proofHashCommitEpoch + proofCommitEpoch)
+                        ) {
                             proverLiquidationInfo.isLiquidated = true;
                             proverLastLiquidated[_account]++;
                             slotAdapter.punish(_account, ideDeposit, noProofPunishAmount);
@@ -871,26 +888,27 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
                         proverLastLiquidated[_account]++;
                     }
                 } else {
-                    if ((block.number - proverLiquidationInfo.submitHashBlockNumber) > (proofHashCommitEpoch + proofCommitEpoch)) {
+                    if (
+                        (block.number - proverLiquidationInfo.submitHashBlockNumber) >
+                        (proofHashCommitEpoch + proofCommitEpoch)
+                    ) {
                         proverLiquidationInfo.isLiquidated = true;
                         proverLastLiquidated[_account]++;
                         slotAdapter.punish(_account, ideDeposit, noProofPunishAmount);
                     }
                 }
-
             } else {
                 proverLastLiquidated[_account]++;
             }
         }
     }
 
-    function isAllLiquidated() external view  returns(bool) {
+    function isAllLiquidated() external view returns (bool) {
         ProverLiquidationInfo[] storage proverLiquidations = proverLiquidation[msg.sender];
-        return proverLiquidations[proverLiquidations.length-1].isLiquidated;
+        return proverLiquidations[proverLiquidations.length - 1].isLiquidated;
     }
 
     function settle(address _account) external onlyDeposit {
         updateLiquidation(_account);
     }
-
 }

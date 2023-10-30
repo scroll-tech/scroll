@@ -10,12 +10,12 @@ async function main() {
 
   const ProxyAdmin = await ethers.getContractAt("ProxyAdmin", addressFile.get("ProxyAdmin"), deployer);
 
-  const container = process.env.L1_BLOCK_CONTAINER_ADDR!;
-  
+  const queue = process.env.L2_MESSAGE_QUEUE_ADDR!;
+
   if (!addressFile.get("L2ScrollMessenger.implementation")) {
     console.log(">> Deploy L2ScrollMessenger implementation");
     const L2ScrollMessenger = await ethers.getContractFactory("L2ScrollMessenger", deployer);
-    const impl = await L2ScrollMessenger.deploy(container);
+    const impl = await L2ScrollMessenger.deploy(queue);
     console.log(`>> waiting for transaction: ${impl.deployTransaction.hash}`);
     await impl.deployed();
     console.log(`✅ L2ScrollMessenger implementation deployed at ${impl.address}`);

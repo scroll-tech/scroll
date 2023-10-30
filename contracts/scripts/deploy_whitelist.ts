@@ -7,12 +7,11 @@ async function main() {
   const addressFile = selectAddressFile(hre.network.name);
 
   const [deployer] = await ethers.getSigners();
-  const owner = deployer.address;
 
   if (!addressFile.get("Whitelist")) {
     console.log(">> Deploy ProxyAdmin");
     const whitelist = await ethers.getContractFactory("Whitelist", deployer);
-    const _whitelist = await whitelist.deploy(owner);
+    const _whitelist = await whitelist.deploy(deployer.address);
     console.log(`>> waiting for transaction: ${_whitelist.deployTransaction.hash}`);
     await _whitelist.deployed();
     console.log(`✅ Whitelist deployed at ${_whitelist.address}`);
