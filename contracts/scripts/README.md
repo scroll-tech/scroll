@@ -65,7 +65,7 @@ npx hardhat --network $layer1 run scripts/initialize_l1_eth_gateway.ts
 # initalize contracts in layer 2, should set proper bash env variables first
 
 npx hardhat --network $layer2 run scripts/initialize_l2_predeploys.ts
-npx hardhat --network $layer2 run scripts/initialize_l2_scroll_messenger.ts
+npx hardhat --network $layer2 run scripts/initialize_l2_messenger.ts
 npx hardhat --network $layer2 run scripts/initialize_l2_eth_gateway.ts
 
 # npx hardhat --network $layer2 run scripts/initialize_l2_erc20_gateway.ts
