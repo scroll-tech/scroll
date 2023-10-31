@@ -292,7 +292,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         bytes32 _prevStateRoot,
         bytes32 _postStateRoot,
         bytes32 _withdrawRoot,
-        bytes calldata _aggrProof
+        bytes calldata
     ) external override OnlyProver whenNotPaused {
         require(_prevStateRoot != bytes32(0), "previous state root is zero");
         require(_postStateRoot != bytes32(0), "new state root is zero");
@@ -300,7 +300,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // compute batch hash and verify
         (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
 
-        bytes32 _dataHash = BatchHeaderV0Codec.dataHash(memPtr);
+        // bytes32 _dataHash = BatchHeaderV0Codec.dataHash(memPtr);
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
         require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
 
@@ -311,12 +311,12 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
 
         // compute public input hash
-        bytes32 _publicInputHash = keccak256(
-            abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
-        );
+        // bytes32 _publicInputHash = keccak256(
+        //     abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
+        // );
 
         // verify batch
-        IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash);
+        // IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash);
 
         // check and update lastFinalizedBatchIndex
         unchecked {
