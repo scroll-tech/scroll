@@ -83,10 +83,29 @@ Return the batch hash of a committed batch.
 |---|---|---|
 | _0 | bytes32 | undefined |
 
+### finalizeBatch
+
+```solidity
+function finalizeBatch(bytes _batchHeader, bytes32 _prevStateRoot, bytes32 _postStateRoot, bytes32 _withdrawRoot) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _batchHeader | bytes | undefined |
+| _prevStateRoot | bytes32 | undefined |
+| _postStateRoot | bytes32 | undefined |
+| _withdrawRoot | bytes32 | undefined |
+
 ### finalizeBatchWithProof
 
 ```solidity
-function finalizeBatchWithProof(bytes _batchHeader, bytes32 _prevStateRoot, bytes32 _postStateRoot, bytes32 _withdrawRoot, bytes) external nonpayable
+function finalizeBatchWithProof(bytes _batchHeader, bytes32 _prevStateRoot, bytes32 _postStateRoot, bytes32 _withdrawRoot, bytes _aggrProof) external nonpayable
 ```
 
 Finalize a committed batch on layer 1.
@@ -101,7 +120,7 @@ Finalize a committed batch on layer 1.
 | _prevStateRoot | bytes32 | undefined |
 | _postStateRoot | bytes32 | undefined |
 | _withdrawRoot | bytes32 | undefined |
-| _4 | bytes | undefined |
+| _aggrProof | bytes | undefined |
 
 ### finalizedStateRoots
 
