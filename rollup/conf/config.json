@@ -24,7 +24,6 @@
         "min_gas_price": 0,
         "gas_price_diff": 50000
       },
-      "finalize_batch_interval_sec": 0,
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }
   },
@@ -59,7 +58,8 @@
         "try_times": 5,
         "base_url": "http://localhost:8750"
       },
-      "finalize_batch_interval_sec": 0,
+      "is_test_env": true,
+      "finalize_batch_without_proof_timeout_sec": 7200,
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
       "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
       "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",
