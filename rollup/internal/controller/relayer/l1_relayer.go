@@ -51,7 +51,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 	}
 
 	// Ensure test features aren't enabled on the mainnet.
-	if gasOracleSender.GetChainID() == big.NewInt(1) && cfg.IsTestEnv {
+	if gasOracleSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
 		return nil, fmt.Errorf("cannot enable test env features in mainnet")
 	}
 

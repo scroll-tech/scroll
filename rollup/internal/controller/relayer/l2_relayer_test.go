@@ -126,7 +126,7 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	l2Cfg.RelayerConfig.IsTestEnv = true
+	l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
 	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)

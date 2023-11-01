@@ -89,7 +89,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	}
 
 	// Ensure test features aren't enabled on the mainnet.
-	if commitSender.GetChainID() == big.NewInt(1) && cfg.IsTestEnv {
+	if commitSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
 		return nil, fmt.Errorf("cannot enable test env features in mainnet")
 	}
 
@@ -433,7 +433,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
 		now := time.Now()
 		elapsedTime := now.Sub(batch.CreatedAt)
-		if r.cfg.IsTestEnv && elapsedTime.Seconds() > float64(r.cfg.FinalizeBatchWithoutProofTimeoutSec) {
+		if r.cfg.EnableTestEnvBypassFeatures && elapsedTime.Seconds() > float64(r.cfg.FinalizeBatchWithoutProofTimeoutSec) {
 			if err := r.finalizeBatch(batch, false); err != nil {
 				log.Error("Failed to finalize timeout batch without proof", "index", batch.Index, "hash", batch.Hash, "err", err)
 			}

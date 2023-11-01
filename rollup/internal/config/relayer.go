@@ -65,9 +65,9 @@ type RelayerConfig struct {
 	CommitSenderPrivateKey    *ecdsa.PrivateKey `json:"-"`
 	FinalizeSenderPrivateKey  *ecdsa.PrivateKey `json:"-"`
 
-	// Indicates if the environment is a test environment.
-	IsTestEnv bool `json:"is_test_env"`
-	// The timeout in seconds for finalizing a batch without proof, only used in test env.
+	// Indicates if bypass features specific to testing environments are enabled.
+	EnableTestEnvBypassFeatures bool `json:"enable_test_env_bypass_features"`
+	// The timeout in seconds for finalizing a batch without proof, only used when EnableTestEnvBypassFeatures is true.
 	FinalizeBatchWithoutProofTimeoutSec uint64 `json:"finalize_batch_without_proof_timeout_sec"`
 }
 
