@@ -617,24 +617,22 @@ contract ScrollChainTest is DSTestPlus {
         rollup.removeSequencer(_sequencer);
         hevm.stopPrank();
 
-        // revert when account is not EOA
-        if (_sequencer.code.length > 0) {
-            hevm.expectRevert("not EOA");
-            rollup.addSequencer(_sequencer);
-        } else {
-            // change to random operator
-            hevm.expectEmit(true, false, false, true);
-            emit UpdateSequencer(_sequencer, true);
+        hevm.expectRevert("not EOA");
+        rollup.addSequencer(address(this));
+        hevm.assume(_sequencer.code.length == 0);
 
-            assertBoolEq(rollup.isSequencer(_sequencer), false);
-            rollup.addSequencer(_sequencer);
-            assertBoolEq(rollup.isSequencer(_sequencer), true);
+        // change to random EOA operator
+        hevm.expectEmit(true, false, false, true);
+        emit UpdateSequencer(_sequencer, true);
 
-            hevm.expectEmit(true, false, false, true);
-            emit UpdateSequencer(_sequencer, false);
-            rollup.removeSequencer(_sequencer);
-            assertBoolEq(rollup.isSequencer(_sequencer), false);
-        }
+        assertBoolEq(rollup.isSequencer(_sequencer), false);
+        rollup.addSequencer(_sequencer);
+        assertBoolEq(rollup.isSequencer(_sequencer), true);
+
+        hevm.expectEmit(true, false, false, true);
+        emit UpdateSequencer(_sequencer, false);
+        rollup.removeSequencer(_sequencer);
+        assertBoolEq(rollup.isSequencer(_sequencer), false);
     }
 
     function testAddAndRemoveProver(address _prover) public {
@@ -646,23 +644,22 @@ contract ScrollChainTest is DSTestPlus {
         rollup.removeProver(_prover);
         hevm.stopPrank();
 
-        if (_prover.code.length > 0) {
-            hevm.expectRevert("not EOA");
-            rollup.addProver(_prover);
-        } else {
-            // change to random operator
-            hevm.expectEmit(true, false, false, true);
-            emit UpdateProver(_prover, true);
+        hevm.expectRevert("not EOA");
+        rollup.addProver(address(this));
+        hevm.assume(_prover.code.length == 0);
 
-            assertBoolEq(rollup.isProver(_prover), false);
-            rollup.addProver(_prover);
-            assertBoolEq(rollup.isProver(_prover), true);
+        // change to random EOA operator
+        hevm.expectEmit(true, false, false, true);
+        emit UpdateProver(_prover, true);
 
-            hevm.expectEmit(true, false, false, true);
-            emit UpdateProver(_prover, false);
-            rollup.removeProver(_prover);
-            assertBoolEq(rollup.isProver(_prover), false);
-        }
+        assertBoolEq(rollup.isProver(_prover), false);
+        rollup.addProver(_prover);
+        assertBoolEq(rollup.isProver(_prover), true);
+
+        hevm.expectEmit(true, false, false, true);
+        emit UpdateProver(_prover, false);
+        rollup.removeProver(_prover);
+        assertBoolEq(rollup.isProver(_prover), false);
     }
 
     function testSetPause() external {
