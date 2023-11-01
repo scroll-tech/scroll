@@ -121,6 +121,37 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.Equal(t, types.RollupFinalizing, statuses[0])
 }
 
+func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
+	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
+
+	l2Cfg := cfg.L2Config
+	l2Cfg.RelayerConfig.IsTestEnv = true
+	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, nil)
+	assert.NoError(t, err)
+	batchMeta := &types.BatchMeta{
+		StartChunkIndex: 0,
+		StartChunkHash:  chunkHash1.Hex(),
+		EndChunkIndex:   1,
+		EndChunkHash:    chunkHash2.Hex(),
+	}
+	batchOrm := orm.NewBatch(db)
+	batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
+	assert.NoError(t, err)
+
+	err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, types.RollupCommitted)
+	assert.NoError(t, err)
+
+	// Check the database for the updated status using TryTimes.
+	ok := utils.TryTimes(5, func() bool {
+		relayer.ProcessCommittedBatches()
+		statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
+		return err == nil && len(statuses) == 1 && statuses[0] == types.RollupFinalizing
+	})
+	assert.True(t, ok)
+}
+
 func testL2RelayerCommitConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
