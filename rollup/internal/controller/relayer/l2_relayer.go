@@ -437,7 +437,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			if err := r.finalizeBatch(batch, false); err != nil {
 				log.Error("Failed to finalize timeout batch without proof", "index", batch.Index, "hash", batch.Hash, "err", err)
 			}
-			log.Info("Successfully finalized timeout batch without proof", "index", batch.Index, "hash", batch.Hash)
 		}
 
 	case types.ProvingTaskVerified:
@@ -446,7 +445,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		if err := r.finalizeBatch(batch, true); err != nil {
 			log.Error("Failed to finalize batch with proof", "index", batch.Index, "hash", batch.Hash, "err", err)
 		}
-		log.Info("Successfully finalized batch with proof", "index", batch.Index, "hash", batch.Hash)
 
 	case types.ProvingTaskFailed:
 		// We were unable to prove this batch. There are two possibilities:
