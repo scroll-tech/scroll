@@ -50,6 +50,11 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
 	}
 
+	// Ensure test features aren't enabled on the mainnet.
+	if gasOracleSender.GetChainID() == big.NewInt(1) && cfg.IsTestEnv {
+		return nil, fmt.Errorf("cannot enable test env features in mainnet")
+	}
+
 	var minGasPrice uint64
 	var gasPriceDiff uint64
 	if cfg.GasOracleConfig != nil {
