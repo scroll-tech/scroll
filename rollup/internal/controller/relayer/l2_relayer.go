@@ -566,7 +566,7 @@ func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
 		}
 		return err
 	}
-	log.Info("finalizeBatchWithProof in layer1", "index", batch.Index, "batch hash", batch.Hash, "tx hash", batch.Hash)
+	log.Info("finalizeBatch in layer1", "index", batch.Index, "batch hash", batch.Hash, "tx hash", batch.Hash, "with proof", withProof)
 
 	// record and sync with db, @todo handle db error
 	if err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batch.Hash, finalizeTxHash.String(), types.RollupFinalizing); err != nil {
