@@ -20,3 +20,6 @@ coverage.txt
 # misc
 sftp-config.json
 *~
+
+# Build contracts
+./contracts/openzeppelin

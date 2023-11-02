@@ -413,6 +413,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	}
 }
 
+// ProcessCommittedBatches submit proof hash to layer1 rollup contract
+func (r *Layer2Relayer) PreprocessCommittedBatches() {
+
+}
+
 // ProcessCommittedBatches submit proof to layer 1 rollup contract
 func (r *Layer2Relayer) ProcessCommittedBatches() {
 	// retrieves the earliest batch whose rollup status is 'committed'
@@ -471,29 +476,47 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			}
 			parentBatchStateRoot = parentBatch.StateRoot
 		}
-
-		aggProof, err := r.batchOrm.GetVerifiedProofByHash(r.ctx, hash)
-		if err != nil {
-			log.Error("get verified proof by hash failed", "hash", hash, "err", err)
-			return
-		}
-
-		if err = aggProof.SanityCheck(); err != nil {
-			log.Error("agg_proof sanity check fails", "hash", hash, "error", err)
-			return
-		}
-
-		data, err := r.l1RollupABI.Pack(
-			"finalizeBatchWithProof",
-			batch.BatchHeader,
-			common.HexToHash(parentBatchStateRoot),
-			common.HexToHash(batch.StateRoot),
-			common.HexToHash(batch.WithdrawRoot),
-			aggProof.Proof,
+		var (
+			data []byte
+			err  error
 		)
-		if err != nil {
-			log.Error("Pack finalizeBatchWithProof failed", "err", err)
-			return
+		if r.cfg.DummyVerifier {
+			data, err = r.l1RollupABI.Pack(
+				"finalizeBatchWithProof",
+				batch.BatchHeader,
+				common.HexToHash(parentBatchStateRoot),
+				common.HexToHash(batch.StateRoot),
+				common.HexToHash(batch.WithdrawRoot),
+				[]byte{},
+			)
+			if err != nil {
+				log.Error("Pack finalizeBatchWithProof failed", "err", err)
+				return
+			}
+		} else {
+			aggProof, err := r.batchOrm.GetVerifiedProofByHash(r.ctx, hash)
+			if err != nil {
+				log.Error("get verified proof by hash failed", "hash", hash, "err", err)
+				return
+			}
+
+			if err = aggProof.SanityCheck(); err != nil {
+				log.Error("agg_proof sanity check fails", "hash", hash, "error", err)
+				return
+			}
+
+			data, err = r.l1RollupABI.Pack(
+				"finalizeBatchWithProof",
+				batch.BatchHeader,
+				common.HexToHash(parentBatchStateRoot),
+				common.HexToHash(batch.StateRoot),
+				common.HexToHash(batch.WithdrawRoot),
+				aggProof.Proof,
+			)
+			if err != nil {
+				log.Error("Pack finalizeBatchWithProof failed", "err", err)
+				return
+			}
 		}
 
 		txID := hash + "-finalize"
@@ -603,6 +626,15 @@ func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
 				"batch hash", batchHash.(string),
 				"tx hash", confirmation.TxHash.String(), "err", err)
 		}
+
+		if r.cfg.DummyVerifier {
+			if err := r.batchOrm.UpdateProvingStatus(r.ctx, batchHash.(string), types.ProvingTaskVerified); err != nil {
+				log.Warn("UpdateProvingStatus failed",
+					"batch hash", batchHash.(string),
+					"tx hash", confirmation.TxHash.String(), "err", err)
+			}
+		}
+
 		r.metrics.rollupL2BatchesCommittedConfirmedTotal.Inc()
 		r.processingCommitment.Delete(confirmation.ID)
 	}
