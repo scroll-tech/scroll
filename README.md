@@ -13,7 +13,7 @@
 ## Directory Structure
 
 <pre>
-├── <a href="./bridge-history-api/">bridge-history-api</a>: Bridge history service that collects deposit and withdraws events from both L1 and L2 chains and generates withdrawal proofs
+├── <a href="./bridge-history-api/">bridge-history-api</a>: Bridge history service that collects deposit and withdraw events from both L1 and L2 chains and generates withdrawal proofs
 ├── <a href="./common/">common</a>: Common libraries and types
 ├── <a href="./coordinator/">coordinator</a>: Prover coordinator service that dispatches proving tasks to provers
 ├── <a href="./database">database</a>: Database client and schema definition
