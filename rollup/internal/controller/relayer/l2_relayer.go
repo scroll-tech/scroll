@@ -432,15 +432,12 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	status := types.ProvingStatus(batch.ProvingStatus)
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
-		now := utils.NowUTC()
-
 		if batch.CommittedAt == nil {
 			log.Error("batch.CommittedAt is nil", "index", batch.Index, "hash", batch.Hash)
 			return
 		}
 
-		elapsedTime := now.Sub(*batch.CommittedAt)
-		if r.cfg.EnableTestEnvBypassFeatures && elapsedTime.Seconds() > float64(r.cfg.FinalizeBatchWithoutProofTimeoutSec) {
+		if r.cfg.EnableTestEnvBypassFeatures && utils.NowUTC().Sub(*batch.CommittedAt) > time.Duration(r.cfg.FinalizeBatchWithoutProofTimeoutSec)*time.Second {
 			if err := r.finalizeBatch(batch, false); err != nil {
 				log.Error("Failed to finalize timeout batch without proof", "index", batch.Index, "hash", batch.Hash, "err", err)
 			}
