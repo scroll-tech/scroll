@@ -360,6 +360,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @notice Add an account to the sequencer list.
     /// @param _account The address of account to add.
     function addSequencer(address _account) external onlyOwner {
+        // @note Currently many external services rely on EOA sequencer to decode metadata directly from tx.calldata.
+        // So we explicitly make sure the account is EOA.
+        require(_account.code.length == 0, "not EOA");
+
         isSequencer[_account] = true;
 
         emit UpdateSequencer(_account, true);
@@ -376,6 +380,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @notice Add an account to the prover list.
     /// @param _account The address of account to add.
     function addProver(address _account) external onlyOwner {
+        // @note Currently many external services rely on EOA prover to decode metadata directly from tx.calldata.
+        // So we explicitly make sure the account is EOA.
+        require(_account.code.length == 0, "not EOA");
         isProver[_account] = true;
 
         emit UpdateProver(_account, true);
