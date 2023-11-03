@@ -19,6 +19,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
@@ -431,7 +432,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	status := types.ProvingStatus(batch.ProvingStatus)
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
-		now := time.Now()
+		now := utils.NowUTC()
 
 		if batch.CommittedAt == nil {
 			log.Error("batch.CommittedAt is nil", "index", batch.Index, "hash", batch.Hash)
