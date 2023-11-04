@@ -351,14 +351,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
     }
 
     function submitProofHash(uint256 batchIndex, bytes32 _proofHash) external {
-        isCommitProofHashAllowed(batchIndex);
-
-        if (ideDeposit.depositOf(msg.sender) < minDeposit) {
-            revert InsufficientPledge();
-        }
-
-        if (committedBatches[batchIndex] == bytes32(0)) {
-            revert ErrorBatchHash(committedBatches[batchIndex]);
+        if (isCommitProofHashAllowed(batchIndex)) {
+            revert submitProofHashNotAllowed();
         }
 
         uint256 _finalNewBatchNumber = committedBatchInfo[batchIndex].blockNumber;
@@ -446,7 +440,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
 
         // make sure committing proof complies with the two step commitment rule
-        isCommitProofAllowed(_batchIndex);
+        if (isCommitProofAllowed(_batchIndex)) {
+            revert submitProofNotAllowed();
+        }
 
         // verify previous state root.
         require(finalizedStateRoots[_batchIndex - 1] == _prevStateRoot, "incorrect previous state root");
@@ -626,49 +622,85 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain, I
         incorrectProofHashPunishAmount = _amount;
     }
 
-    /**********************
-     * Internal Functions *
-     **********************/
+    /*************************
+     * Public View Functions *
+     *************************/
 
-    function isCommitProofHashAllowed(uint256 batchIndex) internal view {
+    function isCommitProofHashAllowed(uint256 batchIndex) public view returns (bool) {
         ProofHashData memory proofHashData = proverCommitProofHash[batchIndex][msg.sender];
         if (lastFinalizedBatchIndex >= batchIndex || proofHashData.proof) {
-            revert CommittedProof();
+            return false;
         }
+
         if (
-            proofHashData.proofHash != bytes32(0) &&
-            (proofHashData.blockNumber + proofHashCommitEpoch + proofCommitEpoch) > block.number
+            (proofHashData.proofHash != bytes32(0) &&
+                (proofHashData.blockNumber + proofHashCommitEpoch + proofCommitEpoch) > block.number)
+            /**
+             *  Add below if there are not a lot of provers, to prevent frequent stop
+             **/
+            // ||
+            // ((proofHashData.blockNumber + proofHashCommitEpoch + proofCommitEpoch) <= block.number &&
+            // committedBatchInfo[batchIndex].proofSubmitted)
         ) {
-            revert CommittedProofHash();
+            return false;
         }
+
+        if (ideDeposit.depositOf(msg.sender) < minDeposit) {
+            return false;
+        }
+
+        if (committedBatches[batchIndex] == bytes32(0)) {
+            return false;
+        }
+        return true;
     }
 
-    function isCommitProofAllowed(uint256 batchIndex) internal view {
+    function isCommitProofAllowed(uint256 batchIndex) public view returns (bool) {
         CommitInfo memory BatchInfo = committedBatchInfo[batchIndex];
         if (BatchInfo.blockNumber + proofHashCommitEpoch > block.number) {
-            revert SubmitProofEarly();
+            return false;
         }
 
         ProofHashData memory _proofHashData = proverCommitProofHash[batchIndex][msg.sender];
         if (_proofHashData.blockNumber != BatchInfo.blockNumber) {
-            revert ErrCommitProof();
+            return false;
         }
 
         if (
             !BatchInfo.proofSubmitted &&
             (_proofHashData.blockNumber + proofHashCommitEpoch + proofCommitEpoch) < block.number
         ) {
-            revert SubmitProofTooLate();
+            return false;
         }
 
         if (_proofHashData.proofHash == bytes32(0)) {
-            revert CommittedProofHash();
+            return false;
         }
 
         if (_proofHashData.proof == true) {
-            revert CommittedProof();
+            return false;
+        }
+        return true;
+    }
+
+    // For Provers to fetch provable batch
+    function getBatchToProve() public view returns (uint256) {
+        uint256 i = lastFinalizedBatchIndex + 1;
+        while (true) {
+            if (isCommitProofAllowed(i)) {
+                return i;
+            }
+            // in case out of gas limit
+            if (lastFinalizedBatchIndex + 1 - i > 100) {
+                break;
+            }
+            i--;
         }
     }
+
+    /**********************
+     * Internal Functions *
+     **********************/
 
     /// @dev Internal function to load batch header from calldata to memory.
     /// @param _batchHeader The batch header in calldata.
