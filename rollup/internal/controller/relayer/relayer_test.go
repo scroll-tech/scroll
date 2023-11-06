@@ -99,6 +99,7 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
+	t.Run("TestL2RelayerFinalizeTimeoutBatches", testL2RelayerFinalizeTimeoutBatches)
 	t.Run("TestL2RelayerCommitConfirm", testL2RelayerCommitConfirm)
 	t.Run("TestL2RelayerFinalizeConfirm", testL2RelayerFinalizeConfirm)
 	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
