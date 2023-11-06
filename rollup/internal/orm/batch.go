@@ -9,6 +9,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -355,9 +356,9 @@ func (o *Batch) UpdateRollupStatus(ctx context.Context, hash string, status type
 
 	switch status {
 	case types.RollupCommitted:
-		updateFields["committed_at"] = time.Now()
+		updateFields["committed_at"] = utils.NowUTC()
 	case types.RollupFinalized:
-		updateFields["finalized_at"] = time.Now()
+		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -380,7 +381,7 @@ func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash stri
 	updateFields["commit_tx_hash"] = commitTxHash
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupCommitted {
-		updateFields["committed_at"] = time.Now()
+		updateFields["committed_at"] = utils.NowUTC()
 	}
 
 	db := o.db.WithContext(ctx)
