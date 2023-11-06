@@ -485,7 +485,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 }
 
 func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
-	// Check batch status before send `finalizeBatchWithProof` tx.
+	// Check batch status before send `finalizeBatch` tx.
 	if r.cfg.ChainMonitor.Enabled {
 		var batchStatus bool
 		batchStatus, err := r.getBatchStatusByIndex(batch.Index)
@@ -564,14 +564,16 @@ func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
 			// the client does not see the 1st tx's updates at this point.
 			// TODO: add more fine-grained error handling
 			log.Error(
-				"finalizeBatchWithProof in layer1 failed",
+				"finalizeBatch in layer1 failed",
+				"with proof", withProof,
 				"index", batch.Index,
 				"hash", batch.Hash,
 				"RollupContractAddress", r.cfg.RollupContractAddress,
 				"err", err,
 			)
 			log.Debug(
-				"finalizeBatchWithProof in layer1 failed",
+				"finalizeBatch in layer1 failed",
+				"with proof", withProof,
 				"index", batch.Index,
 				"hash", batch.Hash,
 				"RollupContractAddress", r.cfg.RollupContractAddress,
@@ -581,7 +583,7 @@ func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
 		}
 		return err
 	}
-	log.Info("finalizeBatch in layer1", "index", batch.Index, "batch hash", batch.Hash, "tx hash", batch.Hash, "with proof", withProof)
+	log.Info("finalizeBatch in layer1", "with proof", withProof, "index", batch.Index, "batch hash", batch.Hash, "tx hash", batch.Hash)
 
 	// record and sync with db, @todo handle db error
 	if err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batch.Hash, finalizeTxHash.String(), types.RollupFinalizing); err != nil {
