@@ -353,6 +353,63 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
     }
 
+    /// @inheritdoc IScrollChain
+    function finalizeBatch(
+        bytes calldata _batchHeader,
+        bytes32 _prevStateRoot,
+        bytes32 _postStateRoot,
+        bytes32 _withdrawRoot
+    ) external override OnlyProver whenNotPaused {
+        require(_prevStateRoot != bytes32(0), "previous state root is zero");
+        require(_postStateRoot != bytes32(0), "new state root is zero");
+
+        // compute batch hash and verify
+        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
+
+        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
+        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
+
+        // verify previous state root.
+        require(finalizedStateRoots[_batchIndex - 1] == _prevStateRoot, "incorrect previous state root");
+
+        // avoid duplicated verification
+        require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
+
+        // check and update lastFinalizedBatchIndex
+        unchecked {
+            require(lastFinalizedBatchIndex + 1 == _batchIndex, "incorrect batch index");
+            lastFinalizedBatchIndex = _batchIndex;
+        }
+
+        // record state root and withdraw root
+        finalizedStateRoots[_batchIndex] = _postStateRoot;
+        withdrawRoots[_batchIndex] = _withdrawRoot;
+
+        // Pop finalized and non-skipped message from L1MessageQueue.
+        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
+        if (_l1MessagePopped > 0) {
+            IL1MessageQueue _queue = IL1MessageQueue(messageQueue);
+
+            unchecked {
+                uint256 _startIndex = BatchHeaderV0Codec.totalL1MessagePopped(memPtr) - _l1MessagePopped;
+
+                for (uint256 i = 0; i < _l1MessagePopped; i += 256) {
+                    uint256 _count = 256;
+                    if (_l1MessagePopped - i < _count) {
+                        _count = _l1MessagePopped - i;
+                    }
+                    uint256 _skippedBitmap = BatchHeaderV0Codec.skippedBitmap(memPtr, i / 256);
+
+                    _queue.popCrossDomainMessage(_startIndex, _count, _skippedBitmap);
+
+                    _startIndex += 256;
+                }
+            }
+        }
+
+        emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
+    }
+
     /************************
      * Restricted Functions *
      ************************/
