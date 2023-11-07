@@ -24,11 +24,6 @@ import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 /// @dev It should be a predeployed contract on layer 2 and should hold infinite amount
 /// of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.
 contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
-    /***********
-     * Errors *
-     ***********/
-    error ErrZeroAddress();
-
     /*************
      * Constants *
      *************/

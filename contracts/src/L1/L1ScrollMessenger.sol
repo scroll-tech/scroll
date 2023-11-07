@@ -28,11 +28,6 @@ import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.
 /// this contract.
 contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
     /***********
-     * Errors *
-     ***********/
-    error ErrZeroAddress();
-
-    /***********
      * Structs *
      ***********/
 
