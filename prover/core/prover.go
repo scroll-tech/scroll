@@ -236,6 +236,11 @@ func (p *ProverCore) mayDumpProof(id string, proofByt []byte) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			log.Error("failed to close proof dump file", "id", id, "error", err)
+		}
+	}()
 	log.Info("Saving proof", "task-id", id)
 	_, err = f.Write(proofByt)
 	return err
