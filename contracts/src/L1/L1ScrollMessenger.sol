@@ -28,6 +28,11 @@ import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.
 /// this contract.
 contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
     /***********
+     * Errors *
+     ***********/
+    error ErrZeroAddress();
+
+    /***********
      * Structs *
      ***********/
 
@@ -95,6 +100,9 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         address _rollup,
         address _messageQueue
     ) public initializer {
+        if (_counterpart == address(0) || _rollup == address(0) || _messageQueue == address(0)) {
+            revert ErrZeroAddress();
+        }
         ScrollMessengerBase.__ScrollMessengerBase_init(_counterpart, _feeVault);
 
         rollup = _rollup;
