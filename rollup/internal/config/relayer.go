@@ -64,6 +64,11 @@ type RelayerConfig struct {
 	GasOracleSenderPrivateKey *ecdsa.PrivateKey `json:"-"`
 	CommitSenderPrivateKey    *ecdsa.PrivateKey `json:"-"`
 	FinalizeSenderPrivateKey  *ecdsa.PrivateKey `json:"-"`
+
+	// Indicates if bypass features specific to testing environments are enabled.
+	EnableTestEnvBypassFeatures bool `json:"enable_test_env_bypass_features"`
+	// The timeout in seconds for finalizing a batch without proof, only used when EnableTestEnvBypassFeatures is true.
+	FinalizeBatchWithoutProofTimeoutSec uint64 `json:"finalize_batch_without_proof_timeout_sec"`
 }
 
 // GasOracleConfig The config for updating gas price oracle.

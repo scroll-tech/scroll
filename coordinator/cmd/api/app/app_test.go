@@ -10,7 +10,7 @@ import (
 )
 
 func TestRunCoordinator(t *testing.T) {
-	coordinator := cmd.NewCmd("coordinator-test", "--version")
+	coordinator := cmd.NewCmd("coordinator-api-test", "--version")
 	defer coordinator.WaitExit()
 
 	// wait result
