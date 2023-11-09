@@ -114,16 +114,16 @@ Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s
 function initialize(address _counterpart, address _messenger) external nonpayable
 ```
 
+Initialize the storage of `L2ERC1155Gateway`.
 
-
-
+*The parameters `_counterpart` and `_messenger` are no longer used.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
-| _messenger | address | undefined |
+| _counterpart | address | The address of `L1ERC1155Gateway` contract in L1. |
+| _messenger | address | The address of `L2ScrollMessenger` contract in L2. |
 
 ### messenger
 
@@ -493,6 +493,53 @@ Emitted when the ERC1155 NFT is transfered to gateway on layer 2.
 | to  | address | undefined |
 | tokenId  | uint256 | undefined |
 | amount  | uint256 | undefined |
+
+
+
+## Errors
+
+### ErrorCallerIsNotCounterpartGateway
+
+```solidity
+error ErrorCallerIsNotCounterpartGateway()
+```
+
+
+
+*Thrown when the cross chain sender is not counterpart gateway contract.*
+
+
+### ErrorCallerIsNotMessenger
+
+```solidity
+error ErrorCallerIsNotMessenger()
+```
+
+
+
+*Thrown when the caller is not corresponding `L1ScrollMessenger` or `L2ScrollMessenger`.*
+
+
+### ErrorNotInDropMessageContext
+
+```solidity
+error ErrorNotInDropMessageContext()
+```
+
+
+
+*Thrown when ScrollMessenger is not dropping message.*
+
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address if `address(0)`.*
 
 
 

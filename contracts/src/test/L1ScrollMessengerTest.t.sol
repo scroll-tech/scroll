@@ -95,12 +95,12 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         hevm.expectRevert("Provided message has not been enqueued");
         l1Messenger.replayMessage(address(this), address(0), 101, 0, new bytes(0), defaultGasLimit, refundAddress);
 
-        gasOracle.setL2BaseFee(1);
+        messageQueue.setL2BaseFee(1);
         // Insufficient msg.value
         hevm.expectRevert("Insufficient msg.value for fee");
         l1Messenger.replayMessage(address(this), address(0), 100, 0, new bytes(0), defaultGasLimit, refundAddress);
 
-        uint256 _fee = gasOracle.l2BaseFee() * defaultGasLimit;
+        uint256 _fee = messageQueue.l2BaseFee() * defaultGasLimit;
 
         // Exceed maximum replay times
         hevm.expectRevert("Exceed maximum replay times");
@@ -134,7 +134,7 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
         // test replay list
         // 1. send a message with nonce 2
         // 2. replay 3 times
-        gasOracle.setL2BaseFee(0);
+        messageQueue.setL2BaseFee(0);
         l1Messenger.updateMaxReplayTimes(100);
         l1Messenger.sendMessage{value: 100}(address(0), 100, new bytes(0), defaultGasLimit, refundAddress);
         bytes32 hash = keccak256(
@@ -206,27 +206,27 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
     }
 
     function testIntrinsicGasLimit() external {
-        gasOracle.setIntrinsicParams(21000, 53000, 4, 16);
-        uint256 _fee = gasOracle.l2BaseFee() * 24000;
+        messageQueue.setIntrinsicParams(21000, 53000, 4, 16);
+        uint256 _fee = messageQueue.l2BaseFee() * 24000;
         uint256 value = 1;
 
         // _xDomainCalldata contains
         //   4B function identifier
-        //   20B sender addr
-        //   20B target addr
+        //   20B sender addr (encoded as 32B)
+        //   20B target addr (encoded as 32B)
         //   32B value
         //   32B nonce
-        //   message byte array (32B offset + 32B length + bytes)
-        // So the intrinsic gas must be greater than 22000
-        l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", 24000);
+        //   message byte array (32B offset + 32B length + bytes (padding to multiple of 32))
+        // So the intrinsic gas must be greater than 21000 + 16 * 228 = 24648
+        l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", 24648);
 
         // insufficient intrinsic gas
         hevm.expectRevert("Insufficient gas limit, must be above intrinsic gas");
-        l1Messenger.sendMessage{value: _fee + value}(address(0), 1, hex"0011220033", 22000);
+        l1Messenger.sendMessage{value: _fee + value}(address(0), 1, hex"0011220033", 24647);
 
         // gas limit exceeds the max value
         uint256 gasLimit = 100000000;
-        _fee = gasOracle.l2BaseFee() * gasLimit;
+        _fee = messageQueue.l2BaseFee() * gasLimit;
         hevm.expectRevert("Gas limit must not exceed maxGasLimit");
         l1Messenger.sendMessage{value: _fee + value}(address(0), value, hex"0011220033", gasLimit);
 

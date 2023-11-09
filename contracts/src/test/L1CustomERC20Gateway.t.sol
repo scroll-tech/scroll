@@ -4,11 +4,12 @@ pragma solidity =0.8.16;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {IL1ERC20Gateway, L1CustomERC20Gateway} from "../L1/gateways/L1CustomERC20Gateway.sol";
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
+import {L1ScrollMessenger} from "../L1/L1ScrollMessenger.sol";
 import {IL2ERC20Gateway, L2CustomERC20Gateway} from "../L2/gateways/L2CustomERC20Gateway.sol";
 import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
@@ -51,12 +52,12 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         l1Token = new MockERC20("Mock L1", "ML1", 18);
         l2Token = new MockERC20("Mock L2", "ML2", 18);
 
-        // Deploy L1 contracts
-        gateway = _deployGateway();
-        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
-
         // Deploy L2 contracts
-        counterpartGateway = new L2CustomERC20Gateway();
+        counterpartGateway = new L2CustomERC20Gateway(address(1), address(1), address(1));
+
+        // Deploy L1 contracts
+        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter())));
+        gateway = _deployGateway(address(l1Messenger));
 
         // Initialize L1 contracts
         gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
@@ -130,15 +131,15 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
 
     function testDropMessageMocking() public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only messenger can call, revert
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.onDropMessage(new bytes(0));
 
         // only called in drop context, revert
-        hevm.expectRevert("only called in drop context");
+        hevm.expectRevert(ErrorNotInDropMessageContext.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(0))
@@ -214,15 +215,15 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, 100000);
 
         // revert when caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeWithdrawERC20(address(l1Token), address(l2Token), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -407,7 +408,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = abi.encodeWithSelector(
@@ -486,7 +487,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = abi.encodeWithSelector(
@@ -566,7 +567,7 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = abi.encodeWithSelector(
@@ -658,7 +659,12 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
         }
     }
 
-    function _deployGateway() internal returns (L1CustomERC20Gateway) {
-        return L1CustomERC20Gateway(address(new ERC1967Proxy(address(new L1CustomERC20Gateway()), new bytes(0))));
+    function _deployGateway(address messenger) internal returns (L1CustomERC20Gateway _gateway) {
+        _gateway = L1CustomERC20Gateway(_deployProxy(address(0)));
+
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(_gateway)),
+            address(new L1CustomERC20Gateway(address(counterpartGateway), address(router), messenger))
+        );
     }
 }

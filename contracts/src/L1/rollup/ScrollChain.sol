@@ -48,6 +48,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @notice The chain id of the corresponding layer 2 chain.
     uint64 public immutable layer2ChainId;
 
+    /// @notice The address of L1MessageQueue contract.
+    address public immutable messageQueue;
+
     /*************
      * Variables *
      *************/
@@ -55,8 +58,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @notice The maximum number of transactions allowed in each chunk.
     uint256 public maxNumTxInChunk;
 
-    /// @notice The address of L1MessageQueue.
-    address public messageQueue;
+    /// @dev The storage slot used as L1MessageQueue contract, which is deprecated now.
+    address private __messageQueue;
 
     /// @notice The address of RollupVerifier.
     address public verifier;
@@ -98,12 +101,24 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
      * Constructor *
      ***************/
 
-    constructor(uint64 _chainId) {
+    /// @notice Constructor for `ScrollChain` implementation contract.
+    ///
+    /// @param _chainId The chain id of L2.
+    /// @param _messageQueue The address of `L1MessageQueue` contract.
+    constructor(uint64 _chainId, address _messageQueue) {
         _disableInitializers();
 
         layer2ChainId = _chainId;
+        messageQueue = _messageQueue;
     }
 
+    /// @notice Initialize the storage of ScrollChain.
+    ///
+    /// @dev The parameters `_messageQueue` are no longer used.
+    ///
+    /// @param _messageQueue The address of `L1MessageQueue` contract.
+    /// @param _verifier The address of zkevm verifier contract.
+    /// @param _maxNumTxInChunk The maximum number of transactions allowed in each chunk.
     function initialize(
         address _messageQueue,
         address _verifier,
@@ -111,9 +126,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     ) public initializer {
         OwnableUpgradeable.__Ownable_init();
 
-        messageQueue = _messageQueue;
         verifier = _verifier;
         maxNumTxInChunk = _maxNumTxInChunk;
+        __messageQueue = _messageQueue;
 
         emit UpdateVerifier(address(0), _verifier);
         emit UpdateMaxNumTxInChunk(0, _maxNumTxInChunk);

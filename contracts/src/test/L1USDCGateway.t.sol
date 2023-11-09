@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {IL1ERC20Gateway, L1USDCGateway} from "../L1/gateways/usdc/L1USDCGateway.sol";
@@ -50,12 +50,12 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         l1USDC = new MockERC20("USDC", "USDC", 6);
         l2USDC = new MockERC20("USDC", "USDC", 6);
 
-        // Deploy L1 contracts
-        gateway = _deployGateway();
-        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
-
         // Deploy L2 contracts
-        counterpartGateway = new L2USDCGateway(address(l1USDC), address(l2USDC));
+        counterpartGateway = new L2USDCGateway(address(l1USDC), address(l2USDC), address(1), address(1), address(1));
+
+        // Deploy L1 contracts
+        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter())));
+        gateway = _deployGateway(address(l1Messenger));
 
         // Initialize L1 contracts
         gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
@@ -154,15 +154,15 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, 100000);
 
         // revert when caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeWithdrawERC20(address(l1USDC), address(l2USDC), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by conterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -376,7 +376,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = abi.encodeWithSelector(
@@ -453,7 +453,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = abi.encodeWithSelector(
@@ -519,10 +519,20 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         }
     }
 
-    function _deployGateway() internal returns (L1USDCGateway) {
-        return
-            L1USDCGateway(
-                payable(new ERC1967Proxy(address(new L1USDCGateway(address(l1USDC), address(l2USDC))), new bytes(0)))
-            );
+    function _deployGateway(address messenger) internal returns (L1USDCGateway _gateway) {
+        _gateway = L1USDCGateway(_deployProxy(address(0)));
+
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(_gateway)),
+            address(
+                new L1USDCGateway(
+                    address(l1USDC),
+                    address(l2USDC),
+                    address(counterpartGateway),
+                    address(router),
+                    address(messenger)
+                )
+            )
+        );
     }
 }

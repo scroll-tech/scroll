@@ -31,6 +31,13 @@ interface IScrollMessenger {
     /// @param messageHash The hash of the message.
     event FailedRelayedMessage(bytes32 indexed messageHash);
 
+    /**********
+     * Events *
+     **********/
+
+    /// @dev Thrown when the given address if `address(0)`.
+    error ErrorZeroAddress();
+
     /*************************
      * Public View Functions *
      *************************/

@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+pragma solidity =0.8.16;
 
 import {Script} from "forge-std/Script.sol";
+
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {L1CustomERC20Gateway} from "../../src/L1/gateways/L1CustomERC20Gateway.sol";
 import {L1ERC1155Gateway} from "../../src/L1/gateways/L1ERC1155Gateway.sol";
@@ -17,6 +20,10 @@ import {L1MessageQueue} from "../../src/L1/rollup/L1MessageQueue.sol";
 import {L2GasPriceOracle} from "../../src/L1/rollup/L2GasPriceOracle.sol";
 import {EnforcedTxGateway} from "../../src/L1/gateways/EnforcedTxGateway.sol";
 
+// solhint-disable max-states-count
+// solhint-disable state-visibility
+// solhint-disable var-name-mixedcase
+
 contract InitializeL1BridgeContracts is Script {
     uint256 L1_DEPLOYER_PRIVATE_KEY = vm.envUint("L1_DEPLOYER_PRIVATE_KEY");
 
@@ -28,23 +35,34 @@ contract InitializeL1BridgeContracts is Script {
     address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
 
+    address L1_PROXY_ADMIN_ADDR = vm.envAddress("L1_PROXY_ADMIN_ADDR");
+
     address L1_WHITELIST_ADDR = vm.envAddress("L1_WHITELIST_ADDR");
     address L1_SCROLL_CHAIN_PROXY_ADDR = vm.envAddress("L1_SCROLL_CHAIN_PROXY_ADDR");
+    address L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR = vm.envAddress("L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR");
     address L1_MESSAGE_QUEUE_PROXY_ADDR = vm.envAddress("L1_MESSAGE_QUEUE_PROXY_ADDR");
+    address L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR = vm.envAddress("L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR");
     address L2_GAS_PRICE_ORACLE_PROXY_ADDR = vm.envAddress("L2_GAS_PRICE_ORACLE_PROXY_ADDR");
     address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
+    address L1_SCROLL_MESSENGER_IMPLEMENTATION_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_IMPLEMENTATION_ADDR");
     address L1_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L1_GATEWAY_ROUTER_PROXY_ADDR");
     address L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
+    address L1_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR = vm.envAddress("L1_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR");
     address L1_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC721_GATEWAY_PROXY_ADDR");
+    address L1_ERC721_GATEWAY_IMPLEMENTATION_ADDR = vm.envAddress("L1_ERC721_GATEWAY_IMPLEMENTATION_ADDR");
     address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
+    address L1_ERC1155_GATEWAY_IMPLEMENTATION_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_IMPLEMENTATION_ADDR");
     address L1_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ETH_GATEWAY_PROXY_ADDR");
+    address L1_ETH_GATEWAY_IMPLEMENTATION_ADDR = vm.envAddress("L1_ETH_GATEWAY_IMPLEMENTATION_ADDR");
     address L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
+    address L1_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR =
+        vm.envAddress("L1_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR");
     address L1_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_WETH_GATEWAY_PROXY_ADDR");
+    address L1_WETH_GATEWAY_IMPLEMENTATION_ADDR = vm.envAddress("L1_WETH_GATEWAY_IMPLEMENTATION_ADDR");
     address L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR = vm.envAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR");
     address L1_ENFORCED_TX_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ENFORCED_TX_GATEWAY_PROXY_ADDR");
 
     address L2_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_PROXY_ADDR");
-    address L2_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L2_GATEWAY_ROUTER_PROXY_ADDR");
     address L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
     address L2_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC721_GATEWAY_PROXY_ADDR");
     address L2_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC1155_GATEWAY_PROXY_ADDR");
@@ -55,13 +73,18 @@ contract InitializeL1BridgeContracts is Script {
     address L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR = vm.envAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR");
 
     function run() external {
+        ProxyAdmin proxyAdmin = ProxyAdmin(L1_PROXY_ADMIN_ADDR);
+
         vm.startBroadcast(L1_DEPLOYER_PRIVATE_KEY);
 
         // initialize ScrollChain
-        ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).initialize(
-            L1_MESSAGE_QUEUE_PROXY_ADDR,
-            L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR,
-            MAX_TX_IN_CHUNK
+        proxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(L1_SCROLL_CHAIN_PROXY_ADDR),
+            L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR,
+            abi.encodeCall(
+                ScrollChain.initialize,
+                (L1_MESSAGE_QUEUE_PROXY_ADDR, L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR, MAX_TX_IN_CHUNK)
+            )
         );
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addSequencer(L1_COMMIT_SENDER_ADDRESS);
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addProver(L1_FINALIZE_SENDER_ADDRESS);
@@ -79,20 +102,34 @@ contract InitializeL1BridgeContracts is Script {
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).updateWhitelist(L1_WHITELIST_ADDR);
 
         // initialize L1MessageQueue
-        L1MessageQueue(L1_MESSAGE_QUEUE_PROXY_ADDR).initialize(
-            L1_SCROLL_MESSENGER_PROXY_ADDR,
-            L1_SCROLL_CHAIN_PROXY_ADDR,
-            L1_ENFORCED_TX_GATEWAY_PROXY_ADDR,
-            L2_GAS_PRICE_ORACLE_PROXY_ADDR,
-            MAX_L1_MESSAGE_GAS_LIMIT
+        proxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(L1_MESSAGE_QUEUE_PROXY_ADDR),
+            L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR,
+            abi.encodeCall(
+                L1MessageQueue.initialize,
+                (
+                    L1_SCROLL_MESSENGER_PROXY_ADDR,
+                    L1_SCROLL_CHAIN_PROXY_ADDR,
+                    L1_ENFORCED_TX_GATEWAY_PROXY_ADDR,
+                    L2_GAS_PRICE_ORACLE_PROXY_ADDR,
+                    MAX_L1_MESSAGE_GAS_LIMIT
+                )
+            )
         );
 
         // initialize L1ScrollMessenger
-        L1ScrollMessenger(payable(L1_SCROLL_MESSENGER_PROXY_ADDR)).initialize(
-            L2_SCROLL_MESSENGER_PROXY_ADDR,
-            L1_FEE_VAULT_ADDR,
-            L1_SCROLL_CHAIN_PROXY_ADDR,
-            L1_MESSAGE_QUEUE_PROXY_ADDR
+        proxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(L1_SCROLL_MESSENGER_PROXY_ADDR),
+            L1_SCROLL_MESSENGER_IMPLEMENTATION_ADDR,
+            abi.encodeCall(
+                L1ScrollMessenger.initialize,
+                (
+                    L2_SCROLL_MESSENGER_PROXY_ADDR,
+                    L1_FEE_VAULT_ADDR,
+                    L1_SCROLL_CHAIN_PROXY_ADDR,
+                    L1_MESSAGE_QUEUE_PROXY_ADDR
+                )
+            )
         );
 
         // initialize EnforcedTxGateway
@@ -108,45 +145,63 @@ contract InitializeL1BridgeContracts is Script {
         );
 
         // initialize L1CustomERC20Gateway
-        L1CustomERC20Gateway(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).initialize(
-            L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR,
-            L1_GATEWAY_ROUTER_PROXY_ADDR,
-            L1_SCROLL_MESSENGER_PROXY_ADDR
+        proxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR),
+            L1_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR,
+            abi.encodeCall(
+                L1CustomERC20Gateway.initialize,
+                (L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR, L1_GATEWAY_ROUTER_PROXY_ADDR, L1_SCROLL_MESSENGER_PROXY_ADDR)
+            )
         );
 
         // initialize L1ERC1155Gateway
-        L1ERC1155Gateway(L1_ERC1155_GATEWAY_PROXY_ADDR).initialize(
-            L2_ERC1155_GATEWAY_PROXY_ADDR,
-            L1_SCROLL_MESSENGER_PROXY_ADDR
+        proxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(L1_ERC1155_GATEWAY_PROXY_ADDR),
+            L1_ERC1155_GATEWAY_IMPLEMENTATION_ADDR,
+            abi.encodeCall(L1ERC1155Gateway.initialize, (L2_ERC1155_GATEWAY_PROXY_ADDR, L1_SCROLL_MESSENGER_PROXY_ADDR))
         );
 
         // initialize L1ERC721Gateway
-        L1ERC721Gateway(L1_ERC721_GATEWAY_PROXY_ADDR).initialize(
-            L2_ERC721_GATEWAY_PROXY_ADDR,
-            L1_SCROLL_MESSENGER_PROXY_ADDR
+        proxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(L1_ERC721_GATEWAY_PROXY_ADDR),
+            L1_ERC721_GATEWAY_IMPLEMENTATION_ADDR,
+            abi.encodeCall(L1ERC721Gateway.initialize, (L2_ERC721_GATEWAY_PROXY_ADDR, L1_SCROLL_MESSENGER_PROXY_ADDR))
         );
 
         // initialize L1ETHGateway
-        L1ETHGateway(L1_ETH_GATEWAY_PROXY_ADDR).initialize(
-            L2_ETH_GATEWAY_PROXY_ADDR,
-            L1_GATEWAY_ROUTER_PROXY_ADDR,
-            L1_SCROLL_MESSENGER_PROXY_ADDR
+        proxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(L1_ETH_GATEWAY_PROXY_ADDR),
+            L1_ETH_GATEWAY_IMPLEMENTATION_ADDR,
+            abi.encodeCall(
+                L1ETHGateway.initialize,
+                (L2_ETH_GATEWAY_PROXY_ADDR, L1_GATEWAY_ROUTER_PROXY_ADDR, L1_SCROLL_MESSENGER_PROXY_ADDR)
+            )
         );
 
         // initialize L1StandardERC20Gateway
-        L1StandardERC20Gateway(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR).initialize(
-            L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR,
-            L1_GATEWAY_ROUTER_PROXY_ADDR,
-            L1_SCROLL_MESSENGER_PROXY_ADDR,
-            L2_SCROLL_STANDARD_ERC20_ADDR,
-            L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR
+        proxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR),
+            L1_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR,
+            abi.encodeCall(
+                L1StandardERC20Gateway.initialize,
+                (
+                    L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR,
+                    L1_GATEWAY_ROUTER_PROXY_ADDR,
+                    L1_SCROLL_MESSENGER_PROXY_ADDR,
+                    L2_SCROLL_STANDARD_ERC20_ADDR,
+                    L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR
+                )
+            )
         );
 
         // initialize L1WETHGateway
-        L1WETHGateway(payable(L1_WETH_GATEWAY_PROXY_ADDR)).initialize(
-            L2_WETH_GATEWAY_PROXY_ADDR,
-            L1_GATEWAY_ROUTER_PROXY_ADDR,
-            L1_SCROLL_MESSENGER_PROXY_ADDR
+        proxyAdmin.upgradeAndCall(
+            ITransparentUpgradeableProxy(L1_WETH_GATEWAY_PROXY_ADDR),
+            L1_WETH_GATEWAY_IMPLEMENTATION_ADDR,
+            abi.encodeCall(
+                L1WETHGateway.initialize,
+                (L2_WETH_GATEWAY_PROXY_ADDR, L1_GATEWAY_ROUTER_PROXY_ADDR, L1_SCROLL_MESSENGER_PROXY_ADDR)
+            )
         );
 
         // set WETH gateway in router

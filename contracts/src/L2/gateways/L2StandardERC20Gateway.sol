@@ -22,33 +22,62 @@ contract L2StandardERC20Gateway is L2ERC20Gateway {
     using AddressUpgradeable for address;
 
     /*************
+     * Constants *
+     *************/
+
+    /// @notice The address of ScrollStandardERC20Factory.
+    address public immutable tokenFactory;
+
+    /*************
      * Variables *
      *************/
 
     /// @notice Mapping from l2 token address to l1 token address.
     mapping(address => address) private tokenMapping;
 
-    /// @notice The address of ScrollStandardERC20Factory.
-    address public tokenFactory;
+    /// @dev The storage slot used as ScrollStandardERC20Factory contract, which is deprecated now.
+    address private __tokenFactory;
 
     /***************
      * Constructor *
      ***************/
-    constructor() {
+
+    /// @notice Constructor for `L2StandardERC20Gateway` implementation contract.
+    ///
+    /// @param _counterpart The address of `L1StandardERC20Gateway` contract in L1.
+    /// @param _router The address of `L2GatewayRouter` contract.
+    /// @param _messenger The address of `L2ScrollMessenger` contract.
+    /// @param _tokenFactory The address of ScrollStandardERC20Factory.
+    constructor(
+        address _counterpart,
+        address _router,
+        address _messenger,
+        address _tokenFactory
+    ) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_router == address(0) || _tokenFactory == address(0)) revert ErrorZeroAddress();
+
         _disableInitializers();
+
+        tokenFactory = _tokenFactory;
     }
 
+    /// @notice Initialize the storage of L2StandardERC20Gateway.
+    ///
+    /// @dev The parameters `_counterpart`, `_router`, `_messenger` and `_tokenFactory` are no longer used.
+    ///
+    /// @param _counterpart The address of L1ETHGateway in L1.
+    /// @param _router The address of L2GatewayRouter.
+    /// @param _messenger The address of L2ScrollMessenger.
+    /// @param _tokenFactory The address of ScrollStandardERC20Factory.
     function initialize(
         address _counterpart,
         address _router,
         address _messenger,
         address _tokenFactory
     ) external initializer {
-        require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
 
-        require(_tokenFactory != address(0), "zero token factory");
-        tokenFactory = _tokenFactory;
+        __tokenFactory = _tokenFactory;
     }
 
     /*************************

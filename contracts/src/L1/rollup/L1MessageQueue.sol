@@ -20,34 +20,25 @@ import {AddressAliasHelper} from "../../libraries/common/AddressAliasHelper.sol"
 contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     using BitMapsUpgradeable for BitMapsUpgradeable.BitMap;
 
-    /**********
-     * Events *
-     **********/
+    /*************
+     * Constants *
+     *************/
 
-    /// @notice Emitted when owner updates gas oracle contract.
-    /// @param _oldGasOracle The address of old gas oracle contract.
-    /// @param _newGasOracle The address of new gas oracle contract.
-    event UpdateGasOracle(address indexed _oldGasOracle, address indexed _newGasOracle);
+    /// @notice The address of L1ScrollMessenger contract.
+    address public immutable messenger;
 
-    /// @notice Emitted when owner updates EnforcedTxGateway contract.
-    /// @param _oldGateway The address of old EnforcedTxGateway contract.
-    /// @param _newGateway The address of new EnforcedTxGateway contract.
-    event UpdateEnforcedTxGateway(address indexed _oldGateway, address indexed _newGateway);
-
-    /// @notice Emitted when owner updates max gas limit.
-    /// @param _oldMaxGasLimit The old max gas limit.
-    /// @param _newMaxGasLimit The new max gas limit.
-    event UpdateMaxGasLimit(uint256 _oldMaxGasLimit, uint256 _newMaxGasLimit);
+    /// @notice The address of ScrollChain contract.
+    address public immutable scrollChain;
 
     /*************
      * Variables *
      *************/
 
-    /// @notice The address of L1ScrollMessenger contract.
-    address public messenger;
+    /// @dev The storage slot used as L1ScrollMessenger contract, which is deprecated now.
+    address private __messenger;
 
-    /// @notice The address of ScrollChain contract.
-    address public scrollChain;
+    /// @dev The storage slot used as ScrollChain contract, which is deprecated now.
+    address private __scrollChain;
 
     /// @notice The address EnforcedTxGateway contract.
     address public enforcedTxGateway;
@@ -70,6 +61,9 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @dev The bitmap for skipped messages, where `skippedMessageBitmap[i]` keeps the bits from `[i*256, (i+1)*256)`.
     mapping(uint256 => uint256) private skippedMessageBitmap;
 
+    /// @dev The storage slots for future usage.
+    uint256[41] private __gap;
+
     /**********************
      * Function Modifiers *
      **********************/
@@ -83,10 +77,30 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
      * Constructor *
      ***************/
 
-    constructor() {
+    /// @notice Constructor for `L1MessageQueue` implementation contract.
+    ///
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    /// @param _scrollChain The address of `ScrollChain` contract.
+    constructor(address _messenger, address _scrollChain) {
+        if (_messenger == address(0) || _scrollChain == address(0)) {
+            revert ErrorZeroAddress();
+        }
+
         _disableInitializers();
+
+        messenger = _messenger;
+        scrollChain = _scrollChain;
     }
 
+    /// @notice Initialize the storage of L1MessageQueue.
+    ///
+    /// @dev The parameters `_messenger` and `_scrollChain` are no longer used.
+    ///
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    /// @param _scrollChain The address of `ScrollChain` contract.
+    /// @param _enforcedTxGateway The address of `EnforcedTxGateway` contract.
+    /// @param _gasOracle The address of `GasOracle` contract.
+    /// @param _maxGasLimit The maximum gas limit allowed in single transaction.
     function initialize(
         address _messenger,
         address _scrollChain,
@@ -95,12 +109,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         uint256 _maxGasLimit
     ) external initializer {
         OwnableUpgradeable.__Ownable_init();
-
-        messenger = _messenger;
-        scrollChain = _scrollChain;
         enforcedTxGateway = _enforcedTxGateway;
         gasOracle = _gasOracle;
         maxGasLimit = _maxGasLimit;
+
+        __messenger = _messenger;
+        __scrollChain = _scrollChain;
     }
 
     /*************************
@@ -118,14 +132,14 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     }
 
     /// @inheritdoc IL1MessageQueue
-    function estimateCrossDomainMessageFee(uint256 _gasLimit) external view override returns (uint256) {
+    function estimateCrossDomainMessageFee(uint256 _gasLimit) external view virtual override returns (uint256) {
         address _oracle = gasOracle;
         if (_oracle == address(0)) return 0;
         return IL2GasPriceOracle(_oracle).estimateCrossDomainMessageFee(_gasLimit);
     }
 
     /// @inheritdoc IL1MessageQueue
-    function calculateIntrinsicGasFee(bytes memory _calldata) public view override returns (uint256) {
+    function calculateIntrinsicGasFee(bytes calldata _calldata) public view virtual override returns (uint256) {
         address _oracle = gasOracle;
         if (_oracle == address(0)) return 0;
         return IL2GasPriceOracle(_oracle).calculateIntrinsicGasFee(_calldata);
@@ -415,7 +429,7 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         emit QueueTransaction(_sender, _target, _value, uint64(_queueIndex), _gasLimit, _data);
     }
 
-    function _validateGasLimit(uint256 _gasLimit, bytes memory _calldata) internal view {
+    function _validateGasLimit(uint256 _gasLimit, bytes calldata _calldata) internal view {
         require(_gasLimit <= maxGasLimit, "Gas limit must not exceed maxGasLimit");
         // check if the gas limit is above intrinsic gas
         uint256 intrinsicGas = calculateIntrinsicGasFee(_calldata);

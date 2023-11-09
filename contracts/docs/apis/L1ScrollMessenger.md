@@ -72,7 +72,7 @@ function initialize(address _counterpart, address _feeVault, address _rollup, ad
 
 Initialize the storage of L1ScrollMessenger.
 
-
+*The parameters `_counterpart`, `_rollup` and `_messageQueue` are no longer used.*
 
 #### Parameters
 
@@ -608,6 +608,20 @@ Emitted when the maximum number of times each message can be replayed is updated
 |---|---|---|
 | oldMaxReplayTimes  | uint256 | undefined |
 | newMaxReplayTimes  | uint256 | undefined |
+
+
+
+## Errors
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address if `address(0)`.*
 
 
 

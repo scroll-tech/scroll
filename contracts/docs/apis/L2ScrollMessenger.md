@@ -47,7 +47,7 @@ The address of fee vault, collecting cross domain messaging fee.
 ### initialize
 
 ```solidity
-function initialize(address _counterpart) external nonpayable
+function initialize(address) external nonpayable
 ```
 
 
@@ -58,7 +58,7 @@ function initialize(address _counterpart) external nonpayable
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
+| _0 | address | undefined |
 
 ### isL1MessageExecuted
 
@@ -445,6 +445,20 @@ Emitted when the maximum number of times each message can fail in L2 is updated.
 |---|---|---|
 | oldMaxFailedExecutionTimes  | uint256 | undefined |
 | newMaxFailedExecutionTimes  | uint256 | undefined |
+
+
+
+## Errors
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address if `address(0)`.*
 
 
 

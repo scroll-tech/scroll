@@ -5,7 +5,7 @@ pragma solidity =0.8.16;
 import {MockERC721} from "solmate/test/utils/mocks/MockERC721.sol";
 import {ERC721TokenReceiver} from "solmate/tokens/ERC721.sol";
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {IL1ERC721Gateway, L1ERC721Gateway} from "../L1/gateways/L1ERC721Gateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
@@ -67,11 +67,11 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         l1Token = new MockERC721("Mock L1", "ML1");
         l2Token = new MockERC721("Mock L2", "ML1");
 
-        // Deploy L1 contracts
-        gateway = _deployGateway();
-
         // Deploy L2 contracts
-        counterpartGateway = new L2ERC721Gateway();
+        counterpartGateway = new L2ERC721Gateway(address(1), address(1));
+
+        // Deploy L1 contracts
+        gateway = _deployGateway(address(l1Messenger));
 
         // Initialize L1 contracts
         gateway.initialize(address(counterpartGateway), address(l1Messenger));
@@ -153,15 +153,15 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
 
     function testDropMessageMocking() public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only messenger can call, revert
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.onDropMessage(new bytes(0));
 
         // only called in drop context, revert
-        hevm.expectRevert("only called in drop context");
+        hevm.expectRevert(ErrorNotInDropMessageContext.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(0))
@@ -268,15 +268,15 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
 
         // revert when caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeWithdrawERC721(address(l1Token), address(l2Token), sender, recipient, tokenId);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only call by counterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -438,15 +438,15 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         }
 
         // revert when caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeBatchWithdrawERC721(address(l1Token), address(l2Token), sender, recipient, _tokenIds);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only call by counterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -616,7 +616,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         tokenId = bound(tokenId, 0, TOKEN_COUNT - 1);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
         l1Token.setApprovalForAll(address(gateway), true);
 
@@ -676,7 +676,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
         hevm.expectRevert("no corresponding l2 token");
@@ -739,7 +739,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
         hevm.expectRevert("no corresponding l2 token");
@@ -801,7 +801,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
         uint256[] memory _tokenIds = new uint256[](tokenCount);
@@ -876,7 +876,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
         uint256[] memory _tokenIds = new uint256[](tokenCount);
@@ -941,7 +941,12 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
         assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
     }
 
-    function _deployGateway() internal returns (L1ERC721Gateway) {
-        return L1ERC721Gateway(address(new ERC1967Proxy(address(new L1ERC721Gateway()), new bytes(0))));
+    function _deployGateway(address messenger) internal returns (L1ERC721Gateway _gateway) {
+        _gateway = L1ERC721Gateway(_deployProxy(address(0)));
+
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(_gateway)),
+            address(new L1ERC721Gateway(address(counterpartGateway), address(messenger)))
+        );
     }
 }

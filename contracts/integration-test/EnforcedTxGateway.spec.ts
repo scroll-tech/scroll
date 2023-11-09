@@ -17,10 +17,10 @@ describe("EnforcedTxGateway.spec", async () => {
   let oracle: L2GasPriceOracle;
   let queue: L1MessageQueue;
 
-  const deployProxy = async (name: string, admin: string): Promise<string> => {
+  const deployProxy = async (name: string, admin: string, args: any[]): Promise<string> => {
     const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
     const Factory = await ethers.getContractFactory(name, deployer);
-    const impl = await Factory.deploy();
+    const impl = args.length > 0 ? await Factory.deploy(...args) : await Factory.deploy();
     await impl.deployed();
     const proxy = await TransparentUpgradeableProxy.deploy(impl.address, admin, "0x");
     await proxy.deployed();
@@ -34,17 +34,21 @@ describe("EnforcedTxGateway.spec", async () => {
     const admin = await ProxyAdmin.deploy();
     await admin.deployed();
 
-    queue = await ethers.getContractAt("L1MessageQueue", await deployProxy("L1MessageQueue", admin.address), deployer);
+    queue = await ethers.getContractAt(
+      "L1MessageQueue",
+      await deployProxy("L1MessageQueue", admin.address, [deployer.address, deployer.address]),
+      deployer
+    );
 
     oracle = await ethers.getContractAt(
       "L2GasPriceOracle",
-      await deployProxy("L2GasPriceOracle", admin.address),
+      await deployProxy("L2GasPriceOracle", admin.address, []),
       deployer
     );
 
     gateway = await ethers.getContractAt(
       "EnforcedTxGateway",
-      await deployProxy("EnforcedTxGateway", admin.address),
+      await deployProxy("EnforcedTxGateway", admin.address, []),
       deployer
     );
 

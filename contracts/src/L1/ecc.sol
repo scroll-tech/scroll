@@ -5,9 +5,7 @@ pragma solidity >=0.7.0 <0.9.0;
 contract Ecc {
     /* ECC Functions */
     // https://etherscan.io/address/0x41bf00f080ed41fa86201eac56b8afb170d9e36d#code
-    function ecAdd(uint256[2] memory p0, uint256[2] memory p1) public view
-        returns (uint256[2] memory retP)
-    {
+    function ecAdd(uint256[2] memory p0, uint256[2] memory p1) public view returns (uint256[2] memory retP) {
         uint256[4] memory i = [p0[0], p0[1], p1[0], p1[1]];
 
         assembly {
@@ -20,9 +18,7 @@ contract Ecc {
     }
 
     // https://etherscan.io/address/0x41bf00f080ed41fa86201eac56b8afb170d9e36d#code
-    function ecMul(uint256[2] memory p, uint256 s) public view
-        returns (uint256[2] memory retP)
-    {
+    function ecMul(uint256[2] memory p, uint256 s) public view returns (uint256[2] memory retP) {
         // With a public key (x, y), this computes p = scalar * (x, y).
         uint256[3] memory i = [p[0], p[1], s];
 
@@ -44,6 +40,7 @@ contract Ecc {
         uint256[2] x;
         uint256[2] y;
     }
+
     function ecPairing(G1Point[] memory p1, G2Point[] memory p2) internal view returns (bool) {
         uint256 length = p1.length * 6;
         uint256[] memory input = new uint256[](length);
@@ -69,8 +66,7 @@ contract Ecc {
     }
 
     /* Bench */
-    function ecAdds(uint256 n) public
-    {
+    function ecAdds(uint256 n) public {
         uint256[2] memory p0;
         p0[0] = 1;
         p0[1] = 2;
@@ -78,24 +74,22 @@ contract Ecc {
         p1[0] = 1;
         p1[1] = 2;
 
-        for (uint i = 0; i < n; i++) {
+        for (uint256 i = 0; i < n; i++) {
             ecAdd(p0, p1);
         }
     }
 
-    function ecMuls(uint256 n) public
-    {
+    function ecMuls(uint256 n) public {
         uint256[2] memory p0;
         p0[0] = 1;
         p0[1] = 2;
 
-        for (uint i = 0; i < n; i++) {
+        for (uint256 i = 0; i < n; i++) {
             ecMul(p0, 3);
         }
     }
 
-    function ecPairings(uint256 n) public
-    {
+    function ecPairings(uint256 n) public {
         G1Point[] memory g1_points = new G1Point[](2);
         G2Point[] memory g2_points = new G2Point[](2);
         g1_points[0].x = 0x0000000000000000000000000000000000000000000000000000000000000001;
@@ -111,7 +105,7 @@ contract Ecc {
         g2_points[1].y[1] = 0x275739c5c2cdbc72e37c689e2ab441ea76c1d284b9c46ae8f5c42ead937819e1;
         g2_points[1].y[0] = 0x018de34c5b7c3d3d75428bbe050f1449ea3d9961d563291f307a1874f7332e65;
 
-        for (uint i = 0; i < n; i++) {
+        for (uint256 i = 0; i < n; i++) {
             ecPairing(g1_points, g2_points);
             // bool checked = false;
             // checked = ecPairing(g1_points, g2_points);
@@ -120,14 +114,13 @@ contract Ecc {
     }
 
     // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/8a0b7bed82d6b8053872c3fd40703efd58f5699d/test/utils/cryptography/ECDSA.test.js#L230
-    function ecRecovers(uint256 n) public
-    {
+    function ecRecovers(uint256 n) public {
         bytes32 hash = 0xb94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9;
         bytes32 r = 0xe742ff452d41413616a5bf43fe15dd88294e983d3d36206c2712f39083d638bd;
         uint8 v = 0x1b;
         bytes32 s = 0xe0a0fc89be718fbc1033e1d30d78be1c68081562ed2e97af876f286f3453231d;
 
-        for (uint i = 0; i < n; i++) {
+        for (uint256 i = 0; i < n; i++) {
             ecrecover(hash, v, r, s);
         }
     }

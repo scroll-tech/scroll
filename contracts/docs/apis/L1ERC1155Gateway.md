@@ -550,3 +550,50 @@ Emitted when token mapping for ERC1155 token is updated.
 
 
 
+## Errors
+
+### ErrorCallerIsNotCounterpartGateway
+
+```solidity
+error ErrorCallerIsNotCounterpartGateway()
+```
+
+
+
+*Thrown when the cross chain sender is not counterpart gateway contract.*
+
+
+### ErrorCallerIsNotMessenger
+
+```solidity
+error ErrorCallerIsNotMessenger()
+```
+
+
+
+*Thrown when the caller is not corresponding `L1ScrollMessenger` or `L2ScrollMessenger`.*
+
+
+### ErrorNotInDropMessageContext
+
+```solidity
+error ErrorNotInDropMessageContext()
+```
+
+
+
+*Thrown when ScrollMessenger is not dropping message.*
+
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address if `address(0)`.*
+
+
+

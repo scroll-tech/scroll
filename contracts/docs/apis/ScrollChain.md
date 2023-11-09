@@ -148,17 +148,17 @@ Import layer 2 genesis block
 function initialize(address _messageQueue, address _verifier, uint256 _maxNumTxInChunk) external nonpayable
 ```
 
+Initialize the storage of ScrollChain.
 
-
-
+*The parameters `_messageQueue` are no longer used.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _messageQueue | address | undefined |
-| _verifier | address | undefined |
-| _maxNumTxInChunk | uint256 | undefined |
+| _messageQueue | address | The address of `L1MessageQueue` contract. |
+| _verifier | address | The address of zkevm verifier contract. |
+| _maxNumTxInChunk | uint256 | The maximum number of transactions allowed in each chunk. |
 
 ### isBatchFinalized
 
@@ -283,7 +283,7 @@ The maximum number of transactions allowed in each chunk.
 function messageQueue() external view returns (address)
 ```
 
-The address of L1MessageQueue.
+The address of L1MessageQueue contract.
 
 
 

@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
 import {L1StandardERC20Gateway} from "../L1/gateways/L1StandardERC20Gateway.sol";
@@ -41,19 +41,39 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
 
         // Deploy tokens
         l1Token = new MockERC20("Mock", "M", 18);
-
-        // Deploy L1 contracts
-        l1StandardERC20Gateway = new L1StandardERC20Gateway();
-        l1ETHGateway = new L1ETHGateway();
-
-        // Deploy L2 contracts
-        l2StandardERC20Gateway = L2StandardERC20Gateway(
-            address(new ERC1967Proxy(address(new L2StandardERC20Gateway()), new bytes(0)))
-        );
-        l2ETHGateway = L2ETHGateway(address(new ERC1967Proxy(address(new L2ETHGateway()), new bytes(0))));
-        router = L2GatewayRouter(address(new ERC1967Proxy(address(new L2GatewayRouter()), new bytes(0))));
         template = new ScrollStandardERC20();
         factory = new ScrollStandardERC20Factory(address(template));
+
+        // Deploy L1 contracts
+        l1StandardERC20Gateway = new L1StandardERC20Gateway(
+            address(1),
+            address(1),
+            address(1),
+            address(template),
+            address(factory)
+        );
+        l1ETHGateway = new L1ETHGateway(address(1), address(1), address(1));
+
+        // Deploy L2 contracts
+        l2StandardERC20Gateway = L2StandardERC20Gateway(_deployProxy(address(0)));
+        l2ETHGateway = L2ETHGateway(_deployProxy(address(0)));
+        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter())));
+
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(l2StandardERC20Gateway)),
+            address(
+                new L2StandardERC20Gateway(
+                    address(l1StandardERC20Gateway),
+                    address(router),
+                    address(l2Messenger),
+                    address(factory)
+                )
+            )
+        );
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(l2ETHGateway)),
+            address(new L2ETHGateway(address(l1ETHGateway), address(router), address(l2Messenger)))
+        );
 
         // Initialize L2 contracts
         l2StandardERC20Gateway.initialize(

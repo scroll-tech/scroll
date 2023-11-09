@@ -2,35 +2,29 @@
 
 pragma solidity =0.8.16;
 
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
 import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
-
+import {IL1MessageQueue} from "./IL1MessageQueue.sol";
+import {IL1MessageQueueWithOracle} from "./IL1MessageQueueWithOracle.sol";
 import {IL2GasPriceOracle} from "./IL2GasPriceOracle.sol";
 
-// solhint-disable reason-string
+import {L1MessageQueue} from "./L1MessageQueue.sol";
 
-contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
-    /**********
-     * Events *
-     **********/
+contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWithOracle {
+    /***********
+     * Structs *
+     ***********/
 
-    /// @notice Emitted when owner updates whitelist contract.
-    /// @param _oldWhitelist The address of old whitelist contract.
-    /// @param _newWhitelist The address of new whitelist contract.
-    event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
-
-    /// @notice Emitted when current l2 base fee is updated.
-    /// @param oldL2BaseFee The original l2 base fee before update.
-    /// @param newL2BaseFee The current l2 base fee updated.
-    event L2BaseFeeUpdated(uint256 oldL2BaseFee, uint256 newL2BaseFee);
-
-    /// @notice Emitted when intrinsic params are updated.
+    /// @dev The struct for intrinsic gas parameters.
     /// @param txGas The intrinsic gas for transaction.
-    /// @param txGasContractCreation The intrinsic gas for contract creation.
+    /// @param txGasContractCreation The intrinsic gas for contract creation. It is reserved for future use.
     /// @param zeroGas The intrinsic gas for each zero byte.
     /// @param nonZeroGas The intrinsic gas for each nonzero byte.
-    event IntrinsicParamsUpdated(uint256 txGas, uint256 txGasContractCreation, uint256 zeroGas, uint256 nonZeroGas);
+    struct IntrinsicParams {
+        uint64 txGas;
+        uint64 txGasContractCreation;
+        uint64 zeroGas;
+        uint64 nonZeroGas;
+    }
 
     /*************
      * Variables *
@@ -42,17 +36,6 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @notice The address of whitelist contract.
     address public whitelist;
 
-    struct IntrinsicParams {
-        // The intrinsic gas for transaction.
-        uint64 txGas;
-        // The intrinsic gas for contract creation. It is reserved for future use.
-        uint64 txGasContractCreation;
-        // The intrinsic gas for each zero byte.
-        uint64 zeroGas;
-        // The intrinsic gas for each nonzero byte.
-        uint64 nonZeroGas;
-    }
-
     /// @notice The intrinsic params for transaction.
     IntrinsicParams public intrinsicParams;
 
@@ -60,48 +43,46 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
      * Constructor *
      ***************/
 
-    constructor() {
-        _disableInitializers();
-    }
+    /// @notice Constructor for `L1MessageQueueWithGasPriceOracle` implementation contract.
+    ///
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    /// @param _scrollChain The address of `ScrollChain` contract.
+    constructor(address _messenger, address _scrollChain) L1MessageQueue(_messenger, _scrollChain) {}
 
-    function initialize(
-        uint64 _txGas,
-        uint64 _txGasContractCreation,
-        uint64 _zeroGas,
-        uint64 _nonZeroGas
-    ) external initializer {
-        OwnableUpgradeable.__Ownable_init();
-
-        _setIntrinsicParams(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
+    /// @notice Initialize the storage of L1MessageQueueWithGasPriceOracle.
+    function initializeV2() external reinitializer(2) {
+        l2BaseFee = IL2GasPriceOracle(gasOracle).l2BaseFee();
+        whitelist = IL2GasPriceOracle(gasOracle).whitelist();
+        intrinsicParams = IntrinsicParams({txGas: 21000, txGasContractCreation: 53000, zeroGas: 4, nonZeroGas: 16});
     }
 
     /*************************
      * Public View Functions *
      *************************/
 
-    /// @inheritdoc IL2GasPriceOracle
-    function calculateIntrinsicGasFee(bytes memory _message) external view override returns (uint256) {
-        // @note currently we don't support contract deployment via L1 messages.
-        uint256 _txGas = uint256(intrinsicParams.txGas);
-        uint256 _zeroGas = uint256(intrinsicParams.zeroGas);
-        uint256 _nonZeroGas = uint256(intrinsicParams.nonZeroGas);
-
-        uint256 gas = _txGas;
-        if (_message.length > 0) {
-            uint256 nz = 0;
-            for (uint256 i = 0; i < _message.length; i++) {
-                if (_message[i] != 0) {
-                    nz++;
-                }
-            }
-            gas += nz * _nonZeroGas + (_message.length - nz) * _zeroGas;
-        }
-        return uint256(gas);
+    /// @inheritdoc IL1MessageQueue
+    function estimateCrossDomainMessageFee(uint256 _gasLimit)
+        external
+        view
+        override(IL1MessageQueue, L1MessageQueue)
+        returns (uint256)
+    {
+        return _gasLimit * l2BaseFee;
     }
 
-    /// @inheritdoc IL2GasPriceOracle
-    function estimateCrossDomainMessageFee(uint256 _gasLimit) external view override returns (uint256) {
-        return _gasLimit * l2BaseFee;
+    /// @inheritdoc IL1MessageQueue
+    function calculateIntrinsicGasFee(bytes calldata _calldata)
+        public
+        view
+        override(IL1MessageQueue, L1MessageQueue)
+        returns (uint256)
+    {
+        IntrinsicParams memory _cachedIntrinsicParams = intrinsicParams;
+        // no way this can overflow `uint256`
+        unchecked {
+            return
+                uint256(_cachedIntrinsicParams.txGas) + _calldata.length * uint256(_cachedIntrinsicParams.nonZeroGas);
+        }
     }
 
     /*****************************
@@ -111,7 +92,9 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @notice Allows whitelisted caller to modify the l2 base fee.
     /// @param _newL2BaseFee The new l2 base fee.
     function setL2BaseFee(uint256 _newL2BaseFee) external {
-        require(IWhitelist(whitelist).isSenderAllowed(_msgSender()), "Not whitelisted sender");
+        if (!IWhitelist(whitelist).isSenderAllowed(_msgSender())) {
+            revert ErrorNotWhitelistedSender();
+        }
 
         uint256 _oldL2BaseFee = l2BaseFee;
         l2BaseFee = _newL2BaseFee;
@@ -128,7 +111,6 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @param _newWhitelist The address of new whitelist contract.
     function updateWhitelist(address _newWhitelist) external onlyOwner {
         address _oldWhitelist = whitelist;
-
         whitelist = _newWhitelist;
         emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
     }
@@ -162,10 +144,10 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
         uint64 _zeroGas,
         uint64 _nonZeroGas
     ) internal {
-        require(_txGas > 0, "txGas is zero");
-        require(_zeroGas > 0, "zeroGas is zero");
-        require(_nonZeroGas > 0, "nonZeroGas is zero");
-        require(_txGasContractCreation > _txGas, "txGasContractCreation is less than txGas");
+        if (_txGas == 0) revert ErrorTxGasIsZero();
+        if (_zeroGas == 0) revert ErrorZeroGasIsZero();
+        if (_nonZeroGas == 0) revert ErrorNonZeroGasIsZero();
+        if (_txGasContractCreation <= _txGas) revert ErrorTxGasContractCreationLessThanTxGas();
 
         intrinsicParams = IntrinsicParams({
             txGas: _txGas,

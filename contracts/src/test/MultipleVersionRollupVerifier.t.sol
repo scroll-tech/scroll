@@ -24,7 +24,7 @@ contract MultipleVersionRollupVerifierTest is DSTestPlus {
         v0 = new MockZkEvmVerifier();
         v1 = new MockZkEvmVerifier();
         v2 = new MockZkEvmVerifier();
-        chain = new MockScrollChain();
+        chain = new MockScrollChain(address(1));
 
         verifier = new MultipleVersionRollupVerifier(address(v0));
     }

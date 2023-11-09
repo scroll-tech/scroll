@@ -149,7 +149,7 @@ function initialize(address _counterpart, address _messenger) external nonpayabl
 
 Initialize the storage of L1ERC721Gateway.
 
-
+*The parameters `_counterpart` and `_messenger` are no longer used.*
 
 #### Parameters
 
@@ -486,6 +486,53 @@ Emitted when token mapping for ERC721 token is updated.
 | l1Token `indexed` | address | The address of ERC721 token in layer 1. |
 | oldL2Token `indexed` | address | The address of the old corresponding ERC721 token in layer 2. |
 | newL2Token `indexed` | address | The address of the new corresponding ERC721 token in layer 2. |
+
+
+
+## Errors
+
+### ErrorCallerIsNotCounterpartGateway
+
+```solidity
+error ErrorCallerIsNotCounterpartGateway()
+```
+
+
+
+*Thrown when the cross chain sender is not counterpart gateway contract.*
+
+
+### ErrorCallerIsNotMessenger
+
+```solidity
+error ErrorCallerIsNotMessenger()
+```
+
+
+
+*Thrown when the caller is not corresponding `L1ScrollMessenger` or `L2ScrollMessenger`.*
+
+
+### ErrorNotInDropMessageContext
+
+```solidity
+error ErrorNotInDropMessageContext()
+```
+
+
+
+*Thrown when ScrollMessenger is not dropping message.*
+
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address if `address(0)`.*
 
 
 
