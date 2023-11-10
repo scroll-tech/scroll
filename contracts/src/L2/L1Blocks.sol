@@ -2,12 +2,11 @@
 
 pragma solidity =0.8.16;
 
-
 /// @title L1Blocks
 
 contract L1Blocks {
     /// @notice The max count of block hashes to store.
-    uint16 public constant BLOCK_HASHES_SIZE = 65536;
+    uint32 public constant BLOCK_HASHES_SIZE = 65536;
 
     /// @notice The latest L1 block number known by the L2 system.
     uint64 public lastAppliedL1Block;
@@ -27,7 +26,7 @@ contract L1Blocks {
         lastAppliedL1Block = _firstAppliedL1Block - 1;
     }
 
-    function l1Blockhash(uint256 _number) external view returns (bytes32 hash_) {
+    function l1Blockhash(uint256 _number) public view returns (bytes32 hash_) {
         uint64 lastAppliedL1Block_ = lastAppliedL1Block;
 
         /// @dev It handles the case where the block is in the future.
@@ -48,9 +47,9 @@ contract L1Blocks {
         return l1Blockhash(lastAppliedL1Block);
     }
 
-    function appendBlockhashes(bytes32[] calldata _blocks) external onlySequencer {
+    function appendBlockhashes(bytes32[] calldata _hashes) external onlySequencer {
         uint64 lastAppliedL1Block_ = lastAppliedL1Block;
-        uint256 length = _blocks.length;
+        uint256 length = _hashes.length;
 
         assembly {
             for {
