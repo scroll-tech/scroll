@@ -107,9 +107,12 @@ pub unsafe extern "C" fn gen_chunk_proof(
     // return null();
 
     // let block_traces1 = c_char_to_vec(block_traces);
-    let block_traces1 = std::slice::from_raw_parts(block_traces, len as usize);
+    // let block_traces1 = std::slice::from_raw_parts(block_traces, len as usize);
 
-    let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(block_traces1).unwrap();
+    // let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(block_traces1).unwrap();
+
+    let block_traces = vec![get_block_trace_from_file("/assets/traces/1_transfer.json")];
+    log::info!("Loaded chunk trace");
 
     // let block_traces = vec![get_block_trace_from_file("/assets/traces/1_transfer.json")];
     // log::info!("Loaded chunk trace");

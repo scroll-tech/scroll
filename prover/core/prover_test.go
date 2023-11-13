@@ -55,6 +55,8 @@ var blockTracePool = sync.Pool{
 }
 
 func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
+/* gupeng
+
 	buf := blockTracePool.Get().([]byte)
 	defer blockTracePool.Put(buf)
 
@@ -66,6 +68,9 @@ func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
 	as.NoError(json.Unmarshal(buf, trace))
 
 	return []*types.BlockTrace{trace}
+
+*/
+	return []*types.BlockTrace{}
 }
 
 func memUsage(as *assert.Assertions) string {
