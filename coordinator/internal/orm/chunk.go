@@ -127,6 +127,7 @@ func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*
 	return chunks, nil
 }
 
+// GetChunkByHash retrieves the first chunk associated with a specific chunk hash.
 func (o *Chunk) GetChunkByHash(ctx context.Context, hash string) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})

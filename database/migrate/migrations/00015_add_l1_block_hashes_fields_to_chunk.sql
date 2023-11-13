@@ -11,7 +11,7 @@ ALTER TABLE chunk
 -- +goose StatementBegin
 
 ALTER TABLE IF EXISTS chunk
-DROP COLUMN last_applied_l1_block;
+DROP COLUMN last_applied_l1_block,
 DROP COLUMN l1_block_range_hash;
 
 -- +goose StatementEnd
