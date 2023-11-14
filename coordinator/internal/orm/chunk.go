@@ -134,7 +134,12 @@ func (o *Chunk) GetChunkByHash(ctx context.Context, hash string) (*Chunk, error)
 	db = db.Where("hash", hash)
 
 	var chunk Chunk
-	if err := db.First(&chunk).Error; err != nil {
+	err := db.First(&chunk).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
 		return nil, fmt.Errorf("Chunk.GetChunkByHash error: %w", err)
 	}
 	return &chunk, nil

@@ -160,9 +160,14 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	taskDetail := message.ChunkTaskDetail{
-		BlockHashes:            blockHashes,
-		PrevLastAppliedL1Block: parentChunk.LastAppliedL1Block,
-		L1BlockRangeHash:       common.HexToHash(chunk.L1BlockRangeHash),
+		BlockHashes: blockHashes,
+		PrevLastAppliedL1Block: func() uint64 {
+			if parentChunk != nil {
+				return parentChunk.LastAppliedL1Block
+			}
+			return 0
+		}(),
+		L1BlockRangeHash: common.HexToHash(chunk.L1BlockRangeHash),
 	}
 	taskDataBytes, err := json.Marshal(taskDetail)
 	if err != nil {
