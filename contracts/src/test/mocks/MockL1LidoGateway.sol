@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity =0.8.16;
+
 import {L1LidoGateway} from "../../lido/L1LidoGateway.sol";
 
 contract MockL1LidoGateway is L1LidoGateway {
