@@ -152,7 +152,7 @@ func testChunkProposerLimits(t *testing.T) {
 			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 			assert.NoError(t, err)
 
-			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+			cp := NewChunkProposer(context.Background(), l2Cli, &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             tt.maxBlockNum,
 				MaxTxNumPerChunk:                tt.maxTxNum,
 				MaxL1CommitGasPerChunk:          tt.maxL1CommitGas,

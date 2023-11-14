@@ -94,7 +94,7 @@ func testBatchProposerLimits(t *testing.T) {
 			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 			assert.NoError(t, err)
 
-			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+			cp := NewChunkProposer(context.Background(), l2Cli, &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             1,
 				MaxTxNumPerChunk:                10000,
 				MaxL1CommitGasPerChunk:          50000000000,
@@ -153,7 +153,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+	cp := NewChunkProposer(context.Background(), l2Cli, &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk:             1,
 		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,

@@ -56,7 +56,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), wrappedBlocks)
 	assert.NoError(t, err)
 
-	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+	cp := watcher.NewChunkProposer(context.Background(), l2Client, &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk:             100,
 		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,

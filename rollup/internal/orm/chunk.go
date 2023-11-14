@@ -30,7 +30,7 @@ type Chunk struct {
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
 	WithdrawRoot                 string `json:"withdraw_root" gorm:"column:withdraw_root"`
-	LastAppliedL1Block           uint64 `json:"latest_applied_l1_block" gorm:"column:latest_applied_l1_block"`
+	LastAppliedL1Block           uint64 `json:"last_applied_l1_block" gorm:"column:last_applied_l1_block"`
 	L1BlockRangeHash             string `json:"l1_block_range_hash" gorm:"column:l1_block_range_hash"`
 
 	// proof
@@ -137,7 +137,7 @@ func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) (
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, parentChunk *Chunk, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, parentDbChunk *Chunk, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -147,14 +147,14 @@ func (o *Chunk) InsertChunk(ctx context.Context, parentChunk *Chunk, chunk *type
 	var parentChunkHash string
 	var parentChunkStateRoot string
 
-	// if parentChunk==nil then err==gorm.ErrRecordNotFound, which means there's
+	// if parentDbChunk==nil then err==gorm.ErrRecordNotFound, which means there's
 	// not chunk record in the db, we then use default empty values for the creating chunk;
-	// if parentChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
-	if parentChunk != nil {
-		chunkIndex = parentChunk.Index + 1
-		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
-		parentChunkHash = parentChunk.Hash
-		parentChunkStateRoot = parentChunk.StateRoot
+	// if parentDbChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
+	if parentDbChunk != nil {
+		chunkIndex = parentDbChunk.Index + 1
+		totalL1MessagePoppedBefore = parentDbChunk.TotalL1MessagesPoppedBefore + uint64(parentDbChunk.TotalL1MessagesPoppedInChunk)
+		parentChunkHash = parentDbChunk.Hash
+		parentChunkStateRoot = parentDbChunk.StateRoot
 	}
 
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)

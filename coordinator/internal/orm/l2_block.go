@@ -26,7 +26,7 @@ type L2Block struct {
 	Transactions       string `json:"transactions" gorm:"transactions"`
 	WithdrawRoot       string `json:"withdraw_root" gorm:"withdraw_root"`
 	StateRoot          string `json:"state_root" gorm:"state_root"`
-	LastAppliedL1Block uint64 `json:"latest_applied_l1_block" gorm:"latest_applied_l1_block"`
+	LastAppliedL1Block uint64 `json:"last_applied_l1_block" gorm:"last_applied_l1_block"`
 	TxNum              uint32 `json:"tx_num" gorm:"tx_num"`
 	GasUsed            uint64 `json:"gas_used" gorm:"gas_used"`
 	BlockTimestamp     uint64 `json:"block_timestamp" gorm:"block_timestamp"`

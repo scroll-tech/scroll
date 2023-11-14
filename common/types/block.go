@@ -34,7 +34,7 @@ type WrappedBlock struct {
 	Transactions         []*types.TransactionData `json:"transactions"`
 	WithdrawRoot         common.Hash              `json:"withdraw_trie_root,omitempty"`
 	RowConsumption       *types.RowConsumption    `json:"row_consumption"`
-	LastAppliedL1Block   uint64                   `json:"latest_applied_l1_block"`
+	LastAppliedL1Block   uint64                   `json:"last_applied_l1_block"`
 	txPayloadLengthCache map[string]uint64
 }
 

@@ -15,7 +15,7 @@ import (
 // Chunk contains blocks to be encoded
 type Chunk struct {
 	Blocks             []*WrappedBlock `json:"blocks"`
-	LastAppliedL1Block uint64          `json:"latest_applied_l1_block"`
+	LastAppliedL1Block uint64          `json:"last_applied_l1_block"`
 	L1BlockRangeHash   common.Hash     `json:"l1_block_range_hash"`
 }
 
