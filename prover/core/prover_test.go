@@ -11,7 +11,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/types/message"
@@ -89,17 +88,17 @@ func TestFFI(t *testing.T) {
 	t.Log("Batch VKs must be equal after proving")
 }
 
-func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
+func readChunkTrace(filePat string, as *assert.Assertions) *message.ChunkTrace {
 	f, err := os.Open(filePat)
 	as.NoError(err)
 	defer as.NoError(f.Close())
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
 
-	trace := &types.BlockTrace{}
+	trace := &message.ChunkTrace{}
 	as.NoError(json.Unmarshal(byt, trace))
 
-	return []*types.BlockTrace{trace}
+	return *trace
 }
 
 func readVk(filePat string, as *assert.Assertions) string {
