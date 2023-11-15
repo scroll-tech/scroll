@@ -22,7 +22,6 @@ import (
 	"scroll-tech/prover/store"
 	putils "scroll-tech/prover/utils"
 
-	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )

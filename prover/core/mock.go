@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
 
 	"scroll-tech/common/types/message"
 
@@ -24,7 +23,7 @@ func NewProverCore(cfg *config.ProverCoreConfig) (*ProverCore, error) {
 	return &ProverCore{cfg: cfg}, nil
 }
 
-func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
+func (p *ProverCore) ProveChunk(taskID string, chunkTrace *message.ChunkTrace) (*message.ChunkProof, error) {
 	_empty := common.BigToHash(big.NewInt(0))
 	return &message.ChunkProof{
 		StorageTrace: _empty[:],
