@@ -107,4 +107,9 @@ $ forge script scripts/foundry/InitializeL2BridgeContracts.s.sol:InitializeL2Bri
 $ OUTPUT=$(forge script scripts/foundry/DeployL2L1BlocksContract.s.sol:DeployL2L1BlocksContract --rpc-url $SCROLL_L2_RPC --broadcast); echo $OUTPUT
 $ echo "$OUTPUT" | grep -Eo "(L2)_.*" > .env.l2_addresses
 $ source .env.l2_addresses
+
+# Deploy L1 ViewOracle contract
+$ OUTPUT=$(forge script scripts/foundry/DeployL1ViewOracle.s.sol:DeployL1ViewOracle --rpc-url $SCROLL_L1_RPC --broadcast); echo $OUTPUT
+$ echo "$OUTPUT" | grep -Eo "(L1)_.*" > .env.l1_addresses
+$ source .env.l1_addresses
 ```
