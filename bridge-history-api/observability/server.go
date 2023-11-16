@@ -9,10 +9,10 @@ import (
 	// enable the pprof
 	_ "net/http/pprof"
 
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 	"gorm.io/gorm"
 

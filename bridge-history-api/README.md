@@ -16,7 +16,7 @@ Provide init, show version, rollback, check status services of DB
 
 ### bridgehistoryapi-cross-msg-fetcher
 
-Fetch the transactions from both l1 and l2
+Fetch the transactions from both L1 and L2
 ```
     cd ./bridge-history-api
     make bridgehistoryapi-cross-msg-fetcher
@@ -49,34 +49,36 @@ can change this port thru modify `config.json`
 // @Router       /api/txs [get]
 ```
 
-2. `/txsbyhashes`
+2. `/withdrawals`
 ```
-// @Summary    	 get txs by given tx hashes
-// @Accept       plain
-// @Produce      plain
-// @Param        hashes  query  string array  true  "array of hashes list"
-// @Success      200  
-// @Router       /api/txsbyhashes [post]
-```
-
-3. `/claimable`
-```
-// @Summary    	 get all claimable txs under given address
+// @Summary    	 get all L2 withdrawals under given address
 // @Accept       plain
 // @Produce      plain
 // @Param        address query string true "wallet address"
 // @Param        page_size query int true "page size"
 // @Param        page query int true "page"
 // @Success      200
-// @Router       /api/claimable [get]
+// @Router       /api/withdrawals [get]
 ```
 
-4. `/withdraw_root`
+3. `/claimablewithdrawals`
 ```
-// @Summary    	 get withdraw_root of given batch index
+// @Summary    	 get all L2 claimable withdrawals under given address
 // @Accept       plain
 // @Produce      plain
-// @Param        batch_index  query string  true  "batch_index"
+// @Param        address query string true "wallet address"
+// @Param        page_size query int true "page size"
+// @Param        page query int true "page"
 // @Success      200
-// @Router       /api/withdraw_root [get]
+// @Router       /api/claimablewithdrawals [get]
+```
+
+4. `/txsbyhashes`
+```
+// @Summary    	 get txs by given tx hashes
+// @Accept       plain
+// @Produce      plain
+// @Param        hashes query string array true "array of hashes"
+// @Success      200
+// @Router       /api/txsbyhashes [post]
 ```

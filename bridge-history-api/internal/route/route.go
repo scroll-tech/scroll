@@ -16,7 +16,7 @@ import (
 func Route(router *gin.Engine, conf *config.Config, reg prometheus.Registerer) {
 	router.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowMethods:     []string{"GET", "POST"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -25,6 +25,9 @@ func Route(router *gin.Engine, conf *config.Config, reg prometheus.Registerer) {
 	observability.Use(router, "bridge_history_api", reg)
 
 	r := router.Group("api/")
-	r.POST("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHash)
-	r.GET("/claimable", controller.HistoryCtrler.GetAllClaimableTxsByAddr)
+	r.GET("/txs", controller.HistoryCtrler.GetTxsByAddress)
+	r.GET("/withdrawals", controller.HistoryCtrler.GetL2WithdrawalsByAddress)
+	r.GET("/claimablewithdrawals", controller.HistoryCtrler.GetL2ClaimableWithdrawalsByAddress)
+
+	r.POST("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHashes)
 }

@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 
 	backendabi "bridge-history-api/abi"
 )
@@ -21,8 +21,8 @@ func Keccak2(a common.Hash, b common.Hash) common.Hash {
 	return common.BytesToHash(crypto.Keccak256(append(a.Bytes()[:], b.Bytes()[:]...)))
 }
 
-// GetSafeBlockNumber get the safe block number, which is the current block number minus the confirmations
-func GetSafeBlockNumber(ctx context.Context, client *ethclient.Client, confirmations uint64) (uint64, error) {
+// GetBlockNumber get the current block number minus the confirmations
+func GetBlockNumber(ctx context.Context, client *ethclient.Client, confirmations uint64) (uint64, error) {
 	number, err := client.BlockNumber(ctx)
 	if err != nil || number <= confirmations {
 		return 0, err
@@ -59,7 +59,7 @@ func ComputeMessageHash(
 	messageNonce *big.Int,
 	message []byte,
 ) common.Hash {
-	data, _ := backendabi.L2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
+	data, _ := backendabi.IL2ScrollMessengerABI.Pack("relayMessage", sender, target, value, messageNonce, message)
 	return common.BytesToHash(crypto.Keccak256(data))
 }
 
@@ -70,41 +70,35 @@ type commitBatchArgs struct {
 	SkippedL1MessageBitmap []byte
 }
 
-// GetBatchRangeFromCalldataV2 find the block range from calldata, both inclusive.
-func GetBatchRangeFromCalldataV2(calldata []byte) (uint64, uint64, uint64, error) {
-	method := backendabi.ScrollChainV2ABI.Methods["commitBatch"]
+// GetBatchRangeFromCalldata find the block range from calldata, both inclusive.
+func GetBatchRangeFromCalldata(calldata []byte) (uint64, uint64, error) {
+	method := backendabi.IScrollChainABI.Methods["commitBatch"]
 	values, err := method.Inputs.Unpack(calldata[4:])
 	if err != nil {
 		// special case: import genesis batch
-		method = backendabi.ScrollChainV2ABI.Methods["importGenesisBatch"]
+		method = backendabi.IScrollChainABI.Methods["importGenesisBatch"]
 		_, err2 := method.Inputs.Unpack(calldata[4:])
 		if err2 == nil {
 			// genesis batch
-			return 0, 0, 0, nil
+			return 0, 0, nil
 		}
 		// none of "commitBatch" and "importGenesisBatch" match, give up
-		return 0, 0, 0, err
+		return 0, 0, err
 	}
 	args := commitBatchArgs{}
 	err = method.Inputs.Copy(&args, values)
 	if err != nil {
-		return 0, 0, 0, err
+		return 0, 0, err
 	}
 
 	var startBlock uint64
 	var finishBlock uint64
 
-	// decode batchIndex from ParentBatchHeader
-	if len(args.ParentBatchHeader) < 9 {
-		return 0, 0, 0, errors.New("invalid parent batch header")
-	}
-	batchIndex := binary.BigEndian.Uint64(args.ParentBatchHeader[1:9]) + 1
-
 	// decode blocks from chunk and assume that there's no empty chunk
 	// |   1 byte   | 60 bytes | ... | 60 bytes |
 	// | num blocks |  block 1 | ... |  block n |
 	if len(args.Chunks) == 0 {
-		return 0, 0, 0, errors.New("invalid chunks")
+		return 0, 0, errors.New("invalid chunks")
 	}
 	chunk := args.Chunks[0]
 	block := chunk[1:61] // first block in chunk
@@ -115,5 +109,5 @@ func GetBatchRangeFromCalldataV2(calldata []byte) (uint64, uint64, uint64, error
 	block = chunk[1+lastBlockIndex*60 : 1+lastBlockIndex*60+60] // last block in chunk
 	finishBlock = binary.BigEndian.Uint64(block[0:8])
 
-	return batchIndex, startBlock, finishBlock, err
+	return startBlock, finishBlock, err
 }

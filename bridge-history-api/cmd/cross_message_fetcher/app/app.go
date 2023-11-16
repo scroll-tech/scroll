@@ -1,20 +1,17 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-redis/redis/v8"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
 	"bridge-history-api/config"
-	"bridge-history-api/internal/controller"
-	"bridge-history-api/internal/route"
-	"bridge-history-api/observability"
+	"bridge-history-api/crossmessage/controller/eventfetcher"
 	"bridge-history-api/utils"
 )
 
@@ -26,8 +23,8 @@ func init() {
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "Scroll Bridge History Web Service"
-	app.Usage = "The Scroll Bridge History Web Service"
+	app.Name = "Scroll Bridge History API"
+	app.Usage = "The Scroll Bridge Web Backend"
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
@@ -37,12 +34,24 @@ func init() {
 }
 
 func action(ctx *cli.Context) error {
-	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
+	subCtx, cancel := context.WithCancel(ctx.Context)
+	defer cancel()
+
+	l1Client, err := ethclient.Dial(cfg.L1.Endpoint)
+	if err != nil {
+		log.Crit("failed to connect to L1 geth", "endpoint", cfg.L1.Endpoint, "err", err)
+	}
+
+	l2Client, err := ethclient.Dial(cfg.L2.Endpoint)
+	if err != nil {
+		log.Crit("failed to connect to L2 geth", "endpoint", cfg.L2.Endpoint, "err", err)
+	}
+
 	db, err := utils.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db", "err", err)
@@ -52,25 +61,21 @@ func action(ctx *cli.Context) error {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
-	redis := redis.NewClient(&redis.Options{
-		Addr:     cfg.Redis.Address,
-		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
-	})
-	controller.InitController(db, redis)
+	if err != nil {
+		log.Crit("failed to connect to db", "config file", cfgFile, "error", err)
+	}
 
-	router := gin.Default()
-	registry := prometheus.DefaultRegisterer
-	route.Route(router, cfg, registry)
+	l1MessageFetcher, err := eventfetcher.NewL1MessageFetcher(subCtx, cfg.L1, db, l1Client)
+	if err != nil {
+		log.Crit("failed to create L1 cross message fetcher", "error", err)
+	}
+	go l1MessageFetcher.Start()
 
-	go func() {
-		port := cfg.Server.HostPort
-		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
-			log.Crit("run http server failure", "error", runServerErr)
-		}
-	}()
-
-	observability.Server(ctx, db)
+	l2MessageFetcher, err := eventfetcher.NewL2MessageFetcher(subCtx, cfg.L2, db, l2Client)
+	if err != nil {
+		log.Crit("failed to create L2 cross message fetcher", "error", err)
+	}
+	go l2MessageFetcher.Start()
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)

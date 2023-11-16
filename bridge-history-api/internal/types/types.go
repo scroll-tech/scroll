@@ -5,39 +5,37 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+
+	"bridge-history-api/orm"
 )
 
 const (
-	// Success shows OK.
+	// Success indicates that the operation was successful.
 	Success = 0
-	// InternalServerError shows a fatal error in the server
+	// InternalServerError represents a fatal error occurring on the server.
 	InternalServerError = 500
-	// ErrParameterInvalidNo is invalid params
+	// ErrParameterInvalidNo represents an error when the parameters are invalid.
 	ErrParameterInvalidNo = 40001
-	// ErrGetClaimablesFailure is getting all claimables txs error
-	ErrGetClaimablesFailure = 40002
-	// ErrGetTxsByHashFailure is getting txs by hash list error
-	ErrGetTxsByHashFailure = 40003
-	// ErrGetTxsByAddrFailure is getting txs by address error
-	ErrGetTxsByAddrFailure = 40004
-	// ErrGetWithdrawRootByBatchIndexFailure is getting withdraw root by batch index error
-	ErrGetWithdrawRootByBatchIndexFailure = 40005
+	// ErrGetL2ClaimableWithdrawalsError represents an error when trying to get L2 claimable withdrawal transactions.
+	ErrGetL2ClaimableWithdrawalsError = 40002
+	// ErrGetL2WithdrawalsError represents an error when trying to get L2 withdrawal transactions by address.
+	ErrGetL2WithdrawalsError = 40003
+	// ErrGetTxsError represents an error when trying to get transactions by address.
+	ErrGetTxsError = 40004
+	// ErrGetTxsByHashError represents an error when trying to get transactions by hash list.
+	ErrGetTxsByHashError = 40005
 )
 
 // QueryByAddressRequest the request parameter of address api
 type QueryByAddressRequest struct {
-	Address string `form:"address" binding:"required"`
+	Address  string `form:"address" binding:"required"`
+	Page     int    `form:"page" binding:"required"`
+	PageSize int    `form:"page_size" binding:"required"`
 }
 
 // QueryByHashRequest the request parameter of hash api
 type QueryByHashRequest struct {
 	Txs []string `raw:"txs" binding:"required"`
-}
-
-// QueryByBatchIndexRequest the request parameter of batch index api
-type QueryByBatchIndexRequest struct {
-	// BatchIndex can not be 0, because we dont decode the genesis block
-	BatchIndex uint64 `form:"batch_index" binding:"required"`
 }
 
 // ResultData contains return txs and total
@@ -55,12 +53,8 @@ type Response struct {
 
 // Finalized the schema of tx finalized infos
 type Finalized struct {
-	Hash           string     `json:"hash"`
-	Amount         string     `json:"amount"`
-	To             string     `json:"to"` // useless
-	IsL1           bool       `json:"isL1"`
-	BlockNumber    uint64     `json:"blockNumber"`
-	BlockTimestamp *time.Time `json:"blockTimestamp"` // uselesss
+	Hash        string `json:"hash"`
+	BlockNumber uint64 `json:"blockNumber"`
 }
 
 // UserClaimInfo the schema of tx claim infos
@@ -69,26 +63,25 @@ type UserClaimInfo struct {
 	To         string `json:"to"`
 	Value      string `json:"value"`
 	Nonce      string `json:"nonce"`
-	BatchHash  string `json:"batch_hash"`
 	Message    string `json:"message"`
 	Proof      string `json:"proof"`
 	BatchIndex string `json:"batch_index"`
+	Claimable  bool   `json:"claimable"`
 }
 
 // TxHistoryInfo the schema of tx history infos
 type TxHistoryInfo struct {
-	Hash           string         `json:"hash"`
-	MsgHash        string         `json:"msgHash"`
-	Amount         string         `json:"amount"`
-	To             string         `json:"to"` // useless
-	IsL1           bool           `json:"isL1"`
-	L1Token        string         `json:"l1Token"`
-	L2Token        string         `json:"l2Token"`
-	BlockNumber    uint64         `json:"blockNumber"`
-	BlockTimestamp *time.Time     `json:"blockTimestamp"` // useless
-	FinalizeTx     *Finalized     `json:"finalizeTx"`
-	ClaimInfo      *UserClaimInfo `json:"claimInfo"`
-	CreatedAt      *time.Time     `json:"createdTime"`
+	Hash        string           `json:"hash"`
+	MsgHash     string           `json:"msgHash"`
+	Amount      string           `json:"amount"`
+	IsL1        bool             `json:"isL1"`
+	L1Token     string           `json:"l1Token"`
+	L2Token     string           `json:"l2Token"`
+	BlockNumber uint64           `json:"blockNumber"`
+	TxStatus    orm.TxStatusType `json:"txStatus"`
+	FinalizeTx  *Finalized       `json:"finalizeTx"`
+	ClaimInfo   *UserClaimInfo   `json:"claimInfo"`
+	CreatedAt   *time.Time       `json:"createdTime"`
 }
 
 // RenderJSON renders response with json

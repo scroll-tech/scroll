@@ -6,38 +6,42 @@ import (
 	"path/filepath"
 )
 
-// BatchInfoFetcherConfig is the configuration of BatchInfoFetcher
-type BatchInfoFetcherConfig struct {
-	BatchIndexStartBlock uint64 `json:"batchIndexStartBlock"`
-	ScrollChainAddr      string `json:"ScrollChainAddr"`
-}
-
-// DBConfig db config
-type DBConfig struct {
-	// data source name
-	DSN        string `json:"dsn"`
-	DriverName string `json:"driverName"`
-
-	MaxOpenNum int `json:"maxOpenNum"`
-	MaxIdleNum int `json:"maxIdleNum"`
-}
-
 // LayerConfig is the configuration of Layer1/Layer2
 type LayerConfig struct {
+	ChainID                uint64 `json:"chain_id"`
 	Confirmation           uint64 `json:"confirmation"`
 	Endpoint               string `json:"endpoint"`
 	StartHeight            uint64 `json:"startHeight"`
 	BlockTime              int64  `json:"blockTime"`
+	FetchLimit             uint64 `json:"fetchLimit"`
 	MessengerAddr          string `json:"MessengerAddr"`
 	ETHGatewayAddr         string `json:"ETHGatewayAddr"`
+	StandardERC20Gateway   string `json:"StandardERC20Gateway"`
+	CustomERC20GatewayAddr string `json:"CustomERC20GatewayAddr"`
 	WETHGatewayAddr        string `json:"WETHGatewayAddr"`
+	DAIGatewayAddr         string `json:"DAIGatewayAddr"`
 	USDCGatewayAddr        string `json:"USDCGatewayAddr"`
 	LIDOGatewayAddr        string `json:"LIDOGatewayAddr"`
-	DAIGatewayAddr         string `json:"DAIGatewayAddr"`
-	StandardERC20Gateway   string `json:"StandardERC20Gateway"`
 	ERC721GatewayAddr      string `json:"ERC721GatewayAddr"`
 	ERC1155GatewayAddr     string `json:"ERC1155GatewayAddr"`
-	CustomERC20GatewayAddr string `json:"CustomERC20GatewayAddr"`
+	ScrollChainAddr        string `json:"ScrollChainAddr"`
+	GatewayRouterAddr      string `json:"GatewayRouterAddr"`
+	MessageQueueAddr       string `json:"MessageQueueAddr"`
+}
+
+// DBConfig db config
+type DBConfig struct {
+	DSN        string `json:"dsn"`
+	DriverName string `json:"driverName"`
+	MaxOpenNum int    `json:"maxOpenNum"`
+	MaxIdleNum int    `json:"maxIdleNum"`
+}
+
+// RedisConfig redis config
+type RedisConfig struct {
+	Address  string `json:"address"`
+	Password string `json:"password"`
+	DB       int    `json:"db"`
 }
 
 // ServerConfig is the configuration of the bridge history backend server port
@@ -47,14 +51,11 @@ type ServerConfig struct {
 
 // Config is the configuration of the bridge history backend
 type Config struct {
-	// chain config
-	L1 *LayerConfig `json:"l1"`
-	L2 *LayerConfig `json:"l2"`
-
-	// data source name
-	DB               *DBConfig               `json:"db"`
-	Server           *ServerConfig           `json:"server"`
-	BatchInfoFetcher *BatchInfoFetcherConfig `json:"batchInfoFetcher"`
+	L1     *LayerConfig  `json:"L1"`
+	L2     *LayerConfig  `json:"L2"`
+	DB     *DBConfig     `json:"db"`
+	Redis  *RedisConfig  `json:"redis"`
+	Server *ServerConfig `json:"server"`
 }
 
 // NewConfig returns a new instance of Config.

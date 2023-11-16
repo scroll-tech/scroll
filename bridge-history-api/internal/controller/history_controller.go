@@ -1,14 +1,16 @@
 package controller
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
 	"github.com/patrickmn/go-cache"
+	"github.com/scroll-tech/go-ethereum/log"
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 
@@ -17,88 +19,254 @@ import (
 )
 
 const (
-	cacheKeyPrefixClaimableTxsByAddr = "claimableTxsByAddr:"
-	cacheKeyPrefixQueryTxsByHash     = "queryTxsByHash:"
+	cacheKeyPrefixL2ClaimableWithdrawalsByAddr = "l2ClaimableWithdrawalsByAddr:"
+	cacheKeyPrefixL2WithdrawalsByAddr          = "l2WithdrawalsByAddr:"
+	cacheKeyPrefixTxsByAddr                    = "txsByAddr:"
+	cacheKeyPrefixQueryTxsByHashes             = "queryTxsByHashes:"
 )
 
 // HistoryController contains the query claimable txs service
 type HistoryController struct {
 	historyLogic *logic.HistoryLogic
+	redis        *redis.Client
 	cache        *cache.Cache
 	singleFlight singleflight.Group
 	cacheMetrics *cacheMetrics
 }
 
 // NewHistoryController return HistoryController instance
-func NewHistoryController(db *gorm.DB) *HistoryController {
+func NewHistoryController(db *gorm.DB, redis *redis.Client) *HistoryController {
 	return &HistoryController{
 		historyLogic: logic.NewHistoryLogic(db),
+		redis:        redis,
 		cache:        cache.New(30*time.Second, 10*time.Minute),
 		cacheMetrics: initCacheMetrics(),
 	}
 }
 
-// GetAllClaimableTxsByAddr defines the http get method behavior
-func (c *HistoryController) GetAllClaimableTxsByAddr(ctx *gin.Context) {
+// GetL2ClaimableWithdrawalsByAddress defines the http get method behavior
+func (c *HistoryController) GetL2ClaimableWithdrawalsByAddress(ctx *gin.Context) {
 	var req types.QueryByAddressRequest
 	if err := ctx.ShouldBind(&req); err != nil {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
 		return
 	}
 
-	cacheKey := cacheKeyPrefixClaimableTxsByAddr + req.Address
-	if cachedData, found := c.cache.Get(cacheKey); found {
-		c.cacheMetrics.cacheHits.WithLabelValues("GetAllClaimableTxsByAddr").Inc()
-		// Log cache hit along with request param.
-		log.Info("cache hit", "request", req)
-		if cachedData == nil {
-			types.RenderSuccess(ctx, &types.ResultData{})
-			return
-		} else if resultData, ok := cachedData.(*types.ResultData); ok {
-			types.RenderSuccess(ctx, resultData)
-			return
-		}
-		// Log error for unexpected type, then fetch data from the database.
-		log.Error("unexpected type in cache", "expected", "*types.ResultData", "got", reflect.TypeOf(cachedData))
-	} else {
-		c.cacheMetrics.cacheMisses.WithLabelValues("GetAllClaimableTxsByAddr").Inc()
-		// Log cache miss along with request param.
-		log.Info("cache miss", "request", req)
-	}
-
-	result, err, _ := c.singleFlight.Do(cacheKey, func() (interface{}, error) {
-		txs, total, err := c.historyLogic.GetClaimableTxsByAddress(ctx, common.HexToAddress(req.Address))
-		if err != nil {
-			return nil, err
-		}
-		resultData := &types.ResultData{Result: txs, Total: total}
-		c.cache.Set(cacheKey, resultData, cache.DefaultExpiration)
-		return resultData, nil
-	})
-
+	cacheKey := cacheKeyPrefixL2ClaimableWithdrawalsByAddr + req.Address
+	pagedTxs, total, isHit, err := c.getCachedTxsInfo(ctx, cacheKey, uint64(req.Page), uint64(req.PageSize))
 	if err != nil {
-		types.RenderFailure(ctx, types.ErrGetClaimablesFailure, err)
+		log.Error("failed to get cached tx info", "cached key", cacheKey, "page", req.Page, "page size", req.PageSize, "error", err)
+		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, err)
 		return
 	}
 
-	if resultData, ok := result.(*types.ResultData); ok {
+	if isHit {
+		c.cacheMetrics.cacheHits.WithLabelValues("GetL2ClaimableWithdrawalsByAddress").Inc()
+		log.Info("cache hit", "request", req)
+		resultData := &types.ResultData{Result: pagedTxs, Total: total}
 		types.RenderSuccess(ctx, resultData)
-	} else {
-		log.Error("unexpected type from singleflight", "expected", "*types.ResultData", "got", reflect.TypeOf(result))
-		types.RenderFailure(ctx, types.ErrGetClaimablesFailure, errors.New("unexpected error"))
+		return
 	}
+
+	c.cacheMetrics.cacheMisses.WithLabelValues("GetL2ClaimableWithdrawalsByAddress").Inc()
+	log.Info("cache miss", "request", req)
+
+	result, err, _ := c.singleFlight.Do(cacheKey, func() (interface{}, error) {
+		var txs []*types.TxHistoryInfo
+		txs, err = c.historyLogic.GetL2ClaimableWithdrawalsByAddress(ctx, req.Address)
+		if err != nil {
+			return nil, err
+		}
+		return txs, nil
+	})
+	if err != nil {
+		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, err)
+		return
+	}
+
+	txs, ok := result.([]*types.TxHistoryInfo)
+	if !ok {
+		log.Error("unexpected type from singleflight", "expected", "[]*types.TxHistoryInfo", "got", reflect.TypeOf(result))
+		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, errors.New("unexpected error"))
+		return
+	}
+
+	err = c.cacheTxsInfo(ctx, cacheKey, txs)
+	if err != nil {
+		log.Error("failed to cache txs info", "key", cacheKey, "err", err)
+		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, err)
+		return
+	}
+
+	pagedTxs, total, isHit, err = c.getCachedTxsInfo(ctx, cacheKey, uint64(req.Page), uint64(req.PageSize))
+	if err != nil {
+		log.Error("failed to get cached tx info", "cached key", cacheKey, "page", req.Page, "page size", req.PageSize, "error", err)
+		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, err)
+		return
+	}
+
+	if !isHit {
+		log.Error("cache miss after write, expect hit", "cached key", cacheKey, "page", req.Page, "page size", req.PageSize, "error", err)
+		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, err)
+		return
+	}
+
+	resultData := &types.ResultData{Result: pagedTxs, Total: total}
+	types.RenderSuccess(ctx, resultData)
 }
 
-// PostQueryTxsByHash defines the http post method behavior
-func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
+// GetL2WithdrawalsByAddress defines the http get method behavior
+func (c *HistoryController) GetL2WithdrawalsByAddress(ctx *gin.Context) {
+	var req types.QueryByAddressRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
+		return
+	}
+
+	cacheKey := cacheKeyPrefixL2WithdrawalsByAddr + req.Address
+	pagedTxs, total, isHit, err := c.getCachedTxsInfo(ctx, cacheKey, uint64(req.Page), uint64(req.PageSize))
+	if err != nil {
+		log.Error("failed to get cached tx info", "cached key", cacheKey, "page", req.Page, "page size", req.PageSize, "error", err)
+		types.RenderFailure(ctx, types.ErrGetL2WithdrawalsError, err)
+		return
+	}
+
+	if isHit {
+		c.cacheMetrics.cacheHits.WithLabelValues("GetL2WithdrawalsByAddress").Inc()
+		log.Info("cache hit", "request", req)
+		resultData := &types.ResultData{Result: pagedTxs, Total: total}
+		types.RenderSuccess(ctx, resultData)
+		return
+	}
+
+	c.cacheMetrics.cacheMisses.WithLabelValues("GetL2WithdrawalsByAddress").Inc()
+	log.Info("cache miss", "request", req)
+
+	result, err, _ := c.singleFlight.Do(cacheKey, func() (interface{}, error) {
+		var txs []*types.TxHistoryInfo
+		txs, err = c.historyLogic.GetL2WithdrawalsByAddress(ctx, req.Address)
+		if err != nil {
+			return nil, err
+		}
+		return txs, nil
+	})
+	if err != nil {
+		types.RenderFailure(ctx, types.ErrGetL2WithdrawalsError, err)
+		return
+	}
+
+	txs, ok := result.([]*types.TxHistoryInfo)
+	if !ok {
+		log.Error("unexpected type from singleflight", "expected", "[]*types.TxHistoryInfo", "got", reflect.TypeOf(result))
+		types.RenderFailure(ctx, types.ErrGetL2WithdrawalsError, errors.New("unexpected error"))
+		return
+	}
+
+	err = c.cacheTxsInfo(ctx, cacheKey, txs)
+	if err != nil {
+		log.Error("failed to cache txs info", "key", cacheKey, "err", err)
+		types.RenderFailure(ctx, types.ErrGetL2WithdrawalsError, err)
+		return
+	}
+
+	pagedTxs, total, isHit, err = c.getCachedTxsInfo(ctx, cacheKey, uint64(req.Page), uint64(req.PageSize))
+	if err != nil {
+		log.Error("failed to get cached tx info", "cached key", cacheKey, "page", req.Page, "page size", req.PageSize, "error", err)
+		types.RenderFailure(ctx, types.ErrGetL2WithdrawalsError, err)
+		return
+	}
+
+	if !isHit {
+		log.Error("cache miss after write, expect hit", "cached key", cacheKey, "page", req.Page, "page size", req.PageSize, "error", err)
+		types.RenderFailure(ctx, types.ErrGetL2WithdrawalsError, err)
+		return
+	}
+
+	resultData := &types.ResultData{Result: pagedTxs, Total: total}
+	types.RenderSuccess(ctx, resultData)
+}
+
+// GetTxsByAddress defines the http get method behavior
+func (c *HistoryController) GetTxsByAddress(ctx *gin.Context) {
+	var req types.QueryByAddressRequest
+	if err := ctx.ShouldBind(&req); err != nil {
+		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
+		return
+	}
+
+	cacheKey := cacheKeyPrefixTxsByAddr + req.Address
+	pagedTxs, total, isHit, err := c.getCachedTxsInfo(ctx, cacheKey, uint64(req.Page), uint64(req.PageSize))
+	if err != nil {
+		log.Error("failed to get cached tx info", "cached key", cacheKey, "page", req.Page, "page size", req.PageSize, "error", err)
+		types.RenderFailure(ctx, types.ErrGetTxsError, err)
+		return
+	}
+
+	if isHit {
+		c.cacheMetrics.cacheHits.WithLabelValues("GetTxsByAddress").Inc()
+		log.Info("cache hit", "request", req)
+		resultData := &types.ResultData{Result: pagedTxs, Total: total}
+		types.RenderSuccess(ctx, resultData)
+		return
+	}
+
+	c.cacheMetrics.cacheMisses.WithLabelValues("GetTxsByAddress").Inc()
+	log.Info("cache miss", "request", req)
+
+	result, err, _ := c.singleFlight.Do(cacheKey, func() (interface{}, error) {
+		var txs []*types.TxHistoryInfo
+		txs, err = c.historyLogic.GetTxsByAddress(ctx, req.Address)
+		if err != nil {
+			return nil, err
+		}
+		return txs, nil
+	})
+	if err != nil {
+		types.RenderFailure(ctx, types.ErrGetTxsError, err)
+		return
+	}
+
+	txs, ok := result.([]*types.TxHistoryInfo)
+	if !ok {
+		log.Error("unexpected type from singleflight", "expected", "[]*types.TxHistoryInfo", "got", reflect.TypeOf(result))
+		types.RenderFailure(ctx, types.ErrGetTxsError, errors.New("unexpected error"))
+		return
+	}
+
+	err = c.cacheTxsInfo(ctx, cacheKey, txs)
+	if err != nil {
+		log.Error("failed to cache txs info", "key", cacheKey, "err", err)
+		types.RenderFailure(ctx, types.ErrGetTxsError, err)
+		return
+	}
+
+	pagedTxs, total, isHit, err = c.getCachedTxsInfo(ctx, cacheKey, uint64(req.Page), uint64(req.PageSize))
+	if err != nil {
+		log.Error("failed to get cached tx info", "cached key", cacheKey, "page", req.Page, "page size", req.PageSize, "error", err)
+		types.RenderFailure(ctx, types.ErrGetTxsError, err)
+		return
+	}
+
+	if !isHit {
+		log.Error("cache miss after write, expect hit", "cached key", cacheKey, "page", req.Page, "page size", req.PageSize, "error", err)
+		types.RenderFailure(ctx, types.ErrGetTxsError, err)
+		return
+	}
+
+	resultData := &types.ResultData{Result: pagedTxs, Total: total}
+	types.RenderSuccess(ctx, resultData)
+}
+
+// PostQueryTxsByHashes defines the http post method behavior
+func (c *HistoryController) PostQueryTxsByHashes(ctx *gin.Context) {
 	var req types.QueryByHashRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
 		return
 	}
 
-	if len(req.Txs) > 10 {
-		types.RenderFailure(ctx, types.ErrParameterInvalidNo, errors.New("the number of hashes in the request exceeds the allowed maximum of 10"))
+	if len(req.Txs) > 100 {
+		types.RenderFailure(ctx, types.ErrParameterInvalidNo, errors.New("the number of hashes in the request exceeds the allowed maximum of 100"))
 		return
 	}
 	hashesMap := make(map[string]struct{}, len(req.Txs))
@@ -111,23 +279,30 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 		}
 		hashesMap[hash] = struct{}{}
 
-		cacheKey := cacheKeyPrefixQueryTxsByHash + hash
-		if cachedData, found := c.cache.Get(cacheKey); found {
-			c.cacheMetrics.cacheHits.WithLabelValues("PostQueryTxsByHash").Inc()
+		cacheKey := cacheKeyPrefixQueryTxsByHashes + hash
+		cachedData, err := c.redis.Get(ctx, cacheKey).Bytes()
+		if err == nil {
+			c.cacheMetrics.cacheHits.WithLabelValues("PostQueryTxsByHashes").Inc()
 			// Log cache hit along with tx hash.
 			log.Info("cache hit", "tx hash", hash)
-			if cachedData == nil {
+			if len(cachedData) == 0 {
 				continue
-			} else if txInfo, ok := cachedData.(*types.TxHistoryInfo); ok {
-				results = append(results, txInfo)
 			} else {
-				log.Error("unexpected type in cache", "expected", "*types.TxHistoryInfo", "got", reflect.TypeOf(cachedData))
-				uncachedHashes = append(uncachedHashes, hash)
+				var txInfo types.TxHistoryInfo
+				if err = json.Unmarshal(cachedData, &txInfo); err != nil {
+					log.Error("failed to unmarshal cached data", "error", err)
+					uncachedHashes = append(uncachedHashes, hash)
+				} else {
+					results = append(results, &txInfo)
+				}
 			}
-		} else {
-			c.cacheMetrics.cacheMisses.WithLabelValues("PostQueryTxsByHash").Inc()
+		} else if err == redis.Nil {
+			c.cacheMetrics.cacheMisses.WithLabelValues("PostQueryTxsByHashes").Inc()
 			// Log cache miss along with tx hash.
 			log.Info("cache miss", "tx hash", hash)
+			uncachedHashes = append(uncachedHashes, hash)
+		} else {
+			log.Error("failed to get data from Redis", "error", err)
 			uncachedHashes = append(uncachedHashes, hash)
 		}
 	}
@@ -135,7 +310,7 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 	if len(uncachedHashes) > 0 {
 		dbResults, err := c.historyLogic.GetTxsByHashes(ctx, uncachedHashes)
 		if err != nil {
-			types.RenderFailure(ctx, types.ErrGetTxsByHashFailure, err)
+			types.RenderFailure(ctx, types.ErrGetTxsByHashError, err)
 			return
 		}
 
@@ -146,16 +321,97 @@ func (c *HistoryController) PostQueryTxsByHash(ctx *gin.Context) {
 		}
 
 		for _, hash := range uncachedHashes {
-			cacheKey := cacheKeyPrefixQueryTxsByHash + hash
+			cacheKey := cacheKeyPrefixQueryTxsByHashes + hash
 			result, found := resultMap[hash]
 			if found {
-				c.cache.Set(cacheKey, result, cache.DefaultExpiration)
+				jsonData, err := json.Marshal(result)
+				if err != nil {
+					log.Error("failed to marshal data", "error", err)
+				} else {
+					if err := c.redis.Set(ctx, cacheKey, jsonData, 30*time.Minute).Err(); err != nil {
+						log.Error("failed to set data to Redis", "error", err)
+					}
+				}
 			} else {
-				c.cache.Set(cacheKey, nil, cache.DefaultExpiration)
+				if err := c.redis.Set(ctx, cacheKey, "", 30*time.Minute).Err(); err != nil {
+					log.Error("failed to set data to Redis", "error", err)
+				}
 			}
 		}
 	}
 
 	resultData := &types.ResultData{Result: results, Total: uint64(len(results))}
 	types.RenderSuccess(ctx, resultData)
+}
+
+func (c *HistoryController) getCachedTxsInfo(ctx context.Context, cacheKey string, pageNum, pageSize uint64) ([]*types.TxHistoryInfo, uint64, bool, error) {
+	start := int64(pageNum * pageSize)
+	end := int64((pageNum+1)*pageSize - 1)
+
+	total, err := c.redis.ZCard(ctx, cacheKey).Result()
+	if err != nil {
+		if err == redis.Nil {
+			// Key does not exist, cache miss.
+			return nil, 0, false, nil
+		}
+		log.Error("failed to get zcard result", "error", err)
+		return nil, 0, false, err
+	}
+
+	values, err := c.redis.ZRange(ctx, cacheKey, start, end).Result()
+	if err != nil {
+		if err == redis.Nil {
+			// Key does not exist, cache miss.
+			return nil, 0, false, nil
+		}
+		log.Error("failed to get zrange result", "error", err)
+		return nil, 0, false, err
+	}
+
+	var pagedTxs []*types.TxHistoryInfo
+	for _, v := range values {
+		var tx types.TxHistoryInfo
+		err := json.Unmarshal([]byte(v), &tx)
+		if err != nil {
+			log.Error("failed to unmarshal transaction data", "error", err)
+			return nil, 0, false, err
+		}
+		pagedTxs = append(pagedTxs, &tx)
+	}
+
+	return pagedTxs, uint64(total), true, nil
+}
+
+func (c *HistoryController) cacheTxsInfo(ctx context.Context, cacheKey string, txs []*types.TxHistoryInfo) error {
+	err := c.redis.Watch(ctx, func(tx *redis.Tx) error {
+		pipe := tx.Pipeline()
+
+		// The transactions are sorted, thus we set the score as their indices.
+		for i, tx := range txs {
+			if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(i), Member: tx}).Err(); err != nil {
+				log.Error("failed to add transaction to sorted set", "error", err)
+				return err
+			}
+		}
+
+		if err := pipe.Expire(ctx, cacheKey, 30*time.Minute).Err(); err != nil {
+			log.Error("failed to set expiry time", "error", err)
+			return err
+		}
+
+		_, err := pipe.Exec(ctx)
+		if err != nil {
+			log.Error("failed to execute transaction", "error", err)
+			return err
+		}
+
+		return nil
+	}, cacheKey)
+
+	if err != nil {
+		log.Error("failed to execute transaction", "error", err)
+		return err
+	}
+
+	return nil
 }
