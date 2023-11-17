@@ -24,6 +24,9 @@ var (
 
 	base *docker.App
 
+	// l1geth client
+	l1Cli *ethclient.Client
+
 	// l2geth client
 	l2Cli *ethclient.Client
 
@@ -47,6 +50,9 @@ func setupEnv(t *testing.T) (err error) {
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
 		MaxIdleNum: base.DBConfig.MaxIdleNum,
 	}
+	// Create l1geth client.
+	l1Cli, err = base.L1Client()
+	assert.NoError(t, err)
 
 	// Create l2geth client.
 	l2Cli, err = base.L2Client()

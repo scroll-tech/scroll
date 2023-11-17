@@ -66,6 +66,13 @@ func action(ctx *cli.Context) error {
 	registry := prometheus.DefaultRegisterer
 	observability.Server(ctx, db)
 
+	// Init l1geth connection
+	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
+	if err != nil {
+		log.Error("failed to connect l1 geth", "config file", cfgFile, "error", err)
+		return err
+	}
+
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
@@ -80,7 +87,7 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, l2client, cfg.L2Config.ChunkProposerConfig, db, registry)
+	chunkProposer, err := watcher.NewChunkProposer(subCtx, l1client, cfg.L2Config.ChunkProposerConfig, cfg.L1Config.L1ViewOracleAddress, db, registry)
 	if err != nil {
 		log.Error("failed to create chunkProposer", "config file", cfgFile, "error", err)
 		return err

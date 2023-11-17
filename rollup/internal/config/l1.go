@@ -19,4 +19,6 @@ type L1Config struct {
 	ScrollChainContractAddress common.Address `json:"scroll_chain_address"`
 	// The relayer config
 	RelayerConfig *RelayerConfig `json:"relayer_config"`
+	// The L1ViewOracle contract address deployed on layer 1 chain.
+	L1ViewOracleAddress common.Address `json:"l1_view_oracle_address"`
 }

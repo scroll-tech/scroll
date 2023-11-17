@@ -152,7 +152,7 @@ func testChunkProposerLimits(t *testing.T) {
 			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 			assert.NoError(t, err)
 
-			cp := NewChunkProposer(context.Background(), l2Cli, &config.ChunkProposerConfig{
+			cp, err := NewChunkProposer(context.Background(), l1Cli, &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             tt.maxBlockNum,
 				MaxTxNumPerChunk:                tt.maxTxNum,
 				MaxL1CommitGasPerChunk:          tt.maxL1CommitGas,
@@ -160,7 +160,9 @@ func testChunkProposerLimits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
-			}, db, nil)
+			}, cfg.L1Config.L1ViewOracleAddress, db, nil)
+			assert.NoError(t, err)
+
 			cp.TryProposeChunk()
 
 			chunkOrm := orm.NewChunk(db)

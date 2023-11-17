@@ -9,12 +9,16 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum"
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
+	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	bridgeAbi "scroll-tech/rollup/abi"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -51,9 +55,11 @@ type ChunkProposer struct {
 	db  *gorm.DB
 
 	*ethclient.Client
+	l1ViewOracleAddress common.Address
 
-	chunkOrm   *orm.Chunk
-	l2BlockOrm *orm.L2Block
+	chunkOrm        *orm.Chunk
+	l2BlockOrm      *orm.L2Block
+	l1ViewOracleABI *abi.ABI
 
 	maxBlockNumPerChunk             uint64
 	maxTxNumPerChunk                uint64
@@ -78,18 +84,25 @@ type ChunkProposer struct {
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
-func NewChunkProposer(ctx context.Context, client *ethclient.Client, cfg *config.ChunkProposerConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
+func NewChunkProposer(ctx context.Context, client *ethclient.Client, cfg *config.ChunkProposerConfig, l1ViewOracleAddress common.Address, db *gorm.DB, reg prometheus.Registerer) (*ChunkProposer, error) {
+	if l1ViewOracleAddress == (common.Address{}) {
+		return nil, errors.New("must pass non-zero l1ViewOracleAddress to BridgeClient")
+	}
+
 	log.Debug("new chunk proposer",
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
 		"maxL1CommitCalldataSizePerChunk", cfg.MaxL1CommitCalldataSizePerChunk,
 		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
 		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
-		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier)
+		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
+	)
 
 	return &ChunkProposer{
 		ctx:                             ctx,
 		Client:                          client,
+		l1ViewOracleAddress:             l1ViewOracleAddress,
+		l1ViewOracleABI:                 bridgeAbi.L1ViewOracleABI,
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
@@ -149,7 +162,7 @@ func NewChunkProposer(ctx context.Context, client *ethclient.Client, cfg *config
 			Name: "rollup_propose_chunk_blocks_propose_not_enough_total",
 			Help: "Total number of chunk block propose not enough",
 		}),
-	}
+	}, nil
 }
 
 // TryProposeChunk tries to propose a new chunk.
@@ -227,10 +240,10 @@ func (p *ChunkProposer) proposeChunk(parentChunk *orm.Chunk) (*types.Chunk, erro
 		}
 	}
 
-	l1BlockRangeHash, err := p.Client.GetL1BlockRangeHash(p.ctx, big.NewInt(int64(l1BlockRangeHashFrom)), big.NewInt(int64(lastAppliedL1Block)))
+	l1BlockRangeHash, err := p.GetL1BlockRangeHash(p.ctx, l1BlockRangeHashFrom, lastAppliedL1Block)
 	if err != nil {
-		log.Error("failed to get block range hash", "err", err)
-		return nil, fmt.Errorf("chunk-proposer failed to get block range hash error: %w", err)
+		log.Error("failed to get l1 block range hash", "err", err)
+		return nil, fmt.Errorf("chunk-proposer failed to get l1 block range hash error: %w", err)
 	}
 
 	chunk.LastAppliedL1Block = lastAppliedL1Block
@@ -350,4 +363,38 @@ func (p *ChunkProposer) proposeChunk(parentChunk *orm.Chunk) (*types.Chunk, erro
 	log.Debug("pending blocks do not reach one of the constraints or contain a timeout block")
 	p.chunkBlocksProposeNotEnoughTotal.Inc()
 	return nil, nil
+}
+
+// GetL1BlockRangeHash gets l1 block range hash from l1 view oracle smart contract.
+func (p *ChunkProposer) GetL1BlockRangeHash(ctx context.Context, from uint64, to uint64) (*common.Hash, error) {
+	input, err := p.l1ViewOracleABI.Pack("blockRangeHash", big.NewInt(int64(from)), big.NewInt(int64(to)))
+	if err != nil {
+		return nil, err
+	}
+
+	output, err := p.Client.CallContract(ctx, ethereum.CallMsg{
+		To:   &p.l1ViewOracleAddress,
+		Data: input,
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(output) == 0 {
+		if code, err := p.Client.CodeAt(ctx, p.l1ViewOracleAddress, nil); err != nil {
+			return nil, err
+		} else if len(code) == 0 {
+			return nil, fmt.Errorf(
+				"l1 view oracle contract unknown, address: %v",
+				p.l1ViewOracleAddress,
+			)
+		}
+	}
+
+	var l1BlockRangeHash common.Hash
+	err = p.l1ViewOracleABI.UnpackIntoInterface(l1BlockRangeHash, "blockRangeHash", output)
+	if err != nil {
+		return nil, err
+	}
+
+	return &l1BlockRangeHash, nil
 }

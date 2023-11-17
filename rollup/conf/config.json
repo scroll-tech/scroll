@@ -3,6 +3,7 @@
     "confirmations": "0x6",
     "endpoint": "DUMMY_ENDPOINT",
     "l1_message_queue_address": "0x0000000000000000000000000000000000000000",
+    "l1_view_oracle_address": "0x0000000000000000000000000000000000000000",
     "scroll_chain_address": "0x0000000000000000000000000000000000000000",
     "start_height": 0,
     "relayer_config": {

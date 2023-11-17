@@ -56,14 +56,16 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), wrappedBlocks)
 	assert.NoError(t, err)
 
-	cp := watcher.NewChunkProposer(context.Background(), l2Client, &config.ChunkProposerConfig{
+	cp, err := watcher.NewChunkProposer(context.Background(), l1Client, &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk:             100,
 		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
-	}, db, nil)
+	}, l1Cfg.L1ViewOracleAddress, db, nil)
+	assert.NoError(t, err)
+
 	cp.TryProposeChunk()
 
 	batchOrm := orm.NewBatch(db)
