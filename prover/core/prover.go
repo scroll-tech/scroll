@@ -208,9 +208,12 @@ func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) ([]
 	return result.Message, nil
 }
 
-func (p *ProverCore) proveChunk(chunkTraceByt []byte) ([]byte, error) {
+func (p *ProverCore) proveChunk(chunkTraceByt []byte, prevLastAppliedL1Block uint64, l1BlockRangeHash []byte) ([]byte, error) {
 	chunkTraceBytStr := C.CString(string(chunkTraceByt))
 	defer C.free(unsafe.Pointer(chunkTraceBytStr))
+
+	l1BlockRangeHashStr := C.CString(string(l1BlockRangeHash))
+	defer C.free(unsafe.Pointer(l1BlockRangeHashStr))
 
 	log.Info("Start to create chunk proof ...")
 	cProof := C.gen_chunk_proof(tracesStr, C.uint64_t(prevLastAppliedL1Block), l1BlockRangeHashStr)
