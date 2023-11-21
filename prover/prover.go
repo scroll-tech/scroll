@@ -291,6 +291,7 @@ func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error
 	chunkTrace := message.ChunkTrace{
 		BlockTraces:            traces,
 		PrevLastAppliedL1Block: task.Task.ChunkTaskDetail.PrevLastAppliedL1Block,
+		LastAppliedL1Block:     task.Task.ChunkTaskDetail.LastAppliedL1Block,
 		L1BlockRangeHash:       task.Task.ChunkTaskDetail.L1BlockRangeHash,
 	}
 	return r.proverCore.ProveChunk(

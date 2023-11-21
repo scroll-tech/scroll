@@ -167,7 +167,8 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			}
 			return 0
 		}(),
-		L1BlockRangeHash: common.HexToHash(chunk.L1BlockRangeHash),
+		LastAppliedL1Block: chunk.LastAppliedL1Block,
+		L1BlockRangeHash:   common.HexToHash(chunk.L1BlockRangeHash),
 	}
 	taskDataBytes, err := json.Marshal(taskDetail)
 	if err != nil {

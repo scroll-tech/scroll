@@ -223,6 +223,7 @@ type TaskMsg struct {
 type ChunkTaskDetail struct {
 	BlockHashes            []common.Hash `json:"block_hashes"`
 	PrevLastAppliedL1Block uint64        `json:"prev_last_applied_l1_block"`
+	LastAppliedL1Block     uint64        `json:"last_applied_l1_block"`
 	L1BlockRangeHash       common.Hash   `json:"l1_block_range_hash"`
 }
 
@@ -280,6 +281,7 @@ type ChunkProof struct {
 type ChunkTrace struct {
 	BlockTraces            []*types.BlockTrace `json:"block_traces"`
 	PrevLastAppliedL1Block uint64              `json:"prev_last_applied_l1_block"`
+	LastAppliedL1Block     uint64              `json:"last_applied_l1_block"`
 	L1BlockRangeHash       common.Hash         `json:"l1_block_range_hash"`
 }
 
