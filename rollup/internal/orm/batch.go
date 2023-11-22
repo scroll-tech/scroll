@@ -13,6 +13,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
+	"golang.org/x/crypto/sha3"
 	"gorm.io/gorm"
 )
 
@@ -33,6 +34,9 @@ type Batch struct {
 	WithdrawRoot    string `json:"withdraw_root" gorm:"column:withdraw_root"`
 	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
+
+	LastAppliedL1Block uint64      `json:"last_applied_l1_block"`
+	L1BlockRangeHash   common.Hash `json:"l1_block_range_hash"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
@@ -269,6 +273,13 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*types.Chunk, batchMet
 		return nil, err
 	}
 
+	hasher := sha3.NewLegacyKeccak256()
+	var l1BlockRangeHash common.Hash
+	for _, chunk := range chunks {
+		hasher.Write(chunk.L1BlockRangeHash.Bytes())
+	}
+	copy(l1BlockRangeHash[:], hasher.Sum(nil))
+
 	numChunks := len(chunks)
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 
@@ -289,6 +300,8 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*types.Chunk, batchMet
 		OracleStatus:              int16(types.GasOraclePending),
 		TotalL1CommitGas:          batchMeta.TotalL1CommitGas,
 		TotalL1CommitCalldataSize: batchMeta.TotalL1CommitCalldataSize,
+		LastAppliedL1Block:        chunks[numChunks-1].LastAppliedL1Block,
+		L1BlockRangeHash:          l1BlockRangeHash,
 	}
 
 	db := o.db

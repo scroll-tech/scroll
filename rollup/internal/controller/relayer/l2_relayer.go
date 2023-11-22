@@ -171,6 +171,8 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			RowConsumption:     &gethTypes.RowConsumption{},
 			LastAppliedL1Block: 0,
 		}},
+		LastAppliedL1Block: 0,
+		L1BlockRangeHash:   common.Hash{},
 	}
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
@@ -364,7 +366,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				return
 			}
 			chunk := &types.Chunk{
-				Blocks: wrappedBlocks,
+				Blocks:             wrappedBlocks,
+				LastAppliedL1Block: c.LastAppliedL1Block,
+				L1BlockRangeHash:   common.HexToHash(c.L1BlockRangeHash),
 			}
 			var chunkBytes []byte
 			chunkBytes, err = chunk.Encode(c.TotalL1MessagesPoppedBefore)

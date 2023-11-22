@@ -30,6 +30,8 @@ type BatchHeader struct {
 	dataHash               common.Hash
 	parentBatchHash        common.Hash
 	skippedL1MessageBitmap []byte
+	lastAppliedL1Block     uint64
+	l1BlockRangeHash       common.Hash
 }
 
 // NewBatchHeader creates a new BatchHeader
@@ -109,6 +111,9 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 		dataHash:               dataHash,
 		parentBatchHash:        parentBatchHash,
 		skippedL1MessageBitmap: bitmapBytes,
+		// TODO:
+		lastAppliedL1Block: 0,
+		l1BlockRangeHash:   common.Hash{},
 	}, nil
 }
 
@@ -134,14 +139,17 @@ func (b *BatchHeader) SkippedL1MessageBitmap() []byte {
 
 // Encode encodes the BatchHeader into RollupV2 BatchHeaderV0Codec Encoding.
 func (b *BatchHeader) Encode() []byte {
-	batchBytes := make([]byte, 89+len(b.skippedL1MessageBitmap))
+	batchBytes := make([]byte, 129+len(b.skippedL1MessageBitmap))
 	batchBytes[0] = b.version
 	binary.BigEndian.PutUint64(batchBytes[1:], b.batchIndex)
 	binary.BigEndian.PutUint64(batchBytes[9:], b.l1MessagePopped)
 	binary.BigEndian.PutUint64(batchBytes[17:], b.totalL1MessagePopped)
 	copy(batchBytes[25:], b.dataHash[:])
 	copy(batchBytes[57:], b.parentBatchHash[:])
+	copy(batchBytes[57:], b.parentBatchHash[:])
 	copy(batchBytes[89:], b.skippedL1MessageBitmap[:])
+	binary.BigEndian.PutUint64(batchBytes[89+len(b.skippedL1MessageBitmap):], b.lastAppliedL1Block)
+	copy(batchBytes[97+len(b.skippedL1MessageBitmap):], b.l1BlockRangeHash[:])
 	return batchBytes
 }
 
@@ -152,7 +160,7 @@ func (b *BatchHeader) Hash() common.Hash {
 
 // DecodeBatchHeader attempts to decode the given byte slice into a BatchHeader.
 func DecodeBatchHeader(data []byte) (*BatchHeader, error) {
-	if len(data) < 89 {
+	if len(data) < 97 {
 		return nil, fmt.Errorf("insufficient data for BatchHeader")
 	}
 	b := &BatchHeader{
@@ -162,7 +170,9 @@ func DecodeBatchHeader(data []byte) (*BatchHeader, error) {
 		totalL1MessagePopped:   binary.BigEndian.Uint64(data[17:25]),
 		dataHash:               common.BytesToHash(data[25:57]),
 		parentBatchHash:        common.BytesToHash(data[57:89]),
-		skippedL1MessageBitmap: data[89:],
+		skippedL1MessageBitmap: data[89 : len(data)-40],
+		lastAppliedL1Block:     binary.BigEndian.Uint64(data[len(data)-40 : len(data)-32]),
+		l1BlockRangeHash:       common.BytesToHash(data[len(data)-32:]),
 	}
 	return b, nil
 }
