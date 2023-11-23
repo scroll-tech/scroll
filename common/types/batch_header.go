@@ -38,6 +38,7 @@ type BatchHeader struct {
 func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64, parentBatchHash common.Hash, chunks []*Chunk) (*BatchHeader, error) {
 	// buffer for storing chunk hashes in order to compute the batch data hash
 	var dataBytes []byte
+	var l1BlockRangeHashBytes []byte
 
 	// skipped L1 message bitmap, an array of 256-bit bitmaps
 	var skippedBitmap []*big.Int
@@ -56,6 +57,7 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 			return nil, err
 		}
 		dataBytes = append(dataBytes, chunkHash.Bytes()...)
+		l1BlockRangeHashBytes = append(l1BlockRangeHashBytes, chunk.L1BlockRangeHash.Bytes()...)
 
 		// build skip bitmap
 		for blockID, block := range chunk.Blocks {
@@ -95,6 +97,9 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 	// compute data hash
 	dataHash := crypto.Keccak256Hash(dataBytes)
 
+	// compute l1 block range hash
+	l1BlockRangeHash := crypto.Keccak256Hash(l1BlockRangeHashBytes)
+
 	// compute skipped bitmap
 	bitmapBytes := make([]byte, len(skippedBitmap)*32)
 	for ii, num := range skippedBitmap {
@@ -111,9 +116,8 @@ func NewBatchHeader(version uint8, batchIndex, totalL1MessagePoppedBefore uint64
 		dataHash:               dataHash,
 		parentBatchHash:        parentBatchHash,
 		skippedL1MessageBitmap: bitmapBytes,
-		// TODO:
-		lastAppliedL1Block: 0,
-		l1BlockRangeHash:   common.Hash{},
+		lastAppliedL1Block:     chunks[len(chunks)-1].LastAppliedL1Block,
+		l1BlockRangeHash:       l1BlockRangeHash,
 	}, nil
 }
 
@@ -135,6 +139,16 @@ func (b *BatchHeader) TotalL1MessagePopped() uint64 {
 // SkippedL1MessageBitmap returns the skipped L1 message bitmap in the BatchHeader.
 func (b *BatchHeader) SkippedL1MessageBitmap() []byte {
 	return b.skippedL1MessageBitmap
+}
+
+// LastAppliedL1Block returns the last applied L1 block in the BatchHeader.
+func (b *BatchHeader) LastAppliedL1Block() uint64 {
+	return b.lastAppliedL1Block
+}
+
+// L1BlockRangeHash returns the batch L1 block range hash in the BatchHeader.
+func (b *BatchHeader) L1BlockRangeHash() common.Hash {
+	return b.l1BlockRangeHash
 }
 
 // Encode encodes the BatchHeader into RollupV2 BatchHeaderV0Codec Encoding.

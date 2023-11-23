@@ -21,27 +21,27 @@ contract L1ViewOracleTest is DSTestPlus {
         uint256 from = block.number - 260;
         uint256 to = from + 5;
 
-        bytes32 hash = oracle.blockRangeHash(from, to);
+        oracle.blockRangeHash(from, to);
     }
 
     function testTooNewBlocks() external {
-        hevm.expectRevert("Block range exceeds current block");
+        hevm.expectRevert("Incorrect from/to range");
 
         hevm.roll(10);
 
         uint256 from = block.number - 5;
         uint256 to = block.number + 5;
 
-        bytes32 hash = oracle.blockRangeHash(from, to);
+        oracle.blockRangeHash(from, to);
     }
 
     function testInvalidRange() external {
-        hevm.expectRevert("End must be greater than or equal to start");
+        hevm.expectRevert("Incorrect from/to range");
 
         uint256 from = 200;
         uint256 to = 100;
 
-        bytes32 hash = oracle.blockRangeHash(from, to);
+        oracle.blockRangeHash(from, to);
     }
 
     function testCorrectness() external {
@@ -49,19 +49,19 @@ contract L1ViewOracleTest is DSTestPlus {
 
         uint256 from = 15;
         uint256 to = 48;
+        bytes32[] memory blockHashes = new bytes32[](to - from + 1);
+        uint256 cnt = 0;
 
-        bytes32 expectedHash = 0;
+        bytes32 blockRangeHash = oracle.blockRangeHash(from, to);
 
         for (uint256 i = from; i <= to; i++) {
             bytes32 blockHash = blockhash(i);
-
             require(blockHash != 0, "Blockhash not available");
-
-            expectedHash = keccak256(abi.encodePacked(expectedHash, blockHash));
+            blockHashes[cnt++] = blockHash;
         }
 
-        bytes32 gotHash = oracle.blockRangeHash(from, to);
+        bytes32 expected = keccak256(abi.encodePacked(blockHashes));
 
-        assertEq(expectedHash, gotHash);
+        assertEq(blockRangeHash, expected);
     }
 }

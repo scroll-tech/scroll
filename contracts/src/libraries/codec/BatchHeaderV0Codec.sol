@@ -24,7 +24,7 @@ library BatchHeaderV0Codec {
     /// @return length The length in bytes of the batch header.
     function loadAndValidate(bytes calldata _batchHeader) internal pure returns (uint256 batchPtr, uint256 length) {
         length = _batchHeader.length;
-        require(length >= 97, "batch header length too small");
+        require(length >= 129, "batch header length too small");
 
         // copy batch header to memory.
         assembly {
@@ -37,7 +37,7 @@ library BatchHeaderV0Codec {
         uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(batchPtr);
 
         unchecked {
-            require(length == 97 + ((_l1MessagePopped + 255) / 256) * 32, "wrong bitmap length");
+            require(length == 129 + ((_l1MessagePopped + 255) / 256) * 32, "wrong bitmap length");
         }
     }
 
@@ -190,12 +190,12 @@ library BatchHeaderV0Codec {
         }
     }
 
-    /// @notice Store the block range hash of batch header.
+    /// @notice Store the l1 block range hash of batch header.
     /// @param batchOffset The start memory offset of the batch header + dynamic offset.
-    /// @param _blockRangeHash The block range hash.
-    function storeBlockRangeHash(uint256 batchOffset, bytes32 _blockRangeHash) internal pure {
+    /// @param _l1BlockRangeHash The l1 block range hash.
+    function storeL1BlockRangeHash(uint256 batchOffset, bytes32 _l1BlockRangeHash) internal pure {
         assembly {
-            mstore(add(batchOffset, 97), _blockRangeHash)
+            mstore(add(batchOffset, 97), _l1BlockRangeHash)
         }
     }
 

@@ -13,7 +13,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
-	"golang.org/x/crypto/sha3"
 	"gorm.io/gorm"
 )
 
@@ -273,13 +272,6 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*types.Chunk, batchMet
 		return nil, err
 	}
 
-	hasher := sha3.NewLegacyKeccak256()
-	var l1BlockRangeHash common.Hash
-	for _, chunk := range chunks {
-		hasher.Write(chunk.L1BlockRangeHash.Bytes())
-	}
-	copy(l1BlockRangeHash[:], hasher.Sum(nil))
-
 	numChunks := len(chunks)
 	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 
@@ -301,7 +293,7 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*types.Chunk, batchMet
 		TotalL1CommitGas:          batchMeta.TotalL1CommitGas,
 		TotalL1CommitCalldataSize: batchMeta.TotalL1CommitCalldataSize,
 		LastAppliedL1Block:        chunks[numChunks-1].LastAppliedL1Block,
-		L1BlockRangeHash:          l1BlockRangeHash,
+		L1BlockRangeHash:          batchHeader.L1BlockRangeHash(),
 	}
 
 	db := o.db

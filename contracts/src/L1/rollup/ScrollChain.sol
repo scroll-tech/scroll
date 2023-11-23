@@ -202,16 +202,25 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
         }
 
+        uint256 _lastAppliedL1Block;
+        uint256 _totalNumL1MessagesInChunk;
+        uint256 _lastAppliedL1BlockInChunk;
+        bytes32 _l1BlockRangeHashInChunk;
         // compute the data hash for each chunk
         uint256 _totalL1MessagesPoppedInBatch;
         for (uint256 i = 0; i < _chunksLength; i++) {
-            uint256 _totalNumL1MessagesInChunk = _commitChunk(
+            (_totalNumL1MessagesInChunk, _lastAppliedL1BlockInChunk, _l1BlockRangeHashInChunk) = _commitChunk(
                 dataPtr,
                 _chunks[i],
                 _totalL1MessagesPoppedInBatch,
                 _totalL1MessagesPoppedOverall,
                 _skippedL1MessageBitmap
             );
+
+            // if it is the last chunk, update the last applied L1 block
+            if (i == _chunksLength - 1) {
+                _lastAppliedL1Block = _lastAppliedL1BlockInChunk;
+            }
 
             unchecked {
                 _totalL1MessagesPoppedInBatch += _totalNumL1MessagesInChunk;
@@ -245,10 +254,13 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         BatchHeaderV0Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
         BatchHeaderV0Codec.storeDataHash(batchPtr, _dataHash);
         BatchHeaderV0Codec.storeParentBatchHash(batchPtr, _parentBatchHash);
-        BatchHeaderV0Codec.storeSkippedBitmap(batchPtr, _skippedL1MessageBitmap);
+        uint256 batchOffset = BatchHeaderV0Codec.storeSkippedBitmap(batchPtr, _skippedL1MessageBitmap);
+        BatchHeaderV0Codec.storeLastAppliedL1Block(batchOffset, _lastAppliedL1Block);
+        // TODO: store l1BlockRangeHash
+        // BatchHeaderV0Codec.storeL1BlockRangeHash(batchOffset, _l1BlockRangeHashInBatch);
 
         // compute batch hash
-        bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89 + _skippedL1MessageBitmap.length);
+        bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 129 + _skippedL1MessageBitmap.length);
 
         committedBatches[_batchIndex] = _batchHash;
         emit CommitBatch(_batchIndex, _batchHash);
@@ -310,6 +322,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // avoid duplicated verification
         require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
 
+        // TODO: add lastAppliedL1Block and l1BlockRangeHash
         // compute public input hash
         bytes32 _publicInputHash = keccak256(
             abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
@@ -454,7 +467,15 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         uint256 _totalL1MessagesPoppedInBatch,
         uint256 _totalL1MessagesPoppedOverall,
         bytes calldata _skippedL1MessageBitmap
-    ) internal view returns (uint256 _totalNumL1MessagesInChunk) {
+    )
+        internal
+        view
+        returns (
+            uint256 _totalNumL1MessagesInChunk,
+            uint256 _lastAppliedL1BlockInChunk,
+            bytes32 _l1BlockRangeHashInChunk
+        )
+    {
         uint256 chunkPtr;
         uint256 startDataPtr;
         uint256 dataPtr;
@@ -481,7 +502,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 }
             }
             assembly {
-                mstore(0x40, add(dataPtr, mul(_totalTransactionsInChunk, 0x20))) // reserve memory for tx hashes
+                mstore(0x40, add(add(dataPtr, mul(_totalTransactionsInChunk, 0x20)), 0x28)) // reserve memory for tx hashes and l1 block hashes data
             }
         }
 
@@ -492,6 +513,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             blockPtr := add(chunkPtr, 1) // reset block ptr
         }
 
+        uint256 _lastAppliedL1Block;
         // concatenate tx hashes
         uint256 l2TxPtr = ChunkCodec.l2TxPtr(chunkPtr, _numBlocks);
         while (_numBlocks > 0) {
@@ -517,6 +539,11 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 }
             }
 
+            if (_numBlocks == 1) {
+                // check last block
+                _lastAppliedL1Block = ChunkCodec.lastAppliedL1BlockInBlock(blockPtr);
+            }
+
             unchecked {
                 _totalNumL1MessagesInChunk += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedInBatch += _numL1MessagesInBlock;
@@ -527,11 +554,22 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             }
         }
 
+        uint256 _lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInChunk(l2TxPtr);
+        bytes32 _l1BlockRangeHashInChunk = ChunkCodec.l1BlockRangeHashInChunk(l2TxPtr);
+
+        require(_lastAppliedL1Block == _lastAppliedL1BlockInChunk, "incorrect lastAppliedL1Block in chunk");
+
         // check the actual number of transactions in the chunk
         require((dataPtr - txHashStartDataPtr) / 32 <= maxNumTxInChunk, "too many txs in one chunk");
 
-        // check chunk has correct length
-        require(l2TxPtr - chunkPtr == _chunk.length, "incomplete l2 transaction data");
+        assembly {
+            mstore(dataPtr, _lastAppliedL1BlockInChunk)
+            mstore(dataPtr, _l1BlockRangeHashInChunk)
+            dataPtr := add(dataPtr, 0x28)
+        }
+
+        // check chunk has correct length. 40 is the length of lastAppliedL1Block and l1BlockRangeHash
+        require(l2TxPtr - chunkPtr + 40 == _chunk.length, "incomplete l2 transaction data");
 
         // compute data hash and store to memory
         assembly {
@@ -539,7 +577,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             mstore(memPtr, dataHash)
         }
 
-        return _totalNumL1MessagesInChunk;
+        return (_totalNumL1MessagesInChunk, _lastAppliedL1BlockInChunk, _l1BlockRangeHashInChunk);
     }
 
     /// @dev Internal function to load L1 message hashes from the message queue.

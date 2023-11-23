@@ -65,11 +65,20 @@ library ChunkCodec {
     }
 
     /// @notice Return the number of last applied L1 block.
-    /// @param blockPtr The start memory offset of the block context in memory.
+    /// @param l2TxEndPtr The end memory offset of `l2Transactions`.
     /// @return _lastAppliedL1Block The number of last applied L1 block.
-    function lastAppliedL1Block(uint256 blockPtr) internal pure returns (uint256 _lastAppliedL1Block) {
+    function lastAppliedL1BlockInChunk(uint256 l2TxEndPtr) internal pure returns (uint256 _lastAppliedL1Block) {
         assembly {
-            _lastAppliedL1Block := shr(240, mload(add(blockPtr, 60)))
+            _lastAppliedL1Block := shr(248, mload(l2TxEndPtr))
+        }
+    }
+
+    /// @notice Return the number of last applied L1 block.
+    /// @param l2TxEndPtr The end memory offset of `l2Transactions`.
+    /// @return _l1BlockRangeHash The hash of the L1 block range.
+    function l1BlockRangeHashInChunk(uint256 l2TxEndPtr) internal pure returns (bytes32 _l1BlockRangeHash) {
+        assembly {
+            _l1BlockRangeHash := shr(224, mload(add(l2TxEndPtr, 8)))
         }
     }
 
@@ -96,6 +105,15 @@ library ChunkCodec {
         }
 
         return dstPtr;
+    }
+
+    /// @notice Return the number of last applied L1 block.
+    /// @param blockPtr The start memory offset of the block context in memory.
+    /// @return _lastAppliedL1Block The number of last applied L1 block.
+    function lastAppliedL1BlockInBlock(uint256 blockPtr) internal pure returns (uint256 _lastAppliedL1Block) {
+        assembly {
+            _lastAppliedL1Block := shr(240, mload(add(blockPtr, 60)))
+        }
     }
 
     /// @notice Return the number of transactions in current block.
