@@ -31,11 +31,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @param status The status of the account updated.
     event UpdateProver(address indexed account, bool status);
 
-    /// @notice Emitted when the address of rollup verifier is updated.
-    /// @param oldVerifier The address of old rollup verifier.
-    /// @param newVerifier The address of new rollup verifier.
-    event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
-
     /// @notice Emitted when the value of `maxNumTxInChunk` is updated.
     /// @param oldMaxNumTxInChunk The old value of `maxNumTxInChunk`.
     /// @param newMaxNumTxInChunk The new value of `maxNumTxInChunk`.
@@ -51,6 +46,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @notice The address of L1MessageQueue contract.
     address public immutable messageQueue;
 
+    /// @notice The address of RollupVerifier.
+    address public immutable verifier;
+
     /*************
      * Variables *
      *************/
@@ -61,8 +59,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @dev The storage slot used as L1MessageQueue contract, which is deprecated now.
     address private __messageQueue;
 
-    /// @notice The address of RollupVerifier.
-    address public verifier;
+    /// @dev The storage slot used as RollupVerifier contract, which is deprecated now.
+    address private __verifier;
 
     /// @notice Whether an account is a sequencer.
     mapping(address => bool) public isSequencer;
@@ -105,11 +103,21 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     ///
     /// @param _chainId The chain id of L2.
     /// @param _messageQueue The address of `L1MessageQueue` contract.
-    constructor(uint64 _chainId, address _messageQueue) {
+    /// @param _verifier The address of zkevm verifier contract.
+    constructor(
+        uint64 _chainId,
+        address _messageQueue,
+        address _verifier
+    ) {
+        if (_verifier == address(0)) {
+            revert ErrorZeroAddress();
+        }
+
         _disableInitializers();
 
         layer2ChainId = _chainId;
         messageQueue = _messageQueue;
+        verifier = _verifier;
     }
 
     /// @notice Initialize the storage of ScrollChain.
@@ -126,11 +134,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     ) public initializer {
         OwnableUpgradeable.__Ownable_init();
 
-        verifier = _verifier;
         maxNumTxInChunk = _maxNumTxInChunk;
+        __verifier = _verifier;
         __messageQueue = _messageQueue;
 
-        emit UpdateVerifier(address(0), _verifier);
         emit UpdateMaxNumTxInChunk(0, _maxNumTxInChunk);
     }
 
@@ -409,15 +416,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         isProver[_account] = false;
 
         emit UpdateProver(_account, false);
-    }
-
-    /// @notice Update the address verifier contract.
-    /// @param _newVerifier The address of new verifier contract.
-    function updateVerifier(address _newVerifier) external onlyOwner {
-        address _oldVerifier = verifier;
-        verifier = _newVerifier;
-
-        emit UpdateVerifier(_oldVerifier, _newVerifier);
     }
 
     /// @notice Update the value of `maxNumTxInChunk`.

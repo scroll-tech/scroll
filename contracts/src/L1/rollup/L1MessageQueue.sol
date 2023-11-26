@@ -30,6 +30,9 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @notice The address of ScrollChain contract.
     address public immutable scrollChain;
 
+    /// @notice The address EnforcedTxGateway contract.
+    address public immutable enforcedTxGateway;
+
     /*************
      * Variables *
      *************/
@@ -40,8 +43,8 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     /// @dev The storage slot used as ScrollChain contract, which is deprecated now.
     address private __scrollChain;
 
-    /// @notice The address EnforcedTxGateway contract.
-    address public enforcedTxGateway;
+    /// @dev The storage slot used as EnforcedTxGateway contract, which is deprecated now.
+    address private __enforcedTxGateway;
 
     /// @notice The address of GasOracle contract.
     address public gasOracle;
@@ -81,8 +84,13 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
     ///
     /// @param _messenger The address of `L1ScrollMessenger` contract.
     /// @param _scrollChain The address of `ScrollChain` contract.
-    constructor(address _messenger, address _scrollChain) {
-        if (_messenger == address(0) || _scrollChain == address(0)) {
+    /// @param _enforcedTxGateway The address of `EnforcedTxGateway` contract.
+    constructor(
+        address _messenger,
+        address _scrollChain,
+        address _enforcedTxGateway
+    ) {
+        if (_messenger == address(0) || _scrollChain == address(0) || _enforcedTxGateway == address(0)) {
             revert ErrorZeroAddress();
         }
 
@@ -90,11 +98,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
 
         messenger = _messenger;
         scrollChain = _scrollChain;
+        enforcedTxGateway = _enforcedTxGateway;
     }
 
     /// @notice Initialize the storage of L1MessageQueue.
     ///
-    /// @dev The parameters `_messenger` and `_scrollChain` are no longer used.
+    /// @dev The parameters `_messenger`, `_scrollChain` and `_enforcedTxGateway` are no longer used.
     ///
     /// @param _messenger The address of `L1ScrollMessenger` contract.
     /// @param _scrollChain The address of `ScrollChain` contract.
@@ -109,12 +118,12 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         uint256 _maxGasLimit
     ) external initializer {
         OwnableUpgradeable.__Ownable_init();
-        enforcedTxGateway = _enforcedTxGateway;
         gasOracle = _gasOracle;
         maxGasLimit = _maxGasLimit;
 
         __messenger = _messenger;
         __scrollChain = _scrollChain;
+        __enforcedTxGateway = _enforcedTxGateway;
     }
 
     /*************************
@@ -381,16 +390,6 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         gasOracle = _newGasOracle;
 
         emit UpdateGasOracle(_oldGasOracle, _newGasOracle);
-    }
-
-    /// @notice Update the address of EnforcedTxGateway.
-    /// @dev This function can only called by contract owner.
-    /// @param _newGateway The address to update.
-    function updateEnforcedTxGateway(address _newGateway) external onlyOwner {
-        address _oldGateway = enforcedTxGateway;
-        enforcedTxGateway = _newGateway;
-
-        emit UpdateEnforcedTxGateway(_oldGateway, _newGateway);
     }
 
     /// @notice Update the max gas limit.

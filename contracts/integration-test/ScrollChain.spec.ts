@@ -27,12 +27,12 @@ describe("ScrollChain", async () => {
     await chainProxy.deployed();
 
     const L1MessageQueue = await ethers.getContractFactory("L1MessageQueue", deployer);
-    const queueImpl = await L1MessageQueue.deploy(constants.AddressZero, chainProxy.address);
+    const queueImpl = await L1MessageQueue.deploy(constants.AddressZero, chainProxy.address, deployer.address);
     await queueImpl.deployed();
     await admin.upgrade(queueProxy.address, queueImpl.address);
 
     const ScrollChain = await ethers.getContractFactory("ScrollChain", deployer);
-    const chainImpl = await ScrollChain.deploy(0, queueProxy.address);
+    const chainImpl = await ScrollChain.deploy(0, queueProxy.address, deployer.address);
     await chainImpl.deployed();
     await admin.upgrade(chainProxy.address, chainImpl.address);
 

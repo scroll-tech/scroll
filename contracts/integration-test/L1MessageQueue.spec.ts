@@ -36,7 +36,7 @@ describe("L1MessageQueue", async () => {
 
     queue = await ethers.getContractAt(
       "L1MessageQueue",
-      await deployProxy("L1MessageQueue", admin.address, [messenger.address, scrollChain.address]),
+      await deployProxy("L1MessageQueue", admin.address, [messenger.address, scrollChain.address, gateway.address]),
       deployer
     );
 
@@ -47,7 +47,7 @@ describe("L1MessageQueue", async () => {
     );
 
     await oracle.initialize(21000, 50000, 8, 16);
-    await queue.initialize(messenger.address, scrollChain.address, gateway.address, oracle.address, 10000000);
+    await queue.initialize(messenger.address, scrollChain.address, constants.AddressZero, oracle.address, 10000000);
   });
 
   context("auth", async () => {
@@ -79,22 +79,6 @@ describe("L1MessageQueue", async () => {
           .to.emit(queue, "UpdateGasOracle")
           .withArgs(oracle.address, deployer.address);
         expect(await queue.gasOracle()).to.eq(deployer.address);
-      });
-    });
-
-    context("#updateEnforcedTxGateway", async () => {
-      it("should revert, when non-owner call", async () => {
-        await expect(queue.connect(signer).updateEnforcedTxGateway(constants.AddressZero)).to.revertedWith(
-          "Ownable: caller is not the owner"
-        );
-      });
-
-      it("should succeed", async () => {
-        expect(await queue.enforcedTxGateway()).to.eq(gateway.address);
-        await expect(queue.updateEnforcedTxGateway(deployer.address))
-          .to.emit(queue, "UpdateEnforcedTxGateway")
-          .withArgs(gateway.address, deployer.address);
-        expect(await queue.enforcedTxGateway()).to.eq(deployer.address);
       });
     });
 

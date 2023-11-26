@@ -56,6 +56,8 @@ contract DeployL1BridgeContracts is Script {
     address L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR = vm.envAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR");
 
     ZkEvmVerifierV1 zkEvmVerifierV1;
+    MultipleVersionRollupVerifier rollupVerifier;
+    EnforcedTxGateway enforcedTxGateway;
     ProxyAdmin proxyAdmin;
     L1GatewayRouter router;
 
@@ -67,6 +69,7 @@ contract DeployL1BridgeContracts is Script {
         deployZkEvmVerifierV1();
         deployMultipleVersionRollupVerifier();
         deployL1Whitelist();
+        deployEnforcedTxGateway();
         deployL1MessageQueue();
         deployL2GasPriceOracle();
         deployScrollChain();
@@ -78,7 +81,6 @@ contract DeployL1BridgeContracts is Script {
         deployL1CustomERC20Gateway();
         deployL1ERC721Gateway();
         deployL1ERC1155Gateway();
-        deployEnforcedTxGateway();
 
         vm.stopBroadcast();
     }
@@ -90,7 +92,7 @@ contract DeployL1BridgeContracts is Script {
     }
 
     function deployMultipleVersionRollupVerifier() internal {
-        MultipleVersionRollupVerifier rollupVerifier = new MultipleVersionRollupVerifier(address(zkEvmVerifierV1));
+        rollupVerifier = new MultipleVersionRollupVerifier(address(zkEvmVerifierV1));
 
         logAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR", address(rollupVerifier));
     }
@@ -103,13 +105,17 @@ contract DeployL1BridgeContracts is Script {
     }
 
     function deployScrollChain() internal {
-        ScrollChain impl = new ScrollChain(CHAIN_ID_L2, L1_MESSAGE_QUEUE_PROXY_ADDR);
+        ScrollChain impl = new ScrollChain(CHAIN_ID_L2, L1_MESSAGE_QUEUE_PROXY_ADDR, address(rollupVerifier));
 
         logAddress("L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR", address(impl));
     }
 
     function deployL1MessageQueue() internal {
-        L1MessageQueue impl = new L1MessageQueue(L1_SCROLL_MESSENGER_PROXY_ADDR, L1_SCROLL_CHAIN_PROXY_ADDR);
+        L1MessageQueue impl = new L1MessageQueue(
+            L1_SCROLL_MESSENGER_PROXY_ADDR,
+            L1_SCROLL_CHAIN_PROXY_ADDR,
+            address(enforcedTxGateway)
+        );
         logAddress("L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR", address(impl));
     }
 
@@ -214,6 +220,7 @@ contract DeployL1BridgeContracts is Script {
 
         logAddress("L1_ENFORCED_TX_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
         logAddress("L1_ENFORCED_TX_GATEWAY_PROXY_ADDR", address(proxy));
+        enforcedTxGateway = EnforcedTxGateway(address(proxy));
     }
 
     function logAddress(string memory name, address addr) internal view {

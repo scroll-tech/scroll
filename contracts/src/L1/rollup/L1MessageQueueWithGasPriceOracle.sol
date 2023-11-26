@@ -47,7 +47,12 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
     ///
     /// @param _messenger The address of `L1ScrollMessenger` contract.
     /// @param _scrollChain The address of `ScrollChain` contract.
-    constructor(address _messenger, address _scrollChain) L1MessageQueue(_messenger, _scrollChain) {}
+    /// @param _enforcedTxGateway The address of `EnforcedTxGateway` contract.
+    constructor(
+        address _messenger,
+        address _scrollChain,
+        address _enforcedTxGateway
+    ) L1MessageQueue(_messenger, _scrollChain, _enforcedTxGateway) {}
 
     /// @notice Initialize the storage of L1MessageQueueWithGasPriceOracle.
     function initializeV2() external reinitializer(2) {

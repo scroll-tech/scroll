@@ -113,7 +113,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         // Upgrade the L1MessageQueueWithGasPriceOracle implementation and initialize
         admin.upgrade(
             ITransparentUpgradeableProxy(address(messageQueue)),
-            address(new L1MessageQueueWithGasPriceOracle(address(l1Messenger), address(rollup)))
+            address(new L1MessageQueueWithGasPriceOracle(address(l1Messenger), address(rollup), address(1)))
         );
         messageQueue.initialize(
             address(l1Messenger),
@@ -127,9 +127,9 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         // Upgrade the ScrollChain implementation and initialize
         admin.upgrade(
             ITransparentUpgradeableProxy(address(rollup)),
-            address(new ScrollChain(1233, address(messageQueue)))
+            address(new ScrollChain(1233, address(messageQueue), address(verifier)))
         );
-        rollup.initialize(address(messageQueue), address(verifier), 44);
+        rollup.initialize(address(messageQueue), address(0), 44);
 
         // Setup whitelist
         address[] memory _accounts = new address[](1);

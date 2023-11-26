@@ -436,22 +436,6 @@ Update the value of `maxNumTxInChunk`.
 |---|---|---|
 | _maxNumTxInChunk | uint256 | The new value of `maxNumTxInChunk`. |
 
-### updateVerifier
-
-```solidity
-function updateVerifier(address _newVerifier) external nonpayable
-```
-
-Update the address verifier contract.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newVerifier | address | The address of new verifier contract. |
-
 ### verifier
 
 ```solidity
@@ -664,22 +648,19 @@ Emitted when owner updates the status of sequencer.
 | account `indexed` | address | The address of account updated. |
 | status  | bool | The status of the account updated. |
 
-### UpdateVerifier
+
+
+## Errors
+
+### ErrorZeroAddress
 
 ```solidity
-event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier)
+error ErrorZeroAddress()
 ```
 
-Emitted when the address of rollup verifier is updated.
 
 
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| oldVerifier `indexed` | address | The address of old rollup verifier. |
-| newVerifier `indexed` | address | The address of new rollup verifier. |
+*Thrown when the given address if `address(0)`.*
 
 
 

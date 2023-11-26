@@ -34,9 +34,15 @@ describe("EnforcedTxGateway.spec", async () => {
     const admin = await ProxyAdmin.deploy();
     await admin.deployed();
 
+    gateway = await ethers.getContractAt(
+      "EnforcedTxGateway",
+      await deployProxy("EnforcedTxGateway", admin.address, []),
+      deployer
+    );
+
     queue = await ethers.getContractAt(
       "L1MessageQueue",
-      await deployProxy("L1MessageQueue", admin.address, [deployer.address, deployer.address]),
+      await deployProxy("L1MessageQueue", admin.address, [deployer.address, deployer.address, gateway.address]),
       deployer
     );
 
@@ -46,17 +52,17 @@ describe("EnforcedTxGateway.spec", async () => {
       deployer
     );
 
-    gateway = await ethers.getContractAt(
-      "EnforcedTxGateway",
-      await deployProxy("EnforcedTxGateway", admin.address, []),
-      deployer
-    );
-
     const MockCaller = await ethers.getContractFactory("MockCaller", deployer);
     caller = await MockCaller.deploy();
     await caller.deployed();
 
-    await queue.initialize(constants.AddressZero, constants.AddressZero, gateway.address, oracle.address, 10000000);
+    await queue.initialize(
+      constants.AddressZero,
+      constants.AddressZero,
+      constants.AddressZero,
+      oracle.address,
+      10000000
+    );
     await gateway.initialize(queue.address, feeVault.address);
     await oracle.initialize(21000, 51000, 8, 16);
 

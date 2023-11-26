@@ -38,11 +38,6 @@ interface IL1MessageQueue {
     /// @param _newGasOracle The address of new gas oracle contract.
     event UpdateGasOracle(address indexed _oldGasOracle, address indexed _newGasOracle);
 
-    /// @notice Emitted when owner updates EnforcedTxGateway contract.
-    /// @param _oldGateway The address of old EnforcedTxGateway contract.
-    /// @param _newGateway The address of new EnforcedTxGateway contract.
-    event UpdateEnforcedTxGateway(address indexed _oldGateway, address indexed _newGateway);
-
     /// @notice Emitted when owner updates max gas limit.
     /// @param _oldMaxGasLimit The old max gas limit.
     /// @param _newMaxGasLimit The new max gas limit.

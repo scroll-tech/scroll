@@ -19,7 +19,6 @@ contract ScrollChainTest is DSTestPlus {
     // from ScrollChain
     event UpdateSequencer(address indexed account, bool status);
     event UpdateProver(address indexed account, bool status);
-    event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
     event UpdateMaxNumTxInChunk(uint256 oldMaxNumTxInChunk, uint256 newMaxNumTxInChunk);
 
     event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
@@ -43,13 +42,13 @@ contract ScrollChainTest is DSTestPlus {
         // Upgrade the L1MessageQueue implementation and initialize
         admin.upgrade(
             ITransparentUpgradeableProxy(address(messageQueue)),
-            address(new L1MessageQueue(address(this), address(rollup)))
+            address(new L1MessageQueue(address(this), address(rollup), address(1)))
         );
         messageQueue.initialize(address(this), address(rollup), address(0), address(0), 10000000);
         // Upgrade the ScrollChain implementation and initialize
         admin.upgrade(
             ITransparentUpgradeableProxy(address(rollup)),
-            address(new ScrollChain(233, address(messageQueue)))
+            address(new ScrollChain(233, address(messageQueue), address(verifier)))
         );
         rollup.initialize(address(messageQueue), address(verifier), 100);
     }
@@ -699,22 +698,6 @@ contract ScrollChainTest is DSTestPlus {
         // unpause
         rollup.setPause(false);
         assertBoolEq(false, rollup.paused());
-    }
-
-    function testUpdateVerifier(address _newVerifier) public {
-        // set by non-owner, should revert
-        hevm.startPrank(address(1));
-        hevm.expectRevert("Ownable: caller is not the owner");
-        rollup.updateVerifier(_newVerifier);
-        hevm.stopPrank();
-
-        // change to random operator
-        hevm.expectEmit(true, true, false, true);
-        emit UpdateVerifier(address(verifier), _newVerifier);
-
-        assertEq(rollup.verifier(), address(verifier));
-        rollup.updateVerifier(_newVerifier);
-        assertEq(rollup.verifier(), _newVerifier);
     }
 
     function testUpdateMaxNumTxInChunk(uint256 _maxNumTxInChunk) public {
