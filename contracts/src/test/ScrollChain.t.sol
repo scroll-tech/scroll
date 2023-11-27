@@ -7,6 +7,7 @@ import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import {L1MessageQueue} from "../L1/rollup/L1MessageQueue.sol";
+import {L1ViewOracle} from "../L1/L1ViewOracle.sol";
 import {ScrollChain, IScrollChain} from "../L1/rollup/ScrollChain.sol";
 
 import {MockScrollChain} from "./mocks/MockScrollChain.sol";
@@ -25,17 +26,19 @@ contract ScrollChainTest is DSTestPlus {
     event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
     event RevertBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
 
+    L1ViewOracle private l1ViewOracle;
     ScrollChain private rollup;
     L1MessageQueue internal messageQueue;
     MockScrollChain internal chain;
     MockRollupVerifier internal verifier;
 
     function setUp() public {
+        l1ViewOracle = new L1ViewOracle();
         messageQueue = L1MessageQueue(address(new ERC1967Proxy(address(new L1MessageQueue()), new bytes(0))));
         rollup = ScrollChain(address(new ERC1967Proxy(address(new ScrollChain(233)), new bytes(0))));
         verifier = new MockRollupVerifier();
 
-        rollup.initialize(address(messageQueue), address(verifier), 100);
+        rollup.initialize(address(messageQueue), address(verifier), 100, address(l1ViewOracle));
         messageQueue.initialize(address(this), address(rollup), address(0), address(0), 1000000);
 
         chain = new MockScrollChain();
@@ -46,7 +49,7 @@ contract ScrollChainTest is DSTestPlus {
         assertEq(rollup.layer2ChainId(), 233);
 
         hevm.expectRevert("Initializable: contract is already initialized");
-        rollup.initialize(address(messageQueue), address(0), 100);
+        rollup.initialize(address(messageQueue), address(0), 100, address(l1ViewOracle));
     }
 
     function testCommitBatch() public {
@@ -65,32 +68,32 @@ contract ScrollChainTest is DSTestPlus {
 
         // caller not sequencer, revert
         hevm.expectRevert("caller not sequencer");
-        rollup.commitBatch(0, batchHeader0, new bytes[](0), new bytes(0));
+        rollup.commitBatch(0, batchHeader0, new bytes[](0), new bytes(0), 0);
 
         rollup.addSequencer(address(0));
 
         // invalid version, revert
         hevm.startPrank(address(0));
         hevm.expectRevert("invalid version");
-        rollup.commitBatch(1, batchHeader0, new bytes[](0), new bytes(0));
+        rollup.commitBatch(1, batchHeader0, new bytes[](0), new bytes(0), 0);
         hevm.stopPrank();
 
         // batch is empty, revert
         hevm.startPrank(address(0));
         hevm.expectRevert("batch is empty");
-        rollup.commitBatch(0, batchHeader0, new bytes[](0), new bytes(0));
+        rollup.commitBatch(0, batchHeader0, new bytes[](0), new bytes(0), 0);
         hevm.stopPrank();
 
         // batch header length too small, revert
         hevm.startPrank(address(0));
         hevm.expectRevert("batch header length too small");
-        rollup.commitBatch(0, new bytes(88), new bytes[](1), new bytes(0));
+        rollup.commitBatch(0, new bytes(88), new bytes[](1), new bytes(0), 0);
         hevm.stopPrank();
 
         // wrong bitmap length, revert
         hevm.startPrank(address(0));
         hevm.expectRevert("wrong bitmap length");
-        rollup.commitBatch(0, new bytes(90), new bytes[](1), new bytes(0));
+        rollup.commitBatch(0, new bytes(90), new bytes[](1), new bytes(0), 0);
         hevm.stopPrank();
 
         // incorrect parent batch hash, revert
@@ -99,7 +102,7 @@ contract ScrollChainTest is DSTestPlus {
         }
         hevm.startPrank(address(0));
         hevm.expectRevert("incorrect parent batch hash");
-        rollup.commitBatch(0, batchHeader0, new bytes[](1), new bytes(0));
+        rollup.commitBatch(0, batchHeader0, new bytes[](1), new bytes(0), 0);
         hevm.stopPrank();
         assembly {
             mstore(add(batchHeader0, add(0x20, 25)), 1) // change back
@@ -113,7 +116,7 @@ contract ScrollChainTest is DSTestPlus {
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
         hevm.expectRevert("no block in chunk");
-        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0), 0);
         hevm.stopPrank();
 
         // invalid chunk length, revert
@@ -122,7 +125,7 @@ contract ScrollChainTest is DSTestPlus {
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
         hevm.expectRevert("invalid chunk length");
-        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0), 0);
         hevm.stopPrank();
 
         // cannot skip last L1 message, revert
@@ -135,7 +138,7 @@ contract ScrollChainTest is DSTestPlus {
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
         hevm.expectRevert("cannot skip last L1 message");
-        rollup.commitBatch(0, batchHeader0, chunks, bitmap);
+        rollup.commitBatch(0, batchHeader0, chunks, bitmap, 0);
         hevm.stopPrank();
 
         // num txs less than num L1 msgs, revert
@@ -148,7 +151,7 @@ contract ScrollChainTest is DSTestPlus {
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
         hevm.expectRevert("num txs less than num L1 msgs");
-        rollup.commitBatch(0, batchHeader0, chunks, bitmap);
+        rollup.commitBatch(0, batchHeader0, chunks, bitmap, 0);
         hevm.stopPrank();
 
         // incomplete l2 transaction data, revert
@@ -157,7 +160,7 @@ contract ScrollChainTest is DSTestPlus {
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
         hevm.expectRevert("incomplete l2 transaction data");
-        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0), 0);
         hevm.stopPrank();
 
         // commit batch with one chunk, no tx, correctly
@@ -165,14 +168,14 @@ contract ScrollChainTest is DSTestPlus {
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
-        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0), 0);
         hevm.stopPrank();
         assertGt(uint256(rollup.committedBatches(1)), 0);
 
         // batch is already committed, revert
         hevm.startPrank(address(0));
         hevm.expectRevert("batch already committed");
-        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0), 0);
         hevm.stopPrank();
     }
 
@@ -201,7 +204,7 @@ contract ScrollChainTest is DSTestPlus {
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
-        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0), 0);
         hevm.stopPrank();
         assertGt(uint256(rollup.committedBatches(1)), 0);
 
@@ -348,7 +351,7 @@ contract ScrollChainTest is DSTestPlus {
         hevm.startPrank(address(0));
         hevm.expectEmit(true, true, false, true);
         emit CommitBatch(1, bytes32(0x00847173b29b238cf319cde79512b7c213e5a8b4138daa7051914c4592b6dfc7));
-        rollup.commitBatch(0, batchHeader0, chunks, bitmap);
+        rollup.commitBatch(0, batchHeader0, chunks, bitmap, 0);
         hevm.stopPrank();
         assertBoolEq(rollup.isBatchFinalized(1), false);
         bytes32 batchHash1 = rollup.committedBatches(1);
@@ -475,19 +478,19 @@ contract ScrollChainTest is DSTestPlus {
         rollup.updateMaxNumTxInChunk(2); // 3 - 1
         hevm.startPrank(address(0));
         hevm.expectRevert("too many txs in one chunk");
-        rollup.commitBatch(0, batchHeader1, chunks, bitmap); // first chunk with too many txs
+        rollup.commitBatch(0, batchHeader1, chunks, bitmap, 0); // first chunk with too many txs
         hevm.stopPrank();
         rollup.updateMaxNumTxInChunk(185); // 5+10+300 - 2 - 127
         hevm.startPrank(address(0));
         hevm.expectRevert("too many txs in one chunk");
-        rollup.commitBatch(0, batchHeader1, chunks, bitmap); // second chunk with too many txs
+        rollup.commitBatch(0, batchHeader1, chunks, bitmap, 0); // second chunk with too many txs
         hevm.stopPrank();
 
         rollup.updateMaxNumTxInChunk(186);
         hevm.startPrank(address(0));
         hevm.expectEmit(true, true, false, true);
         emit CommitBatch(2, bytes32(0x03a9cdcb9d582251acf60937db006ec99f3505fd4751b7c1f92c9a8ef413e873));
-        rollup.commitBatch(0, batchHeader1, chunks, bitmap);
+        rollup.commitBatch(0, batchHeader1, chunks, bitmap, 0);
         hevm.stopPrank();
         assertBoolEq(rollup.isBatchFinalized(2), false);
         bytes32 batchHash2 = rollup.committedBatches(2);
@@ -558,7 +561,7 @@ contract ScrollChainTest is DSTestPlus {
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
-        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0), 0);
         hevm.stopPrank();
 
         bytes memory batchHeader1 = new bytes(89);
@@ -573,7 +576,7 @@ contract ScrollChainTest is DSTestPlus {
 
         // commit another batch
         hevm.startPrank(address(0));
-        rollup.commitBatch(0, batchHeader1, chunks, new bytes(0));
+        rollup.commitBatch(0, batchHeader1, chunks, new bytes(0), 0);
         hevm.stopPrank();
 
         // count must be nonzero, revert
@@ -678,7 +681,7 @@ contract ScrollChainTest is DSTestPlus {
 
         hevm.startPrank(address(0));
         hevm.expectRevert("Pausable: paused");
-        rollup.commitBatch(0, new bytes(0), new bytes[](0), new bytes(0));
+        rollup.commitBatch(0, new bytes(0), new bytes[](0), new bytes(0), 0);
         hevm.expectRevert("Pausable: paused");
         rollup.finalizeBatchWithProof(new bytes(0), bytes32(0), bytes32(0), bytes32(0), new bytes(0));
         hevm.stopPrank();

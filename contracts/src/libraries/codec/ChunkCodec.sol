@@ -67,7 +67,7 @@ library ChunkCodec {
     /// @notice Return the number of last applied L1 block.
     /// @param l2TxEndPtr The end memory offset of `l2Transactions`.
     /// @return _lastAppliedL1Block The number of last applied L1 block.
-    function lastAppliedL1BlockInChunk(uint256 l2TxEndPtr) internal pure returns (uint256 _lastAppliedL1Block) {
+    function lastAppliedL1BlockInChunk(uint256 l2TxEndPtr) internal pure returns (uint64 _lastAppliedL1Block) {
         assembly {
             _lastAppliedL1Block := shr(248, mload(l2TxEndPtr))
         }

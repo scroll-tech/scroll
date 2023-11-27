@@ -4,7 +4,7 @@ pragma solidity ^0.8.16;
 
 // solhint-disable no-inline-assembly
 
-/// @dev Below is the encoding for `BatchHeader` V0, total 89 + ceil(l1MessagePopped / 256) * 32 bytes.
+/// @dev Below is the encoding for `BatchHeader` V0, total 129 + ceil(l1MessagePopped / 256) * 32 bytes.
 /// ```text
 ///   * Field                   Bytes       Type        Index                                           Comments
 ///   * version                 1           uint8       0                                               The batch version
@@ -106,6 +106,36 @@ library BatchHeaderV0Codec {
         }
     }
 
+    /// @notice Get the last applied L1 block number.
+    /// @param batchPtr The start memory offset of the batch header in memory.
+    /// @param _skippedBitmapLength The length of the skipped L1 message bitmap.
+    /// @return _lastAppliedL1Block The last applied L1 block number.
+    function lastAppliedL1Block(uint256 batchPtr, uint256 _skippedBitmapLength)
+        internal
+        pure
+        returns (uint256 _lastAppliedL1Block)
+    {
+        assembly {
+            batchPtr := add(batchPtr, 89)
+            _lastAppliedL1Block := mload(add(batchPtr, _skippedBitmapLength))
+        }
+    }
+
+    /// @notice Get the l1 block range hash.
+    /// @param batchPtr The start memory offset of the batch header in memory.
+    /// @param _skippedBitmapLength The length of the skipped L1 message bitmap.
+    /// @return _l1BlockRangeHash The l1 block range hash.
+    function l1BlockRangeHash(uint256 batchPtr, uint256 _skippedBitmapLength)
+        internal
+        pure
+        returns (bytes32 _l1BlockRangeHash)
+    {
+        assembly {
+            batchPtr := add(batchPtr, 97)
+            _l1BlockRangeHash := mload(add(batchPtr, _skippedBitmapLength))
+        }
+    }
+
     /// @notice Store the version of batch header.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param _version The version of batch header.
@@ -169,33 +199,38 @@ library BatchHeaderV0Codec {
     /// @notice Store the skipped L1 message bitmap of batch header.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param _skippedL1MessageBitmap The skipped L1 message bitmap.
-    function storeSkippedBitmap(uint256 batchPtr, bytes calldata _skippedL1MessageBitmap)
-        internal
-        pure
-        returns (uint256 _offset)
-    {
+    function storeSkippedBitmap(uint256 batchPtr, bytes calldata _skippedL1MessageBitmap) internal pure {
         assembly {
-            _offset := add(batchPtr, 89)
-            calldatacopy(_offset, _skippedL1MessageBitmap.offset, _skippedL1MessageBitmap.length)
-            _offset := add(_offset, _skippedL1MessageBitmap.length)
+            calldatacopy(add(batchPtr, 89), _skippedL1MessageBitmap.offset, _skippedL1MessageBitmap.length)
         }
     }
 
     /// @notice Store the last applied L1 block number.
-    /// @param batchOffset The start memory offset of the batch header + dynamic offset.
+    /// @param batchPtr The start memory offset of the batch header in memory.
+    /// @param _skippedL1MessageBitmapLength The length of the skipped L1 message bitmap.
     /// @param _lastAppliedL1Block The last applied L1 block number.
-    function storeLastAppliedL1Block(uint256 batchOffset, uint256 _lastAppliedL1Block) internal pure {
+    function storeLastAppliedL1Block(
+        uint256 batchPtr,
+        uint256 _skippedL1MessageBitmapLength,
+        uint256 _lastAppliedL1Block
+    ) internal pure {
         assembly {
-            mstore(add(batchOffset, 89), shl(224, _lastAppliedL1Block))
+            mstore(add(batchPtr, _skippedL1MessageBitmapLength), shl(224, _lastAppliedL1Block))
         }
     }
 
     /// @notice Store the l1 block range hash of batch header.
-    /// @param batchOffset The start memory offset of the batch header + dynamic offset.
+    /// @param batchPtr The start memory offset of the batch header in memory.
+    /// @param _skippedL1MessageBitmapLength The length of the skipped L1 message bitmap.
     /// @param _l1BlockRangeHash The l1 block range hash.
-    function storeL1BlockRangeHash(uint256 batchOffset, bytes32 _l1BlockRangeHash) internal pure {
+    function storeL1BlockRangeHash(
+        uint256 batchPtr,
+        uint256 _skippedL1MessageBitmapLength,
+        bytes32 _l1BlockRangeHash
+    ) internal pure {
         assembly {
-            mstore(add(batchOffset, 97), _l1BlockRangeHash)
+            batchPtr := add(batchPtr, 8)
+            mstore(add(batchPtr, _skippedL1MessageBitmapLength), _l1BlockRangeHash)
         }
     }
 

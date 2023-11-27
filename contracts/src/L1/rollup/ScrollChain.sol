@@ -10,6 +10,7 @@ import {IScrollChain} from "./IScrollChain.sol";
 import {BatchHeaderV0Codec} from "../../libraries/codec/BatchHeaderV0Codec.sol";
 import {ChunkCodec} from "../../libraries/codec/ChunkCodec.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
+import {IL1ViewOracle} from "../L1ViewOracle.sol";
 
 // solhint-disable no-inline-assembly
 // solhint-disable reason-string
@@ -79,6 +80,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @inheritdoc IScrollChain
     mapping(uint256 => bytes32) public override withdrawRoots;
 
+    /// @notice The address of L1ViewOracle.
+    address public l1ViewOracle;
+
     /**********************
      * Function Modifiers *
      **********************/
@@ -107,13 +111,15 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     function initialize(
         address _messageQueue,
         address _verifier,
-        uint256 _maxNumTxInChunk
+        uint256 _maxNumTxInChunk,
+        address _l1ViewOracle
     ) public initializer {
         OwnableUpgradeable.__Ownable_init();
 
         messageQueue = _messageQueue;
         verifier = _verifier;
         maxNumTxInChunk = _maxNumTxInChunk;
+        l1ViewOracle = _l1ViewOracle;
 
         emit UpdateVerifier(address(0), _verifier);
         emit UpdateMaxNumTxInChunk(0, _maxNumTxInChunk);
@@ -165,7 +171,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         uint8 _version,
         bytes calldata _parentBatchHeader,
         bytes[] memory _chunks,
-        bytes calldata _skippedL1MessageBitmap
+        bytes calldata _skippedL1MessageBitmap,
+        uint64 _prevLastAppliedL1Block
     ) external override OnlySequencer whenNotPaused {
         require(_version == 0, "invalid version");
 
@@ -202,12 +209,14 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
         }
 
-        uint256 _lastAppliedL1Block;
+        uint64 _lastAppliedL1Block;
         uint256 _totalNumL1MessagesInChunk;
-        uint256 _lastAppliedL1BlockInChunk;
+        uint64 _lastAppliedL1BlockInChunk;
         bytes32 _l1BlockRangeHashInChunk;
+
         // compute the data hash for each chunk
         uint256 _totalL1MessagesPoppedInBatch;
+        bytes32[] memory _l1BlockRangeHashes = new bytes32[](_chunksLength);
         for (uint256 i = 0; i < _chunksLength; i++) {
             (_totalNumL1MessagesInChunk, _lastAppliedL1BlockInChunk, _l1BlockRangeHashInChunk) = _commitChunk(
                 dataPtr,
@@ -216,6 +225,17 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedOverall,
                 _skippedL1MessageBitmap
             );
+
+            if (_prevLastAppliedL1Block != 0) {
+                bytes32 _l1BlockRangeHash = IL1ViewOracle(l1ViewOracle).blockRangeHash(
+                    _prevLastAppliedL1Block,
+                    _lastAppliedL1BlockInChunk
+                );
+
+                require(_l1BlockRangeHash == _l1BlockRangeHashInChunk, "incorrect l1 block range hash");
+                _l1BlockRangeHashes[i] = _l1BlockRangeHashInChunk;
+                _prevLastAppliedL1Block = _lastAppliedL1BlockInChunk;
+            }
 
             // if it is the last chunk, update the last applied L1 block
             if (i == _chunksLength - 1) {
@@ -247,6 +267,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             _batchIndex := add(_batchIndex, 1) // increase batch index
         }
 
+        bytes32 _l1BlockRangeHashInBatch = keccak256(abi.encodePacked(_l1BlockRangeHashes));
+        uint256 _skippedL1MessageBitmapLength = _skippedL1MessageBitmap.length;
+
         // store entries, the order matters
         BatchHeaderV0Codec.storeVersion(batchPtr, _version);
         BatchHeaderV0Codec.storeBatchIndex(batchPtr, _batchIndex);
@@ -254,13 +277,12 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         BatchHeaderV0Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
         BatchHeaderV0Codec.storeDataHash(batchPtr, _dataHash);
         BatchHeaderV0Codec.storeParentBatchHash(batchPtr, _parentBatchHash);
-        uint256 batchOffset = BatchHeaderV0Codec.storeSkippedBitmap(batchPtr, _skippedL1MessageBitmap);
-        BatchHeaderV0Codec.storeLastAppliedL1Block(batchOffset, _lastAppliedL1Block);
-        // TODO: store l1BlockRangeHash
-        // BatchHeaderV0Codec.storeL1BlockRangeHash(batchOffset, _l1BlockRangeHashInBatch);
+        BatchHeaderV0Codec.storeSkippedBitmap(batchPtr, _skippedL1MessageBitmap);
+        BatchHeaderV0Codec.storeLastAppliedL1Block(batchPtr, _skippedL1MessageBitmapLength, _lastAppliedL1Block);
+        BatchHeaderV0Codec.storeL1BlockRangeHash(batchPtr, _skippedL1MessageBitmapLength, _l1BlockRangeHashInBatch);
 
         // compute batch hash
-        bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 129 + _skippedL1MessageBitmap.length);
+        bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 129 + _skippedL1MessageBitmapLength);
 
         committedBatches[_batchIndex] = _batchHash;
         emit CommitBatch(_batchIndex, _batchHash);
@@ -314,6 +336,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         bytes32 _dataHash = BatchHeaderV0Codec.dataHash(memPtr);
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
+        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
+        uint256 _skippedBitmapLength = _l1MessagePopped * 256;
+        uint256 _lastAppliedL1Block = BatchHeaderV0Codec.lastAppliedL1Block(memPtr, _skippedBitmapLength);
+        bytes32 _l1BlockRangeHash = BatchHeaderV0Codec.l1BlockRangeHash(memPtr, _skippedBitmapLength);
         require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
 
         // verify previous state root.
@@ -325,7 +351,15 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // TODO: add lastAppliedL1Block and l1BlockRangeHash
         // compute public input hash
         bytes32 _publicInputHash = keccak256(
-            abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
+            abi.encodePacked(
+                layer2ChainId,
+                _prevStateRoot,
+                _postStateRoot,
+                _withdrawRoot,
+                _dataHash,
+                _lastAppliedL1Block,
+                _l1BlockRangeHash
+            )
         );
 
         // verify batch
@@ -342,7 +376,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         withdrawRoots[_batchIndex] = _withdrawRoot;
 
         // Pop finalized and non-skipped message from L1MessageQueue.
-        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
         if (_l1MessagePopped > 0) {
             IL1MessageQueue _queue = IL1MessageQueue(messageQueue);
 
@@ -472,7 +505,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         view
         returns (
             uint256 _totalNumL1MessagesInChunk,
-            uint256 _lastAppliedL1BlockInChunk,
+            uint64 _lastAppliedL1BlockInChunk,
             bytes32 _l1BlockRangeHashInChunk
         )
     {
@@ -554,8 +587,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             }
         }
 
-        uint256 _lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInChunk(l2TxPtr);
-        bytes32 _l1BlockRangeHashInChunk = ChunkCodec.l1BlockRangeHashInChunk(l2TxPtr);
+        _lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInChunk(l2TxPtr);
+        _l1BlockRangeHashInChunk = ChunkCodec.l1BlockRangeHashInChunk(l2TxPtr);
 
         require(_lastAppliedL1Block == _lastAppliedL1BlockInChunk, "incorrect lastAppliedL1Block in chunk");
 
@@ -568,7 +601,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             dataPtr := add(dataPtr, 0x28)
         }
 
-        // check chunk has correct length. 40 is the length of lastAppliedL1Block and l1BlockRangeHash
+        // check chunk has correct length.
+        // 40 is the size of lastAppliedL1Block and l1BlockRangeHash.
         require(l2TxPtr - chunkPtr + 40 == _chunk.length, "incomplete l2 transaction data");
 
         // compute data hash and store to memory

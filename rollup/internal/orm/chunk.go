@@ -102,6 +102,24 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	return &latestChunk, nil
 }
 
+// GetChunkByHash retrieves the first chunk associated with a specific chunk hash.
+func (o *Chunk) GetChunkByHash(ctx context.Context, hash string) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash", hash)
+
+	var chunk Chunk
+	err := db.First(&chunk).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("Chunk.GetChunkByHash error: %w", err)
+	}
+	return &chunk, nil
+}
+
 // GetUnchunkedBlockHeight retrieves the first unchunked block number.
 func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 	// Get the latest chunk
