@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.16;
 
-interface PoseidonUnit2 {
-    function poseidon(uint256[2] memory) external view returns (uint256);
-}
+// solhint-disable no-inline-assembly
 
 library ZkTrieVerifier {
     /// @notice Internal function to validates a proof from eth_getProof.
@@ -58,19 +56,20 @@ library ZkTrieVerifier {
                 }
             }
             // compute poseidon hash of two uint256
-            function poseidon_hash(hasher, v0, v1) -> r {
+            function poseidon_hash(hasher, v0, v1, domain) -> r {
                 let x := mload(0x40)
-                // keccack256("poseidon(uint256[2])")
-                mstore(x, 0x29a5f2f600000000000000000000000000000000000000000000000000000000)
+                // keccack256("poseidon(uint256[2],uint256)")
+                mstore(x, 0xa717016c00000000000000000000000000000000000000000000000000000000)
                 mstore(add(x, 0x04), v0)
                 mstore(add(x, 0x24), v1)
-                let success := staticcall(gas(), hasher, x, 0x44, 0x20, 0x20)
+                mstore(add(x, 0x44), domain)
+                let success := staticcall(gas(), hasher, x, 0x64, 0x20, 0x20)
                 require(success, "poseidon hash failed")
                 r := mload(0x20)
             }
             // compute poseidon hash of 1 uint256
-            function hash_uint256(hasher, v) -> r {
-                r := poseidon_hash(hasher, shr(128, v), and(v, 0xffffffffffffffffffffffffffffffff))
+            function hash_uint256(hasher, v, domain) -> r {
+                r := poseidon_hash(hasher, shr(128, v), and(v, 0xffffffffffffffffffffffffffffffff), domain)
             }
 
             // traverses the tree from the root to the node before the leaf.
@@ -90,15 +89,16 @@ library ZkTrieVerifier {
                 } {
                     // must be a parent node with two children
                     let nodeType := byte(0, calldataload(ptr))
+                    // 6 <= nodeType && nodeType < 10
+                    require(lt(sub(nodeType, 6), 4), "InvalidBranchNodeType")
                     ptr := add(ptr, 1)
-                    require(eq(nodeType, 0), "Invalid parent node")
 
                     // load left/right child hash
                     let childHashL := calldataload(ptr)
                     ptr := add(ptr, 0x20)
                     let childHashR := calldataload(ptr)
                     ptr := add(ptr, 0x20)
-                    let hash := poseidon_hash(hasher, childHashL, childHashR)
+                    let hash := poseidon_hash(hasher, childHashL, childHashR, nodeType)
 
                     // first item is considered the root node.
                     // Otherwise verifies that the hash of the current node
@@ -108,7 +108,7 @@ library ZkTrieVerifier {
                         rootHash := hash
                     }
                     default {
-                        require(eq(hash, expectedHash), "Hash mismatch")
+                        require(eq(hash, expectedHash), "BranchHashMismatch")
                     }
 
                     // decide which path to walk based on key
@@ -130,129 +130,121 @@ library ZkTrieVerifier {
                 x := keccak256(x, 0x2d)
                 require(
                     eq(x, 0x950654da67865a81bc70e45f3230f5179f08e29c66184bf746f71050f117b3b8),
-                    "Invalid ProofMagicBytes"
+                    "InvalidProofMagicBytes"
                 )
                 ptr := add(ptr, 0x2d) // skip ProofMagicBytes
             }
 
-            // shared variable names
-            let storageHash
-            // starting point
-            let ptr := proof.offset
+            function verifyAccountProof(hasher, _account, _ptr) -> ptr, storageRootHash, _stateRoot {
+                ptr := _ptr
 
-            // verify account proof
-            {
                 let leafHash
-                let key := hash_uint256(poseidon, shl(96, account))
+                let key := hash_uint256(hasher, shl(96, _account), 512)
 
                 // `stateRoot` is a return value and must be checked by the caller
-                ptr, stateRoot, leafHash := walkTree(poseidon, key, ptr)
-
-                require(eq(1, byte(0, calldataload(ptr))), "Invalid leaf node")
-                ptr := add(ptr, 0x01) // skip NodeType
-                require(eq(calldataload(ptr), key), "Node key mismatch")
-                ptr := add(ptr, 0x20) // skip NodeKey
-                {
-                    let valuePreimageLength := and(shr(224, calldataload(ptr)), 0xffff)
-                    // @todo check CompressedFlag
-                    ptr := add(ptr, 0x04) // skip CompressedFlag
-                    ptr := add(ptr, valuePreimageLength) // skip ValuePreimage
-                }
-
-                // compute value hash for State Account Leaf Node
-                {
-                    let tmpHash1 := calldataload(ptr)
-                    ptr := add(ptr, 0x20) // skip nonce/codesize/0
-                    tmpHash1 := poseidon_hash(poseidon, tmpHash1, calldataload(ptr))
-                    ptr := add(ptr, 0x20) // skip balance
-                    storageHash := calldataload(ptr)
-                    ptr := add(ptr, 0x20) // skip StorageRoot
-                    let tmpHash2 := hash_uint256(poseidon, calldataload(ptr))
-                    ptr := add(ptr, 0x20) // skip KeccakCodeHash
-                    tmpHash2 := poseidon_hash(poseidon, storageHash, tmpHash2)
-                    tmpHash2 := poseidon_hash(poseidon, tmpHash1, tmpHash2)
-                    tmpHash2 := poseidon_hash(poseidon, tmpHash2, calldataload(ptr))
-                    ptr := add(ptr, 0x20) // skip PoseidonCodeHash
-
-                    tmpHash1 := poseidon_hash(poseidon, 1, key)
-                    tmpHash1 := poseidon_hash(poseidon, tmpHash1, tmpHash2)
-
-                    require(eq(leafHash, tmpHash1), "Invalid leaf node hash")
-                }
-
-                require(eq(0x20, byte(0, calldataload(ptr))), "Invalid KeyPreimage length")
-                ptr := add(ptr, 0x01) // skip KeyPreimage length
-                require(eq(shl(96, account), calldataload(ptr)), "Invalid KeyPreimage")
-                ptr := add(ptr, 0x20) // skip KeyPreimage
-
-                // compare ProofMagicBytes
-                ptr := checkProofMagicBytes(poseidon, ptr)
-            }
-
-            // verify storage proof
-            {
-                let leafHash
-                let key := hash_uint256(poseidon, storageKey)
-                {
-                    let rootHash
-                    ptr, rootHash, leafHash := walkTree(poseidon, key, ptr)
-
-                    switch rootHash
-                    case 0 {
-                        // in the case that the leaf is the only element, then
-                        // the hash of the leaf must match the value from the account leaf
-                        require(eq(leafHash, storageHash), "Storage root mismatch")
-                    }
-                    default {
-                        // otherwise the root hash of the storage tree
-                        // must match the value from the account leaf
-                        require(eq(rootHash, storageHash), "Storage root mismatch")
-                    }
-                }
+                ptr, _stateRoot, leafHash := walkTree(hasher, key, ptr)
 
                 switch byte(0, calldataload(ptr))
-                case 1 {
+                case 4 {
+                    // nonempty leaf node
                     ptr := add(ptr, 0x01) // skip NodeType
-                    require(eq(calldataload(ptr), key), "Node key mismatch")
+                    require(eq(calldataload(ptr), key), "AccountKeyMismatch")
                     ptr := add(ptr, 0x20) // skip NodeKey
-                    {
-                        let valuePreimageLength := and(shr(224, calldataload(ptr)), 0xffff)
-                        // @todo check CompressedFlag
-                        ptr := add(ptr, 0x04) // skip CompressedFlag
-                        ptr := add(ptr, valuePreimageLength) // skip ValuePreimage
-                    }
+                    require(eq(shr(224, calldataload(ptr)), 0x05080000), "InvalidAccountCompressedFlag")
+                    ptr := add(ptr, 0x04) // skip CompressedFlag
 
-                    storageValue := calldataload(ptr)
-                    ptr := add(ptr, 0x20) // skip StorageValue
+                    // compute value hash for State Account Leaf Node
+                    // [nonce||codesize||0, balance, storage_root, keccak codehash, poseidon codehash]
+                    mstore(0x00, calldataload(ptr))
+                    ptr := add(ptr, 0x20) // skip nonce||codesize||0
+                    mstore(0x00, poseidon_hash(hasher, mload(0x00), calldataload(ptr), 1280))
+                    ptr := add(ptr, 0x20) // skip balance
+                    storageRootHash := calldataload(ptr)
+                    ptr := add(ptr, 0x20) // skip StorageRoot
+                    let tmpHash := hash_uint256(hasher, calldataload(ptr), 512)
+                    ptr := add(ptr, 0x20) // skip KeccakCodeHash
+                    tmpHash := poseidon_hash(hasher, storageRootHash, tmpHash, 1280)
+                    tmpHash := poseidon_hash(hasher, mload(0x00), tmpHash, 1280)
+                    tmpHash := poseidon_hash(hasher, tmpHash, calldataload(ptr), 1280)
+                    ptr := add(ptr, 0x20) // skip PoseidonCodeHash
 
-                    mstore(0x00, hash_uint256(poseidon, storageValue))
-                    key := poseidon_hash(poseidon, 1, key)
-                    mstore(0x00, poseidon_hash(poseidon, key, mload(0x00)))
-                    require(eq(leafHash, mload(0x00)), "Invalid leaf node hash")
+                    tmpHash := poseidon_hash(hasher, key, tmpHash, 4)
+                    require(eq(leafHash, tmpHash), "InvalidAccountLeafNodeHash")
 
-                    require(eq(0x20, byte(0, calldataload(ptr))), "Invalid KeyPreimage length")
+                    require(eq(0x20, byte(0, calldataload(ptr))), "InvalidAccountKeyPreimageLength")
                     ptr := add(ptr, 0x01) // skip KeyPreimage length
-                    require(eq(storageKey, calldataload(ptr)), "Invalid KeyPreimage")
+                    require(eq(shl(96, _account), calldataload(ptr)), "InvalidAccountKeyPreimage")
                     ptr := add(ptr, 0x20) // skip KeyPreimage
                 }
-                case 2 {
+                case 5 {
                     ptr := add(ptr, 0x01) // skip NodeType
-                    require(eq(leafHash, 0), "Invalid empty node hash")
                 }
                 default {
-                    revertWith("Invalid leaf node")
+                    revertWith("InvalidAccountLeafNodeType")
                 }
 
                 // compare ProofMagicBytes
-                ptr := checkProofMagicBytes(poseidon, ptr)
+                ptr := checkProofMagicBytes(hasher, ptr)
             }
+
+            function verifyStorageProof(hasher, _storageKey, storageRootHash, _ptr) -> ptr, _storageValue {
+                ptr := _ptr
+
+                let leafHash
+                let key := hash_uint256(hasher, _storageKey, 512)
+                let rootHash
+                ptr, rootHash, leafHash := walkTree(hasher, key, ptr)
+
+                // the root hash of the storage tree must match the value from the account leaf
+                require(eq(rootHash, storageRootHash), "StorageRootMismatch")
+
+                switch byte(0, calldataload(ptr))
+                case 4 {
+                    ptr := add(ptr, 0x01) // skip NodeType
+                    require(eq(calldataload(ptr), key), "StorageKeyMismatch")
+                    ptr := add(ptr, 0x20) // skip NodeKey
+                    require(eq(shr(224, calldataload(ptr)), 0x01010000), "InvalidStorageCompressedFlag")
+                    ptr := add(ptr, 0x04) // skip CompressedFlag
+                    _storageValue := calldataload(ptr)
+                    ptr := add(ptr, 0x20) // skip StorageValue
+
+                    // compute leaf node hash and compare
+                    mstore(0x00, hash_uint256(hasher, _storageValue, 512))
+                    mstore(0x00, poseidon_hash(hasher, key, mload(0x00), 4))
+                    require(eq(leafHash, mload(0x00)), "InvalidStorageLeafNodeHash")
+
+                    require(eq(0x20, byte(0, calldataload(ptr))), "InvalidStorageKeyPreimageLength")
+                    ptr := add(ptr, 0x01) // skip KeyPreimage length
+                    require(eq(_storageKey, calldataload(ptr)), "InvalidStorageKeyPreimage")
+                    ptr := add(ptr, 0x20) // skip KeyPreimage
+                }
+                case 5 {
+                    ptr := add(ptr, 0x01) // skip NodeType
+                    require(eq(leafHash, 0), "InvalidStorageEmptyLeafNodeHash")
+                }
+                default {
+                    revertWith("InvalidStorageLeafNodeType")
+                }
+
+                // compare ProofMagicBytes
+                ptr := checkProofMagicBytes(hasher, ptr)
+            }
+
+            let storageRootHash
+            let ptr := proof.offset
+
+            // check the correctness of account proof
+            ptr, storageRootHash, stateRoot := verifyAccountProof(poseidon, account, ptr)
+
+            // check the correctness of storage proof
+            ptr, storageValue := verifyStorageProof(poseidon, storageKey, storageRootHash, ptr)
 
             // the one and only boundary check
             // in case an attacker crafted a malicous payload
             // and succeeds in the prior verification steps
             // then this should catch any bogus accesses
             if iszero(eq(ptr, add(proof.offset, proof.length))) {
-                revertWith("Proof length mismatch")
+                revertWith("ProofLengthMismatch")
             }
         }
     }
