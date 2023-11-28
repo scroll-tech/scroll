@@ -228,7 +228,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
             if (_prevLastAppliedL1Block != 0) {
                 bytes32 _l1BlockRangeHash = IL1ViewOracle(l1ViewOracle).blockRangeHash(
-                    _prevLastAppliedL1Block,
+                    _prevLastAppliedL1Block + 1,
                     _lastAppliedL1BlockInChunk
                 );
 
@@ -348,7 +348,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // avoid duplicated verification
         require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
 
-        // TODO: add lastAppliedL1Block and l1BlockRangeHash
         // compute public input hash
         bytes32 _publicInputHash = keccak256(
             abi.encodePacked(
