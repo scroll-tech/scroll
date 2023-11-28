@@ -51,6 +51,7 @@ const config: HardhatUserConfig = {
         enabled: foundry.default?.optimizer || true,
         runs: foundry.default?.optimizer_runs || 200,
       },
+      viaIR: true,
     },
   },
   networks: {
