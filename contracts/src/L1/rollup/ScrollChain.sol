@@ -539,13 +539,15 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @param _totalL1MessagesPoppedInBatch The total number of L1 messages popped in current batch.
     /// @param _totalL1MessagesPoppedOverall The total number of L1 messages popped in all batches including current batch.
     /// @param _skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
+    /// @return _chunkResult Contains the total number of L1 message popped, the last applied l1 block
+    /// and the keccak256 of the block range hashes for the current chunk.
     function _commitChunk(
         uint256 memPtr,
         bytes memory _chunk,
         uint256 _totalL1MessagesPoppedInBatch,
         uint256 _totalL1MessagesPoppedOverall,
         bytes calldata _skippedL1MessageBitmap
-    ) internal view returns (ChunkResult memory chunkResult) {
+    ) internal view returns (ChunkResult memory _chunkResult) {
         uint256 chunkPtr;
         uint256 startDataPtr;
         uint256 dataPtr;
@@ -610,11 +612,11 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
             if (_numBlocks == 1) {
                 // check last block
-                chunkResult._lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInBlock(blockPtr);
+                _chunkResult._lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInBlock(blockPtr);
             }
 
             unchecked {
-                chunkResult._totalNumL1MessagesInChunk += _numL1MessagesInBlock;
+                _chunkResult._totalNumL1MessagesInChunk += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedInBatch += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedOverall += _numL1MessagesInBlock;
 
@@ -626,10 +628,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // stack too deep
         {
             uint64 lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInChunk(l2TxPtr);
-            chunkResult._l1BlockRangeHashInChunk = ChunkCodec.l1BlockRangeHashInChunk(l2TxPtr);
+            _chunkResult._l1BlockRangeHashInChunk = ChunkCodec.l1BlockRangeHashInChunk(l2TxPtr);
 
             require(
-                lastAppliedL1BlockInChunk == chunkResult._lastAppliedL1BlockInChunk,
+                lastAppliedL1BlockInChunk == _chunkResult._lastAppliedL1BlockInChunk,
                 "incorrect lastAppliedL1Block in chunk"
             );
         }
@@ -643,8 +645,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // stack too deep
         {
-            uint256 _lastAppliedL1BlockInChunk = chunkResult._lastAppliedL1BlockInChunk;
-            bytes32 _l1BlockRangeHashInChunk = chunkResult._l1BlockRangeHashInChunk;
+            uint256 _lastAppliedL1BlockInChunk = _chunkResult._lastAppliedL1BlockInChunk;
+            bytes32 _l1BlockRangeHashInChunk = _chunkResult._l1BlockRangeHashInChunk;
             assembly {
                 mstore(dataPtr, _lastAppliedL1BlockInChunk)
                 mstore(dataPtr, _l1BlockRangeHashInChunk)
@@ -658,7 +660,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             mstore(memPtr, dataHash)
         }
 
-        return chunkResult;
+        return _chunkResult;
     }
 
     /// @dev Internal function to load L1 message hashes from the message queue.
