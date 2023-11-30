@@ -110,7 +110,7 @@ library ChunkCodec {
     /// @notice Return the number of last applied L1 block.
     /// @param blockPtr The start memory offset of the block context in memory.
     /// @return _lastAppliedL1Block The number of last applied L1 block.
-    function lastAppliedL1BlockInBlock(uint256 blockPtr) internal pure returns (uint256 _lastAppliedL1Block) {
+    function lastAppliedL1BlockInBlock(uint256 blockPtr) internal pure returns (uint64 _lastAppliedL1Block) {
         assembly {
             _lastAppliedL1Block := shr(240, mload(add(blockPtr, 60)))
         }
