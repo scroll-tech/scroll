@@ -31,9 +31,9 @@ clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
 docker_push:
-	docker docker push scrolltech/gas-oracle:${IMAGE_VERSION}
-	docker docker push scrolltech/event-watcher:${IMAGE_VERSION}
-	docker docker push scrolltech/rollup-relayer:${IMAGE_VERSION}
+	docker push limechain/gas-oracle:${IMAGE_VERSION}
+	docker push limechain/event-watcher:${IMAGE_VERSION}
+	docker push limechain/rollup-relayer:${IMAGE_VERSION}
 
 docker:
 	DOCKER_BUILDKIT=1 docker build -t limechain/gas-oracle:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/gas_oracle.Dockerfile

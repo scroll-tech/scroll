@@ -54,5 +54,5 @@ docker:
 	DOCKER_BUILDKIT=1 docker build -t limechain/coordinator-cron:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/coordinator-cron.Dockerfile
 
 docker_push:
-	docker push scrolltech/coordinator-api:${IMAGE_VERSION}
-	docker push scrolltech/coordinator-cron:${IMAGE_VERSION}
+	docker push limechain/coordinator-api:${IMAGE_VERSION}
+	docker push limechain/coordinator-cron:${IMAGE_VERSION}
