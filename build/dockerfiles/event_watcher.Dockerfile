@@ -21,7 +21,6 @@ RUN --mount=target=. \
 
 # Pull event_watcher into a second stage deploy alpine container
 FROM alpine:latest
-
 COPY --from=builder /bin/event_watcher /bin/
-
+WORKDIR /app
 ENTRYPOINT ["event_watcher"]

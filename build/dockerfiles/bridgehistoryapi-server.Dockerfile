@@ -15,7 +15,6 @@ RUN --mount=target=. \
 
 # Pull bridgehistoryapi-server into a second stage deploy alpine container
 FROM alpine:latest
-
 COPY --from=builder /bin/bridgehistoryapi-server /bin/
-
+WORKDIR /app
 ENTRYPOINT ["bridgehistoryapi-server"]

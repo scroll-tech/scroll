@@ -15,7 +15,6 @@ RUN --mount=target=. \
 
 # Pull bridgehistoryapi-cross-msg-fetcher into a second stage deploy alpine container
 FROM alpine:latest
-
 COPY --from=builder /bin/bridgehistoryapi-cross-msg-fetcher /bin/
-
+WORKDIR /app
 ENTRYPOINT ["bridgehistoryapi-cross-msg-fetcher"]
