@@ -12,7 +12,6 @@ contract L1ViewOracle is IL1ViewOracle {
      * @return hash_ The keccak hash of all blockhashes in the provided range.
      */
     function blockRangeHash(uint256 _from, uint256 _to) external view returns (bytes32 hash_) {
-        require(_from > 0, "Incorrect from/to range");
         require(_to >= _from, "Incorrect from/to range");
         require(_to < block.number, "Incorrect from/to range");
 
