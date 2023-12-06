@@ -123,7 +123,7 @@ func (c *L1MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 	blockTimestampsMap := make(map[uint64]uint64)
 	for number := from; number <= to; number++ {
 		blockNumber := new(big.Int).SetUint64(number)
-		block, err := c.client.BlockByNumber(context.Background(), blockNumber)
+		block, err := c.client.BlockByNumber(ctx, blockNumber)
 		if err != nil {
 			log.Error("failed to get block by number", "number", blockNumber.String(), "err", err)
 			return err

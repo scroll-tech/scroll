@@ -24,7 +24,7 @@ func init() {
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "Scroll Bridge History API"
+	app.Name = "Scroll Bridge History API Message Fetcher" 
 	app.Usage = "The Scroll Bridge Web Backend"
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
