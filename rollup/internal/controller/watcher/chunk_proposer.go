@@ -242,7 +242,7 @@ func (p *ChunkProposer) proposeChunk(parentChunk *orm.Chunk) (*types.Chunk, erro
 
 	l1BlockRangeHash, err := p.GetL1BlockRangeHash(p.ctx, l1BlockRangeHashFrom, lastAppliedL1Block)
 	if err != nil {
-		log.Error("failed to get l1 block range hash", "err", err)
+		log.Error("failed to get l1 block range hash", "from", l1BlockRangeHashFrom, "to", lastAppliedL1Block, "err", err)
 		return nil, fmt.Errorf("chunk-proposer failed to get l1 block range hash error: %w", err)
 	}
 
