@@ -74,15 +74,13 @@ func (c *BatchEvent) GetBatchByIndex(ctx context.Context, index uint64) (*BatchE
 
 // InsertOrUpdateBatchEvents inserts a new batch event or updates an existing one based on the BatchStatusType.
 func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvents []*BatchEvent, dbTX ...*gorm.DB) error {
-	originalDB := c.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		originalDB = dbTX[0]
-	}
-	originalDB = originalDB.WithContext(ctx)
-	originalDB = originalDB.Model(&CrossMessage{})
-
 	for _, l1BatchEvent := range l1BatchEvents {
-		db := originalDB
+		db := c.db
+		if len(dbTX) > 0 && dbTX[0] != nil {
+			db = dbTX[0]
+		}
+		db = db.WithContext(ctx)
+		db = db.Model(&CrossMessage{})
 		db = db.Model(BatchEvent{})
 		updateFields := make(map[string]interface{})
 		switch BatchStatusType(l1BatchEvent.BatchStatus) {

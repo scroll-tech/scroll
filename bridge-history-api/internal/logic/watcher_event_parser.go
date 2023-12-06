@@ -5,10 +5,8 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -147,6 +145,7 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				TokenType:     int(orm.TokenTypeETH),
 				L1TxHash:      vlog.TxHash.String(),
 				TokenAmounts:  event.Value.String(),
+				MessageNonce:  event.MessageNonce.Uint64(),
 				MessageType:   int(orm.MessageTypeL1SentMessage),
 				MessageHash:   messageHash,
 			})
@@ -247,12 +246,10 @@ func ParseL1MessageQueueEventLogs(ctx context.Context, logs []types.Log, blockTi
 			}
 			// 1. Update queue index of both sent message and replay message.
 			// 2. Update tx hash of replay message.
-			// The MessageHash is computed by hashing the Data field from the event, which is _xDomainCalldata.
 			l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
-				EventType:   orm.MessageQueueEventTypeQueueTransaction,
-				MessageHash: common.BytesToHash(crypto.Keccak256(event.Data)),
-				QueueIndex:  event.QueueIndex,
-				TxHash:      vlog.TxHash,
+				EventType:  orm.MessageQueueEventTypeQueueTransaction,
+				QueueIndex: event.QueueIndex,
+				TxHash:     vlog.TxHash,
 			})
 		case backendabi.L1DequeueTransactionEventSig:
 			event := backendabi.L1DequeueTransactionEvent{}

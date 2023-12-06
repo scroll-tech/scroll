@@ -65,8 +65,8 @@ func action(ctx *cli.Context) error {
 	route.Route(router, cfg, registry)
 
 	go func() {
-		port := cfg.Server.HostPort
-		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
+		port := utils.ServicePortFlag.Value
+		if runServerErr := router.Run(fmt.Sprintf(":%d", port)); runServerErr != nil {
 			log.Crit("run http server failure", "error", runServerErr)
 		}
 	}()

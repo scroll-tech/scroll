@@ -4,7 +4,6 @@ create table cross_message
 (
     id                  BIGSERIAL    PRIMARY KEY,
     message_type        SMALLINT     NOT NULL,
-    queue_index         BIGINT       NOT NULL,
     tx_status           SMALLINT     NOT NULL,
     rollup_status       SMALLINT     NOT NULL,
     token_type          SMALLINT     NOT NULL,

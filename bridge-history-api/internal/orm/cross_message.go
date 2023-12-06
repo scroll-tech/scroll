@@ -69,10 +69,9 @@ const (
 
 // MessageQueueEvent struct represents the details of a batch event.
 type MessageQueueEvent struct {
-	EventType   MessageQueueEventType
-	MessageHash common.Hash
-	QueueIndex  uint64
-	TxHash      common.Hash
+	EventType  MessageQueueEventType
+	QueueIndex uint64
+	TxHash     common.Hash
 }
 
 // CrossMessage represents a cross message.
@@ -81,7 +80,6 @@ type CrossMessage struct {
 
 	ID             uint64     `json:"id" gorm:"column:id;primary_key"`
 	MessageType    int        `json:"message_type" gorm:"column:message_type"`
-	QueueIndex     uint64     `json:"queue_index" gorm:"column:queue_index"`
 	RollupStatus   int        `json:"rollup_status" gorm:"column:rollup_status"`
 	TxStatus       int        `json:"tx_status" gorm:"column:tx_status"`
 	TokenType      int        `json:"token_type" gorm:"column:token_type"`
@@ -242,20 +240,19 @@ func (c *CrossMessage) GetTxsByAddress(ctx context.Context, sender string) ([]*C
 
 // UpdateL1MessageQueueEventsInfo updates the information about L1 message queue events in the database.
 func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1MessageQueueEvents []*MessageQueueEvent, dbTX ...*gorm.DB) error {
-	originalDB := c.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		originalDB = dbTX[0]
-	}
-	originalDB = originalDB.WithContext(ctx)
-	originalDB = originalDB.Model(&CrossMessage{})
 	for _, l1MessageQueueEvent := range l1MessageQueueEvents {
-		db := originalDB
+		db := c.db
+		if len(dbTX) > 0 && dbTX[0] != nil {
+			db = dbTX[0]
+		}
+		db = db.WithContext(ctx)
+		db = db.Model(&CrossMessage{})
 		if l1MessageQueueEvent.EventType == MessageQueueEventTypeQueueTransaction {
 			updateFields := make(map[string]interface{})
 			// Update tx hash if it's a message replay.
 			updateFields["l1_tx_hash"] = l1MessageQueueEvent.TxHash.String()
-			updateFields["queue_index"] = l1MessageQueueEvent.QueueIndex
-			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
+			db = db.Where("message_type", MessageTypeL1SentMessage)
+			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			if err := db.Updates(updateFields).Error; err != nil {
 				return fmt.Errorf("failed to update L1 tx hash of QueueTransaction, event: %+v, error: %w", l1MessageQueueEvent, err)
 			}
@@ -263,7 +260,8 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		if l1MessageQueueEvent.EventType == MessageQueueEventTypeDequeueTransaction {
 			updateFields := make(map[string]interface{})
 			updateFields["tx_status"] = TxStatusTypeSkipped
-			db = db.Where("queue_index = ?", l1MessageQueueEvent.QueueIndex)
+			db = db.Where("message_type", MessageTypeL1SentMessage)
+			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			if err := db.Updates(updateFields).Error; err != nil {
 				return fmt.Errorf("failed to update message status as skipped, event: %+v, error: %w", l1MessageQueueEvent, err)
 			}
@@ -271,7 +269,8 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		if l1MessageQueueEvent.EventType == MessageQueueEventTypeDropTransaction {
 			updateFields := make(map[string]interface{})
 			updateFields["tx_status"] = TxStatusTypeDropped
-			db = db.Where("queue_index = ?", l1MessageQueueEvent.QueueIndex)
+			db = db.Where("message_type", MessageTypeL1SentMessage)
+			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			if err := db.Updates(updateFields).Error; err != nil {
 				return fmt.Errorf("failed to update message status as dropped, event: %+v, error: %w", l1MessageQueueEvent, err)
 			}
@@ -306,7 +305,7 @@ func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []
 	db = db.Model(&CrossMessage{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "tx_status", "block_timestamp"}),
+		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "tx_status", "block_timestamp", "message_nonce"}),
 	})
 	for _, message := range messages {
 		if err := db.Create(message).Error; err != nil {
@@ -326,7 +325,7 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 	db = db.Model(&CrossMessage{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "tx_status", "block_timestamp"}),
+		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "tx_status", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "merkle_proof", "message_nonce"}),
 	})
 	for _, message := range messages {
 		if err := db.Create(message).Error; err != nil {

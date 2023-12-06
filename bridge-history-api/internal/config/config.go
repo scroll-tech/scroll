@@ -38,18 +38,12 @@ type RedisConfig struct {
 	DB       int    `json:"db"`
 }
 
-// ServerConfig is the configuration of the bridge history backend server port
-type ServerConfig struct {
-	HostPort string `json:"hostPort"`
-}
-
 // Config is the configuration of the bridge history backend
 type Config struct {
-	L1     *LayerConfig     `json:"L1"`
-	L2     *LayerConfig     `json:"L2"`
-	DB     *database.Config `json:"db"`
-	Redis  *RedisConfig     `json:"redis"`
-	Server *ServerConfig    `json:"server"`
+	L1    *LayerConfig     `json:"L1"`
+	L2    *LayerConfig     `json:"L2"`
+	DB    *database.Config `json:"db"`
+	Redis *RedisConfig     `json:"redis"`
 }
 
 // NewConfig returns a new instance of Config.

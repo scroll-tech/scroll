@@ -3,7 +3,7 @@
 		"chain_id": 1,
 		"confirmation": 64,
 		"endpoint": "https://rpc.ankr.com/eth",
-		"startHeight": 18318364,
+		"startHeight": 18318281,
 		"blockTime": 10,
 		"fetchLimit": 30,
 		"MessengerAddr": "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
@@ -49,8 +49,5 @@
 		"address": "localhost:6379",
 		"password": "",
 		"db": 0
-	},
-	"server": {
-		"hostPort": "20006"
 	}
 }

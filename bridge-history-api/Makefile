@@ -17,8 +17,12 @@ bridgehistoryapi-fetcher:
 bridgehistoryapi-api:
 	go build -o $(PWD)/build/bin/bridgehistoryapi-api ./cmd/api
 
-db-docker:
+reset-db-docker:
+	docker stop bridgehistoryapi-history-db
+	docker rm bridgehistoryapi-history-db
 	docker run --name bridgehistoryapi-history-db -p 5444:5432 -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=test -d postgres
+	go build -o $(PWD)/build/bin/bridgehistoryapi-db-cli ./cmd/db_cli & sleep 1
+	$(PWD)/build/bin/bridgehistoryapi-db-cli reset
 
 bridgehistoryapi-docker:
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-cross-message-fetcher:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-cross-message-fetcher.Dockerfile

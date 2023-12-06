@@ -252,6 +252,7 @@ func (c *L1MessageFetcher) updateBatchIndexAndStatus(ctx context.Context) error 
 		return err
 	}
 	for _, batch := range batches {
+		log.Info("update batch info of L2 withdrawals", "index", batch.BatchIndex, "start", batch.StartBlockNumber, "end", batch.EndBlockNumber)
 		if err := c.crossMessageOrm.UpdateBatchStatusOfL2Withdrawals(ctx, batch.StartBlockNumber, batch.EndBlockNumber, batch.BatchIndex); err != nil {
 			log.Error("failed to update batch status of L2 sent messages", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", err)
 			return err
