@@ -1,4 +1,4 @@
-package eventfetcher
+package fetcher
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
-	backendabi "bridge-history-api/abi"
-	"bridge-history-api/config"
-	"bridge-history-api/crossmessage/logic"
-	"bridge-history-api/orm"
-	"bridge-history-api/utils"
+	backendabi "scroll-tech/bridge-history-api/abi"
+	"scroll-tech/bridge-history-api/internal/config"
+	"scroll-tech/bridge-history-api/internal/logic"
+	"scroll-tech/bridge-history-api/internal/orm"
+	"scroll-tech/bridge-history-api/internal/utils"
 )
 
 // L1MessageFetcher fetches cross message events from L1 and saves them to database.

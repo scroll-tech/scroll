@@ -7,8 +7,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"gorm.io/gorm"
 
-	"bridge-history-api/internal/types"
-	"bridge-history-api/orm"
+	"scroll-tech/bridge-history-api/internal/orm"
+	"scroll-tech/bridge-history-api/internal/types"
 )
 
 // HistoryLogic services.
@@ -85,7 +85,7 @@ func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 		L1Token:   message.L1TokenAddress,
 		L2Token:   message.L2TokenAddress,
 		IsL1:      orm.MessageType(message.MessageType) == orm.MessageTypeL1SentMessage,
-		TxStatus:  orm.TxStatusType(message.TxStatus),
+		TxStatus:  message.TxStatus,
 		CreatedAt: &message.CreatedAt,
 	}
 	if txHistory.IsL1 {

@@ -6,7 +6,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"bridge-history-api/utils"
+	"scroll-tech/common/utils"
 )
 
 var (

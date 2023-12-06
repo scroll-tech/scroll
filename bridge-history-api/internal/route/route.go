@@ -7,9 +7,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"bridge-history-api/config"
-	"bridge-history-api/internal/controller"
-	"bridge-history-api/observability"
+	"scroll-tech/bridge-history-api/internal/config"
+	"scroll-tech/bridge-history-api/internal/controller/api"
+	"scroll-tech/common/observability"
 )
 
 // Route routes the APIs
@@ -25,9 +25,10 @@ func Route(router *gin.Engine, conf *config.Config, reg prometheus.Registerer) {
 	observability.Use(router, "bridge_history_api", reg)
 
 	r := router.Group("api/")
-	r.GET("/txs", controller.HistoryCtrler.GetTxsByAddress)
-	r.GET("/withdrawals", controller.HistoryCtrler.GetL2WithdrawalsByAddress)
-	r.GET("/claimablewithdrawals", controller.HistoryCtrler.GetL2ClaimableWithdrawalsByAddress)
 
-	r.POST("/txsbyhashes", controller.HistoryCtrler.PostQueryTxsByHashes)
+	r.GET("/txs", api.HistoryCtrler.GetTxsByAddress)
+	r.GET("/withdrawals", api.HistoryCtrler.GetL2WithdrawalsByAddress)
+	r.GET("/claimablewithdrawals", api.HistoryCtrler.GetL2ClaimableWithdrawalsByAddress)
+
+	r.POST("/txsbyhashes", api.HistoryCtrler.PostQueryTxsByHashes)
 }

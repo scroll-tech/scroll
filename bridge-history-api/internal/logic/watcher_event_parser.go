@@ -12,9 +12,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
-	backendabi "bridge-history-api/abi"
-	"bridge-history-api/orm"
-	"bridge-history-api/utils"
+	backendabi "scroll-tech/bridge-history-api/abi"
+	"scroll-tech/bridge-history-api/internal/orm"
+	"scroll-tech/bridge-history-api/internal/utils"
 )
 
 // ParseL1CrossChainEventLogs parses L1 watched cross chain events.

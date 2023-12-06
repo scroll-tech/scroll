@@ -1,4 +1,4 @@
-module bridge-history-api
+module scroll-tech/bridge-history-api
 
 go 1.19
 

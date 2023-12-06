@@ -11,11 +11,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"bridge-history-api/config"
-	"bridge-history-api/internal/controller"
-	"bridge-history-api/internal/route"
-	"bridge-history-api/observability"
-	"bridge-history-api/utils"
+	"scroll-tech/bridge-history-api/internal/config"
+	"scroll-tech/bridge-history-api/internal/controller/api"
+	"scroll-tech/bridge-history-api/internal/route"
+	"scroll-tech/common/database"
+	"scroll-tech/common/observability"
+	"scroll-tech/common/utils"
 )
 
 var (
@@ -43,12 +44,12 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	db, err := utils.InitDB(cfg.DB)
+	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db", "err", err)
 	}
 	defer func() {
-		if deferErr := utils.CloseDB(db); deferErr != nil {
+		if deferErr := database.CloseDB(db); deferErr != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
@@ -57,7 +58,7 @@ func action(ctx *cli.Context) error {
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
-	controller.InitController(db, redis)
+	api.InitController(db, redis)
 
 	router := gin.Default()
 	registry := prometheus.DefaultRegisterer

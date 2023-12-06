@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"scroll-tech/common/database"
 )
 
 // LayerConfig is the configuration of Layer1/Layer2
@@ -29,14 +31,6 @@ type LayerConfig struct {
 	MessageQueueAddr       string `json:"MessageQueueAddr"`
 }
 
-// DBConfig db config
-type DBConfig struct {
-	DSN        string `json:"dsn"`
-	DriverName string `json:"driverName"`
-	MaxOpenNum int    `json:"maxOpenNum"`
-	MaxIdleNum int    `json:"maxIdleNum"`
-}
-
 // RedisConfig redis config
 type RedisConfig struct {
 	Address  string `json:"address"`
@@ -51,11 +45,11 @@ type ServerConfig struct {
 
 // Config is the configuration of the bridge history backend
 type Config struct {
-	L1     *LayerConfig  `json:"L1"`
-	L2     *LayerConfig  `json:"L2"`
-	DB     *DBConfig     `json:"db"`
-	Redis  *RedisConfig  `json:"redis"`
-	Server *ServerConfig `json:"server"`
+	L1     *LayerConfig     `json:"L1"`
+	L2     *LayerConfig     `json:"L2"`
+	DB     *database.Config `json:"db"`
+	Redis  *RedisConfig     `json:"redis"`
+	Server *ServerConfig    `json:"server"`
 }
 
 // NewConfig returns a new instance of Config.

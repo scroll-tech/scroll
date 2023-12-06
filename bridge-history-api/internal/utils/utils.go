@@ -13,7 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 
-	backendabi "bridge-history-api/abi"
+	backendabi "scroll-tech/bridge-history-api/abi"
 )
 
 // Keccak2 compute the keccack256 of two concatenations of bytes32

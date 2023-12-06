@@ -1,4 +1,4 @@
-package messageproof
+package utils
 
 import (
 	"math/big"
@@ -6,8 +6,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/stretchr/testify/assert"
-
-	"bridge-history-api/utils"
 )
 
 func TestUpdateBranchWithNewMessage(t *testing.T) {
@@ -15,7 +13,7 @@ func TestUpdateBranchWithNewMessage(t *testing.T) {
 	branches := make([]common.Hash, 64)
 	zeroes[0] = common.Hash{}
 	for i := 1; i < 64; i++ {
-		zeroes[i] = utils.Keccak2(zeroes[i-1], zeroes[i-1])
+		zeroes[i] = Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
 	UpdateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
@@ -68,7 +66,7 @@ func TestRecoverBranchFromProof(t *testing.T) {
 	branches := make([]common.Hash, 64)
 	zeroes[0] = common.Hash{}
 	for i := 1; i < 64; i++ {
-		zeroes[i] = utils.Keccak2(zeroes[i-1], zeroes[i-1])
+		zeroes[i] = Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
 	proof := UpdateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
@@ -178,9 +176,9 @@ func verifyMerkleProof(index uint64, leaf common.Hash, proof []common.Hash) comm
 	root := leaf
 	for _, h := range proof {
 		if index%2 == 0 {
-			root = utils.Keccak2(root, h)
+			root = Keccak2(root, h)
 		} else {
-			root = utils.Keccak2(h, root)
+			root = Keccak2(h, root)
 		}
 		index >>= 1
 	}
@@ -200,13 +198,13 @@ func computeMerkleRoot(hashes []common.Hash) common.Hash {
 		var newHashes []common.Hash
 		for i := 0; i < len(hashes); i += 2 {
 			if i+1 < len(hashes) {
-				newHashes = append(newHashes, utils.Keccak2(hashes[i], hashes[i+1]))
+				newHashes = append(newHashes, Keccak2(hashes[i], hashes[i+1]))
 			} else {
-				newHashes = append(newHashes, utils.Keccak2(hashes[i], zeroHash))
+				newHashes = append(newHashes, Keccak2(hashes[i], zeroHash))
 			}
 		}
 		hashes = newHashes
-		zeroHash = utils.Keccak2(zeroHash, zeroHash)
+		zeroHash = Keccak2(zeroHash, zeroHash)
 	}
 	return hashes[0]
 }

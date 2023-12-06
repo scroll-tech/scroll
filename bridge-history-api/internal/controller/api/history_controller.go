@@ -1,4 +1,4 @@
-package controller
+package api
 
 import (
 	"context"
@@ -14,8 +14,8 @@ import (
 	"golang.org/x/sync/singleflight"
 	"gorm.io/gorm"
 
-	"bridge-history-api/internal/logic"
-	"bridge-history-api/internal/types"
+	"scroll-tech/bridge-history-api/internal/logic"
+	"scroll-tech/bridge-history-api/internal/types"
 )
 
 const (

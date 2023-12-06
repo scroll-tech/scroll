@@ -1,4 +1,4 @@
-package eventfetcher
+package fetcher
 
 import (
 	"context"
@@ -14,12 +14,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
-	backendabi "bridge-history-api/abi"
-	"bridge-history-api/config"
-	"bridge-history-api/crossmessage/controller/messageproof"
-	"bridge-history-api/crossmessage/logic"
-	"bridge-history-api/orm"
-	"bridge-history-api/utils"
+	backendabi "scroll-tech/bridge-history-api/abi"
+	"scroll-tech/bridge-history-api/internal/config"
+	"scroll-tech/bridge-history-api/internal/logic"
+	"scroll-tech/bridge-history-api/internal/orm"
+	"scroll-tech/bridge-history-api/internal/utils"
 )
 
 // L2MessageFetcher fetches cross message events from L2 and saves them to database.
@@ -215,7 +214,7 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 }
 
 func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2WithdrawMessages []*orm.CrossMessage) error {
-	withdrawTrie := messageproof.NewWithdrawTrie()
+	withdrawTrie := utils.NewWithdrawTrie()
 	message, err := c.crossMessageOrm.GetLatestL2Withdrawal(ctx)
 	if err != nil {
 		log.Error("failed to get latest L2 sent message event", "err", err)

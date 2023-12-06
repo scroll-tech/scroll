@@ -1,9 +1,7 @@
-package messageproof
+package utils
 
 import (
 	"github.com/scroll-tech/go-ethereum/common"
-
-	"bridge-history-api/utils"
 )
 
 // MaxHeight is the maixium possible height of withdraw trie
@@ -27,7 +25,7 @@ func NewWithdrawTrie() *WithdrawTrie {
 
 	zeroes[0] = common.Hash{}
 	for i := 1; i < MaxHeight; i++ {
-		zeroes[i] = utils.Keccak2(zeroes[i-1], zeroes[i-1])
+		zeroes[i] = Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
 	return &WithdrawTrie{
@@ -87,7 +85,7 @@ func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
 			cache[h][maxIndex^1] = w.zeroes[h]
 		}
 		for i := minIndex; i <= maxIndex; i += 2 {
-			cache[h+1][i>>1] = utils.Keccak2(cache[h][i], cache[h][i^1])
+			cache[h+1][i>>1] = Keccak2(cache[h][i], cache[h][i^1])
 		}
 		minIndex >>= 1
 		maxIndex >>= 1
@@ -152,10 +150,10 @@ func UpdateBranchWithNewMessage(zeroes []common.Hash, branches []common.Hash, in
 			branches[height] = root
 			merkleProof = append(merkleProof, zeroes[height])
 			// it's a left child, the right child must be null
-			root = utils.Keccak2(root, zeroes[height])
+			root = Keccak2(root, zeroes[height])
 		} else {
 			// it's a right child, use previously computed hash
-			root = utils.Keccak2(branches[height], root)
+			root = Keccak2(branches[height], root)
 			merkleProof = append(merkleProof, branches[height])
 		}
 		index >>= 1
@@ -173,11 +171,11 @@ func RecoverBranchFromProof(proof []common.Hash, index uint64, msgHash common.Ha
 		if index%2 == 0 {
 			branches[height] = root
 			// it's a left child, the right child must be null
-			root = utils.Keccak2(root, proof[height])
+			root = Keccak2(root, proof[height])
 		} else {
 			// it's a right child, use previously computed hash
 			branches[height] = proof[height]
-			root = utils.Keccak2(proof[height], root)
+			root = Keccak2(proof[height], root)
 		}
 		index >>= 1
 	}

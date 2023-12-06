@@ -10,9 +10,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"bridge-history-api/config"
-	"bridge-history-api/crossmessage/controller/eventfetcher"
-	"bridge-history-api/utils"
+	"scroll-tech/bridge-history-api/internal/config"
+	"scroll-tech/bridge-history-api/internal/controller/fetcher"
+	"scroll-tech/common/database"
+	"scroll-tech/common/utils"
 )
 
 var (
@@ -52,12 +53,12 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect to L2 geth", "endpoint", cfg.L2.Endpoint, "err", err)
 	}
 
-	db, err := utils.InitDB(cfg.DB)
+	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db", "err", err)
 	}
 	defer func() {
-		if deferErr := utils.CloseDB(db); deferErr != nil {
+		if deferErr := database.CloseDB(db); deferErr != nil {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
@@ -65,13 +66,13 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect to db", "config file", cfgFile, "error", err)
 	}
 
-	l1MessageFetcher, err := eventfetcher.NewL1MessageFetcher(subCtx, cfg.L1, db, l1Client)
+	l1MessageFetcher, err := fetcher.NewL1MessageFetcher(subCtx, cfg.L1, db, l1Client)
 	if err != nil {
 		log.Crit("failed to create L1 cross message fetcher", "error", err)
 	}
 	go l1MessageFetcher.Start()
 
-	l2MessageFetcher, err := eventfetcher.NewL2MessageFetcher(subCtx, cfg.L2, db, l2Client)
+	l2MessageFetcher, err := fetcher.NewL2MessageFetcher(subCtx, cfg.L2, db, l2Client)
 	if err != nil {
 		log.Crit("failed to create L2 cross message fetcher", "error", err)
 	}
