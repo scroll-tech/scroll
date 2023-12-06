@@ -20,7 +20,7 @@ RUN --mount=target=. \
     cd /src/rollup/cmd/rollup_relayer/ && go build -v -p 4 -o /bin/rollup_relayer
 
 # Pull rollup_relayer into a second stage deploy alpine container
-FROM alpine:latest
+FROM --platform=linux/amd64 alpine:latest
 
 COPY --from=builder /bin/rollup_relayer /bin/
 
