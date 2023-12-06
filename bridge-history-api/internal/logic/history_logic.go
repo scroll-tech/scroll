@@ -23,7 +23,7 @@ const (
 	cacheKeyPrefixL2WithdrawalsByAddr          = "l2WithdrawalsByAddr:"
 	cacheKeyPrefixTxsByAddr                    = "txsByAddr:"
 	cacheKeyPrefixQueryTxsByHashes             = "queryTxsByHashes:"
-	cacheExpiredTime                           = 30 * time.Minute
+	cacheKeyExpiredTime                        = 30 * time.Minute
 )
 
 // HistoryLogic services.
@@ -230,13 +230,13 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 				if err != nil {
 					log.Error("failed to marshal data", "error", err)
 				} else {
-					if err := h.redis.Set(ctx, cacheKey, jsonData, cacheExpiredTime).Err(); err != nil {
+					if err := h.redis.Set(ctx, cacheKey, jsonData, cacheKeyExpiredTime).Err(); err != nil {
 						log.Error("failed to set data to Redis", "error", err)
 					}
 				}
 			} else {
 				// tx hash not found, which is also a valid result, cache empty string.
-				if err := h.redis.Set(ctx, cacheKey, "", cacheExpiredTime).Err(); err != nil {
+				if err := h.redis.Set(ctx, cacheKey, "", cacheKeyExpiredTime).Err(); err != nil {
 					log.Error("failed to set data to Redis", "error", err)
 				}
 			}
@@ -333,7 +333,7 @@ func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []
 			}
 		}
 
-		if err := pipe.Expire(ctx, cacheKey, cacheExpiredTime).Err(); err != nil {
+		if err := pipe.Expire(ctx, cacheKey, cacheKeyExpiredTime).Err(); err != nil {
 			log.Error("failed to set expiry time", "error", err)
 			return err
 		}
