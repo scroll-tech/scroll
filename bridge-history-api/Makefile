@@ -11,11 +11,11 @@ test:
 bridgehistoryapi-db-cli:
 	go build -o $(PWD)/build/bin/bridgehistoryapi-db-cli ./cmd/db_cli
 	
-bridgehistoryapi-cross-message-fetcher:
-	go build -o $(PWD)/build/bin/bridgehistoryapi-cross-message-fetcher ./cmd/cross_message_fetcher
+bridgehistoryapi-fetcher:
+	go build -o $(PWD)/build/bin/bridgehistoryapi-fetcher ./cmd/fetcher
 
-bridgehistoryapi-server:
-	go build -o $(PWD)/build/bin/bridgehistoryapi-server ./cmd/backend_server
+bridgehistoryapi-api:
+	go build -o $(PWD)/build/bin/bridgehistoryapi-api ./cmd/api
 
 db-docker:
 	docker run --name bridgehistoryapi-history-db -p 5444:5432 -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=test -d postgres
