@@ -24,7 +24,7 @@ var (
 	ConfigFileFlag = cli.StringFlag{
 		Name:  "config",
 		Usage: "JSON configuration file",
-		Value: "./config.json",
+		Value: "./conf/config.json",
 	}
 	// VerbosityFlag log level.
 	VerbosityFlag = cli.IntFlag{
