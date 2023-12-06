@@ -200,7 +200,7 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 			log.Error("failed to update L2 relayed messages of L1 deposits", "from", from, "to", to, "err", txErr)
 			return txErr
 		}
-		if txErr := c.crossMessageOrm.InsertFailedMessages(ctx, l2FailedGatewayRouterTxs, tx); txErr != nil {
+		if txErr := c.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l2FailedGatewayRouterTxs, tx); txErr != nil {
 			log.Error("failed to insert L2 failed gateway router transactions", "from", from, "to", to, "err", txErr)
 			return txErr
 		}

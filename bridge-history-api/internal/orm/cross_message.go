@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/scroll-tech/go-ethereum/common"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -335,9 +336,10 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 	return nil
 }
 
-// InsertFailedMessages inserts a list of failed L1 or L2 cross messages into the database.
-// Failed messages are fetched only once, so they're just inserted without checking for duplicates.
-func (c *CrossMessage) InsertFailedMessages(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
+// InsertFailedGatewayRouterTxs inserts a list of transactions that failed to interact with the gateway router into the database.
+// These failed transactions are only fetched once, so they are inserted without checking for duplicates.
+// To resolve unique index confliction, a random UUID will be generated and used as the MessageHash.
+func (c *CrossMessage) InsertFailedGatewayRouterTxs(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
 	db := c.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -346,8 +348,10 @@ func (c *CrossMessage) InsertFailedMessages(ctx context.Context, messages []*Cro
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	for _, message := range messages {
+		u := uuid.New()
+		message.MessageHash = u.String()
 		if err := db.Create(message).Error; err != nil {
-			return fmt.Errorf("failed to insert message, message: %+v, error: %w", message, err)
+			return fmt.Errorf("failed to insert failed gateway router txs, message: %+v, error: %w", message, err)
 		}
 	}
 	return nil

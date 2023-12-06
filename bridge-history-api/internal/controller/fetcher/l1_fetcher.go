@@ -223,7 +223,7 @@ func (c *L1MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 			log.Error("failed to insert L1 message queue events", "from", from, "to", to, "err", txErr)
 			return txErr
 		}
-		if txErr := c.crossMessageOrm.InsertFailedMessages(ctx, l1FailedGatewayRouterTxs, tx); txErr != nil {
+		if txErr := c.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l1FailedGatewayRouterTxs, tx); txErr != nil {
 			log.Error("failed to insert L1 failed gateway router transactions", "from", from, "to", to, "err", txErr)
 			return txErr
 		}
