@@ -390,11 +390,17 @@ func (p *ChunkProposer) GetL1BlockRangeHash(ctx context.Context, from uint64, to
 		}
 	}
 
-	var l1BlockRangeHash common.Hash
-	err = p.l1ViewOracleABI.UnpackIntoInterface(l1BlockRangeHash, "blockRangeHash", output)
+	result, err := p.l1ViewOracleABI.Unpack("blockRangeHash", output)
 	if err != nil {
 		return nil, err
 	}
+
+	b, ok := result[0].([32]byte)
+	if !ok {
+		return nil, fmt.Errorf("could not cast block range hash to [32]byte")
+	}
+
+	l1BlockRangeHash := common.Hash(b)
 
 	return &l1BlockRangeHash, nil
 }
