@@ -50,8 +50,8 @@ func (c *BatchEvent) GetBatchesGEBlockHeight(ctx context.Context, blockHeight ui
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BatchEvent{})
 	db = db.Where("end_block_number >= ?", blockHeight)
-	db = db.Order("batch_index desc")
-	if err := db.First(&batches).Error; err != nil {
+	db = db.Order("batch_index asc")
+	if err := db.Find(&batches).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
@@ -80,8 +80,7 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 			db = dbTX[0]
 		}
 		db = db.WithContext(ctx)
-		db = db.Model(&CrossMessage{})
-		db = db.Model(BatchEvent{})
+		db = db.Model(&BatchEvent{})
 		updateFields := make(map[string]interface{})
 		switch BatchStatusType(l1BatchEvent.BatchStatus) {
 		case BatchStatusTypeCommitted:

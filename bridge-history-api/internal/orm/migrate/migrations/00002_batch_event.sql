@@ -3,7 +3,6 @@
 create table batch_event
 (
     id                  BIGSERIAL     PRIMARY KEY,
-    event_type          SMALLINT      NOT NULL,
     batch_status        SMALLINT      NOT NULL,
     batch_index         BIGINT        NOT NULL,
     batch_hash          VARCHAR       NOT NULL,

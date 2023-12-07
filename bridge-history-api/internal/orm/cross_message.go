@@ -284,8 +284,8 @@ func (c *CrossMessage) UpdateBatchStatusOfL2Withdrawals(ctx context.Context, sta
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
-	db = db.Where("l1_block_number >= ?", startBlockNumber)
-	db = db.Where("l1_block_number <= ?", endBlockNumber)
+	db = db.Where("l2_block_number >= ?", startBlockNumber)
+	db = db.Where("l2_block_number <= ?", endBlockNumber)
 	updateFields := make(map[string]interface{})
 	updateFields["batch_index"] = batchIndex
 	updateFields["rollup_status"] = RollupStatusTypeFinalized
