@@ -18,10 +18,10 @@ bridgehistoryapi-api:
 	go build -o $(PWD)/build/bin/bridgehistoryapi-api ./cmd/api
 
 reset-db-docker:
-	docker stop bridgehistoryapi-history-db
-	docker rm bridgehistoryapi-history-db
+	-docker stop bridgehistoryapi-history-db
+	-docker rm bridgehistoryapi-history-db
 	docker run --name bridgehistoryapi-history-db -p 5444:5432 -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=test -d postgres
-	go build -o $(PWD)/build/bin/bridgehistoryapi-db-cli ./cmd/db_cli & sleep 1
+	go build -o $(PWD)/build/bin/bridgehistoryapi-db-cli ./cmd/db_cli & sleep 2
 	$(PWD)/build/bin/bridgehistoryapi-db-cli reset
 
 bridgehistoryapi-docker:
