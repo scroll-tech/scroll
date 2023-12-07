@@ -247,33 +247,20 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		}
 		db = db.WithContext(ctx)
 		db = db.Model(&CrossMessage{})
-		if l1MessageQueueEvent.EventType == MessageQueueEventTypeQueueTransaction {
-			updateFields := make(map[string]interface{})
-			// Update tx hash if it's a message replay.
+		db = db.Where("message_type = ?", MessageTypeL1SentMessage)
+		db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
+		updateFields := make(map[string]interface{})
+		switch l1MessageQueueEvent.EventType {
+		case MessageQueueEventTypeQueueTransaction:
+			// Update l1_tx_hash if the user calls replayMessage.
 			updateFields["l1_tx_hash"] = l1MessageQueueEvent.TxHash.String()
-			db = db.Where("message_type", MessageTypeL1SentMessage)
-			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			if err := db.Updates(updateFields).Error; err != nil {
-				return fmt.Errorf("failed to update L1 tx hash of QueueTransaction, event: %+v, error: %w", l1MessageQueueEvent, err)
-			}
-		}
-		if l1MessageQueueEvent.EventType == MessageQueueEventTypeDequeueTransaction {
-			updateFields := make(map[string]interface{})
+		case MessageQueueEventTypeDequeueTransaction:
 			updateFields["tx_status"] = TxStatusTypeSkipped
-			db = db.Where("message_type", MessageTypeL1SentMessage)
-			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			if err := db.Updates(updateFields).Error; err != nil {
-				return fmt.Errorf("failed to update message status as skipped, event: %+v, error: %w", l1MessageQueueEvent, err)
-			}
-		}
-		if l1MessageQueueEvent.EventType == MessageQueueEventTypeDropTransaction {
-			updateFields := make(map[string]interface{})
+		case MessageQueueEventTypeDropTransaction:
 			updateFields["tx_status"] = TxStatusTypeDropped
-			db = db.Where("message_type", MessageTypeL1SentMessage)
-			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			if err := db.Updates(updateFields).Error; err != nil {
-				return fmt.Errorf("failed to update message status as dropped, event: %+v, error: %w", l1MessageQueueEvent, err)
-			}
+		}
+		if err := db.Updates(updateFields).Error; err != nil {
+			return fmt.Errorf("failed to update L1 tx hash of QueueTransaction, event: %+v, error: %w", l1MessageQueueEvent, err)
 		}
 	}
 	return nil
