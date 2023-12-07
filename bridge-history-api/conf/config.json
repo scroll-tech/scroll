@@ -22,7 +22,6 @@
 	"L2": {
 		"confirmation": 1,
 		"endpoint": "http://mainnet-l2geth-internal-1.mainnet.scroll.tech:8545",
-		"startHeight": 0,
 		"blockTime": 3,
 		"fetchLimit": 100,
 		"MessengerAddr": "0x781e90f1c8Fc4611c9b7497C3B47F99Ef6969CbC",
