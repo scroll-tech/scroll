@@ -5,10 +5,11 @@ import (
 	"github.com/urfave/cli/v2"
 	"gorm.io/gorm"
 
-	"scroll-tech/bridge-history-api/internal/config"
-	"scroll-tech/bridge-history-api/internal/orm/migrate"
 	"scroll-tech/common/database"
 	"scroll-tech/common/utils"
+
+	"scroll-tech/bridge-history-api/internal/config"
+	"scroll-tech/bridge-history-api/internal/orm/migrate"
 )
 
 func getConfig(ctx *cli.Context) (*config.Config, error) {

@@ -11,12 +11,13 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
-	"scroll-tech/bridge-history-api/internal/config"
-	"scroll-tech/bridge-history-api/internal/controller/api"
-	"scroll-tech/bridge-history-api/internal/route"
 	"scroll-tech/common/database"
 	"scroll-tech/common/observability"
 	"scroll-tech/common/utils"
+
+	"scroll-tech/bridge-history-api/internal/config"
+	"scroll-tech/bridge-history-api/internal/controller/api"
+	"scroll-tech/bridge-history-api/internal/route"
 )
 
 var (
