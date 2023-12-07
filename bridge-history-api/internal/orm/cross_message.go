@@ -260,7 +260,7 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			updateFields["tx_status"] = TxStatusTypeDropped
 		}
 		if err := db.Updates(updateFields).Error; err != nil {
-			return fmt.Errorf("failed to update L1 tx hash of QueueTransaction, event: %+v, error: %w", l1MessageQueueEvent, err)
+			return fmt.Errorf("failed to update L1 message queue events info, event: %+v, error: %w", l1MessageQueueEvent, err)
 		}
 	}
 	return nil
