@@ -31,7 +31,7 @@ func (c *HistoryController) GetL2ClaimableWithdrawalsByAddress(ctx *gin.Context)
 		return
 	}
 
-	pagedTxs, total, err := c.historyLogic.GetL2ClaimableWithdrawalsByAddress(ctx, req.Address, uint64(req.Page), uint64(req.PageSize))
+	pagedTxs, total, err := c.historyLogic.GetL2ClaimableWithdrawalsByAddress(ctx, req.Address, req.Page, req.PageSize)
 	if err != nil {
 		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, err)
 		return
@@ -49,7 +49,7 @@ func (c *HistoryController) GetL2WithdrawalsByAddress(ctx *gin.Context) {
 		return
 	}
 
-	pagedTxs, total, err := c.historyLogic.GetL2WithdrawalsByAddress(ctx, req.Address, uint64(req.Page), uint64(req.PageSize))
+	pagedTxs, total, err := c.historyLogic.GetL2WithdrawalsByAddress(ctx, req.Address, req.Page, req.PageSize)
 	if err != nil {
 		types.RenderFailure(ctx, types.ErrGetL2WithdrawalsError, err)
 		return
@@ -67,7 +67,7 @@ func (c *HistoryController) GetTxsByAddress(ctx *gin.Context) {
 		return
 	}
 
-	pagedTxs, total, err := c.historyLogic.GetTxsByAddress(ctx, req.Address, uint64(req.Page), uint64(req.PageSize))
+	pagedTxs, total, err := c.historyLogic.GetTxsByAddress(ctx, req.Address, req.Page, req.PageSize)
 	if err != nil {
 		types.RenderFailure(ctx, types.ErrGetTxsError, err)
 		return
