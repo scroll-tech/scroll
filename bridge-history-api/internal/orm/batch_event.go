@@ -60,18 +60,6 @@ func (c *BatchEvent) GetBatchesGEBlockHeight(ctx context.Context, blockHeight ui
 	return batches, nil
 }
 
-// GetBatchByIndex returns the batch by index.
-func (c *BatchEvent) GetBatchByIndex(ctx context.Context, index uint64) (*BatchEvent, error) {
-	var result BatchEvent
-	db := c.db.WithContext(ctx)
-	db = db.Model(&BatchEvent{})
-	db = db.Where("batch_index = ?", index)
-	if err := db.First(&result).Error; err != nil {
-		return nil, fmt.Errorf("failed to get batch by index, error: %w", err)
-	}
-	return &result, nil
-}
-
 // InsertOrUpdateBatchEvents inserts a new batch event or updates an existing one based on the BatchStatusType.
 func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvents []*BatchEvent, dbTX ...*gorm.DB) error {
 	for _, l1BatchEvent := range l1BatchEvents {

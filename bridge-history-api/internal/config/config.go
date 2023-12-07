@@ -10,7 +10,6 @@ import (
 
 // LayerConfig is the configuration of Layer1/Layer2
 type LayerConfig struct {
-	ChainID                uint64 `json:"chain_id"`
 	Confirmation           uint64 `json:"confirmation"`
 	Endpoint               string `json:"endpoint"`
 	StartHeight            uint64 `json:"startHeight"`

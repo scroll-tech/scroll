@@ -297,6 +297,9 @@ func (c *CrossMessage) UpdateBatchStatusOfL2Withdrawals(ctx context.Context, sta
 
 // InsertOrUpdateL1Messages inserts or updates a list of L1 cross messages into the database.
 func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
+	if len(messages) == 0 {
+		return nil
+	}
 	db := c.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -317,6 +320,9 @@ func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []
 
 // InsertOrUpdateL2Messages inserts or updates a list of L2 cross messages into the database.
 func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
+	if len(messages) == 0 {
+		return nil
+	}
 	db := c.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -339,6 +345,9 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 // These failed transactions are only fetched once, so they are inserted without checking for duplicates.
 // To resolve unique index confliction, a random UUID will be generated and used as the MessageHash.
 func (c *CrossMessage) InsertFailedGatewayRouterTxs(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
+	if len(messages) == 0 {
+		return nil
+	}
 	db := c.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -347,8 +356,7 @@ func (c *CrossMessage) InsertFailedGatewayRouterTxs(ctx context.Context, message
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	for _, message := range messages {
-		u := uuid.New()
-		message.MessageHash = u.String()
+		message.MessageHash = uuid.New().String()
 		if err := db.Create(message).Error; err != nil {
 			return fmt.Errorf("failed to insert failed gateway router txs, message: %+v, error: %w", message, err)
 		}
@@ -358,6 +366,9 @@ func (c *CrossMessage) InsertFailedGatewayRouterTxs(ctx context.Context, message
 
 // InsertOrUpdateL2RelayedMessagesOfL1Deposits inserts or updates the database with a list of L2 relayed messages related to L1 deposits.
 func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.Context, l2RelayedMessages []*CrossMessage, dbTX ...*gorm.DB) error {
+	if len(l2RelayedMessages) == 0 {
+		return nil
+	}
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	db = db.Clauses(clause.OnConflict{
@@ -375,6 +386,9 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 
 // InsertOrUpdateL1RelayedMessagesOfL2Withdrawals inserts or updates the database with a list of L1 relayed messages related to L2 withdrawals.
 func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx context.Context, l1RelayedMessages []*CrossMessage, dbTX ...*gorm.DB) error {
+	if len(l1RelayedMessages) == 0 {
+		return nil
+	}
 	db := c.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]

@@ -139,19 +139,18 @@ func (c *L1MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 			if toAddress == c.cfg.GatewayRouterAddr {
 				receipt, err := c.client.TransactionReceipt(ctx, tx.Hash())
 				if err != nil {
-					log.Error("Failed to get transaction receipt", "txHash", tx.Hash(), "err", err)
-					return err
-				}
-
-				signer := types.NewLondonSigner(new(big.Int).SetUint64(c.cfg.ChainID))
-				sender, err := signer.Sender(tx)
-				if err != nil {
-					log.Error("get sender failed", "chain id", c.cfg.ChainID, "tx hash", tx.Hash().String(), "err", err)
+					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", err)
 					return err
 				}
 
 				// Check if the transaction failed
 				if receipt.Status == types.ReceiptStatusFailed {
+					signer := types.NewLondonSigner(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+					sender, err := signer.Sender(tx)
+					if err != nil {
+						log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", err)
+						return err
+					}
 					l1FailedGatewayRouterTxs = append(l1FailedGatewayRouterTxs, &orm.CrossMessage{
 						L1TxHash:       tx.Hash().String(),
 						MessageType:    int(orm.MessageTypeL1SentMessage),

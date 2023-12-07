@@ -1,6 +1,5 @@
 {
 	"L1": {
-		"chain_id": 1,
 		"confirmation": 64,
 		"endpoint": "https://rpc.ankr.com/eth",
 		"startHeight": 18318215,
@@ -21,7 +20,6 @@
 		"MessageQueueAddr": "0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B"
 	},
 	"L2": {
-		"chain_id": 534352,
 		"confirmation": 1,
 		"endpoint": "http://mainnet-l2geth-internal-1.mainnet.scroll.tech:8545",
 		"startHeight": 0,

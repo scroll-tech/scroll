@@ -9,6 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
@@ -116,6 +117,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64, to uint64, addrList []common.Address) error {
 	log.Info("fetch and save L2 events", "from", from, "to", to)
 	var l2FailedGatewayRouterTxs []*orm.CrossMessage
+	var l2RevertedRelayedMessages []*orm.CrossMessage
 	blockTimestampsMap := make(map[uint64]uint64)
 	for number := from; number <= to; number++ {
 		blockNumber := new(big.Int).SetUint64(number)
@@ -135,19 +137,18 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 			if toAddress == c.cfg.GatewayRouterAddr {
 				receipt, err := c.client.TransactionReceipt(ctx, tx.Hash())
 				if err != nil {
-					log.Error("Failed to get transaction receipt", "txHash", tx.Hash(), "err", err)
-					return err
-				}
-
-				signer := types.NewLondonSigner(new(big.Int).SetUint64(c.cfg.ChainID))
-				sender, err := signer.Sender(tx)
-				if err != nil {
-					log.Error("get sender failed", "chain id", c.cfg.ChainID, "tx hash", tx.Hash().String(), "err", err)
+					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", err)
 					return err
 				}
 
 				// Check if the transaction failed
 				if receipt.Status == types.ReceiptStatusFailed {
+					signer := types.NewLondonSigner(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+					sender, err := signer.Sender(tx)
+					if err != nil {
+						log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", err)
+						return err
+					}
 					l2FailedGatewayRouterTxs = append(l2FailedGatewayRouterTxs, &orm.CrossMessage{
 						L2TxHash:       tx.Hash().String(),
 						MessageType:    int(orm.MessageTypeL2SentMessage),
@@ -155,6 +156,22 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 						Receiver:       (*tx.To()).String(),
 						BlockTimestamp: block.Time(),
 						TxStatus:       int(orm.TxStatusTypeSentFailed),
+					})
+				}
+			}
+			if tx.Type() == types.L1MessageTxType {
+				receipt, err := c.client.TransactionReceipt(ctx, tx.Hash())
+				if err != nil {
+					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", err)
+					return err
+				}
+				// Check if the transaction failed
+				if receipt.Status == types.ReceiptStatusFailed {
+					l2RevertedRelayedMessages = append(l2RevertedRelayedMessages, &orm.CrossMessage{
+						MessageHash:   common.Bytes2Hex(crypto.Keccak256(tx.AsL1MessageTx().Data)),
+						L2TxHash:      tx.Hash().String(),
+						TxStatus:      int(orm.TxStatusTypeRelayedFailed),
+						L2BlockNumber: receipt.BlockNumber.Uint64(),
 					})
 				}
 			}
@@ -198,6 +215,10 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 		}
 		if txErr := c.crossMessageOrm.InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx, l2RelayedMessages, tx); txErr != nil {
 			log.Error("failed to update L2 relayed messages of L1 deposits", "from", from, "to", to, "err", txErr)
+			return txErr
+		}
+		if txErr := c.crossMessageOrm.InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx, l2RevertedRelayedMessages, tx); txErr != nil {
+			log.Error("failed to insert L2 reverted relayed messages of L1 deposits", "from", from, "to", to, "err", txErr)
 			return txErr
 		}
 		if txErr := c.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l2FailedGatewayRouterTxs, tx); txErr != nil {
