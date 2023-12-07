@@ -10,24 +10,24 @@ import (
 
 // LayerConfig is the configuration of Layer1/Layer2
 type LayerConfig struct {
-	Confirmation           uint64 `json:"confirmation"`
-	Endpoint               string `json:"endpoint"`
-	StartHeight            uint64 `json:"startHeight"`
-	BlockTime              int64  `json:"blockTime"`
-	FetchLimit             uint64 `json:"fetchLimit"`
-	MessengerAddr          string `json:"MessengerAddr"`
-	ETHGatewayAddr         string `json:"ETHGatewayAddr"`
-	StandardERC20GatewayAddr   string `json:"StandardERC20GatewayAddr"`
-	CustomERC20GatewayAddr string `json:"CustomERC20GatewayAddr"`
-	WETHGatewayAddr        string `json:"WETHGatewayAddr"`
-	DAIGatewayAddr         string `json:"DAIGatewayAddr"`
-	USDCGatewayAddr        string `json:"USDCGatewayAddr"`
-	LIDOGatewayAddr        string `json:"LIDOGatewayAddr"`
-	ERC721GatewayAddr      string `json:"ERC721GatewayAddr"`
-	ERC1155GatewayAddr     string `json:"ERC1155GatewayAddr"`
-	ScrollChainAddr        string `json:"ScrollChainAddr"`
-	GatewayRouterAddr      string `json:"GatewayRouterAddr"`
-	MessageQueueAddr       string `json:"MessageQueueAddr"`
+	Confirmation             uint64 `json:"confirmation"`
+	Endpoint                 string `json:"endpoint"`
+	StartHeight              uint64 `json:"startHeight"`
+	BlockTime                int64  `json:"blockTime"`
+	FetchLimit               uint64 `json:"fetchLimit"`
+	MessengerAddr            string `json:"MessengerAddr"`
+	ETHGatewayAddr           string `json:"ETHGatewayAddr"`
+	StandardERC20GatewayAddr string `json:"StandardERC20GatewayAddr"`
+	CustomERC20GatewayAddr   string `json:"CustomERC20GatewayAddr"`
+	WETHGatewayAddr          string `json:"WETHGatewayAddr"`
+	DAIGatewayAddr           string `json:"DAIGatewayAddr"`
+	USDCGatewayAddr          string `json:"USDCGatewayAddr"`
+	LIDOGatewayAddr          string `json:"LIDOGatewayAddr"`
+	ERC721GatewayAddr        string `json:"ERC721GatewayAddr"`
+	ERC1155GatewayAddr       string `json:"ERC1155GatewayAddr"`
+	ScrollChainAddr          string `json:"ScrollChainAddr"`
+	GatewayRouterAddr        string `json:"GatewayRouterAddr"`
+	MessageQueueAddr         string `json:"MessageQueueAddr"`
 }
 
 // RedisConfig redis config

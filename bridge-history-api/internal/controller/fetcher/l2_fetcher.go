@@ -37,7 +37,7 @@ func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
 
-		common.HexToAddress(cfg.StandardERC20Gateway),
+		common.HexToAddress(cfg.StandardERC20GatewayAddr),
 		common.HexToAddress(cfg.CustomERC20GatewayAddr),
 		common.HexToAddress(cfg.WETHGatewayAddr),
 		common.HexToAddress(cfg.DAIGatewayAddr),
