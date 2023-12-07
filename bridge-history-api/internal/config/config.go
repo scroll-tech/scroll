@@ -17,7 +17,7 @@ type LayerConfig struct {
 	FetchLimit             uint64 `json:"fetchLimit"`
 	MessengerAddr          string `json:"MessengerAddr"`
 	ETHGatewayAddr         string `json:"ETHGatewayAddr"`
-	StandardERC20Gateway   string `json:"StandardERC20Gateway"`
+	StandardERC20GatewayAddr   string `json:"StandardERC20GatewayAddr"`
 	CustomERC20GatewayAddr string `json:"CustomERC20GatewayAddr"`
 	WETHGatewayAddr        string `json:"WETHGatewayAddr"`
 	DAIGatewayAddr         string `json:"DAIGatewayAddr"`
