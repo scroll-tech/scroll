@@ -13,7 +13,7 @@ type ProbesController struct {
 	db *gorm.DB
 }
 
-// NewProbesController returns an ProbesController instance
+// NewProbesController returns a ProbesController instance
 func NewProbesController(db *gorm.DB) *ProbesController {
 	return &ProbesController{
 		db: db,
