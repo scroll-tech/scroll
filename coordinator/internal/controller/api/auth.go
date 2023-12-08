@@ -18,7 +18,7 @@ type AuthController struct {
 	loginLogic *auth.LoginLogic
 }
 
-// NewAuthController returns an LoginController instance
+// NewAuthController returns a LoginController instance
 func NewAuthController(db *gorm.DB) *AuthController {
 	return &AuthController{
 		loginLogic: auth.NewLoginLogic(db),
