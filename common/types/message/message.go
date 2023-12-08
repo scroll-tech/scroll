@@ -282,7 +282,7 @@ type BatchProof struct {
 	GitVersion string `json:"git_version,omitempty"`
 }
 
-// SanityCheck checks whether an BatchProof is in a legal format
+// SanityCheck checks whether a BatchProof is in a legal format
 // TODO: change to check Proof&Instance when upgrading to snark verifier v0.4
 func (ap *BatchProof) SanityCheck() error {
 	if ap == nil {
