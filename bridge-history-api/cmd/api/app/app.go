@@ -54,20 +54,24 @@ func action(ctx *cli.Context) error {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
-	redis := redis.NewClient(&redis.Options{
+
+	redisClient := redis.NewClient(&redis.Options{
 		Addr:     cfg.Redis.Address,
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
-	api.InitController(db, redis)
+	if redisClient == nil {
+		log.Crit("failed to init redis client")
+	}
+	api.InitController(db, redisClient)
 
 	router := gin.Default()
 	registry := prometheus.DefaultRegisterer
 	route.Route(router, cfg, registry)
 
 	go func() {
-		port := utils.ServicePortFlag.Value
-		if runServerErr := router.Run(fmt.Sprintf(":%d", port)); runServerErr != nil {
+		port := utils.ServicePortFlag.Name
+		if runServerErr := router.Run(fmt.Sprintf(":%s", port)); runServerErr != nil {
 			log.Crit("run http server failure", "error", runServerErr)
 		}
 	}()
