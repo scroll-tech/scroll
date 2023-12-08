@@ -18,7 +18,7 @@ import (
 	"bridge-history-api/utils"
 )
 
-// MsgFetcher fetches cross message events from blockchain and saves them to database
+// MsgFetcher fetches cross-message events from the blockchain and saves them to the database
 type MsgFetcher struct {
 	ctx           context.Context
 	config        *config.LayerConfig
@@ -102,7 +102,7 @@ func (c *MsgFetcher) Stop() {
 	log.Info("MsgFetcher Stop")
 }
 
-// forwardFetchAndSaveMissingEvents will fetch all events from the latest processed height to the latest block number.
+// forwardFetchAndSaveMissingEvents will fetch all events from the latest processed height up to the latest block number.
 func (c *MsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) {
 	// if we fetch to the latest block, shall not exceed cachedHeaders
 	var number uint64
