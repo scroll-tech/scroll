@@ -23,7 +23,7 @@ type RelayedMsg struct {
 	DeletedAt  gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
-// NewRelayedMsg create an NewRelayedMsg instance
+// NewRelayedMsg create a NewRelayedMsg instance
 func NewRelayedMsg(db *gorm.DB) *RelayedMsg {
 	return &RelayedMsg{db: db}
 }
