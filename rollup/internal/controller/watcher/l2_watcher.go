@@ -293,15 +293,15 @@ func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]relayedM
 				isSuccessful: true,
 			})
 		case bridgeAbi.L2FailedRelayedMessageEventSignature:
-			event := bridgeAbi.L2FailedRelayedMessageEvent{}
-			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
+			msgEvent := bridgeAbi.L2FailedRelayedMessageEvent{}
+			err := utils.UnpackLog(w.messengerABI, &msgEvent, "FailedRelayedMessage", vLog)
 			if err != nil {
 				log.Warn("Failed to unpack layer2 FailedRelayedMessage event", "err", err)
 				return relayedMessages, err
 			}
 
 			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash:      event.MessageHash,
+				msgHash:      msgEvent.MessageHash,
 				txHash:       vLog.TxHash,
 				isSuccessful: false,
 			})
