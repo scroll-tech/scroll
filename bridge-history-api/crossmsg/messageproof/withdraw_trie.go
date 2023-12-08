@@ -38,7 +38,7 @@ func NewWithdrawTrie() *WithdrawTrie {
 	}
 }
 
-// Initialize will initialize the merkle trie with rightest leaf node
+// Initialize will initialize the merkle trie with rightmost leaf node
 func (w *WithdrawTrie) Initialize(currentMessageNonce uint64, msgHash common.Hash, proofBytes []byte) {
 	proof := DecodeBytesToMerkleProof(proofBytes)
 	branches := RecoverBranchFromProof(proof, currentMessageNonce, msgHash)
@@ -47,7 +47,7 @@ func (w *WithdrawTrie) Initialize(currentMessageNonce uint64, msgHash common.Has
 	w.NextMessageNonce = currentMessageNonce + 1
 }
 
-// AppendMessages appends a list of new messages as leaf nodes to the rightest of the tree and returns the proofs for all messages.
+// AppendMessages appends a list of new messages as leaf nodes to the rightmost of the tree and returns the proofs for all messages.
 func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
 	length := len(hashes)
 	if length == 0 {
