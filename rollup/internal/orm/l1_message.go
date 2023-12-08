@@ -33,7 +33,7 @@ type L1Message struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
-// NewL1Message create an L1MessageOrm instance
+// NewL1Message create a L1MessageOrm instance
 func NewL1Message(db *gorm.DB) *L1Message {
 	return &L1Message{db: db}
 }
