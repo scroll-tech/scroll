@@ -89,14 +89,14 @@ func (i *ImgDB) IsRunning() bool {
 }
 
 func (i *ImgDB) prepare() []string {
-	cmd := []string{"run", "--rm", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
+	cmdStrs := []string{"run", "--rm", "--name", i.name, "-p", fmt.Sprintf("%d:5432", i.port)}
 	envs := []string{
 		"-e", "POSTGRES_PASSWORD=" + i.password,
 		"-e", fmt.Sprintf("POSTGRES_DB=%s", i.dbName),
 	}
 
-	cmd = append(cmd, envs...)
-	return append(cmd, i.image)
+	cmdStrs = append(cmdStrs, envs...)
+	return append(cmdStrs, i.image)
 }
 
 func (i *ImgDB) isOk() bool {
