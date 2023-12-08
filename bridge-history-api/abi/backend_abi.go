@@ -323,7 +323,7 @@ type L1RelayedMessageEvent struct {
 	MessageHash common.Hash
 }
 
-// L2AppendMessageEvent represents a AppendMessage event raised by the L2MessageQueue contract.
+// L2AppendMessageEvent represents an AppendMessage event raised by the L2MessageQueue contract.
 type L2AppendMessageEvent struct {
 	Index       *big.Int
 	MessageHash common.Hash
