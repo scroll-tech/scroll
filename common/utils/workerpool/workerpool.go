@@ -26,12 +26,8 @@ func (vwp *WorkerPool) Run() {
 	for i := 0; i < vwp.maxWorker; i++ {
 		go func() {
 			for task := range vwp.taskQueueChan {
-				if task != nil {
-					task()
-					vwp.wg.Done()
-				} else {
-					return
-				}
+				task()
+				vwp.wg.Done()
 			}
 		}()
 	}
@@ -46,6 +42,9 @@ func (vwp *WorkerPool) Stop() {
 
 // AddTask adds a task to WorkerPool
 func (vwp *WorkerPool) AddTask(task func()) {
+	if task == nil {
+		return
+	}
 	vwp.wg.Add(1)
 	vwp.taskQueueChan <- task
 }
