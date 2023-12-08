@@ -28,10 +28,11 @@ type L1MessageFetcher struct {
 	batchEventOrm   *orm.BatchEvent
 	client          *ethclient.Client
 	addressList     []common.Address
+	syncInfo        *SyncInfo
 }
 
 // NewL1MessageFetcher creates a new L1MessageFetcher instance.
-func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) (*L1MessageFetcher, error) {
+func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) (*L1MessageFetcher, error) {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
 
@@ -67,6 +68,7 @@ func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.
 		batchEventOrm:   orm.NewBatchEvent(db),
 		client:          client,
 		addressList:     addressList,
+		syncInfo:        syncInfo,
 	}, nil
 }
 
@@ -240,12 +242,12 @@ func (c *L1MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 }
 
 func (c *L1MessageFetcher) updateBatchIndexAndStatus(ctx context.Context) error {
-	latestMessageHeight, err := c.crossMessageOrm.GetLatestFinalizedL2WithdrawalBlockHeight(ctx)
-	if err != nil {
-		log.Error("failed to get latest finalized L2 sent message block height", "error", err)
-		return err
+	l2ScannedHeight := c.syncInfo.GetL2ScanHeight()
+	if l2ScannedHeight == 0 {
+		log.Info("L2 fetcher has not successfully synced at least one round yet")
+		return nil
 	}
-	batches, err := c.batchEventOrm.GetBatchesGEBlockHeight(ctx, latestMessageHeight+1)
+	batches, err := c.batchEventOrm.GetBatchesLEBlockHeight(ctx, l2ScannedHeight)
 	if err != nil {
 		log.Error("failed to get batches >= block height", "error", err)
 		return err
@@ -254,6 +256,10 @@ func (c *L1MessageFetcher) updateBatchIndexAndStatus(ctx context.Context) error 
 		log.Info("update batch info of L2 withdrawals", "index", batch.BatchIndex, "start", batch.StartBlockNumber, "end", batch.EndBlockNumber)
 		if err := c.crossMessageOrm.UpdateBatchStatusOfL2Withdrawals(ctx, batch.StartBlockNumber, batch.EndBlockNumber, batch.BatchIndex); err != nil {
 			log.Error("failed to update batch status of L2 sent messages", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", err)
+			return err
+		}
+		if err := c.batchEventOrm.UpdateBatchEventStatus(ctx, batch.BatchIndex); err != nil {
+			log.Error("failed to update batch event status as updated", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", err)
 			return err
 		}
 	}

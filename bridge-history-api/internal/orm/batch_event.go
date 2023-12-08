@@ -19,6 +19,15 @@ const (
 	BatchStatusTypeFinalized
 )
 
+// UpdateStatusType represents the whether batch info is updated in message table.
+type UpdateStatusType int
+
+// Constants for UpdateStatusType.
+const (
+	UpdateStatusTypeUnupdated UpdateStatusType = iota
+	UpdateStatusTypeUpdated
+)
+
 // BatchEvent represents a batch event.
 type BatchEvent struct {
 	db *gorm.DB `gorm:"column:-"`
@@ -29,6 +38,7 @@ type BatchEvent struct {
 	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
 	StartBlockNumber uint64     `json:"start_block_number" gorm:"column:start_block_number"`
 	EndBlockNumber   uint64     `json:"end_block_number" gorm:"column:end_block_number"`
+	UpdateStatus     int        `json:"update_status" gorm:"column:update_status"`
 	CreatedAt        time.Time  `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt        time.Time  `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt        *time.Time `json:"deleted_at" gorm:"column:deleted_at"`
@@ -45,11 +55,12 @@ func NewBatchEvent(db *gorm.DB) *BatchEvent {
 }
 
 // GetBatchesGEBlockHeight returns the batches with end block >= given block height in db.
-func (c *BatchEvent) GetBatchesGEBlockHeight(ctx context.Context, blockHeight uint64) ([]*BatchEvent, error) {
+func (c *BatchEvent) GetBatchesLEBlockHeight(ctx context.Context, blockHeight uint64) ([]*BatchEvent, error) {
 	var batches []*BatchEvent
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BatchEvent{})
-	db = db.Where("end_block_number >= ?", blockHeight)
+	db = db.Where("end_block_number <= ?", blockHeight)
+	db = db.Where("update_status = ?", UpdateStatusTypeUnupdated)
 	db = db.Order("batch_index asc")
 	if err := db.Find(&batches).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -94,6 +105,20 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 				return fmt.Errorf("failed to soft delete batch event, batch: %+v, error: %w", l1BatchEvent, err)
 			}
 		}
+	}
+	return nil
+}
+
+// UpdateBatchEventStatus updates the UpdateStatusType of a BatchEvent given its batch index.
+func (c *BatchEvent) UpdateBatchEventStatus(ctx context.Context, batchIndex uint64) error {
+	db := c.db.WithContext(ctx)
+	db = db.Model(&BatchEvent{})
+	db = db.Where("batch_index = ?", batchIndex)
+	updateFields := map[string]interface{}{
+		"update_status": UpdateStatusTypeUpdated,
+	}
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("failed to update batch event status, batchIndex: %d, error: %w", batchIndex, err)
 	}
 	return nil
 }
