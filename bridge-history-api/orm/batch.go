@@ -25,7 +25,7 @@ type RollupBatch struct {
 	DeletedAt        gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
-// NewRollupBatch create an RollupBatch instance
+// NewRollupBatch create a RollupBatch instance
 func NewRollupBatch(db *gorm.DB) *RollupBatch {
 	return &RollupBatch{db: db}
 }
