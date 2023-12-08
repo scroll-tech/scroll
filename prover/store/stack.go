@@ -43,6 +43,7 @@ func NewStack(path string) (*Stack, error) {
 	})
 	if err != nil {
 		log.Crit("init stack failed", "error", err)
+		return nil, err
 	}
 	return &Stack{DB: kvdb}, nil
 }
