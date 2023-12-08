@@ -32,7 +32,7 @@ type L2SentMsg struct {
 	DeletedAt      gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
-// NewL2SentMsg create an NewL2SentMsg instance
+// NewL2SentMsg create a NewL2SentMsg instance
 func NewL2SentMsg(db *gorm.DB) *L2SentMsg {
 	return &L2SentMsg{db: db}
 }
