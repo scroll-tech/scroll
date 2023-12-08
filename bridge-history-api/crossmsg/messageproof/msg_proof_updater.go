@@ -46,7 +46,7 @@ func (m *MsgProofUpdater) Start() {
 			case <-tick.C:
 				latestBatch, err := m.rollupOrm.GetLatestRollupBatch(m.ctx)
 				if err != nil {
-					log.Warn("MsgProofUpdater: Can not get latest RollupBatch: ", "err", err)
+					log.Warn("MsgProofUpdater: Cannot get the latest RollupBatch: ", "err", err)
 					continue
 				}
 				if latestBatch == nil {
@@ -54,7 +54,7 @@ func (m *MsgProofUpdater) Start() {
 				}
 				latestBatchIndexWithProof, err := m.l2SentMsgOrm.GetLatestL2SentMsgBatchIndex(m.ctx)
 				if err != nil {
-					log.Error("MsgProofUpdater: Can not get latest L2SentMsgBatchIndex: ", "err", err)
+					log.Error("MsgProofUpdater: Cannot get the latest L2SentMsgBatchIndex: ", "err", err)
 					continue
 				}
 				log.Info("latest batch with proof", "batch_index", latestBatchIndexWithProof)
@@ -67,26 +67,26 @@ func (m *MsgProofUpdater) Start() {
 				for i := start; i <= latestBatch.BatchIndex; i++ {
 					batch, err := m.rollupOrm.GetRollupBatchByIndex(m.ctx, i)
 					if err != nil {
-						log.Error("MsgProofUpdater: Can not get RollupBatch: ", "err", err, "index", i)
+						log.Error("MsgProofUpdater: Cannot get RollupBatch: ", "err", err, "index", i)
 						break
 					}
 					// get all l2 messages in this batch
 					msgs, proofs, err := m.appendL2Messages(batch.StartBlockNumber, batch.EndBlockNumber)
 					if err != nil {
-						log.Error("MsgProofUpdater: can not append l2messages", "startBlockNumber", batch.StartBlockNumber, "endBlockNumber", batch.EndBlockNumber, "err", err)
+						log.Error("MsgProofUpdater: Cannot append l2messages", "startBlockNumber", batch.StartBlockNumber, "endBlockNumber", batch.EndBlockNumber, "err", err)
 						break
 					}
 					// here we update batch withdraw root
 					err = m.rollupOrm.UpdateRollupBatchWithdrawRoot(m.ctx, batch.BatchIndex, m.withdrawTrie.MessageRoot().Hex())
 					if err != nil {
 						// if failed better restart the binary
-						log.Error("MsgProofUpdater: can not update batch withdraw root", "err", err)
+						log.Error("MsgProofUpdater: Cannot update batch withdraw root", "err", err)
 						break
 					}
 					err = m.updateMsgProof(msgs, proofs, batch.BatchIndex)
 					if err != nil {
 						// if failed better restart the binary
-						log.Error("MsgProofUpdater: can not update msg proof", "err", err)
+						log.Error("MsgProofUpdater: Cannot update msg proof", "err", err)
 						break
 					}
 				}
@@ -110,7 +110,7 @@ func (m *MsgProofUpdater) initialize(ctx context.Context) {
 		default:
 			err := m.initializeWithdrawTrie()
 			if err != nil {
-				log.Error("can not initialize withdraw trie", "err", err)
+				log.Error("Cannot initialize withdraw trie", "err", err)
 				// give it some time to retry
 				time.Sleep(10 * time.Second)
 				continue
@@ -136,7 +136,7 @@ func (m *MsgProofUpdater) initializeWithdrawTrie() error {
 	// if no batch, return and wait for next try round
 	batch, err = m.rollupOrm.GetLatestRollupBatch(m.ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get latest batch: %v", err)
+		return fmt.Errorf("failed to get the latest batch: %v", err)
 	}
 	if batch == nil {
 		return fmt.Errorf("no batch found")
