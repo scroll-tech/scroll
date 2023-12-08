@@ -358,7 +358,7 @@ type L2RelayedMessageEvent struct {
 	MessageHash common.Hash
 }
 
-// IScrollChainBatch is an auto generated low-level Go binding around an user-defined struct.
+// IScrollChainBatch is an auto generated low-level Go binding around a user-defined struct.
 type IScrollChainBatch struct {
 	Blocks           []IScrollChainBlockContext
 	PrevStateRoot    common.Hash
