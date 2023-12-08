@@ -54,7 +54,7 @@ func NewBatchEvent(db *gorm.DB) *BatchEvent {
 	return &BatchEvent{db: db}
 }
 
-// GetBatchesGEBlockHeight returns the batches with end block >= given block height in db.
+// GetBatchesLEBlockHeight returns the batches with end block <= given block height in db.
 func (c *BatchEvent) GetBatchesLEBlockHeight(ctx context.Context, blockHeight uint64) ([]*BatchEvent, error) {
 	var batches []*BatchEvent
 	db := c.db.WithContext(ctx)
