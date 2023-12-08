@@ -29,7 +29,7 @@ type L1Block struct {
 	DeletedAt gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
 }
 
-// NewL1Block create an l1Block instance
+// NewL1Block create a l1Block instance
 func NewL1Block(db *gorm.DB) *L1Block {
 	return &L1Block{db: db}
 }
