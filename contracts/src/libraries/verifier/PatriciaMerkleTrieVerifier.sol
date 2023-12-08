@@ -442,7 +442,7 @@ library PatriciaMerkleTrieVerifier {
                 // account proof
                 // Note: this doesn't work if there are no intermediate nodes before the leaf.
                 // This is not possible in practice because of the fact that there must be at least
-                // 2 accounts in the tree to make a transaction to an existing contract possible.
+                // 2 accounts in the tree to make a transaction to a existing contract possible.
                 // Thus, 2 leaves.
                 let prevHash
                 let key := keccak_20(account)
