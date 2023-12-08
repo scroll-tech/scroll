@@ -171,7 +171,7 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 				// Check if the transaction failed
 				if receipt.Status == types.ReceiptStatusFailed {
 					l2RevertedRelayedMessages = append(l2RevertedRelayedMessages, &orm.CrossMessage{
-						MessageHash:   common.Bytes2Hex(crypto.Keccak256(tx.AsL1MessageTx().Data)),
+						MessageHash:   "0x" + common.Bytes2Hex(crypto.Keccak256(tx.AsL1MessageTx().Data)),
 						L2TxHash:      tx.Hash().String(),
 						TxStatus:      int(orm.TxStatusTypeRelayedFailed),
 						L2BlockNumber: receipt.BlockNumber.Uint64(),
