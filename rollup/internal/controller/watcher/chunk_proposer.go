@@ -34,13 +34,13 @@ func (crc *chunkRowConsumption) add(rowConsumption *gethTypes.RowConsumption) er
 
 // max finds the maximum row consumption among all sub-circuits
 func (crc *chunkRowConsumption) max() uint64 {
-	var max uint64
+	var _max uint64
 	for _, value := range *crc {
-		if value > max {
-			max = value
+		if value > _max {
+			_max = value
 		}
 	}
-	return max
+	return _max
 }
 
 // ChunkProposer proposes chunks based on available unchunked blocks.
