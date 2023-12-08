@@ -64,7 +64,7 @@ contract L1USDCGatewayCCTP is CCTPGatewayBase, L1ERC20Gateway {
     /// @dev The `_scrollMessage` is actually encoded calldata for `L1ScrollMessenger.relayMessageWithProof`.
     ///
     /// @dev This helper function is aimed to claim USDC in single transaction.
-    ///      Normally, an user should call `L1ScrollMessenger.relayMessageWithProof` first,
+    ///      Normally, a user should call `L1ScrollMessenger.relayMessageWithProof` first,
     ///      then `L1USDCGatewayCCTP.claimUSDC`.
     ///
     /// @param _nonce The nonce of the message from CCTP.
