@@ -7,9 +7,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 
+	"scroll-tech/common/observability"
+
 	"scroll-tech/bridge-history-api/internal/config"
 	"scroll-tech/bridge-history-api/internal/controller/api"
-	"scroll-tech/common/observability"
 )
 
 // Route routes the APIs

@@ -264,7 +264,7 @@ func ParseL1MessageQueueEventLogs(ctx context.Context, logs []types.Log, blockTi
 					QueueIndex: index,
 				})
 			}
-		case backendabi.L1QueueTransactionEventSig:
+		case backendabi.L1DropTransactionEventSig:
 			event := backendabi.L1DropTransactionEvent{}
 			if err := utils.UnpackLog(backendabi.IL1MessageQueueABI, &event, "DropTransaction", vlog); err != nil {
 				log.Warn("Failed to unpack DropTransaction event", "err", err)

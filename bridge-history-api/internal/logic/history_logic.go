@@ -23,7 +23,7 @@ const (
 	cacheKeyPrefixL2WithdrawalsByAddr          = "l2WithdrawalsByAddr:"
 	cacheKeyPrefixTxsByAddr                    = "txsByAddr:"
 	cacheKeyPrefixQueryTxsByHashes             = "queryTxsByHashes:"
-	cacheKeyExpiredTime                        = 30 * time.Minute
+	cacheKeyExpiredTime                        = 1 * time.Minute
 )
 
 // HistoryLogic services.
@@ -322,9 +322,7 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 }
 
 func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []*types.TxHistoryInfo) error {
-	err := h.redis.Watch(ctx, func(tx *redis.Tx) error {
-		pipe := tx.Pipeline()
-
+	_, err := h.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		// The transactions are sorted, thus we set the score as their indices.
 		for i, tx := range txs {
 			if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(i), Member: tx}).Err(); err != nil {
@@ -332,20 +330,12 @@ func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []
 				return err
 			}
 		}
-
 		if err := pipe.Expire(ctx, cacheKey, cacheKeyExpiredTime).Err(); err != nil {
 			log.Error("failed to set expiry time", "error", err)
 			return err
 		}
-
-		_, err := pipe.Exec(ctx)
-		if err != nil {
-			log.Error("failed to execute transaction", "error", err)
-			return err
-		}
-
 		return nil
-	}, cacheKey)
+	})
 
 	if err != nil {
 		log.Error("failed to execute transaction", "error", err)
