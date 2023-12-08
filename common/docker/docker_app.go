@@ -112,7 +112,7 @@ func (b *App) RunL1Geth(t *testing.T) {
 	assert.NoError(t, b.L1gethImg.Start())
 }
 
-// L1Client returns a ethclient by dialing running l1geth
+// L1Client returns an ethclient by dialing running l1geth
 func (b *App) L1Client() (*ethclient.Client, error) {
 	if utils.IsNil(b.L1gethImg) {
 		return nil, fmt.Errorf("l1 geth is not running")
@@ -132,7 +132,7 @@ func (b *App) RunL2Geth(t *testing.T) {
 	assert.NoError(t, b.L2gethImg.Start())
 }
 
-// L2Client returns a ethclient by dialing running l2geth
+// L2Client returns an ethclient by dialing running l2geth
 func (b *App) L2Client() (*ethclient.Client, error) {
 	if utils.IsNil(b.L2gethImg) {
 		return nil, fmt.Errorf("l2 geth is not running")
