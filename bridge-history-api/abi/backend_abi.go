@@ -45,7 +45,7 @@ var (
 	L2BatchWithdrawERC721Sig  common.Hash
 	L2BatchWithdrawERC1155Sig common.Hash
 
-	// scroll mono repo
+	// scroll monorepo
 
 	// ScrollChainABI holds information about ScrollChain's context and available invokable methods.
 	ScrollChainABI *abi.ABI
