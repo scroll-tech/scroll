@@ -17,6 +17,11 @@ bridgehistoryapi-fetcher:
 bridgehistoryapi-api:
 	go build -o $(PWD)/build/bin/bridgehistoryapi-api ./cmd/api
 
+redis-docker:
+	-docker stop bridgehistoryapi-redis
+	-docker rm bridgehistoryapi-redis
+	docker run --name bridgehistoryapi-redis -d -p 6379:6379 redis:latest
+
 reset-db-docker:
 	-docker stop bridgehistoryapi-history-db
 	-docker rm bridgehistoryapi-history-db
