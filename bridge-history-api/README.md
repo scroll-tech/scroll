@@ -14,27 +14,27 @@ Provide init, show version, rollback, check status services of DB
     ./build/bin/bridgehistoryapi-db-cli [command]
 ```
 
-### bridgehistoryapi-cross-msg-fetcher
+### bridgehistoryapi-fetcher
 
 Fetch the transactions from both L1 and L2
 ```
     cd ./bridge-history-api
-    make bridgehistoryapi-cross-msg-fetcher
-    ./build/bin/bridgehistoryapi-cross-msg-fetcher
+    make bridgehistoryapi-fetcher
+    ./build/bin/bridgehistoryapi-fetcher
 ```
 
-### bridgehistoryapi-server
+### bridgehistoryapi-api
 
 provides REST APIs. Please refer to the API details below.
 ```
     cd ./bridge-history-api
-    make bridgehistoryapi-server
-    ./build/bin/bridgehistoryapi-server
+    make bridgehistoryapi-api
+    ./build/bin/bridgehistoryapi-api
 ```
 
-## APIs provided by bridgehistoryapi-server
+## APIs provided by bridgehistoryapi-api
 
-assume `bridgehistoryapi-server` listening on `https://localhost:8080`
+assume `bridgehistoryapi-api` listening on `https://localhost:8080`
 can change this port thru modify `config.json`
 
 1. `/txs`

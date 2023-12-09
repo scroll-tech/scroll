@@ -25,6 +25,6 @@ reset-db-docker:
 	$(PWD)/build/bin/bridgehistoryapi-db-cli reset
 
 bridgehistoryapi-docker:
-	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-cross-message-fetcher:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-cross-message-fetcher.Dockerfile
-	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-server:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-server.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-fetcher:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-fetcher.Dockerfile
+	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-api:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-api.Dockerfile
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/bridgehistoryapi-db-cli:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/bridgehistoryapi-db-cli.Dockerfile
