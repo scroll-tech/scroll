@@ -12,7 +12,7 @@ const (
 	Success = 0
 	// InternalServerError shows a fatal error in the server
 	InternalServerError = 500
-	// ErrParameterInvalidNo is invalid params
+	// ErrParameterInvalidNo is an invalid params
 	ErrParameterInvalidNo = 40001
 	// ErrGetClaimablesFailure is getting all claimables txs error
 	ErrGetClaimablesFailure = 40002
