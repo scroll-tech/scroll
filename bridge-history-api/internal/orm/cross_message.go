@@ -185,7 +185,7 @@ func (c *CrossMessage) GetMessagesByTxHashes(ctx context.Context, txHashes []str
 	var messages []*CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
-	db = db.Where("l1_tx_hash IN (?) OR l2_tx_hash IN (?)", txHashes, txHashes)
+	db = db.Where("l1_tx_hash in (?) or l2_tx_hash in (?)", txHashes, txHashes)
 	if err := db.Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("failed to get L2 messages by tx hashes, tx hashes: %v, error: %w", txHashes, err)
 	}
