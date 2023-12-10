@@ -278,6 +278,7 @@ func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 				Message:    message.MessageData,
 				Proof:      common.Bytes2Hex(message.MerkleProof),
 				BatchIndex: strconv.FormatUint(message.BatchIndex, 10),
+				Claimable:  true,
 			}
 		}
 	}
