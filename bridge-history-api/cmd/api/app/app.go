@@ -28,8 +28,8 @@ func init() {
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "Scroll Bridge History Web Service"
-	app.Usage = "The Scroll Bridge History Web Service"
+	app.Name = "Scroll Bridge History API Web Service"
+	app.Usage = "The Scroll Bridge History API Web Service"
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
