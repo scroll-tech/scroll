@@ -28,8 +28,8 @@ func Route(router *gin.Engine, conf *config.Config, reg prometheus.Registerer) {
 	r := router.Group("api/")
 
 	r.GET("/txs", api.HistoryCtrler.GetTxsByAddress)
-	r.GET("/withdrawals", api.HistoryCtrler.GetL2WithdrawalsByAddress)
-	r.GET("/unclaimedwithdrawals", api.HistoryCtrler.GetL2UnclaimedWithdrawalsByAddress)
+	r.GET("/l2withdrawals", api.HistoryCtrler.GetL2WithdrawalsByAddress)
+	r.GET("/l2unclaimedwithdrawals", api.HistoryCtrler.GetL2UnclaimedWithdrawalsByAddress)
 
 	r.POST("/txsbyhashes", api.HistoryCtrler.PostQueryTxsByHashes)
 }
