@@ -29,7 +29,7 @@ func Route(router *gin.Engine, conf *config.Config, reg prometheus.Registerer) {
 
 	r.GET("/txs", api.HistoryCtrler.GetTxsByAddress)
 	r.GET("/withdrawals", api.HistoryCtrler.GetL2WithdrawalsByAddress)
-	r.GET("/claimablewithdrawals", api.HistoryCtrler.GetL2ClaimableWithdrawalsByAddress)
+	r.GET("/unclaimedwithdrawals", api.HistoryCtrler.GetL2UnclaimedWithdrawalsByAddress)
 
 	r.POST("/txsbyhashes", api.HistoryCtrler.PostQueryTxsByHashes)
 }

@@ -58,16 +58,16 @@ provides REST APIs. Please refer to the API details below.
 // @Router       /api/withdrawals [get]
 ```
 
-3. `/claimablewithdrawals`
+3. `/unclaimedwithdrawals`
 ```
-// @Summary    	 get all L2 claimable withdrawals under given address
+// @Summary    	 get all L2 unclaimed withdrawals under given address
 // @Accept       plain
 // @Produce      plain
 // @Param        address query string true "wallet address"
 // @Param        page_size query int true "page size"
 // @Param        page query int true "page"
 // @Success      200
-// @Router       /api/claimablewithdrawals [get]
+// @Router       /api/unclaimedwithdrawals [get]
 ```
 
 4. `/txsbyhashes`

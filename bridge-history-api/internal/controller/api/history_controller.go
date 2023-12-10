@@ -23,15 +23,15 @@ func NewHistoryController(db *gorm.DB, redis *redis.Client) *HistoryController {
 	}
 }
 
-// GetL2ClaimableWithdrawalsByAddress defines the http get method behavior
-func (c *HistoryController) GetL2ClaimableWithdrawalsByAddress(ctx *gin.Context) {
+// GetL2UnclaimedWithdrawalsByAddress defines the http get method behavior
+func (c *HistoryController) GetL2UnclaimedWithdrawalsByAddress(ctx *gin.Context) {
 	var req types.QueryByAddressRequest
 	if err := ctx.ShouldBind(&req); err != nil {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
 		return
 	}
 
-	pagedTxs, total, err := c.historyLogic.GetL2ClaimableWithdrawalsByAddress(ctx, req.Address, req.Page, req.PageSize)
+	pagedTxs, total, err := c.historyLogic.GetL2UnclaimedWithdrawalsByAddress(ctx, req.Address, req.Page, req.PageSize)
 	if err != nil {
 		types.RenderFailure(ctx, types.ErrGetL2ClaimableWithdrawalsError, err)
 		return

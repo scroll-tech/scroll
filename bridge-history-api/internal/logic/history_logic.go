@@ -46,8 +46,8 @@ func NewHistoryLogic(db *gorm.DB, redis *redis.Client) *HistoryLogic {
 	return logic
 }
 
-// GetL2ClaimableWithdrawalsByAddress gets all claimable withdrawal txs under given address.
-func (h *HistoryLogic) GetL2ClaimableWithdrawalsByAddress(ctx context.Context, address string, page, pageSize uint64) ([]*types.TxHistoryInfo, uint64, error) {
+// GetL2UnclaimedWithdrawalsByAddress gets all unclaimed withdrawal txs under given address.
+func (h *HistoryLogic) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, address string, page, pageSize uint64) ([]*types.TxHistoryInfo, uint64, error) {
 	cacheKey := cacheKeyPrefixL2ClaimableWithdrawalsByAddr + address
 	pagedTxs, total, isHit, err := h.getCachedTxsInfo(ctx, cacheKey, page, pageSize)
 	if err != nil {
@@ -56,17 +56,17 @@ func (h *HistoryLogic) GetL2ClaimableWithdrawalsByAddress(ctx context.Context, a
 	}
 
 	if isHit {
-		h.cacheMetrics.cacheHits.WithLabelValues("GetL2ClaimableWithdrawalsByAddress").Inc()
+		h.cacheMetrics.cacheHits.WithLabelValues("GetL2UnclaimedWithdrawalsByAddress").Inc()
 		log.Info("cache hit", "cache key", cacheKey)
 		return pagedTxs, total, nil
 	}
 
-	h.cacheMetrics.cacheMisses.WithLabelValues("GetL2ClaimableWithdrawalsByAddress").Inc()
+	h.cacheMetrics.cacheMisses.WithLabelValues("GetL2UnclaimedWithdrawalsByAddress").Inc()
 	log.Info("cache miss", "cache key", cacheKey)
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
 		var messages []*orm.CrossMessage
-		messages, err = h.crossMessageOrm.GetL2ClaimableWithdrawalsByAddress(ctx, address)
+		messages, err = h.crossMessageOrm.GetL2UnclaimedWithdrawalsByAddress(ctx, address)
 		if err != nil {
 			return nil, err
 		}
