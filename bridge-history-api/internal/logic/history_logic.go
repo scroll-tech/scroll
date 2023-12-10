@@ -291,22 +291,26 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 
 	total, err := h.redis.ZCard(ctx, cacheKey).Result()
 	if err != nil {
-		if err == redis.Nil {
-			// Key does not exist, cache miss.
-			return nil, 0, false, nil
-		}
 		log.Error("failed to get zcard result", "error", err)
 		return nil, 0, false, err
 	}
 
 	values, err := h.redis.ZRange(ctx, cacheKey, start, end).Result()
 	if err != nil {
-		if err == redis.Nil {
-			// Key does not exist, cache miss.
-			return nil, 0, false, nil
-		}
 		log.Error("failed to get zrange result", "error", err)
 		return nil, 0, false, err
+	}
+
+	// Perform a final check to confirm the existence of the key to ensure consistency between ZCard and ZRange data reads.
+	exists, err := h.redis.Exists(ctx, cacheKey).Result()
+	if err != nil {
+		log.Error("failed to check if key exists", "error", err)
+		return nil, 0, false, err
+	}
+
+	// If the key does not exist, we consider it a cache miss and return accordingly.
+	if exists == 0 {
+		return nil, 0, false, nil
 	}
 
 	var pagedTxs []*types.TxHistoryInfo
@@ -326,7 +330,12 @@ func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []
 	_, err := h.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
 		// The transactions are sorted, thus we set the score as their indices.
 		for i, tx := range txs {
-			if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(i), Member: tx}).Err(); err != nil {
+			txBytes, err := json.Marshal(tx)
+			if err != nil {
+				log.Error("failed to marshal transaction to json", "error", err)
+				return err
+			}
+			if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(i), Member: txBytes}).Err(); err != nil {
 				log.Error("failed to add transaction to sorted set", "error", err)
 				return err
 			}
