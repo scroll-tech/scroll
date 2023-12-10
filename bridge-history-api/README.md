@@ -34,9 +34,6 @@ provides REST APIs. Please refer to the API details below.
 
 ## APIs provided by bridgehistoryapi-api
 
-assume `bridgehistoryapi-api` listening on `https://localhost:8080`
-can change this port thru modify `config.json`
-
 1. `/txs`
 ```
 // @Summary    	 get all txs under given address
