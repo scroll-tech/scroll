@@ -309,6 +309,11 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 		return nil, 0, false, nil
 	}
 
+	// check if it's empty place holder.
+	if len(values) == 1 && values[0] == "empty_page" {
+		return nil, 0, true, nil
+	}
+
 	var pagedTxs []*types.TxHistoryInfo
 	for _, v := range values {
 		var tx types.TxHistoryInfo
@@ -324,16 +329,23 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 
 func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []*types.TxHistoryInfo) error {
 	_, err := h.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		// The transactions are sorted, thus we set the score as their indices.
-		for i, tx := range txs {
-			txBytes, err := json.Marshal(tx)
-			if err != nil {
-				log.Error("failed to marshal transaction to json", "error", err)
+		if len(txs) == 0 {
+			if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: 0, Member: "empty_page"}).Err(); err != nil {
+				log.Error("failed to add empty page indicator to sorted set", "error", err)
 				return err
 			}
-			if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(i), Member: txBytes}).Err(); err != nil {
-				log.Error("failed to add transaction to sorted set", "error", err)
-				return err
+		} else {
+			// The transactions are sorted, thus we set the score as their indices.
+			for i, tx := range txs {
+				txBytes, err := json.Marshal(tx)
+				if err != nil {
+					log.Error("failed to marshal transaction to json", "error", err)
+					return err
+				}
+				if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(i), Member: txBytes}).Err(); err != nil {
+					log.Error("failed to add transaction to sorted set", "error", err)
+					return err
+				}
 			}
 		}
 		if err := pipe.Expire(ctx, cacheKey, cacheKeyExpiredTime).Err(); err != nil {
