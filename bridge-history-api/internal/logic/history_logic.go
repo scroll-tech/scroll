@@ -295,21 +295,17 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 		return nil, 0, false, err
 	}
 
+	if total == 0 {
+		return nil, 0, false, nil
+	}
+
 	values, err := h.redis.ZRange(ctx, cacheKey, start, end).Result()
 	if err != nil {
 		log.Error("failed to get zrange result", "error", err)
 		return nil, 0, false, err
 	}
 
-	// Perform a final check to confirm the existence of the key to ensure consistency between ZCard and ZRange data reads.
-	exists, err := h.redis.Exists(ctx, cacheKey).Result()
-	if err != nil {
-		log.Error("failed to check if key exists", "error", err)
-		return nil, 0, false, err
-	}
-
-	// If the key does not exist, we consider it a cache miss and return accordingly.
-	if exists == 0 {
+	if len(values) == 0 {
 		return nil, 0, false, nil
 	}
 
