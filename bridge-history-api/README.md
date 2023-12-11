@@ -46,7 +46,7 @@ provides REST APIs. Please refer to the API details below.
 // @Router       /api/txs [get]
 ```
 
-2. `/l2withdrawals`
+2. `/l2/withdrawals`
 ```
 // @Summary    	 get all L2 withdrawals under given address
 // @Accept       plain
@@ -67,7 +67,7 @@ provides REST APIs. Please refer to the API details below.
 // @Param        page_size query int true "page size"
 // @Param        page query int true "page"
 // @Success      200
-// @Router       /api/l2unclaimedwithdrawals [get]
+// @Router       /api/l2/unclaimed/withdrawals [get]
 ```
 
 4. `/txsbyhashes`
