@@ -18,13 +18,17 @@ bridgehistoryapi-api:
 	go build -o $(PWD)/build/bin/bridgehistoryapi-api ./cmd/api
 
 redis-docker:
-	-docker stop bridgehistoryapi-redis
-	-docker rm bridgehistoryapi-redis
+	if docker ps -a -q -f name=bridgehistoryapi-redis | grep -q . ; then \
+		docker stop bridgehistoryapi-redis; \
+		docker rm bridgehistoryapi-redis; \
+	fi
 	docker run --name bridgehistoryapi-redis -d -p 6379:6379 redis:latest
 
 reset-db-docker:
-	-docker stop bridgehistoryapi-history-db
-	-docker rm bridgehistoryapi-history-db
+	if docker ps -a -q -f name=bridgehistoryapi-history-db | grep -q . ; then \
+		docker stop bridgehistoryapi-history-db; \
+		docker rm bridgehistoryapi-history-db; \
+	fi
 	docker run --name bridgehistoryapi-history-db -p 5444:5432 -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=test -d postgres
 	go build -o $(PWD)/build/bin/bridgehistoryapi-db-cli ./cmd/db_cli & sleep 2
 	$(PWD)/build/bin/bridgehistoryapi-db-cli reset
