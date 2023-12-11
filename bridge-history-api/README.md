@@ -14,30 +14,27 @@ Provide init, show version, rollback, check status services of DB
     ./build/bin/bridgehistoryapi-db-cli [command]
 ```
 
-### bridgehistoryapi-cross-msg-fetcher
+### bridgehistoryapi-fetcher
 
 Fetch the transactions from both L1 and L2
 ```
     cd ./bridge-history-api
-    make bridgehistoryapi-cross-msg-fetcher
-    ./build/bin/bridgehistoryapi-cross-msg-fetcher
+    make bridgehistoryapi-fetcher
+    ./build/bin/bridgehistoryapi-fetcher
 ```
 
-### bridgehistoryapi-server
+### bridgehistoryapi-api
 
 provides REST APIs. Please refer to the API details below.
 ```
     cd ./bridge-history-api
-    make bridgehistoryapi-server
-    ./build/bin/bridgehistoryapi-server
+    make bridgehistoryapi-api
+    ./build/bin/bridgehistoryapi-api
 ```
 
-## APIs provided by bridgehistoryapi-server
+## APIs provided by bridgehistoryapi-api
 
-assume `bridgehistoryapi-server` listening on `https://localhost:8080`
-can change this port thru modify `config.json`
-
-1. `/txs`
+1. `/api/txs`
 ```
 // @Summary    	 get all txs under given address
 // @Accept       plain
@@ -49,7 +46,7 @@ can change this port thru modify `config.json`
 // @Router       /api/txs [get]
 ```
 
-2. `/withdrawals`
+2. `/api/l2/withdrawals`
 ```
 // @Summary    	 get all L2 withdrawals under given address
 // @Accept       plain
@@ -58,22 +55,22 @@ can change this port thru modify `config.json`
 // @Param        page_size query int true "page size"
 // @Param        page query int true "page"
 // @Success      200
-// @Router       /api/withdrawals [get]
+// @Router       /api/l2/withdrawals [get]
 ```
 
-3. `/claimablewithdrawals`
+3. `/api/l2/unclaimed/withdrawals`
 ```
-// @Summary    	 get all L2 claimable withdrawals under given address
+// @Summary    	 get all L2 unclaimed withdrawals under given address
 // @Accept       plain
 // @Produce      plain
 // @Param        address query string true "wallet address"
 // @Param        page_size query int true "page size"
 // @Param        page query int true "page"
 // @Success      200
-// @Router       /api/claimablewithdrawals [get]
+// @Router       /api/l2/unclaimed/withdrawals [get]
 ```
 
-4. `/txsbyhashes`
+4. `/api/txsbyhashes`
 ```
 // @Summary    	 get txs by given tx hashes
 // @Accept       plain

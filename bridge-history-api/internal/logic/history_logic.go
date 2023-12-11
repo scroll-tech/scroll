@@ -46,8 +46,8 @@ func NewHistoryLogic(db *gorm.DB, redis *redis.Client) *HistoryLogic {
 	return logic
 }
 
-// GetL2ClaimableWithdrawalsByAddress gets all claimable withdrawal txs under given address.
-func (h *HistoryLogic) GetL2ClaimableWithdrawalsByAddress(ctx context.Context, address string, page, pageSize uint64) ([]*types.TxHistoryInfo, uint64, error) {
+// GetL2UnclaimedWithdrawalsByAddress gets all unclaimed withdrawal txs under given address.
+func (h *HistoryLogic) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, address string, page, pageSize uint64) ([]*types.TxHistoryInfo, uint64, error) {
 	cacheKey := cacheKeyPrefixL2ClaimableWithdrawalsByAddr + address
 	pagedTxs, total, isHit, err := h.getCachedTxsInfo(ctx, cacheKey, page, pageSize)
 	if err != nil {
@@ -56,17 +56,17 @@ func (h *HistoryLogic) GetL2ClaimableWithdrawalsByAddress(ctx context.Context, a
 	}
 
 	if isHit {
-		h.cacheMetrics.cacheHits.WithLabelValues("GetL2ClaimableWithdrawalsByAddress").Inc()
+		h.cacheMetrics.cacheHits.WithLabelValues("GetL2UnclaimedWithdrawalsByAddress").Inc()
 		log.Info("cache hit", "cache key", cacheKey)
 		return pagedTxs, total, nil
 	}
 
-	h.cacheMetrics.cacheMisses.WithLabelValues("GetL2ClaimableWithdrawalsByAddress").Inc()
+	h.cacheMetrics.cacheMisses.WithLabelValues("GetL2UnclaimedWithdrawalsByAddress").Inc()
 	log.Info("cache miss", "cache key", cacheKey)
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
 		var messages []*orm.CrossMessage
-		messages, err = h.crossMessageOrm.GetL2ClaimableWithdrawalsByAddress(ctx, address)
+		messages, err = h.crossMessageOrm.GetL2UnclaimedWithdrawalsByAddress(ctx, address)
 		if err != nil {
 			return nil, err
 		}
@@ -278,6 +278,7 @@ func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 				Message:    message.MessageData,
 				Proof:      common.Bytes2Hex(message.MerkleProof),
 				BatchIndex: strconv.FormatUint(message.BatchIndex, 10),
+				Claimable:  true,
 			}
 		}
 	}
@@ -285,27 +286,32 @@ func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 }
 
 func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pageNum, pageSize uint64) ([]*types.TxHistoryInfo, uint64, bool, error) {
-	start := int64(pageNum * pageSize)
-	end := int64((pageNum+1)*pageSize - 1)
+	start := int64((pageNum - 1) * pageSize)
+	end := start + int64(pageSize)
 
 	total, err := h.redis.ZCard(ctx, cacheKey).Result()
 	if err != nil {
-		if err == redis.Nil {
-			// Key does not exist, cache miss.
-			return nil, 0, false, nil
-		}
 		log.Error("failed to get zcard result", "error", err)
 		return nil, 0, false, err
 	}
 
+	if total == 0 {
+		return nil, 0, false, nil
+	}
+
 	values, err := h.redis.ZRange(ctx, cacheKey, start, end).Result()
 	if err != nil {
-		if err == redis.Nil {
-			// Key does not exist, cache miss.
-			return nil, 0, false, nil
-		}
 		log.Error("failed to get zrange result", "error", err)
 		return nil, 0, false, err
+	}
+
+	if len(values) == 0 {
+		return nil, 0, false, nil
+	}
+
+	// check if it's empty place holder.
+	if len(values) == 1 && values[0] == "empty_page" {
+		return nil, 0, true, nil
 	}
 
 	var pagedTxs []*types.TxHistoryInfo
@@ -323,11 +329,23 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 
 func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []*types.TxHistoryInfo) error {
 	_, err := h.redis.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-		// The transactions are sorted, thus we set the score as their indices.
-		for i, tx := range txs {
-			if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(i), Member: tx}).Err(); err != nil {
-				log.Error("failed to add transaction to sorted set", "error", err)
+		if len(txs) == 0 {
+			if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: 0, Member: "empty_page"}).Err(); err != nil {
+				log.Error("failed to add empty page indicator to sorted set", "error", err)
 				return err
+			}
+		} else {
+			// The transactions are sorted, thus we set the score as their indices.
+			for i, tx := range txs {
+				txBytes, err := json.Marshal(tx)
+				if err != nil {
+					log.Error("failed to marshal transaction to json", "error", err)
+					return err
+				}
+				if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(i), Member: txBytes}).Err(); err != nil {
+					log.Error("failed to add transaction to sorted set", "error", err)
+					return err
+				}
 			}
 		}
 		if err := pipe.Expire(ctx, cacheKey, cacheKeyExpiredTime).Err(); err != nil {

@@ -28,15 +28,10 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
-			lastMessage.L1BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeETH)
-			lastMessage.L1TxHash = vlog.TxHash.String()
 			lastMessage.TokenAmounts = event.Amount.String()
-			lastMessage.MessageType = int(orm.MessageTypeL1SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L1DepositERC20Sig:
 			event := backendabi.ERC20MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL1ERC20GatewayABI, &event, "DepositERC20", vlog)
@@ -45,17 +40,12 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
-			lastMessage.L1BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC20)
-			lastMessage.L1TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenAmounts = event.Amount.String()
-			lastMessage.MessageType = int(orm.MessageTypeL1SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L1DepositERC721Sig:
 			event := backendabi.ERC721MessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ERC721GatewayABI, &event, "DepositERC721", vlog); err != nil {
@@ -63,17 +53,12 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
-			lastMessage.L1BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC721)
-			lastMessage.L1TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = event.TokenID.String()
-			lastMessage.MessageType = int(orm.MessageTypeL1SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L1BatchDepositERC721Sig:
 			event := backendabi.BatchERC721MessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ERC721GatewayABI, &event, "BatchDepositERC721", vlog); err != nil {
@@ -81,17 +66,12 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
-			lastMessage.L1BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC721)
-			lastMessage.L1TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = convertBigIntArrayToString(event.TokenIDs)
-			lastMessage.MessageType = int(orm.MessageTypeL1SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L1DepositERC1155Sig:
 			event := backendabi.ERC1155MessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ERC1155GatewayABI, &event, "DepositERC1155", vlog); err != nil {
@@ -99,18 +79,13 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
-			lastMessage.L1BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC1155)
-			lastMessage.L1TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = event.TokenID.String()
 			lastMessage.TokenAmounts = event.Amount.String()
-			lastMessage.MessageType = int(orm.MessageTypeL1SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L1BatchDepositERC1155Sig:
 			event := backendabi.BatchERC1155MessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ERC1155GatewayABI, &event, "BatchDepositERC1155", vlog); err != nil {
@@ -118,18 +93,13 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
-			lastMessage.L1BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC1155)
-			lastMessage.L1TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = convertBigIntArrayToString(event.TokenIDs)
 			lastMessage.TokenAmounts = convertBigIntArrayToString(event.TokenAmounts)
-			lastMessage.MessageType = int(orm.MessageTypeL1SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L1SentMessageEventSig:
 			event := backendabi.L1SentMessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ScrollMessengerABI, &event, "SentMessage", vlog); err != nil {
@@ -139,15 +109,17 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 			// Use this messageHash as next deposit event's messageHash
 			messageHash := utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message).String()
 			l1DepositMessages = append(l1DepositMessages, &orm.CrossMessage{
-				L1BlockNumber: vlog.BlockNumber,
-				Sender:        event.Sender.String(),
-				Receiver:      event.Target.String(),
-				TokenType:     int(orm.TokenTypeETH),
-				L1TxHash:      vlog.TxHash.String(),
-				TokenAmounts:  event.Value.String(),
-				MessageNonce:  event.MessageNonce.Uint64(),
-				MessageType:   int(orm.MessageTypeL1SentMessage),
-				MessageHash:   messageHash,
+				L1BlockNumber:  vlog.BlockNumber,
+				Sender:         event.Sender.String(),
+				Receiver:       event.Target.String(),
+				TokenType:      int(orm.TokenTypeETH),
+				L1TxHash:       vlog.TxHash.String(),
+				TokenAmounts:   event.Value.String(),
+				MessageNonce:   event.MessageNonce.Uint64(),
+				MessageType:    int(orm.MessageTypeL1SentMessage),
+				TxStatus:       int(orm.TxStatusTypeSent),
+				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
+				MessageHash:    messageHash,
 			})
 		case backendabi.L1RelayedMessageEventSig:
 			event := backendabi.L1RelayedMessageEvent{}
@@ -293,15 +265,10 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
-			lastMessage.L2BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeETH)
-			lastMessage.L2TxHash = vlog.TxHash.String()
 			lastMessage.TokenAmounts = event.Amount.String()
-			lastMessage.MessageType = int(orm.MessageTypeL2SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L2WithdrawERC20Sig:
 			event := backendabi.ERC20MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC20GatewayABI, &event, "WithdrawERC20", vlog)
@@ -310,17 +277,12 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
-			lastMessage.L2BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC20)
-			lastMessage.L2TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenAmounts = event.Amount.String()
-			lastMessage.MessageType = int(orm.MessageTypeL2SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L2WithdrawERC721Sig:
 			event := backendabi.ERC721MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC721GatewayABI, &event, "WithdrawERC721", vlog)
@@ -329,17 +291,12 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
-			lastMessage.L2BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC721)
-			lastMessage.L2TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = event.TokenID.String()
-			lastMessage.MessageType = int(orm.MessageTypeL2SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L2BatchWithdrawERC721Sig:
 			event := backendabi.BatchERC721MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC721GatewayABI, &event, "BatchWithdrawERC721", vlog)
@@ -348,17 +305,12 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
-			lastMessage.L2BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC721)
-			lastMessage.L2TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = convertBigIntArrayToString(event.TokenIDs)
-			lastMessage.MessageType = int(orm.MessageTypeL2SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L2WithdrawERC1155Sig:
 			event := backendabi.ERC1155MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC1155GatewayABI, &event, "WithdrawERC1155", vlog)
@@ -367,18 +319,13 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
-			lastMessage.L2BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC1155)
-			lastMessage.L2TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = event.TokenID.String()
 			lastMessage.TokenAmounts = event.Amount.String()
-			lastMessage.MessageType = int(orm.MessageTypeL2SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L2BatchWithdrawERC1155Sig:
 			event := backendabi.BatchERC1155MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC1155GatewayABI, &event, "BatchWithdrawERC1155", vlog)
@@ -387,18 +334,13 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
-			lastMessage.L2BlockNumber = vlog.BlockNumber
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
 			lastMessage.TokenType = int(orm.TokenTypeERC1155)
-			lastMessage.L2TxHash = vlog.TxHash.String()
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = convertBigIntArrayToString(event.TokenIDs)
 			lastMessage.TokenAmounts = convertBigIntArrayToString(event.TokenAmounts)
-			lastMessage.MessageType = int(orm.MessageTypeL2SentMessage)
-			lastMessage.TxStatus = int(orm.TxStatusTypeSent)
-			lastMessage.BlockTimestamp = blockTimestampsMap[vlog.BlockNumber]
 		case backendabi.L2SentMessageEventSig:
 			event := backendabi.L2SentMessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ScrollMessengerABI, &event, "SentMessage", vlog)
@@ -409,17 +351,21 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 			// Use this messageHash as next deposit event's messageHash
 			messageHash := utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message)
 			l2WithdrawMessages = append(l2WithdrawMessages, &orm.CrossMessage{
-				MessageHash:  messageHash.String(),
-				Sender:       event.Sender.String(),
-				Receiver:     event.Target.String(),
-				TokenType:    int(orm.TokenTypeETH),
-				L2TxHash:     vlog.TxHash.String(),
-				TokenAmounts: event.Value.String(),
-				MessageFrom:  event.Sender.String(),
-				MessageTo:    event.Target.String(),
-				MessageValue: event.Value.String(),
-				MessageNonce: event.MessageNonce.Uint64(),
-				MessageData:  hexutil.Encode(event.Message),
+				MessageHash:    messageHash.String(),
+				Sender:         event.Sender.String(),
+				Receiver:       event.Target.String(),
+				TokenType:      int(orm.TokenTypeETH),
+				L2TxHash:       vlog.TxHash.String(),
+				TokenAmounts:   event.Value.String(),
+				MessageFrom:    event.Sender.String(),
+				MessageTo:      event.Target.String(),
+				MessageValue:   event.Value.String(),
+				MessageNonce:   event.MessageNonce.Uint64(),
+				MessageData:    hexutil.Encode(event.Message),
+				MessageType:    int(orm.MessageTypeL2SentMessage),
+				TxStatus:       int(orm.TxStatusTypeSent),
+				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
+				L2BlockNumber:  vlog.BlockNumber,
 			})
 		case backendabi.L2RelayedMessageEventSig:
 			event := backendabi.L2RelayedMessageEvent{}

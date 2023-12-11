@@ -30,10 +30,11 @@ type L2MessageFetcher struct {
 	crossMessageOrm *orm.CrossMessage
 	client          *ethclient.Client
 	addressList     []common.Address
+	syncInfo        *SyncInfo
 }
 
 // NewL2MessageFetcher creates a new L2MessageFetcher instance.
-func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) (*L2MessageFetcher, error) {
+func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) (*L2MessageFetcher, error) {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
 
@@ -64,6 +65,7 @@ func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.
 		crossMessageOrm: orm.NewCrossMessage(db),
 		client:          client,
 		addressList:     addressList,
+		syncInfo:        syncInfo,
 	}, nil
 }
 
@@ -111,6 +113,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			log.Error("failed to fetch and save L2 events", "from", from, "to", to, "err", err)
 			return
 		}
+		c.syncInfo.SetL2ScanHeight(to)
 	}
 }
 
@@ -168,7 +171,7 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 				// Check if the transaction failed
 				if receipt.Status == types.ReceiptStatusFailed {
 					l2RevertedRelayedMessages = append(l2RevertedRelayedMessages, &orm.CrossMessage{
-						MessageHash:   common.Bytes2Hex(crypto.Keccak256(tx.AsL1MessageTx().Data)),
+						MessageHash:   "0x" + common.Bytes2Hex(crypto.Keccak256(tx.AsL1MessageTx().Data)),
 						L2TxHash:      tx.Hash().String(),
 						TxStatus:      int(orm.TxStatusTypeRelayedFailed),
 						L2BlockNumber: receipt.BlockNumber.Uint64(),

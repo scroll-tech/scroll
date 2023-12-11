@@ -162,46 +162,27 @@ func (c *CrossMessage) GetLatestL2Withdrawal(ctx context.Context) (*CrossMessage
 	return &message, nil
 }
 
-// GetLatestFinalizedL2WithdrawalBlockHeight returns the latest finalized L2 sent message block height from the database.
-func (c *CrossMessage) GetLatestFinalizedL2WithdrawalBlockHeight(ctx context.Context) (uint64, error) {
-	var message CrossMessage
-	db := c.db.WithContext(ctx)
-	db = db.Model(&CrossMessage{})
-	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
-	db = db.Where("rollup_status", RollupStatusTypeFinalized)
-	db = db.Where("tx_status != ?", TxStatusTypeSentFailed)
-	db = db.Order("message_nonce desc")
-	if err := db.First(&message).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("failed to get latest L2 sent message event, error: %w", err)
-	}
-	return message.L2BlockNumber, nil
-}
-
 // GetMessagesByTxHashes retrieves all cross messages from the database that match the provided transaction hashes.
 func (c *CrossMessage) GetMessagesByTxHashes(ctx context.Context, txHashes []string) ([]*CrossMessage, error) {
 	var messages []*CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
-	db = db.Where("l1_tx_hash IN (?) OR l2_tx_hash IN (?)", txHashes, txHashes)
+	db = db.Where("l1_tx_hash in (?) or l2_tx_hash in (?)", txHashes, txHashes)
 	if err := db.Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("failed to get L2 messages by tx hashes, tx hashes: %v, error: %w", txHashes, err)
 	}
 	return messages, nil
 }
 
-// GetL2ClaimableWithdrawalsByAddress retrieves all L2 claimable withdrawal messages for a given sender address.
-func (c *CrossMessage) GetL2ClaimableWithdrawalsByAddress(ctx context.Context, sender string) ([]*CrossMessage, error) {
+// GetL2UnclaimedWithdrawalsByAddress retrieves all L2 unclaimed withdrawal messages for a given sender address.
+func (c *CrossMessage) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, sender string) ([]*CrossMessage, error) {
 	var messages []*CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
 	db = db.Where("tx_status = ?", TxStatusTypeSent)
-	db = db.Where("rollup_status = ?", RollupStatusTypeFinalized)
 	db = db.Where("sender = ?", sender)
-	db = db.Order("block_timestamp DESC")
+	db = db.Order("block_timestamp desc")
 	db = db.Limit(500)
 	if err := db.Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("failed to get L2 claimable withdrawal messages by sender address, sender: %v, error: %w", sender, err)
@@ -216,7 +197,7 @@ func (c *CrossMessage) GetL2WithdrawalsByAddress(ctx context.Context, sender str
 	db = db.Model(&CrossMessage{})
 	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
 	db = db.Where("sender = ?", sender)
-	db = db.Order("block_timestamp DESC")
+	db = db.Order("block_timestamp desc")
 	db = db.Limit(500)
 	if err := db.Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("failed to get L2 withdrawal messages by sender address, sender: %v, error: %w", sender, err)
@@ -230,7 +211,7 @@ func (c *CrossMessage) GetTxsByAddress(ctx context.Context, sender string) ([]*C
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	db = db.Where("sender = ?", sender)
-	db = db.Order("block_timestamp DESC")
+	db = db.Order("block_timestamp desc")
 	db = db.Limit(500)
 	if err := db.Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("failed to get all txs by sender address, sender: %v, error: %w", sender, err)

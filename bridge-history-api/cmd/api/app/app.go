@@ -28,8 +28,8 @@ func init() {
 	app = cli.NewApp()
 
 	app.Action = action
-	app.Name = "Scroll Bridge History Web Service"
-	app.Usage = "The Scroll Bridge History Web Service"
+	app.Name = "Scroll Bridge History API Web Service"
+	app.Usage = "The Scroll Bridge History API Web Service"
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Commands = []*cli.Command{}
 
@@ -66,7 +66,7 @@ func action(ctx *cli.Context) error {
 	route.Route(router, cfg, registry)
 
 	go func() {
-		port := utils.ServicePortFlag.Value
+		port := ctx.Int(utils.ServicePortFlag.Name)
 		if runServerErr := router.Run(fmt.Sprintf(":%d", port)); runServerErr != nil {
 			log.Crit("run http server failure", "error", runServerErr)
 		}

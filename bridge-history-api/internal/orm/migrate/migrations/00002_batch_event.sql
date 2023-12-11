@@ -8,6 +8,7 @@ create table batch_event
     batch_hash          VARCHAR       NOT NULL,
     start_block_number  BIGINT        NOT NULL,
     end_block_number    BIGINT        NOT NULL,
+    update_status       SMALLINT      NOT NULL,
     created_at          TIMESTAMP(0)  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP(0)  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at          TIMESTAMP(0)  DEFAULT NULL
