@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"sync"
 	"time"
 
@@ -488,7 +489,7 @@ func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
 	// Check batch status before send `finalizeBatch` tx.
 	if r.cfg.ChainMonitor.Enabled {
 		var batchStatus bool
-		batchStatus, err := r.getBatchStatusByIndex(batch.Index)
+		batchStatus, err := r.getBatchStatusByIndex(batch)
 		if err != nil {
 			r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
 			log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
@@ -602,9 +603,32 @@ type batchStatusResponse struct {
 	Data    bool   `json:"data"`
 }
 
-func (r *Layer2Relayer) getBatchStatusByIndex(batchIndex uint64) (bool, error) {
+func (r *Layer2Relayer) getBatchStatusByIndex(batch *orm.Batch) (bool, error) {
+	chunks, getChunkErr := r.chunkOrm.GetChunksInRange(r.ctx, batch.StartChunkIndex, batch.EndChunkIndex)
+	if getChunkErr != nil {
+		log.Error("Layer2Relayer.getBatchStatusByIndex get chunks range failed", "startChunkIndex", batch.StartChunkIndex, "endChunkIndex", batch.EndChunkIndex, "err", getChunkErr)
+		return false, getChunkErr
+	}
+	if len(chunks) == 0 {
+		log.Error("Layer2Relayer.getBatchStatusByIndex get empty chunks", "startChunkIndex", batch.StartChunkIndex, "endChunkIndex", batch.EndChunkIndex)
+		return false, fmt.Errorf("startChunksIndex:%d endChunkIndex:%d get empty chunks", batch.StartChunkIndex, batch.EndChunkIndex)
+	}
+
+	sort.Slice(chunks, func(i, j int) bool {
+		return chunks[i].StartBlockNumber < chunks[j].StartBlockNumber
+	})
+
+	startBlockNum := chunks[0].StartBlockNumber
+	endBlockNum := chunks[len(chunks)-1].EndBlockNumber
 	var response batchStatusResponse
-	resp, err := r.chainMonitorClient.R().SetResult(&response).Get(fmt.Sprintf("%s/v1/batch_status?batch_index=%d", r.cfg.ChainMonitor.BaseURL, batchIndex))
+	resp, err := r.chainMonitorClient.R().
+		SetQueryParams(map[string]string{
+			"batch_index":        fmt.Sprintf("%d", batch.Index),
+			"start_block_number": fmt.Sprintf("%d", startBlockNum),
+			"end_block_number":   fmt.Sprintf("%d", endBlockNum),
+		}).
+		SetResult(&response).
+		Get(fmt.Sprintf("%s/v1/batch_status", r.cfg.ChainMonitor.BaseURL))
 	if err != nil {
 		return false, err
 	}

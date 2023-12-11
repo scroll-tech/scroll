@@ -15,7 +15,7 @@ var verbose bool
 
 func init() {
 	v := os.Getenv("LOG_DOCKER")
-	if v == "true" || v == "TRUE" {
+	if strings.ToLower(v) == "true" {
 		verbose = true
 	}
 }
