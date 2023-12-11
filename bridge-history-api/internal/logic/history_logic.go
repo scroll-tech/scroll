@@ -287,7 +287,7 @@ func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 
 func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pageNum, pageSize uint64) ([]*types.TxHistoryInfo, uint64, bool, error) {
 	start := int64((pageNum - 1) * pageSize)
-	end := int64(pageNum*pageSize - 1)
+	end := start + int64(pageSize)
 
 	total, err := h.redis.ZCard(ctx, cacheKey).Result()
 	if err != nil {
