@@ -3,6 +3,11 @@
 pragma solidity ^0.8.16;
 
 interface IScrollMessenger {
+    /***********
+     * Errors *
+     ***********/
+    error ErrZeroAddress();
+
     /**********
      * Events *
      **********/
