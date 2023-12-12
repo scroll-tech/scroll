@@ -127,13 +127,13 @@ func (c *L1MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 	log.Info("fetch and save L1 events", "from", from, "to", to)
 	var l1FailedGatewayRouterTxs []*orm.CrossMessage
 	blockTimestampsMap := make(map[uint64]uint64)
-	for number := from; number <= to; number++ {
-		blockNumber := new(big.Int).SetUint64(number)
-		block, err := c.client.BlockByNumber(ctx, blockNumber)
-		if err != nil {
-			log.Error("failed to get block by number", "number", blockNumber.String(), "err", err)
-			return err
-		}
+	blocks, err := utils.GetL1BlocksInRange(c.ctx, c.client, from, to)
+	if err != nil {
+		log.Error("failed to get L1 blocks in range", "from", from, "to", to, "err", err)
+		return err
+	}
+	for i := from; i <= to; i++ {
+		block := blocks[i-from]
 		blockTimestampsMap[block.NumberU64()] = block.Time()
 
 		for _, tx := range block.Transactions() {
@@ -143,7 +143,8 @@ func (c *L1MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 			}
 			toAddress := to.String()
 			if toAddress == c.cfg.GatewayRouterAddr {
-				receipt, err := c.client.TransactionReceipt(ctx, tx.Hash())
+				var receipt *types.Receipt
+				receipt, err = c.client.TransactionReceipt(ctx, tx.Hash())
 				if err != nil {
 					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", err)
 					return err
@@ -152,7 +153,8 @@ func (c *L1MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 				// Check if the transaction failed
 				if receipt.Status == types.ReceiptStatusFailed {
 					signer := types.NewLondonSigner(new(big.Int).SetUint64(tx.ChainId().Uint64()))
-					sender, err := signer.Sender(tx)
+					var sender common.Address
+					sender, err = signer.Sender(tx)
 					if err != nil {
 						log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", err)
 						return err

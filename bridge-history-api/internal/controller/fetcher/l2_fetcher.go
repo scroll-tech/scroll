@@ -12,7 +12,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
@@ -120,13 +119,13 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 	var l2FailedGatewayRouterTxs []*orm.CrossMessage
 	var l2RevertedRelayedMessages []*orm.CrossMessage
 	blockTimestampsMap := make(map[uint64]uint64)
-	for number := from; number <= to; number++ {
-		blockNumber := new(big.Int).SetUint64(number)
-		block, err := c.client.GetBlockByNumberOrHash(ctx, rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(number)))
-		if err != nil {
-			log.Error("failed to get block by number", "number", blockNumber.String(), "err", err)
-			return err
-		}
+	blocks, err := utils.GetL2BlocksInRange(c.ctx, c.client, from, to)
+	if err != nil {
+		log.Error("failed to get L2 blocks in range", "from", from, "to", to, "err", err)
+		return err
+	}
+	for i := from; i <= to; i++ {
+		block := blocks[i-from]
 		blockTimestampsMap[block.NumberU64()] = block.Time()
 
 		for _, tx := range block.Transactions() {
@@ -136,7 +135,8 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 			}
 			toAddress := to.String()
 			if toAddress == c.cfg.GatewayRouterAddr {
-				receipt, err := c.client.TransactionReceipt(ctx, tx.Hash())
+				var receipt *types.Receipt
+				receipt, err = c.client.TransactionReceipt(ctx, tx.Hash())
 				if err != nil {
 					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", err)
 					return err
@@ -145,7 +145,8 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 				// Check if the transaction failed
 				if receipt.Status == types.ReceiptStatusFailed {
 					signer := types.NewLondonSigner(new(big.Int).SetUint64(tx.ChainId().Uint64()))
-					sender, err := signer.Sender(tx)
+					var sender common.Address
+					sender, err = signer.Sender(tx)
 					if err != nil {
 						log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", err)
 						return err
@@ -162,7 +163,8 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 				}
 			}
 			if tx.Type() == types.L1MessageTxType {
-				receipt, err := c.client.TransactionReceipt(ctx, tx.Hash())
+				var receipt *types.Receipt
+				receipt, err = c.client.TransactionReceipt(ctx, tx.Hash())
 				if err != nil {
 					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", err)
 					return err
