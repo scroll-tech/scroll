@@ -4,15 +4,21 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum"
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
+	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	bridgeAbi "scroll-tech/rollup/abi"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -48,8 +54,12 @@ type ChunkProposer struct {
 	ctx context.Context
 	db  *gorm.DB
 
-	chunkOrm   *orm.Chunk
-	l2BlockOrm *orm.L2Block
+	*ethclient.Client
+	l1ViewOracleAddress common.Address
+
+	chunkOrm        *orm.Chunk
+	l2BlockOrm      *orm.L2Block
+	l1ViewOracleABI *abi.ABI
 
 	maxBlockNumPerChunk             uint64
 	maxTxNumPerChunk                uint64
@@ -74,17 +84,25 @@ type ChunkProposer struct {
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
-func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
+func NewChunkProposer(ctx context.Context, client *ethclient.Client, cfg *config.ChunkProposerConfig, l1ViewOracleAddress common.Address, db *gorm.DB, reg prometheus.Registerer) (*ChunkProposer, error) {
+	if l1ViewOracleAddress == (common.Address{}) {
+		return nil, errors.New("must pass non-zero l1ViewOracleAddress to BridgeClient")
+	}
+
 	log.Debug("new chunk proposer",
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
 		"maxL1CommitCalldataSizePerChunk", cfg.MaxL1CommitCalldataSizePerChunk,
 		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
 		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
-		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier)
+		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
+	)
 
 	return &ChunkProposer{
 		ctx:                             ctx,
+		Client:                          client,
+		l1ViewOracleAddress:             l1ViewOracleAddress,
+		l1ViewOracleABI:                 bridgeAbi.L1ViewOracleABI,
 		db:                              db,
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
@@ -144,33 +162,39 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 			Name: "rollup_propose_chunk_blocks_propose_not_enough_total",
 			Help: "Total number of chunk block propose not enough",
 		}),
-	}
+	}, nil
 }
 
 // TryProposeChunk tries to propose a new chunk.
 func (p *ChunkProposer) TryProposeChunk() {
+	parentChunk, err := p.chunkOrm.GetLatestChunk(p.ctx)
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+		log.Error("failed to get latest chunk", "err", err)
+		return
+	}
+
 	p.chunkProposerCircleTotal.Inc()
-	proposedChunk, err := p.proposeChunk()
+	proposedChunk, err := p.proposeChunk(parentChunk)
 	if err != nil {
 		p.proposeChunkFailureTotal.Inc()
 		log.Error("propose new chunk failed", "err", err)
 		return
 	}
 
-	if err := p.updateChunkInfoInDB(proposedChunk); err != nil {
+	if err := p.updateChunkInfoInDB(parentChunk, proposedChunk); err != nil {
 		p.proposeChunkUpdateInfoFailureTotal.Inc()
 		log.Error("update chunk info in orm failed", "err", err)
 	}
 }
 
-func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
+func (p *ChunkProposer) updateChunkInfoInDB(parentChunk *orm.Chunk, chunk *types.Chunk) error {
 	if chunk == nil {
 		return nil
 	}
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, dbTX)
+		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, parentChunk, chunk, dbTX)
 		if err != nil {
 			log.Warn("ChunkProposer.InsertChunk failed", "chunk hash", chunk.Hash)
 			return err
@@ -184,7 +208,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	return err
 }
 
-func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
+func (p *ChunkProposer) proposeChunk(parentChunk *orm.Chunk) (*types.Chunk, error) {
 	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
 	if err != nil {
 		return nil, err
@@ -206,6 +230,24 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	var totalL1CommitCalldataSize uint64
 	var totalL1CommitGas uint64
 	crc := chunkRowConsumption{}
+	lastAppliedL1Block := blocks[len(blocks)-1].LastAppliedL1Block
+	var l1BlockRangeHashFrom uint64
+
+	if parentChunk != nil {
+		l1BlockRangeHashFrom = parentChunk.LastAppliedL1Block
+		if l1BlockRangeHashFrom != 0 {
+			l1BlockRangeHashFrom++
+		}
+	}
+
+	l1BlockRangeHash, err := p.GetL1BlockRangeHash(p.ctx, l1BlockRangeHashFrom, lastAppliedL1Block)
+	if err != nil {
+		log.Error("failed to get l1 block range hash", "from", l1BlockRangeHashFrom, "to", lastAppliedL1Block, "err", err)
+		return nil, fmt.Errorf("chunk-proposer failed to get l1 block range hash error: %w", err)
+	}
+
+	chunk.LastAppliedL1Block = lastAppliedL1Block
+	chunk.L1BlockRangeHash = *l1BlockRangeHash
 
 	for i, block := range blocks {
 		// metric values
@@ -321,4 +363,44 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	log.Debug("pending blocks do not reach one of the constraints or contain a timeout block")
 	p.chunkBlocksProposeNotEnoughTotal.Inc()
 	return nil, nil
+}
+
+// GetL1BlockRangeHash gets l1 block range hash from l1 view oracle smart contract.
+func (p *ChunkProposer) GetL1BlockRangeHash(ctx context.Context, from uint64, to uint64) (*common.Hash, error) {
+	input, err := p.l1ViewOracleABI.Pack("blockRangeHash", big.NewInt(int64(from)), big.NewInt(int64(to)))
+	if err != nil {
+		return nil, err
+	}
+
+	output, err := p.Client.CallContract(ctx, ethereum.CallMsg{
+		To:   &p.l1ViewOracleAddress,
+		Data: input,
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(output) == 0 {
+		if code, err := p.Client.CodeAt(ctx, p.l1ViewOracleAddress, nil); err != nil {
+			return nil, err
+		} else if len(code) == 0 {
+			return nil, fmt.Errorf(
+				"l1 view oracle contract unknown, address: %v",
+				p.l1ViewOracleAddress,
+			)
+		}
+	}
+
+	result, err := p.l1ViewOracleABI.Unpack("blockRangeHash", output)
+	if err != nil {
+		return nil, err
+	}
+
+	b, ok := result[0].([32]byte)
+	if !ok {
+		return nil, fmt.Errorf("could not cast block range hash to [32]byte")
+	}
+
+	l1BlockRangeHash := common.Hash(b)
+
+	return &l1BlockRangeHash, nil
 }

@@ -34,6 +34,9 @@ type Batch struct {
 	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
+	LastAppliedL1Block uint64      `json:"last_applied_l1_block"`
+	L1BlockRangeHash   string `json:"l1_block_range_hash"`
+
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
 	ProvingStatus     int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -289,6 +292,8 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*types.Chunk, batchMet
 		OracleStatus:              int16(types.GasOraclePending),
 		TotalL1CommitGas:          batchMeta.TotalL1CommitGas,
 		TotalL1CommitCalldataSize: batchMeta.TotalL1CommitCalldataSize,
+		LastAppliedL1Block:        chunks[numChunks-1].LastAppliedL1Block,
+		L1BlockRangeHash:          batchHeader.L1BlockRangeHash().Hex(),
 	}
 
 	db := o.db

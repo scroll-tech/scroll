@@ -84,6 +84,7 @@ SCROLL_L2_RPC="http://localhost:8545"
 L1_DEPLOYER_PRIVATE_KEY="0x0000000000000000000000000000000000000000000000000000000000000001"
 L2_DEPLOYER_PRIVATE_KEY="0x0000000000000000000000000000000000000000000000000000000000000002"
 L1_ROLLUP_OPERATOR_ADDR="0x1111111111111111111111111111111111111111"
+L1_BLOCKS_FIRST_APPLIED="1"
 
 $ source .env
 
@@ -101,4 +102,14 @@ $ source .env.l2_addresses
 # Initialize contracts
 $ forge script scripts/foundry/InitializeL1BridgeContracts.s.sol:InitializeL1BridgeContracts --rpc-url $SCROLL_L1_RPC --broadcast
 $ forge script scripts/foundry/InitializeL2BridgeContracts.s.sol:InitializeL2BridgeContracts --rpc-url $SCROLL_L2_RPC --broadcast
+
+# Deploy L2 L1Blocks contract
+$ OUTPUT=$(forge script scripts/foundry/DeployL2L1BlocksContract.s.sol:DeployL2L1BlocksContract --rpc-url $SCROLL_L2_RPC --broadcast); echo $OUTPUT
+$ echo "$OUTPUT" | grep -Eo "(L2)_.*" > .env.l2_addresses
+$ source .env.l2_addresses
+
+# Deploy L1 ViewOracle contract
+$ OUTPUT=$(forge script scripts/foundry/DeployL1ViewOracle.s.sol:DeployL1ViewOracle --rpc-url $SCROLL_L1_RPC --broadcast); echo $OUTPUT
+$ echo "$OUTPUT" | grep -Eo "(L1)_.*" > .env.l1_addresses
+$ source .env.l1_addresses
 ```

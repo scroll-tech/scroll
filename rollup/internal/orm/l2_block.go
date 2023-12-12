@@ -19,17 +19,18 @@ type L2Block struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	// block
-	Number         uint64 `json:"number" gorm:"number"`
-	Hash           string `json:"hash" gorm:"hash"`
-	ParentHash     string `json:"parent_hash" gorm:"parent_hash"`
-	Header         string `json:"header" gorm:"header"`
-	Transactions   string `json:"transactions" gorm:"transactions"`
-	WithdrawRoot   string `json:"withdraw_root" gorm:"withdraw_root"`
-	StateRoot      string `json:"state_root" gorm:"state_root"`
-	TxNum          uint32 `json:"tx_num" gorm:"tx_num"`
-	GasUsed        uint64 `json:"gas_used" gorm:"gas_used"`
-	BlockTimestamp uint64 `json:"block_timestamp" gorm:"block_timestamp"`
-	RowConsumption string `json:"row_consumption" gorm:"row_consumption"`
+	Number             uint64 `json:"number" gorm:"number"`
+	Hash               string `json:"hash" gorm:"hash"`
+	ParentHash         string `json:"parent_hash" gorm:"parent_hash"`
+	Header             string `json:"header" gorm:"header"`
+	Transactions       string `json:"transactions" gorm:"transactions"`
+	WithdrawRoot       string `json:"withdraw_root" gorm:"withdraw_root"`
+	StateRoot          string `json:"state_root" gorm:"state_root"`
+	TxNum              uint32 `json:"tx_num" gorm:"tx_num"`
+	GasUsed            uint64 `json:"gas_used" gorm:"gas_used"`
+	BlockTimestamp     uint64 `json:"block_timestamp" gorm:"block_timestamp"`
+	RowConsumption     string `json:"row_consumption" gorm:"row_consumption"`
+	LastAppliedL1Block uint64 `json:"last_applied_l1_block" gorm:"last_applied_l1_block"`
 
 	// chunk
 	ChunkHash string `json:"chunk_hash" gorm:"chunk_hash;default:NULL"`
@@ -207,17 +208,18 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlo
 		}
 
 		l2Block := L2Block{
-			Number:         block.Header.Number.Uint64(),
-			Hash:           block.Header.Hash().String(),
-			ParentHash:     block.Header.ParentHash.String(),
-			Transactions:   string(txs),
-			WithdrawRoot:   block.WithdrawRoot.Hex(),
-			StateRoot:      block.Header.Root.Hex(),
-			TxNum:          uint32(len(block.Transactions)),
-			GasUsed:        block.Header.GasUsed,
-			BlockTimestamp: block.Header.Time,
-			RowConsumption: string(rc),
-			Header:         string(header),
+			Number:             block.Header.Number.Uint64(),
+			Hash:               block.Header.Hash().String(),
+			ParentHash:         block.Header.ParentHash.String(),
+			Transactions:       string(txs),
+			WithdrawRoot:       block.WithdrawRoot.Hex(),
+			StateRoot:          block.Header.Root.Hex(),
+			TxNum:              uint32(len(block.Transactions)),
+			GasUsed:            block.Header.GasUsed,
+			BlockTimestamp:     block.Header.Time,
+			RowConsumption:     string(rc),
+			Header:             string(header),
+			LastAppliedL1Block: block.LastAppliedL1Block,
 		}
 		l2Blocks = append(l2Blocks, l2Block)
 	}

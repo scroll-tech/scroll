@@ -105,16 +105,19 @@ func (p *ProverCore) ProveBatch(taskID string, chunkInfos []*message.ChunkInfo, 
 }
 
 // ProveChunk call rust ffi to generate chunk proof.
-func (p *ProverCore) ProveChunk(taskID string, traces []*types.BlockTrace) (*message.ChunkProof, error) {
+func (p *ProverCore) ProveChunk(
+	taskID string,
+	chunkTrace *message.ChunkTrace,
+) (*message.ChunkProof, error) {
 	if p.cfg.ProofType != message.ProofTypeChunk {
 		return nil, fmt.Errorf("prover is not a chunk-prover (type: %v), but is trying to prove a chunk", p.cfg.ProofType)
 	}
 
-	tracesByt, err := json.Marshal(traces)
+	chunkTraceByt, err := json.Marshal(chunkTrace)
 	if err != nil {
 		return nil, err
 	}
-	proofByt, err := p.proveChunk(tracesByt)
+	proofByt, err := p.proveChunk(chunkTraceByt)
 	if err != nil {
 		return nil, err
 	}
@@ -205,12 +208,20 @@ func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) ([]
 	return result.Message, nil
 }
 
-func (p *ProverCore) proveChunk(tracesByt []byte) ([]byte, error) {
-	tracesStr := C.CString(string(tracesByt))
-	defer C.free(unsafe.Pointer(tracesStr))
+func (p *ProverCore) proveChunk(chunkTraceByt []byte, prevLastAppliedL1Block uint64, lastAppliedL1Block uint64, l1BlockRangeHash []byte) ([]byte, error) {
+	chunkTraceBytStr := C.CString(string(chunkTraceByt))
+	defer C.free(unsafe.Pointer(chunkTraceBytStr))
+
+	l1BlockRangeHashStr := C.CString(string(l1BlockRangeHash))
+	defer C.free(unsafe.Pointer(l1BlockRangeHashStr))
 
 	log.Info("Start to create chunk proof ...")
-	cProof := C.gen_chunk_proof(tracesStr)
+	cProof := C.gen_chunk_proof(
+		tracesStr,
+		C.uint64_t(prevLastAppliedL1Block),
+		C.uint64_t(lastAppliedL1Block),
+		l1BlockRangeHashStr,
+	)
 	defer C.free_c_chars(cProof)
 	log.Info("Finish creating chunk proof!")
 

@@ -158,12 +158,14 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		chunkProofs = append(chunkProofs, &proof)
 
 		chunkInfo := message.ChunkInfo{
-			ChainID:       bp.cfg.L2.ChainID,
-			PrevStateRoot: common.HexToHash(chunk.ParentChunkStateRoot),
-			PostStateRoot: common.HexToHash(chunk.StateRoot),
-			WithdrawRoot:  common.HexToHash(chunk.WithdrawRoot),
-			DataHash:      common.HexToHash(chunk.Hash),
-			IsPadding:     false,
+			ChainID:            bp.cfg.L2.ChainID,
+			PrevStateRoot:      common.HexToHash(chunk.ParentChunkStateRoot),
+			PostStateRoot:      common.HexToHash(chunk.StateRoot),
+			WithdrawRoot:       common.HexToHash(chunk.WithdrawRoot),
+			DataHash:           common.HexToHash(chunk.Hash),
+			L1BlockRangeHash:   common.HexToHash(chunk.L1BlockRangeHash),
+			LastAppliedL1Block: chunk.LastAppliedL1Block,
+			IsPadding:          false,
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}

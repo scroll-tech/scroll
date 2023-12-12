@@ -288,7 +288,16 @@ func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error
 	if err != nil {
 		return nil, fmt.Errorf("get traces from eth node failed, block hashes: %v, err: %v", task.Task.ChunkTaskDetail.BlockHashes, err)
 	}
-	return r.proverCore.ProveChunk(task.Task.ID, traces)
+	chunkTrace := message.ChunkTrace{
+		BlockTraces:            traces,
+		PrevLastAppliedL1Block: task.Task.ChunkTaskDetail.PrevLastAppliedL1Block,
+		LastAppliedL1Block:     task.Task.ChunkTaskDetail.LastAppliedL1Block,
+		L1BlockRangeHash:       task.Task.ChunkTaskDetail.L1BlockRangeHash,
+	}
+	return r.proverCore.ProveChunk(
+		task.Task.ID,
+		&chunkTrace,
+	)
 }
 
 func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error) {

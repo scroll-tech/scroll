@@ -30,6 +30,8 @@ type Chunk struct {
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
 	WithdrawRoot                 string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	LastAppliedL1Block           uint64 `json:"last_applied_l1_block" gorm:"column:last_applied_l1_block"`
+	L1BlockRangeHash             string `json:"l1_block_range_hash" gorm:"column:l1_block_range_hash"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -100,6 +102,24 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	return &latestChunk, nil
 }
 
+// GetChunkByHash retrieves the first chunk associated with a specific chunk hash.
+func (o *Chunk) GetChunkByHash(ctx context.Context, hash string) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash", hash)
+
+	var chunk Chunk
+	err := db.First(&chunk).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("Chunk.GetChunkByHash error: %w", err)
+	}
+	return &chunk, nil
+}
+
 // GetUnchunkedBlockHeight retrieves the first unchunked block number.
 func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 	// Get the latest chunk
@@ -135,7 +155,7 @@ func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) (
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, parentDbChunk *Chunk, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -144,20 +164,15 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
-	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
-		log.Error("failed to get latest chunk", "err", err)
-		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
-	}
 
-	// if parentChunk==nil then err==gorm.ErrRecordNotFound, which means there's
+	// if parentDbChunk==nil then err==gorm.ErrRecordNotFound, which means there's
 	// not chunk record in the db, we then use default empty values for the creating chunk;
-	// if parentChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
-	if parentChunk != nil {
-		chunkIndex = parentChunk.Index + 1
-		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
-		parentChunkHash = parentChunk.Hash
-		parentChunkStateRoot = parentChunk.StateRoot
+	// if parentDbChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
+	if parentDbChunk != nil {
+		chunkIndex = parentDbChunk.Index + 1
+		totalL1MessagePoppedBefore = parentDbChunk.TotalL1MessagesPoppedBefore + uint64(parentDbChunk.TotalL1MessagesPoppedInChunk)
+		parentChunkHash = parentDbChunk.Hash
+		parentChunkStateRoot = parentDbChunk.StateRoot
 	}
 
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
@@ -194,6 +209,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
 		ParentChunkStateRoot:         parentChunkStateRoot,
 		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
+		LastAppliedL1Block:           chunk.LastAppliedL1Block,
+		L1BlockRangeHash:             chunk.L1BlockRangeHash.Hex(),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 	}
 

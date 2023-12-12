@@ -61,7 +61,8 @@ interface IScrollChain {
         uint8 version,
         bytes calldata parentBatchHeader,
         bytes[] memory chunks,
-        bytes calldata skippedL1MessageBitmap
+        bytes calldata skippedL1MessageBitmap,
+        uint64 _prevLastAppliedL1Block
     ) external;
 
     /// @notice Revert a pending batch.

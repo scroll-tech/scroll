@@ -33,6 +33,8 @@ type Chunk struct {
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
 	WithdrawRoot                 string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	LastAppliedL1Block           uint64 `json:"last_applied_l1_block" gorm:"column:last_applied_l1_block"`
+	L1BlockRangeHash             string `json:"l1_block_range_hash" gorm:"column:l1_block_range_hash"`
 
 	// proof
 	ProvingStatus    int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
@@ -123,6 +125,24 @@ func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*
 		return nil, fmt.Errorf("Chunk.GetChunksByBatchHash error: %w, batch hash: %v", err, batchHash)
 	}
 	return chunks, nil
+}
+
+// GetChunkByHash retrieves the first chunk associated with a specific chunk hash.
+func (o *Chunk) GetChunkByHash(ctx context.Context, hash string) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash", hash)
+
+	var chunk Chunk
+	err := db.First(&chunk).Error
+	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("Chunk.GetChunkByHash error: %w", err)
+	}
+	return &chunk, nil
 }
 
 // GetProofsByBatchHash retrieves the proofs associated with a specific batch hash.
@@ -280,6 +300,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
 		ParentChunkStateRoot:         parentChunkStateRoot,
 		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
+		LastAppliedL1Block:           chunk.LastAppliedL1Block,
+		L1BlockRangeHash:             chunk.L1BlockRangeHash.Hex(),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 		TotalAttempts:                0,
 		ActiveAttempts:               0,

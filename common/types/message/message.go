@@ -9,6 +9,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
@@ -220,7 +221,10 @@ type TaskMsg struct {
 
 // ChunkTaskDetail is a type containing ChunkTask detail.
 type ChunkTaskDetail struct {
-	BlockHashes []common.Hash `json:"block_hashes"`
+	BlockHashes            []common.Hash `json:"block_hashes"`
+	PrevLastAppliedL1Block uint64        `json:"prev_last_applied_l1_block"`
+	LastAppliedL1Block     uint64        `json:"last_applied_l1_block"`
+	L1BlockRangeHash       common.Hash   `json:"l1_block_range_hash"`
 }
 
 // BatchTaskDetail is a type containing BatchTask detail.
@@ -253,12 +257,14 @@ func (z *ProofDetail) Hash() ([]byte, error) {
 
 // ChunkInfo is for calculating pi_hash for chunk
 type ChunkInfo struct {
-	ChainID       uint64      `json:"chain_id"`
-	PrevStateRoot common.Hash `json:"prev_state_root"`
-	PostStateRoot common.Hash `json:"post_state_root"`
-	WithdrawRoot  common.Hash `json:"withdraw_root"`
-	DataHash      common.Hash `json:"data_hash"`
-	IsPadding     bool        `json:"is_padding"`
+	ChainID            uint64      `json:"chain_id"`
+	PrevStateRoot      common.Hash `json:"prev_state_root"`
+	PostStateRoot      common.Hash `json:"post_state_root"`
+	WithdrawRoot       common.Hash `json:"withdraw_root"`
+	DataHash           common.Hash `json:"data_hash"`
+	L1BlockRangeHash   common.Hash `json:"l1_block_range_hash"`
+	LastAppliedL1Block uint64      `json:"last_applied_l1_block"`
+	IsPadding          bool        `json:"is_padding"`
 }
 
 // ChunkProof includes the proof info that are required for chunk verification and rollup.
@@ -271,6 +277,13 @@ type ChunkProof struct {
 	// cross-reference between cooridinator computation and prover compution
 	ChunkInfo  *ChunkInfo `json:"chunk_info,omitempty"`
 	GitVersion string     `json:"git_version,omitempty"`
+}
+
+type ChunkTrace struct {
+	BlockTraces            []*types.BlockTrace `json:"block_traces"`
+	PrevLastAppliedL1Block uint64              `json:"prev_last_applied_l1_block"`
+	LastAppliedL1Block     uint64              `json:"last_applied_l1_block"`
+	L1BlockRangeHash       common.Hash         `json:"l1_block_range_hash"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.

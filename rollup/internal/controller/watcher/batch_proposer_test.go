@@ -94,7 +94,7 @@ func testBatchProposerLimits(t *testing.T) {
 			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 			assert.NoError(t, err)
 
-			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+			cp, err := NewChunkProposer(context.Background(), l1Cli, &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             1,
 				MaxTxNumPerChunk:                10000,
 				MaxL1CommitGasPerChunk:          50000000000,
@@ -102,7 +102,9 @@ func testBatchProposerLimits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       1000000,
 				ChunkTimeoutSec:                 300,
 				GasCostIncreaseMultiplier:       1.2,
-			}, db, nil)
+			}, cfg.L1Config.L1ViewOracleAddress, db, nil)
+			assert.NoError(t, err)
+
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
 
@@ -153,7 +155,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
-	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+	cp, err := NewChunkProposer(context.Background(), l1Cli, &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk:             1,
 		MaxTxNumPerChunk:                10000,
 		MaxL1CommitGasPerChunk:          50000000000,
@@ -161,7 +163,9 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		MaxRowConsumptionPerChunk:       1000000,
 		ChunkTimeoutSec:                 300,
 		GasCostIncreaseMultiplier:       1.2,
-	}, db, nil)
+	}, cfg.L1Config.L1ViewOracleAddress, db, nil)
+	assert.NoError(t, err)
+
 	cp.TryProposeChunk() // chunk1 contains block1
 	cp.TryProposeChunk() // chunk2 contains block2
 

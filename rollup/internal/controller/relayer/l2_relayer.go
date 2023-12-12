@@ -166,16 +166,19 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	chunk := &types.Chunk{
 		Blocks: []*types.WrappedBlock{{
-			Header:         genesis,
-			Transactions:   nil,
-			WithdrawRoot:   common.Hash{},
-			RowConsumption: &gethTypes.RowConsumption{},
+			Header:             genesis,
+			Transactions:       nil,
+			WithdrawRoot:       common.Hash{},
+			RowConsumption:     &gethTypes.RowConsumption{},
+			LastAppliedL1Block: 0,
 		}},
+		LastAppliedL1Block: 0,
+		L1BlockRangeHash:   common.Hash{},
 	}
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		var dbChunk *orm.Chunk
-		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, dbTX)
+		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, nil, chunk, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
@@ -353,6 +356,14 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			return
 		}
 
+		parentBatchLatestChunk, err := r.chunkOrm.GetChunkByHash(r.ctx, dbChunks[0].ParentChunkHash)
+		if err != nil {
+			log.Error("Failed to fetch parent chunk",
+				"chunk index", dbChunks[0].Index,
+				"error", err)
+			return
+		}
+
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
 			var wrappedBlocks []*types.WrappedBlock
@@ -364,7 +375,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				return
 			}
 			chunk := &types.Chunk{
-				Blocks: wrappedBlocks,
+				Blocks:             wrappedBlocks,
+				LastAppliedL1Block: c.LastAppliedL1Block,
+				L1BlockRangeHash:   common.HexToHash(c.L1BlockRangeHash),
 			}
 			var chunkBytes []byte
 			chunkBytes, err = chunk.Encode(c.TotalL1MessagesPoppedBefore)
@@ -375,7 +388,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			encodedChunks[i] = chunkBytes
 		}
 
-		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatch.BatchHeader, encodedChunks, currentBatchHeader.SkippedL1MessageBitmap())
+		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatch.BatchHeader, encodedChunks, currentBatchHeader.SkippedL1MessageBitmap(), parentBatchLatestChunk.LastAppliedL1Block)
 		if err != nil {
 			log.Error("Failed to pack commitBatch", "index", batch.Index, "error", err)
 			return

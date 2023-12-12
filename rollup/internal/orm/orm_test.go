@@ -175,11 +175,11 @@ func TestChunkOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
+	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), nil, chunk1)
 	assert.NoError(t, err)
 	assert.Equal(t, dbChunk1.Hash, chunkHash1.Hex())
 
-	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
+	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), dbChunk1, chunk2)
 	assert.NoError(t, err)
 	assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 

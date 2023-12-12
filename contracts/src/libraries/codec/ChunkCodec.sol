@@ -2,19 +2,21 @@
 
 pragma solidity ^0.8.16;
 
-/// @dev Below is the encoding for `Chunk`, total 60*n+1+m bytes.
+/// @dev Below is the encoding for `Chunk`, total 68*n+9+m bytes.
 /// ```text
-///   * Field           Bytes       Type            Index       Comments
-///   * numBlocks       1           uint8           0           The number of blocks in this chunk
-///   * block[0]        60          BlockContext    1           The first block in this chunk
+///   * Field               Bytes       Type            Index       Comments
+///   * numBlocks           1           uint8           0           The number of blocks in this chunk
+///   * block[0]            68          BlockContext    1           The first block in this chunk
 ///   * ......
-///   * block[i]        60          BlockContext    60*i+1      The (i+1)'th block in this chunk
+///   * block[i]            68          BlockContext    68*i+1      The (i+1)'th block in this chunk
 ///   * ......
-///   * block[n-1]      60          BlockContext    60*n-59     The last block in this chunk
-///   * l2Transactions  dynamic     bytes           60*n+1
+///   * block[n-1]          68          BlockContext    68*n-67     The last block in this chunk
+///   * l2Transactions      dynamic     bytes           68*n+1
+///   * lastAppliedL1Block  8           uint64          68*n+1+m    The last applied L1 block number.
+///   * l1BlockRangeHash    32          bytes           68*n+9+m    The hash of the L1 block range.
 /// ```
 ///
-/// @dev Below is the encoding for `BlockContext`, total 60 bytes.
+/// @dev Below is the encoding for `BlockContext`, total 68 bytes.
 /// ```text
 ///   * Field                   Bytes      Type         Index  Comments
 ///   * blockNumber             8          uint64       0      The height of this block.
@@ -23,9 +25,10 @@ pragma solidity ^0.8.16;
 ///   * gasLimit                8          uint64       48     The gas limit of this block.
 ///   * numTransactions         2          uint16       56     The number of transactions in this block, both L1 & L2 txs.
 ///   * numL1Messages           2          uint16       58     The number of l1 messages in this block.
+///   * lastAppliedL1Block      8          uint64       60     The last applied L1 block number.
 /// ```
 library ChunkCodec {
-    uint256 internal constant BLOCK_CONTEXT_LENGTH = 60;
+    uint256 internal constant BLOCK_CONTEXT_LENGTH = 68;
 
     /// @notice Validate the length of chunk.
     /// @param chunkPtr The start memory offset of the chunk in memory.
@@ -61,6 +64,24 @@ library ChunkCodec {
         }
     }
 
+    /// @notice Return the number of last applied L1 block.
+    /// @param l2TxEndPtr The end memory offset of `l2Transactions`.
+    /// @return _lastAppliedL1Block The number of last applied L1 block.
+    function lastAppliedL1BlockInChunk(uint256 l2TxEndPtr) internal pure returns (uint64 _lastAppliedL1Block) {
+        assembly {
+            _lastAppliedL1Block := shr(248, mload(l2TxEndPtr))
+        }
+    }
+
+    /// @notice Return the number of last applied L1 block.
+    /// @param l2TxEndPtr The end memory offset of `l2Transactions`.
+    /// @return _l1BlockRangeHash The hash of the L1 block range.
+    function l1BlockRangeHashInChunk(uint256 l2TxEndPtr) internal pure returns (bytes32 _l1BlockRangeHash) {
+        assembly {
+            _l1BlockRangeHash := shr(224, mload(add(l2TxEndPtr, 8)))
+        }
+    }
+
     /// @notice Copy the block context to another memory.
     /// @param chunkPtr The start memory offset of the chunk in memory.
     /// @param dstPtr The destination memory offset to store the block context.
@@ -84,6 +105,15 @@ library ChunkCodec {
         }
 
         return dstPtr;
+    }
+
+    /// @notice Return the number of last applied L1 block.
+    /// @param blockPtr The start memory offset of the block context in memory.
+    /// @return _lastAppliedL1Block The number of last applied L1 block.
+    function lastAppliedL1BlockInBlock(uint256 blockPtr) internal pure returns (uint64 _lastAppliedL1Block) {
+        assembly {
+            _lastAppliedL1Block := shr(240, mload(add(blockPtr, 60)))
+        }
     }
 
     /// @notice Return the number of transactions in current block.

@@ -130,7 +130,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := cp.formatProverTask(ctx, &proverTask)
+	taskMsg, err := cp.formatProverTask(ctx, &proverTask, chunkTask)
 	if err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("format prover task failure", "hash", chunkTask.Hash, "err", err)
@@ -142,7 +142,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, chunk *orm.Chunk) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
 	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, task.TaskID)
 	if wrappedErr != nil || len(wrappedBlocks) == 0 {
@@ -154,10 +154,23 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		blockHashes[i] = wrappedBlock.Header.Hash()
 	}
 
+	parentChunk, err := cp.chunkOrm.GetChunkByHash(ctx, chunk.ParentChunkHash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch parent chunk blocks, chunk hash:%s err:%w", chunk.ParentChunkHash, err)
+	}
+
 	taskDetail := message.ChunkTaskDetail{
 		BlockHashes: blockHashes,
+		PrevLastAppliedL1Block: func() uint64 {
+			if parentChunk != nil {
+				return parentChunk.LastAppliedL1Block
+			}
+			return 0
+		}(),
+		LastAppliedL1Block: chunk.LastAppliedL1Block,
+		L1BlockRangeHash:   common.HexToHash(chunk.L1BlockRangeHash),
 	}
-	blockHashesBytes, err := json.Marshal(taskDetail)
+	taskDataBytes, err := json.Marshal(taskDetail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal block hashes hash:%s, err:%w", task.TaskID, err)
 	}
@@ -166,7 +179,7 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		UUID:     task.UUID.String(),
 		TaskID:   task.TaskID,
 		TaskType: int(message.ProofTypeChunk),
-		TaskData: string(blockHashesBytes),
+		TaskData: string(taskDataBytes),
 	}
 
 	return proverTaskSchema, nil

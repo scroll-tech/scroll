@@ -27,6 +27,7 @@ contract InitializeL1BridgeContracts is Script {
     address L1_FINALIZE_SENDER_ADDRESS = vm.envAddress("L1_FINALIZE_SENDER_ADDRESS");
     address L1_FEE_VAULT_ADDR = vm.envAddress("L1_FEE_VAULT_ADDR");
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
+    address L1_VIEW_ORACLE_ADDR = vm.envAddress("L1_VIEW_ORACLE_ADDR");
 
     address L1_WHITELIST_ADDR = vm.envAddress("L1_WHITELIST_ADDR");
     address L1_SCROLL_CHAIN_PROXY_ADDR = vm.envAddress("L1_SCROLL_CHAIN_PROXY_ADDR");
@@ -61,7 +62,8 @@ contract InitializeL1BridgeContracts is Script {
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).initialize(
             L1_MESSAGE_QUEUE_PROXY_ADDR,
             L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR,
-            MAX_TX_IN_CHUNK
+            MAX_TX_IN_CHUNK,
+            L1_VIEW_ORACLE_ADDR
         );
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addSequencer(L1_COMMIT_SENDER_ADDRESS);
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addProver(L1_FINALIZE_SENDER_ADDRESS);

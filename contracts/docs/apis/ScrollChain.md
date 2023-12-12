@@ -45,7 +45,7 @@ Add an account to the sequencer list.
 ### commitBatch
 
 ```solidity
-function commitBatch(uint8 _version, bytes _parentBatchHeader, bytes[] _chunks, bytes _skippedL1MessageBitmap) external nonpayable
+function commitBatch(uint8 _version, bytes _parentBatchHeader, bytes[] _chunks, bytes _skippedL1MessageBitmap, uint64 _prevLastAppliedL1Block) external nonpayable
 ```
 
 Commit a batch of transactions on layer 1.
@@ -60,6 +60,7 @@ Commit a batch of transactions on layer 1.
 | _parentBatchHeader | bytes | undefined |
 | _chunks | bytes[] | undefined |
 | _skippedL1MessageBitmap | bytes | undefined |
+| _prevLastAppliedL1Block | uint64 | undefined |
 
 ### committedBatches
 
@@ -145,7 +146,7 @@ Import layer 2 genesis block
 ### initialize
 
 ```solidity
-function initialize(address _messageQueue, address _verifier, uint256 _maxNumTxInChunk) external nonpayable
+function initialize(address _messageQueue, address _verifier, uint256 _maxNumTxInChunk, address _l1ViewOracle) external nonpayable
 ```
 
 
@@ -159,6 +160,7 @@ function initialize(address _messageQueue, address _verifier, uint256 _maxNumTxI
 | _messageQueue | address | undefined |
 | _verifier | address | undefined |
 | _maxNumTxInChunk | uint256 | undefined |
+| _l1ViewOracle | address | undefined |
 
 ### isBatchFinalized
 
@@ -225,6 +227,23 @@ Whether an account is a sequencer.
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
+
+### l1ViewOracle
+
+```solidity
+function l1ViewOracle() external view returns (address)
+```
+
+The address of L1ViewOracle.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 ### lastFinalizedBatchIndex
 
