@@ -177,6 +177,7 @@ func ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, blockTimestamp
 				BatchHash:        event.BatchHash.String(),
 				StartBlockNumber: startBlock,
 				EndBlockNumber:   endBlock,
+				L1BlockNumber:    vlog.BlockNumber,
 			})
 		case backendabi.L1RevertBatchEventSig:
 			event := backendabi.L1RevertBatchEvent{}
@@ -185,9 +186,10 @@ func ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, blockTimestamp
 				return nil, err
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
-				BatchStatus: int(orm.BatchStatusTypeReverted),
-				BatchIndex:  event.BatchIndex.Uint64(),
-				BatchHash:   event.BatchHash.String(),
+				BatchStatus:   int(orm.BatchStatusTypeReverted),
+				BatchIndex:    event.BatchIndex.Uint64(),
+				BatchHash:     event.BatchHash.String(),
+				L1BlockNumber: vlog.BlockNumber,
 			})
 		case backendabi.L1FinalizeBatchEventSig:
 			event := backendabi.L1FinalizeBatchEvent{}
@@ -196,9 +198,10 @@ func ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, blockTimestamp
 				return nil, err
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
-				BatchStatus: int(orm.BatchStatusTypeFinalized),
-				BatchIndex:  event.BatchIndex.Uint64(),
-				BatchHash:   event.BatchHash.String(),
+				BatchStatus:   int(orm.BatchStatusTypeFinalized),
+				BatchIndex:    event.BatchIndex.Uint64(),
+				BatchHash:     event.BatchHash.String(),
+				L1BlockNumber: vlog.BlockNumber,
 			})
 		}
 	}

@@ -33,6 +33,7 @@ type BatchEvent struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	ID               uint64     `json:"id" gorm:"column:id;primary_key"`
+	L1BlockNumber    uint64     `json:"l1_block_number" gorm:"column:l1_block_number"`
 	BatchStatus      int        `json:"batch_status" gorm:"column:batch_status"`
 	BatchIndex       uint64     `json:"batch_index" gorm:"column:batch_index"`
 	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
@@ -52,6 +53,21 @@ func (*BatchEvent) TableName() string {
 // NewBatchEvent returns a new instance of BatchEvent.
 func NewBatchEvent(db *gorm.DB) *BatchEvent {
 	return &BatchEvent{db: db}
+}
+
+// GetBatchEventSyncedHeightInDB returns the maximum l1_block_number from the batch_event table.
+func (c *BatchEvent) GetBatchEventSyncedHeightInDB(ctx context.Context) (uint64, error) {
+	var batch BatchEvent
+	db := c.db.WithContext(ctx)
+	db = db.Model(&BatchEvent{})
+	db = db.Order("l1_block_number desc")
+	if err := db.First(&batch).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("failed to get batch synced height in db, error: %w", err)
+	}
+	return batch.L1BlockNumber, nil
 }
 
 // GetBatchesLEBlockHeight returns the batches with end block <= given block height in db.
@@ -100,7 +116,7 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 			if err := db.Updates(updateFields).Error; err != nil {
 				return fmt.Errorf("failed to update batch event, batch: %+v, error: %w", l1BatchEvent, err)
 			}
-			// Soft delete the batch event
+			// Soft delete the batch event.
 			if err := db.Delete(l1BatchEvent).Error; err != nil {
 				return fmt.Errorf("failed to soft delete batch event, batch: %+v, error: %w", l1BatchEvent, err)
 			}

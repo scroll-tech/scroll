@@ -117,8 +117,8 @@ func NewCrossMessage(db *gorm.DB) *CrossMessage {
 	return &CrossMessage{db: db}
 }
 
-// GetMessageProcessedHeightInDB returns the latest processed cross message height from the database for a given message type.
-func (c *CrossMessage) GetMessageProcessedHeightInDB(ctx context.Context, messageType MessageType) (uint64, error) {
+// GetMessageSyncedHeightInDB returns the latest synced cross message height from the database for a given message type.
+func (c *CrossMessage) GetMessageSyncedHeightInDB(ctx context.Context, messageType MessageType) (uint64, error) {
 	var message CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})

@@ -75,15 +75,24 @@ func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.
 
 // Start starts the L1 message fetching process.
 func (c *L1MessageFetcher) Start() {
-	var err error
-	c.l1ScanHeight, err = c.crossMessageOrm.GetMessageProcessedHeightInDB(c.ctx, orm.MessageTypeL1SentMessage)
+	messageSyncedHeight, err := c.crossMessageOrm.GetMessageSyncedHeightInDB(c.ctx, orm.MessageTypeL1SentMessage)
 	if err != nil {
-		log.Error("failed to get L1 cross message processed height", "err", err)
+		log.Error("failed to get L1 cross message synced height", "error", err)
 		return
+	}
+	batchSyncedHeight, err := c.batchEventOrm.GetBatchEventSyncedHeightInDB(c.ctx)
+	if err != nil {
+		log.Error("failed to get L1 batch event synced height", "error", err)
+		return
+	}
+	c.l1ScanHeight = messageSyncedHeight
+	if batchSyncedHeight > c.l1ScanHeight {
+		c.l1ScanHeight = batchSyncedHeight
 	}
 	if c.cfg.StartHeight > c.l1ScanHeight {
 		c.l1ScanHeight = c.cfg.StartHeight - 1
 	}
+	log.Info("Start L1 message fetcher", "message synced height", messageSyncedHeight, "batch synced height", batchSyncedHeight, "config start height", c.cfg.StartHeight)
 
 	tick := time.NewTicker(time.Duration(c.cfg.BlockTime) * time.Second)
 	go func() {

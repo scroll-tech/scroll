@@ -70,12 +70,12 @@ func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.
 
 // Start starts the L2 message fetching process.
 func (c *L2MessageFetcher) Start() {
-	l2SentMessageProcessedHeight, err := c.crossMessageOrm.GetMessageProcessedHeightInDB(c.ctx, orm.MessageTypeL2SentMessage)
+	l2SentMessageSyncedHeight, err := c.crossMessageOrm.GetMessageSyncedHeightInDB(c.ctx, orm.MessageTypeL2SentMessage)
 	if err != nil {
 		log.Error("failed to get L2 cross message processed height", "err", err)
 		return
 	}
-	c.syncInfo.SetL2ScanHeight(l2SentMessageProcessedHeight)
+	c.syncInfo.SetL2ScanHeight(l2SentMessageSyncedHeight)
 
 	tick := time.NewTicker(time.Duration(c.cfg.BlockTime) * time.Second)
 	go func() {
