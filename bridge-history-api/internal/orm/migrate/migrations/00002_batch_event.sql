@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-create table batch_event
+CREATE TABLE batch_event
 (
     id                  BIGSERIAL     PRIMARY KEY,
     batch_status        SMALLINT      NOT NULL,
@@ -13,9 +13,14 @@ create table batch_event
     updated_at          TIMESTAMP(0)  NOT NULL DEFAULT CURRENT_TIMESTAMP,
     deleted_at          TIMESTAMP(0)  DEFAULT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_be_batch_index ON batch_event (batch_index);
+CREATE UNIQUE INDEX IF NOT EXISTS unique_idx_be_batch_index_batch_hash ON batch_event (batch_index, batch_hash);
+CREATE INDEX IF NOT EXISTS idx_be_end_block_number_update_status_batch_index ON batch_event (end_block_number, update_status, batch_index);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists event_batch;
+DROP TABLE IF EXISTS batch_event;
 -- +goose StatementEnd

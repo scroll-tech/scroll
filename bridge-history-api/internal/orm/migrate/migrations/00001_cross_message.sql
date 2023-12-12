@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-create table cross_message
+CREATE TABLE cross_message
 (
     id                  BIGSERIAL    PRIMARY KEY,
     message_type        SMALLINT     NOT NULL,
@@ -36,11 +36,19 @@ create table cross_message
     deleted_at          TIMESTAMP(0) DEFAULT NULL
 );
 
-CREATE UNIQUE INDEX if not exists idx_cm_message_hash ON cross_message (message_hash);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cm_message_hash ON cross_message (message_hash);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_l1_block_number ON cross_message (message_type, l1_block_number DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_l2_block_number ON cross_message (message_type, l2_block_number DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_message_nonce ON cross_message (message_type, message_nonce DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_l1_tx_hash ON cross_message (l1_tx_hash);
+CREATE INDEX IF NOT EXISTS idx_cm_l2_tx_hash ON cross_message (l2_tx_hash);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_tx_status_sender_block_timestamp ON cross_message (message_type, tx_status, sender, block_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_sender_block_timestamp ON cross_message (message_type, sender, block_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_sender_block_timestamp ON cross_message (sender, block_timestamp DESC);
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-drop table if exists cross_message;
+DROP TABLE IF EXISTS cross_message;
 -- +goose StatementEnd
