@@ -71,6 +71,13 @@ func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.
 
 // Start starts the L2 message fetching process.
 func (c *L2MessageFetcher) Start() {
+	l2SentMessageProcessedHeight, err := c.crossMessageOrm.GetMessageProcessedHeightInDB(c.ctx, orm.MessageTypeL2SentMessage)
+	if err != nil {
+		log.Error("failed to get L2 cross message processed height", "err", err)
+		return
+	}
+	c.syncInfo.SetL2ScanHeight(l2SentMessageProcessedHeight)
+
 	tick := time.NewTicker(time.Duration(c.cfg.BlockTime) * time.Second)
 	go func() {
 		for {
@@ -86,22 +93,13 @@ func (c *L2MessageFetcher) Start() {
 }
 
 func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
+	startHeight := c.syncInfo.GetL2ScanHeight() + 1
 	endHeight, err := utils.GetBlockNumber(c.ctx, c.client, confirmation)
 	if err != nil {
 		log.Error("failed to get L1 safe block number", "err", err)
 		return
 	}
-
-	l2SentMessageProcessedHeight, err := c.crossMessageOrm.GetMessageProcessedHeightInDB(c.ctx, orm.MessageTypeL2SentMessage)
-	if err != nil {
-		log.Error("failed to get L2 cross message processed height", "err", err)
-		return
-	}
-	startHeight := c.cfg.StartHeight
-	if l2SentMessageProcessedHeight+1 > startHeight {
-		startHeight = l2SentMessageProcessedHeight + 1
-	}
-	log.Info("fetch and save missing L2 events", "start height", startHeight, "config height", c.cfg.StartHeight, "db height", l2SentMessageProcessedHeight)
+	log.Info("fetch and save missing L2 events", "start height", startHeight, "config height", c.cfg.StartHeight)
 
 	for from := startHeight; from <= endHeight; from += c.cfg.FetchLimit {
 		to := from + c.cfg.FetchLimit - 1

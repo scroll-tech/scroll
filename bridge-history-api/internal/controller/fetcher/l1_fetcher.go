@@ -29,6 +29,7 @@ type L1MessageFetcher struct {
 	client          *ethclient.Client
 	addressList     []common.Address
 	syncInfo        *SyncInfo
+	l1ScanHeight    uint64
 }
 
 // NewL1MessageFetcher creates a new L1MessageFetcher instance.
@@ -74,6 +75,16 @@ func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.
 
 // Start starts the L1 message fetching process.
 func (c *L1MessageFetcher) Start() {
+	var err error
+	c.l1ScanHeight, err = c.crossMessageOrm.GetMessageProcessedHeightInDB(c.ctx, orm.MessageTypeL1SentMessage)
+	if err != nil {
+		log.Error("failed to get L1 cross message processed height", "err", err)
+		return
+	}
+	if c.cfg.StartHeight > c.l1ScanHeight {
+		c.l1ScanHeight = c.cfg.StartHeight - 1
+	}
+
 	tick := time.NewTicker(time.Duration(c.cfg.BlockTime) * time.Second)
 	go func() {
 		for {
@@ -89,22 +100,14 @@ func (c *L1MessageFetcher) Start() {
 }
 
 func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
+	startHeight := c.l1ScanHeight + 1
 	endHeight, err := utils.GetBlockNumber(c.ctx, c.client, confirmation)
 	if err != nil {
 		log.Error("failed to get L1 safe block number", "err", err)
 		return
 	}
 
-	l1SentMessageProcessedHeight, err := c.crossMessageOrm.GetMessageProcessedHeightInDB(c.ctx, orm.MessageTypeL1SentMessage)
-	if err != nil {
-		log.Error("failed to get L1 cross message processed height", "err", err)
-		return
-	}
-	startHeight := c.cfg.StartHeight
-	if l1SentMessageProcessedHeight+1 > startHeight {
-		startHeight = l1SentMessageProcessedHeight + 1
-	}
-	log.Info("fetch and save missing L1 events", "start height", startHeight, "config height", c.cfg.StartHeight, "db height", l1SentMessageProcessedHeight)
+	log.Info("fetch and save missing L1 events", "start height", startHeight, "config height", c.cfg.StartHeight)
 
 	for from := startHeight; from <= endHeight; from += c.cfg.FetchLimit {
 		to := from + c.cfg.FetchLimit - 1
@@ -116,6 +119,7 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			log.Error("failed to fetch and save L1 events", "from", from, "to", to, "err", err)
 			return
 		}
+		c.l1ScanHeight = to
 	}
 }
 
