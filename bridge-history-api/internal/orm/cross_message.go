@@ -350,6 +350,28 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 	if len(l1RelayedMessages) == 0 {
 		return nil
 	}
+	// Deduplicate messages, for each message_hash, retaining message with the highest block number.
+	// This is necessary as a single message, like a FailedRelayedMessage or a reverted relayed transaction,
+	// may be relayed multiple times within certain block ranges, potentially leading to the error:
+	// "ERROR: ON CONFLICT DO UPDATE command cannot affect row a second time (SQLSTATE 21000)".
+	// This happens if we attempt to insert multiple records with the same message_hash in a single db.Create operation.
+	// For example, see these transactions where the same message was relayed twice within certain block ranges:
+	// FailedRelayedMessage 1: https://sepolia.etherscan.io/tx/0x28b3212cda6ca0f3790f362a780257bbe2b37417ccf75a4eca6c3a08294c8f1b#eventlog
+	// FailedRelayedMessage 2: https://sepolia.etherscan.io/tx/0xc8a8254825dd2cab5caef58cfd8d88c077ceadadc78f2340214a86cf8ab88543#eventlog
+	mergedL1RelayedMessages := make(map[string]*CrossMessage)
+	for _, message := range l1RelayedMessages {
+		if existing, found := mergedL1RelayedMessages[message.MessageHash]; found {
+			if message.L1BlockNumber > existing.L1BlockNumber {
+				mergedL1RelayedMessages[message.MessageHash] = message
+			}
+		} else {
+			mergedL1RelayedMessages[message.MessageHash] = message
+		}
+	}
+	uniqueL1RelayedMessages := make([]*CrossMessage, 0, len(mergedL1RelayedMessages))
+	for _, msg := range mergedL1RelayedMessages {
+		uniqueL1RelayedMessages = append(uniqueL1RelayedMessages, msg)
+	}
 	db := c.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -360,7 +382,7 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 		Columns:   []clause.Column{{Name: "message_hash"}},
 		DoUpdates: clause.AssignmentColumns([]string{"l1_block_number", "l1_tx_hash", "tx_status"}),
 	})
-	if err := db.Create(l1RelayedMessages).Error; err != nil {
+	if err := db.Create(uniqueL1RelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L1 relayed message of L2 withdrawal, error: %w", err)
 	}
 	return nil
