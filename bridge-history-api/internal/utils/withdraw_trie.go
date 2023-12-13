@@ -4,7 +4,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
-// MaxHeight is the maixium possible height of withdraw trie
+// MaxHeight is the maximum possible height of withdraw trie
 const MaxHeight = 40
 
 // WithdrawTrie is an append only merkle trie
