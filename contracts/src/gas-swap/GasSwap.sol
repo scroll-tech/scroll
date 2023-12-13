@@ -124,7 +124,7 @@ contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
         _outputTokenAmount = _outputTokenAmount - _fee;
         require(_outputTokenAmount >= _swap.minOutput, "insufficient output amount");
 
-        // tranfer ETH to sender
+        // transfer ETH to sender
         (_success, ) = _sender.call{value: _outputTokenAmount}("");
         require(_success, "transfer ETH failed");
 
