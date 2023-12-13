@@ -82,7 +82,7 @@ jobs:
         run : forge coverage --report lcov
 
       - name : Prune coverage
-        run :lcov --rc branch_coverage=1 --remove ./lcov.info -o ./lcov.info.pruned 'src/mocks/*' 'src/test/*' 'scripts/*' 'node_modules/*' 'lib/*'
+        run : lcov --rc branch_coverage=1 --remove ./lcov.info -o ./lcov.info.pruned 'src/mocks/*' 'src/test/*' 'scripts/*' 'node_modules/*' 'lib/*'
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
