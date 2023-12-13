@@ -84,15 +84,13 @@ jobs:
       - name : Prune coverage
         run : lcov --remove ./lcov.info -o ./lcov.info.pruned 'src/mocks/*' 'src/test/*' 'scripts/*' 'node_modules/*' 'lib/*'
 
-      - name: Report code coverage
-        uses: zgosalvez/github-actions-report-lcov@v3
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          coverage-files: contracts/lcov.info.pruned
-          minimum-coverage: 0
-          artifact-name: code-coverage-report
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          working-directory: contracts
-          update-comment: true
+          files: ./lcov.info.pruned
+          flags: contracts
 
   hardhat:
     if: github.event.pull_request.draft == false
