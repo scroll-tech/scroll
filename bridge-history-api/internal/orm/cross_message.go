@@ -241,7 +241,7 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			updateFields["tx_status"] = TxStatusTypeDropped
 		}
 		if err := db.Updates(updateFields).Error; err != nil {
-			return fmt.Errorf("failed to update L1 message queue events info, event: %+v, error: %w", l1MessageQueueEvent, err)
+			return fmt.Errorf("failed to update L1 message queue events info, error: %w", err)
 		}
 	}
 	return nil
@@ -279,7 +279,7 @@ func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []
 		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "tx_status", "block_timestamp", "message_nonce"}),
 	})
 	if err := db.Create(messages).Error; err != nil {
-		return fmt.Errorf("failed to insert message, message: %+v, error: %w", messages, err)
+		return fmt.Errorf("failed to insert message, error: %w", err)
 	}
 	return nil
 }
@@ -300,7 +300,7 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "tx_status", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "merkle_proof", "message_nonce"}),
 	})
 	if err := db.Create(messages).Error; err != nil {
-		return fmt.Errorf("failed to insert message, message: %+v, error: %w", messages, err)
+		return fmt.Errorf("failed to insert message, error: %w", err)
 	}
 	return nil
 }
@@ -323,7 +323,7 @@ func (c *CrossMessage) InsertFailedGatewayRouterTxs(ctx context.Context, message
 		message.MessageHash = uuid.New().String()
 	}
 	if err := db.Create(messages).Error; err != nil {
-		return fmt.Errorf("failed to insert failed gateway router txs, message: %+v, error: %w", messages, err)
+		return fmt.Errorf("failed to insert failed gateway router txs, error: %w", err)
 	}
 	return nil
 }
@@ -340,7 +340,7 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 		DoUpdates: clause.AssignmentColumns([]string{"l2_block_number", "l2_tx_hash", "tx_status"}),
 	})
 	if err := db.Create(l2RelayedMessages).Error; err != nil {
-		return fmt.Errorf("failed to update L2 relayed message of L1 deposit, L2 relayed message: %+v, error: %w", l2RelayedMessages, err)
+		return fmt.Errorf("failed to update L2 relayed message of L1 deposit, error: %w", err)
 	}
 	return nil
 }
@@ -361,7 +361,7 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 		DoUpdates: clause.AssignmentColumns([]string{"l1_block_number", "l1_tx_hash", "tx_status"}),
 	})
 	if err := db.Create(l1RelayedMessages).Error; err != nil {
-		return fmt.Errorf("failed to update L1 relayed message of L2 withdrawal, L1 relayed messages: %+v, error: %w", l1RelayedMessages, err)
+		return fmt.Errorf("failed to update L1 relayed message of L2 withdrawal, error: %w", err)
 	}
 	return nil
 }

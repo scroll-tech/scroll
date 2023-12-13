@@ -100,25 +100,25 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 		switch BatchStatusType(l1BatchEvent.BatchStatus) {
 		case BatchStatusTypeCommitted:
 			if err := db.Create(l1BatchEvent).Error; err != nil {
-				return fmt.Errorf("failed to insert batch event, batch: %+v, error: %w", l1BatchEvent, err)
+				return fmt.Errorf("failed to insert batch event, error: %w", err)
 			}
 		case BatchStatusTypeFinalized:
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
 			db = db.Where("batch_hash = ?", l1BatchEvent.BatchHash)
 			updateFields["batch_status"] = BatchStatusTypeFinalized
 			if err := db.Updates(updateFields).Error; err != nil {
-				return fmt.Errorf("failed to update batch event, batch: %+v, error: %w", l1BatchEvent, err)
+				return fmt.Errorf("failed to update batch event, error: %w", err)
 			}
 		case BatchStatusTypeReverted:
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
 			db = db.Where("batch_hash = ?", l1BatchEvent.BatchHash)
 			updateFields["batch_status"] = BatchStatusTypeReverted
 			if err := db.Updates(updateFields).Error; err != nil {
-				return fmt.Errorf("failed to update batch event, batch: %+v, error: %w", l1BatchEvent, err)
+				return fmt.Errorf("failed to update batch event, error: %w", err)
 			}
 			// Soft delete the batch event.
 			if err := db.Delete(l1BatchEvent).Error; err != nil {
-				return fmt.Errorf("failed to soft delete batch event, batch: %+v, error: %w", l1BatchEvent, err)
+				return fmt.Errorf("failed to soft delete batch event, error: %w", err)
 			}
 		}
 	}
