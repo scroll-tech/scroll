@@ -31,19 +31,19 @@ func testProcessStartEnableMetrics(t *testing.T) {
 	db := setupDB(t)
 	defer database.CloseDB(db)
 
-	port, err := rand.Int(rand.Reader, big.NewInt(2000))
+	port, err := rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)
-	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
+	svrPort := strconv.FormatInt(port.Int64()+10000, 10)
 	rollupApp.RunApp(t, cutils.EventWatcherApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
 
-	port, err = rand.Int(rand.Reader, big.NewInt(2000))
+	port, err = rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)
-	svrPort = strconv.FormatInt(port.Int64()+50000, 10)
+	svrPort = strconv.FormatInt(port.Int64()+20000, 10)
 	rollupApp.RunApp(t, cutils.GasOracleApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
 
-	port, err = rand.Int(rand.Reader, big.NewInt(2000))
+	port, err = rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)
-	svrPort = strconv.FormatInt(port.Int64()+50000, 10)
+	svrPort = strconv.FormatInt(port.Int64()+30000, 10)
 	rollupApp.RunApp(t, cutils.RollupRelayerApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
 
 	rollupApp.WaitExit()
