@@ -144,7 +144,7 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				MessageHash:   event.MessageHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
 				L1TxHash:      vlog.TxHash.String(),
-				TxStatus:      int(orm.TxStatusTypeRelayedFailed),
+				TxStatus:      int(orm.TxStatusTypeFailedRelayed),
 				MessageType:   int(orm.MessageTypeL2SentMessage),
 			})
 		}
@@ -397,7 +397,7 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 				MessageHash:   event.MessageHash.String(),
 				L2BlockNumber: vlog.BlockNumber,
 				L2TxHash:      vlog.TxHash.String(),
-				TxStatus:      int(orm.TxStatusTypeRelayedFailed),
+				TxStatus:      int(orm.TxStatusTypeFailedRelayed),
 				MessageType:   int(orm.MessageTypeL1SentMessage),
 			})
 		}

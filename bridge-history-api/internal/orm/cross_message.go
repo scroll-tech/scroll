@@ -42,7 +42,10 @@ const (
 	TxStatusTypeSent
 	TxStatusTypeSentFailed
 	TxStatusTypeRelayed
-	TxStatusTypeRelayedFailed
+	// FailedRelayedMessage event: encoded tx failed, cannot retry. e.g., https://sepolia.scrollscan.com/tx/0xfc7d3ea5ec8dc9b664a5a886c3b33d21e665355057601033481a439498efb79a
+	TxStatusTypeFailedRelayed
+	// In some cases, user can retry with a larger gas limit. e.g., https://sepolia.scrollscan.com/tx/0x7323a7ba29492cb47d92206411be99b27896f2823cee0633a596b646b73f1b5b
+	TxStatusTypeRelayedTxReverted
 	TxStatusTypeSkipped
 	TxStatusTypeDropped
 )
