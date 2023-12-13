@@ -7,7 +7,7 @@ on:
         description: 'Go version'
         required: true
         type: string
-        default: '1.19'
+        default: '1.20'
       RUST_VERSION:
         description: 'Rust toolchain version'
         required: true
