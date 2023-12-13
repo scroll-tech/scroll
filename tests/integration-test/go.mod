@@ -1,6 +1,6 @@
 module scroll-tech/integration-test
 
-go 1.19
+go 1.20
 
 require (
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20231130005111-38a3a9c9198c
