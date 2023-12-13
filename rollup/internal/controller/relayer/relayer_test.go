@@ -1,8 +1,11 @@
 package relayer
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"math/big"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -52,6 +55,10 @@ func setupEnv(t *testing.T) {
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
 		MaxIdleNum: base.DBConfig.MaxIdleNum,
 	}
+	port, err := rand.Int(rand.Reader, big.NewInt(10000))
+	assert.NoError(t, err)
+	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
+	cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 
 	// Create l2geth client.
 	l2Cli, err = base.L2Client()
