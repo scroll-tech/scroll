@@ -115,8 +115,7 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 		log.Error("failed to get L1 safe block number", "err", err)
 		return
 	}
-
-	log.Info("fetch and save missing L1 events", "start height", startHeight, "config height", c.cfg.StartHeight)
+	log.Info("fetch and save missing L1 events", "start height", startHeight, "end height", endHeight)
 
 	for from := startHeight; from <= endHeight; from += c.cfg.FetchLimit {
 		to := from + c.cfg.FetchLimit - 1

@@ -76,6 +76,7 @@ func (c *L2MessageFetcher) Start() {
 		return
 	}
 	c.syncInfo.SetL2ScanHeight(l2SentMessageSyncedHeight)
+	log.Info("Start L2 message fetcher", "message synced height", l2SentMessageSyncedHeight)
 
 	tick := time.NewTicker(time.Duration(c.cfg.BlockTime) * time.Second)
 	go func() {
@@ -98,7 +99,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 		log.Error("failed to get L1 safe block number", "err", err)
 		return
 	}
-	log.Info("fetch and save missing L2 events", "start height", startHeight, "config height", c.cfg.StartHeight)
+	log.Info("fetch and save missing L2 events", "start height", startHeight, "end height", endHeight)
 
 	for from := startHeight; from <= endHeight; from += c.cfg.FetchLimit {
 		to := from + c.cfg.FetchLimit - 1
