@@ -15,7 +15,7 @@ describe("ZkEvmVerifierV1", async () => {
   beforeEach(async () => {
     [deployer] = await ethers.getSigners();
 
-    const bytecode = hexlify(fs.readFileSync("./src/libraries/verifier/plonk-verifier/plonk_verifier_0.5.1.bin"));
+    const bytecode = hexlify(fs.readFileSync("./src/libraries/verifier/plonk-verifier/plonk_verifier_0.9.8.bin"));
     const tx = await deployer.sendTransaction({ data: bytecode });
     const receipt = await tx.wait();
 
@@ -25,8 +25,8 @@ describe("ZkEvmVerifierV1", async () => {
   });
 
   it("should succeed", async () => {
-    const proof = hexlify(fs.readFileSync("./integration-test/testdata/plonk_verifier_0.5.1_proof.data"));
-    const instances = fs.readFileSync("./integration-test/testdata/plonk_verifier_0.5.1_pi.data");
+    const proof = hexlify(fs.readFileSync("./integration-test/testdata/plonk_verifier_0.9.8_proof.data"));
+    const instances = fs.readFileSync("./integration-test/testdata/plonk_verifier_0.9.8_pi.data");
 
     const publicInputHash = new Uint8Array(32);
     for (let i = 0; i < 32; i++) {
