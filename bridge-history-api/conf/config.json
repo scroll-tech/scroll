@@ -1,10 +1,10 @@
 {
 	"L1": {
-		"confirmation": 32,
+		"confirmation": 2,
 		"endpoint": "https://rpc.ankr.com/eth",
 		"startHeight": 18318215,
 		"blockTime": 12,
-		"fetchLimit": 100,
+		"fetchLimit": 32,
 		"MessengerAddr": "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
 		"ETHGatewayAddr": "0x7F2b8C31F88B6006c382775eea88297Ec1e3E905",
 		"WETHGatewayAddr": "0x7AC440cAe8EB6328de4fA621163a792c1EA9D4fE",
