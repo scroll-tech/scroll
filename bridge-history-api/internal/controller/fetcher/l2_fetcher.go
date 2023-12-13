@@ -177,6 +177,7 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 						L2TxHash:      tx.Hash().String(),
 						TxStatus:      int(orm.TxStatusTypeRelayedFailed),
 						L2BlockNumber: receipt.BlockNumber.Uint64(),
+						MessageType:   int(orm.MessageTypeL1SentMessage),
 					})
 				}
 			}

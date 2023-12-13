@@ -132,6 +132,7 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				L1BlockNumber: vlog.BlockNumber,
 				L1TxHash:      vlog.TxHash.String(),
 				TxStatus:      int(orm.TxStatusTypeRelayed),
+				MessageType:   int(orm.MessageTypeL2SentMessage),
 			})
 		case backendabi.L1FailedRelayedMessageEventSig:
 			event := backendabi.L1FailedRelayedMessageEvent{}
@@ -144,6 +145,7 @@ func ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTime
 				L1BlockNumber: vlog.BlockNumber,
 				L1TxHash:      vlog.TxHash.String(),
 				TxStatus:      int(orm.TxStatusTypeRelayedFailed),
+				MessageType:   int(orm.MessageTypeL2SentMessage),
 			})
 		}
 	}
@@ -382,6 +384,7 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 				L2BlockNumber: vlog.BlockNumber,
 				L2TxHash:      vlog.TxHash.String(),
 				TxStatus:      int(orm.TxStatusTypeRelayed),
+				MessageType:   int(orm.MessageTypeL1SentMessage),
 			})
 		case backendabi.L2FailedRelayedMessageEventSig:
 			event := backendabi.L2RelayedMessageEvent{}
@@ -395,6 +398,7 @@ func ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([
 				L2BlockNumber: vlog.BlockNumber,
 				L2TxHash:      vlog.TxHash.String(),
 				TxStatus:      int(orm.TxStatusTypeRelayedFailed),
+				MessageType:   int(orm.MessageTypeL1SentMessage),
 			})
 		}
 	}
