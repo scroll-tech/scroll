@@ -160,7 +160,6 @@ func (b *BatchHeader) Encode() []byte {
 	binary.BigEndian.PutUint64(batchBytes[17:], b.totalL1MessagePopped)
 	copy(batchBytes[25:], b.dataHash[:])
 	copy(batchBytes[57:], b.parentBatchHash[:])
-	copy(batchBytes[57:], b.parentBatchHash[:])
 	copy(batchBytes[89:], b.skippedL1MessageBitmap[:])
 	binary.BigEndian.PutUint64(batchBytes[89+len(b.skippedL1MessageBitmap):], b.lastAppliedL1Block)
 	copy(batchBytes[97+len(b.skippedL1MessageBitmap):], b.l1BlockRangeHash[:])
@@ -174,7 +173,7 @@ func (b *BatchHeader) Hash() common.Hash {
 
 // DecodeBatchHeader attempts to decode the given byte slice into a BatchHeader.
 func DecodeBatchHeader(data []byte) (*BatchHeader, error) {
-	if len(data) < 97 {
+	if len(data) < 129 {
 		return nil, fmt.Errorf("insufficient data for BatchHeader")
 	}
 	b := &BatchHeader{
