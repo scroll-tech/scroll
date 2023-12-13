@@ -24,7 +24,7 @@ We'd also love PRs. If you're thinking of a large PR, we advise opening up an is
 1. [Fork][fork] and clone the repository.
 2. Create a new branch: `git checkout -b my-branch-name`.
 3. Make your change, add tests, and make sure the tests still pass.
-4. Format your code in scroll home directory: `make fmt`
+4. Format your code in scroll home directory: `make lint && make fmt`
 5. Push to your fork and [submit a pull request][pr].
 6. Pat yourself on the back and wait for your pull request to be reviewed and merged.
 
