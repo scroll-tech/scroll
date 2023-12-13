@@ -340,7 +340,7 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	db = db.Model(&CrossMessage{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"message_type, l2_block_number", "l2_tx_hash", "tx_status"}),
+		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l2_block_number", "l2_tx_hash", "tx_status"}),
 	})
 	if err := db.Create(l2RelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L2 relayed message of L1 deposit, error: %w", err)
@@ -383,7 +383,7 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 	db = db.Model(&CrossMessage{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"message_type, l1_block_number", "l1_tx_hash", "tx_status"}),
+		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l1_block_number", "l1_tx_hash", "tx_status"}),
 	})
 	if err := db.Create(uniqueL1RelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L1 relayed message of L2 withdrawal, error: %w", err)

@@ -212,7 +212,7 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 
 	l2RelayedMessages = append(l2RelayedMessages, l2RevertedRelayedMessages...)
 
-	if err = c.updateL2WithdrawMessageProofs(ctx, l2WithdrawMessages); err != nil {
+	if err = c.updateL2WithdrawMessageProofs(ctx, l2WithdrawMessages, to); err != nil {
 		log.Error("failed to update withdraw message proofs", "err", err)
 	}
 
@@ -238,7 +238,7 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 	return nil
 }
 
-func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2WithdrawMessages []*orm.CrossMessage) error {
+func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2WithdrawMessages []*orm.CrossMessage, endBlock uint64) error {
 	withdrawTrie := utils.NewWithdrawTrie()
 	message, err := c.crossMessageOrm.GetLatestL2Withdrawal(ctx)
 	if err != nil {
@@ -259,6 +259,16 @@ func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2
 	}
 	for i, proof := range proofs {
 		l2WithdrawMessages[i].MerkleProof = proof
+	}
+	// Verify if local info is correct.
+	withdrawRoot, err := c.client.StorageAt(ctx, common.HexToAddress(c.cfg.MessageQueueAddr), common.Hash{}, new(big.Int).SetUint64(endBlock))
+	if err != nil {
+		log.Error("failed to get withdraw root", "number", endBlock, "error", err)
+		return fmt.Errorf("failed to get withdraw root: %v, number: %v", err, endBlock)
+	}
+	if common.BytesToHash(withdrawRoot) != withdrawTrie.MessageRoot() {
+		log.Error("withdraw root mismatch", "expected", common.BytesToHash(withdrawRoot).String(), "got", withdrawTrie.MessageRoot().String())
+		return fmt.Errorf("withdraw root mismatch. expected: %v, got: %v", common.BytesToHash(withdrawRoot), withdrawTrie.MessageRoot())
 	}
 	return nil
 }
