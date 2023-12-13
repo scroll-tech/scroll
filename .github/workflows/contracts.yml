@@ -89,7 +89,7 @@ jobs:
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
-          files: ./lcov.info.pruned
+          files: contracts/lcov.info.pruned
           flags: contracts
 
   hardhat:
