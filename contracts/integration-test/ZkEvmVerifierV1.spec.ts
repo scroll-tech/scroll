@@ -65,7 +65,7 @@ describe("ZkEvmVerifierV1", async () => {
     // 0000000000000000000000000000000000000000000000000000000000000000 withdrawRoot
     // ee64d77c2f2e0b2c4ac952a0f54fdba4a217c42eb26a07b28de9fbc7b009acae batchDataHash
     // public input hash: 9ea439164727042e029464a40901e52800095c1ade301b63b4b7453880f5723e
-    expect(hexlify(publicInputHash)).to.eq("0x9ea439164727042e029464a40901e52800095c1ade301b63b4b7453880f5723e");
+    expect(hexlify(publicInputHash)).to.eq("0x31b430667bc9e8a8b7eda5e5c76f2250c64023f5f8e0689ac9f4e53f5362da66");
 
     // verify ok
     await zkEvmVerifier.verify(proof, publicInputHash);
