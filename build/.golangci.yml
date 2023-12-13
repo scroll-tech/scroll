@@ -1,7 +1,7 @@
 # Source: https://github.com/golangci/golangci-lint/blob/master/.golangci.example.yml
 # options for analysis running
 run:
-  # default concurrency is an available CPU number
+  # default concurrency is the available CPU number
   concurrency: 4
 
   # timeout for analysis, e.g. 30s, 5m, default is 1m
