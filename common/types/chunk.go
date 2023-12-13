@@ -79,7 +79,9 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 
 	chunkBytes = append(chunkBytes, l2TxDataBytes...)
 
-	binary.BigEndian.PutUint64(chunkBytes, c.LastAppliedL1Block)
+	var lastAppliedL1BlockBytes [8]byte
+	binary.BigEndian.PutUint64(lastAppliedL1BlockBytes[:], c.LastAppliedL1Block)
+	chunkBytes = append(chunkBytes, lastAppliedL1BlockBytes[:]...)
 	chunkBytes = append(chunkBytes, c.L1BlockRangeHash.Bytes()...)
 
 	return chunkBytes, nil
