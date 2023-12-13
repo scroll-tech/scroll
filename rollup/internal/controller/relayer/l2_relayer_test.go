@@ -121,6 +121,37 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	assert.Equal(t, types.RollupFinalizing, statuses[0])
 }
 
+func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
+	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
+
+	l2Cfg := cfg.L2Config
+	l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
+	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, nil)
+	assert.NoError(t, err)
+	batchMeta := &types.BatchMeta{
+		StartChunkIndex: 0,
+		StartChunkHash:  chunkHash1.Hex(),
+		EndChunkIndex:   1,
+		EndChunkHash:    chunkHash2.Hex(),
+	}
+	batchOrm := orm.NewBatch(db)
+	batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
+	assert.NoError(t, err)
+
+	err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, types.RollupCommitted)
+	assert.NoError(t, err)
+
+	// Check the database for the updated status using TryTimes.
+	ok := utils.TryTimes(5, func() bool {
+		relayer.ProcessCommittedBatches()
+		statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
+		return err == nil && len(statuses) == 1 && statuses[0] == types.RollupFinalizing
+	})
+	assert.True(t, ok)
+}
+
 func testL2RelayerCommitConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
@@ -392,12 +423,30 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
+	l2BlockOrm := orm.NewL2Block(db)
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	assert.NoError(t, err)
+	chunkOrm := orm.NewChunk(db)
+	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
+	assert.NoError(t, err)
+	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
+	assert.NoError(t, err)
+	batchMeta := &types.BatchMeta{
+		StartChunkIndex: 0,
+		StartChunkHash:  dbChunk1.Hash,
+		EndChunkIndex:   1,
+		EndChunkHash:    dbChunk2.Hash,
+	}
+	batchOrm := orm.NewBatch(db)
+	batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
+	assert.NoError(t, err)
+
 	cfg.L2Config.RelayerConfig.ChainMonitor.Enabled = true
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 
-	status, err := relayer.getBatchStatusByIndex(1)
+	status, err := relayer.getBatchStatusByIndex(batch)
 	assert.NoError(t, err)
 	assert.Equal(t, true, status)
 }

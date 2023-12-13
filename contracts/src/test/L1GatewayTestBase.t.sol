@@ -82,7 +82,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         verifier = new MockRollupVerifier();
 
         // Deploy L2 contracts
-        l2Messenger = new L2ScrollMessenger(address(0));
+        l2Messenger = new L2ScrollMessenger(address(1));
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(rollup), address(messageQueue));
@@ -106,8 +106,8 @@ abstract contract L1GatewayTestBase is DSTestPlus {
     }
 
     function prepareL2MessageRoot(bytes32 messageHash) internal {
-        rollup.addSequencer(address(this));
-        rollup.addProver(address(this));
+        rollup.addSequencer(address(0));
+        rollup.addProver(address(0));
 
         // import genesis batch
         bytes memory batchHeader0 = new bytes(89);
@@ -122,7 +122,9 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         bytes memory chunk0 = new bytes(1 + 60);
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
+        hevm.startPrank(address(0));
         rollup.commitBatch(0, batchHeader0, chunks, new bytes(0));
+        hevm.stopPrank();
 
         bytes memory batchHeader1 = new bytes(89);
         assembly {
@@ -134,6 +136,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
         }
 
+        hevm.startPrank(address(0));
         rollup.finalizeBatchWithProof(
             batchHeader1,
             bytes32(uint256(1)),
@@ -141,5 +144,6 @@ abstract contract L1GatewayTestBase is DSTestPlus {
             messageHash,
             new bytes(0)
         );
+        hevm.stopPrank();
     }
 }
