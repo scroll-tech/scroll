@@ -92,7 +92,9 @@ func TestFFI(t *testing.T) {
 func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
 	f, err := os.Open(filePat)
 	as.NoError(err)
-	defer as.NoError(f.Close())
+	defer func() {
+		as.NoError(f.Close())
+	}()
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
 
@@ -105,7 +107,9 @@ func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
 func readVk(filePat string, as *assert.Assertions) string {
 	f, err := os.Open(filePat)
 	as.NoError(err)
-	defer as.NoError(f.Close())
+	defer func() {
+		as.NoError(f.Close())
+	}()
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
 
