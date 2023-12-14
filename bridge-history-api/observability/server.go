@@ -19,7 +19,7 @@ import (
 	"bridge-history-api/utils"
 )
 
-// Server starts the metrics server on the given address, will be closed when the given
+// Server starts the metrics server on the given address, which will be closed when the given
 // context is canceled.
 func Server(c *cli.Context, db *gorm.DB) {
 	if !c.Bool(utils.MetricsEnabled.Name) {

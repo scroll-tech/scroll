@@ -2,7 +2,10 @@ package tests
 
 import (
 	"context"
+	"crypto/rand"
+	"math/big"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -84,6 +87,11 @@ func setupEnv(t *testing.T) {
 
 	l2Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKey, base.L2gethImg.ChainID())
 	assert.NoError(t, err)
+
+	port, err := rand.Int(rand.Reader, big.NewInt(10000))
+	assert.NoError(t, err)
+	svrPort := strconv.FormatInt(port.Int64()+40000, 10)
+	rollupApp.Config.L2Config.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 }
 
 func mockChainMonitorServer(baseURL string) (*http.Server, error) {
