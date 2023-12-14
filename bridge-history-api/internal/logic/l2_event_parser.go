@@ -10,11 +10,11 @@ import (
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
-// L2EventParser the l2 event parser
+// L2EventParser the L2 event parser
 type L2EventParser struct {
 }
 
-// NewL2EventParser create the l2 event parser
+// NewL2EventParser create the L2 event parser
 func NewL2EventParser() *L2EventParser {
 	return &L2EventParser{}
 }
@@ -116,10 +116,8 @@ func (e *L2EventParser) ParseL2EventLogs(logs []types.Log, blockTimestampsMap ma
 				log.Warn("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
-			// Use this messageHash as next deposit event's messageHash
-			messageHash := utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message)
 			l2WithdrawMessages = append(l2WithdrawMessages, &orm.CrossMessage{
-				MessageHash:    messageHash.String(),
+				MessageHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message).String(),
 				Sender:         event.Sender.String(),
 				Receiver:       event.Target.String(),
 				TokenType:      int(orm.TokenTypeETH),

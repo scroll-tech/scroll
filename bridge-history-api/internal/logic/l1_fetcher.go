@@ -113,7 +113,7 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 				continue
 			}
 
-			signer := types.NewLondonSigner(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+			signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
 			sender, senderErr := signer.Sender(tx)
 			if senderErr != nil {
 				log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", senderErr)

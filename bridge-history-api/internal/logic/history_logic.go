@@ -73,7 +73,7 @@ func (h *HistoryLogic) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, a
 		return messages, nil
 	})
 	if err != nil {
-		log.Error("failed to get l2 claimable withdrawals by address", "address", address, "error", err)
+		log.Error("failed to get L2 claimable withdrawals by address", "address", address, "error", err)
 		return nil, 0, err
 	}
 
@@ -113,7 +113,7 @@ func (h *HistoryLogic) GetL2WithdrawalsByAddress(ctx context.Context, address st
 		return messages, nil
 	})
 	if err != nil {
-		log.Error("failed to get l2 withdrawals by address", "address", address, "error", err)
+		log.Error("failed to get L2 withdrawals by address", "address", address, "error", err)
 		return nil, 0, err
 	}
 

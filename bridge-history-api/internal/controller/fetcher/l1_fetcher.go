@@ -94,6 +94,7 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			log.Error("failed to save L1 events", "from", from, "to", to, "err", err)
 			return
 		}
+		c.l1ScanHeight = to
 
 		l2ScannedHeight := c.syncInfo.GetL2ScanHeight()
 		if l2ScannedHeight == 0 {
@@ -105,6 +106,5 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			log.Error("failed to update L1 batch index and status", "from", from, "to", to, "err", err)
 			return
 		}
-		c.l1ScanHeight = to
 	}
 }

@@ -112,8 +112,6 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(logs []types.Log, blockTimest
 				log.Warn("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
-			// Use this messageHash as next deposit event's messageHash
-			messageHash := utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message).String()
 			l1DepositMessages = append(l1DepositMessages, &orm.CrossMessage{
 				L1BlockNumber:  vlog.BlockNumber,
 				Sender:         event.Sender.String(),
@@ -125,7 +123,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(logs []types.Log, blockTimest
 				MessageType:    int(orm.MessageTypeL1SentMessage),
 				TxStatus:       int(orm.TxStatusTypeSent),
 				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
-				MessageHash:    messageHash,
+				MessageHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message).String(),
 			})
 		case backendabi.L1RelayedMessageEventSig:
 			event := backendabi.L1RelayedMessageEvent{}

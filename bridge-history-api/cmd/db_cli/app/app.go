@@ -9,12 +9,10 @@ import (
 	"scroll-tech/common/utils"
 )
 
-// Set up database app info.
 var app *cli.App
 
 func init() {
 	app = cli.NewApp()
-	// Set up database app info.
 	app.Name = "db_cli"
 	app.Usage = "The Scroll Bridge-history-api DB CLI"
 	app.Flags = append(app.Flags, utils.CommonFlags...)

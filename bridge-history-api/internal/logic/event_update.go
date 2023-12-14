@@ -42,7 +42,7 @@ func (b *EventUpdateLogic) GetL1SyncHeight(ctx context.Context) (uint64, uint64,
 	return messageSyncedHeight, batchSyncedHeight, nil
 }
 
-// GetL2MessageSyncedHeightInDB get l2 messages synced height
+// GetL2MessageSyncedHeightInDB get L2 messages synced height
 func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (uint64, error) {
 	l2SentMessageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, orm.MessageTypeL2SentMessage)
 	if err != nil {
@@ -52,7 +52,7 @@ func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (ui
 	return l2SentMessageSyncedHeight, nil
 }
 
-// GetL2LatestWithdrawal get l2 latest withdrawal message
+// GetL2LatestWithdrawal get L2 latest withdrawal message
 func (b *EventUpdateLogic) GetL2LatestWithdrawal(ctx context.Context) (*orm.CrossMessage, error) {
 	message, err := b.crossMessageOrm.GetLatestL2Withdrawal(ctx)
 	if err != nil {
@@ -110,20 +110,20 @@ func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, heig
 
 	for _, batch := range batches {
 		log.Info("update batch info of L2 withdrawals", "index", batch.BatchIndex, "start", batch.StartBlockNumber, "end", batch.EndBlockNumber)
-		if err = b.crossMessageOrm.UpdateBatchStatusOfL2Withdrawals(ctx, batch.StartBlockNumber, batch.EndBlockNumber, batch.BatchIndex); err != nil {
-			log.Error("failed to update batch status of L2 sent messages", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", err)
-			return err
+		if dbErr := b.crossMessageOrm.UpdateBatchStatusOfL2Withdrawals(ctx, batch.StartBlockNumber, batch.EndBlockNumber, batch.BatchIndex); dbErr != nil {
+			log.Error("failed to update batch status of L2 sent messages", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", dbErr)
+			return dbErr
 		}
-		if err = b.batchEventOrm.UpdateBatchEventStatus(ctx, batch.BatchIndex); err != nil {
-			log.Error("failed to update batch event status as updated", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", err)
-			return err
+		if dbErr := b.batchEventOrm.UpdateBatchEventStatus(ctx, batch.BatchIndex); dbErr != nil {
+			log.Error("failed to update batch event status as updated", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", dbErr)
+			return dbErr
 		}
 	}
 
 	return nil
 }
 
-// L2InsertOrUpdate insert or update l2 messages
+// L2InsertOrUpdate insert or update L2 messages
 func (b *EventUpdateLogic) L2InsertOrUpdate(ctx context.Context, l2FetcherResult *L2FilterResult) error {
 	err := b.db.Transaction(func(tx *gorm.DB) error {
 		if txErr := b.crossMessageOrm.InsertOrUpdateL2Messages(ctx, l2FetcherResult.WithdrawMessages, tx); txErr != nil {

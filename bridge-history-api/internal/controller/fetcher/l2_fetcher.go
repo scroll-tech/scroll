@@ -84,12 +84,12 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 
 		l2FilterResult, err := c.l2FetcherLogic.L2Fetcher(c.ctx, from, to)
 		if err != nil {
-			log.Error("failed to fetch events", "from", from, "to", to, "err", err)
+			log.Error("failed to fetch L2 events", "from", from, "to", to, "err", err)
 			return
 		}
 
 		if updateWithdrawErr := c.updateL2WithdrawMessageProofs(c.ctx, l2FilterResult.WithdrawMessages, to); updateWithdrawErr != nil {
-			log.Error("failed to update l2 withdraw message failed", "from", from, "to", to, "err", err)
+			log.Error("failed to update L2 withdraw message", "from", from, "to", to, "err", err)
 			return
 		}
 

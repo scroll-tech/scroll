@@ -18,7 +18,7 @@ import (
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
-// L2FilterResult the l2 filter result
+// L2FilterResult the L2 filter result
 type L2FilterResult struct {
 	FailedGatewayRouterTxs  []*orm.CrossMessage
 	RevertedRelayedMessages []*orm.CrossMessage
@@ -26,7 +26,7 @@ type L2FilterResult struct {
 	RelayedMessages         []*orm.CrossMessage
 }
 
-// L2FetcherLogic the l2 fetcher's logic
+// L2FetcherLogic the L2 fetcher logic
 type L2FetcherLogic struct {
 	cfg             *config.LayerConfig
 	client          *ethclient.Client
@@ -37,7 +37,7 @@ type L2FetcherLogic struct {
 	batchEventOrm   *orm.BatchEvent
 }
 
-// NewL2FetcherLogic create l2 fetcher logic
+// NewL2FetcherLogic create L2 fetcher logic
 func NewL2FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L2FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
@@ -104,7 +104,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 
 				// Check if the transaction failed
 				if receipt.Status == types.ReceiptStatusFailed {
-					signer := types.NewLondonSigner(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+					signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
 					sender, signerErr := signer.Sender(tx)
 					if signerErr != nil {
 						log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", signerErr)
@@ -170,7 +170,7 @@ func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]
 	return eventLogs, nil
 }
 
-// L2Fetcher l2 fetcher
+// L2Fetcher L2 fetcher
 func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64) (*L2FilterResult, error) {
 	log.Info("fetch and save L1 events", "from", from, "to", to)
 
