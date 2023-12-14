@@ -20,9 +20,7 @@ import (
 	"scroll-tech/bridge-history-api/internal/route"
 )
 
-var (
-	app *cli.App
-)
+var app *cli.App
 
 func init() {
 	app = cli.NewApp()
@@ -54,12 +52,12 @@ func action(ctx *cli.Context) error {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
-	redis := redis.NewClient(&redis.Options{
+	redisClient := redis.NewClient(&redis.Options{
 		Addr:     cfg.Redis.Address,
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
-	api.InitController(db, redis)
+	api.InitController(db, redisClient)
 
 	router := gin.Default()
 	registry := prometheus.DefaultRegisterer

@@ -1,6 +1,7 @@
 .PHONY: lint
 REPO_ROOT_DIR=./..
 IMAGE_VERSION=latest
+PWD=$(shell pwd)
 
 lint: ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
