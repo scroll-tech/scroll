@@ -180,6 +180,7 @@ func GetL2BlocksInRange(ctx context.Context, cli *ethclient.Client, start, end u
 	return blocks, nil
 }
 
+// ConvertBigIntArrayToString convert the big int array to string
 func ConvertBigIntArrayToString(array []*big.Int) string {
 	stringArray := make([]string, len(array))
 	for i, num := range array {
@@ -190,6 +191,7 @@ func ConvertBigIntArrayToString(array []*big.Int) string {
 	return result
 }
 
+// GetSkippedQueueIndices get the skipped queue indices
 func GetSkippedQueueIndices(startIndex uint64, skippedBitmap *big.Int) []uint64 {
 	var indices []uint64
 	for i := 0; i < 256; i++ {
