@@ -348,6 +348,28 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	return nil
 }
 
+// InsertOrUpdateL2RevertedRelayedMessagesOfL1Deposits inserts or updates the database with a list of L2 relayed messages related to L1 deposits.
+func (c *CrossMessage) InsertOrUpdateL2RevertedRelayedMessagesOfL1Deposits(ctx context.Context, l2RevertedRelayedMessages []*CrossMessage, dbTX ...*gorm.DB) error {
+	if len(l2RevertedRelayedMessages) == 0 {
+		return nil
+	}
+	// Do not update tx status of successfully relayed messages. e.g.,
+	// Successfully relayed: https://sepolia.scrollscan.com/tx/0x4eb7cb07ba76956259c0079819a34a146f8a93dd891dc94812e9b3d66b056ec7#eventlog
+	// Reverted tx 1 (Reason: Message was already successfully executed): https://sepolia.scrollscan.com/tx/0x1973cafa14eb40734df30da7bfd4d9aceb53f8f26e09d96198c16d0e2e4a95fd
+	// Reverted tx 2 (Reason: Message was already successfully executed): https://sepolia.scrollscan.com/tx/0x02fc3a28684a590aead2482022f56281539085bd3d273ac8dedc1ceccb2bc554
+	db := c.db.WithContext(ctx)
+	db = db.Model(&CrossMessage{})
+	db = db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "message_hash"}},
+		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l2_block_number", "l2_tx_hash", "tx_status"}),
+		Where:     clause.Where{Exprs: []clause.Expression{clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed}}},
+	})
+	if err := db.Create(l2RevertedRelayedMessages).Error; err != nil {
+		return fmt.Errorf("failed to update L2 reverted relayed message of L1 deposit, error: %w", err)
+	}
+	return nil
+}
+
 // InsertOrUpdateL1RelayedMessagesOfL2Withdrawals inserts or updates the database with a list of L1 relayed messages related to L2 withdrawals.
 func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx context.Context, l1RelayedMessages []*CrossMessage, dbTX ...*gorm.DB) error {
 	if len(l1RelayedMessages) == 0 {

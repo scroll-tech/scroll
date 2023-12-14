@@ -210,8 +210,6 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 		return err
 	}
 
-	l2RelayedMessages = append(l2RelayedMessages, l2RevertedRelayedMessages...)
-
 	if err = c.updateL2WithdrawMessageProofs(ctx, l2WithdrawMessages, to); err != nil {
 		log.Error("failed to update withdraw message proofs", "err", err)
 	}
@@ -222,6 +220,10 @@ func (c *L2MessageFetcher) doFetchAndSaveEvents(ctx context.Context, from uint64
 			return txErr
 		}
 		if txErr := c.crossMessageOrm.InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx, l2RelayedMessages, tx); txErr != nil {
+			log.Error("failed to update L2 relayed messages of L1 deposits", "from", from, "to", to, "err", txErr)
+			return txErr
+		}
+		if txErr := c.crossMessageOrm.InsertOrUpdateL2RevertedRelayedMessagesOfL1Deposits(ctx, l2RevertedRelayedMessages, tx); txErr != nil {
 			log.Error("failed to update L2 relayed messages of L1 deposits", "from", from, "to", to, "err", txErr)
 			return txErr
 		}
