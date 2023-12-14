@@ -29,9 +29,9 @@ fmt: ## format the code
 	cd $(PWD)/bridge-history-api/ && go mod tidy
 	cd $(PWD)/common/ && go mod tidy
 	cd $(PWD)/coordinator/ && go mod tidy
-	cd $(PWD)/database/  && go mod tidy
+	cd $(PWD)/database/ && go mod tidy
 	cd $(PWD)/prover/ && go mod tidy
-	cd $(PWD)/rollup/  && go mod tidy
+	cd $(PWD)/rollup/ && go mod tidy
 	cd $(PWD)/tests/integration-test/ && go mod tidy
 
 	goimports -local $(PWD)/bridge-history-api/ -w .
