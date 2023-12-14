@@ -354,7 +354,6 @@ func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []
 		}
 		return nil
 	})
-
 	if err != nil {
 		log.Error("failed to execute transaction", "error", err)
 		return err

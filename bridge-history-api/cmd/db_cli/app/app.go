@@ -9,10 +9,8 @@ import (
 	"scroll-tech/common/utils"
 )
 
-var (
-	// Set up database app info.
-	app *cli.App
-)
+// Set up database app info.
+var app *cli.App
 
 func init() {
 	app = cli.NewApp()
@@ -60,7 +58,8 @@ func init() {
 					Name:  "version",
 					Usage: "Rollback to the specified version.",
 					Value: 0,
-				}},
+				},
+			},
 		},
 	}
 }

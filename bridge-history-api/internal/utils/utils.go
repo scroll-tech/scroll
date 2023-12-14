@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -177,4 +178,27 @@ func GetL2BlocksInRange(ctx context.Context, cli *ethclient.Client, start, end u
 		return nil, err
 	}
 	return blocks, nil
+}
+
+func ConvertBigIntArrayToString(array []*big.Int) string {
+	stringArray := make([]string, len(array))
+	for i, num := range array {
+		stringArray[i] = num.String()
+	}
+
+	result := strings.Join(stringArray, ", ")
+	return result
+}
+
+func GetSkippedQueueIndices(startIndex uint64, skippedBitmap *big.Int) []uint64 {
+	var indices []uint64
+	for i := 0; i < 256; i++ {
+		index := startIndex + uint64(i)
+		bit := new(big.Int).Rsh(skippedBitmap, uint(i))
+		if bit.Bit(0) == 0 {
+			continue
+		}
+		indices = append(indices, index)
+	}
+	return indices
 }

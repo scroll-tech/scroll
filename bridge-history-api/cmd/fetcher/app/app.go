@@ -11,15 +11,14 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
+	"scroll-tech/common/observability"
 	"scroll-tech/common/utils"
 
 	"scroll-tech/bridge-history-api/internal/config"
 	"scroll-tech/bridge-history-api/internal/controller/fetcher"
 )
 
-var (
-	app *cli.App
-)
+var app *cli.App
 
 func init() {
 	app = cli.NewApp()
@@ -66,6 +65,8 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to connect to db", "config file", cfgFile, "error", err)
 	}
+
+	observability.Server(ctx, db)
 
 	// syncInfo is used to store the shared info between L1 fetcher and L2 fetcher, e.g., the sync height.
 	syncInfo := &fetcher.SyncInfo{}
