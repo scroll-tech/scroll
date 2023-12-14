@@ -45,7 +45,7 @@ var (
 	L2BatchWithdrawERC721Sig  common.Hash
 	L2BatchWithdrawERC1155Sig common.Hash
 
-	// scroll mono repo
+	// scroll monorepo
 
 	// ScrollChainABI holds information about ScrollChain's context and available invokable methods.
 	ScrollChainABI *abi.ABI
@@ -323,7 +323,7 @@ type L1RelayedMessageEvent struct {
 	MessageHash common.Hash
 }
 
-// L2AppendMessageEvent represents a AppendMessage event raised by the L2MessageQueue contract.
+// L2AppendMessageEvent represents an AppendMessage event raised by the L2MessageQueue contract.
 type L2AppendMessageEvent struct {
 	Index       *big.Int
 	MessageHash common.Hash
@@ -375,7 +375,7 @@ type L1CommitBatchEvent struct {
 	BatchHash  common.Hash
 }
 
-// IScrollChainBlockContext is an auto generated low-level Go binding around an user-defined struct.
+// IScrollChainBlockContext is an auto generated low-level Go binding around a user-defined struct.
 type IScrollChainBlockContext struct {
 	BlockHash       common.Hash
 	ParentHash      common.Hash

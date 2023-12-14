@@ -82,7 +82,7 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         verifier = new MockRollupVerifier();
 
         // Deploy L2 contracts
-        l2Messenger = new L2ScrollMessenger(address(0));
+        l2Messenger = new L2ScrollMessenger(address(1));
 
         // Initialize L1 contracts
         l1Messenger.initialize(address(l2Messenger), feeVault, address(rollup), address(messageQueue));

@@ -39,7 +39,7 @@ var (
 	}
 )
 
-// Monitor is an object that uses to set gin server monitor.
+// Monitor is an object that is used to set gin server monitor.
 type Monitor struct {
 	slowTime    int32
 	metricPath  string
@@ -63,7 +63,7 @@ func GetMonitor(reg prometheus.Registerer) *Monitor {
 	return monitor
 }
 
-// GetMetric used to get metric object by metric_name.
+// GetMetric is used to get metric object by metric_name.
 func (m *Monitor) GetMetric(name string) *Metric {
 	if metric, ok := m.metrics[name]; ok {
 		return metric
