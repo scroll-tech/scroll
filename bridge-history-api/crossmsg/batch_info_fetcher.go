@@ -100,8 +100,8 @@ func (b *BatchInfoFetcher) fetchBatchInfo() error {
 	}
 	for from := startHeight; number >= from; from += fetchLimit {
 		to := from + fetchLimit - 1
-		// number - confirmation can never less than 0 since the for loop condition
-		// but watch out the overflow
+		// number - confirmation can never be less than 0 since the for loop condition
+		// but watch out for the overflow
 		if to > number {
 			to = number
 		}
