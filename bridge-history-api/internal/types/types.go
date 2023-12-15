@@ -33,7 +33,7 @@ type QueryByAddressRequest struct {
 
 // QueryByHashRequest the request parameter of hash api
 type QueryByHashRequest struct {
-	Txs []string `raw:"txs" binding:"required"`
+	Txs []string `json:"txs" binding:"required,max=100"`
 }
 
 // ResultData contains return txs and total

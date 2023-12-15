@@ -171,6 +171,7 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 	hashesMap := make(map[string]struct{}, len(txHashes))
 	results := make([]*types.TxHistoryInfo, 0, len(txHashes))
 	uncachedHashes := make([]string, 0, len(txHashes))
+
 	for _, hash := range txHashes {
 		if _, exists := hashesMap[hash]; exists {
 			// Skip duplicate tx hash values.
@@ -180,28 +181,33 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 
 		cacheKey := cacheKeyPrefixQueryTxsByHashes + hash
 		cachedData, err := h.redis.Get(ctx, cacheKey).Bytes()
-		if err == nil {
-			h.cacheMetrics.cacheHits.WithLabelValues("PostQueryTxsByHashes").Inc()
-			log.Info("cache hit", "cache key", cacheKey)
-			if len(cachedData) == 0 {
-				continue
-			} else {
-				var txInfo types.TxHistoryInfo
-				if err = json.Unmarshal(cachedData, &txInfo); err != nil {
-					log.Error("failed to unmarshal cached data", "error", err)
-					uncachedHashes = append(uncachedHashes, hash)
-				} else {
-					results = append(results, &txInfo)
-				}
-			}
-		} else if err == redis.Nil {
+		if err != nil && errors.Is(err, redis.Nil) {
 			h.cacheMetrics.cacheMisses.WithLabelValues("PostQueryTxsByHashes").Inc()
 			log.Info("cache miss", "cache key", cacheKey)
 			uncachedHashes = append(uncachedHashes, hash)
-		} else {
+			continue
+		}
+
+		if err != nil {
 			log.Error("failed to get data from Redis", "error", err)
 			uncachedHashes = append(uncachedHashes, hash)
+			continue
 		}
+
+		h.cacheMetrics.cacheHits.WithLabelValues("PostQueryTxsByHashes").Inc()
+		log.Info("cache hit", "cache key", cacheKey)
+
+		if len(cachedData) == 0 {
+			continue
+		}
+
+		var txInfo types.TxHistoryInfo
+		if unmarshalErr := json.Unmarshal(cachedData, &txInfo); unmarshalErr != nil {
+			log.Error("failed to unmarshal cached data", "error", unmarshalErr)
+			uncachedHashes = append(uncachedHashes, hash)
+			continue
+		}
+		results = append(results, &txInfo)
 	}
 
 	if len(uncachedHashes) > 0 {
@@ -225,20 +231,22 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 		for _, hash := range uncachedHashes {
 			cacheKey := cacheKeyPrefixQueryTxsByHashes + hash
 			result, found := resultMap[hash]
-			if found {
-				jsonData, err := json.Marshal(result)
-				if err != nil {
-					log.Error("failed to marshal data", "error", err)
-				} else {
-					if err := h.redis.Set(ctx, cacheKey, jsonData, cacheKeyExpiredTime).Err(); err != nil {
-						log.Error("failed to set data to Redis", "error", err)
-					}
-				}
-			} else {
+			if !found {
 				// tx hash not found, which is also a valid result, cache empty string.
-				if err := h.redis.Set(ctx, cacheKey, "", cacheKeyExpiredTime).Err(); err != nil {
-					log.Error("failed to set data to Redis", "error", err)
+				if cacheErr := h.redis.Set(ctx, cacheKey, "", cacheKeyExpiredTime).Err(); cacheErr != nil {
+					log.Error("failed to set data to Redis", "error", cacheErr)
 				}
+				continue
+			}
+
+			jsonData, unmarshalErr := json.Marshal(result)
+			if unmarshalErr != nil {
+				log.Error("failed to marshal data", "error", unmarshalErr)
+				continue
+			}
+
+			if cacheErr := h.redis.Set(ctx, cacheKey, jsonData, cacheKeyExpiredTime).Err(); cacheErr != nil {
+				log.Error("failed to set data to Redis", "error", cacheErr)
 			}
 		}
 	}
@@ -309,7 +317,7 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 		return nil, 0, false, nil
 	}
 
-	// check if it's empty place holder.
+	// check if it's empty placeholder.
 	if len(values) == 1 && values[0] == "empty_page" {
 		return nil, 0, true, nil
 	}
@@ -317,10 +325,9 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 	var pagedTxs []*types.TxHistoryInfo
 	for _, v := range values {
 		var tx types.TxHistoryInfo
-		err := json.Unmarshal([]byte(v), &tx)
-		if err != nil {
-			log.Error("failed to unmarshal transaction data", "error", err)
-			return nil, 0, false, err
+		if unmarshalErr := json.Unmarshal([]byte(v), &tx); unmarshalErr != nil {
+			log.Error("failed to unmarshal transaction data", "error", unmarshalErr)
+			return nil, 0, false, unmarshalErr
 		}
 		pagedTxs = append(pagedTxs, &tx)
 	}
