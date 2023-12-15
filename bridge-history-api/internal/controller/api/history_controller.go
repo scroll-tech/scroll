@@ -1,8 +1,6 @@
 package api
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
@@ -82,11 +80,6 @@ func (c *HistoryController) PostQueryTxsByHashes(ctx *gin.Context) {
 	var req types.QueryByHashRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		types.RenderFailure(ctx, types.ErrParameterInvalidNo, err)
-		return
-	}
-
-	if len(req.Txs) > 100 {
-		types.RenderFailure(ctx, types.ErrParameterInvalidNo, errors.New("number of hashes exceeds the allowed maximum (100)"))
 		return
 	}
 
