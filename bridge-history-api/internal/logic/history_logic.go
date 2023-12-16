@@ -255,13 +255,13 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 
 func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 	txHistory := &types.TxHistoryInfo{
-		MsgHash:   message.MessageHash,
-		Amount:    message.TokenAmounts,
-		L1Token:   message.L1TokenAddress,
-		L2Token:   message.L2TokenAddress,
-		IsL1:      orm.MessageType(message.MessageType) == orm.MessageTypeL1SentMessage,
-		TxStatus:  message.TxStatus,
-		CreatedAt: &message.CreatedAt,
+		MsgHash:        message.MessageHash,
+		Amount:         message.TokenAmounts,
+		L1Token:        message.L1TokenAddress,
+		L2Token:        message.L2TokenAddress,
+		IsL1:           orm.MessageType(message.MessageType) == orm.MessageTypeL1SentMessage,
+		TxStatus:       message.TxStatus,
+		BlockTimestamp: message.BlockTimestamp,
 	}
 	if txHistory.IsL1 {
 		txHistory.Hash = message.L1TxHash

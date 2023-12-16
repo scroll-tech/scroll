@@ -119,14 +119,18 @@ func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2
 		messageHashes[i] = common.HexToHash(message.MessageHash)
 	}
 
-	proofs := withdrawTrie.AppendMessages(messageHashes)
-	if len(l2WithdrawMessages) != len(proofs) {
-		log.Error("invalid proof array length", "L2 withdrawal messages length", len(l2WithdrawMessages), "proofs length", len(proofs))
-		return fmt.Errorf("invalid proof array length: got %d proofs for %d l2WithdrawMessages", len(proofs), len(l2WithdrawMessages))
-	}
+	for i, messageHash := range messageHashes {
+		proof := withdrawTrie.AppendMessages([]common.Hash{messageHash})
+		if err != nil {
+			log.Error("error generating proof", "messageHash", messageHash, "error", err)
+			return fmt.Errorf("error generating proof for messageHash %s: %v", messageHash, err)
+		}
 
-	for i, proof := range proofs {
-		l2WithdrawMessages[i].MerkleProof = proof
+		if len(proof) != 1 {
+			log.Error("invalid proof len", "got", len(proof), "expected", 1)
+			return fmt.Errorf("invalid proof len, got: %v, expected: 1", len(proof))
+		}
+		l2WithdrawMessages[i].MerkleProof = proof[0]
 	}
 
 	// Verify if local info is correct.

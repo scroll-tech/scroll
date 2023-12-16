@@ -38,8 +38,14 @@ type TxStatusType int
 
 // Constants for TxStatusType.
 const (
-	TxStatusTypeUnknown TxStatusType = iota
-	TxStatusTypeSent
+	// TxStatusTypeSent is one of the initial statuses for cross-chain messages (the other one is TxStatusTypeSentFailed).
+	// It is used as the default value to prevent overwriting the transaction status in scenarios where the message status might change
+	// from a later status (e.g., relayed) back to "sent".
+	// Example flow:
+	// 1. A relayed message is processed, setting tx_status to TxStatusTypeRelayed.
+	// 2. If a sent message is later processed for the same cross-chain message, the tx_status
+	//    should remain as TxStatusTypeRelayed and not be modified back to TxStatusTypeSent.
+	TxStatusTypeSent TxStatusType = iota
 	TxStatusTypeSentFailed
 	TxStatusTypeRelayed
 	// FailedRelayedMessage event: encoded tx failed, cannot retry. e.g., https://sepolia.scrollscan.com/tx/0xfc7d3ea5ec8dc9b664a5a886c3b33d21e665355057601033481a439498efb79a
@@ -277,9 +283,10 @@ func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []
 	}
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
+	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "tx_status", "block_timestamp", "message_nonce"}),
+		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_nonce"}),
 	})
 	if err := db.Create(messages).Error; err != nil {
 		return fmt.Errorf("failed to insert message, error: %w", err)
@@ -298,9 +305,10 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 	}
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
+	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "tx_status", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "merkle_proof", "message_nonce"}),
+		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "merkle_proof", "message_nonce"}),
 	})
 	if err := db.Create(messages).Error; err != nil {
 		return fmt.Errorf("failed to insert message, error: %w", err)

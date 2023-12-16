@@ -2,7 +2,6 @@ package types
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -69,17 +68,17 @@ type UserClaimInfo struct {
 
 // TxHistoryInfo the schema of tx history infos
 type TxHistoryInfo struct {
-	Hash        string         `json:"hash"`
-	MsgHash     string         `json:"msgHash"`
-	Amount      string         `json:"amount"`
-	IsL1        bool           `json:"isL1"`
-	L1Token     string         `json:"l1Token"`
-	L2Token     string         `json:"l2Token"`
-	BlockNumber uint64         `json:"blockNumber"`
-	TxStatus    int            `json:"txStatus"`
-	FinalizeTx  *Finalized     `json:"finalizeTx"`
-	ClaimInfo   *UserClaimInfo `json:"claimInfo"`
-	CreatedAt   *time.Time     `json:"createdTime"`
+	Hash           string         `json:"hash"`
+	MsgHash        string         `json:"msgHash"`
+	Amount         string         `json:"amount"`
+	IsL1           bool           `json:"isL1"`
+	L1Token        string         `json:"l1Token"`
+	L2Token        string         `json:"l2Token"`
+	BlockNumber    uint64         `json:"blockNumber"`
+	TxStatus       int            `json:"txStatus"`
+	FinalizeTx     *Finalized     `json:"finalizeTx"`
+	ClaimInfo      *UserClaimInfo `json:"claimInfo"`
+	BlockTimestamp uint64         `json:"blockTimestamp"`
 }
 
 // RenderJSON renders response with json
