@@ -2,7 +2,7 @@
 	"L1": {
 		"confirmation": 2,
 		"endpoint": "L1-URL",
-		"startHeight": 4655367,
+		"startHeight": 4038000,
 		"blockTime": 12,
 		"fetchLimit": 32,
 		"MessengerAddr": "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
