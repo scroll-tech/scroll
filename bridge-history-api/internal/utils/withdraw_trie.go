@@ -38,8 +38,8 @@ func NewWithdrawTrie() *WithdrawTrie {
 
 // Initialize will initialize the merkle trie with rightest leaf node
 func (w *WithdrawTrie) Initialize(currentMessageNonce uint64, msgHash common.Hash, proofBytes []byte) {
-	proof := DecodeBytesToMerkleProof(proofBytes)
-	branches := RecoverBranchFromProof(proof, currentMessageNonce, msgHash)
+	proof := decodeBytesToMerkleProof(proofBytes)
+	branches := recoverBranchFromProof(proof, currentMessageNonce, msgHash)
 	w.height = len(proof)
 	w.branches = branches
 	w.NextMessageNonce = currentMessageNonce + 1
@@ -94,7 +94,7 @@ func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
 
 	// update branches using hashes one by one
 	for i := 0; i < length; i++ {
-		proof := UpdateBranchWithNewMessage(w.zeroes, w.branches, w.NextMessageNonce, hashes[i])
+		proof := updateBranchWithNewMessage(w.zeroes, w.branches, w.NextMessageNonce, hashes[i])
 		w.NextMessageNonce++
 		w.height = len(proof)
 	}
@@ -108,7 +108,7 @@ func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
 			merkleProof = append(merkleProof, cache[h][index^1])
 			index >>= 1
 		}
-		proofs[i] = EncodeMerkleProofToBytes(merkleProof)
+		proofs[i] = encodeMerkleProofToBytes(merkleProof)
 	}
 
 	return proofs
@@ -122,8 +122,8 @@ func (w *WithdrawTrie) MessageRoot() common.Hash {
 	return w.branches[w.height]
 }
 
-// DecodeBytesToMerkleProof transfer byte array to bytes32 array. The caller should make sure the length is matched.
-func DecodeBytesToMerkleProof(proofBytes []byte) []common.Hash {
+// decodeBytesToMerkleProof transfer byte array to bytes32 array. The caller should make sure the length is matched.
+func decodeBytesToMerkleProof(proofBytes []byte) []common.Hash {
 	proof := make([]common.Hash, len(proofBytes)/32)
 	for i := 0; i < len(proofBytes); i += 32 {
 		proof[i/32] = common.BytesToHash(proofBytes[i : i+32])
@@ -131,8 +131,8 @@ func DecodeBytesToMerkleProof(proofBytes []byte) []common.Hash {
 	return proof
 }
 
-// EncodeMerkleProofToBytes transfer byte32 array to byte array by concatenation.
-func EncodeMerkleProofToBytes(proof []common.Hash) []byte {
+// encodeMerkleProofToBytes transfer byte32 array to byte array by concatenation.
+func encodeMerkleProofToBytes(proof []common.Hash) []byte {
 	var proofBytes []byte
 	for i := 0; i < len(proof); i++ {
 		proofBytes = append(proofBytes, proof[i][:]...)
@@ -140,8 +140,8 @@ func EncodeMerkleProofToBytes(proof []common.Hash) []byte {
 	return proofBytes
 }
 
-// UpdateBranchWithNewMessage update the branches to latest with new message and return the merkle proof for the message.
-func UpdateBranchWithNewMessage(zeroes []common.Hash, branches []common.Hash, index uint64, msgHash common.Hash) []common.Hash {
+// updateBranchWithNewMessage update the branches to latest with new message and return the merkle proof for the message.
+func updateBranchWithNewMessage(zeroes []common.Hash, branches []common.Hash, index uint64, msgHash common.Hash) []common.Hash {
 	root := msgHash
 	var merkleProof []common.Hash
 	var height uint64
@@ -163,8 +163,8 @@ func UpdateBranchWithNewMessage(zeroes []common.Hash, branches []common.Hash, in
 	return merkleProof
 }
 
-// RecoverBranchFromProof will recover latest branches from merkle proof and message hash
-func RecoverBranchFromProof(proof []common.Hash, index uint64, msgHash common.Hash) []common.Hash {
+// recoverBranchFromProof will recover latest branches from merkle proof and message hash
+func recoverBranchFromProof(proof []common.Hash, index uint64, msgHash common.Hash) []common.Hash {
 	branches := make([]common.Hash, 64)
 	root := msgHash
 	var height uint64

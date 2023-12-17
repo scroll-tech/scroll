@@ -16,29 +16,29 @@ func TestUpdateBranchWithNewMessage(t *testing.T) {
 		zeroes[i] = Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
-	UpdateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
+	updateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
 	if branches[0] != common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001") {
 		t.Fatalf("Invalid root, want %s, got %s", "0x0000000000000000000000000000000000000000000000000000000000000001", branches[0].Hex())
 	}
 
-	UpdateBranchWithNewMessage(zeroes, branches, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
+	updateBranchWithNewMessage(zeroes, branches, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
 	if branches[1] != common.HexToHash("0xe90b7bceb6e7df5418fb78d8ee546e97c83a08bbccc01a0644d599ccd2a7c2e0") {
 		t.Fatalf("Invalid root, want %s, got %s", "0xe90b7bceb6e7df5418fb78d8ee546e97c83a08bbccc01a0644d599ccd2a7c2e0", branches[1].Hex())
 	}
 
-	UpdateBranchWithNewMessage(zeroes, branches, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
+	updateBranchWithNewMessage(zeroes, branches, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
 	if branches[2] != common.HexToHash("0x222ff5e0b5877792c2bc1670e2ccd0c2c97cd7bb1672a57d598db05092d3d72c") {
 		t.Fatalf("Invalid root, want %s, got %s", "0x222ff5e0b5877792c2bc1670e2ccd0c2c97cd7bb1672a57d598db05092d3d72c", branches[2].Hex())
 	}
 
-	UpdateBranchWithNewMessage(zeroes, branches, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
+	updateBranchWithNewMessage(zeroes, branches, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
 	if branches[2] != common.HexToHash("0xa9bb8c3f1f12e9aa903a50c47f314b57610a3ab32f2d463293f58836def38d36") {
 		t.Fatalf("Invalid root, want %s, got %s", "0xa9bb8c3f1f12e9aa903a50c47f314b57610a3ab32f2d463293f58836def38d36", branches[2].Hex())
 	}
 }
 
 func TestDecodeEncodeMerkleProof(t *testing.T) {
-	proof := DecodeBytesToMerkleProof(common.Hex2Bytes("2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49012ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49022ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49032ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4904"))
+	proof := decodeBytesToMerkleProof(common.Hex2Bytes("2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49012ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49022ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49032ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4904"))
 	if len(proof) != 4 {
 		t.Fatalf("proof length mismatch, want %d, got %d", 4, len(proof))
 	}
@@ -55,7 +55,7 @@ func TestDecodeEncodeMerkleProof(t *testing.T) {
 		t.Fatalf("proof[3] mismatch, want %s, got %s", "0x2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4904", proof[0].Hex())
 	}
 
-	bytes := EncodeMerkleProofToBytes(proof)
+	bytes := encodeMerkleProofToBytes(proof)
 	if common.Bytes2Hex(bytes) != "2ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49012ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49022ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d49032ebffc1a6671c51e30777a680904b103992630ec995b6e6ff76a04d5259d4904" {
 		t.Fatalf("wrong encoded bytes")
 	}
@@ -69,32 +69,32 @@ func TestRecoverBranchFromProof(t *testing.T) {
 		zeroes[i] = Keccak2(zeroes[i-1], zeroes[i-1])
 	}
 
-	proof := UpdateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
-	tmpBranches := RecoverBranchFromProof(proof, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
+	proof := updateBranchWithNewMessage(zeroes, branches, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
+	tmpBranches := recoverBranchFromProof(proof, 0, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"))
 	for i := 0; i < 64; i++ {
 		if tmpBranches[i] != branches[i] {
 			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 
-	proof = UpdateBranchWithNewMessage(zeroes, branches, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
-	tmpBranches = RecoverBranchFromProof(proof, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
+	proof = updateBranchWithNewMessage(zeroes, branches, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
+	tmpBranches = recoverBranchFromProof(proof, 1, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"))
 	for i := 0; i < 64; i++ {
 		if tmpBranches[i] != branches[i] {
 			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 
-	proof = UpdateBranchWithNewMessage(zeroes, branches, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
-	tmpBranches = RecoverBranchFromProof(proof, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
+	proof = updateBranchWithNewMessage(zeroes, branches, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
+	tmpBranches = recoverBranchFromProof(proof, 2, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"))
 	for i := 0; i < 64; i++ {
 		if tmpBranches[i] != branches[i] {
 			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
 		}
 	}
 
-	proof = UpdateBranchWithNewMessage(zeroes, branches, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
-	tmpBranches = RecoverBranchFromProof(proof, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
+	proof = updateBranchWithNewMessage(zeroes, branches, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
+	tmpBranches = recoverBranchFromProof(proof, 3, common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000004"))
 	for i := 0; i < 64; i++ {
 		if tmpBranches[i] != branches[i] {
 			t.Fatalf("Invalid branch, want %s, got %s", branches[i].Hex(), tmpBranches[i].Hex())
@@ -123,7 +123,7 @@ func TestWithdrawTrieOneByOne(t *testing.T) {
 			})
 			assert.Equal(t, withdrawTrie.NextMessageNonce, uint64(i+1))
 			assert.Equal(t, expectedRoot.String(), withdrawTrie.MessageRoot().String())
-			proof := DecodeBytesToMerkleProof(proofBytes[0])
+			proof := decodeBytesToMerkleProof(proofBytes[0])
 			verifiedRoot := verifyMerkleProof(uint64(i), hash, proof)
 			assert.Equal(t, expectedRoot.String(), verifiedRoot.String())
 		}
@@ -164,7 +164,7 @@ func TestWithdrawTrieMultiple(t *testing.T) {
 
 			for i := initial; i <= finish; i++ {
 				hash := common.BigToHash(big.NewInt(int64(i + 1)))
-				proof := DecodeBytesToMerkleProof(proofBytes[i-initial])
+				proof := decodeBytesToMerkleProof(proofBytes[i-initial])
 				verifiedRoot := verifyMerkleProof(uint64(i), hash, proof)
 				assert.Equal(t, expectedRoots[finish].String(), verifiedRoot.String())
 			}
