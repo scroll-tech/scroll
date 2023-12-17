@@ -46,7 +46,7 @@ func (w *WithdrawTrie) Initialize(currentMessageNonce uint64, msgHash common.Has
 }
 
 // AppendMessages appends a list of new messages as leaf nodes to the rightest of the tree and returns the proofs for all messages.
-// FIXME: The former proofs are wrong when inserting multiple messages.
+// The function correctly returns the proofs for the entire tree after all messages have been inserted, not the individual proofs after each insertion.
 func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
 	length := len(hashes)
 	if length == 0 {
