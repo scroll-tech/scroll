@@ -399,6 +399,9 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 	// For example, see these transactions where the same message was relayed twice within certain block ranges:
 	// FailedRelayedMessage 1: https://sepolia.etherscan.io/tx/0x28b3212cda6ca0f3790f362a780257bbe2b37417ccf75a4eca6c3a08294c8f1b#eventlog
 	// FailedRelayedMessage 2: https://sepolia.etherscan.io/tx/0xc8a8254825dd2cab5caef58cfd8d88c077ceadadc78f2340214a86cf8ab88543#eventlog
+	// Another example (relayed success, then relayed again):
+	// Relay Message, and success: https://sepolia.etherscan.io/tx/0xcfdf2f5446719e3e123a8aa06e4d6b3809c3850a13adf875755c8b1e423aa448#eventlog
+	// Relay Message again, and reverted: https://sepolia.etherscan.io/tx/0xb1fcae7546f3de4cfd0b4d679f4075adb4eb69578b12e2b5673f5f24b1836578
 	mergedL1RelayedMessages := make(map[string]*CrossMessage)
 	for _, message := range l1RelayedMessages {
 		if existing, found := mergedL1RelayedMessages[message.MessageHash]; found {
