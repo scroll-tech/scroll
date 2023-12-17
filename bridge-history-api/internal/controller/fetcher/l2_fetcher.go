@@ -120,6 +120,8 @@ func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2
 	}
 
 	for i, messageHash := range messageHashes {
+		// AppendMessages is called for each message individually to obtain the correct proofs
+		// for the state of the trie after each message is appended.
 		proof := withdrawTrie.AppendMessages([]common.Hash{messageHash})
 		if err != nil {
 			log.Error("error generating proof", "messageHash", messageHash, "error", err)
