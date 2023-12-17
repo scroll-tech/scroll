@@ -134,10 +134,6 @@ func (b *EventUpdateLogic) L2InsertOrUpdate(ctx context.Context, l2FetcherResult
 			log.Error("failed to update L2 relayed messages of L1 deposits", "err", txErr)
 			return txErr
 		}
-		if txErr := b.crossMessageOrm.InsertOrUpdateL2RevertedRelayedMessagesOfL1Deposits(ctx, l2FetcherResult.RevertedRelayedMessages, tx); txErr != nil {
-			log.Error("failed to update L2 relayed messages of L1 deposits", "err", txErr)
-			return txErr
-		}
 		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l2FetcherResult.FailedGatewayRouterTxs, tx); txErr != nil {
 			log.Error("failed to insert L2 failed gateway router transactions", "err", txErr)
 			return txErr

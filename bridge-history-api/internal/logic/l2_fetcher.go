@@ -20,10 +20,9 @@ import (
 
 // L2FilterResult the L2 filter result
 type L2FilterResult struct {
-	FailedGatewayRouterTxs  []*orm.CrossMessage
-	RevertedRelayedMessages []*orm.CrossMessage
-	WithdrawMessages        []*orm.CrossMessage
-	RelayedMessages         []*orm.CrossMessage
+	FailedGatewayRouterTxs []*orm.CrossMessage
+	WithdrawMessages       []*orm.CrossMessage
+	RelayedMessages        []*orm.CrossMessage
 }
 
 // L2FetcherLogic the L2 fetcher logic
@@ -193,10 +192,9 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64) (*L2Fil
 	}
 
 	res := L2FilterResult{
-		FailedGatewayRouterTxs:  l2FailedGatewayRouterTxs,
-		RevertedRelayedMessages: l2RevertedRelayedMessages,
-		WithdrawMessages:        l2WithdrawMessages,
-		RelayedMessages:         l2RelayedMessages,
+		FailedGatewayRouterTxs: l2FailedGatewayRouterTxs,
+		WithdrawMessages:       l2WithdrawMessages,
+		RelayedMessages:        append(l2RelayedMessages, l2RevertedRelayedMessages...),
 	}
 	return &res, nil
 }

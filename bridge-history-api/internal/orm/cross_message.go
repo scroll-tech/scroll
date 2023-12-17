@@ -344,44 +344,30 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	if len(l2RelayedMessages) == 0 {
 		return nil
 	}
-	db := c.db.WithContext(ctx)
-	db = db.Model(&CrossMessage{})
-	db = db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l2_block_number", "l2_tx_hash", "tx_status"}),
-	})
-	if err := db.Create(l2RelayedMessages).Error; err != nil {
-		return fmt.Errorf("failed to update L2 relayed message of L1 deposit, error: %w", err)
-	}
-	return nil
-}
-
-// InsertOrUpdateL2RevertedRelayedMessagesOfL1Deposits inserts or updates the database with a list of L2 relayed messages related to L1 deposits.
-func (c *CrossMessage) InsertOrUpdateL2RevertedRelayedMessagesOfL1Deposits(ctx context.Context, l2RevertedRelayedMessages []*CrossMessage, dbTX ...*gorm.DB) error {
-	if len(l2RevertedRelayedMessages) == 0 {
-		return nil
-	}
 	// Deduplicate messages, for each message_hash, retaining message with the highest block number.
 	// This is necessary as a single message, like a FailedRelayedMessage or a reverted relayed transaction,
 	// may be relayed multiple times within certain block ranges, potentially leading to the error:
 	// "ERROR: ON CONFLICT DO UPDATE command cannot affect row a second time (SQLSTATE 21000)".
 	// This happens if we attempt to insert multiple records with the same message_hash in a single db.Create operation.
 	// For example, see these transactions where the same message was relayed twice within certain block ranges:
-	// FailedRelayedMessage 1: https://sepolia.scrollscan.com/tx/0xcd6979277c3bc747445273a5e58ef1e9692fbe101d88cfefbbb69d3aef3193c0
-	// FailedRelayedMessage 2: https://sepolia.scrollscan.com/tx/0x43e28ed7cb71107c18c5d8ebbdb4a1d9cac73e60391d14d41e92985028faa337
-	mergedL2RevertedRelayedMessages := make(map[string]*CrossMessage)
-	for _, message := range l2RevertedRelayedMessages {
-		if existing, found := mergedL2RevertedRelayedMessages[message.MessageHash]; found {
-			if message.L2BlockNumber > existing.L2BlockNumber {
-				mergedL2RevertedRelayedMessages[message.MessageHash] = message
+	// Reverted tx 1: https://sepolia.scrollscan.com/tx/0xcd6979277c3bc747445273a5e58ef1e9692fbe101d88cfefbbb69d3aef3193c0
+	// Reverted tx 2: https://sepolia.scrollscan.com/tx/0x43e28ed7cb71107c18c5d8ebbdb4a1d9cac73e60391d14d41e92985028faa337
+	// Another example:
+	// FailedRelayedMessage 1: https://sepolia.scrollscan.com/tx/0xfadb147fb211e5096446c5cac3ae0a8a705d2ece6c47c65135c8874f84638f17
+	// FailedRelayedMessage 2: https://sepolia.scrollscan.com/tx/0xfadb147fb211e5096446c5cac3ae0a8a705d2ece6c47c65135c8874f84638f17
+	mergedL2RelayedMessages := make(map[string]*CrossMessage)
+	for _, message := range l2RelayedMessages {
+		if existing, found := mergedL2RelayedMessages[message.MessageHash]; found {
+			if TxStatusType(message.TxStatus) == TxStatusTypeRelayed || message.L2BlockNumber > existing.L2BlockNumber {
+				mergedL2RelayedMessages[message.MessageHash] = message
 			}
 		} else {
-			mergedL2RevertedRelayedMessages[message.MessageHash] = message
+			mergedL2RelayedMessages[message.MessageHash] = message
 		}
 	}
-	uniqueL2RevertRelayedMessages := make([]*CrossMessage, 0, len(mergedL2RevertedRelayedMessages))
-	for _, msg := range mergedL2RevertedRelayedMessages {
-		uniqueL2RevertRelayedMessages = append(uniqueL2RevertRelayedMessages, msg)
+	uniqueL2RelayedMessages := make([]*CrossMessage, 0, len(mergedL2RelayedMessages))
+	for _, msg := range mergedL2RelayedMessages {
+		uniqueL2RelayedMessages = append(uniqueL2RelayedMessages, msg)
 	}
 	// Do not update tx status of successfully relayed messages. e.g.,
 	// Successfully relayed: https://sepolia.scrollscan.com/tx/0x4eb7cb07ba76956259c0079819a34a146f8a93dd891dc94812e9b3d66b056ec7#eventlog
@@ -394,7 +380,7 @@ func (c *CrossMessage) InsertOrUpdateL2RevertedRelayedMessagesOfL1Deposits(ctx c
 		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l2_block_number", "l2_tx_hash", "tx_status"}),
 		Where:     clause.Where{Exprs: []clause.Expression{clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed}}},
 	})
-	if err := db.Create(uniqueL2RevertRelayedMessages).Error; err != nil {
+	if err := db.Create(uniqueL2RelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L2 reverted relayed message of L1 deposit, error: %w", err)
 	}
 	return nil
