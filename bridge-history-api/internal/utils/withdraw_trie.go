@@ -46,71 +46,15 @@ func (w *WithdrawTrie) Initialize(currentMessageNonce uint64, msgHash common.Has
 }
 
 // AppendMessages appends a list of new messages as leaf nodes to the rightest of the tree and returns the proofs for all messages.
-// FIXME: The former proofs are wrong when inserting multiple messages.
 func (w *WithdrawTrie) AppendMessages(hashes []common.Hash) [][]byte {
 	length := len(hashes)
-	if length == 0 {
-		return make([][]byte, 0)
-	}
-
-	cache := make([]map[uint64]common.Hash, MaxHeight)
-	for h := 0; h < MaxHeight; h++ {
-		cache[h] = make(map[uint64]common.Hash)
-	}
-
-	// cache all branches will be used later.
-	if w.NextMessageNonce != 0 {
-		index := w.NextMessageNonce
-		for h := 0; h <= w.height; h++ {
-			if index%2 == 1 {
-				// right child, `w.branches[h]` is the corresponding left child
-				// the index of left child should be `index ^ 1`.
-				cache[h][index^1] = w.branches[h]
-			}
-			index >>= 1
-		}
-	}
-	// cache all new leaves
-	for i := 0; i < length; i++ {
-		cache[0][w.NextMessageNonce+uint64(i)] = hashes[i]
-	}
-
-	// build withdraw trie with new hashes
-	minIndex := w.NextMessageNonce
-	maxIndex := w.NextMessageNonce + uint64(length) - 1
-	for h := 0; maxIndex > 0; h++ {
-		if minIndex%2 == 1 {
-			minIndex--
-		}
-		if maxIndex%2 == 0 {
-			cache[h][maxIndex^1] = w.zeroes[h]
-		}
-		for i := minIndex; i <= maxIndex; i += 2 {
-			cache[h+1][i>>1] = Keccak2(cache[h][i], cache[h][i^1])
-		}
-		minIndex >>= 1
-		maxIndex >>= 1
-	}
-
-	// update branches using hashes one by one
-	for i := 0; i < length; i++ {
-		proof := updateBranchWithNewMessage(w.zeroes, w.branches, w.NextMessageNonce, hashes[i])
-		w.NextMessageNonce++
-		w.height = len(proof)
-	}
-
 	proofs := make([][]byte, length)
-	// retrieve merkle proof from cache
 	for i := 0; i < length; i++ {
-		index := w.NextMessageNonce + uint64(i) - uint64(length)
-		var merkleProof []common.Hash
-		for h := 0; h < w.height; h++ {
-			merkleProof = append(merkleProof, cache[h][index^1])
-			index >>= 1
-		}
+		merkleProof := updateBranchWithNewMessage(w.zeroes, w.branches, w.NextMessageNonce, hashes[i])
+		w.NextMessageNonce++
+		w.height = len(merkleProof)
 		proofs[i] = encodeMerkleProofToBytes(merkleProof)
 	}
-
 	return proofs
 }
 
