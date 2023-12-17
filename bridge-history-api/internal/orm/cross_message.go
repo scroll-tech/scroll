@@ -361,6 +361,28 @@ func (c *CrossMessage) InsertOrUpdateL2RevertedRelayedMessagesOfL1Deposits(ctx c
 	if len(l2RevertedRelayedMessages) == 0 {
 		return nil
 	}
+	// Deduplicate messages, for each message_hash, retaining message with the highest block number.
+	// This is necessary as a single message, like a FailedRelayedMessage or a reverted relayed transaction,
+	// may be relayed multiple times within certain block ranges, potentially leading to the error:
+	// "ERROR: ON CONFLICT DO UPDATE command cannot affect row a second time (SQLSTATE 21000)".
+	// This happens if we attempt to insert multiple records with the same message_hash in a single db.Create operation.
+	// For example, see these transactions where the same message was relayed twice within certain block ranges:
+	// FailedRelayedMessage 1: https://sepolia.scrollscan.com/tx/0xcd6979277c3bc747445273a5e58ef1e9692fbe101d88cfefbbb69d3aef3193c0
+	// FailedRelayedMessage 2: https://sepolia.scrollscan.com/tx/0x43e28ed7cb71107c18c5d8ebbdb4a1d9cac73e60391d14d41e92985028faa337
+	mergedL2RevertedRelayedMessages := make(map[string]*CrossMessage)
+	for _, message := range l2RevertedRelayedMessages {
+		if existing, found := mergedL2RevertedRelayedMessages[message.MessageHash]; found {
+			if message.L2BlockNumber > existing.L2BlockNumber {
+				mergedL2RevertedRelayedMessages[message.MessageHash] = message
+			}
+		} else {
+			mergedL2RevertedRelayedMessages[message.MessageHash] = message
+		}
+	}
+	uniqueL2RevertRelayedMessages := make([]*CrossMessage, 0, len(mergedL2RevertedRelayedMessages))
+	for _, msg := range mergedL2RevertedRelayedMessages {
+		uniqueL2RevertRelayedMessages = append(uniqueL2RevertRelayedMessages, msg)
+	}
 	// Do not update tx status of successfully relayed messages. e.g.,
 	// Successfully relayed: https://sepolia.scrollscan.com/tx/0x4eb7cb07ba76956259c0079819a34a146f8a93dd891dc94812e9b3d66b056ec7#eventlog
 	// Reverted tx 1 (Reason: Message was already successfully executed): https://sepolia.scrollscan.com/tx/0x1973cafa14eb40734df30da7bfd4d9aceb53f8f26e09d96198c16d0e2e4a95fd
@@ -372,7 +394,7 @@ func (c *CrossMessage) InsertOrUpdateL2RevertedRelayedMessagesOfL1Deposits(ctx c
 		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l2_block_number", "l2_tx_hash", "tx_status"}),
 		Where:     clause.Where{Exprs: []clause.Expression{clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed}}},
 	})
-	if err := db.Create(l2RevertedRelayedMessages).Error; err != nil {
+	if err := db.Create(uniqueL2RevertRelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L2 reverted relayed message of L1 deposit, error: %w", err)
 	}
 	return nil
@@ -394,7 +416,7 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 	mergedL1RelayedMessages := make(map[string]*CrossMessage)
 	for _, message := range l1RelayedMessages {
 		if existing, found := mergedL1RelayedMessages[message.MessageHash]; found {
-			if message.L1BlockNumber > existing.L1BlockNumber {
+			if TxStatusType(message.TxStatus) == TxStatusTypeRelayed || message.L1BlockNumber > existing.L1BlockNumber {
 				mergedL1RelayedMessages[message.MessageHash] = message
 			}
 		} else {
