@@ -3,7 +3,9 @@ package logic
 import (
 	"context"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
@@ -225,12 +227,13 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log) ([]*orm.M
 				log.Warn("Failed to unpack QueueTransaction event", "err", err)
 				return nil, err
 			}
-			// 1. Update queue index of both sent message and replay message.
-			// 2. Update tx hash of replay message.
 			l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
 				EventType:  orm.MessageQueueEventTypeQueueTransaction,
 				QueueIndex: event.QueueIndex,
-				TxHash:     vlog.TxHash,
+
+				// To update replayMessage's tx hash.
+				MessageHash: common.BytesToHash(crypto.Keccak256(event.Data)),
+				TxHash:      vlog.TxHash,
 			})
 		case backendabi.L1DequeueTransactionEventSig:
 			event := backendabi.L1DequeueTransactionEvent{}
