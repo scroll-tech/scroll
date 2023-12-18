@@ -7,9 +7,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"gorm.io/gorm"
-
-	"scroll-tech/bridge-history-api/internal/orm"
 )
 
 // L2ReorgSafeDepth represents the number of block confirmations considered safe against L2 chain reorganizations.
@@ -18,15 +15,13 @@ const L2ReorgSafeDepth = 256
 
 // L2ReorgHandlingLogic the L2 reorg handling logic.
 type L2ReorgHandlingLogic struct {
-	client          *ethclient.Client
-	crossMessageOrm *orm.CrossMessage
+	client *ethclient.Client
 }
 
 // NewL2ReorgHandlingLogic creates L2 reorg handling logic.
-func NewL2ReorgHandlingLogic(db *gorm.DB, client *ethclient.Client) *L2ReorgHandlingLogic {
+func NewL2ReorgHandlingLogic(client *ethclient.Client) *L2ReorgHandlingLogic {
 	return &L2ReorgHandlingLogic{
-		client:          client,
-		crossMessageOrm: orm.NewCrossMessage(db),
+		client: client,
 	}
 }
 

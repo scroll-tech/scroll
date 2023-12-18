@@ -17,15 +17,14 @@ import (
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
-var emptyHash common.Hash
-
 // L2MessageFetcher fetches cross message events from L2 and saves them to database.
 type L2MessageFetcher struct {
-	ctx      context.Context
-	cfg      *config.LayerConfig
-	db       *gorm.DB
-	client   *ethclient.Client
-	syncInfo *SyncInfo
+	ctx                 context.Context
+	cfg                 *config.LayerConfig
+	db                  *gorm.DB
+	client              *ethclient.Client
+	syncInfo            *SyncInfo
+	l2LastSyncBlockHash common.Hash
 
 	eventUpdateLogic     *logic.EventUpdateLogic
 	l2FetcherLogic       *logic.L2FetcherLogic
@@ -42,7 +41,7 @@ func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.
 		client:               client,
 		eventUpdateLogic:     logic.NewEventUpdateLogic(db),
 		l2FetcherLogic:       logic.NewL2FetcherLogic(cfg, db, client),
-		l2ReorgHandlingLogic: logic.NewL2ReorgHandlingLogic(db, client),
+		l2ReorgHandlingLogic: logic.NewL2ReorgHandlingLogic(client),
 	}, nil
 }
 
@@ -62,30 +61,32 @@ func (c *L2MessageFetcher) Start() {
 		l2SyncHeight -= logic.L2ReorgSafeDepth
 	}
 
-	c.syncInfo.SetL2SyncHeight(l2SyncHeight)
+	if updateErr := c.updateL2SyncHeight(l2SyncHeight); updateErr != nil {
+		log.Crit("failed to update L2 sync height", "height", l2SyncHeight, "err", updateErr)
+		return
+	}
 	log.Info("Start L2 message fetcher", "message synced height", l2SentMessageSyncedHeight, "sync start height", l2SyncHeight+1)
 
 	tick := time.NewTicker(time.Duration(c.cfg.BlockTime) * time.Second)
 	go func() {
-		var lastSyncBlockHash common.Hash
 		for {
 			select {
 			case <-c.ctx.Done():
 				tick.Stop()
 				return
 			case <-tick.C:
-				c.fetchAndSaveEvents(c.cfg.Confirmation, lastSyncBlockHash)
+				c.fetchAndSaveEvents(c.cfg.Confirmation)
 			}
 		}
 	}()
 }
 
-func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64, lastSyncBlockHash common.Hash) common.Hash {
+func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 	startHeight := c.syncInfo.GetL2SyncHeight() + 1
 	endHeight, rpcErr := utils.GetBlockNumber(c.ctx, c.client, confirmation)
 	if rpcErr != nil {
 		log.Error("failed to get L2 block number", "confirmation", confirmation, "err", rpcErr)
-		return lastSyncBlockHash
+		return
 	}
 	log.Info("fetch and save missing L2 events", "start height", startHeight, "end height", endHeight)
 
@@ -95,45 +96,46 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64, lastSyncBlock
 			to = endHeight
 		}
 
-		if c.syncInfo.GetL2SyncHeight()+logic.L2ReorgSafeDepth > endHeight && lastSyncBlockHash != emptyHash {
-			isReorg, resyncHeight, handleErr := c.l2ReorgHandlingLogic.HandleL2Reorg(c.ctx, c.syncInfo.GetL2SyncHeight(), lastSyncBlockHash)
+		if c.syncInfo.GetL2SyncHeight()+logic.L2ReorgSafeDepth > endHeight {
+			isReorg, resyncHeight, handleErr := c.l2ReorgHandlingLogic.HandleL2Reorg(c.ctx, c.syncInfo.GetL2SyncHeight(), c.l2LastSyncBlockHash)
 			if handleErr != nil {
 				log.Error("failed to Handle L2 Reorg", "err", handleErr)
-				return lastSyncBlockHash
+				return
 			}
 
 			if isReorg {
-				c.syncInfo.SetL2SyncHeight(resyncHeight)
-				log.Warn("L2 reorg happened, exit and re-enter fetchAndSaveEvents", "restart height", resyncHeight)
-				return lastSyncBlockHash
+				log.Warn("L2 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
+
+				if updateErr := c.updateL2SyncHeight(resyncHeight); updateErr != nil {
+					log.Error("failed to update L2 re-sync height", "height", resyncHeight, "err", updateErr)
+					return
+				}
+
+				return
 			}
 		}
 
 		l2FilterResult, fetchErr := c.l2FetcherLogic.L2Fetcher(c.ctx, from, to)
 		if fetchErr != nil {
 			log.Error("failed to fetch L2 events", "from", from, "to", to, "err", fetchErr)
-			return lastSyncBlockHash
+			return
 		}
 
 		if updateWithdrawErr := c.updateL2WithdrawMessageProofs(c.ctx, l2FilterResult.WithdrawMessages, to); updateWithdrawErr != nil {
 			log.Error("failed to update L2 withdraw message", "from", from, "to", to, "err", updateWithdrawErr)
-			return lastSyncBlockHash
+			return
 		}
 
 		if insertUpdateErr := c.eventUpdateLogic.L2InsertOrUpdate(c.ctx, l2FilterResult); insertUpdateErr != nil {
 			log.Error("failed to save L2 events", "from", from, "to", to, "err", insertUpdateErr)
-			return lastSyncBlockHash
+			return
 		}
 
-		lastBlockHeader, rpcErr := c.client.HeaderByNumber(c.ctx, new(big.Int).SetUint64(to))
-		if rpcErr != nil {
-			log.Error("failed to get header by number", "block number", to)
-			return lastSyncBlockHash
+		if updateErr := c.updateL2SyncHeight(to); updateErr != nil {
+			log.Error("failed to update L2 sync height", "height", to, "err", updateErr)
+			return
 		}
-		c.syncInfo.SetL2SyncHeight(to)
-		lastSyncBlockHash = lastBlockHeader.Hash()
 	}
-	return lastSyncBlockHash
 }
 
 func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2WithdrawMessages []*orm.CrossMessage, endBlock uint64) error {
@@ -180,5 +182,16 @@ func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2
 		log.Error("withdraw root mismatch", "expected", common.BytesToHash(withdrawRoot).String(), "got", withdrawTrie.MessageRoot().String())
 		return fmt.Errorf("withdraw root mismatch. expected: %v, got: %v", common.BytesToHash(withdrawRoot), withdrawTrie.MessageRoot())
 	}
+	return nil
+}
+
+func (c *L2MessageFetcher) updateL2SyncHeight(height uint64) error {
+	blockHeader, err := c.client.HeaderByNumber(c.ctx, new(big.Int).SetUint64(height))
+	if err != nil {
+		log.Error("failed to get L2 header by number", "block number", height, "err", err)
+		return err
+	}
+	c.l2LastSyncBlockHash = blockHeader.Hash()
+	c.syncInfo.SetL2SyncHeight(height)
 	return nil
 }

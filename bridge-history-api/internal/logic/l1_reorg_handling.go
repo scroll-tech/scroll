@@ -7,9 +7,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"gorm.io/gorm"
-
-	"scroll-tech/bridge-history-api/internal/orm"
 )
 
 // L1ReorgSafeDepth represents the number of block confirmations considered safe against L1 chain reorganizations.
@@ -18,17 +15,13 @@ const L1ReorgSafeDepth = 64
 
 // L1ReorgHandlingLogic the L1 reorg handling logic.
 type L1ReorgHandlingLogic struct {
-	client          *ethclient.Client
-	crossMessageOrm *orm.CrossMessage
-	batchEventOrm   *orm.BatchEvent
+	client *ethclient.Client
 }
 
 // NewL1ReorgHandlingLogic creates L1 reorg handling logic.
-func NewL1ReorgHandlingLogic(db *gorm.DB, client *ethclient.Client) *L1ReorgHandlingLogic {
+func NewL1ReorgHandlingLogic(client *ethclient.Client) *L1ReorgHandlingLogic {
 	return &L1ReorgHandlingLogic{
-		client:          client,
-		crossMessageOrm: orm.NewCrossMessage(db),
-		batchEventOrm:   orm.NewBatchEvent(db),
+		client: client,
 	}
 }
 
