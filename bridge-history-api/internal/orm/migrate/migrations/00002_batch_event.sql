@@ -4,6 +4,7 @@ CREATE TABLE batch_event
 (
     id                  BIGSERIAL     PRIMARY KEY,
     l1_block_number     BIGINT        NOT NULL,
+    l1_block_hash       VARCHAR       NOT NULL, -- for reorg detection
     batch_status        SMALLINT      NOT NULL,
     batch_index         BIGINT        NOT NULL,
     batch_hash          VARCHAR       NOT NULL,
@@ -15,10 +16,10 @@ CREATE TABLE batch_event
     deleted_at          TIMESTAMP(0)  DEFAULT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_be_l1_block_number ON batch_event (l1_block_number);
-CREATE INDEX IF NOT EXISTS idx_be_batch_index ON batch_event (batch_index);
-CREATE UNIQUE INDEX IF NOT EXISTS unique_idx_be_batch_index_batch_hash ON batch_event (batch_index, batch_hash);
-CREATE INDEX IF NOT EXISTS idx_be_end_block_number_update_status_batch_index ON batch_event (end_block_number, update_status, batch_index);
+CREATE INDEX IF NOT EXISTS idx_be_l1_block_number ON batch_event (l1_block_number) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_be_batch_index ON batch_event (batch_index) WHERE deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS unique_idx_be_batch_index_batch_hash ON batch_event (batch_index, batch_hash) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_be_end_block_number_update_status_batch_index ON batch_event (end_block_number, update_status, batch_index) WHERE deleted_at IS NULL;
 
 -- +goose StatementEnd
 

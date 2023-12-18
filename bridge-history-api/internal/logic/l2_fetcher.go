@@ -101,7 +101,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 					return nil, nil, nil, receiptErr
 				}
 
-				// Check if the transaction failed
+				// Check if the transaction is failed
 				if receipt.Status == types.ReceiptStatusFailed {
 					signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
 					sender, signerErr := signer.Sender(tx)
@@ -116,6 +116,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 						Sender:         sender.String(),
 						Receiver:       (*tx.To()).String(),
 						L2BlockNumber:  receipt.BlockNumber.Uint64(),
+						L2BlockHash:    receipt.BlockHash.String(),
 						BlockTimestamp: block.Time(),
 						TxStatus:       int(orm.TxStatusTypeSentFailed),
 					})
@@ -129,13 +130,14 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 					return nil, nil, nil, receiptErr
 				}
 
-				// Check if the transaction failed
+				// Check if the transaction is failed
 				if receipt.Status == types.ReceiptStatusFailed {
 					l2RevertedRelayedMessages = append(l2RevertedRelayedMessages, &orm.CrossMessage{
 						MessageHash:   "0x" + common.Bytes2Hex(crypto.Keccak256(tx.AsL1MessageTx().Data)),
 						L2TxHash:      tx.Hash().String(),
 						TxStatus:      int(orm.TxStatusTypeRelayedTxReverted),
 						L2BlockNumber: receipt.BlockNumber.Uint64(),
+						L2BlockHash:   receipt.BlockHash.String(),
 						MessageType:   int(orm.MessageTypeL1SentMessage),
 					})
 				}

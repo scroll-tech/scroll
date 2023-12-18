@@ -17,7 +17,7 @@ import (
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
-// L1FilterResult l1 fetcher result
+// L1FilterResult L1 fetcher result
 type L1FilterResult struct {
 	FailedGatewayRouterTxs []*orm.CrossMessage
 	DepositMessages        []*orm.CrossMessage
@@ -26,7 +26,7 @@ type L1FilterResult struct {
 	MessageQueueEvents     []*orm.MessageQueueEvent
 }
 
-// L1FetcherLogic the l1 fetcher's logic
+// L1FetcherLogic the L1 fetcher logic
 type L1FetcherLogic struct {
 	cfg             *config.LayerConfig
 	client          *ethclient.Client
@@ -37,7 +37,7 @@ type L1FetcherLogic struct {
 	batchEventOrm   *orm.BatchEvent
 }
 
-// NewL1FetcherLogic create l1 fetcher logic
+// NewL1FetcherLogic creates L1 fetcher logic
 func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
@@ -108,7 +108,7 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 				return nil, nil, receiptErr
 			}
 
-			// Check if the transaction failed
+			// Check if the transaction is failed
 			if receipt.Status != types.ReceiptStatusFailed {
 				continue
 			}
@@ -126,6 +126,7 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 				Sender:         sender.String(),
 				Receiver:       (*tx.To()).String(),
 				L1BlockNumber:  receipt.BlockNumber.Uint64(),
+				L1BlockHash:    receipt.BlockHash.String(),
 				BlockTimestamp: block.Time(),
 				TxStatus:       int(orm.TxStatusTypeSentFailed),
 			})
@@ -165,7 +166,7 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 	return eventLogs, nil
 }
 
-// L1Fetcher l1 fetcher
+// L1Fetcher L1 fetcher
 func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64) (*L1FilterResult, error) {
 	log.Info("fetch and save L1 events", "from", from, "to", to)
 

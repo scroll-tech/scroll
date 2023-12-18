@@ -99,6 +99,8 @@ type CrossMessage struct {
 	L2TxHash       string     `json:"l2_tx_hash" gorm:"column:l2_tx_hash"`
 	L1BlockNumber  uint64     `json:"l1_block_number" gorm:"column:l1_block_number"`
 	L2BlockNumber  uint64     `json:"l2_block_number" gorm:"column:l2_block_number"`
+	L1BlockHash    string     `json:"l1_block_hash" gorm:"column:l1_block_hash"`
+	L2BlockHash    string     `json:"l2_block_hash" gorm:"column:l2_block_hash"`
 	L1TokenAddress string     `json:"l1_token_address" gorm:"column:l1_token_address"`
 	L2TokenAddress string     `json:"l2_token_address" gorm:"column:l2_token_address"`
 	TokenIDs       string     `json:"token_ids" gorm:"column:token_ids"`
@@ -124,6 +126,38 @@ func (*CrossMessage) TableName() string {
 // NewCrossMessage returns a new instance of CrossMessage.
 func NewCrossMessage(db *gorm.DB) *CrossMessage {
 	return &CrossMessage{db: db}
+}
+
+// GetMaxL1BlockNumberAndHash retrieves the maximum L1 block number and its corresponding block hash.
+// for reorg detection.
+func (c *CrossMessage) GetMaxL1BlockNumberAndHash(ctx context.Context) (uint64, common.Hash, error) {
+	var message CrossMessage
+	db := c.db.WithContext(ctx)
+	db = db.Model(&CrossMessage{})
+	db = db.Order("l1_block_number desc")
+	if err := db.First(&message).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, common.Hash{}, nil
+		}
+		return 0, common.Hash{}, fmt.Errorf("failed to get the maximum L1 block number and hash, error: %w", err)
+	}
+	return message.L1BlockNumber, common.HexToHash(message.L1BlockHash), nil
+}
+
+// GetMaxL2BlockNumberAndHash retrieves the maximum L2 block number and its corresponding block hash.
+// for reorg detection.
+func (c *CrossMessage) GetMaxL2BlockNumberAndHash(ctx context.Context) (uint64, common.Hash, error) {
+	var message CrossMessage
+	db := c.db.WithContext(ctx)
+	db = db.Model(&CrossMessage{})
+	db = db.Order("l2_block_number desc")
+	if err := db.First(&message).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, common.Hash{}, nil
+		}
+		return 0, common.Hash{}, fmt.Errorf("failed to get the maximum L2 block number and hash, error: %w", err)
+	}
+	return message.L2BlockNumber, common.HexToHash(message.L2BlockHash), nil
 }
 
 // GetMessageSyncedHeightInDB returns the latest synced cross message height from the database for a given message type.
@@ -286,7 +320,7 @@ func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []
 	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_nonce"}),
+		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l1_block_number", "l1_block_hash", "l1_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_nonce"}),
 	})
 	if err := db.Create(messages).Error; err != nil {
 		return fmt.Errorf("failed to insert message, error: %w", err)
@@ -308,7 +342,7 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "merkle_proof", "message_nonce"}),
+		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_block_hash", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "merkle_proof", "message_nonce"}),
 	})
 	if err := db.Create(messages).Error; err != nil {
 		return fmt.Errorf("failed to insert message, error: %w", err)
@@ -354,7 +388,7 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	// Reverted tx 2: https://sepolia.scrollscan.com/tx/0x43e28ed7cb71107c18c5d8ebbdb4a1d9cac73e60391d14d41e92985028faa337
 	// Another example:
 	// FailedRelayedMessage 1: https://sepolia.scrollscan.com/tx/0xfadb147fb211e5096446c5cac3ae0a8a705d2ece6c47c65135c8874f84638f17
-	// FailedRelayedMessage 2: https://sepolia.scrollscan.com/tx/0xfadb147fb211e5096446c5cac3ae0a8a705d2ece6c47c65135c8874f84638f17
+	// FailedRelayedMessage 2: https://sepolia.scrollscan.com/tx/0x6cb149b61afd07bf2e17561a59ebebde41e343b6610290c97515b2f862160b42
 	mergedL2RelayedMessages := make(map[string]*CrossMessage)
 	for _, message := range l2RelayedMessages {
 		if existing, found := mergedL2RelayedMessages[message.MessageHash]; found {
@@ -377,7 +411,7 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	db = db.Model(&CrossMessage{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l2_block_number", "l2_tx_hash", "tx_status"}),
+		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l2_block_number", "l2_block_hash", "l2_tx_hash", "tx_status"}),
 		Where:     clause.Where{Exprs: []clause.Expression{clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed}}},
 	})
 	if err := db.Create(uniqueL2RelayedMessages).Error; err != nil {
@@ -424,7 +458,7 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 	db = db.Model(&CrossMessage{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l1_block_number", "l1_tx_hash", "tx_status"}),
+		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l1_block_number", "l1_block_hash", "l1_tx_hash", "tx_status"}),
 	})
 	if err := db.Create(uniqueL1RelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L1 relayed message of L2 withdrawal, error: %w", err)

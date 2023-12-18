@@ -25,28 +25,30 @@ type L2MessageFetcher struct {
 	client   *ethclient.Client
 	syncInfo *SyncInfo
 
-	eventUpdateLogic *logic.EventUpdateLogic
-	l2FetcherLogic   *logic.L2FetcherLogic
+	eventUpdateLogic     *logic.EventUpdateLogic
+	l2FetcherLogic       *logic.L2FetcherLogic
+	l2ReorgHandlingLogic *logic.L2ReorgHandlingLogic
 }
 
 // NewL2MessageFetcher creates a new L2MessageFetcher instance.
 func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) (*L2MessageFetcher, error) {
 	return &L2MessageFetcher{
-		ctx:              ctx,
-		cfg:              cfg,
-		db:               db,
-		syncInfo:         syncInfo,
-		client:           client,
-		eventUpdateLogic: logic.NewEventUpdateLogic(db),
-		l2FetcherLogic:   logic.NewL2FetcherLogic(cfg, db, client),
+		ctx:                  ctx,
+		cfg:                  cfg,
+		db:                   db,
+		syncInfo:             syncInfo,
+		client:               client,
+		eventUpdateLogic:     logic.NewEventUpdateLogic(db),
+		l2FetcherLogic:       logic.NewL2FetcherLogic(cfg, db, client),
+		l2ReorgHandlingLogic: logic.NewL2ReorgHandlingLogic(db, client),
 	}, nil
 }
 
 // Start starts the L2 message fetching process.
 func (c *L2MessageFetcher) Start() {
-	l2SentMessageSyncedHeight, err := c.eventUpdateLogic.GetL2MessageSyncedHeightInDB(c.ctx)
-	if err != nil {
-		log.Error("failed to get L2 cross message processed height", "err", err)
+	l2SentMessageSyncedHeight, dbErr := c.eventUpdateLogic.GetL2MessageSyncedHeightInDB(c.ctx)
+	if dbErr != nil {
+		log.Error("failed to get L2 cross message processed height", "err", dbErr)
 		return
 	}
 
@@ -69,9 +71,9 @@ func (c *L2MessageFetcher) Start() {
 
 func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 	startHeight := c.syncInfo.GetL2ScanHeight() + 1
-	endHeight, err := utils.GetBlockNumber(c.ctx, c.client, confirmation)
-	if err != nil {
-		log.Error("failed to get L1 safe block number", "err", err)
+	endHeight, rpcErr := utils.GetBlockNumber(c.ctx, c.client, confirmation)
+	if rpcErr != nil {
+		log.Error("failed to get L1 safe block number", "err", rpcErr)
 		return
 	}
 	log.Info("fetch and save missing L2 events", "start height", startHeight, "end height", endHeight)
@@ -82,19 +84,33 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			to = endHeight
 		}
 
-		l2FilterResult, err := c.l2FetcherLogic.L2Fetcher(c.ctx, from, to)
-		if err != nil {
-			log.Error("failed to fetch L2 events", "from", from, "to", to, "err", err)
+		if endHeight-to >= logic.L2ReorgSafeDepth {
+			isReorg, resyncHeight, handleErr := c.l2ReorgHandlingLogic.HandleL2Reorg(c.ctx)
+			if handleErr != nil {
+				log.Error("failed to Handle L2 Reorg", "err", handleErr)
+				return
+			}
+
+			if isReorg {
+				c.syncInfo.SetL2ScanHeight(resyncHeight)
+				log.Warn("L2 reorg happened, exit and re-enter fetchAndSaveEvents", "restart height", resyncHeight)
+				return
+			}
+		}
+
+		l2FilterResult, fetchErr := c.l2FetcherLogic.L2Fetcher(c.ctx, from, to)
+		if fetchErr != nil {
+			log.Error("failed to fetch L2 events", "from", from, "to", to, "err", fetchErr)
 			return
 		}
 
 		if updateWithdrawErr := c.updateL2WithdrawMessageProofs(c.ctx, l2FilterResult.WithdrawMessages, to); updateWithdrawErr != nil {
-			log.Error("failed to update L2 withdraw message", "from", from, "to", to, "err", err)
+			log.Error("failed to update L2 withdraw message", "from", from, "to", to, "err", updateWithdrawErr)
 			return
 		}
 
 		if insertUpdateErr := c.eventUpdateLogic.L2InsertOrUpdate(c.ctx, l2FilterResult); insertUpdateErr != nil {
-			log.Error("failed to save L2 events", "from", from, "to", to, "err", err)
+			log.Error("failed to save L2 events", "from", from, "to", to, "err", insertUpdateErr)
 			return
 		}
 

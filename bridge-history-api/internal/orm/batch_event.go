@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"gorm.io/gorm"
 )
 
@@ -34,6 +35,7 @@ type BatchEvent struct {
 
 	ID               uint64     `json:"id" gorm:"column:id;primary_key"`
 	L1BlockNumber    uint64     `json:"l1_block_number" gorm:"column:l1_block_number"`
+	L1BlockHash      string     `json:"l1_block_hash" gorm:"column:l1_block_hash"`
 	BatchStatus      int        `json:"batch_status" gorm:"column:batch_status"`
 	BatchIndex       uint64     `json:"batch_index" gorm:"column:batch_index"`
 	BatchHash        string     `json:"batch_hash" gorm:"column:batch_hash"`
@@ -53,6 +55,22 @@ func (*BatchEvent) TableName() string {
 // NewBatchEvent returns a new instance of BatchEvent.
 func NewBatchEvent(db *gorm.DB) *BatchEvent {
 	return &BatchEvent{db: db}
+}
+
+// GetMaxL1BlockNumberAndHash retrieves the maximum L1 block number and its corresponding block hash.
+// for reorg detection.
+func (c *BatchEvent) GetMaxL1BlockNumberAndHash(ctx context.Context) (uint64, common.Hash, error) {
+	var batch BatchEvent
+	db := c.db.WithContext(ctx)
+	db = db.Model(&BatchEvent{})
+	db = db.Order("l1_block_number desc")
+	if err := db.First(&batch).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return 0, common.Hash{}, nil
+		}
+		return 0, common.Hash{}, fmt.Errorf("failed to get the maximum L1 block number and hash: %w", err)
+	}
+	return batch.L1BlockNumber, common.HexToHash(batch.L1BlockHash), nil
 }
 
 // GetBatchEventSyncedHeightInDB returns the maximum l1_block_number from the batch_event table.

@@ -16,7 +16,7 @@ import (
 type L1EventParser struct {
 }
 
-// NewL1EventParser create l1 event parser
+// NewL1EventParser creates l1 event parser
 func NewL1EventParser() *L1EventParser {
 	return &L1EventParser{}
 }
@@ -114,6 +114,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(logs []types.Log, blockTimest
 			}
 			l1DepositMessages = append(l1DepositMessages, &orm.CrossMessage{
 				L1BlockNumber:  vlog.BlockNumber,
+				L1BlockHash:    vlog.BlockHash.String(),
 				Sender:         event.Sender.String(),
 				Receiver:       event.Target.String(),
 				TokenType:      int(orm.TokenTypeETH),
@@ -134,6 +135,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(logs []types.Log, blockTimest
 			l1RelayedMessages = append(l1RelayedMessages, &orm.CrossMessage{
 				MessageHash:   event.MessageHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
+				L1BlockHash:   vlog.BlockHash.String(),
 				L1TxHash:      vlog.TxHash.String(),
 				TxStatus:      int(orm.TxStatusTypeRelayed),
 				MessageType:   int(orm.MessageTypeL2SentMessage),
@@ -147,6 +149,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(logs []types.Log, blockTimest
 			l1RelayedMessages = append(l1RelayedMessages, &orm.CrossMessage{
 				MessageHash:   event.MessageHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
+				L1BlockHash:   vlog.BlockHash.String(),
 				L1TxHash:      vlog.TxHash.String(),
 				TxStatus:      int(orm.TxStatusTypeFailedRelayed),
 				MessageType:   int(orm.MessageTypeL2SentMessage),
@@ -184,6 +187,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				StartBlockNumber: startBlock,
 				EndBlockNumber:   endBlock,
 				L1BlockNumber:    vlog.BlockNumber,
+				L1BlockHash:      vlog.BlockHash.String(),
 			})
 		case backendabi.L1RevertBatchEventSig:
 			event := backendabi.L1RevertBatchEvent{}
@@ -196,6 +200,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				BatchIndex:    event.BatchIndex.Uint64(),
 				BatchHash:     event.BatchHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
+				L1BlockHash:   vlog.BlockHash.String(),
 			})
 		case backendabi.L1FinalizeBatchEventSig:
 			event := backendabi.L1FinalizeBatchEvent{}
@@ -208,6 +213,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				BatchIndex:    event.BatchIndex.Uint64(),
 				BatchHash:     event.BatchHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
+				L1BlockHash:   vlog.BlockHash.String(),
 			})
 		}
 	}
