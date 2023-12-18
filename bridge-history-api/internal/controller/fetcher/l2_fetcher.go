@@ -84,7 +84,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			to = endHeight
 		}
 
-		if endHeight-to >= logic.L2ReorgSafeDepth {
+		if endHeight-to <= logic.L2ReorgSafeDepth {
 			isReorg, resyncHeight, handleErr := c.l2ReorgHandlingLogic.HandleL2Reorg(c.ctx)
 			if handleErr != nil {
 				log.Error("failed to Handle L2 Reorg", "err", handleErr)
