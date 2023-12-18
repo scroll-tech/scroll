@@ -354,7 +354,7 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	// Reverted tx 2: https://sepolia.scrollscan.com/tx/0x43e28ed7cb71107c18c5d8ebbdb4a1d9cac73e60391d14d41e92985028faa337
 	// Another example:
 	// FailedRelayedMessage 1: https://sepolia.scrollscan.com/tx/0xfadb147fb211e5096446c5cac3ae0a8a705d2ece6c47c65135c8874f84638f17
-	// FailedRelayedMessage 2: https://sepolia.scrollscan.com/tx/0xfadb147fb211e5096446c5cac3ae0a8a705d2ece6c47c65135c8874f84638f17
+	// FailedRelayedMessage 2: https://sepolia.scrollscan.com/tx/0x6cb149b61afd07bf2e17561a59ebebde41e343b6610290c97515b2f862160b42
 	mergedL2RelayedMessages := make(map[string]*CrossMessage)
 	for _, message := range l2RelayedMessages {
 		if existing, found := mergedL2RelayedMessages[message.MessageHash]; found {
