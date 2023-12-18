@@ -54,7 +54,7 @@ func (c *L1MessageFetcher) Start() {
 	if batchSyncedHeight > l1SyncHeight {
 		l1SyncHeight = batchSyncedHeight
 	}
-	if c.cfg.StartHeight > c.l1SyncHeight {
+	if c.cfg.StartHeight > l1SyncHeight {
 		l1SyncHeight = c.cfg.StartHeight - 1
 	}
 

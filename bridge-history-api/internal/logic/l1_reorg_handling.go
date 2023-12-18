@@ -34,11 +34,11 @@ func (l *L1ReorgHandlingLogic) HandleL1Reorg(ctx context.Context, blockNumber ui
 	}
 
 	if reorgDetected {
-		resyncHeight := uint64(1)
+		var resyncHeight uint64
 		if blockNumber > L1ReorgSafeDepth {
 			resyncHeight = blockNumber - L1ReorgSafeDepth
 		}
-		return true, resyncHeight - 1, nil
+		return true, resyncHeight, nil
 	}
 
 	return false, 0, nil
@@ -47,17 +47,17 @@ func (l *L1ReorgHandlingLogic) HandleL1Reorg(ctx context.Context, blockNumber ui
 func (l *L1ReorgHandlingLogic) detectReorg(ctx context.Context, blockNumber uint64, blockHash common.Hash) (bool, error) {
 	currentHeader, err := l.client.HeaderByNumber(ctx, big.NewInt(0).SetUint64(blockNumber))
 	if err != nil {
-		log.Error("failed to get header by number", "height", blockNumber, "err", err)
+		log.Error("failed to get L1 header by number", "height", blockNumber, "err", err)
 		return false, err
 	}
 
 	if currentHeader == nil {
-		log.Warn("cannot fetch remote block header", "height", blockNumber, "last block hash", blockHash.String())
+		log.Warn("cannot fetch current L1 block header", "height", blockNumber, "last block hash", blockHash.String())
 		return true, nil
 	}
 
 	if blockHash != currentHeader.Hash() {
-		log.Warn("block hash mismatch, reorg happened", "height", blockNumber, "last block hash", blockHash.String(), "current block hash", currentHeader.Hash().String())
+		log.Warn("block hash mismatch, L1 reorg happened", "height", blockNumber, "last block hash", blockHash.String(), "current block hash", currentHeader.Hash().String())
 		return true, nil
 	}
 
