@@ -27,13 +27,13 @@ func NewL1ReorgHandlingLogic(client *ethclient.Client) *L1ReorgHandlingLogic {
 
 // HandleL1Reorg performs L1 reorg handling by detecting reorgs and updating sync height.
 func (l *L1ReorgHandlingLogic) HandleL1Reorg(ctx context.Context, blockNumber uint64, blockHash common.Hash) (bool, uint64, error) {
-	reorgDetected, err := l.detectReorg(ctx, blockNumber, blockHash)
+	l1ReorgDetected, err := l.detectReorg(ctx, blockNumber, blockHash)
 	if err != nil {
 		log.Error("failed to detect reorg", "err", err)
 		return false, 0, err
 	}
 
-	if reorgDetected {
+	if l1ReorgDetected {
 		var resyncHeight uint64
 		if blockNumber > L1ReorgSafeDepth {
 			resyncHeight = blockNumber - L1ReorgSafeDepth
