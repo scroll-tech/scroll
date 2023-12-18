@@ -40,7 +40,7 @@ func (m *Monitor) UseWithoutExposingEndpoint(r gin.IRoutes) {
 }
 
 // Expose adds metric path to a given router.
-// The router can be different with the one passed to UseWithoutExposingEndpoint.
+// The router can be different from the one passed to UseWithoutExposingEndpoint.
 // This allows to expose metrics on different port.
 func (m *Monitor) Expose(r gin.IRoutes) {
 	r.GET(m.metricPath, func(ctx *gin.Context) {

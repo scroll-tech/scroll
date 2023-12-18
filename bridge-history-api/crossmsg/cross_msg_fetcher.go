@@ -135,7 +135,7 @@ func (c *MsgFetcher) forwardFetchAndSaveMissingEvents(confirmation uint64) {
 		if to > number {
 			to = number
 		}
-		// watch for overflow here, tho its unlikely to happen
+		// watch for overflow here, though its unlikely to happen
 		err := c.worker.F(c.ctx, c.client, c.db, int64(from), int64(to), c.addressList)
 		if err != nil {
 			log.Error(fmt.Sprintf("%s: failed!", c.worker.Name), "err", err)
