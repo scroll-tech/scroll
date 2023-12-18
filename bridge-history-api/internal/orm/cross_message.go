@@ -245,7 +245,7 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		switch l1MessageQueueEvent.EventType {
 		case MessageQueueEventTypeQueueTransaction:
 			// Update l1_tx_hash if the user calls replayMessage, cannot use queue index here.
-			// ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
+			// Ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
 			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
 			updateFields["l1_tx_hash"] = l1MessageQueueEvent.TxHash.String()
 		case MessageQueueEventTypeDequeueTransaction:

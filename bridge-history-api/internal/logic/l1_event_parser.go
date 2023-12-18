@@ -217,7 +217,12 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 }
 
 // ParseL1MessageQueueEventLogs parses L1 watched message queue events.
-func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log) ([]*orm.MessageQueueEvent, error) {
+func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1DepositMessages []*orm.CrossMessage) ([]*orm.MessageQueueEvent, error) {
+	messageHashes := make(map[common.Hash]struct{})
+	for _, msg := range l1DepositMessages {
+		messageHashes[common.HexToHash(msg.MessageHash)] = struct{}{}
+	}
+
 	var l1MessageQueueEvents []*orm.MessageQueueEvent
 	for _, vlog := range logs {
 		switch vlog.Topics[0] {
@@ -227,14 +232,16 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log) ([]*orm.M
 				log.Warn("Failed to unpack QueueTransaction event", "err", err)
 				return nil, err
 			}
-			l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
-				EventType:  orm.MessageQueueEventTypeQueueTransaction,
-				QueueIndex: event.QueueIndex,
-
-				// To update replayMessage's tx hash.
-				MessageHash: common.BytesToHash(crypto.Keccak256(event.Data)),
-				TxHash:      vlog.TxHash,
-			})
+			messageHash := common.BytesToHash(crypto.Keccak256(event.Data))
+			// If the message hash is not found in the map, it's not a replayMessage or enforced tx (omitted); add it to the events.
+			if _, exists := messageHashes[messageHash]; !exists {
+				l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
+					EventType:   orm.MessageQueueEventTypeQueueTransaction,
+					QueueIndex:  event.QueueIndex,
+					MessageHash: messageHash,
+					TxHash:      vlog.TxHash,
+				})
+			}
 		case backendabi.L1DequeueTransactionEventSig:
 			event := backendabi.L1DequeueTransactionEvent{}
 			if err := utils.UnpackLog(backendabi.IL1MessageQueueABI, &event, "DequeueTransaction", vlog); err != nil {

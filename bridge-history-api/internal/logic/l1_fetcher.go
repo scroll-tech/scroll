@@ -193,7 +193,7 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64) (*L1Fil
 		return nil, err
 	}
 
-	l1MessageQueueEvents, err := f.parser.ParseL1MessageQueueEventLogs(eventLogs)
+	l1MessageQueueEvents, err := f.parser.ParseL1MessageQueueEventLogs(eventLogs, l1DepositMessages)
 	if err != nil {
 		log.Error("failed to parse L1 message queue event logs", "from", from, "to", to, "err", err)
 		return nil, err
