@@ -133,7 +133,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 				// Check if the transaction is failed
 				if receipt.Status == types.ReceiptStatusFailed {
 					l2RevertedRelayedMessages = append(l2RevertedRelayedMessages, &orm.CrossMessage{
-						MessageHash:   "0x" + common.Bytes2Hex(crypto.Keccak256(tx.AsL1MessageTx().Data)),
+						MessageHash:   common.BytesToHash(crypto.Keccak256(tx.AsL1MessageTx().Data)).String(),
 						L2TxHash:      tx.Hash().String(),
 						TxStatus:      int(orm.TxStatusTypeRelayedTxReverted),
 						L2BlockNumber: receipt.BlockNumber.Uint64(),

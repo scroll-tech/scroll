@@ -80,7 +80,10 @@ const (
 type MessageQueueEvent struct {
 	EventType  MessageQueueEventType
 	QueueIndex uint64
-	TxHash     common.Hash
+
+	// QueueTransaction only.
+	MessageHash common.Hash // track which message.
+	TxHash      common.Hash // track new tx hash.
 }
 
 // CrossMessage represents a cross message.
@@ -272,15 +275,18 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		db = db.WithContext(ctx)
 		db = db.Model(&CrossMessage{})
 		db = db.Where("message_type = ?", MessageTypeL1SentMessage)
-		db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 		updateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
 		case MessageQueueEventTypeQueueTransaction:
-			// Update l1_tx_hash if the user calls replayMessage.
+			// Update l1_tx_hash if the user calls replayMessage, cannot use queue index here.
+			// Ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
+			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
 			updateFields["l1_tx_hash"] = l1MessageQueueEvent.TxHash.String()
 		case MessageQueueEventTypeDequeueTransaction:
+			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			updateFields["tx_status"] = TxStatusTypeSkipped
 		case MessageQueueEventTypeDropTransaction:
+			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			updateFields["tx_status"] = TxStatusTypeDropped
 		}
 		if err := db.Updates(updateFields).Error; err != nil {
