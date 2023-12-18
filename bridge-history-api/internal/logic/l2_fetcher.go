@@ -171,7 +171,7 @@ func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]
 
 // L2Fetcher L2 fetcher
 func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64) (*L2FilterResult, error) {
-	log.Info("fetch and save L1 events", "from", from, "to", to)
+	log.Info("fetch and save L2 events", "from", from, "to", to)
 
 	blockTimestampsMap, l2FailedGatewayRouterTxs, l2RevertedRelayedMessages, routerErr := f.gatewayRouterFailedTxs(ctx, from, to)
 	if routerErr != nil {
