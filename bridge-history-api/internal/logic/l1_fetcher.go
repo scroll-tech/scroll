@@ -126,7 +126,6 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 				Sender:         sender.String(),
 				Receiver:       (*tx.To()).String(),
 				L1BlockNumber:  receipt.BlockNumber.Uint64(),
-				L1BlockHash:    receipt.BlockHash.String(),
 				BlockTimestamp: block.Time(),
 				TxStatus:       int(orm.TxStatusTypeSentFailed),
 			})

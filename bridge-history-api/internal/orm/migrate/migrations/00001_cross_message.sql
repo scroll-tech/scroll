@@ -15,8 +15,6 @@ CREATE TABLE cross_message
     l2_tx_hash          VARCHAR      DEFAULT NULL,
     l1_block_number     BIGINT       DEFAULT NULL,
     l2_block_number     BIGINT       DEFAULT NULL,
-    l1_block_hash       VARCHAR      DEFAULT NULL, -- for reorg detection
-    l2_block_hash       VARCHAR      DEFAULT NULL, -- for reorg detection
     l1_token_address    VARCHAR      DEFAULT NULL,
     l2_token_address    VARCHAR      DEFAULT NULL,
     token_ids           VARCHAR      DEFAULT NULL,

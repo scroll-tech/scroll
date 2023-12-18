@@ -2,8 +2,10 @@ package fetcher
 
 import (
 	"context"
+	"math/big"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -20,7 +22,7 @@ type L1MessageFetcher struct {
 	client *ethclient.Client
 
 	syncInfo     *SyncInfo
-	l1ScanHeight uint64
+	l1SyncHeight uint64
 
 	eventUpdateLogic     *logic.EventUpdateLogic
 	l1FetcherLogic       *logic.L1FetcherLogic
@@ -47,37 +49,46 @@ func (c *L1MessageFetcher) Start() {
 		log.Crit("L1MessageFetcher start failed", "err", dbErr)
 	}
 
-	c.l1ScanHeight = messageSyncedHeight
-	if batchSyncedHeight > c.l1ScanHeight {
-		c.l1ScanHeight = batchSyncedHeight
+	c.l1SyncHeight = messageSyncedHeight
+	if batchSyncedHeight > c.l1SyncHeight {
+		c.l1SyncHeight = batchSyncedHeight
 	}
-	if c.cfg.StartHeight > c.l1ScanHeight {
-		c.l1ScanHeight = c.cfg.StartHeight - 1
+	if c.cfg.StartHeight > c.l1SyncHeight {
+		c.l1SyncHeight = c.cfg.StartHeight - 1
 	}
 
-	log.Info("Start L1 message fetcher", "message synced height", messageSyncedHeight, "batch synced height", batchSyncedHeight, "config start height", c.cfg.StartHeight)
+	// Sync from an older block to prevent reorg during restart.
+	if c.l1SyncHeight < logic.L1ReorgSafeDepth {
+		c.l1SyncHeight = 0
+	} else {
+		c.l1SyncHeight -= logic.L1ReorgSafeDepth
+	}
+
+	log.Info("Start L1 message fetcher", "message synced height", messageSyncedHeight, "batch synced height", batchSyncedHeight, "config start height", c.cfg.StartHeight, "sync start height", c.l1SyncHeight+1)
 
 	tick := time.NewTicker(time.Duration(c.cfg.BlockTime) * time.Second)
 	go func() {
+		var lastSyncBlockHash common.Hash
 		for {
 			select {
 			case <-c.ctx.Done():
 				tick.Stop()
 				return
 			case <-tick.C:
-				c.fetchAndSaveEvents(c.cfg.Confirmation)
+				lastSyncBlockHash = c.fetchAndSaveEvents(c.cfg.Confirmation, lastSyncBlockHash)
 			}
 		}
 	}()
 }
 
-func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
-	startHeight := c.l1ScanHeight + 1
+func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64, lastSyncBlockHash common.Hash) common.Hash {
+	startHeight := c.l1SyncHeight + 1
 	endHeight, rpcErr := utils.GetBlockNumber(c.ctx, c.client, confirmation)
 	if rpcErr != nil {
-		log.Error("failed to get L1 safe block number", "err", rpcErr)
-		return
+		log.Error("failed to get L1 block number", "confirmation", confirmation, "err", rpcErr)
+		return lastSyncBlockHash
 	}
+
 	log.Info("fetch and save missing L1 events", "start height", startHeight, "end height", endHeight)
 
 	for from := startHeight; from <= endHeight; from += c.cfg.FetchLimit {
@@ -86,41 +97,49 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			to = endHeight
 		}
 
-		if endHeight-to <= logic.L1ReorgSafeDepth {
-			isReorg, resyncHeight, handleErr := c.l1ReorgHandlingLogic.HandleL1Reorg(c.ctx)
+		if c.l1SyncHeight+logic.L1ReorgSafeDepth > endHeight && lastSyncBlockHash != emptyHash {
+			isReorg, resyncHeight, handleErr := c.l1ReorgHandlingLogic.HandleL1Reorg(c.ctx, c.l1SyncHeight, lastSyncBlockHash)
 			if handleErr != nil {
 				log.Error("failed to Handle L1 Reorg", "err", handleErr)
-				return
+				return lastSyncBlockHash
 			}
 
 			if isReorg {
-				c.l1ScanHeight = resyncHeight
-				log.Warn("L1 reorg happened, exit and re-enter fetchAndSaveEvents", "restart height", c.l1ScanHeight)
-				return
+				c.l1SyncHeight = resyncHeight
+				log.Warn("L1 reorg happened, exit and re-enter fetchAndSaveEvents", "restart height", c.l1SyncHeight)
+				return lastSyncBlockHash
 			}
 		}
 
 		fetcherResult, fetcherErr := c.l1FetcherLogic.L1Fetcher(c.ctx, from, to)
 		if fetcherErr != nil {
 			log.Error("failed to fetch L1 events", "from", from, "to", to, "err", fetcherErr)
-			return
+			return lastSyncBlockHash
 		}
 
 		if insertUpdateErr := c.eventUpdateLogic.L1InsertOrUpdate(c.ctx, fetcherResult); insertUpdateErr != nil {
 			log.Error("failed to save L1 events", "from", from, "to", to, "err", insertUpdateErr)
-			return
+			return lastSyncBlockHash
 		}
-		c.l1ScanHeight = to
 
-		l2ScannedHeight := c.syncInfo.GetL2ScanHeight()
+		lastBlockHeader, rpcErr := c.client.HeaderByNumber(c.ctx, new(big.Int).SetUint64(to))
+		if rpcErr != nil {
+			log.Error("failed to get header by number", "block number", to)
+			return lastSyncBlockHash
+		}
+		c.l1SyncHeight = to
+		lastSyncBlockHash = lastBlockHeader.Hash()
+
+		l2ScannedHeight := c.syncInfo.GetL2SyncHeight()
 		if l2ScannedHeight == 0 {
 			log.Error("L2 fetcher has not successfully synced at least one round yet")
-			return
+			return lastSyncBlockHash
 		}
 
 		if updateErr := c.eventUpdateLogic.UpdateL1BatchIndexAndStatus(c.ctx, l2ScannedHeight); updateErr != nil {
 			log.Error("failed to update L1 batch index and status", "from", from, "to", to, "err", updateErr)
-			return
+			return lastSyncBlockHash
 		}
 	}
+	return lastSyncBlockHash
 }

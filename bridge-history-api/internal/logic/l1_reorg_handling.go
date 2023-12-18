@@ -33,8 +33,8 @@ func NewL1ReorgHandlingLogic(db *gorm.DB, client *ethclient.Client) *L1ReorgHand
 }
 
 // HandleL1Reorg performs L1 reorg handling by detecting reorgs and updating sync height.
-func (l *L1ReorgHandlingLogic) HandleL1Reorg(ctx context.Context) (bool, uint64, error) {
-	reorgDetected, reorgDetectedHeight, err := l.detectReorg(ctx)
+func (l *L1ReorgHandlingLogic) HandleL1Reorg(ctx context.Context, blockNumber uint64, blockHash common.Hash) (bool, uint64, error) {
+	reorgDetected, err := l.detectReorg(ctx, blockNumber, blockHash)
 	if err != nil {
 		log.Error("failed to detect reorg", "err", err)
 		return false, 0, err
@@ -42,8 +42,8 @@ func (l *L1ReorgHandlingLogic) HandleL1Reorg(ctx context.Context) (bool, uint64,
 
 	if reorgDetected {
 		resyncHeight := uint64(1)
-		if reorgDetectedHeight > L1ReorgSafeDepth {
-			resyncHeight = reorgDetectedHeight - L1ReorgSafeDepth
+		if blockNumber > L1ReorgSafeDepth {
+			resyncHeight = blockNumber - L1ReorgSafeDepth
 		}
 		return true, resyncHeight - 1, nil
 	}
@@ -51,49 +51,22 @@ func (l *L1ReorgHandlingLogic) HandleL1Reorg(ctx context.Context) (bool, uint64,
 	return false, 0, nil
 }
 
-func (l *L1ReorgHandlingLogic) detectReorg(ctx context.Context) (bool, uint64, error) {
-	batchBlockNumber, batchBlockHash, err := l.batchEventOrm.GetMaxL1BlockNumberAndHash(ctx)
+func (l *L1ReorgHandlingLogic) detectReorg(ctx context.Context, blockNumber uint64, blockHash common.Hash) (bool, error) {
+	currentHeader, err := l.client.HeaderByNumber(ctx, big.NewInt(0).SetUint64(blockNumber))
 	if err != nil {
-		log.Error("failed to get max L1 block number and hash in batch event orm", "err", err)
-		return false, 0, err
+		log.Error("failed to get header by number", "height", blockNumber, "err", err)
+		return false, err
 	}
 
-	messageBlockNumber, messageBlockHash, err := l.crossMessageOrm.GetMaxL1BlockNumberAndHash(ctx)
-	if err != nil {
-		log.Error("failed to get max L1 block number and hash in cross message orm", "err", err)
-		return false, 0, err
+	if currentHeader == nil {
+		log.Warn("cannot fetch remote block header", "height", blockNumber, "last block hash", blockHash.String())
+		return true, nil
 	}
 
-	var localBlockNumber uint64
-	var localBlockHash common.Hash
-	if batchBlockNumber > messageBlockNumber {
-		localBlockNumber = batchBlockNumber
-		localBlockHash = batchBlockHash
-	} else {
-		localBlockNumber = messageBlockNumber
-		localBlockHash = messageBlockHash
+	if blockHash != currentHeader.Hash() {
+		log.Warn("block hash mismatch, reorg happened", "height", blockNumber, "last block hash", blockHash.String(), "current block hash", currentHeader.Hash().String())
+		return true, nil
 	}
 
-	if localBlockNumber == 0 {
-		log.Warn("no local info of latest block number and hash")
-		return false, 0, nil
-	}
-
-	remoteHeader, err := l.client.HeaderByNumber(ctx, big.NewInt(0).SetUint64(localBlockNumber))
-	if err != nil {
-		log.Error("failed to get header by number", "height", localBlockNumber, "err", err)
-		return false, 0, err
-	}
-
-	if remoteHeader == nil {
-		log.Warn("cannot fetch remote block header", "blockNumber", localBlockNumber, "local hash", localBlockHash.String())
-		return true, localBlockNumber, nil
-	}
-
-	if localBlockHash != remoteHeader.Hash() {
-		log.Warn("block hash mismatch, reorg happened", "height", localBlockNumber, "local hash", localBlockHash.String(), "remote hash", remoteHeader.Hash().String())
-		return true, localBlockNumber, nil
-	}
-
-	return false, 0, nil
+	return false, nil
 }

@@ -132,7 +132,6 @@ func (e *L2EventParser) ParseL2EventLogs(logs []types.Log, blockTimestampsMap ma
 				TxStatus:       int(orm.TxStatusTypeSent),
 				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
 				L2BlockNumber:  vlog.BlockNumber,
-				L2BlockHash:    vlog.BlockHash.String(),
 			})
 		case backendabi.L2RelayedMessageEventSig:
 			event := backendabi.L2RelayedMessageEvent{}
@@ -144,7 +143,6 @@ func (e *L2EventParser) ParseL2EventLogs(logs []types.Log, blockTimestampsMap ma
 			l2RelayedMessages = append(l2RelayedMessages, &orm.CrossMessage{
 				MessageHash:   event.MessageHash.String(),
 				L2BlockNumber: vlog.BlockNumber,
-				L2BlockHash:   vlog.BlockHash.String(),
 				L2TxHash:      vlog.TxHash.String(),
 				TxStatus:      int(orm.TxStatusTypeRelayed),
 				MessageType:   int(orm.MessageTypeL1SentMessage),
@@ -159,7 +157,6 @@ func (e *L2EventParser) ParseL2EventLogs(logs []types.Log, blockTimestampsMap ma
 			l2RelayedMessages = append(l2RelayedMessages, &orm.CrossMessage{
 				MessageHash:   event.MessageHash.String(),
 				L2BlockNumber: vlog.BlockNumber,
-				L2BlockHash:   vlog.BlockHash.String(),
 				L2TxHash:      vlog.TxHash.String(),
 				TxStatus:      int(orm.TxStatusTypeFailedRelayed),
 				MessageType:   int(orm.MessageTypeL1SentMessage),

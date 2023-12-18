@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
@@ -30,8 +31,8 @@ func NewL2ReorgHandlingLogic(db *gorm.DB, client *ethclient.Client) *L2ReorgHand
 }
 
 // HandleL2Reorg performs L2 reorg handling by detecting reorgs and updating sync height.
-func (l *L2ReorgHandlingLogic) HandleL2Reorg(ctx context.Context) (bool, uint64, error) {
-	l2ReorgDetected, l2ReorgDetectedHeight, err := l.detectL2Reorg(ctx)
+func (l *L2ReorgHandlingLogic) HandleL2Reorg(ctx context.Context, blockNumber uint64, blockHash common.Hash) (bool, uint64, error) {
+	l2ReorgDetected, err := l.detectL2Reorg(ctx, blockNumber, blockHash)
 	if err != nil {
 		log.Error("failed to detect L2 reorg", "err", err)
 		return false, 0, err
@@ -39,8 +40,8 @@ func (l *L2ReorgHandlingLogic) HandleL2Reorg(ctx context.Context) (bool, uint64,
 
 	if l2ReorgDetected {
 		startHeight := uint64(1)
-		if l2ReorgDetectedHeight > L2ReorgSafeDepth {
-			startHeight = l2ReorgDetectedHeight - L2ReorgSafeDepth
+		if blockNumber > L2ReorgSafeDepth {
+			startHeight = blockNumber - L2ReorgSafeDepth
 		}
 		return true, startHeight - 1, nil
 	}
@@ -48,33 +49,22 @@ func (l *L2ReorgHandlingLogic) HandleL2Reorg(ctx context.Context) (bool, uint64,
 	return false, 0, nil
 }
 
-func (l *L2ReorgHandlingLogic) detectL2Reorg(ctx context.Context) (bool, uint64, error) {
-	localBlockNumber, localBlockHash, err := l.crossMessageOrm.GetMaxL2BlockNumberAndHash(ctx)
+func (l *L2ReorgHandlingLogic) detectL2Reorg(ctx context.Context, blockNumber uint64, blockHash common.Hash) (bool, error) {
+	currentHeader, err := l.client.HeaderByNumber(ctx, big.NewInt(0).SetUint64(blockNumber))
 	if err != nil {
-		log.Error("failed to get max L1 block number and hash in cross message orm", "err", err)
-		return false, 0, err
+		log.Error("failed to get header by number", "height", blockNumber, "err", err)
+		return false, err
 	}
 
-	if localBlockNumber == 0 {
-		log.Warn("no local info of latest block number and hash")
-		return false, 0, nil
+	if currentHeader == nil {
+		log.Warn("cannot fetch remote block header", "height", blockNumber, "last block hash", blockHash.String())
+		return true, nil
 	}
 
-	remoteHeader, err := l.client.HeaderByNumber(ctx, big.NewInt(0).SetUint64(localBlockNumber))
-	if err != nil {
-		log.Error("failed to get header by number", "height", localBlockNumber, "err", err)
-		return false, 0, err
+	if blockHash != currentHeader.Hash() {
+		log.Warn("block hash mismatch, reorg happened", "height", blockNumber, "last block hash", blockHash.String(), "current block hash", currentHeader.Hash().String())
+		return true, nil
 	}
 
-	if remoteHeader == nil {
-		log.Warn("cannot fetch remote block header", "blockNumber", localBlockNumber, "local hash", localBlockHash.String())
-		return true, localBlockNumber, nil
-	}
-
-	if localBlockHash != remoteHeader.Hash() {
-		log.Warn("block hash mismatch, reorg happened", "height", localBlockNumber, "local hash", localBlockHash.String(), "remote hash", remoteHeader.Hash().String())
-		return true, localBlockNumber, nil
-	}
-
-	return false, 0, nil
+	return false, nil
 }

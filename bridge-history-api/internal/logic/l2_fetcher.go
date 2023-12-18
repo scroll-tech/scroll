@@ -116,7 +116,6 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 						Sender:         sender.String(),
 						Receiver:       (*tx.To()).String(),
 						L2BlockNumber:  receipt.BlockNumber.Uint64(),
-						L2BlockHash:    receipt.BlockHash.String(),
 						BlockTimestamp: block.Time(),
 						TxStatus:       int(orm.TxStatusTypeSentFailed),
 					})
@@ -137,7 +136,6 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 						L2TxHash:      tx.Hash().String(),
 						TxStatus:      int(orm.TxStatusTypeRelayedTxReverted),
 						L2BlockNumber: receipt.BlockNumber.Uint64(),
-						L2BlockHash:   receipt.BlockHash.String(),
 						MessageType:   int(orm.MessageTypeL1SentMessage),
 					})
 				}
