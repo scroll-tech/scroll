@@ -140,7 +140,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 
 func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2WithdrawMessages []*orm.CrossMessage, endBlock uint64) error {
 	withdrawTrie := utils.NewWithdrawTrie()
-	message, err := c.eventUpdateLogic.GetL2LatestWithdrawal(ctx)
+	message, err := c.eventUpdateLogic.GetL2LatestWithdrawalLEBlockHeight(ctx, c.syncInfo.GetL2SyncHeight())
 	if err != nil {
 		log.Error("failed to get latest L2 sent message event", "err", err)
 		return err

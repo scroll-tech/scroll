@@ -157,11 +157,12 @@ func (c *CrossMessage) GetMessageSyncedHeightInDB(ctx context.Context, messageTy
 	}
 }
 
-// GetLatestL2Withdrawal returns the latest processed L2 withdrawal from the database.
-func (c *CrossMessage) GetLatestL2Withdrawal(ctx context.Context) (*CrossMessage, error) {
+// GetLatestL2WithdrawalLEBlockHeight returns the latest processed L2 withdrawal happened <= given block height from the database.
+func (c *CrossMessage) GetLatestL2WithdrawalLEBlockHeight(ctx context.Context, blockHeight uint64) (*CrossMessage, error) {
 	var message CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
+	db = db.Where("l2_block_number <= ?", blockHeight)
 	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
 	db = db.Where("tx_status != ?", TxStatusTypeSentFailed)
 	db = db.Order("message_nonce desc")
