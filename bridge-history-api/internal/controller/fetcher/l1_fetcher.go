@@ -94,7 +94,7 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 		return
 	}
 
-	log.Info("fetch and save missing L1 events", "start height", startHeight, "end height", endHeight)
+	log.Info("fetch and save missing L1 events", "start height", startHeight, "end height", endHeight, "confirmation", confirmation)
 
 	for from := startHeight; from <= endHeight; from += c.cfg.FetchLimit {
 		to := from + c.cfg.FetchLimit - 1
@@ -111,12 +111,10 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 
 			if isReorg {
 				log.Warn("L1 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
-
 				if updateErr := c.updateL1SyncHeight(resyncHeight); updateErr != nil {
 					log.Error("failed to update L1 sync height", "height", to, "err", updateErr)
 					return
 				}
-
 				return
 			}
 		}

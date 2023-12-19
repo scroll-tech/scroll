@@ -157,7 +157,7 @@ func (c *CrossMessage) GetMessageSyncedHeightInDB(ctx context.Context, messageTy
 	}
 }
 
-// GetLatestL2WithdrawalLEBlockHeight returns the latest processed L2 withdrawal happened <= given block height from the database.
+// GetLatestL2WithdrawalLEBlockHeight returns the latest processed L2 withdrawal that happened <= given block height from the database.
 func (c *CrossMessage) GetLatestL2WithdrawalLEBlockHeight(ctx context.Context, blockHeight uint64) (*CrossMessage, error) {
 	var message CrossMessage
 	db := c.db.WithContext(ctx)
