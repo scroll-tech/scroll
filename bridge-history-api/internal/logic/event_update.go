@@ -14,6 +14,8 @@ type EventUpdateLogic struct {
 	db              *gorm.DB
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
+
+	// batch update height: gauge
 }
 
 // NewEventUpdateLogic create a EventUpdateLogic instance

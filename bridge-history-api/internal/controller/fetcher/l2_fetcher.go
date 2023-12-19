@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -26,23 +28,41 @@ type L2MessageFetcher struct {
 	syncInfo            *SyncInfo
 	l2LastSyncBlockHash common.Hash
 
-	eventUpdateLogic     *logic.EventUpdateLogic
-	l2FetcherLogic       *logic.L2FetcherLogic
-	l2ReorgHandlingLogic *logic.L2ReorgHandlingLogic
+	eventUpdateLogic *logic.EventUpdateLogic
+	l2FetcherLogic   *logic.L2FetcherLogic
+
+	l2MessageFetcherRunningTotal prometheus.Counter
+	l2MessageFetcherReorgTotal   prometheus.Counter
+	l2MessageFetcherSyncHeight   prometheus.Gauge
 }
 
 // NewL2MessageFetcher creates a new L2MessageFetcher instance.
-func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) (*L2MessageFetcher, error) {
-	return &L2MessageFetcher{
-		ctx:                  ctx,
-		cfg:                  cfg,
-		db:                   db,
-		syncInfo:             syncInfo,
-		client:               client,
-		eventUpdateLogic:     logic.NewEventUpdateLogic(db),
-		l2FetcherLogic:       logic.NewL2FetcherLogic(cfg, db, client),
-		l2ReorgHandlingLogic: logic.NewL2ReorgHandlingLogic(client),
-	}, nil
+func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) *L2MessageFetcher {
+	c := &L2MessageFetcher{
+		ctx:              ctx,
+		cfg:              cfg,
+		db:               db,
+		syncInfo:         syncInfo,
+		client:           client,
+		eventUpdateLogic: logic.NewEventUpdateLogic(db),
+		l2FetcherLogic:   logic.NewL2FetcherLogic(cfg, db, client),
+	}
+
+	reg := prometheus.DefaultRegisterer
+	c.l2MessageFetcherRunningTotal = promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		Name: "L2_message_fetcher_running_total",
+		Help: "Current count of running L2 message fetcher instances.",
+	})
+	c.l2MessageFetcherReorgTotal = promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		Name: "L2_message_fetcher_reorg_total",
+		Help: "Total count of blockchain reorgs encountered by the L2 message fetcher.",
+	})
+	c.l2MessageFetcherSyncHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+		Name: "L2_message_fetcher_sync_height",
+		Help: "Latest blockchain height the L2 message fetcher has synced with.",
+	})
+
+	return c
 }
 
 // Start starts the L2 message fetching process.
@@ -89,6 +109,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 		return
 	}
 	log.Info("fetch and save missing L2 events", "start height", startHeight, "end height", endHeight, "confirmation", confirmation)
+	c.l2MessageFetcherRunningTotal.Inc()
 
 	for from := startHeight; from <= endHeight; from += c.cfg.FetchLimit {
 		to := from + c.cfg.FetchLimit - 1
@@ -96,35 +117,27 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			to = endHeight
 		}
 
-		if c.syncInfo.GetL2SyncHeight()+logic.L2ReorgSafeDepth*2 > endHeight {
-			isReorg, resyncHeight, handleErr := c.l2ReorgHandlingLogic.HandleL2Reorg(c.ctx, c.syncInfo.GetL2SyncHeight(), c.l2LastSyncBlockHash)
-			if handleErr != nil {
-				log.Error("failed to Handle L2 Reorg", "err", handleErr)
-				return
-			}
-
-			if isReorg {
-				log.Warn("L2 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
-				if updateErr := c.updateL2SyncHeight(resyncHeight); updateErr != nil {
-					log.Error("failed to update L2 re-sync height", "height", resyncHeight, "err", updateErr)
-					return
-				}
-				return
-			}
-		}
-
-		l2FilterResult, fetchErr := c.l2FetcherLogic.L2Fetcher(c.ctx, from, to)
-		if fetchErr != nil {
-			log.Error("failed to fetch L2 events", "from", from, "to", to, "err", fetchErr)
+		isReorg, resyncHeight, l2FetcherResult, fetcherErr := c.l2FetcherLogic.L2Fetcher(c.ctx, from, to, c.l2LastSyncBlockHash)
+		if fetcherErr != nil {
+			log.Error("failed to fetch L2 events", "from", from, "to", to, "err", fetcherErr)
 			return
 		}
 
-		if updateWithdrawErr := c.updateL2WithdrawMessageProofs(c.ctx, l2FilterResult.WithdrawMessages, to); updateWithdrawErr != nil {
+		if isReorg {
+			log.Warn("L2 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
+			if updateErr := c.updateL2SyncHeight(resyncHeight); updateErr != nil {
+				log.Error("failed to update L2 sync height", "height", to, "err", updateErr)
+				return
+			}
+			return
+		}
+
+		if updateWithdrawErr := c.updateL2WithdrawMessageProofs(c.ctx, l2FetcherResult.WithdrawMessages, to); updateWithdrawErr != nil {
 			log.Error("failed to update L2 withdraw message", "from", from, "to", to, "err", updateWithdrawErr)
 			return
 		}
 
-		if insertUpdateErr := c.eventUpdateLogic.L2InsertOrUpdate(c.ctx, l2FilterResult); insertUpdateErr != nil {
+		if insertUpdateErr := c.eventUpdateLogic.L2InsertOrUpdate(c.ctx, l2FetcherResult); insertUpdateErr != nil {
 			log.Error("failed to save L2 events", "from", from, "to", to, "err", insertUpdateErr)
 			return
 		}

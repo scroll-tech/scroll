@@ -18,6 +18,10 @@ import (
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
+// L2ReorgSafeDepth represents the number of block confirmations considered safe against L2 chain reorganizations.
+// Reorganizations at this depth under normal cases are extremely unlikely.
+const L2ReorgSafeDepth = 256
+
 // L2FilterResult the L2 filter result
 type L2FilterResult struct {
 	FailedGatewayRouterTxs []*orm.CrossMessage
@@ -34,6 +38,8 @@ type L2FetcherLogic struct {
 	db              *gorm.DB
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
+
+	// event numbers: counter.
 }
 
 // NewL2FetcherLogic create L2 fetcher logic
@@ -72,7 +78,7 @@ func NewL2FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 	}
 }
 
-func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to uint64) (map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
+func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
 	var l2FailedGatewayRouterTxs []*orm.CrossMessage
 	var l2RevertedRelayedMessages []*orm.CrossMessage
 	blockTimestampsMap := make(map[uint64]uint64)
@@ -80,7 +86,18 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 	blocks, err := utils.GetL2BlocksInRange(ctx, f.client, from, to)
 	if err != nil {
 		log.Error("failed to get L2 blocks in range", "from", from, "to", to, "err", err)
-		return nil, nil, nil, err
+		return false, 0, nil, nil, nil, err
+	}
+
+	for i, block := range blocks {
+		if i == 0 && block.ParentHash() != lastBlockHash {
+			log.Warn("L2 reorg detected", "reorg height", block.NumberU64(), "expected parent hash", block.ParentHash(), "local parent hash", lastBlockHash)
+			return true, block.NumberU64(), nil, nil, nil, nil
+		}
+		if i != 0 && block.ParentHash() != blocks[i-1].ParentHash() {
+			log.Warn("L2 reorg detected", "reorg height", block.NumberU64(), "expected parent hash", block.ParentHash(), "local parent hash", blocks[i-1].ParentHash())
+			return true, block.NumberU64(), nil, nil, nil, nil
+		}
 	}
 
 	for i := from; i <= to; i++ {
@@ -98,7 +115,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 				receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
 				if receiptErr != nil {
 					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", receiptErr)
-					return nil, nil, nil, receiptErr
+					return false, 0, nil, nil, nil, receiptErr
 				}
 
 				// Check if the transaction is failed
@@ -107,7 +124,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 					sender, signerErr := signer.Sender(tx)
 					if signerErr != nil {
 						log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", signerErr)
-						return nil, nil, nil, signerErr
+						return false, 0, nil, nil, nil, signerErr
 					}
 
 					l2FailedGatewayRouterTxs = append(l2FailedGatewayRouterTxs, &orm.CrossMessage{
@@ -126,7 +143,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 				receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
 				if receiptErr != nil {
 					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", receiptErr)
-					return nil, nil, nil, receiptErr
+					return false, 0, nil, nil, nil, receiptErr
 				}
 
 				// Check if the transaction is failed
@@ -142,7 +159,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 			}
 		}
 	}
-	return blockTimestampsMap, l2FailedGatewayRouterTxs, l2RevertedRelayedMessages, nil
+	return false, 0, blockTimestampsMap, l2FailedGatewayRouterTxs, l2RevertedRelayedMessages, nil
 }
 
 func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]types.Log, error) {
@@ -170,25 +187,33 @@ func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]
 }
 
 // L2Fetcher L2 fetcher
-func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64) (*L2FilterResult, error) {
+func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, *L2FilterResult, error) {
 	log.Info("fetch and save L2 events", "from", from, "to", to)
 
-	blockTimestampsMap, l2FailedGatewayRouterTxs, l2RevertedRelayedMessages, routerErr := f.gatewayRouterFailedTxs(ctx, from, to)
+	isReorg, reorgHeight, blockTimestampsMap, l2FailedGatewayRouterTxs, l2RevertedRelayedMessages, routerErr := f.gatewayRouterFailedTxs(ctx, from, to, lastBlockHash)
 	if routerErr != nil {
 		log.Error("L2Fetcher gatewayRouterFailedTxs failed", "from", from, "to", to, "error", routerErr)
-		return nil, routerErr
+		return false, 0, nil, routerErr
+	}
+
+	if isReorg {
+		var resyncHeight uint64
+		if reorgHeight > L2ReorgSafeDepth {
+			resyncHeight = reorgHeight - L2ReorgSafeDepth
+		}
+		return true, resyncHeight, nil, nil
 	}
 
 	eventLogs, err := f.l2FetcherLogs(ctx, from, to)
 	if err != nil {
 		log.Error("L2Fetcher l2FetcherLogs failed", "from", from, "to", to, "error", err)
-		return nil, err
+		return false, 0, nil, err
 	}
 
 	l2WithdrawMessages, l2RelayedMessages, err := f.parser.ParseL2EventLogs(eventLogs, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L2 event logs", "from", from, "to", to, "err", err)
-		return nil, err
+		return false, 0, nil, err
 	}
 
 	res := L2FilterResult{
@@ -196,5 +221,5 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64) (*L2Fil
 		WithdrawMessages:       l2WithdrawMessages,
 		RelayedMessages:        append(l2RelayedMessages, l2RevertedRelayedMessages...),
 	}
-	return &res, nil
+	return false, 0, &res, nil
 }

@@ -25,22 +25,23 @@ type L1MessageFetcher struct {
 	l1SyncHeight        uint64
 	l1LastSyncBlockHash common.Hash
 
-	eventUpdateLogic     *logic.EventUpdateLogic
-	l1FetcherLogic       *logic.L1FetcherLogic
-	l1ReorgHandlingLogic *logic.L1ReorgHandlingLogic
+	eventUpdateLogic *logic.EventUpdateLogic
+	l1FetcherLogic   *logic.L1FetcherLogic
+
+	// reorg number: counter
+	// sync height: gauge
 }
 
 // NewL1MessageFetcher creates a new L1MessageFetcher instance.
-func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) (*L1MessageFetcher, error) {
+func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) *L1MessageFetcher {
 	return &L1MessageFetcher{
-		ctx:                  ctx,
-		cfg:                  cfg,
-		client:               client,
-		syncInfo:             syncInfo,
-		eventUpdateLogic:     logic.NewEventUpdateLogic(db),
-		l1FetcherLogic:       logic.NewL1FetcherLogic(cfg, db, client),
-		l1ReorgHandlingLogic: logic.NewL1ReorgHandlingLogic(client),
-	}, nil
+		ctx:              ctx,
+		cfg:              cfg,
+		client:           client,
+		syncInfo:         syncInfo,
+		eventUpdateLogic: logic.NewEventUpdateLogic(db),
+		l1FetcherLogic:   logic.NewL1FetcherLogic(cfg, db, client),
+	}
 }
 
 // Start starts the L1 message fetching process.
@@ -102,30 +103,22 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			to = endHeight
 		}
 
-		if c.l1SyncHeight+logic.L1ReorgSafeDepth*2 > endHeight {
-			isReorg, resyncHeight, handleErr := c.l1ReorgHandlingLogic.HandleL1Reorg(c.ctx, c.l1SyncHeight, c.l1LastSyncBlockHash)
-			if handleErr != nil {
-				log.Error("failed to Handle L1 Reorg", "err", handleErr)
-				return
-			}
-
-			if isReorg {
-				log.Warn("L1 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
-				if updateErr := c.updateL1SyncHeight(resyncHeight); updateErr != nil {
-					log.Error("failed to update L1 sync height", "height", to, "err", updateErr)
-					return
-				}
-				return
-			}
-		}
-
-		fetcherResult, fetcherErr := c.l1FetcherLogic.L1Fetcher(c.ctx, from, to)
+		isReorg, resyncHeight, l1FetcherResult, fetcherErr := c.l1FetcherLogic.L1Fetcher(c.ctx, from, to, c.l1LastSyncBlockHash)
 		if fetcherErr != nil {
 			log.Error("failed to fetch L1 events", "from", from, "to", to, "err", fetcherErr)
 			return
 		}
 
-		if insertUpdateErr := c.eventUpdateLogic.L1InsertOrUpdate(c.ctx, fetcherResult); insertUpdateErr != nil {
+		if isReorg {
+			log.Warn("L1 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
+			if updateErr := c.updateL1SyncHeight(resyncHeight); updateErr != nil {
+				log.Error("failed to update L1 sync height", "height", to, "err", updateErr)
+				return
+			}
+			return
+		}
+
+		if insertUpdateErr := c.eventUpdateLogic.L1InsertOrUpdate(c.ctx, l1FetcherResult); insertUpdateErr != nil {
 			log.Error("failed to save L1 events", "from", from, "to", to, "err", insertUpdateErr)
 			return
 		}
