@@ -18,7 +18,7 @@ import (
 type L1EventParser struct {
 }
 
-// NewL1EventParser create l1 event parser
+// NewL1EventParser creates l1 event parser
 func NewL1EventParser() *L1EventParser {
 	return &L1EventParser{}
 }

@@ -101,7 +101,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 					return nil, nil, nil, receiptErr
 				}
 
-				// Check if the transaction failed
+				// Check if the transaction is failed
 				if receipt.Status == types.ReceiptStatusFailed {
 					signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
 					sender, signerErr := signer.Sender(tx)
@@ -129,7 +129,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 					return nil, nil, nil, receiptErr
 				}
 
-				// Check if the transaction failed
+				// Check if the transaction is failed
 				if receipt.Status == types.ReceiptStatusFailed {
 					l2RevertedRelayedMessages = append(l2RevertedRelayedMessages, &orm.CrossMessage{
 						MessageHash:   common.BytesToHash(crypto.Keccak256(tx.AsL1MessageTx().Data)).String(),
@@ -171,7 +171,7 @@ func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]
 
 // L2Fetcher L2 fetcher
 func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64) (*L2FilterResult, error) {
-	log.Info("fetch and save L1 events", "from", from, "to", to)
+	log.Info("fetch and save L2 events", "from", from, "to", to)
 
 	blockTimestampsMap, l2FailedGatewayRouterTxs, l2RevertedRelayedMessages, routerErr := f.gatewayRouterFailedTxs(ctx, from, to)
 	if routerErr != nil {

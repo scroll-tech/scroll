@@ -52,11 +52,11 @@ func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (ui
 	return l2SentMessageSyncedHeight, nil
 }
 
-// GetL2LatestWithdrawal get L2 latest withdrawal message
-func (b *EventUpdateLogic) GetL2LatestWithdrawal(ctx context.Context) (*orm.CrossMessage, error) {
-	message, err := b.crossMessageOrm.GetLatestL2Withdrawal(ctx)
+// GetL2LatestWithdrawalLEBlockHeight get L2 latest withdrawal message which happened <= give L2 block height.
+func (b *EventUpdateLogic) GetL2LatestWithdrawalLEBlockHeight(ctx context.Context, blockHeight uint64) (*orm.CrossMessage, error) {
+	message, err := b.crossMessageOrm.GetLatestL2WithdrawalLEBlockHeight(ctx, blockHeight)
 	if err != nil {
-		log.Error("failed to get latest L2 sent message event", "err", err)
+		log.Error("failed to get latest <= block height L2 sent message event", "height", blockHeight, "err", err)
 		return nil, err
 	}
 	return message, nil
