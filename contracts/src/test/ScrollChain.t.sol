@@ -165,6 +165,9 @@ contract ScrollChainTest is DSTestPlus {
 
         // commit batch with one chunk, no tx, correctly
         chunk0 = new bytes(1 + 108);
+        assembly {
+            mstore(add(chunk0, add(0x20, 77)), 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470)
+        }
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
@@ -187,7 +190,7 @@ contract ScrollChainTest is DSTestPlus {
         rollup.addProver(address(0));
         rollup.addSequencer(address(0));
 
-        bytes memory batchHeader0 = new bytes(89);
+        bytes memory batchHeader0 = new bytes(129);
 
         // import genesis batch
         assembly {
@@ -200,7 +203,10 @@ contract ScrollChainTest is DSTestPlus {
         bytes memory chunk0;
 
         // commit one batch
-        chunk0 = new bytes(1 + 60);
+        chunk0 = new bytes(1 + 108);
+        assembly {
+            mstore(add(chunk0, add(0x20, 77)), 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470) // l1BlockRangeHash keccak256("")
+        }
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
@@ -208,14 +214,16 @@ contract ScrollChainTest is DSTestPlus {
         hevm.stopPrank();
         assertGt(uint256(rollup.committedBatches(1)), 0);
 
-        bytes memory batchHeader1 = new bytes(89);
+        bytes memory batchHeader1 = new bytes(129);
         assembly {
             mstore(add(batchHeader1, 0x20), 0) // version
             mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex
             mstore(add(batchHeader1, add(0x20, 9)), 0) // l1MessagePopped
             mstore(add(batchHeader1, add(0x20, 17)), 0) // totalL1MessagePopped
-            mstore(add(batchHeader1, add(0x20, 25)), 0x246394445f4fe64ed5598554d55d1682d6fb3fe04bf58eb54ef81d1189fafb51) // dataHash
+            mstore(add(batchHeader1, add(0x20, 25)), 0x17181f6abf48415097856d36591857cb134a3fe04b3aaf5e4ee8e82ec478f9cf) // dataHash
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
+            mstore(add(batchHeader1, add(0x20, 89)), 0) // lastAppliedL1Block
+            mstore(add(batchHeader1, add(0x20, 97)), 0x10ca3eff73ebec87d2394fc58560afeab86dac7a21f5e402ea0a55e5c8a6758f) // blockRangeHash
         }
 
         // incorrect batch hash, revert
@@ -230,7 +238,7 @@ contract ScrollChainTest is DSTestPlus {
         hevm.startPrank(address(0));
         hevm.expectRevert("batch header length too small");
         rollup.finalizeBatchWithProof(
-            new bytes(88),
+            new bytes(128),
             bytes32(uint256(1)),
             bytes32(uint256(2)),
             bytes32(0),
@@ -242,7 +250,7 @@ contract ScrollChainTest is DSTestPlus {
         hevm.startPrank(address(0));
         hevm.expectRevert("wrong bitmap length");
         rollup.finalizeBatchWithProof(
-            new bytes(90),
+            new bytes(130),
             bytes32(uint256(1)),
             bytes32(uint256(2)),
             bytes32(0),
@@ -289,13 +297,15 @@ contract ScrollChainTest is DSTestPlus {
         rollup.addSequencer(address(0));
         rollup.addProver(address(0));
 
+        hevm.roll(2);
+
         // import 300 L1 messages
         for (uint256 i = 0; i < 300; i++) {
             messageQueue.appendCrossDomainMessage(address(this), 1000000, new bytes(0));
         }
 
         // import genesis batch first
-        bytes memory batchHeader0 = new bytes(89);
+        bytes memory batchHeader0 = new bytes(129);
         assembly {
             mstore(add(batchHeader0, add(0x20, 25)), 1)
         }
@@ -309,53 +319,67 @@ contract ScrollChainTest is DSTestPlus {
 
         // commit batch1, one chunk with one block, 1 tx, 1 L1 message, no skip
         // => payload for data hash of chunk0
-        //   0000000000000000
-        //   0000000000000000
-        //   0000000000000000000000000000000000000000000000000000000000000000
-        //   0000000000000000
-        //   0001
-        //   a2277fd30bbbe74323309023b56035b376d7768ad237ae4fc46ead7dc9591ae1
+        //   0000000000000000 - blockContext 0 - blockNumber
+        //   0000000000000000 - blockContext 0 - timestamp
+        //   0000000000000000000000000000000000000000000000000000000000000000 - blockContext 0 - baseFee
+        //   0000000000000000 - blockContext 0 - gasLimit
+        //   0001 - blockContext 0 - numTransactions
+        //   0001 - blockContext 0 - numL1Messages
+        //   0000000000000001 - blockContext 0 - lastAppliedL1Block
+        //   a2277fd30bbbe74323309023b56035b376d7768ad237ae4fc46ead7dc9591ae1 - L1 Message Tx Hash
+        //   0000000000000001 - chunk 0 - lastAppliedL1Block
+        //   b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6 - chunk 0 - l1BlockRangeHash
         // => data hash for chunk0
-        //   9ef1e5694bdb014a1eea42be756a8f63bfd8781d6332e9ef3b5126d90c62f110
+        //   7cf07190f6882a8027e86d92f4b37e53f1c22867c58aa7db008d80a864aa7908
         // => data hash for all chunks
-        //   d9cb6bf9264006fcea490d5c261f7453ab95b1b26033a3805996791b8e3a62f3
+        //   86fcdd7b593809d108dae8a3a696e5ae4af774943f15cc2fd3c39cd02dabd0d7
         // => payload for batch header
         //   00
         //   0000000000000001
         //   0000000000000001
         //   0000000000000001
-        //   d9cb6bf9264006fcea490d5c261f7453ab95b1b26033a3805996791b8e3a62f3
-        //   119b828c2a2798d2c957228ebeaff7e10bb099ae0d4e224f3eeb779ff61cba61
+        //   86fcdd7b593809d108dae8a3a696e5ae4af774943f15cc2fd3c39cd02dabd0d7
+        //   743dab51a4c73747185caad9effa81411a067f3d7aa69d69d4b7f3e9802a71c4
         //   0000000000000000000000000000000000000000000000000000000000000000
+        //   0000000000000001
+        //   b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6
         // => hash for batch header
-        //   00847173b29b238cf319cde79512b7c213e5a8b4138daa7051914c4592b6dfc7
-        bytes memory batchHeader1 = new bytes(89 + 32);
+        //   b6448e0bbd8226646f2099cd47160478768e5ccc32b486189073dfcedbad34e3
+        bytes memory batchHeader1 = new bytes(129 + 32);
         assembly {
             mstore(add(batchHeader1, 0x20), 0) // version
             mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex = 1
             mstore(add(batchHeader1, add(0x20, 9)), shl(192, 1)) // l1MessagePopped = 1
             mstore(add(batchHeader1, add(0x20, 17)), shl(192, 1)) // totalL1MessagePopped = 1
-            mstore(add(batchHeader1, add(0x20, 25)), 0xd9cb6bf9264006fcea490d5c261f7453ab95b1b26033a3805996791b8e3a62f3) // dataHash
+            mstore(add(batchHeader1, add(0x20, 25)), 0x86fcdd7b593809d108dae8a3a696e5ae4af774943f15cc2fd3c39cd02dabd0d7) // dataHash
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
             mstore(add(batchHeader1, add(0x20, 89)), 0) // bitmap0
+            mstore(add(batchHeader1, add(0x20, 121)), shl(192, 1)) // lastAppliedL1Block
+            mstore(
+                add(batchHeader1, add(0x20, 129)),
+                0xb5d9d894133a730aa651ef62d26b0ffa846233c74177a591a4a896adfda97d22
+            ) // blockRangeHash
         }
-        chunk0 = new bytes(1 + 60);
+        chunk0 = new bytes(1 + 108);
         assembly {
             mstore(add(chunk0, 0x20), shl(248, 1)) // numBlocks = 1
-            mstore(add(chunk0, add(0x21, 56)), shl(240, 1)) // numTransactions = 1
-            mstore(add(chunk0, add(0x21, 58)), shl(240, 1)) // numL1Messages = 1
+            mstore(add(chunk0, add(0x21, 56)), shl(240, 1)) // numTransactions = 1, block 0
+            mstore(add(chunk0, add(0x21, 58)), shl(240, 1)) // numL1Messages = 1, block 0
+            mstore(add(chunk0, add(0x21, 60)), shl(192, 1)) // lastAppliedL1Block = 1, block 0
+            mstore(add(chunk0, add(0x20, 69)), shl(192, 1)) // lastAppliedL1Block = 1, chunk 0
+            mstore(add(chunk0, add(0x20, 77)), 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6) // blockRangeHash
         }
         chunks = new bytes[](1);
         chunks[0] = chunk0;
         bitmap = new bytes(32);
         hevm.startPrank(address(0));
         hevm.expectEmit(true, true, false, true);
-        emit CommitBatch(1, bytes32(0x00847173b29b238cf319cde79512b7c213e5a8b4138daa7051914c4592b6dfc7));
+        emit CommitBatch(1, bytes32(0xb6448e0bbd8226646f2099cd47160478768e5ccc32b486189073dfcedbad34e3));
         rollup.commitBatch(0, batchHeader0, chunks, bitmap, 0);
         hevm.stopPrank();
         assertBoolEq(rollup.isBatchFinalized(1), false);
         bytes32 batchHash1 = rollup.committedBatches(1);
-        assertEq(batchHash1, bytes32(0x00847173b29b238cf319cde79512b7c213e5a8b4138daa7051914c4592b6dfc7));
+        assertEq(batchHash1, bytes32(0xb6448e0bbd8226646f2099cd47160478768e5ccc32b486189073dfcedbad34e3));
 
         // finalize batch1
         hevm.startPrank(address(0));
@@ -384,7 +408,11 @@ contract ScrollChainTest is DSTestPlus {
         //    0000000000000000000000000000000000000000000000000000000000000000
         //    0000000000000000
         //    0003
+        //    0000
+        //    0000000000000001 - blockContext 0 - lastAppliedL1Block
         //    ... (some tx hashes)
+        //    0000000000000001 - chunk 0 - lastAppliedL1Block
+        //    b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6 - chunk 0 - l1BlockRangeHash
         //   => data hash for chunk0
         //    2ac1dad3f3696e5581dfc10f2c7a7a8fc5b344285f7d332c7895a8825fca609a
         // 2. chunk1 has three blocks
@@ -411,56 +439,75 @@ contract ScrollChainTest is DSTestPlus {
         //   => data hash for chunk2
         //    e1276f58354ab2372050bde30d8c970ccc3728c76e97f37deebeee83ecbf5705
         // => data hash for all chunks
-        //   3c71d155351642d15f1542a1543ce423abeca1f8939100a0a34cdc3127b95f69
+        //   3de87c00834353063966bbb378e76de5956c1d15e8c218f907196f71426ebdec
         // => payload for batch header
         //  00
         //  0000000000000002
         //  0000000000000108
         //  0000000000000109
-        //  3c71d155351642d15f1542a1543ce423abeca1f8939100a0a34cdc3127b95f69
+        //  3de87c00834353063966bbb378e76de5956c1d15e8c218f907196f71426ebdec
         //  cef70bf80683c4d9b8b2813e90c314e8c56648e231300b8cfed9d666b0caf14e
         //  aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa800000000000000000000000000000000000000000000000000000000000000aa
+        //  0000000000000001 - lastAppliedL1Block
+        //  b10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6 - l1BlockRangeHash
         // => hash for batch header
-        //  03a9cdcb9d582251acf60937db006ec99f3505fd4751b7c1f92c9a8ef413e873
-        bytes memory batchHeader2 = new bytes(89 + 32 + 32);
+        //  86dd7e3d438fe6f08b4dc82dfb7fc4e025cd252d789d71a8a5865c5169e8d5df
+        bytes memory batchHeader2 = new bytes(129 + 32 + 32);
         assembly {
             mstore(add(batchHeader2, 0x20), 0) // version
             mstore(add(batchHeader2, add(0x20, 1)), shl(192, 2)) // batchIndex = 2
             mstore(add(batchHeader2, add(0x20, 9)), shl(192, 264)) // l1MessagePopped = 264
             mstore(add(batchHeader2, add(0x20, 17)), shl(192, 265)) // totalL1MessagePopped = 265
-            mstore(add(batchHeader2, add(0x20, 25)), 0x3c71d155351642d15f1542a1543ce423abeca1f8939100a0a34cdc3127b95f69) // dataHash
+            mstore(add(batchHeader2, add(0x20, 25)), 0x3de87c00834353063966bbb378e76de5956c1d15e8c218f907196f71426ebdec) // dataHash
             mstore(add(batchHeader2, add(0x20, 57)), batchHash1) // parentBatchHash
             mstore(
                 add(batchHeader2, add(0x20, 89)),
                 77194726158210796949047323339125271902179989777093709359638389338608753093160
             ) // bitmap0
             mstore(add(batchHeader2, add(0x20, 121)), 42) // bitmap1
+            mstore(add(batchHeader2, add(0x20, 153)), shl(192, 1)) // lastAppliedL1Block = 1
+            mstore(
+                add(batchHeader2, add(0x20, 161)),
+                0xad51961b5d4726f7c7501e5a50c32465739873a32d54b6c4fbb4f01c7263e6c0
+            ) // blockRangeHash
         }
-        chunk0 = new bytes(1 + 60 + 3 * 5);
+        chunk0 = new bytes(1 + 108 + 3 * 5);
         assembly {
             mstore(add(chunk0, 0x20), shl(248, 1)) // numBlocks = 1
             mstore(add(chunk0, add(0x21, 56)), shl(240, 3)) // numTransactions = 3
             mstore(add(chunk0, add(0x21, 58)), shl(240, 0)) // numL1Messages = 0
+            mstore(add(chunk0, add(0x21, 60)), shl(192, 1)) // lastAppliedL1Block = 1, block 0
         }
         for (uint256 i = 0; i < 3; i++) {
             assembly {
-                mstore(add(chunk0, add(93, mul(i, 5))), shl(224, 1)) // tx = "0x00"
+                mstore(add(chunk0, add(101, mul(i, 5))), shl(224, 1)) // tx = "0x00"
             }
         }
-        chunk1 = new bytes(1 + 60 * 3 + 51 * 5);
+        assembly {
+            mstore(add(chunk0, 116), shl(192, 1)) // lastAppliedL1Block = 1, chunk 0
+            mstore(add(chunk0, 124), 0xb10e2d527612073b26eecdfd717e6a320cf44b4afac2b0732d9fcbe2b7fa0cf6) // l1BlockRangeHash, chunk 0
+        }
+        chunk1 = new bytes(1 + 68 * 3 + 51 * 5 + 40);
         assembly {
             mstore(add(chunk1, 0x20), shl(248, 3)) // numBlocks = 3
             mstore(add(chunk1, add(33, 56)), shl(240, 5)) // block0.numTransactions = 5
             mstore(add(chunk1, add(33, 58)), shl(240, 3)) // block0.numL1Messages = 3
-            mstore(add(chunk1, add(93, 56)), shl(240, 10)) // block1.numTransactions = 10
-            mstore(add(chunk1, add(93, 58)), shl(240, 5)) // block1.numL1Messages = 5
-            mstore(add(chunk1, add(153, 56)), shl(240, 300)) // block1.numTransactions = 300
-            mstore(add(chunk1, add(153, 58)), shl(240, 256)) // block1.numL1Messages = 256
+            mstore(add(chunk1, add(33, 60)), shl(192, 1)) // lastAppliedL1Block = 1, block 0
+            mstore(add(chunk1, add(101, 56)), shl(240, 10)) // block1.numTransactions = 10
+            mstore(add(chunk1, add(101, 58)), shl(240, 5)) // block1.numL1Messages = 5
+            mstore(add(chunk1, add(101, 60)), shl(192, 1)) // lastAppliedL1Block = 1, block 1
+            mstore(add(chunk1, add(169, 56)), shl(240, 300)) // block1.numTransactions = 300
+            mstore(add(chunk1, add(169, 58)), shl(240, 256)) // block1.numL1Messages = 256
+            mstore(add(chunk1, add(169, 60)), shl(192, 1)) // lastAppliedL1Block = 1, block 2
         }
         for (uint256 i = 0; i < 51; i++) {
             assembly {
-                mstore(add(chunk1, add(213, mul(i, 5))), shl(224, 1)) // tx = "0x00"
+                mstore(add(chunk1, add(237, mul(i, 5))), shl(224, 1)) // tx = "0x00"
             }
+        }
+        assembly {
+            mstore(add(chunk1, 492), shl(192, 1)) // lastAppliedL1Block = 1, chunk 1
+            mstore(add(chunk1, 500), 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470) // l1BlockRangeHash, chunk 1
         }
         chunks = new bytes[](2);
         chunks[0] = chunk0;
@@ -489,12 +536,12 @@ contract ScrollChainTest is DSTestPlus {
         rollup.updateMaxNumTxInChunk(186);
         hevm.startPrank(address(0));
         hevm.expectEmit(true, true, false, true);
-        emit CommitBatch(2, bytes32(0x03a9cdcb9d582251acf60937db006ec99f3505fd4751b7c1f92c9a8ef413e873));
+        emit CommitBatch(2, bytes32(0x86dd7e3d438fe6f08b4dc82dfb7fc4e025cd252d789d71a8a5865c5169e8d5df));
         rollup.commitBatch(0, batchHeader1, chunks, bitmap, 0);
         hevm.stopPrank();
         assertBoolEq(rollup.isBatchFinalized(2), false);
         bytes32 batchHash2 = rollup.committedBatches(2);
-        assertEq(batchHash2, bytes32(0x03a9cdcb9d582251acf60937db006ec99f3505fd4751b7c1f92c9a8ef413e873));
+        assertEq(batchHash2, bytes32(0x86dd7e3d438fe6f08b4dc82dfb7fc4e025cd252d789d71a8a5865c5169e8d5df));
 
         // verify committed batch correctly
         hevm.startPrank(address(0));
@@ -558,6 +605,9 @@ contract ScrollChainTest is DSTestPlus {
 
         // commit one batch
         chunk0 = new bytes(1 + 108);
+        assembly {
+            mstore(add(chunk0, add(0x20, 77)), 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470) // l1BlockRangeHash keccak256("")
+        }
         chunk0[0] = bytes1(uint8(1)); // one block in this chunk
         chunks[0] = chunk0;
         hevm.startPrank(address(0));
@@ -570,8 +620,10 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex
             mstore(add(batchHeader1, add(0x20, 9)), 0) // l1MessagePopped
             mstore(add(batchHeader1, add(0x20, 17)), 0) // totalL1MessagePopped
-            mstore(add(batchHeader1, add(0x20, 25)), 0x246394445f4fe64ed5598554d55d1682d6fb3fe04bf58eb54ef81d1189fafb51) // dataHash
+            mstore(add(batchHeader1, add(0x20, 25)), 0x17181f6abf48415097856d36591857cb134a3fe04b3aaf5e4ee8e82ec478f9cf) // dataHash
             mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
+            mstore(add(batchHeader1, add(0x20, 89)), 0) // lastAppliedL1Block
+            mstore(add(batchHeader1, add(0x20, 97)), 0x10ca3eff73ebec87d2394fc58560afeab86dac7a21f5e402ea0a55e5c8a6758f) // blockRangeHash
         }
 
         // commit another batch
@@ -727,57 +779,57 @@ contract ScrollChainTest is DSTestPlus {
         bytes memory batchHeader;
 
         // zero state root, revert
-        batchHeader = new bytes(89);
+        batchHeader = new bytes(129);
         hevm.expectRevert("zero state root");
         rollup.importGenesisBatch(batchHeader, bytes32(0));
 
         // batch header length too small, revert
-        batchHeader = new bytes(88);
+        batchHeader = new bytes(128);
         hevm.expectRevert("batch header length too small");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // wrong bitmap length, revert
-        batchHeader = new bytes(90);
+        batchHeader = new bytes(130);
         hevm.expectRevert("wrong bitmap length");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // not all fields are zero, revert
-        batchHeader = new bytes(89);
+        batchHeader = new bytes(129);
         batchHeader[0] = bytes1(uint8(1)); // version not zero
         hevm.expectRevert("not all fields are zero");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
-        batchHeader = new bytes(89);
+        batchHeader = new bytes(129);
         batchHeader[1] = bytes1(uint8(1)); // batchIndex not zero
         hevm.expectRevert("not all fields are zero");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
-        batchHeader = new bytes(89 + 32);
+        batchHeader = new bytes(129 + 32);
         assembly {
             mstore(add(batchHeader, add(0x20, 9)), shl(192, 1)) // l1MessagePopped not zero
         }
         hevm.expectRevert("not all fields are zero");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
-        batchHeader = new bytes(89);
+        batchHeader = new bytes(129);
         batchHeader[17] = bytes1(uint8(1)); // totalL1MessagePopped not zero
         hevm.expectRevert("not all fields are zero");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // zero data hash, revert
-        batchHeader = new bytes(89);
+        batchHeader = new bytes(129);
         hevm.expectRevert("zero data hash");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // nonzero parent batch hash, revert
-        batchHeader = new bytes(89);
+        batchHeader = new bytes(129);
         batchHeader[25] = bytes1(uint8(1)); // dataHash not zero
         batchHeader[57] = bytes1(uint8(1)); // parentBatchHash not zero
         hevm.expectRevert("nonzero parent batch hash");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
 
         // import correctly
-        batchHeader = new bytes(89);
+        batchHeader = new bytes(129);
         batchHeader[25] = bytes1(uint8(1)); // dataHash not zero
         assertEq(rollup.finalizedStateRoots(0), bytes32(0));
         assertEq(rollup.withdrawRoots(0), bytes32(0));

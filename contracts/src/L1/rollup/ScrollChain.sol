@@ -94,12 +94,12 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
     // stack too deep
     struct ChunkResult {
-        // _totalNumL1MessagesInChunk The total number of L1 messages popped in current chunk
-        uint256 _totalNumL1MessagesInChunk;
-        // _lastAppliedL1BlockInChunk The last applied L1 Block Number in current chunk
-        uint64 _lastAppliedL1BlockInChunk;
-        // _l1BlockRangeHashInChunk The keccak256 of all the l1 block range hashes in current chunk
-        bytes32 _l1BlockRangeHashInChunk;
+        // totalNumL1MessagesInChunk The total number of L1 messages popped in current chunk
+        uint256 totalNumL1MessagesInChunk;
+        // lastAppliedL1BlockInChunk The last applied L1 Block Number in current chunk
+        uint64 lastAppliedL1BlockInChunk;
+        // l1BlockRangeHashInChunk The keccak256 of all the l1 block range hashes in current chunk
+        bytes32 l1BlockRangeHashInChunk;
     }
 
     /**********************
@@ -483,23 +483,27 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _skippedL1MessageBitmap
             );
 
-            bytes32 _l1BlockRangeHash = IL1ViewOracle(l1ViewOracle).blockRangeHash(
-                _prevLastAppliedL1Block + 1,
-                chunkResult._lastAppliedL1BlockInChunk
-            );
+            // TODO(l1blockhashes): revise
+            bytes32 _l1BlockRangeHash = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470; // keccak256("")
+            if (_prevLastAppliedL1Block != chunkResult.lastAppliedL1BlockInChunk) {
+                _l1BlockRangeHash = IL1ViewOracle(l1ViewOracle).blockRangeHash(
+                    _prevLastAppliedL1Block + 1,
+                    chunkResult.lastAppliedL1BlockInChunk
+                );
+            }
 
-            require(_l1BlockRangeHash == chunkResult._l1BlockRangeHashInChunk, "incorrect l1 block range hash");
-            _l1BlockRangeHashes[i] = chunkResult._l1BlockRangeHashInChunk;
-            _prevLastAppliedL1Block = chunkResult._lastAppliedL1BlockInChunk;
+            require(_l1BlockRangeHash == chunkResult.l1BlockRangeHashInChunk, "incorrect l1 block range hash");
+            _l1BlockRangeHashes[i] = chunkResult.l1BlockRangeHashInChunk;
+            _prevLastAppliedL1Block = chunkResult.lastAppliedL1BlockInChunk;
 
             // if it is the last chunk, update the last applied L1 block
             if (i == _chunksLength - 1) {
-                _lastAppliedL1Block = chunkResult._lastAppliedL1BlockInChunk;
+                _lastAppliedL1Block = chunkResult.lastAppliedL1BlockInChunk;
             }
 
             unchecked {
-                _totalL1MessagesPoppedInBatch += chunkResult._totalNumL1MessagesInChunk;
-                _totalL1MessagesPoppedOverall += chunkResult._totalNumL1MessagesInChunk;
+                _totalL1MessagesPoppedInBatch += chunkResult.totalNumL1MessagesInChunk;
+                _totalL1MessagesPoppedOverall += chunkResult.totalNumL1MessagesInChunk;
                 dataPtr += 32;
             }
         }
@@ -610,11 +614,11 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
             if (_numBlocks == 1) {
                 // check last block
-                _chunkResult._lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInBlock(blockPtr);
+                _chunkResult.lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInBlock(blockPtr);
             }
 
             unchecked {
-                _chunkResult._totalNumL1MessagesInChunk += _numL1MessagesInBlock;
+                _chunkResult.totalNumL1MessagesInChunk += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedInBatch += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedOverall += _numL1MessagesInBlock;
 
@@ -627,11 +631,11 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         {
             uint64 lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInChunk(l2TxPtr);
             require(
-                lastAppliedL1BlockInChunk == _chunkResult._lastAppliedL1BlockInChunk,
+                lastAppliedL1BlockInChunk == _chunkResult.lastAppliedL1BlockInChunk,
                 "incorrect lastAppliedL1Block in chunk"
             );
 
-            _chunkResult._l1BlockRangeHashInChunk = ChunkCodec.l1BlockRangeHashInChunk(l2TxPtr);
+            _chunkResult.l1BlockRangeHashInChunk = ChunkCodec.l1BlockRangeHashInChunk(l2TxPtr);
         }
 
         // check the actual number of transactions in the chunk
@@ -643,8 +647,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // stack too deep
         {
-            uint64 _lastAppliedL1BlockInChunk = _chunkResult._lastAppliedL1BlockInChunk;
-            bytes32 _l1BlockRangeHashInChunk = _chunkResult._l1BlockRangeHashInChunk;
+            uint64 _lastAppliedL1BlockInChunk = _chunkResult.lastAppliedL1BlockInChunk;
+            bytes32 _l1BlockRangeHashInChunk = _chunkResult.l1BlockRangeHashInChunk;
             assembly {
                 mstore(dataPtr, shl(192, _lastAppliedL1BlockInChunk))
                 dataPtr := add(dataPtr, 0x8)
