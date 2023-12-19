@@ -124,6 +124,11 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 		dataBytes = append(dataBytes, l2TxHashes...)
 	}
 
+	var lastAppliedL1BlockBytes [8]byte
+	binary.BigEndian.PutUint64(lastAppliedL1BlockBytes[:], c.LastAppliedL1Block)
+	dataBytes = append(dataBytes, lastAppliedL1BlockBytes[:]...)
+	dataBytes = append(dataBytes, c.L1BlockRangeHash.Bytes()...)
+	
 	hash := crypto.Keccak256Hash(dataBytes)
 	return hash, nil
 }
