@@ -96,7 +96,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			to = endHeight
 		}
 
-		if c.syncInfo.GetL2SyncHeight()+logic.L2ReorgSafeDepth > endHeight {
+		if c.syncInfo.GetL2SyncHeight()+logic.L2ReorgSafeDepth*2 > endHeight {
 			isReorg, resyncHeight, handleErr := c.l2ReorgHandlingLogic.HandleL2Reorg(c.ctx, c.syncInfo.GetL2SyncHeight(), c.l2LastSyncBlockHash)
 			if handleErr != nil {
 				log.Error("failed to Handle L2 Reorg", "err", handleErr)

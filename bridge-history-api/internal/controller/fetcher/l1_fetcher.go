@@ -102,7 +102,7 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			to = endHeight
 		}
 
-		if c.l1SyncHeight+logic.L1ReorgSafeDepth > endHeight {
+		if c.l1SyncHeight+logic.L1ReorgSafeDepth*2 > endHeight {
 			isReorg, resyncHeight, handleErr := c.l1ReorgHandlingLogic.HandleL1Reorg(c.ctx, c.l1SyncHeight, c.l1LastSyncBlockHash)
 			if handleErr != nil {
 				log.Error("failed to Handle L1 Reorg", "err", handleErr)
