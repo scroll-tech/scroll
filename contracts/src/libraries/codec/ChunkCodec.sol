@@ -69,7 +69,7 @@ library ChunkCodec {
     /// @return _lastAppliedL1Block The number of last applied L1 block.
     function lastAppliedL1BlockInChunk(uint256 l2TxEndPtr) internal pure returns (uint64 _lastAppliedL1Block) {
         assembly {
-            _lastAppliedL1Block := shr(248, mload(l2TxEndPtr))
+            _lastAppliedL1Block := shr(192, mload(l2TxEndPtr))
         }
     }
 
@@ -78,7 +78,7 @@ library ChunkCodec {
     /// @return _l1BlockRangeHash The hash of the L1 block range.
     function l1BlockRangeHashInChunk(uint256 l2TxEndPtr) internal pure returns (bytes32 _l1BlockRangeHash) {
         assembly {
-            _l1BlockRangeHash := shr(224, mload(add(l2TxEndPtr, 8)))
+            _l1BlockRangeHash := mload(add(l2TxEndPtr, 8))
         }
     }
 
@@ -112,7 +112,7 @@ library ChunkCodec {
     /// @return _lastAppliedL1Block The number of last applied L1 block.
     function lastAppliedL1BlockInBlock(uint256 blockPtr) internal pure returns (uint64 _lastAppliedL1Block) {
         assembly {
-            _lastAppliedL1Block := shr(240, mload(add(blockPtr, 60)))
+            _lastAppliedL1Block := shr(192, mload(add(blockPtr, 60)))
         }
     }
 

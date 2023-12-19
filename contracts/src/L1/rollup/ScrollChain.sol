@@ -483,16 +483,14 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _skippedL1MessageBitmap
             );
 
-            if (_prevLastAppliedL1Block != 0) {
-                bytes32 _l1BlockRangeHash = IL1ViewOracle(l1ViewOracle).blockRangeHash(
-                    _prevLastAppliedL1Block + 1,
-                    chunkResult._lastAppliedL1BlockInChunk
-                );
+            bytes32 _l1BlockRangeHash = IL1ViewOracle(l1ViewOracle).blockRangeHash(
+                _prevLastAppliedL1Block + 1,
+                chunkResult._lastAppliedL1BlockInChunk
+            );
 
-                require(_l1BlockRangeHash == chunkResult._l1BlockRangeHashInChunk, "incorrect l1 block range hash");
-                _l1BlockRangeHashes[i] = chunkResult._l1BlockRangeHashInChunk;
-                _prevLastAppliedL1Block = chunkResult._lastAppliedL1BlockInChunk;
-            }
+            require(_l1BlockRangeHash == chunkResult._l1BlockRangeHashInChunk, "incorrect l1 block range hash");
+            _l1BlockRangeHashes[i] = chunkResult._l1BlockRangeHashInChunk;
+            _prevLastAppliedL1Block = chunkResult._lastAppliedL1BlockInChunk;
 
             // if it is the last chunk, update the last applied L1 block
             if (i == _chunksLength - 1) {
@@ -628,12 +626,12 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // stack too deep
         {
             uint64 lastAppliedL1BlockInChunk = ChunkCodec.lastAppliedL1BlockInChunk(l2TxPtr);
-            _chunkResult._l1BlockRangeHashInChunk = ChunkCodec.l1BlockRangeHashInChunk(l2TxPtr);
-
             require(
                 lastAppliedL1BlockInChunk == _chunkResult._lastAppliedL1BlockInChunk,
                 "incorrect lastAppliedL1Block in chunk"
             );
+
+            _chunkResult._l1BlockRangeHashInChunk = ChunkCodec.l1BlockRangeHashInChunk(l2TxPtr);
         }
 
         // check the actual number of transactions in the chunk
@@ -645,12 +643,13 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // stack too deep
         {
-            uint256 _lastAppliedL1BlockInChunk = _chunkResult._lastAppliedL1BlockInChunk;
+            uint64 _lastAppliedL1BlockInChunk = _chunkResult._lastAppliedL1BlockInChunk;
             bytes32 _l1BlockRangeHashInChunk = _chunkResult._l1BlockRangeHashInChunk;
             assembly {
-                mstore(dataPtr, _lastAppliedL1BlockInChunk)
+                mstore(dataPtr, shl(192, _lastAppliedL1BlockInChunk))
+                dataPtr := add(dataPtr, 0x8)
                 mstore(dataPtr, _l1BlockRangeHashInChunk)
-                dataPtr := add(dataPtr, 0x28)
+                dataPtr := add(dataPtr, 0x20)
             }
         }
 

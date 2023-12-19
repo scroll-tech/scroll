@@ -215,7 +215,8 @@ library BatchHeaderV0Codec {
         uint256 _lastAppliedL1Block
     ) internal pure {
         assembly {
-            mstore(add(batchPtr, _skippedL1MessageBitmapLength), shl(224, _lastAppliedL1Block))
+            batchPtr := add(batchPtr, 89)
+            mstore(add(batchPtr, _skippedL1MessageBitmapLength), shl(192, _lastAppliedL1Block))
         }
     }
 
@@ -229,7 +230,7 @@ library BatchHeaderV0Codec {
         bytes32 _l1BlockRangeHash
     ) internal pure {
         assembly {
-            batchPtr := add(batchPtr, 8)
+            batchPtr := add(batchPtr, 97)
             mstore(add(batchPtr, _skippedL1MessageBitmapLength), _l1BlockRangeHash)
         }
     }
