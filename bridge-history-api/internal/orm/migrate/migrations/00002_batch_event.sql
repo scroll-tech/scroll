@@ -18,7 +18,7 @@ CREATE TABLE batch_event
 CREATE INDEX IF NOT EXISTS idx_be_l1_block_number ON batch_event (l1_block_number);
 CREATE INDEX IF NOT EXISTS idx_be_batch_index ON batch_event (batch_index);
 CREATE INDEX IF NOT EXISTS idx_be_batch_index_batch_hash ON batch_event (batch_index, batch_hash);
-CREATE INDEX IF NOT EXISTS idx_be_end_block_number_update_status_batch_index ON batch_event (end_block_number, update_status, batch_index);
+CREATE INDEX IF NOT EXISTS idx_be_end_block_number_update_status_batch_status_batch_index ON batch_event (end_block_number, update_status, batch_status, batch_index);
 
 -- +goose StatementEnd
 

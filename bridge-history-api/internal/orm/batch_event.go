@@ -76,6 +76,7 @@ func (c *BatchEvent) GetBatchesLEBlockHeight(ctx context.Context, blockHeight ui
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BatchEvent{})
 	db = db.Where("end_block_number <= ?", blockHeight)
+	db = db.Where("batch_status = ?", BatchStatusTypeFinalized)
 	db = db.Where("update_status = ?", UpdateStatusTypeUnupdated)
 	db = db.Order("batch_index asc")
 	if err := db.Find(&batches).Error; err != nil {

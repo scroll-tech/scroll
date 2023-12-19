@@ -17,6 +17,10 @@ import (
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
+// L1ReorgSafeDepth represents the number of block confirmations considered safe against L1 chain reorganizations.
+// Reorganizations at this depth under normal cases are extremely unlikely.
+const L1ReorgSafeDepth = 64
+
 // L1FilterResult L1 fetcher result
 type L1FilterResult struct {
 	FailedGatewayRouterTxs []*orm.CrossMessage
@@ -35,6 +39,8 @@ type L1FetcherLogic struct {
 	db              *gorm.DB
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
+
+	// TODO: event numbers: counter.
 }
 
 // NewL1FetcherLogic creates L1 fetcher logic
@@ -77,11 +83,22 @@ func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 	}
 }
 
-func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to uint64) (map[uint64]uint64, []*orm.CrossMessage, error) {
+func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, map[uint64]uint64, []*orm.CrossMessage, error) {
 	blocks, err := utils.GetL1BlocksInRange(ctx, f.client, from, to)
 	if err != nil {
 		log.Error("failed to get L1 blocks in range", "from", from, "to", to, "err", err)
-		return nil, nil, err
+		return false, 0, nil, nil, err
+	}
+
+	for i, block := range blocks {
+		if i == 0 && block.ParentHash() != lastBlockHash {
+			log.Warn("L1 reorg detected", "reorg height", block.NumberU64(), "expected parent hash", block.ParentHash(), "local parent hash", lastBlockHash)
+			return true, block.NumberU64(), nil, nil, nil
+		}
+		if i != 0 && block.ParentHash() != blocks[i-1].ParentHash() {
+			log.Warn("L1 reorg detected", "reorg height", block.NumberU64(), "expected parent hash", block.ParentHash(), "local parent hash", blocks[i-1].ParentHash())
+			return true, block.NumberU64(), nil, nil, nil
+		}
 	}
 
 	blockTimestampsMap := make(map[uint64]uint64)
@@ -105,7 +122,7 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 			receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
 			if receiptErr != nil {
 				log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", receiptErr)
-				return nil, nil, receiptErr
+				return false, 0, nil, nil, receiptErr
 			}
 
 			// Check if the transaction is failed
@@ -117,7 +134,7 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 			sender, senderErr := signer.Sender(tx)
 			if senderErr != nil {
 				log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", senderErr)
-				return nil, nil, senderErr
+				return false, 0, nil, nil, senderErr
 			}
 
 			l1FailedGatewayRouterTxs = append(l1FailedGatewayRouterTxs, &orm.CrossMessage{
@@ -131,7 +148,7 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 			})
 		}
 	}
-	return blockTimestampsMap, l1FailedGatewayRouterTxs, nil
+	return false, 0, blockTimestampsMap, l1FailedGatewayRouterTxs, nil
 }
 
 func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]types.Log, error) {
@@ -166,37 +183,45 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 }
 
 // L1Fetcher L1 fetcher
-func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64) (*L1FilterResult, error) {
+func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, *L1FilterResult, error) {
 	log.Info("fetch and save L1 events", "from", from, "to", to)
 
-	blockTimestampsMap, l1FailedGatewayRouterTxs, err := f.gatewayRouterFailedTxs(ctx, from, to)
+	isReorg, reorgHeight, blockTimestampsMap, l1FailedGatewayRouterTxs, err := f.gatewayRouterFailedTxs(ctx, from, to, lastBlockHash)
 	if err != nil {
 		log.Error("L1Fetcher gatewayRouterFailedTxs failed", "from", from, "to", to, "error", err)
-		return nil, err
+		return false, 0, nil, err
+	}
+
+	if isReorg {
+		var resyncHeight uint64
+		if reorgHeight > L1ReorgSafeDepth {
+			resyncHeight = reorgHeight - L1ReorgSafeDepth
+		}
+		return true, resyncHeight, nil, nil
 	}
 
 	eventLogs, err := f.l1FetcherLogs(ctx, from, to)
 	if err != nil {
 		log.Error("L1Fetcher l1FetcherLogs failed", "from", from, "to", to, "error", err)
-		return nil, err
+		return false, 0, nil, err
 	}
 
 	l1DepositMessages, l1RelayedMessages, err := f.parser.ParseL1CrossChainEventLogs(eventLogs, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L1 cross chain event logs", "from", from, "to", to, "err", err)
-		return nil, err
+		return false, 0, nil, err
 	}
 
 	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f.client)
 	if err != nil {
 		log.Error("failed to parse L1 batch event logs", "from", from, "to", to, "err", err)
-		return nil, err
+		return false, 0, nil, err
 	}
 
 	l1MessageQueueEvents, err := f.parser.ParseL1MessageQueueEventLogs(eventLogs, l1DepositMessages)
 	if err != nil {
 		log.Error("failed to parse L1 message queue event logs", "from", from, "to", to, "err", err)
-		return nil, err
+		return false, 0, nil, err
 	}
 
 	res := L1FilterResult{
@@ -206,5 +231,5 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64) (*L1Fil
 		BatchEvents:            l1BatchEvents,
 		MessageQueueEvents:     l1MessageQueueEvents,
 	}
-	return &res, nil
+	return false, 0, &res, nil
 }

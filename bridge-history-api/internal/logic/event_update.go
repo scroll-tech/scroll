@@ -3,6 +3,8 @@ package logic
 import (
 	"context"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -14,15 +16,25 @@ type EventUpdateLogic struct {
 	db              *gorm.DB
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
+
+	l1FinalizeBatchEventUpdateHeight prometheus.Gauge
 }
 
 // NewEventUpdateLogic create a EventUpdateLogic instance
 func NewEventUpdateLogic(db *gorm.DB) *EventUpdateLogic {
-	return &EventUpdateLogic{
+	b := &EventUpdateLogic{
 		db:              db,
 		crossMessageOrm: orm.NewCrossMessage(db),
 		batchEventOrm:   orm.NewBatchEvent(db),
 	}
+
+	reg := prometheus.DefaultRegisterer
+	b.l1FinalizeBatchEventUpdateHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+		Name: "l2_finalize_batch_event_update_height",
+		Help: "Block height of the latest L2 batch event that has been finalized and updated in the message_table.",
+	})
+
+	return b
 }
 
 // GetL1SyncHeight get the l1 sync height from db
@@ -118,6 +130,7 @@ func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, heig
 			log.Error("failed to update batch event status as updated", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", dbErr)
 			return dbErr
 		}
+		b.l1FinalizeBatchEventUpdateHeight.Set(float64(batch.EndBlockNumber))
 	}
 
 	return nil
