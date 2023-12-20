@@ -330,10 +330,10 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 	return nil
 }
 
-// InsertFailedGatewayRouterTransactions inserts a list of transactions that failed to interact with the gateway router into the database.
+// InsertFailedGatewayRouterTxs inserts a list of transactions that failed to interact with the gateway router into the database.
 // These failed transactions are only fetched once, so they are inserted without checking for duplicates.
 // To resolve unique index confliction, a random UUID will be generated and used as the MessageHash.
-func (c *CrossMessage) InsertFailedGatewayRouterTransactions(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
+func (c *CrossMessage) InsertFailedGatewayRouterTxs(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
 	if len(messages) == 0 {
 		return nil
 	}

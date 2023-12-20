@@ -21,18 +21,20 @@ type EventUpdateLogic struct {
 }
 
 // NewEventUpdateLogic create a EventUpdateLogic instance
-func NewEventUpdateLogic(db *gorm.DB) *EventUpdateLogic {
+func NewEventUpdateLogic(db *gorm.DB, isL1 bool) *EventUpdateLogic {
 	b := &EventUpdateLogic{
 		db:              db,
 		crossMessageOrm: orm.NewCrossMessage(db),
 		batchEventOrm:   orm.NewBatchEvent(db),
 	}
 
-	reg := prometheus.DefaultRegisterer
-	b.eventUpdateLogicL1FinalizeBatchEventL2BlockHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-		Name: "event_update_logic_L1_finalize_batch_event_L2_block_height",
-		Help: "L2 block height of the latest L1 batch event that has been finalized and updated in the message_table.",
-	})
+	if isL1 {
+		reg := prometheus.DefaultRegisterer
+		b.eventUpdateLogicL1FinalizeBatchEventL2BlockHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "event_update_logic_L1_finalize_batch_event_L2_block_height",
+			Help: "L2 block height of the latest L1 batch event that has been finalized and updated in the message_table.",
+		})
+	}
 
 	return b
 }
@@ -97,7 +99,7 @@ func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult
 			return txErr
 		}
 
-		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTransactions(ctx, l1FetcherResult.FailedGatewayRouterTransactions, tx); txErr != nil {
+		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l1FetcherResult.FailedGatewayRouterTxs, tx); txErr != nil {
 			log.Error("failed to insert L1 failed gateway router transactions", "err", txErr)
 			return txErr
 		}
@@ -147,7 +149,7 @@ func (b *EventUpdateLogic) L2InsertOrUpdate(ctx context.Context, l2FetcherResult
 			log.Error("failed to update L2 relayed messages of L1 deposits", "err", txErr)
 			return txErr
 		}
-		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTransactions(ctx, l2FetcherResult.FailedGatewayRouterTransactions, tx); txErr != nil {
+		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l2FetcherResult.FailedGatewayRouterTxs, tx); txErr != nil {
 			log.Error("failed to insert L2 failed gateway router transactions", "err", txErr)
 			return txErr
 		}
