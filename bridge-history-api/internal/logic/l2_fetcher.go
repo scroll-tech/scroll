@@ -260,7 +260,7 @@ func (f *L2FetcherLogic) updateMetrics(res L2FilterResult) {
 		case orm.TxStatusTypeFailedRelayed:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_relayed_message").Add(1)
 		case orm.TxStatusTypeRelayedTransactionReverted:
-			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_relayed_message_transaction_reverted").Add(1)
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_reverted_relayed_message_transaction").Add(1)
 		}
 	}
 }
