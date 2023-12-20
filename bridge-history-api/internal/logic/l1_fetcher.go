@@ -25,11 +25,11 @@ const L1ReorgSafeDepth = 64
 
 // L1FilterResult L1 fetcher result
 type L1FilterResult struct {
-	FailedGatewayRouterTxs []*orm.CrossMessage
-	DepositMessages        []*orm.CrossMessage
-	RelayedMessages        []*orm.CrossMessage
-	BatchEvents            []*orm.BatchEvent
-	MessageQueueEvents     []*orm.MessageQueueEvent
+	FailedGatewayRouterTransactions []*orm.CrossMessage
+	DepositMessages                 []*orm.CrossMessage
+	RelayedMessages                 []*orm.CrossMessage
+	BatchEvents                     []*orm.BatchEvent
+	MessageQueueEvents              []*orm.MessageQueueEvent
 }
 
 // L1FetcherLogic the L1 fetcher logic
@@ -93,7 +93,7 @@ func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 	return f
 }
 
-func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, map[uint64]uint64, []*orm.CrossMessage, error) {
+func (f *L1FetcherLogic) gatewayRouterFailedTransactions(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, map[uint64]uint64, []*orm.CrossMessage, error) {
 	blocks, err := utils.GetL1BlocksInRange(ctx, f.client, from, to)
 	if err != nil {
 		log.Error("failed to get L1 blocks in range", "from", from, "to", to, "err", err)
@@ -197,9 +197,9 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, *L1FilterResult, error) {
 	log.Info("fetch and save L1 events", "from", from, "to", to)
 
-	isReorg, reorgHeight, blockTimestampsMap, l1FailedGatewayRouterTransactions, err := f.gatewayRouterFailedTxs(ctx, from, to, lastBlockHash)
+	isReorg, reorgHeight, blockTimestampsMap, l1FailedGatewayRouterTransactions, err := f.gatewayRouterFailedTransactions(ctx, from, to, lastBlockHash)
 	if err != nil {
-		log.Error("L1Fetcher gatewayRouterFailedTxs failed", "from", from, "to", to, "error", err)
+		log.Error("L1Fetcher gatewayRouterFailedTransactions failed", "from", from, "to", to, "error", err)
 		return false, 0, nil, err
 	}
 
@@ -245,11 +245,11 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_message_queue_event").Add(float64(len(l1MessageQueueEvents)))
 
 	res := L1FilterResult{
-		FailedGatewayRouterTxs: l1FailedGatewayRouterTransactions,
-		DepositMessages:        l1DepositMessages,
-		RelayedMessages:        l1RelayedMessages,
-		BatchEvents:            l1BatchEvents,
-		MessageQueueEvents:     l1MessageQueueEvents,
+		FailedGatewayRouterTransactions: l1FailedGatewayRouterTransactions,
+		DepositMessages:                 l1DepositMessages,
+		RelayedMessages:                 l1RelayedMessages,
+		BatchEvents:                     l1BatchEvents,
+		MessageQueueEvents:              l1MessageQueueEvents,
 	}
 	return false, 0, &res, nil
 }

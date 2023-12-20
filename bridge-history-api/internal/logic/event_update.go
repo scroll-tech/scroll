@@ -97,7 +97,7 @@ func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult
 			return txErr
 		}
 
-		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l1FetcherResult.FailedGatewayRouterTxs, tx); txErr != nil {
+		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTransactions(ctx, l1FetcherResult.FailedGatewayRouterTransactions, tx); txErr != nil {
 			log.Error("failed to insert L1 failed gateway router transactions", "err", txErr)
 			return txErr
 		}
@@ -147,7 +147,7 @@ func (b *EventUpdateLogic) L2InsertOrUpdate(ctx context.Context, l2FetcherResult
 			log.Error("failed to update L2 relayed messages of L1 deposits", "err", txErr)
 			return txErr
 		}
-		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l2FetcherResult.FailedGatewayRouterTxs, tx); txErr != nil {
+		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTransactions(ctx, l2FetcherResult.FailedGatewayRouterTransactions, tx); txErr != nil {
 			log.Error("failed to insert L2 failed gateway router transactions", "err", txErr)
 			return txErr
 		}

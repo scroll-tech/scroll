@@ -26,9 +26,9 @@ const L2ReorgSafeDepth = 256
 
 // L2FilterResult the L2 filter result
 type L2FilterResult struct {
-	FailedGatewayRouterTxs []*orm.CrossMessage
-	WithdrawMessages       []*orm.CrossMessage
-	RelayedMessages        []*orm.CrossMessage
+	FailedGatewayRouterTransactions []*orm.CrossMessage
+	WithdrawMessages                []*orm.CrossMessage
+	RelayedMessages                 []*orm.CrossMessage
 }
 
 // L2FetcherLogic the L2 fetcher logic
@@ -88,7 +88,7 @@ func NewL2FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 	return f
 }
 
-func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
+func (f *L2FetcherLogic) gatewayRouterFailedTransactions(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
 	blocks, err := utils.GetL2BlocksInRange(ctx, f.client, from, to)
 	if err != nil {
 		log.Error("failed to get L2 blocks in range", "from", from, "to", to, "err", err)
@@ -200,9 +200,9 @@ func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]
 func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, *L2FilterResult, error) {
 	log.Info("fetch and save L2 events", "from", from, "to", to)
 
-	isReorg, reorgHeight, blockTimestampsMap, l2FailedGatewayRouterTransactions, l2RevertedRelayedMessageTransactions, routerErr := f.gatewayRouterFailedTxs(ctx, from, to, lastBlockHash)
+	isReorg, reorgHeight, blockTimestampsMap, l2FailedGatewayRouterTransactions, l2RevertedRelayedMessageTransactions, routerErr := f.gatewayRouterFailedTransactions(ctx, from, to, lastBlockHash)
 	if routerErr != nil {
-		log.Error("L2Fetcher gatewayRouterFailedTxs failed", "from", from, "to", to, "error", routerErr)
+		log.Error("L2Fetcher gatewayRouterFailedTransactions failed", "from", from, "to", to, "error", routerErr)
 		return false, 0, nil, routerErr
 	}
 
@@ -233,9 +233,9 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_relayed_message").Add(float64(len(l2RelayedMessages)))
 
 	res := L2FilterResult{
-		FailedGatewayRouterTxs: l2FailedGatewayRouterTransactions,
-		WithdrawMessages:       l2WithdrawMessages,
-		RelayedMessages:        append(l2RelayedMessages, l2RevertedRelayedMessageTransactions...),
+		FailedGatewayRouterTransactions: l2FailedGatewayRouterTransactions,
+		WithdrawMessages:                l2WithdrawMessages,
+		RelayedMessages:                 append(l2RelayedMessages, l2RevertedRelayedMessageTransactions...),
 	}
 	return false, 0, &res, nil
 }
