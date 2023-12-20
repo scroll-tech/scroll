@@ -245,10 +245,17 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		updateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
 		case MessageQueueEventTypeQueueTransaction:
-			// Update l1_tx_hash if the user calls replayMessage, cannot use queue index here.
+			// replayMessage case:
+			// First SentMessage in L1: https://sepolia.etherscan.io/tx/0xbee4b631312448fcc2caac86e4dccf0a2ae0a88acd6c5fd8764d39d746e472eb
+			// Transaction reverted in L2: https://sepolia.scrollscan.com/tx/0xde6ef307a7da255888aad7a4c40a6b8c886e46a8a05883070bbf18b736cbfb8c
+			// replayMessage: https://sepolia.etherscan.io/tx/0xa5392891232bb32d98fcdbaca0d91b4d22ef2755380d07d982eebd47b147ce28
+			//
+			// Note: update l1_tx_hash if the user calls replayMessage, cannot use queue index here,
+			// because in replayMessage, queue index != message nonce.
 			// Ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
 			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
 			updateFields["l1_tx_hash"] = l1MessageQueueEvent.TxHash.String()
+			updateFields["tx_status"] = TxStatusTypeSent // reset status to "sent".
 		case MessageQueueEventTypeDequeueTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			updateFields["tx_status"] = TxStatusTypeSkipped
@@ -376,7 +383,10 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	for _, msg := range mergedL2RelayedMessages {
 		uniqueL2RelayedMessages = append(uniqueL2RelayedMessages, msg)
 	}
-	// Do not update tx status of successfully relayed messages. e.g.,
+	// Do not update tx status of successfully or failed relayed messages,
+	// because if a message is handled, the later relayed message tx would be reverted.
+	// ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L2/L2ScrollMessenger.sol#L102
+	// e.g.,
 	// Successfully relayed: https://sepolia.scrollscan.com/tx/0x4eb7cb07ba76956259c0079819a34a146f8a93dd891dc94812e9b3d66b056ec7#eventlog
 	// Reverted tx 1 (Reason: Message was already successfully executed): https://sepolia.scrollscan.com/tx/0x1973cafa14eb40734df30da7bfd4d9aceb53f8f26e09d96198c16d0e2e4a95fd
 	// Reverted tx 2 (Reason: Message was already successfully executed): https://sepolia.scrollscan.com/tx/0x02fc3a28684a590aead2482022f56281539085bd3d273ac8dedc1ceccb2bc554
@@ -385,7 +395,14 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
 		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l2_block_number", "l2_tx_hash", "tx_status"}),
-		Where:     clause.Where{Exprs: []clause.Expression{clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed}}},
+		Where: clause.Where{
+			Exprs: []clause.Expression{
+				clause.And(
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed},
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeFailedRelayed},
+				),
+			},
+		},
 	})
 	if err := db.Create(uniqueL2RelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L2 reverted relayed message of L1 deposit, error: %w", err)
