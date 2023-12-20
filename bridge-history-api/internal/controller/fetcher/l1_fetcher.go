@@ -107,6 +107,7 @@ func (c *L1MessageFetcher) Start() {
 }
 
 func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
+	c.l1MessageFetcherRunningTotal.Inc()
 	startHeight := c.l1SyncHeight + 1
 	endHeight, rpcErr := utils.GetBlockNumber(c.ctx, c.client, confirmation)
 	if rpcErr != nil {
@@ -129,6 +130,7 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 		}
 
 		if isReorg {
+			c.l1MessageFetcherReorgTotal.Inc()
 			log.Warn("L1 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
 			if updateErr := c.updateL1SyncHeight(resyncHeight); updateErr != nil {
 				log.Error("failed to update L1 sync height", "height", to, "err", updateErr)
@@ -166,6 +168,7 @@ func (c *L1MessageFetcher) updateL1SyncHeight(height uint64) error {
 		log.Error("failed to get L1 header by number", "block number", height, "err", err)
 		return err
 	}
+	c.l1MessageFetcherSyncHeight.Inc()
 	c.l1LastSyncBlockHash = blockHeader.Hash()
 	c.l1SyncHeight = height
 	return nil
