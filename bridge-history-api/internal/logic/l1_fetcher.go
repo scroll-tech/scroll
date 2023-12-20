@@ -288,7 +288,7 @@ func (f *L1FetcherLogic) updateMetrics(res L1FilterResult) {
 	}
 
 	for _, messageQueueEvent := range res.MessageQueueEvents {
-		switch orm.MessageQueueEventType(messageQueueEvent.EventType) {
+		switch messageQueueEvent.EventType {
 		case orm.MessageQueueEventTypeQueueTransaction: // sendMessage is filtered, only replayMessage or appendEnforcedTransaction.
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_replay_message_or_enforced_transaction").Add(1)
 		case orm.MessageQueueEventTypeDequeueTransaction:
