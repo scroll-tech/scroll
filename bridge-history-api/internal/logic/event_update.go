@@ -30,8 +30,8 @@ func NewEventUpdateLogic(db *gorm.DB) *EventUpdateLogic {
 
 	reg := prometheus.DefaultRegisterer
 	b.l1FinalizeBatchEventUpdateHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-		Name: "l2_finalize_batch_event_update_height",
-		Help: "Block height of the latest L2 batch event that has been finalized and updated in the message_table.",
+		Name: "l1_finalize_batch_event_update_height",
+		Help: "L2 block height of the latest L1 batch event that has been finalized and updated in the message_table.",
 	})
 
 	return b
