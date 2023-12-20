@@ -17,7 +17,7 @@ type EventUpdateLogic struct {
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
 
-	l1FinalizeBatchEventUpdateHeight prometheus.Gauge
+	eventUpdateLogicL1FinalizeBatchEventL2BlockHeight prometheus.Gauge
 }
 
 // NewEventUpdateLogic create a EventUpdateLogic instance
@@ -29,8 +29,8 @@ func NewEventUpdateLogic(db *gorm.DB) *EventUpdateLogic {
 	}
 
 	reg := prometheus.DefaultRegisterer
-	b.l1FinalizeBatchEventUpdateHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-		Name: "l1_finalize_batch_event_update_height",
+	b.eventUpdateLogicL1FinalizeBatchEventL2BlockHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+		Name: "event_update_logic_L1_finalize_batch_event_L2_block_height",
 		Help: "L2 block height of the latest L1 batch event that has been finalized and updated in the message_table.",
 	})
 
@@ -130,7 +130,7 @@ func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, heig
 			log.Error("failed to update batch event status as updated", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", dbErr)
 			return dbErr
 		}
-		b.l1FinalizeBatchEventUpdateHeight.Set(float64(batch.EndBlockNumber))
+		b.eventUpdateLogicL1FinalizeBatchEventL2BlockHeight.Set(float64(batch.EndBlockNumber))
 	}
 
 	return nil

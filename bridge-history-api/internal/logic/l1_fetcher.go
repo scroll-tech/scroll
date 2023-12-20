@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -40,7 +42,7 @@ type L1FetcherLogic struct {
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
 
-	// TODO: event numbers: counter.
+	l1FetcherLogicFetchedTotal *prometheus.CounterVec
 }
 
 // NewL1FetcherLogic creates L1 fetcher logic
@@ -72,7 +74,7 @@ func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 		addressList = append(addressList, common.HexToAddress(cfg.LIDOGatewayAddr))
 	}
 
-	return &L1FetcherLogic{
+	f := &L1FetcherLogic{
 		db:              db,
 		crossMessageOrm: orm.NewCrossMessage(db),
 		batchEventOrm:   orm.NewBatchEvent(db),
@@ -81,6 +83,14 @@ func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 		addressList:     addressList,
 		parser:          NewL1EventParser(),
 	}
+
+	reg := prometheus.DefaultRegisterer
+	f.l1FetcherLogicFetchedTotal = promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+		Name: "L1 fetcher logic fetched total",
+		Help: "The total number of events or failed txs fetched in L1 fetcher logic.",
+	}, []string{"type"})
+
+	return f
 }
 
 func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, map[uint64]uint64, []*orm.CrossMessage, error) {
@@ -101,8 +111,9 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 		}
 	}
 
+	var l1FailedGatewayRouterTransactions []*orm.CrossMessage
 	blockTimestampsMap := make(map[uint64]uint64)
-	var l1FailedGatewayRouterTxs []*orm.CrossMessage
+
 	for i := from; i <= to; i++ {
 		block := blocks[i-from]
 		blockTimestampsMap[block.NumberU64()] = block.Time()
@@ -137,7 +148,7 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 				return false, 0, nil, nil, senderErr
 			}
 
-			l1FailedGatewayRouterTxs = append(l1FailedGatewayRouterTxs, &orm.CrossMessage{
+			l1FailedGatewayRouterTransactions = append(l1FailedGatewayRouterTransactions, &orm.CrossMessage{
 				L1TxHash:       tx.Hash().String(),
 				MessageType:    int(orm.MessageTypeL1SentMessage),
 				Sender:         sender.String(),
@@ -148,7 +159,7 @@ func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 			})
 		}
 	}
-	return false, 0, blockTimestampsMap, l1FailedGatewayRouterTxs, nil
+	return false, 0, blockTimestampsMap, l1FailedGatewayRouterTransactions, nil
 }
 
 func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]types.Log, error) {
@@ -186,7 +197,7 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, *L1FilterResult, error) {
 	log.Info("fetch and save L1 events", "from", from, "to", to)
 
-	isReorg, reorgHeight, blockTimestampsMap, l1FailedGatewayRouterTxs, err := f.gatewayRouterFailedTxs(ctx, from, to, lastBlockHash)
+	isReorg, reorgHeight, blockTimestampsMap, l1FailedGatewayRouterTransactions, err := f.gatewayRouterFailedTxs(ctx, from, to, lastBlockHash)
 	if err != nil {
 		log.Error("L1Fetcher gatewayRouterFailedTxs failed", "from", from, "to", to, "error", err)
 		return false, 0, nil, err
@@ -200,6 +211,8 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return true, resyncHeight, nil, nil
 	}
 
+	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_gateway_router_transaction").Add(float64(len(l1FailedGatewayRouterTransactions)))
+
 	eventLogs, err := f.l1FetcherLogs(ctx, from, to)
 	if err != nil {
 		log.Error("L1Fetcher l1FetcherLogs failed", "from", from, "to", to, "error", err)
@@ -212,11 +225,16 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, nil, err
 	}
 
+	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_message").Add(float64(len(l1DepositMessages)))
+	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_relayed_message").Add(float64(len(l1RelayedMessages)))
+
 	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f.client)
 	if err != nil {
 		log.Error("failed to parse L1 batch event logs", "from", from, "to", to, "err", err)
 		return false, 0, nil, err
 	}
+
+	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_batch_event").Add(float64(len(l1BatchEvents)))
 
 	l1MessageQueueEvents, err := f.parser.ParseL1MessageQueueEventLogs(eventLogs, l1DepositMessages)
 	if err != nil {
@@ -224,8 +242,10 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, nil, err
 	}
 
+	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_message_queue_event").Add(float64(len(l1MessageQueueEvents)))
+
 	res := L1FilterResult{
-		FailedGatewayRouterTxs: l1FailedGatewayRouterTxs,
+		FailedGatewayRouterTxs: l1FailedGatewayRouterTransactions,
 		DepositMessages:        l1DepositMessages,
 		RelayedMessages:        l1RelayedMessages,
 		BatchEvents:            l1BatchEvents,

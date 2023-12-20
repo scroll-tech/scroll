@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -39,7 +41,7 @@ type L2FetcherLogic struct {
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
 
-	// TODO: event numbers: counter.
+	l2FetcherLogicFetchedTotal *prometheus.CounterVec
 }
 
 // NewL2FetcherLogic create L2 fetcher logic
@@ -67,7 +69,7 @@ func NewL2FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 		addressList = append(addressList, common.HexToAddress(cfg.LIDOGatewayAddr))
 	}
 
-	return &L2FetcherLogic{
+	f := &L2FetcherLogic{
 		db:              db,
 		crossMessageOrm: orm.NewCrossMessage(db),
 		batchEventOrm:   orm.NewBatchEvent(db),
@@ -76,13 +78,17 @@ func NewL2FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 		addressList:     addressList,
 		parser:          NewL2EventParser(),
 	}
+
+	reg := prometheus.DefaultRegisterer
+	f.l2FetcherLogicFetchedTotal = promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+		Name: "L2 fetcher logic fetched total",
+		Help: "The total number of events or failed txs fetched in L2 fetcher logic.",
+	}, []string{"type"})
+
+	return f
 }
 
 func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
-	var l2FailedGatewayRouterTxs []*orm.CrossMessage
-	var l2RevertedRelayedMessages []*orm.CrossMessage
-	blockTimestampsMap := make(map[uint64]uint64)
-
 	blocks, err := utils.GetL2BlocksInRange(ctx, f.client, from, to)
 	if err != nil {
 		log.Error("failed to get L2 blocks in range", "from", from, "to", to, "err", err)
@@ -99,6 +105,10 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 			return true, block.NumberU64(), nil, nil, nil, nil
 		}
 	}
+
+	var l2FailedGatewayRouterTransactions []*orm.CrossMessage
+	var l2RevertedRelayedMessageTransactions []*orm.CrossMessage
+	blockTimestampsMap := make(map[uint64]uint64)
 
 	for i := from; i <= to; i++ {
 		block := blocks[i-from]
@@ -127,7 +137,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 						return false, 0, nil, nil, nil, signerErr
 					}
 
-					l2FailedGatewayRouterTxs = append(l2FailedGatewayRouterTxs, &orm.CrossMessage{
+					l2FailedGatewayRouterTransactions = append(l2FailedGatewayRouterTransactions, &orm.CrossMessage{
 						L2TxHash:       tx.Hash().String(),
 						MessageType:    int(orm.MessageTypeL2SentMessage),
 						Sender:         sender.String(),
@@ -148,10 +158,10 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 
 				// Check if the transaction is failed
 				if receipt.Status == types.ReceiptStatusFailed {
-					l2RevertedRelayedMessages = append(l2RevertedRelayedMessages, &orm.CrossMessage{
+					l2RevertedRelayedMessageTransactions = append(l2RevertedRelayedMessageTransactions, &orm.CrossMessage{
 						MessageHash:   common.BytesToHash(crypto.Keccak256(tx.AsL1MessageTx().Data)).String(),
 						L2TxHash:      tx.Hash().String(),
-						TxStatus:      int(orm.TxStatusTypeRelayedTxReverted),
+						TxStatus:      int(orm.TxStatusTypeRelayedTransactionReverted),
 						L2BlockNumber: receipt.BlockNumber.Uint64(),
 						MessageType:   int(orm.MessageTypeL1SentMessage),
 					})
@@ -159,7 +169,7 @@ func (f *L2FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to ui
 			}
 		}
 	}
-	return false, 0, blockTimestampsMap, l2FailedGatewayRouterTxs, l2RevertedRelayedMessages, nil
+	return false, 0, blockTimestampsMap, l2FailedGatewayRouterTransactions, l2RevertedRelayedMessageTransactions, nil
 }
 
 func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]types.Log, error) {
@@ -190,7 +200,7 @@ func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]
 func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, *L2FilterResult, error) {
 	log.Info("fetch and save L2 events", "from", from, "to", to)
 
-	isReorg, reorgHeight, blockTimestampsMap, l2FailedGatewayRouterTxs, l2RevertedRelayedMessages, routerErr := f.gatewayRouterFailedTxs(ctx, from, to, lastBlockHash)
+	isReorg, reorgHeight, blockTimestampsMap, l2FailedGatewayRouterTransactions, l2RevertedRelayedMessageTransactions, routerErr := f.gatewayRouterFailedTxs(ctx, from, to, lastBlockHash)
 	if routerErr != nil {
 		log.Error("L2Fetcher gatewayRouterFailedTxs failed", "from", from, "to", to, "error", routerErr)
 		return false, 0, nil, routerErr
@@ -204,6 +214,9 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return true, resyncHeight, nil, nil
 	}
 
+	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_gateway_router_transaction").Add(float64(len(l2FailedGatewayRouterTransactions)))
+	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_reverted_relayed_message_transaction").Add(float64(len(l2RevertedRelayedMessageTransactions)))
+
 	eventLogs, err := f.l2FetcherLogs(ctx, from, to)
 	if err != nil {
 		log.Error("L2Fetcher l2FetcherLogs failed", "from", from, "to", to, "error", err)
@@ -216,10 +229,13 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, nil, err
 	}
 
+	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_message").Add(float64(len(l2WithdrawMessages)))
+	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_relayed_message").Add(float64(len(l2RelayedMessages)))
+
 	res := L2FilterResult{
-		FailedGatewayRouterTxs: l2FailedGatewayRouterTxs,
+		FailedGatewayRouterTxs: l2FailedGatewayRouterTransactions,
 		WithdrawMessages:       l2WithdrawMessages,
-		RelayedMessages:        append(l2RelayedMessages, l2RevertedRelayedMessages...),
+		RelayedMessages:        append(l2RelayedMessages, l2RevertedRelayedMessageTransactions...),
 	}
 	return false, 0, &res, nil
 }
