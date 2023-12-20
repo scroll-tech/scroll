@@ -69,7 +69,7 @@ func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.
 func (c *L2MessageFetcher) Start() {
 	l2SentMessageSyncedHeight, dbErr := c.eventUpdateLogic.GetL2MessageSyncedHeightInDB(c.ctx)
 	if dbErr != nil {
-		log.Error("failed to get L2 cross message processed height", "err", dbErr)
+		log.Crit("failed to get L2 cross message processed height", "err", dbErr)
 		return
 	}
 
@@ -83,7 +83,7 @@ func (c *L2MessageFetcher) Start() {
 
 	header, err := c.client.HeaderByNumber(c.ctx, new(big.Int).SetUint64(l2SyncHeight))
 	if err != nil {
-		log.Error("failed to get L2 header by number", "block number", l2SyncHeight, "err", err)
+		log.Crit("failed to get L2 header by number", "block number", l2SyncHeight, "err", err)
 		return
 	}
 
@@ -196,7 +196,7 @@ func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2
 }
 
 func (c *L2MessageFetcher) updateL2SyncHeight(height uint64, blockHash common.Hash) {
-	c.l2MessageFetcherSyncHeight.Inc()
+	c.l2MessageFetcherSyncHeight.Set(float64(height))
 	c.l2LastSyncBlockHash = blockHash
 	c.syncInfo.SetL2SyncHeight(height)
 }

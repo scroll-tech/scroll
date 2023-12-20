@@ -87,7 +87,7 @@ func (c *L1MessageFetcher) Start() {
 
 	header, err := c.client.HeaderByNumber(c.ctx, new(big.Int).SetUint64(l1SyncHeight))
 	if err != nil {
-		log.Error("failed to get L1 header by number", "block number", l1SyncHeight, "err", err)
+		log.Crit("failed to get L1 header by number", "block number", l1SyncHeight, "err", err)
 		return
 	}
 
@@ -160,7 +160,7 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 }
 
 func (c *L1MessageFetcher) updateL1SyncHeight(height uint64, blockHash common.Hash) {
-	c.l1MessageFetcherSyncHeight.Inc()
+	c.l1MessageFetcherSyncHeight.Set(float64(height))
 	c.l1LastSyncBlockHash = blockHash
 	c.l1SyncHeight = height
 }
