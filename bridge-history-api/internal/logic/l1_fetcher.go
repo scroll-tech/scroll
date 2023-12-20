@@ -102,10 +102,10 @@ func (f *L1FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to u
 
 	for _, block := range blocks {
 		if block.ParentHash() != lastBlockHash {
-			log.Warn("L1 reorg detected", "reorg height", block.NumberU64(), "expected parent hash", block.ParentHash().String(), "local parent hash", lastBlockHash.String())
+			log.Warn("L1 reorg detected", "reorg height", block.NumberU64()-1, "expected hash", block.ParentHash().String(), "local hash", lastBlockHash.String())
 			var resyncHeight uint64
-			if block.NumberU64() > L1ReorgSafeDepth {
-				resyncHeight = block.NumberU64() - L1ReorgSafeDepth
+			if block.NumberU64() > L1ReorgSafeDepth+1 {
+				resyncHeight = block.NumberU64() - L1ReorgSafeDepth - 1
 			}
 			header, err := f.client.HeaderByNumber(ctx, new(big.Int).SetUint64(resyncHeight))
 			if err != nil {
