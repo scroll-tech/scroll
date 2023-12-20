@@ -86,7 +86,7 @@ func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 
 	reg := prometheus.DefaultRegisterer
 	f.l1FetcherLogicFetchedTotal = promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-		Name: "L1 fetcher logic fetched total",
+		Name: "L1_fetcher_logic_fetched_total",
 		Help: "The total number of events or failed txs fetched in L1 fetcher logic.",
 	}, []string{"type"})
 
