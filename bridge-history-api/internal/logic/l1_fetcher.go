@@ -211,8 +211,6 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return true, resyncHeight, nil, nil
 	}
 
-	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_gateway_router_transaction").Add(float64(len(l1FailedGatewayRouterTransactions)))
-
 	eventLogs, err := f.l1FetcherLogs(ctx, from, to)
 	if err != nil {
 		log.Error("L1Fetcher l1FetcherLogs failed", "from", from, "to", to, "error", err)
@@ -225,24 +223,17 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, nil, err
 	}
 
-	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_message").Add(float64(len(l1DepositMessages)))
-	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_relayed_message").Add(float64(len(l1RelayedMessages)))
-
 	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f.client)
 	if err != nil {
 		log.Error("failed to parse L1 batch event logs", "from", from, "to", to, "err", err)
 		return false, 0, nil, err
 	}
 
-	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_batch_event").Add(float64(len(l1BatchEvents)))
-
 	l1MessageQueueEvents, err := f.parser.ParseL1MessageQueueEventLogs(eventLogs, l1DepositMessages)
 	if err != nil {
 		log.Error("failed to parse L1 message queue event logs", "from", from, "to", to, "err", err)
 		return false, 0, nil, err
 	}
-
-	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_message_queue_event").Add(float64(len(l1MessageQueueEvents)))
 
 	res := L1FilterResult{
 		FailedGatewayRouterTransactions: l1FailedGatewayRouterTransactions,
@@ -251,5 +242,59 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		BatchEvents:                     l1BatchEvents,
 		MessageQueueEvents:              l1MessageQueueEvents,
 	}
+
+	f.updateMetrics(res)
+
 	return false, 0, &res, nil
+}
+
+func (f *L1FetcherLogic) updateMetrics(res L1FilterResult) {
+	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_gateway_router_transaction").Add(float64(len(res.FailedGatewayRouterTransactions)))
+
+	for _, depositMessage := range res.DepositMessages {
+		switch orm.TokenType(depositMessage.TokenType) {
+		case orm.TokenTypeETH:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_eth").Add(1)
+		case orm.TokenTypeERC20:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_erc20").Add(1)
+		case orm.TokenTypeERC721:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_erc721").Add(1)
+		case orm.TokenTypeERC1155:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_erc1155").Add(1)
+		}
+	}
+
+	for _, relayedMessage := range res.RelayedMessages {
+		switch orm.TxStatusType(relayedMessage.TxStatus) {
+		case orm.TxStatusTypeRelayed:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_relayed_message").Add(1)
+		case orm.TxStatusTypeFailedRelayed:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_relayed_message").Add(1)
+		}
+		// Have not tracked L1 relayed message reverted transaction yet.
+		// 1. need to parse calldata of tx.
+		// 2. hard to track internal tx.
+	}
+
+	for _, batchEvent := range res.BatchEvents {
+		switch orm.BatchStatusType(batchEvent.BatchStatus) {
+		case orm.BatchStatusTypeCommitted:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_commit_batch_event").Add(1)
+		case orm.BatchStatusTypeReverted:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_revert_batch_event").Add(1)
+		case orm.BatchStatusTypeFinalized:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_finalize_batch_event").Add(1)
+		}
+	}
+
+	for _, messageQueueEvent := range res.MessageQueueEvents {
+		switch orm.MessageQueueEventType(messageQueueEvent.EventType) {
+		case orm.MessageQueueEventTypeQueueTransaction: // sendMessage is filtered, only replayMessage or appendEnforcedTransaction.
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_replay_message_or_enforced_transaction").Add(1)
+		case orm.MessageQueueEventTypeDequeueTransaction:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_skip_message").Add(1)
+		case orm.MessageQueueEventTypeDropTransaction:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_drop_message").Add(1)
+		}
+	}
 }

@@ -214,9 +214,6 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return true, resyncHeight, nil, nil
 	}
 
-	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_gateway_router_transaction").Add(float64(len(l2FailedGatewayRouterTransactions)))
-	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_reverted_relayed_message_transaction").Add(float64(len(l2RevertedRelayedMessageTransactions)))
-
 	eventLogs, err := f.l2FetcherLogs(ctx, from, to)
 	if err != nil {
 		log.Error("L2Fetcher l2FetcherLogs failed", "from", from, "to", to, "error", err)
@@ -229,13 +226,41 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, nil, err
 	}
 
-	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_message").Add(float64(len(l2WithdrawMessages)))
-	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_relayed_message").Add(float64(len(l2RelayedMessages)))
-
 	res := L2FilterResult{
 		FailedGatewayRouterTransactions: l2FailedGatewayRouterTransactions,
 		WithdrawMessages:                l2WithdrawMessages,
 		RelayedMessages:                 append(l2RelayedMessages, l2RevertedRelayedMessageTransactions...),
 	}
+
+	f.updateMetrics(res)
+
 	return false, 0, &res, nil
+}
+
+func (f *L2FetcherLogic) updateMetrics(res L2FilterResult) {
+	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_gateway_router_transaction").Add(float64(len(res.FailedGatewayRouterTransactions)))
+
+	for _, withdrawMessage := range res.WithdrawMessages {
+		switch orm.TokenType(withdrawMessage.TokenType) {
+		case orm.TokenTypeETH:
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_eth").Add(1)
+		case orm.TokenTypeERC20:
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_erc20").Add(1)
+		case orm.TokenTypeERC721:
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_erc721").Add(1)
+		case orm.TokenTypeERC1155:
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_erc1155").Add(1)
+		}
+	}
+
+	for _, relayedMessage := range res.RelayedMessages {
+		switch orm.TxStatusType(relayedMessage.TxStatus) {
+		case orm.TxStatusTypeRelayed:
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_relayed_message").Add(1)
+		case orm.TxStatusTypeFailedRelayed:
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_relayed_message").Add(1)
+		case orm.TxStatusTypeRelayedTransactionReverted:
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_relayed_message_transaction_reverted").Add(1)
+		}
+	}
 }
