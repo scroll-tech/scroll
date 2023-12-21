@@ -4,7 +4,7 @@ This library includes contracts and interfaces needed to interact with the Scrol
 
 # Overview
 
-## Instalation
+## Installations
 
 ```bash
 npm install @scroll-tech/contracts

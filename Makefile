@@ -1,6 +1,6 @@
-.PHONY: check update dev_docker build_test_docker run_test_docker clean
+.PHONY: fmt dev_docker build_test_docker run_test_docker clean
 
-L2GETH_TAG=scroll-v4.3.55
+L2GETH_TAG=scroll-v5.1.6
 
 help: ## Display this help message
 	@grep -h \
@@ -15,23 +15,22 @@ lint: ## The code's format and security checks.
 	make -C prover lint
 	make -C bridge-history-api lint
 
-update: ## update dependencies
+fmt: ## format the code
 	go work sync
-	cd $(PWD)/rollup/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/bridge-history-api/ && go get -u github.com/ethereum/go-ethereum@latest && go mod tidy
 	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/prover/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/prover-stats-api/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
+	cd $(PWD)/rollup/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/tests/integration-test/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	goimports -local $(PWD)/rollup/ -w .
+
 	goimports -local $(PWD)/bridge-history-api/ -w .
 	goimports -local $(PWD)/common/ -w .
 	goimports -local $(PWD)/coordinator/ -w .
 	goimports -local $(PWD)/database/ -w .
 	goimports -local $(PWD)/prover/ -w .
-	goimports -local $(PWD)/prover-stats-api/ -w .
+	goimports -local $(PWD)/rollup/ -w .
 	goimports -local $(PWD)/tests/integration-test/ -w .
 
 dev_docker: ## build docker images for development/testing usages
