@@ -42,7 +42,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_cm_message_hash ON cross_message (message_
 CREATE INDEX IF NOT EXISTS idx_cm_message_type_l1_block_number ON cross_message (message_type, l1_block_number DESC);
 CREATE INDEX IF NOT EXISTS idx_cm_message_type_l2_block_number ON cross_message (message_type, l2_block_number DESC);
 CREATE INDEX IF NOT EXISTS idx_cm_message_type_rollup_status_message_nonce ON cross_message (message_type, rollup_status, message_nonce DESC);
-CREATE INDEX IF NOT EXISTS idx_cm_message_type_message_nonce_l2_block_number ON cross_message (message_type, message_nonce, l2_block_number);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_message_nonce_tx_status_l2_block_number ON cross_message (message_type, message_nonce, tx_status, l2_block_number);
 CREATE INDEX IF NOT EXISTS idx_cm_l1_tx_hash ON cross_message (l1_tx_hash);
 CREATE INDEX IF NOT EXISTS idx_cm_l2_tx_hash ON cross_message (l2_tx_hash);
 CREATE INDEX IF NOT EXISTS idx_cm_message_type_tx_status_sender_block_timestamp ON cross_message (message_type, tx_status, sender, block_timestamp DESC);
