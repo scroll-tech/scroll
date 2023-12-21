@@ -238,6 +238,7 @@ func (c *CrossMessage) GetTxsByAddress(ctx context.Context, sender string) ([]*C
 
 // UpdateL1MessageQueueEventsInfo updates the information about L1 message queue events in the database.
 func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1MessageQueueEvents []*MessageQueueEvent, dbTX ...*gorm.DB) error {
+	// update tx statuses.
 	for _, l1MessageQueueEvent := range l1MessageQueueEvents {
 		db := c.db
 		if len(dbTX) > 0 && dbTX[0] != nil {
@@ -245,14 +246,14 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		}
 		db = db.WithContext(ctx)
 		db = db.Model(&CrossMessage{})
-		db = db.Where("message_type = ?", MessageTypeL1SentMessage)
 		// do not over-write terminal statuses.
 		db = db.Where("tx_status != ?", TxStatusTypeRelayed)
 		db = db.Where("tx_status != ?", TxStatusTypeFailedRelayed)
 		db = db.Where("tx_status != ?", TxStatusTypeDropped)
-		updateFields := make(map[string]interface{})
+		txStatusUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
 		case MessageQueueEventTypeQueueTransaction:
+			// only replayMessages or enforced txs (whose message hashes would not be found), sentMessages have been filtered out.
 			// replayMessage case:
 			// First SentMessage in L1: https://sepolia.etherscan.io/tx/0xbee4b631312448fcc2caac86e4dccf0a2ae0a88acd6c5fd8764d39d746e472eb
 			// Transaction reverted in L2: https://sepolia.scrollscan.com/tx/0xde6ef307a7da255888aad7a4c40a6b8c886e46a8a05883070bbf18b736cbfb8c
@@ -262,18 +263,41 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			// because in replayMessage, queue index != message nonce.
 			// Ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
 			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
-			updateFields["l1_replay_tx_hash"] = l1MessageQueueEvent.TxHash.String()
-			updateFields["tx_status"] = TxStatusTypeSent // reset status to "sent".
+			txStatusUpdateFields["tx_status"] = TxStatusTypeSent // reset status to "sent".
 		case MessageQueueEventTypeDequeueTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			updateFields["tx_status"] = TxStatusTypeSkipped
+			txStatusUpdateFields["tx_status"] = TxStatusTypeSkipped
 		case MessageQueueEventTypeDropTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			updateFields["l1_refund_tx_hash"] = l1MessageQueueEvent.TxHash.String()
-			updateFields["tx_status"] = TxStatusTypeDropped
+			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
+			txStatusUpdateFields["tx_status"] = TxStatusTypeDropped
 		}
-		if err := db.Updates(updateFields).Error; err != nil {
-			return fmt.Errorf("failed to update L1 message queue events info, error: %w", err)
+		if err := db.Updates(txStatusUpdateFields).Error; err != nil {
+			return fmt.Errorf("failed to update tx statuses of L1 message queue events, update fields: %v, error: %w", txStatusUpdateFields, err)
+		}
+	}
+
+	// update tx hashes of replay and refund.
+	for _, l1MessageQueueEvent := range l1MessageQueueEvents {
+		db := c.db
+		if len(dbTX) > 0 && dbTX[0] != nil {
+			db = dbTX[0]
+		}
+		db = db.WithContext(ctx)
+		db = db.Model(&CrossMessage{})
+		txHashUpdateFields := make(map[string]interface{})
+		switch l1MessageQueueEvent.EventType {
+		case MessageQueueEventTypeQueueTransaction:
+			// only replayMessages or enforced txs (whose message hashes would not be found), sentMessages have been filtered out.
+			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
+			txHashUpdateFields["l1_replay_tx_hash"] = l1MessageQueueEvent.TxHash.String()
+		case MessageQueueEventTypeDropTransaction:
+			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
+			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
+			txHashUpdateFields["l1_refund_tx_hash"] = l1MessageQueueEvent.TxHash.String()
+		}
+		if err := db.Updates(txHashUpdateFields).Error; err != nil {
+			return fmt.Errorf("failed to update tx hashes of replay and refund in L1 message queue events info, update fields: %v, error: %w", txHashUpdateFields, err)
 		}
 	}
 	return nil
