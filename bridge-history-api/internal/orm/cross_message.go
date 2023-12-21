@@ -185,7 +185,7 @@ func (c *CrossMessage) GetL2WithdrawalsByBlockRange(ctx context.Context, startBl
 	db = db.Model(&CrossMessage{})
 	db = db.Where("l2_block_number >= ?", startBlock)
 	db = db.Where("l2_block_number <= ?", endBlock)
-	db = db.Where("tx_status = ?", TxStatusTypeSentFailed)
+	db = db.Where("tx_status != ?", TxStatusTypeSentFailed)
 	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
 	db = db.Order("message_nonce asc")
 	if err := db.Find(&messages).Error; err != nil {
