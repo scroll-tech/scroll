@@ -12,6 +12,8 @@ CREATE TABLE cross_message
 
     message_hash        VARCHAR      DEFAULT NULL, -- NULL for failed txs
     l1_tx_hash          VARCHAR      DEFAULT NULL,
+    l1_replay_tx_hash   VARCHAR      DEFAULT NULL,
+    l2_refund_tx_hash   VARCHAR      DEFAULT NULL,
     l2_tx_hash          VARCHAR      DEFAULT NULL,
     l1_block_number     BIGINT       DEFAULT NULL,
     l2_block_number     BIGINT       DEFAULT NULL,

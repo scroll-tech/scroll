@@ -81,9 +81,11 @@ type MessageQueueEvent struct {
 	EventType  MessageQueueEventType
 	QueueIndex uint64
 
-	// QueueTransaction only.
-	MessageHash common.Hash // track which message.
-	TxHash      common.Hash // track new tx hash.
+	// Track replay tx hash and refund tx hash.
+	TxHash common.Hash
+
+	// QueueTransaction only in replayMessage, to track which message is replayed.
+	MessageHash common.Hash
 }
 
 // CrossMessage represents a cross message.
@@ -98,8 +100,10 @@ type CrossMessage struct {
 	Sender         string     `json:"sender" gorm:"column:sender"`
 	Receiver       string     `json:"receiver" gorm:"column:receiver"`
 	MessageHash    string     `json:"message_hash" gorm:"column:message_hash"`
-	L1TxHash       string     `json:"l1_tx_hash" gorm:"column:l1_tx_hash"`
-	L2TxHash       string     `json:"l2_tx_hash" gorm:"column:l2_tx_hash"`
+	L1TxHash       string     `json:"l1_tx_hash" gorm:"column:l1_tx_hash"` // initial tx hash, if MessageType is MessageTypeL1SentMessage.
+	L1ReplayTxHash string     `json:"l1_replay_tx_hash" gorm:"column:l1_replay_tx_hash"`
+	L1RefundTxHash string     `json:"l1_refund_tx_hash" gorm:"column:l1_refund_tx_hash"`
+	L2TxHash       string     `json:"l2_tx_hash" gorm:"column:l2_tx_hash"` // initial tx hash, if MessageType is MessageTypeL2SentMessage.
 	L1BlockNumber  uint64     `json:"l1_block_number" gorm:"column:l1_block_number"`
 	L2BlockNumber  uint64     `json:"l2_block_number" gorm:"column:l2_block_number"`
 	L1TokenAddress string     `json:"l1_token_address" gorm:"column:l1_token_address"`
@@ -258,13 +262,14 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			// because in replayMessage, queue index != message nonce.
 			// Ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
 			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
-			updateFields["l1_tx_hash"] = l1MessageQueueEvent.TxHash.String()
+			updateFields["l1_replay_tx_hash"] = l1MessageQueueEvent.TxHash.String()
 			updateFields["tx_status"] = TxStatusTypeSent // reset status to "sent".
 		case MessageQueueEventTypeDequeueTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			updateFields["tx_status"] = TxStatusTypeSkipped
 		case MessageQueueEventTypeDropTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
+			updateFields["l1_refund_tx_hash"] = l1MessageQueueEvent.TxHash.String()
 			updateFields["tx_status"] = TxStatusTypeDropped
 		}
 		if err := db.Updates(updateFields).Error; err != nil {

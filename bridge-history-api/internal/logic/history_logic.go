@@ -265,6 +265,8 @@ func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 	}
 	if txHistory.IsL1 {
 		txHistory.Hash = message.L1TxHash
+		txHistory.ReplayTxHash = message.L1ReplayTxHash
+		txHistory.RefundTxHash = message.L1RefundTxHash
 		txHistory.BlockNumber = message.L1BlockNumber
 		txHistory.FinalizeTx = &types.Finalized{
 			Hash:        message.L2TxHash,
