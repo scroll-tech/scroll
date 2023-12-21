@@ -68,8 +68,8 @@ library ZkTrieVerifier {
                 r := mload(0x20)
             }
             // compute poseidon hash of 1 uint256
-            function hash_uint256(hasher, v, domain) -> r {
-                r := poseidon_hash(hasher, shr(128, v), and(v, 0xffffffffffffffffffffffffffffffff), domain)
+            function hash_uint256(hasher, v) -> r {
+                r := poseidon_hash(hasher, shr(128, v), and(v, 0xffffffffffffffffffffffffffffffff), 512)
             }
 
             // traverses the tree from the root to the node before the leaf.
@@ -139,7 +139,7 @@ library ZkTrieVerifier {
                 ptr := _ptr
 
                 let leafHash
-                let key := hash_uint256(hasher, shl(96, _account), 512)
+                let key := hash_uint256(hasher, shl(96, _account))
 
                 // `stateRoot` is a return value and must be checked by the caller
                 ptr, _stateRoot, leafHash := walkTree(hasher, key, ptr)
@@ -153,7 +153,8 @@ library ZkTrieVerifier {
                     require(eq(shr(224, calldataload(ptr)), 0x05080000), "InvalidAccountCompressedFlag")
                     ptr := add(ptr, 0x04) // skip CompressedFlag
 
-                    // compute value hash for State Account Leaf Node
+                    // compute value hash for State Account Leaf Node, details can be found in
+                    // https://github.com/scroll-tech/mpt-circuit/blob/v0.7/spec/mpt-proof.md#account-segmenttypes
                     // [nonce||codesize||0, balance, storage_root, keccak codehash, poseidon codehash]
                     mstore(0x00, calldataload(ptr))
                     ptr := add(ptr, 0x20) // skip nonce||codesize||0
@@ -161,7 +162,7 @@ library ZkTrieVerifier {
                     ptr := add(ptr, 0x20) // skip balance
                     storageRootHash := calldataload(ptr)
                     ptr := add(ptr, 0x20) // skip StorageRoot
-                    let tmpHash := hash_uint256(hasher, calldataload(ptr), 512)
+                    let tmpHash := hash_uint256(hasher, calldataload(ptr))
                     ptr := add(ptr, 0x20) // skip KeccakCodeHash
                     tmpHash := poseidon_hash(hasher, storageRootHash, tmpHash, 1280)
                     tmpHash := poseidon_hash(hasher, mload(0x00), tmpHash, 1280)
@@ -191,7 +192,7 @@ library ZkTrieVerifier {
                 ptr := _ptr
 
                 let leafHash
-                let key := hash_uint256(hasher, _storageKey, 512)
+                let key := hash_uint256(hasher, _storageKey)
                 let rootHash
                 ptr, rootHash, leafHash := walkTree(hasher, key, ptr)
 
@@ -208,8 +209,9 @@ library ZkTrieVerifier {
                     _storageValue := calldataload(ptr)
                     ptr := add(ptr, 0x20) // skip StorageValue
 
-                    // compute leaf node hash and compare
-                    mstore(0x00, hash_uint256(hasher, _storageValue, 512))
+                    // compute leaf node hash and compare, details can be found in
+                    // https://github.com/scroll-tech/mpt-circuit/blob/v0.7/spec/mpt-proof.md#storage-segmenttypes
+                    mstore(0x00, hash_uint256(hasher, _storageValue))
                     mstore(0x00, poseidon_hash(hasher, key, mload(0x00), 4))
                     require(eq(leafHash, mload(0x00)), "InvalidStorageLeafNodeHash")
 
