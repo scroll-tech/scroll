@@ -12,7 +12,7 @@ import (
 type LayerConfig struct {
 	Confirmation             uint64 `json:"confirmation"`
 	Endpoint                 string `json:"endpoint"`
-	StartHeight              uint64 `json:"startHeight"`
+	StartHeight              uint64 `json:"startHeight"` // Can only be configured to contract deployment height, otherwise in the current implementation, the message proof could not be successfully updated.
 	BlockTime                int64  `json:"blockTime"`
 	FetchLimit               uint64 `json:"fetchLimit"`
 	MessengerAddr            string `json:"MessengerAddr"`

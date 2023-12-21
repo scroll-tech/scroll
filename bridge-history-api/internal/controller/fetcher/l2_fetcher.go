@@ -2,7 +2,6 @@ package fetcher
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"time"
 
@@ -15,7 +14,6 @@ import (
 
 	"scroll-tech/bridge-history-api/internal/config"
 	"scroll-tech/bridge-history-api/internal/logic"
-	"scroll-tech/bridge-history-api/internal/orm"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
@@ -134,11 +132,6 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			return
 		}
 
-		if updateWithdrawErr := c.updateL2WithdrawMessageProofs(c.ctx, l2FetcherResult.WithdrawMessages, to); updateWithdrawErr != nil {
-			log.Error("failed to update L2 withdraw message", "from", from, "to", to, "err", updateWithdrawErr)
-			return
-		}
-
 		if insertUpdateErr := c.eventUpdateLogic.L2InsertOrUpdate(c.ctx, l2FetcherResult); insertUpdateErr != nil {
 			log.Error("failed to save L2 events", "from", from, "to", to, "err", insertUpdateErr)
 			return
@@ -146,43 +139,6 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 
 		c.updateL2SyncHeight(to, lastBlockHash)
 	}
-}
-
-func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2WithdrawMessages []*orm.CrossMessage, endBlock uint64) error {
-	withdrawTrie := utils.NewWithdrawTrie()
-	lastMessage, err := c.eventUpdateLogic.GetL2LatestWithdrawalLEBlockHeight(ctx, c.syncInfo.GetL2SyncHeight())
-	if err != nil {
-		log.Error("failed to get latest L2 sent message event", "err", err)
-		return err
-	}
-
-	if lastMessage != nil {
-		withdrawTrie.Initialize(lastMessage.MessageNonce, common.HexToHash(lastMessage.MessageHash), lastMessage.MerkleProof)
-	}
-
-	for _, message := range l2WithdrawMessages {
-		// AppendMessages returns the proofs for the entire tree after all messages have been inserted,
-		// so it is called for each message individually to obtain the correct proofs.
-		proof := withdrawTrie.AppendMessages([]common.Hash{common.HexToHash(message.MessageHash)})
-		if len(proof) != 1 {
-			log.Error("invalid proof len", "got", len(proof), "expected", 1)
-			return fmt.Errorf("invalid proof len, got: %v, expected: 1", len(proof))
-		}
-		message.MerkleProof = proof[0]
-	}
-
-	// Verify if local info is correct.
-	withdrawRoot, err := c.client.StorageAt(ctx, common.HexToAddress(c.cfg.MessageQueueAddr), common.Hash{}, new(big.Int).SetUint64(endBlock))
-	if err != nil {
-		log.Error("failed to get withdraw root", "number", endBlock, "error", err)
-		return fmt.Errorf("failed to get withdraw root: %v, number: %v", err, endBlock)
-	}
-
-	if common.BytesToHash(withdrawRoot) != withdrawTrie.MessageRoot() {
-		log.Error("withdraw root mismatch", "expected", common.BytesToHash(withdrawRoot).String(), "got", withdrawTrie.MessageRoot().String())
-		return fmt.Errorf("withdraw root mismatch. expected: %v, got: %v", common.BytesToHash(withdrawRoot), withdrawTrie.MessageRoot())
-	}
-	return nil
 }
 
 func (c *L2MessageFetcher) updateL2SyncHeight(height uint64, blockHash common.Hash) {

@@ -161,22 +161,39 @@ func (c *CrossMessage) GetMessageSyncedHeightInDB(ctx context.Context, messageTy
 	}
 }
 
-// GetLatestL2WithdrawalLEBlockHeight returns the latest processed L2 withdrawal that happened <= given block height from the database.
-func (c *CrossMessage) GetLatestL2WithdrawalLEBlockHeight(ctx context.Context, blockHeight uint64) (*CrossMessage, error) {
+// GetL2LatestFinalizedWithdrawal returns the latest finalized L2 withdrawal from the database.
+func (c *CrossMessage) GetL2LatestFinalizedWithdrawal(ctx context.Context) (*CrossMessage, error) {
 	var message CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
-	db = db.Where("l2_block_number <= ?", blockHeight)
 	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
-	db = db.Where("tx_status != ?", TxStatusTypeSentFailed)
+	db = db.Where("rollup_status = ?", RollupStatusTypeFinalized)
 	db = db.Order("message_nonce desc")
 	if err := db.First(&message).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get latest L2 sent message event, error: %w", err)
+		return nil, fmt.Errorf("failed to get latest L2 finalized sent message event, error: %w", err)
 	}
 	return &message, nil
+}
+
+// GetL2LatestFinalizedWithdrawal returns the latest finalized L2 withdrawal from the database.
+func (c *CrossMessage) GetL2WithdrawalsByBlockRange(ctx context.Context, startBlock, endBlock uint64) ([]*CrossMessage, error) {
+	var messages []*CrossMessage
+	db := c.db.WithContext(ctx)
+	db = db.Model(&CrossMessage{})
+	db = db.Where("l2_block_number >= ?", startBlock)
+	db = db.Where("l2_block_number <= ?", endBlock)
+	db = db.Where("message_type = ?", RollupStatusTypeFinalized)
+	db = db.Order("message_nonce asc")
+	if err := db.Find(&messages).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get latest L2 finalized sent message event, error: %w", err)
+	}
+	return messages, nil
 }
 
 // GetMessagesByTxHashes retrieves all cross messages from the database that match the provided transaction hashes.
@@ -266,6 +283,7 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			txStatusUpdateFields["tx_status"] = TxStatusTypeSent // reset status to "sent".
 		case MessageQueueEventTypeDequeueTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
+			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
 			txStatusUpdateFields["tx_status"] = TxStatusTypeSkipped
 		case MessageQueueEventTypeDropTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
@@ -319,6 +337,27 @@ func (c *CrossMessage) UpdateBatchStatusOfL2Withdrawals(ctx context.Context, sta
 	return nil
 }
 
+// UpdateBatchIndexRollupStatusMerkleProofOfL2Messages updates the batch_index, rollup_status, and merkle_proof fields for a list of L2 cross messages.
+func (c *CrossMessage) UpdateBatchIndexRollupStatusMerkleProofOfL2Messages(ctx context.Context, messages []*CrossMessage) error {
+	if len(messages) == 0 {
+		return nil
+	}
+	for _, message := range messages {
+		updateFields := map[string]interface{}{
+			"batch_index":   message.BatchIndex,
+			"rollup_status": message.RollupStatus,
+			"merkle_proof":  message.MerkleProof,
+		}
+		db := c.db.WithContext(ctx)
+		db = db.Model(&CrossMessage{})
+		db = db.Where("message_hash = ?", message.MessageHash)
+		if err := db.Updates(updateFields).Error; err != nil {
+			return fmt.Errorf("failed to update L2 message with message_hash %s, error: %w", message.MessageHash, err)
+		}
+	}
+	return nil
+}
+
 // InsertOrUpdateL1Messages inserts or updates a list of L1 cross messages into the database.
 func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
 	if len(messages) == 0 {
@@ -353,9 +392,10 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
+	// The merkle_proof is updated separately in batch status updates and hence is not included here.
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "merkle_proof", "message_nonce"}),
+		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "message_nonce"}),
 	})
 	if err := db.Create(messages).Error; err != nil {
 		return fmt.Errorf("failed to insert message, error: %w", err)
