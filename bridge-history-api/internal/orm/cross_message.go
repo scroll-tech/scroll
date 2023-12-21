@@ -178,7 +178,7 @@ func (c *CrossMessage) GetL2LatestFinalizedWithdrawal(ctx context.Context) (*Cro
 	return &message, nil
 }
 
-// GetL2LatestFinalizedWithdrawal returns the latest finalized L2 withdrawal from the database.
+// GetL2WithdrawalsByBlockRange returns the L2 withdrawals by block range from the database.
 func (c *CrossMessage) GetL2WithdrawalsByBlockRange(ctx context.Context, startBlock, endBlock uint64) ([]*CrossMessage, error) {
 	var messages []*CrossMessage
 	db := c.db.WithContext(ctx)
