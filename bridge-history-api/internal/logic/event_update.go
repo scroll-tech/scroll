@@ -74,7 +74,7 @@ func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (ui
 	return l2SentMessageSyncedHeight, nil
 }
 
-// L1InsertOrUpdate insert or update l1 messages
+// L1InsertOrUpdate inserts or updates l1 messages
 func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult *L1FilterResult) error {
 	err := b.db.Transaction(func(tx *gorm.DB) error {
 		if txErr := b.crossMessageOrm.InsertOrUpdateL1Messages(ctx, l1FetcherResult.DepositMessages, tx); txErr != nil {
@@ -161,7 +161,7 @@ func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, bat
 	return nil
 }
 
-// UpdateL1BatchIndexAndStatus updates l1 finalized batch index and status
+// UpdateL1BatchIndexAndStatus updates L1 finalized batch index and status
 func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, height uint64) error {
 	finalizedBatches, err := b.batchEventOrm.GetFinalizedBatchesLEBlockHeight(ctx, height)
 	if err != nil {
