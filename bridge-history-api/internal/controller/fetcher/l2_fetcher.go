@@ -150,25 +150,20 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 
 func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2WithdrawMessages []*orm.CrossMessage, endBlock uint64) error {
 	withdrawTrie := utils.NewWithdrawTrie()
-	message, err := c.eventUpdateLogic.GetL2LatestWithdrawalLEBlockHeight(ctx, c.syncInfo.GetL2SyncHeight())
+	lastMessage, err := c.eventUpdateLogic.GetL2LatestWithdrawalLEBlockHeight(ctx, c.syncInfo.GetL2SyncHeight())
 	if err != nil {
 		log.Error("failed to get latest L2 sent message event", "err", err)
 		return err
 	}
 
-	if message != nil {
-		withdrawTrie.Initialize(message.MessageNonce, common.HexToHash(message.MessageHash), message.MerkleProof)
+	if lastMessage != nil {
+		withdrawTrie.Initialize(lastMessage.MessageNonce, common.HexToHash(lastMessage.MessageHash), lastMessage.MerkleProof)
 	}
 
 	for _, message := range l2WithdrawMessages {
 		// AppendMessages returns the proofs for the entire tree after all messages have been inserted,
 		// so it is called for each message individually to obtain the correct proofs.
 		proof := withdrawTrie.AppendMessages([]common.Hash{common.HexToHash(message.MessageHash)})
-		if err != nil {
-			log.Error("error generating proof", "messageHash", message.MessageHash, "error", err)
-			return fmt.Errorf("error generating proof for messageHash %s: %v", message.MessageHash, err)
-		}
-
 		if len(proof) != 1 {
 			log.Error("invalid proof len", "got", len(proof), "expected", 1)
 			return fmt.Errorf("invalid proof len, got: %v, expected: 1", len(proof))
