@@ -167,34 +167,52 @@ func NewChunkProposer(ctx context.Context, client *ethclient.Client, cfg *config
 
 // TryProposeChunk tries to propose a new chunk.
 func (p *ChunkProposer) TryProposeChunk() {
+	p.chunkProposerCircleTotal.Inc()
+	proposedChunk, err := p.proposeChunk()
+	if err != nil {
+		p.proposeChunkFailureTotal.Inc()
+		log.Error("propose new chunk failed", "err", err)
+		return
+	}
+	if proposedChunk == nil {
+		return
+	}
+
+	lastAppliedL1Block := proposedChunk.Blocks[len(proposedChunk.Blocks)-1].LastAppliedL1Block
+
 	parentChunk, err := p.chunkOrm.GetLatestChunk(p.ctx)
 	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
 		log.Error("failed to get latest chunk", "err", err)
 		return
 	}
 
-	p.chunkProposerCircleTotal.Inc()
-	proposedChunk, err := p.proposeChunk(parentChunk)
-	if err != nil {
-		p.proposeChunkFailureTotal.Inc()
-		log.Error("propose new chunk failed", "err", err)
-		return
+	l1BlockRangeHash := common.HexToHash("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470") // keccak256("")
+	if parentChunk.LastAppliedL1Block != lastAppliedL1Block {
+		hash, err := p.GetL1BlockRangeHash(p.ctx, parentChunk.LastAppliedL1Block+1, lastAppliedL1Block)
+		if err != nil {
+			log.Error("failed to get l1 block range hash", "from", parentChunk.LastAppliedL1Block+1, "to", lastAppliedL1Block, "err", err)
+			return
+		}
+		l1BlockRangeHash = *hash
 	}
 
-	if err := p.updateChunkInfoInDB(parentChunk, proposedChunk); err != nil {
+	proposedChunk.LastAppliedL1Block = lastAppliedL1Block
+	proposedChunk.L1BlockRangeHash = l1BlockRangeHash
+
+	if err := p.updateChunkInfoInDB(proposedChunk); err != nil {
 		p.proposeChunkUpdateInfoFailureTotal.Inc()
 		log.Error("update chunk info in orm failed", "err", err)
 	}
 }
 
-func (p *ChunkProposer) updateChunkInfoInDB(parentChunk *orm.Chunk, chunk *types.Chunk) error {
+func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	if chunk == nil {
 		return nil
 	}
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, parentChunk, chunk, dbTX)
+		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, dbTX)
 		if err != nil {
 			log.Warn("ChunkProposer.InsertChunk failed", "chunk hash", chunk.Hash)
 			return err
@@ -208,7 +226,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(parentChunk *orm.Chunk, chunk *types
 	return err
 }
 
-func (p *ChunkProposer) proposeChunk(parentChunk *orm.Chunk) (*types.Chunk, error) {
+func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
 	if err != nil {
 		return nil, err
@@ -230,24 +248,6 @@ func (p *ChunkProposer) proposeChunk(parentChunk *orm.Chunk) (*types.Chunk, erro
 	var totalL1CommitCalldataSize uint64
 	var totalL1CommitGas uint64
 	crc := chunkRowConsumption{}
-	lastAppliedL1Block := blocks[len(blocks)-1].LastAppliedL1Block
-	var l1BlockRangeHashFrom uint64
-
-	if parentChunk != nil {
-		l1BlockRangeHashFrom = parentChunk.LastAppliedL1Block
-		if l1BlockRangeHashFrom != 0 {
-			l1BlockRangeHashFrom++
-		}
-	}
-
-	l1BlockRangeHash, err := p.GetL1BlockRangeHash(p.ctx, l1BlockRangeHashFrom, lastAppliedL1Block)
-	if err != nil {
-		log.Error("failed to get l1 block range hash", "from", l1BlockRangeHashFrom, "to", lastAppliedL1Block, "err", err)
-		return nil, fmt.Errorf("chunk-proposer failed to get l1 block range hash error: %w", err)
-	}
-
-	chunk.LastAppliedL1Block = lastAppliedL1Block
-	chunk.L1BlockRangeHash = *l1BlockRangeHash
 
 	for i, block := range blocks {
 		// metric values

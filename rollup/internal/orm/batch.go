@@ -34,7 +34,7 @@ type Batch struct {
 	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 
-	LastAppliedL1Block uint64      `json:"last_applied_l1_block"`
+	LastAppliedL1Block uint64 `json:"last_applied_l1_block"`
 	L1BlockRangeHash   string `json:"l1_block_range_hash"`
 
 	// proof

@@ -177,7 +177,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		var dbChunk *orm.Chunk
-		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, nil, chunk, dbTX)
+		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}

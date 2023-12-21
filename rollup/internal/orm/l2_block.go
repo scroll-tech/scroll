@@ -65,13 +65,25 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (uint64, error) {
 	return maxNumber, nil
 }
 
+func (o *L2Block) GetL2BlocksLastAppliedL1BlockNumber(ctx context.Context) (uint64, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&L2Block{})
+	db = db.Select("COALESCE(MAX(last_applied_l1_block), 0)")
+
+	var lastAppliedL1Number uint64
+	if err := db.Row().Scan(&lastAppliedL1Number); err != nil {
+		return 0, fmt.Errorf("L2Block.GetL2BlocksLastAppliedL1BlockNumber error: %w", err)
+	}
+	return lastAppliedL1Number, nil
+}
+
 // GetL2WrappedBlocksGEHeight retrieves L2 blocks that have a block number greater than or equal to the given height.
 // The blocks are converted into WrappedBlock format for output.
 // The returned blocks are sorted in ascending order by their block number.
 func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64, limit int) ([]*types.WrappedBlock, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_root, row_consumption")
+	db = db.Select("header, transactions, withdraw_root, row_consumption, last_applied_l1_block")
 	db = db.Where("number >= ?", height)
 	db = db.Order("number ASC")
 
@@ -102,6 +114,8 @@ func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64,
 		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
 		}
+
+		wrappedBlock.LastAppliedL1Block = v.LastAppliedL1Block
 
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}

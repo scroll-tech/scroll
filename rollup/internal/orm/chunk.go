@@ -155,7 +155,7 @@ func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) (
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, parentDbChunk *Chunk, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -164,15 +164,20 @@ func (o *Chunk) InsertChunk(ctx context.Context, parentDbChunk *Chunk, chunk *ty
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
+	parentChunk, err := o.GetLatestChunk(ctx)
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+		log.Error("failed to get latest chunk", "err", err)
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
+	}
 
-	// if parentDbChunk==nil then err==gorm.ErrRecordNotFound, which means there's
+	// if parentChunk==nil then err==gorm.ErrRecordNotFound, which means there's
 	// not chunk record in the db, we then use default empty values for the creating chunk;
 	// if parentDbChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
-	if parentDbChunk != nil {
-		chunkIndex = parentDbChunk.Index + 1
-		totalL1MessagePoppedBefore = parentDbChunk.TotalL1MessagesPoppedBefore + uint64(parentDbChunk.TotalL1MessagesPoppedInChunk)
-		parentChunkHash = parentDbChunk.Hash
-		parentChunkStateRoot = parentDbChunk.StateRoot
+	if parentChunk != nil {
+		chunkIndex = parentChunk.Index + 1
+		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
+		parentChunkHash = parentChunk.Hash
+		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
 	hash, err := chunk.Hash(totalL1MessagePoppedBefore)

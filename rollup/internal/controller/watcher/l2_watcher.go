@@ -103,6 +103,12 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 		return
 	}
 
+	lastAppliedL1BlockNumber, err := w.l2BlockOrm.GetL2BlocksLastAppliedL1BlockNumber(w.ctx)
+	if err != nil {
+		log.Error("failed to GetL2BlocksLastAppliedL1BlockNumber", "err", err)
+		return
+	}
+
 	// Fetch and store block traces for missing blocks
 	for from := heightInDB + 1; from <= blockHeight; from += blockTracesFetchLimit {
 		to := from + blockTracesFetchLimit - 1
@@ -111,7 +117,8 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 			to = blockHeight
 		}
 
-		if err = w.getAndStoreBlockTraces(w.ctx, from, to); err != nil {
+		lastAppliedL1BlockNumber, err = w.getAndStoreBlockTraces(w.ctx, lastAppliedL1BlockNumber, from, to)
+		if err != nil {
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
@@ -153,30 +160,40 @@ func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
 	return txsData
 }
 
-func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
+func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, previousLastAppliedL1BlockNumber, from, to uint64) (uint64, error) {
 	var blocks []*types.WrappedBlock
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)
 		block, err := w.GetBlockByNumberOrHash(ctx, rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(number)))
 		if err != nil {
-			return fmt.Errorf("failed to GetBlockByNumberOrHash: %v. number: %v", err, number)
+			return 0, fmt.Errorf("failed to GetBlockByNumberOrHash: %v. number: %v", err, number)
 		}
 		if block.RowConsumption == nil {
-			return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
+			return 0, fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
+		}
+
+		lastAppliedL1BlockNumber, _ := block.L1BlockHashesInfo()
+		// when no new l1 block hashes tx is found, set the lastAppliedL1BlockNumber to be previous
+		if lastAppliedL1BlockNumber == 0 {
+			lastAppliedL1BlockNumber = previousLastAppliedL1BlockNumber
 		}
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
 
 		withdrawRoot, err3 := w.StorageAt(ctx, w.messageQueueAddress, w.withdrawTrieRootSlot, big.NewInt(int64(number)))
 		if err3 != nil {
-			return fmt.Errorf("failed to get withdrawRoot: %v. number: %v", err3, number)
+			return 0, fmt.Errorf("failed to get withdrawRoot: %v. number: %v", err3, number)
 		}
+
 		blocks = append(blocks, &types.WrappedBlock{
-			Header:         block.Header(),
-			Transactions:   txsToTxsData(block.Transactions()),
-			WithdrawRoot:   common.BytesToHash(withdrawRoot),
-			RowConsumption: block.RowConsumption,
+			Header:             block.Header(),
+			Transactions:       txsToTxsData(block.Transactions()),
+			WithdrawRoot:       common.BytesToHash(withdrawRoot),
+			RowConsumption:     block.RowConsumption,
+			LastAppliedL1Block: lastAppliedL1BlockNumber,
 		})
+
+		previousLastAppliedL1BlockNumber = lastAppliedL1BlockNumber
 	}
 
 	if len(blocks) > 0 {
@@ -184,11 +201,11 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 			w.metrics.rollupL2BlockL1CommitCalldataSize.Set(float64(block.EstimateL1CommitCalldataSize()))
 		}
 		if err := w.l2BlockOrm.InsertL2Blocks(w.ctx, blocks); err != nil {
-			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)
+			return 0, fmt.Errorf("failed to batch insert BlockTraces: %v", err)
 		}
 	}
 
-	return nil
+	return previousLastAppliedL1BlockNumber, nil
 }
 
 // FetchContractEvent pull latest event logs from given contract address and save in DB

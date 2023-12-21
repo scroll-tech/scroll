@@ -55,9 +55,9 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	chunkOrm := orm.NewChunk(db)
-	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), nil, chunk1)
+	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
-	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), dbChunk1, chunk2)
+	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
 	batchMeta := &types.BatchMeta{
 		StartChunkIndex: 0,
