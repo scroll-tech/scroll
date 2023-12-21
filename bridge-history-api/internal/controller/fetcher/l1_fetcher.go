@@ -23,7 +23,6 @@ type L1MessageFetcher struct {
 	cfg    *config.LayerConfig
 	client *ethclient.Client
 
-	syncInfo            *SyncInfo
 	l1SyncHeight        uint64
 	l1LastSyncBlockHash common.Hash
 
@@ -36,12 +35,11 @@ type L1MessageFetcher struct {
 }
 
 // NewL1MessageFetcher creates a new L1MessageFetcher instance.
-func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) *L1MessageFetcher {
+func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L1MessageFetcher {
 	c := &L1MessageFetcher{
 		ctx:              ctx,
 		cfg:              cfg,
 		client:           client,
-		syncInfo:         syncInfo,
 		eventUpdateLogic: logic.NewEventUpdateLogic(db, true),
 		l1FetcherLogic:   logic.NewL1FetcherLogic(cfg, db, client),
 	}
@@ -145,17 +143,6 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 		}
 
 		c.updateL1SyncHeight(to, lastBlockHash)
-
-		l2ScannedHeight := c.syncInfo.GetL2SyncHeight()
-		if l2ScannedHeight == 0 {
-			log.Error("L2 fetcher has not successfully synced at least one round yet")
-			return
-		}
-
-		if updateErr := c.eventUpdateLogic.UpdateL1BatchIndexAndStatus(c.ctx, l2ScannedHeight); updateErr != nil {
-			log.Error("failed to update L1 batch index and status", "from", from, "to", to, "err", updateErr)
-			return
-		}
 	}
 }
 

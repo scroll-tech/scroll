@@ -68,13 +68,10 @@ func action(ctx *cli.Context) error {
 
 	observability.Server(ctx, db)
 
-	// syncInfo is used to store the shared info between L1 fetcher and L2 fetcher, e.g., the sync height.
-	syncInfo := &fetcher.SyncInfo{}
-
-	l1MessageFetcher := fetcher.NewL1MessageFetcher(subCtx, cfg.L1, db, l1Client, syncInfo)
+	l1MessageFetcher := fetcher.NewL1MessageFetcher(subCtx, cfg.L1, db, l1Client)
 	go l1MessageFetcher.Start()
 
-	l2MessageFetcher := fetcher.NewL2MessageFetcher(subCtx, cfg.L2, db, l2Client, syncInfo)
+	l2MessageFetcher := fetcher.NewL2MessageFetcher(subCtx, cfg.L2, db, l2Client)
 	go l2MessageFetcher.Start()
 
 	// Catch CTRL-C to ensure a graceful shutdown.

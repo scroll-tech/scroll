@@ -23,7 +23,7 @@ type L2MessageFetcher struct {
 	cfg                 *config.LayerConfig
 	db                  *gorm.DB
 	client              *ethclient.Client
-	syncInfo            *SyncInfo
+	l2SyncHeight        uint64
 	l2LastSyncBlockHash common.Hash
 
 	eventUpdateLogic *logic.EventUpdateLogic
@@ -35,12 +35,11 @@ type L2MessageFetcher struct {
 }
 
 // NewL2MessageFetcher creates a new L2MessageFetcher instance.
-func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) *L2MessageFetcher {
+func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L2MessageFetcher {
 	c := &L2MessageFetcher{
 		ctx:              ctx,
 		cfg:              cfg,
 		db:               db,
-		syncInfo:         syncInfo,
 		client:           client,
 		eventUpdateLogic: logic.NewEventUpdateLogic(db, false),
 		l2FetcherLogic:   logic.NewL2FetcherLogic(cfg, db, client),
@@ -104,7 +103,7 @@ func (c *L2MessageFetcher) Start() {
 }
 
 func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
-	startHeight := c.syncInfo.GetL2SyncHeight() + 1
+	startHeight := c.l2SyncHeight + 1
 	endHeight, rpcErr := utils.GetBlockNumber(c.ctx, c.client, confirmation)
 	if rpcErr != nil {
 		log.Error("failed to get L2 block number", "confirmation", confirmation, "err", rpcErr)
@@ -137,6 +136,11 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			return
 		}
 
+		if updateErr := c.eventUpdateLogic.UpdateL1BatchIndexAndStatus(c.ctx, c.l2SyncHeight); updateErr != nil {
+			log.Error("failed to update L1 batch index and status", "from", from, "to", to, "err", updateErr)
+			return
+		}
+
 		c.updateL2SyncHeight(to, lastBlockHash)
 	}
 }
@@ -144,5 +148,5 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 func (c *L2MessageFetcher) updateL2SyncHeight(height uint64, blockHash common.Hash) {
 	c.l2MessageFetcherSyncHeight.Set(float64(height))
 	c.l2LastSyncBlockHash = blockHash
-	c.syncInfo.SetL2SyncHeight(height)
+	c.l2SyncHeight = height
 }
