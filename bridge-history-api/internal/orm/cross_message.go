@@ -315,8 +315,11 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
 			txHashUpdateFields["l1_refund_tx_hash"] = l1MessageQueueEvent.TxHash.String()
 		}
-		if err := db.Updates(txHashUpdateFields).Error; err != nil {
-			return fmt.Errorf("failed to update tx hashes of replay and refund in L1 message queue events info, update fields: %v, error: %w", txHashUpdateFields, err)
+		// Check if there are fields to update to avoid empty update operation (skip message).
+		if len(txHashUpdateFields) > 0 {
+			if err := db.Updates(txHashUpdateFields).Error; err != nil {
+				return fmt.Errorf("failed to update tx hashes of replay and refund in L1 message queue events info, update fields: %v, error: %w", txHashUpdateFields, err)
+			}
 		}
 	}
 	return nil

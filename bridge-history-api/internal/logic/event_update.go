@@ -32,7 +32,7 @@ func NewEventUpdateLogic(db *gorm.DB, isL1 bool) *EventUpdateLogic {
 		batchEventOrm:   orm.NewBatchEvent(db),
 	}
 
-	if isL1 {
+	if !isL1 {
 		reg := prometheus.DefaultRegisterer
 		b.eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "event_update_logic_L1_finalize_batch_event_L2_block_update_height",
