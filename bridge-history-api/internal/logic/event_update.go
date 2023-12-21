@@ -20,7 +20,8 @@ type EventUpdateLogic struct {
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
 
-	eventUpdateLogicL1FinalizeBatchEventL2BlockHeight prometheus.Gauge
+	eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight prometheus.Gauge
+	eventUpdateLogicL2MessageNonceUpdateHeight              prometheus.Gauge
 }
 
 // NewEventUpdateLogic creates a EventUpdateLogic instance
@@ -33,9 +34,13 @@ func NewEventUpdateLogic(db *gorm.DB, isL1 bool) *EventUpdateLogic {
 
 	if isL1 {
 		reg := prometheus.DefaultRegisterer
-		b.eventUpdateLogicL1FinalizeBatchEventL2BlockHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "event_update_logic_L1_finalize_batch_event_L2_block_height",
+		b.eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "event_update_logic_L1_finalize_batch_event_L2_block_update_height",
 			Help: "L2 block height of the latest L1 batch event that has been finalized and updated in the message_table.",
+		})
+		b.eventUpdateLogicL2MessageNonceUpdateHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "event_update_logic_L2_message_nonce_update_height",
+			Help: "L2 message nonce height in the latest L1 batch event that has been finalized and updated in the message_table.",
 		})
 	}
 
@@ -152,6 +157,7 @@ func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, bat
 		return dbErr
 	}
 
+	b.eventUpdateLogicL2MessageNonceUpdateHeight.Set(float64(withdrawTrie.NextMessageNonce - 1))
 	return nil
 }
 
@@ -173,7 +179,7 @@ func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, heig
 			log.Error("failed to update batch event status as updated", "index", finalizedBatch.BatchIndex, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber, "error", dbErr)
 			return dbErr
 		}
-		b.eventUpdateLogicL1FinalizeBatchEventL2BlockHeight.Set(float64(finalizedBatch.EndBlockNumber))
+		b.eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight.Set(float64(finalizedBatch.EndBlockNumber))
 	}
 	return nil
 }
