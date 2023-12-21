@@ -47,13 +47,13 @@ const (
 	//    should remain as TxStatusTypeRelayed and not be modified back to TxStatusTypeSent.
 	TxStatusTypeSent TxStatusType = iota
 	TxStatusTypeSentFailed
-	TxStatusTypeRelayed
+	TxStatusTypeRelayed // terminal status.
 	// FailedRelayedMessage event: encoded tx failed, cannot retry. e.g., https://sepolia.scrollscan.com/tx/0xfc7d3ea5ec8dc9b664a5a886c3b33d21e665355057601033481a439498efb79a
-	TxStatusTypeFailedRelayed
+	TxStatusTypeFailedRelayed // terminal status.
 	// In some cases, user can retry with a larger gas limit. e.g., https://sepolia.scrollscan.com/tx/0x7323a7ba29492cb47d92206411be99b27896f2823cee0633a596b646b73f1b5b
 	TxStatusTypeRelayedTransactionReverted
 	TxStatusTypeSkipped
-	TxStatusTypeDropped
+	TxStatusTypeDropped // terminal status.
 )
 
 // RollupStatusType represents the status of a rollup.
@@ -242,6 +242,10 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		db = db.WithContext(ctx)
 		db = db.Model(&CrossMessage{})
 		db = db.Where("message_type = ?", MessageTypeL1SentMessage)
+		// do not over-write terminal statuses.
+		db = db.Where("tx_status != ?", TxStatusTypeRelayed)
+		db = db.Where("tx_status != ?", TxStatusTypeFailedRelayed)
+		db = db.Where("tx_status != ?", TxStatusTypeDropped)
 		updateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
 		case MessageQueueEventTypeQueueTransaction:
@@ -398,8 +402,10 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 		Where: clause.Where{
 			Exprs: []clause.Expression{
 				clause.And(
+					// do not over-write terminal statuses.
 					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed},
 					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeFailedRelayed},
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeDropped},
 				),
 			},
 		},
@@ -449,6 +455,16 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
 		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l1_block_number", "l1_tx_hash", "tx_status"}),
+		Where: clause.Where{
+			Exprs: []clause.Expression{
+				clause.And(
+					// do not over-write terminal statuses.
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed},
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeFailedRelayed},
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeDropped},
+				),
+			},
+		},
 	})
 	if err := db.Create(uniqueL1RelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L1 relayed message of L2 withdrawal, error: %w", err)
