@@ -160,25 +160,20 @@ func (c *L2MessageFetcher) updateL2WithdrawMessageProofs(ctx context.Context, l2
 		withdrawTrie.Initialize(message.MessageNonce, common.HexToHash(message.MessageHash), message.MerkleProof)
 	}
 
-	messageHashes := make([]common.Hash, len(l2WithdrawMessages))
-	for i, message := range l2WithdrawMessages {
-		messageHashes[i] = common.HexToHash(message.MessageHash)
-	}
-
-	for i, messageHash := range messageHashes {
+	for _, message := range l2WithdrawMessages {
 		// AppendMessages returns the proofs for the entire tree after all messages have been inserted,
 		// so it is called for each message individually to obtain the correct proofs.
-		proof := withdrawTrie.AppendMessages([]common.Hash{messageHash})
+		proof := withdrawTrie.AppendMessages([]common.Hash{common.HexToHash(message.MessageHash)})
 		if err != nil {
-			log.Error("error generating proof", "messageHash", messageHash, "error", err)
-			return fmt.Errorf("error generating proof for messageHash %s: %v", messageHash, err)
+			log.Error("error generating proof", "messageHash", message.MessageHash, "error", err)
+			return fmt.Errorf("error generating proof for messageHash %s: %v", message.MessageHash, err)
 		}
 
 		if len(proof) != 1 {
 			log.Error("invalid proof len", "got", len(proof), "expected", 1)
 			return fmt.Errorf("invalid proof len, got: %v, expected: 1", len(proof))
 		}
-		l2WithdrawMessages[i].MerkleProof = proof[0]
+		message.MerkleProof = proof[0]
 	}
 
 	// Verify if local info is correct.
