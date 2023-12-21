@@ -177,7 +177,6 @@ func GetL2BlocksInRange(ctx context.Context, cli *ethclient.Client, start, end u
 		log.Error("Error waiting for block fetching routines", "error", err)
 		return nil, err
 	}
-
 	return blocks, nil
 }
 

@@ -2,7 +2,7 @@
 	"L1": {
 		"confirmation": 0,
 		"endpoint": "https://rpc.ankr.com/eth",
-		"startHeight": 18826761,
+		"startHeight": 18828072,
 		"blockTime": 10,
 		"fetchLimit": 30,
 		"MessengerAddr": "0x6774Bcbd5ceCeF1336b5300fb5186a12DDD8b367",
