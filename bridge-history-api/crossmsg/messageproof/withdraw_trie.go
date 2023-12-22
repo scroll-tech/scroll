@@ -6,7 +6,7 @@ import (
 	"bridge-history-api/utils"
 )
 
-// MaxHeight is the maximum possible height of withdraw trie
+// MaxHeight is the maximum possible height of withdrawal trie
 const MaxHeight = 40
 
 // WithdrawTrie is an append only merkle trie
