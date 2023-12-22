@@ -375,7 +375,7 @@ type L1CommitBatchEvent struct {
 	BatchHash  common.Hash
 }
 
-// IScrollChainBlockContext is an auto generated low-level Go binding around an user-defined struct.
+// IScrollChainBlockContext is an auto generated low-level Go binding around a user-defined struct.
 type IScrollChainBlockContext struct {
 	BlockHash       common.Hash
 	ParentHash      common.Hash

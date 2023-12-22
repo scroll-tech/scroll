@@ -48,7 +48,7 @@ func (c *Cmd) WaitExit() {
 		select {
 		case err = <-c.ErrChan:
 			if err != nil {
-				fmt.Printf("%s appear error durning running, err: %v\n", c.name, err)
+				fmt.Printf("%s appear error during running, err: %v\n", c.name, err)
 			}
 		default:
 			<-time.After(time.Millisecond * 500)

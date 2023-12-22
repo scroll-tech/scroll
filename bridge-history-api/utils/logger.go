@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
@@ -18,7 +17,7 @@ func LogSetup(ctx *cli.Context) error {
 	if logFile := ctx.String(LogFileFlag.Name); len(logFile) > 0 {
 		fp, err := os.OpenFile(filepath.Clean(logFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 		if err != nil {
-			utils.Fatalf("Failed to open log file", "err", err)
+			log.Crit("Failed to open log file", "err", err)
 		}
 		if ctx.Bool(LogJSONFormat.Name) {
 			ostream = log.StreamHandler(io.Writer(fp), log.JSONFormat())
