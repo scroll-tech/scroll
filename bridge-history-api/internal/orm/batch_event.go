@@ -70,12 +70,13 @@ func (c *BatchEvent) GetBatchEventSyncedHeightInDB(ctx context.Context) (uint64,
 	return batch.L1BlockNumber, nil
 }
 
-// GetBatchesLEBlockHeight returns the batches with end block <= given block height in db.
-func (c *BatchEvent) GetBatchesLEBlockHeight(ctx context.Context, blockHeight uint64) ([]*BatchEvent, error) {
+// GetFinalizedBatchesLEBlockHeight returns the finalized batches with end block <= given block height in db.
+func (c *BatchEvent) GetFinalizedBatchesLEBlockHeight(ctx context.Context, blockHeight uint64) ([]*BatchEvent, error) {
 	var batches []*BatchEvent
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BatchEvent{})
 	db = db.Where("end_block_number <= ?", blockHeight)
+	db = db.Where("batch_status = ?", BatchStatusTypeFinalized)
 	db = db.Where("update_status = ?", UpdateStatusTypeUnupdated)
 	db = db.Order("batch_index asc")
 	if err := db.Find(&batches).Error; err != nil {

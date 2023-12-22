@@ -47,13 +47,13 @@ const (
 	//    should remain as TxStatusTypeRelayed and not be modified back to TxStatusTypeSent.
 	TxStatusTypeSent TxStatusType = iota
 	TxStatusTypeSentFailed
-	TxStatusTypeRelayed
+	TxStatusTypeRelayed // terminal status.
 	// FailedRelayedMessage event: encoded tx failed, cannot retry. e.g., https://sepolia.scrollscan.com/tx/0xfc7d3ea5ec8dc9b664a5a886c3b33d21e665355057601033481a439498efb79a
-	TxStatusTypeFailedRelayed
+	TxStatusTypeFailedRelayed // terminal status.
 	// In some cases, user can retry with a larger gas limit. e.g., https://sepolia.scrollscan.com/tx/0x7323a7ba29492cb47d92206411be99b27896f2823cee0633a596b646b73f1b5b
-	TxStatusTypeRelayedTxReverted
+	TxStatusTypeRelayedTransactionReverted
 	TxStatusTypeSkipped
-	TxStatusTypeDropped
+	TxStatusTypeDropped // terminal status.
 )
 
 // RollupStatusType represents the status of a rollup.
@@ -81,9 +81,11 @@ type MessageQueueEvent struct {
 	EventType  MessageQueueEventType
 	QueueIndex uint64
 
-	// QueueTransaction only.
-	MessageHash common.Hash // track which message.
-	TxHash      common.Hash // track new tx hash.
+	// Track replay tx hash and refund tx hash.
+	TxHash common.Hash
+
+	// QueueTransaction only in replayMessage, to track which message is replayed.
+	MessageHash common.Hash
 }
 
 // CrossMessage represents a cross message.
@@ -98,8 +100,10 @@ type CrossMessage struct {
 	Sender         string     `json:"sender" gorm:"column:sender"`
 	Receiver       string     `json:"receiver" gorm:"column:receiver"`
 	MessageHash    string     `json:"message_hash" gorm:"column:message_hash"`
-	L1TxHash       string     `json:"l1_tx_hash" gorm:"column:l1_tx_hash"`
-	L2TxHash       string     `json:"l2_tx_hash" gorm:"column:l2_tx_hash"`
+	L1TxHash       string     `json:"l1_tx_hash" gorm:"column:l1_tx_hash"` // initial tx hash, if MessageType is MessageTypeL1SentMessage.
+	L1ReplayTxHash string     `json:"l1_replay_tx_hash" gorm:"column:l1_replay_tx_hash"`
+	L1RefundTxHash string     `json:"l1_refund_tx_hash" gorm:"column:l1_refund_tx_hash"`
+	L2TxHash       string     `json:"l2_tx_hash" gorm:"column:l2_tx_hash"` // initial tx hash, if MessageType is MessageTypeL2SentMessage.
 	L1BlockNumber  uint64     `json:"l1_block_number" gorm:"column:l1_block_number"`
 	L2BlockNumber  uint64     `json:"l2_block_number" gorm:"column:l2_block_number"`
 	L1TokenAddress string     `json:"l1_token_address" gorm:"column:l1_token_address"`
@@ -157,22 +161,40 @@ func (c *CrossMessage) GetMessageSyncedHeightInDB(ctx context.Context, messageTy
 	}
 }
 
-// GetLatestL2WithdrawalLEBlockHeight returns the latest processed L2 withdrawal that happened <= given block height from the database.
-func (c *CrossMessage) GetLatestL2WithdrawalLEBlockHeight(ctx context.Context, blockHeight uint64) (*CrossMessage, error) {
+// GetL2LatestFinalizedWithdrawal returns the latest finalized L2 withdrawal from the database.
+func (c *CrossMessage) GetL2LatestFinalizedWithdrawal(ctx context.Context) (*CrossMessage, error) {
 	var message CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
-	db = db.Where("l2_block_number <= ?", blockHeight)
 	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
-	db = db.Where("tx_status != ?", TxStatusTypeSentFailed)
+	db = db.Where("rollup_status = ?", RollupStatusTypeFinalized)
 	db = db.Order("message_nonce desc")
 	if err := db.First(&message).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get latest L2 sent message event, error: %w", err)
+		return nil, fmt.Errorf("failed to get latest L2 finalized sent message event, error: %w", err)
 	}
 	return &message, nil
+}
+
+// GetL2WithdrawalsByBlockRange returns the L2 withdrawals by block range from the database.
+func (c *CrossMessage) GetL2WithdrawalsByBlockRange(ctx context.Context, startBlock, endBlock uint64) ([]*CrossMessage, error) {
+	var messages []*CrossMessage
+	db := c.db.WithContext(ctx)
+	db = db.Model(&CrossMessage{})
+	db = db.Where("l2_block_number >= ?", startBlock)
+	db = db.Where("l2_block_number <= ?", endBlock)
+	db = db.Where("tx_status != ?", TxStatusTypeSentFailed)
+	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
+	db = db.Order("message_nonce asc")
+	if err := db.Find(&messages).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get latest L2 finalized sent message event, error: %w", err)
+	}
+	return messages, nil
 }
 
 // GetMessagesByTxHashes retrieves all cross messages from the database that match the provided transaction hashes.
@@ -234,6 +256,7 @@ func (c *CrossMessage) GetTxsByAddress(ctx context.Context, sender string) ([]*C
 
 // UpdateL1MessageQueueEventsInfo updates the information about L1 message queue events in the database.
 func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1MessageQueueEvents []*MessageQueueEvent, dbTX ...*gorm.DB) error {
+	// update tx statuses.
 	for _, l1MessageQueueEvent := range l1MessageQueueEvents {
 		db := c.db
 		if len(dbTX) > 0 && dbTX[0] != nil {
@@ -241,23 +264,62 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		}
 		db = db.WithContext(ctx)
 		db = db.Model(&CrossMessage{})
-		db = db.Where("message_type = ?", MessageTypeL1SentMessage)
-		updateFields := make(map[string]interface{})
+		// do not over-write terminal statuses.
+		db = db.Where("tx_status != ?", TxStatusTypeRelayed)
+		db = db.Where("tx_status != ?", TxStatusTypeFailedRelayed)
+		db = db.Where("tx_status != ?", TxStatusTypeDropped)
+		txStatusUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
 		case MessageQueueEventTypeQueueTransaction:
-			// Update l1_tx_hash if the user calls replayMessage, cannot use queue index here.
+			// only replayMessages or enforced txs (whose message hashes would not be found), sentMessages have been filtered out.
+			// replayMessage case:
+			// First SentMessage in L1: https://sepolia.etherscan.io/tx/0xbee4b631312448fcc2caac86e4dccf0a2ae0a88acd6c5fd8764d39d746e472eb
+			// Transaction reverted in L2: https://sepolia.scrollscan.com/tx/0xde6ef307a7da255888aad7a4c40a6b8c886e46a8a05883070bbf18b736cbfb8c
+			// replayMessage: https://sepolia.etherscan.io/tx/0xa5392891232bb32d98fcdbaca0d91b4d22ef2755380d07d982eebd47b147ce28
+			//
+			// Note: update l1_tx_hash if the user calls replayMessage, cannot use queue index here,
+			// because in replayMessage, queue index != message nonce.
 			// Ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
 			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
-			updateFields["l1_tx_hash"] = l1MessageQueueEvent.TxHash.String()
+			txStatusUpdateFields["tx_status"] = TxStatusTypeSent // reset status to "sent".
 		case MessageQueueEventTypeDequeueTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			updateFields["tx_status"] = TxStatusTypeSkipped
+			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
+			txStatusUpdateFields["tx_status"] = TxStatusTypeSkipped
 		case MessageQueueEventTypeDropTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			updateFields["tx_status"] = TxStatusTypeDropped
+			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
+			txStatusUpdateFields["tx_status"] = TxStatusTypeDropped
 		}
-		if err := db.Updates(updateFields).Error; err != nil {
-			return fmt.Errorf("failed to update L1 message queue events info, error: %w", err)
+		if err := db.Updates(txStatusUpdateFields).Error; err != nil {
+			return fmt.Errorf("failed to update tx statuses of L1 message queue events, update fields: %v, error: %w", txStatusUpdateFields, err)
+		}
+	}
+
+	// update tx hashes of replay and refund.
+	for _, l1MessageQueueEvent := range l1MessageQueueEvents {
+		db := c.db
+		if len(dbTX) > 0 && dbTX[0] != nil {
+			db = dbTX[0]
+		}
+		db = db.WithContext(ctx)
+		db = db.Model(&CrossMessage{})
+		txHashUpdateFields := make(map[string]interface{})
+		switch l1MessageQueueEvent.EventType {
+		case MessageQueueEventTypeQueueTransaction:
+			// only replayMessages or enforced txs (whose message hashes would not be found), sentMessages have been filtered out.
+			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
+			txHashUpdateFields["l1_replay_tx_hash"] = l1MessageQueueEvent.TxHash.String()
+		case MessageQueueEventTypeDropTransaction:
+			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
+			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
+			txHashUpdateFields["l1_refund_tx_hash"] = l1MessageQueueEvent.TxHash.String()
+		}
+		// Check if there are fields to update to avoid empty update operation (skip message).
+		if len(txHashUpdateFields) > 0 {
+			if err := db.Updates(txHashUpdateFields).Error; err != nil {
+				return fmt.Errorf("failed to update tx hashes of replay and refund in L1 message queue events info, update fields: %v, error: %w", txHashUpdateFields, err)
+			}
 		}
 	}
 	return nil
@@ -275,6 +337,27 @@ func (c *CrossMessage) UpdateBatchStatusOfL2Withdrawals(ctx context.Context, sta
 	updateFields["rollup_status"] = RollupStatusTypeFinalized
 	if err := db.Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("failed to update batch status of L2 sent messages, start: %v, end: %v, index: %v, error: %w", startBlockNumber, endBlockNumber, batchIndex, err)
+	}
+	return nil
+}
+
+// UpdateBatchIndexRollupStatusMerkleProofOfL2Messages updates the batch_index, rollup_status, and merkle_proof fields for a list of L2 cross messages.
+func (c *CrossMessage) UpdateBatchIndexRollupStatusMerkleProofOfL2Messages(ctx context.Context, messages []*CrossMessage) error {
+	if len(messages) == 0 {
+		return nil
+	}
+	for _, message := range messages {
+		updateFields := map[string]interface{}{
+			"batch_index":   message.BatchIndex,
+			"rollup_status": message.RollupStatus,
+			"merkle_proof":  message.MerkleProof,
+		}
+		db := c.db.WithContext(ctx)
+		db = db.Model(&CrossMessage{})
+		db = db.Where("message_hash = ?", message.MessageHash)
+		if err := db.Updates(updateFields).Error; err != nil {
+			return fmt.Errorf("failed to update L2 message with message_hash %s, error: %w", message.MessageHash, err)
+		}
 	}
 	return nil
 }
@@ -313,9 +396,10 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
+	// The merkle_proof is updated separately in batch status updates and hence is not included here.
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "merkle_proof", "message_nonce"}),
+		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "message_nonce"}),
 	})
 	if err := db.Create(messages).Error; err != nil {
 		return fmt.Errorf("failed to insert message, error: %w", err)
@@ -376,7 +460,10 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	for _, msg := range mergedL2RelayedMessages {
 		uniqueL2RelayedMessages = append(uniqueL2RelayedMessages, msg)
 	}
-	// Do not update tx status of successfully relayed messages. e.g.,
+	// Do not update tx status of successfully or failed relayed messages,
+	// because if a message is handled, the later relayed message tx would be reverted.
+	// ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L2/L2ScrollMessenger.sol#L102
+	// e.g.,
 	// Successfully relayed: https://sepolia.scrollscan.com/tx/0x4eb7cb07ba76956259c0079819a34a146f8a93dd891dc94812e9b3d66b056ec7#eventlog
 	// Reverted tx 1 (Reason: Message was already successfully executed): https://sepolia.scrollscan.com/tx/0x1973cafa14eb40734df30da7bfd4d9aceb53f8f26e09d96198c16d0e2e4a95fd
 	// Reverted tx 2 (Reason: Message was already successfully executed): https://sepolia.scrollscan.com/tx/0x02fc3a28684a590aead2482022f56281539085bd3d273ac8dedc1ceccb2bc554
@@ -385,7 +472,16 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
 		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l2_block_number", "l2_tx_hash", "tx_status"}),
-		Where:     clause.Where{Exprs: []clause.Expression{clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed}}},
+		Where: clause.Where{
+			Exprs: []clause.Expression{
+				clause.And(
+					// do not over-write terminal statuses.
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed},
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeFailedRelayed},
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeDropped},
+				),
+			},
+		},
 	})
 	if err := db.Create(uniqueL2RelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L2 reverted relayed message of L1 deposit, error: %w", err)
@@ -432,6 +528,16 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
 		DoUpdates: clause.AssignmentColumns([]string{"message_type", "l1_block_number", "l1_tx_hash", "tx_status"}),
+		Where: clause.Where{
+			Exprs: []clause.Expression{
+				clause.And(
+					// do not over-write terminal statuses.
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed},
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeFailedRelayed},
+					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeDropped},
+				),
+			},
+		},
 	})
 	if err := db.Create(uniqueL1RelayedMessages).Error; err != nil {
 		return fmt.Errorf("failed to update L1 relayed message of L2 withdrawal, error: %w", err)

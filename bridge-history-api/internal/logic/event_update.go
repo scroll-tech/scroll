@@ -2,11 +2,16 @@ package logic
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/bridge-history-api/internal/orm"
+	"scroll-tech/bridge-history-api/internal/utils"
 )
 
 // EventUpdateLogic the logic of insert/update the database
@@ -14,18 +19,35 @@ type EventUpdateLogic struct {
 	db              *gorm.DB
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
+
+	eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight prometheus.Gauge
+	eventUpdateLogicL2MessageNonceUpdateHeight              prometheus.Gauge
 }
 
-// NewEventUpdateLogic create a EventUpdateLogic instance
-func NewEventUpdateLogic(db *gorm.DB) *EventUpdateLogic {
-	return &EventUpdateLogic{
+// NewEventUpdateLogic creates a EventUpdateLogic instance
+func NewEventUpdateLogic(db *gorm.DB, isL1 bool) *EventUpdateLogic {
+	b := &EventUpdateLogic{
 		db:              db,
 		crossMessageOrm: orm.NewCrossMessage(db),
 		batchEventOrm:   orm.NewBatchEvent(db),
 	}
+
+	if !isL1 {
+		reg := prometheus.DefaultRegisterer
+		b.eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "event_update_logic_L1_finalize_batch_event_L2_block_update_height",
+			Help: "L2 block height of the latest L1 batch event that has been finalized and updated in the message_table.",
+		})
+		b.eventUpdateLogicL2MessageNonceUpdateHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "event_update_logic_L2_message_nonce_update_height",
+			Help: "L2 message nonce height in the latest L1 batch event that has been finalized and updated in the message_table.",
+		})
+	}
+
+	return b
 }
 
-// GetL1SyncHeight get the l1 sync height from db
+// GetL1SyncHeight gets the l1 sync height from db
 func (b *EventUpdateLogic) GetL1SyncHeight(ctx context.Context) (uint64, uint64, error) {
 	messageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, orm.MessageTypeL1SentMessage)
 	if err != nil {
@@ -42,7 +64,7 @@ func (b *EventUpdateLogic) GetL1SyncHeight(ctx context.Context) (uint64, uint64,
 	return messageSyncedHeight, batchSyncedHeight, nil
 }
 
-// GetL2MessageSyncedHeightInDB get L2 messages synced height
+// GetL2MessageSyncedHeightInDB gets L2 messages synced height
 func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (uint64, error) {
 	l2SentMessageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, orm.MessageTypeL2SentMessage)
 	if err != nil {
@@ -52,17 +74,7 @@ func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (ui
 	return l2SentMessageSyncedHeight, nil
 }
 
-// GetL2LatestWithdrawalLEBlockHeight get L2 latest withdrawal message which happened <= give L2 block height.
-func (b *EventUpdateLogic) GetL2LatestWithdrawalLEBlockHeight(ctx context.Context, blockHeight uint64) (*orm.CrossMessage, error) {
-	message, err := b.crossMessageOrm.GetLatestL2WithdrawalLEBlockHeight(ctx, blockHeight)
-	if err != nil {
-		log.Error("failed to get latest <= block height L2 sent message event", "height", blockHeight, "err", err)
-		return nil, err
-	}
-	return message, nil
-}
-
-// L1InsertOrUpdate insert or update l1 messages
+// L1InsertOrUpdate inserts or updates l1 messages
 func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult *L1FilterResult) error {
 	err := b.db.Transaction(func(tx *gorm.DB) error {
 		if txErr := b.crossMessageOrm.InsertOrUpdateL1Messages(ctx, l1FetcherResult.DepositMessages, tx); txErr != nil {
@@ -100,30 +112,79 @@ func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult
 	return nil
 }
 
-// UpdateL1BatchIndexAndStatus update l1 batch index and status
+func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, batchIndex, startBlock, endBlock uint64) error {
+	l2WithdrawMessages, err := b.crossMessageOrm.GetL2WithdrawalsByBlockRange(ctx, startBlock, endBlock)
+	if err != nil {
+		log.Error("failed to get L2 withdrawals by batch index", "batch index", batchIndex, "err", err)
+		return err
+	}
+
+	if len(l2WithdrawMessages) == 0 {
+		return nil
+	}
+
+	withdrawTrie := utils.NewWithdrawTrie()
+	lastMessage, err := b.crossMessageOrm.GetL2LatestFinalizedWithdrawal(ctx)
+	if err != nil {
+		log.Error("failed to get latest L2 finalized sent message event", "err", err)
+		return err
+	}
+
+	if lastMessage != nil {
+		withdrawTrie.Initialize(lastMessage.MessageNonce, common.HexToHash(lastMessage.MessageHash), lastMessage.MerkleProof)
+	}
+
+	if withdrawTrie.NextMessageNonce != l2WithdrawMessages[0].MessageNonce {
+		log.Error("nonce mismatch", "expected next message nonce", withdrawTrie.NextMessageNonce, "actuall next message nonce", l2WithdrawMessages[0].MessageNonce)
+		return fmt.Errorf("nonce mismatch")
+	}
+
+	messageHashes := make([]common.Hash, len(l2WithdrawMessages))
+	for i, message := range l2WithdrawMessages {
+		messageHashes[i] = common.HexToHash(message.MessageHash)
+	}
+
+	proofs := withdrawTrie.AppendMessages(messageHashes)
+
+	for i, message := range l2WithdrawMessages {
+		message.MerkleProof = proofs[i]
+		message.RollupStatus = int(orm.RollupStatusTypeFinalized)
+		message.BatchIndex = batchIndex
+	}
+
+	if dbErr := b.crossMessageOrm.UpdateBatchIndexRollupStatusMerkleProofOfL2Messages(ctx, l2WithdrawMessages); dbErr != nil {
+		log.Error("failed to update batch index and rollup status and merkle proof of L2 messages", "err", dbErr)
+		return dbErr
+	}
+
+	b.eventUpdateLogicL2MessageNonceUpdateHeight.Set(float64(withdrawTrie.NextMessageNonce - 1))
+	return nil
+}
+
+// UpdateL1BatchIndexAndStatus updates L1 finalized batch index and status
 func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, height uint64) error {
-	batches, err := b.batchEventOrm.GetBatchesLEBlockHeight(ctx, height)
+	finalizedBatches, err := b.batchEventOrm.GetFinalizedBatchesLEBlockHeight(ctx, height)
 	if err != nil {
 		log.Error("failed to get batches >= block height", "error", err)
 		return err
 	}
 
-	for _, batch := range batches {
-		log.Info("update batch info of L2 withdrawals", "index", batch.BatchIndex, "start", batch.StartBlockNumber, "end", batch.EndBlockNumber)
-		if dbErr := b.crossMessageOrm.UpdateBatchStatusOfL2Withdrawals(ctx, batch.StartBlockNumber, batch.EndBlockNumber, batch.BatchIndex); dbErr != nil {
-			log.Error("failed to update batch status of L2 sent messages", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", dbErr)
+	for _, finalizedBatch := range finalizedBatches {
+		log.Info("update finalized batch info of L2 withdrawals", "index", finalizedBatch.BatchIndex, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber)
+		if updateErr := b.updateL2WithdrawMessageInfos(ctx, finalizedBatch.BatchIndex, finalizedBatch.StartBlockNumber, finalizedBatch.EndBlockNumber); updateErr != nil {
+			log.Error("failed to update L2 withdraw message infos", "index", finalizedBatch.BatchIndex, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber, "error", updateErr)
+			return updateErr
+		}
+		if dbErr := b.batchEventOrm.UpdateBatchEventStatus(ctx, finalizedBatch.BatchIndex); dbErr != nil {
+			log.Error("failed to update batch event status as updated", "index", finalizedBatch.BatchIndex, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber, "error", dbErr)
 			return dbErr
 		}
-		if dbErr := b.batchEventOrm.UpdateBatchEventStatus(ctx, batch.BatchIndex); dbErr != nil {
-			log.Error("failed to update batch event status as updated", "start", batch.StartBlockNumber, "end", batch.EndBlockNumber, "index", batch.BatchIndex, "error", dbErr)
-			return dbErr
-		}
+		b.eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight.Set(float64(finalizedBatch.EndBlockNumber))
 	}
-
 	return nil
 }
 
-// L2InsertOrUpdate insert or update L2 messages
+// L2InsertOrUpdate inserts or updates L2 messages
 func (b *EventUpdateLogic) L2InsertOrUpdate(ctx context.Context, l2FetcherResult *L2FilterResult) error {
 	err := b.db.Transaction(func(tx *gorm.DB) error {
 		if txErr := b.crossMessageOrm.InsertOrUpdateL2Messages(ctx, l2FetcherResult.WithdrawMessages, tx); txErr != nil {

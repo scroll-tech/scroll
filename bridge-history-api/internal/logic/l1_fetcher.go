@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -16,6 +18,10 @@ import (
 	"scroll-tech/bridge-history-api/internal/orm"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
+
+// L1ReorgSafeDepth represents the number of block confirmations considered safe against L1 chain reorganizations.
+// Reorganizations at this depth under normal cases are extremely unlikely.
+const L1ReorgSafeDepth = 64
 
 // L1FilterResult L1 fetcher result
 type L1FilterResult struct {
@@ -35,6 +41,8 @@ type L1FetcherLogic struct {
 	db              *gorm.DB
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
+
+	l1FetcherLogicFetchedTotal *prometheus.CounterVec
 }
 
 // NewL1FetcherLogic creates L1 fetcher logic
@@ -66,7 +74,7 @@ func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 		addressList = append(addressList, common.HexToAddress(cfg.LIDOGatewayAddr))
 	}
 
-	return &L1FetcherLogic{
+	f := &L1FetcherLogic{
 		db:              db,
 		crossMessageOrm: orm.NewCrossMessage(db),
 		batchEventOrm:   orm.NewBatchEvent(db),
@@ -75,17 +83,47 @@ func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 		addressList:     addressList,
 		parser:          NewL1EventParser(),
 	}
+
+	reg := prometheus.DefaultRegisterer
+	f.l1FetcherLogicFetchedTotal = promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+		Name: "L1_fetcher_logic_fetched_total",
+		Help: "The total number of events or failed txs fetched in L1 fetcher logic.",
+	}, []string{"type"})
+
+	return f
 }
 
-func (f *L1FetcherLogic) gatewayRouterFailedTxs(ctx context.Context, from, to uint64) (map[uint64]uint64, []*orm.CrossMessage, error) {
+func (f *L1FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, common.Hash, []*types.Block, error) {
 	blocks, err := utils.GetL1BlocksInRange(ctx, f.client, from, to)
 	if err != nil {
 		log.Error("failed to get L1 blocks in range", "from", from, "to", to, "err", err)
-		return nil, nil, err
+		return false, 0, common.Hash{}, nil, err
 	}
 
-	blockTimestampsMap := make(map[uint64]uint64)
+	for _, block := range blocks {
+		if block.ParentHash() != lastBlockHash {
+			log.Warn("L1 reorg detected", "reorg height", block.NumberU64()-1, "expected hash", block.ParentHash().String(), "local hash", lastBlockHash.String())
+			var resyncHeight uint64
+			if block.NumberU64() > L1ReorgSafeDepth+1 {
+				resyncHeight = block.NumberU64() - L1ReorgSafeDepth - 1
+			}
+			header, err := f.client.HeaderByNumber(ctx, new(big.Int).SetUint64(resyncHeight))
+			if err != nil {
+				log.Error("failed to get L1 header by number", "block number", resyncHeight, "err", err)
+				return false, 0, common.Hash{}, nil, err
+			}
+			return true, resyncHeight, header.Hash(), nil, nil
+		}
+		lastBlockHash = block.Hash()
+	}
+
+	return false, 0, lastBlockHash, blocks, nil
+}
+
+func (f *L1FetcherLogic) getFailedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) (map[uint64]uint64, []*orm.CrossMessage, error) {
 	var l1FailedGatewayRouterTxs []*orm.CrossMessage
+	blockTimestampsMap := make(map[uint64]uint64)
+
 	for i := from; i <= to; i++ {
 		block := blocks[i-from]
 		blockTimestampsMap[block.NumberU64()] = block.Time()
@@ -166,37 +204,47 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 }
 
 // L1Fetcher L1 fetcher
-func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64) (*L1FilterResult, error) {
+func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, common.Hash, *L1FilterResult, error) {
 	log.Info("fetch and save L1 events", "from", from, "to", to)
 
-	blockTimestampsMap, l1FailedGatewayRouterTxs, err := f.gatewayRouterFailedTxs(ctx, from, to)
+	isReorg, reorgHeight, blockHash, blocks, getErr := f.getBlocksAndDetectReorg(ctx, from, to, lastBlockHash)
+	if getErr != nil {
+		log.Error("L1Fetcher getBlocksAndDetectReorg failed", "from", from, "to", to, "error", getErr)
+		return false, 0, common.Hash{}, nil, getErr
+	}
+
+	if isReorg {
+		return isReorg, reorgHeight, blockHash, nil, nil
+	}
+
+	blockTimestampsMap, l1FailedGatewayRouterTxs, err := f.getFailedTxs(ctx, from, to, blocks)
 	if err != nil {
-		log.Error("L1Fetcher gatewayRouterFailedTxs failed", "from", from, "to", to, "error", err)
-		return nil, err
+		log.Error("L1Fetcher getFailedTxs failed", "from", from, "to", to, "error", err)
+		return false, 0, common.Hash{}, nil, err
 	}
 
 	eventLogs, err := f.l1FetcherLogs(ctx, from, to)
 	if err != nil {
 		log.Error("L1Fetcher l1FetcherLogs failed", "from", from, "to", to, "error", err)
-		return nil, err
+		return false, 0, common.Hash{}, nil, err
 	}
 
 	l1DepositMessages, l1RelayedMessages, err := f.parser.ParseL1CrossChainEventLogs(eventLogs, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L1 cross chain event logs", "from", from, "to", to, "err", err)
-		return nil, err
+		return false, 0, common.Hash{}, nil, err
 	}
 
 	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f.client)
 	if err != nil {
 		log.Error("failed to parse L1 batch event logs", "from", from, "to", to, "err", err)
-		return nil, err
+		return false, 0, common.Hash{}, nil, err
 	}
 
 	l1MessageQueueEvents, err := f.parser.ParseL1MessageQueueEventLogs(eventLogs, l1DepositMessages)
 	if err != nil {
 		log.Error("failed to parse L1 message queue event logs", "from", from, "to", to, "err", err)
-		return nil, err
+		return false, 0, common.Hash{}, nil, err
 	}
 
 	res := L1FilterResult{
@@ -206,5 +254,59 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64) (*L1Fil
 		BatchEvents:            l1BatchEvents,
 		MessageQueueEvents:     l1MessageQueueEvents,
 	}
-	return &res, nil
+
+	f.updateMetrics(res)
+
+	return false, 0, blockHash, &res, nil
+}
+
+func (f *L1FetcherLogic) updateMetrics(res L1FilterResult) {
+	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_gateway_router_transaction").Add(float64(len(res.FailedGatewayRouterTxs)))
+
+	for _, depositMessage := range res.DepositMessages {
+		switch orm.TokenType(depositMessage.TokenType) {
+		case orm.TokenTypeETH:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_eth").Add(1)
+		case orm.TokenTypeERC20:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_erc20").Add(1)
+		case orm.TokenTypeERC721:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_erc721").Add(1)
+		case orm.TokenTypeERC1155:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_erc1155").Add(1)
+		}
+	}
+
+	for _, relayedMessage := range res.RelayedMessages {
+		switch orm.TxStatusType(relayedMessage.TxStatus) {
+		case orm.TxStatusTypeRelayed:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_relayed_message").Add(1)
+		case orm.TxStatusTypeFailedRelayed:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_relayed_message").Add(1)
+		}
+		// Have not tracked L1 relayed message reverted transaction yet.
+		// 1. need to parse calldata of tx.
+		// 2. hard to track internal tx.
+	}
+
+	for _, batchEvent := range res.BatchEvents {
+		switch orm.BatchStatusType(batchEvent.BatchStatus) {
+		case orm.BatchStatusTypeCommitted:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_commit_batch_event").Add(1)
+		case orm.BatchStatusTypeReverted:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_revert_batch_event").Add(1)
+		case orm.BatchStatusTypeFinalized:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_finalize_batch_event").Add(1)
+		}
+	}
+
+	for _, messageQueueEvent := range res.MessageQueueEvents {
+		switch messageQueueEvent.EventType {
+		case orm.MessageQueueEventTypeQueueTransaction: // sendMessage is filtered out, only leaving replayMessage or appendEnforcedTransaction.
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_replay_message_or_enforced_transaction").Add(1)
+		case orm.MessageQueueEventTypeDequeueTransaction:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_skip_message").Add(1)
+		case orm.MessageQueueEventTypeDropTransaction:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_drop_message").Add(1)
+		}
+	}
 }

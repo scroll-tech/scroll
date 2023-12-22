@@ -264,6 +264,7 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 			l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
 				EventType:  orm.MessageQueueEventTypeDropTransaction,
 				QueueIndex: event.Index.Uint64(),
+				TxHash:     vlog.TxHash,
 			})
 		}
 	}

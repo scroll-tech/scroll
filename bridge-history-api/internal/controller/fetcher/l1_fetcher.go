@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -21,26 +23,42 @@ type L1MessageFetcher struct {
 	cfg    *config.LayerConfig
 	client *ethclient.Client
 
-	syncInfo            *SyncInfo
 	l1SyncHeight        uint64
 	l1LastSyncBlockHash common.Hash
 
-	eventUpdateLogic     *logic.EventUpdateLogic
-	l1FetcherLogic       *logic.L1FetcherLogic
-	l1ReorgHandlingLogic *logic.L1ReorgHandlingLogic
+	eventUpdateLogic *logic.EventUpdateLogic
+	l1FetcherLogic   *logic.L1FetcherLogic
+
+	l1MessageFetcherRunningTotal prometheus.Counter
+	l1MessageFetcherReorgTotal   prometheus.Counter
+	l1MessageFetcherSyncHeight   prometheus.Gauge
 }
 
 // NewL1MessageFetcher creates a new L1MessageFetcher instance.
-func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client, syncInfo *SyncInfo) (*L1MessageFetcher, error) {
-	return &L1MessageFetcher{
-		ctx:                  ctx,
-		cfg:                  cfg,
-		client:               client,
-		syncInfo:             syncInfo,
-		eventUpdateLogic:     logic.NewEventUpdateLogic(db),
-		l1FetcherLogic:       logic.NewL1FetcherLogic(cfg, db, client),
-		l1ReorgHandlingLogic: logic.NewL1ReorgHandlingLogic(client),
-	}, nil
+func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L1MessageFetcher {
+	c := &L1MessageFetcher{
+		ctx:              ctx,
+		cfg:              cfg,
+		client:           client,
+		eventUpdateLogic: logic.NewEventUpdateLogic(db, true),
+		l1FetcherLogic:   logic.NewL1FetcherLogic(cfg, db, client),
+	}
+
+	reg := prometheus.DefaultRegisterer
+	c.l1MessageFetcherRunningTotal = promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		Name: "L1_message_fetcher_running_total",
+		Help: "Current count of running L1 message fetcher instances.",
+	})
+	c.l1MessageFetcherReorgTotal = promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		Name: "L1_message_fetcher_reorg_total",
+		Help: "Total count of blockchain reorgs encountered by the L1 message fetcher.",
+	})
+	c.l1MessageFetcherSyncHeight = promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+		Name: "L1_message_fetcher_sync_height",
+		Help: "Latest blockchain height the L1 message fetcher has synced with.",
+	})
+
+	return c
 }
 
 // Start starts the L1 message fetching process.
@@ -65,10 +83,13 @@ func (c *L1MessageFetcher) Start() {
 		l1SyncHeight -= logic.L1ReorgSafeDepth
 	}
 
-	if updateErr := c.updateL1SyncHeight(l1SyncHeight); updateErr != nil {
-		log.Crit("failed to update L1 sync height", "height", l1SyncHeight, "err", updateErr)
+	header, err := c.client.HeaderByNumber(c.ctx, new(big.Int).SetUint64(l1SyncHeight))
+	if err != nil {
+		log.Crit("failed to get L1 header by number", "block number", l1SyncHeight, "err", err)
 		return
 	}
+
+	c.updateL1SyncHeight(l1SyncHeight, header.Hash())
 
 	log.Info("Start L1 message fetcher", "message synced height", messageSyncedHeight, "batch synced height", batchSyncedHeight, "config start height", c.cfg.StartHeight, "sync start height", c.l1SyncHeight+1)
 
@@ -87,6 +108,7 @@ func (c *L1MessageFetcher) Start() {
 }
 
 func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
+	c.l1MessageFetcherRunningTotal.Inc()
 	startHeight := c.l1SyncHeight + 1
 	endHeight, rpcErr := utils.GetBlockNumber(c.ctx, c.client, confirmation)
 	if rpcErr != nil {
@@ -102,59 +124,30 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			to = endHeight
 		}
 
-		if c.l1SyncHeight+logic.L1ReorgSafeDepth*2 > endHeight {
-			isReorg, resyncHeight, handleErr := c.l1ReorgHandlingLogic.HandleL1Reorg(c.ctx, c.l1SyncHeight, c.l1LastSyncBlockHash)
-			if handleErr != nil {
-				log.Error("failed to Handle L1 Reorg", "err", handleErr)
-				return
-			}
-
-			if isReorg {
-				log.Warn("L1 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
-				if updateErr := c.updateL1SyncHeight(resyncHeight); updateErr != nil {
-					log.Error("failed to update L1 sync height", "height", to, "err", updateErr)
-					return
-				}
-				return
-			}
-		}
-
-		fetcherResult, fetcherErr := c.l1FetcherLogic.L1Fetcher(c.ctx, from, to)
+		isReorg, resyncHeight, lastBlockHash, l1FetcherResult, fetcherErr := c.l1FetcherLogic.L1Fetcher(c.ctx, from, to, c.l1LastSyncBlockHash)
 		if fetcherErr != nil {
 			log.Error("failed to fetch L1 events", "from", from, "to", to, "err", fetcherErr)
 			return
 		}
 
-		if insertUpdateErr := c.eventUpdateLogic.L1InsertOrUpdate(c.ctx, fetcherResult); insertUpdateErr != nil {
+		if isReorg {
+			c.l1MessageFetcherReorgTotal.Inc()
+			log.Warn("L1 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
+			c.updateL1SyncHeight(resyncHeight, lastBlockHash)
+			return
+		}
+
+		if insertUpdateErr := c.eventUpdateLogic.L1InsertOrUpdate(c.ctx, l1FetcherResult); insertUpdateErr != nil {
 			log.Error("failed to save L1 events", "from", from, "to", to, "err", insertUpdateErr)
 			return
 		}
 
-		if updateErr := c.updateL1SyncHeight(to); updateErr != nil {
-			log.Error("failed to update L1 sync height", "height", to, "err", updateErr)
-			return
-		}
-
-		l2ScannedHeight := c.syncInfo.GetL2SyncHeight()
-		if l2ScannedHeight == 0 {
-			log.Error("L2 fetcher has not successfully synced at least one round yet")
-			return
-		}
-
-		if updateErr := c.eventUpdateLogic.UpdateL1BatchIndexAndStatus(c.ctx, l2ScannedHeight); updateErr != nil {
-			log.Error("failed to update L1 batch index and status", "from", from, "to", to, "err", updateErr)
-			return
-		}
+		c.updateL1SyncHeight(to, lastBlockHash)
 	}
 }
 
-func (c *L1MessageFetcher) updateL1SyncHeight(height uint64) error {
-	blockHeader, err := c.client.HeaderByNumber(c.ctx, new(big.Int).SetUint64(height))
-	if err != nil {
-		log.Error("failed to get L1 header by number", "block number", height, "err", err)
-		return err
-	}
-	c.l1LastSyncBlockHash = blockHeader.Hash()
+func (c *L1MessageFetcher) updateL1SyncHeight(height uint64, blockHash common.Hash) {
+	c.l1MessageFetcherSyncHeight.Set(float64(height))
+	c.l1LastSyncBlockHash = blockHash
 	c.l1SyncHeight = height
-	return nil
 }
