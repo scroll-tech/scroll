@@ -123,12 +123,35 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
      ***************/
 
     /// @notice Initialize the storage of LidoGatewayManager.
-    function __LidoGatewayManager_init() internal onlyInitializing {
-        _loadState().isDepositsEnabled = true;
+    /// @param _depositsEnabler The address of user who can enable deposits
+    /// @param _depositsEnabler The address of user who can disable deposits
+    /// @param _withdrawalsEnabler The address of user who can enable withdrawals
+    /// @param _withdrawalsDisabler The address of user who can disable withdrawals
+    function __LidoGatewayManager_init(
+        address _depositsEnabler,
+        address _depositsDisabler,
+        address _withdrawalsEnabler,
+        address _withdrawalsDisabler
+    ) internal onlyInitializing {
+        State storage s = _loadState();
+
+        s.isDepositsEnabled = true;
         emit DepositsEnabled(_msgSender());
 
-        _loadState().isWithdrawalsEnabled = true;
+        s.isWithdrawalsEnabled = true;
         emit WithdrawalsEnabled(_msgSender());
+
+        s.depositsDisabler = _depositsEnabler;
+        emit UpdateDepositsEnabler(address(0), _depositsEnabler);
+
+        s.depositsDisabler = _depositsDisabler;
+        emit UpdateDepositsDisabler(address(0), _depositsDisabler);
+
+        s.withdrawalsEnabler = _withdrawalsEnabler;
+        emit UpdateWithdrawalsEnabler(address(0), _withdrawalsEnabler);
+
+        s.withdrawalsDisabler = _withdrawalsDisabler;
+        emit UpdateWithdrawalsDisabler(address(0), _withdrawalsDisabler);
     }
 
     /*************************

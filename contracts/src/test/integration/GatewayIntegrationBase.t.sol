@@ -55,7 +55,7 @@ abstract contract GatewayIntegrationBase is Test {
 
         address malias = AddressAliasHelper.applyL1ToL2Alias(L1_SCROLL_MESSENGER);
 
-        // Read all L1 -> L2 messages and relay them under Optimism fork
+        // Read all L1 -> L2 messages and relay them under Scroll fork
         Vm.Log[] memory allLogs = vm.getRecordedLogs();
         for (; lastFromMainnetLogIndex < allLogs.length; lastFromMainnetLogIndex++) {
             Vm.Log memory _log = allLogs[lastFromMainnetLogIndex];

@@ -19,6 +19,9 @@ contract L1LidoGateway is L1ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
     /// @dev Thrown when deposit zero amount token.
     error ErrorDepositZeroAmount();
 
+    /// @dev Thrown when deposit erc20 with calldata.
+    error DepositAndCallIsNotAllowed();
+
     /*************
      * Variables *
      *************/
@@ -49,8 +52,17 @@ contract L1LidoGateway is L1ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
     }
 
     /// @notice Initialize the storage of L1LidoGateway v2.
-    function initializeV2() external reinitializer(2) {
-        __LidoGatewayManager_init();
+    /// @param _depositsEnabler The address of user who can enable deposits
+    /// @param _depositsEnabler The address of user who can disable deposits
+    /// @param _withdrawalsEnabler The address of user who can enable withdrawals
+    /// @param _withdrawalsDisabler The address of user who can disable withdrawals
+    function initializeV2(
+        address _depositsEnabler,
+        address _depositsDisabler,
+        address _withdrawalsEnabler,
+        address _withdrawalsDisabler
+    ) external reinitializer(2) {
+        __LidoGatewayManager_init(_depositsEnabler, _depositsDisabler, _withdrawalsEnabler, _withdrawalsDisabler);
     }
 
     /*************************
@@ -73,6 +85,7 @@ contract L1LidoGateway is L1ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
      **********************/
 
     /// @inheritdoc L1ERC20Gateway
+    /// @dev The length of `_data` always be zero, which guarantee by `L2LidoGateway`.
     function _beforeFinalizeWithdrawERC20(
         address _l1Token,
         address _l2Token,
@@ -106,6 +119,7 @@ contract L1LidoGateway is L1ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
         // 1. Transfer token into this contract.
         address _from;
         (_from, _amount, _data) = _transferERC20In(_token, _amount, _data);
+        if (_data.length != 0) revert DepositAndCallIsNotAllowed();
 
         // 2. Generate message passed to L2LidoGateway.
         bytes memory _message = abi.encodeCall(

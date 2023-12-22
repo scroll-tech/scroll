@@ -59,6 +59,7 @@ contract L2LidoGatewayTest is L2GatewayTestBase {
     error ErrorAccountIsZeroAddress();
     error ErrorNonZeroMsgValue();
     error ErrorWithdrawZeroAmount();
+    error WithdrawAndCallIsNotAllowed();
 
     MockL2LidoGateway private gateway;
     L2GatewayRouter private router;
@@ -83,7 +84,7 @@ contract L2LidoGatewayTest is L2GatewayTestBase {
 
         // Initialize L2 contracts
         gateway.initialize(address(counterpartGateway), address(router), address(l2Messenger));
-        gateway.initializeV2();
+        gateway.initializeV2(address(0), address(0), address(0), address(0));
         router.initialize(address(0), address(gateway));
         l2Token.initialize("Mock L2", "ML2", 18, address(gateway), address(l1Token));
 
@@ -116,7 +117,7 @@ contract L2LidoGatewayTest is L2GatewayTestBase {
         gateway.initialize(address(counterpartGateway), address(router), address(l2Messenger));
 
         hevm.expectRevert("Initializable: contract is already initialized");
-        gateway.initializeV2();
+        gateway.initializeV2(address(0), address(0), address(0), address(0));
     }
 
     /*************************************
@@ -396,7 +397,7 @@ contract L2LidoGatewayTest is L2GatewayTestBase {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
         MockL2LidoGateway mockGateway = _deployGateway();
         mockGateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
-        mockGateway.initializeV2();
+        mockGateway.initializeV2(address(0), address(0), address(0), address(0));
 
         // revert caller is not messenger
         hevm.expectRevert("only messenger can call");
@@ -536,6 +537,13 @@ contract L2LidoGatewayTest is L2GatewayTestBase {
         gateway.enableWithdrawals();
         hevm.expectRevert(ErrorWithdrawZeroAmount.selector);
         _invokeWithdrawERC20Call(useRouter, methodType, address(l2Token), 0, recipient, dataToCall, gasLimit);
+
+        // revert when data is not empty
+        if (dataToCall.length != 0) {
+            hevm.expectRevert(WithdrawAndCallIsNotAllowed.selector);
+            _invokeWithdrawERC20Call(useRouter, methodType, address(l2Token), amount, recipient, dataToCall, gasLimit);
+            return;
+        }
 
         // succeed to withdraw
         bytes memory message = abi.encodeCall(

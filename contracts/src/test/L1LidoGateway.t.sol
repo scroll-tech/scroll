@@ -61,6 +61,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
     error ErrorAccountIsZeroAddress();
     error ErrorNonZeroMsgValue();
     error ErrorDepositZeroAmount();
+    error DepositAndCallIsNotAllowed();
 
     MockL1LidoGateway private gateway;
     L1GatewayRouter private router;
@@ -85,7 +86,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
 
         // Initialize L1 contracts
         gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
-        gateway.initializeV2();
+        gateway.initializeV2(address(0), address(0), address(0), address(0));
         router.initialize(address(0), address(gateway));
 
         // Prepare token balances
@@ -116,7 +117,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
 
         hevm.expectRevert("Initializable: contract is already initialized");
-        gateway.initializeV2();
+        gateway.initializeV2(address(0), address(0), address(0), address(0));
     }
 
     /*************************************
@@ -381,24 +382,20 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         _depositERC20(true, 2, amount, recipient, dataToCall, gasLimit, feePerGas);
     }
 
-    function testDropMessage(
-        uint256 amount,
-        address recipient,
-        bytes memory dataToCall
-    ) public {
+    function testDropMessage(uint256 amount, address recipient) public {
         hevm.assume(recipient != address(0));
 
         amount = bound(amount, 1, l1Token.balanceOf(address(this)));
         bytes memory message = abi.encodeCall(
             IL2ERC20Gateway.finalizeDepositERC20,
-            (address(l1Token), address(l2Token), address(this), recipient, amount, dataToCall)
+            (address(l1Token), address(l2Token), address(this), recipient, amount, new bytes(0))
         );
-        gateway.depositERC20AndCall(address(l1Token), recipient, amount, dataToCall, defaultGasLimit);
+        gateway.depositERC20AndCall(address(l1Token), recipient, amount, new bytes(0), defaultGasLimit);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
         MockL1LidoGateway mockGateway = _deployGateway();
         mockGateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
-        mockGateway.initializeV2();
+        mockGateway.initializeV2(address(0), address(0), address(0), address(0));
 
         // revert caller is not messenger
         hevm.expectRevert("only messenger can call");
@@ -432,7 +429,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
                 (
                     abi.encodeCall(
                         IL2ERC20Gateway.finalizeDepositERC20,
-                        (address(l2Token), address(l2Token), address(this), recipient, amount, dataToCall)
+                        (address(l2Token), address(l2Token), address(this), recipient, amount, new bytes(0))
                     )
                 )
             )
@@ -479,7 +476,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
         MockL1LidoGateway mockGateway = _deployGateway();
         mockGateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
-        mockGateway.initializeV2();
+        mockGateway.initializeV2(address(0), address(0), address(0), address(0));
 
         // revert caller is not messenger
         hevm.expectRevert("only messenger can call");
@@ -655,7 +652,23 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         hevm.expectRevert(ErrorDepositZeroAmount.selector);
         _invokeDepositERC20Call(useRouter, methodType, address(l1Token), 0, recipient, dataToCall, gasLimit, feePerGas);
 
-        // succeed to withdraw
+        // revert when data is not empty
+        if (dataToCall.length != 0) {
+            hevm.expectRevert(DepositAndCallIsNotAllowed.selector);
+            _invokeDepositERC20Call(
+                useRouter,
+                methodType,
+                address(l1Token),
+                amount,
+                recipient,
+                dataToCall,
+                gasLimit,
+                feePerGas
+            );
+            return;
+        }
+
+        // succeed to deposit
         bytes memory message = abi.encodeCall(
             IL2ERC20Gateway.finalizeDepositERC20,
             (address(l1Token), address(l2Token), address(this), recipient, amount, dataToCall)

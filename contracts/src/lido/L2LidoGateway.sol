@@ -20,6 +20,9 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
     /// @dev Thrown when withdraw zero amount token.
     error ErrorWithdrawZeroAmount();
 
+    /// @dev Thrown when withdraw erc20 with calldata.
+    error WithdrawAndCallIsNotAllowed();
+
     /*************
      * Variables *
      *************/
@@ -50,8 +53,17 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
     }
 
     /// @notice Initialize the storage of L2LidoGateway v2.
-    function initializeV2() external reinitializer(2) {
-        __LidoGatewayManager_init();
+    /// @param _depositsEnabler The address of user who can enable deposits
+    /// @param _depositsEnabler The address of user who can disable deposits
+    /// @param _withdrawalsEnabler The address of user who can enable withdrawals
+    /// @param _withdrawalsDisabler The address of user who can disable withdrawals
+    function initializeV2(
+        address _depositsEnabler,
+        address _depositsDisabler,
+        address _withdrawalsEnabler,
+        address _withdrawalsDisabler
+    ) external reinitializer(2) {
+        __LidoGatewayManager_init(_depositsEnabler, _depositsDisabler, _withdrawalsEnabler, _withdrawalsDisabler);
     }
 
     /*************************
@@ -85,6 +97,7 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
      *****************************/
 
     /// @inheritdoc IL2ERC20Gateway
+    /// @dev The length of `_data` always be zero, which guarantee by `L1LidoGateway`.
     function finalizeDepositERC20(
         address _l1Token,
         address _l2Token,
@@ -105,8 +118,6 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
         if (msg.value != 0) revert ErrorNonZeroMsgValue();
 
         IScrollERC20Upgradeable(_l2Token).mint(_to, _amount);
-
-        _doCallback(_to, _data);
 
         emit FinalizeDepositERC20(_l1Token, _l2Token, _from, _to, _amount, _data);
     }
@@ -138,6 +149,7 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
         if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
+        if (_data.length != 0) revert WithdrawAndCallIsNotAllowed();
 
         // 2. Burn token.
         IScrollERC20Upgradeable(_l2Token).burn(_from, _amount);

@@ -14,20 +14,20 @@ At this point, the implementation must provide a scalable and reliable solution 
 
 ## Security surface overview
 
-| Statement                                                                                                                                    | Answer |
-| -------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| It is possible to bridge wstETH forth and back using this bridge                                                                             | Yes    |
-| The bridge using a canonical mechanism for message/value passing                                                                             | Yes    |
-| The bridge is upgradeable                                                                                                                    | Yes    |
-| Upgrade authority for the bridge                                                                                                             | TBA    |
-| Emergency pause/cancel mechanisms and their authorities                                                                                      | TBA    |
-| The bridged token support permits and ERC-1271                                                                                               | Yes    |
-| Are the following things in the scope of this bridge deployment:                                                                             |        |
-| - Passing the (w)stETH/USD price feed                                                                                                        | No     |
-| - Passing Lido DAO governance decisions                                                                                                      | TBA    |
-| Bridges are complicated in that the transaction can succeed on one side and fail on the other. What's the handling mechanism for this issue? | TBA    |
-| Is there a deployment script that sets all the parameters and authorities correctly?                                                         | TBA    |
-| Is there a post-deploy check script that, given a deployment, checks that all parameters and authorities are set correctly?                  | TBA    |
+| Statement                                                                                                                                    | Answer                                                                                                                                                                                                                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| It is possible to bridge wstETH forth and back using this bridge                                                                             | Yes                                                                                                                                                                                                                                                                                |
+| The bridge using a canonical mechanism for message/value passing                                                                             | Yes                                                                                                                                                                                                                                                                                |
+| The bridge is upgradeable                                                                                                                    | Yes                                                                                                                                                                                                                                                                                |
+| Upgrade authority for the bridge                                                                                                             | TBA                                                                                                                                                                                                                                                                                |
+| Emergency pause/cancel mechanisms and their authorities                                                                                      | TBA                                                                                                                                                                                                                                                                                |
+| The bridged token support permits and ERC-1271                                                                                               | No, only permits                                                                                                                                                                                                                                                                   |
+| Are the following things in the scope of this bridge deployment:                                                                             |                                                                                                                                                                                                                                                                                    |
+| - Passing the (w)stETH/USD price feed                                                                                                        | No                                                                                                                                                                                                                                                                                 |
+| - Passing Lido DAO governance decisions                                                                                                      | [Lido DAO Agent](https://etherscan.io/address/0x3e40D73EB977Dc6a537aF587D48316feE66E9C8c) representation [on Scroll (address TBD)] via [ScrollBridgeExecutor](https://github.com/scroll-tech/governance-crosschain-bridges/blob/scroll/contracts/bridges/ScrollBridgeExecutor.sol) |
+| Bridges are complicated in that the transaction can succeed on one side and fail on the other. What's the handling mechanism for this issue? | TBA                                                                                                                                                                                                                                                                                |
+| Is there a deployment script that sets all the parameters and authorities correctly?                                                         | No, we are upgrading from existing gateway, will need to involve multisig operation by Scroll                                                                                                                                                                                      |
+| Is there a post-deploy check script that, given a deployment, checks that all parameters and authorities are set correctly?                  | No                                                                                                                                                                                                                                                                                 |
 
 ## Scroll's Bridging Flow
 
@@ -90,15 +90,15 @@ At any time following invariant must be satisfied: `l1ERC20TokenBridgeBalance ==
 
 In the case of invariant violation, Lido will have a dispute period to suspend the L1 and L2 bridges. Disabled bridges forbid the minting of L2Token and withdrawal of minted tokens till the resolution of the issue.
 
-### Attack on L1ScrollMessenger
+### Attack to L1ScrollMessenger
 
 According to the Scroll documentation, `L1ScrollMessenger`:
 
 > The L1 Scroll Messenger contract sends messages from L1 to L2 and relays messages from L2 onto L1.
 
-This contract is central in the L2 to L1 communication process since all messages from L2 that passed the challenge period are executed on behalf of this contract.
+This contract is central in the L2-to-L1 communication process since all messages from L2 that verified by the zkevm proof are executed on behalf of this contract.
 
-In case of a vulnerability in the `L1ScrollMessenger`, which allows the attacker to send arbitrary messages bypassing the dispute period, an attacker can immediately drain tokens from the L1 bridge.
+In case of a vulnerability in the `L1ScrollMessenger`, which allows the attacker to send arbitrary messages bypassing the the zkevm proof, an attacker can immediately drain tokens from the L1 bridge.
 
 Additional risk creates the upgradeability of the `L1ScrollMessenger`. Exist a risk of an attack with the replacement of the implementation with some malicious functionality. Such an attack might be reduced to the above vulnerability and steal all locked tokens on the L1 bridge.
 
