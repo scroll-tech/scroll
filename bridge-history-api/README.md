@@ -7,7 +7,7 @@ The bridge-history-api contains three distinct components
 
 ### bridgehistoryapi-db-cli
 
-Provide init, show version, rollback, check status services of DB
+Provide init, show version, rollback, and check status services of DB
 ```
     cd ./bridge-history-api
     make bridgehistoryapi-db-cli
@@ -36,7 +36,7 @@ provides REST APIs. Please refer to the API details below.
 
 1. `/api/txs`
 ```
-// @Summary    	 get all txs under given address
+// @Summary    	 get all txs under the given address
 // @Accept       plain
 // @Produce      plain
 // @Param        address query string true "wallet address"
@@ -60,7 +60,7 @@ provides REST APIs. Please refer to the API details below.
 
 3. `/api/l2/unclaimed/withdrawals`
 ```
-// @Summary    	 get all L2 unclaimed withdrawals under given address
+// @Summary    	 get all L2 unclaimed withdrawals under the given address
 // @Accept       plain
 // @Produce      plain
 // @Param        address query string true "wallet address"
