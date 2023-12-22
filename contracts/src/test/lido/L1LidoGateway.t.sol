@@ -6,18 +6,18 @@ import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
-import {IL1ERC20Gateway} from "../L1/gateways/IL1ERC20Gateway.sol";
-import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
-import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
-import {IL2ERC20Gateway} from "../L2/gateways/IL2ERC20Gateway.sol";
-import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
-import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
-import {L2LidoGateway} from "../lido/L2LidoGateway.sol";
+import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
+import {L1GatewayRouter} from "../../L1/gateways/L1GatewayRouter.sol";
+import {IL1ScrollMessenger} from "../../L1/IL1ScrollMessenger.sol";
+import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
+import {AddressAliasHelper} from "../../libraries/common/AddressAliasHelper.sol";
+import {ScrollConstants} from "../../libraries/constants/ScrollConstants.sol";
+import {L2LidoGateway} from "../../lido/L2LidoGateway.sol";
 
-import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
-import {MockL1LidoGateway} from "./mocks/MockL1LidoGateway.sol";
-import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
-import {MockGatewayRecipient} from "./mocks/MockGatewayRecipient.sol";
+import {L1GatewayTestBase} from "../L1GatewayTestBase.t.sol";
+import {MockL1LidoGateway} from "../mocks/MockL1LidoGateway.sol";
+import {MockScrollMessenger} from "../mocks/MockScrollMessenger.sol";
+import {MockGatewayRecipient} from "../mocks/MockGatewayRecipient.sol";
 
 contract L1LidoGatewayTest is L1GatewayTestBase {
     // events from L1LidoGateway
@@ -42,10 +42,8 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
     event DepositsDisabled(address indexed disabler);
     event WithdrawalsEnabled(address indexed enabler);
     event WithdrawalsDisabled(address indexed disabler);
-    event UpdateDepositsEnabler(address indexed oldEnabler, address indexed newEnabler);
-    event UpdateDepositsDisabler(address indexed oldDisabler, address indexed newDisabler);
-    event UpdateWithdrawalsEnabler(address indexed oldEnabler, address indexed newEnabler);
-    event UpdateWithdrawalsDisabler(address indexed oldDisabler, address indexed newDisabler);
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
+    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
 
     // errors from L1LidoGateway
     error ErrorDepositsEnabled();
@@ -118,6 +116,11 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
 
         hevm.expectRevert("Initializable: contract is already initialized");
         gateway.initializeV2(address(0), address(0), address(0), address(0));
+
+        gateway.revokeRole(gateway.DEPOSITS_ENABLER_ROLE(), address(0));
+        gateway.revokeRole(gateway.DEPOSITS_DISABLER_ROLE(), address(0));
+        gateway.revokeRole(gateway.WITHDRAWALS_ENABLER_ROLE(), address(0));
+        gateway.revokeRole(gateway.WITHDRAWALS_DISABLER_ROLE(), address(0));
     }
 
     /*************************************
@@ -130,13 +133,13 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         gateway.enableDeposits();
 
         // revert when caller is not deposits enabler
-        gateway.updateDepositsDisabler(address(this));
+        gateway.grantRole(gateway.DEPOSITS_DISABLER_ROLE(), address(this));
         gateway.disableDeposits();
         hevm.expectRevert(ErrorCallerIsNotDepositsEnabler.selector);
         gateway.enableDeposits();
 
         // succeed
-        gateway.updateDepositsEnabler(address(this));
+        gateway.grantRole(gateway.DEPOSITS_ENABLER_ROLE(), address(this));
         assertBoolEq(false, gateway.isDepositsEnabled());
         hevm.expectEmit(true, false, false, true);
         emit DepositsEnabled(address(this));
@@ -146,22 +149,22 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
 
     function testDisableDeposits() external {
         // revert when already disabled
-        gateway.updateDepositsDisabler(address(this));
+        gateway.grantRole(gateway.DEPOSITS_DISABLER_ROLE(), address(this));
         gateway.disableDeposits();
         assertBoolEq(false, gateway.isDepositsEnabled());
         hevm.expectRevert(ErrorDepositsDisabled.selector);
         gateway.disableDeposits();
 
         // revert when caller is not deposits disabler
-        gateway.updateDepositsEnabler(address(this));
+        gateway.grantRole(gateway.DEPOSITS_ENABLER_ROLE(), address(this));
         gateway.enableDeposits();
         assertBoolEq(true, gateway.isDepositsEnabled());
-        gateway.updateDepositsDisabler(address(0));
+        gateway.revokeRole(gateway.DEPOSITS_DISABLER_ROLE(), address(this));
         hevm.expectRevert(ErrorCallerIsNotDepositsDisabler.selector);
         gateway.disableDeposits();
 
         // succeed
-        gateway.updateDepositsDisabler(address(this));
+        gateway.grantRole(gateway.DEPOSITS_DISABLER_ROLE(), address(this));
         assertBoolEq(true, gateway.isDepositsEnabled());
         hevm.expectEmit(true, false, false, true);
         emit DepositsDisabled(address(this));
@@ -175,13 +178,13 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         gateway.enableWithdrawals();
 
         // revert when caller is not deposits enabler
-        gateway.updateWithdrawalsDisabler(address(this));
+        gateway.grantRole(gateway.WITHDRAWALS_DISABLER_ROLE(), address(this));
         gateway.disableWithdrawals();
         hevm.expectRevert(ErrorCallerIsNotWithdrawalsEnabler.selector);
         gateway.enableWithdrawals();
 
         // succeed
-        gateway.updateWithdrawalsEnabler(address(this));
+        gateway.grantRole(gateway.WITHDRAWALS_ENABLER_ROLE(), address(this));
         assertBoolEq(false, gateway.isWithdrawalsEnabled());
         hevm.expectEmit(true, false, false, true);
         emit WithdrawalsEnabled(address(this));
@@ -191,22 +194,22 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
 
     function testDisableWithdrawals() external {
         // revert when already disabled
-        gateway.updateWithdrawalsDisabler(address(this));
+        gateway.grantRole(gateway.WITHDRAWALS_DISABLER_ROLE(), address(this));
         gateway.disableWithdrawals();
         assertBoolEq(false, gateway.isWithdrawalsEnabled());
         hevm.expectRevert(ErrorWithdrawalsDisabled.selector);
         gateway.disableWithdrawals();
 
         // revert when caller is not deposits disabler
-        gateway.updateWithdrawalsEnabler(address(this));
+        gateway.grantRole(gateway.WITHDRAWALS_ENABLER_ROLE(), address(this));
         gateway.enableWithdrawals();
         assertBoolEq(true, gateway.isWithdrawalsEnabled());
-        gateway.updateWithdrawalsDisabler(address(0));
+        gateway.revokeRole(gateway.WITHDRAWALS_DISABLER_ROLE(), address(this));
         hevm.expectRevert(ErrorCallerIsNotWithdrawalsDisabler.selector);
         gateway.disableWithdrawals();
 
         // succeed
-        gateway.updateWithdrawalsDisabler(address(this));
+        gateway.grantRole(gateway.WITHDRAWALS_DISABLER_ROLE(), address(this));
         assertBoolEq(true, gateway.isWithdrawalsEnabled());
         hevm.expectEmit(true, false, false, true);
         emit WithdrawalsDisabled(address(this));
@@ -214,114 +217,53 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         assertBoolEq(false, gateway.isWithdrawalsEnabled());
     }
 
-    function testUpdateDepositsEnabler(address _enabler) external {
-        hevm.assume(_enabler != address(0));
-
-        // revert caller is not owner
+    function testGrantRole(bytes32 _role, address _account) external {
+        // revert not owner
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
-        gateway.updateDepositsEnabler(address(0));
+        gateway.grantRole(_role, _account);
         hevm.stopPrank();
 
-        gateway.updateDepositsDisabler(address(this));
-        gateway.disableDeposits();
+        // succeed
+        assertBoolEq(gateway.hasRole(_role, _account), false);
+        hevm.expectEmit(true, true, true, true);
+        emit RoleGranted(_role, _account, address(this));
+        gateway.grantRole(_role, _account);
+        assertBoolEq(gateway.hasRole(_role, _account), true);
+        assertEq(gateway.getRoleMemberCount(_role), 1);
+        assertEq(gateway.getRoleMember(_role, 0), _account);
 
-        // succeed to set
-        hevm.startPrank(_enabler);
-        hevm.expectRevert(ErrorCallerIsNotDepositsEnabler.selector);
-        gateway.enableDeposits();
-        hevm.stopPrank();
-
-        hevm.expectEmit(true, true, false, true);
-        emit UpdateDepositsEnabler(address(0), _enabler);
-        gateway.updateDepositsEnabler(_enabler);
-
-        assertBoolEq(false, gateway.isDepositsEnabled());
-        hevm.startPrank(_enabler);
-        gateway.enableDeposits();
-        hevm.stopPrank();
-        assertBoolEq(true, gateway.isDepositsEnabled());
+        // do nothing regrant
+        gateway.grantRole(_role, _account);
+        assertBoolEq(gateway.hasRole(_role, _account), true);
+        assertEq(gateway.getRoleMemberCount(_role), 1);
+        assertEq(gateway.getRoleMember(_role, 0), _account);
     }
 
-    function testUpdateDepositsDisabler(address _disabler) external {
-        hevm.assume(_disabler != address(0));
-
-        // revert caller is not owner
+    function testRevokeRole(bytes32 _role, address _account) external {
+        // revert not owner
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
-        gateway.updateDepositsDisabler(address(0));
+        gateway.revokeRole(_role, _account);
         hevm.stopPrank();
 
-        // succeed to set
-        hevm.startPrank(_disabler);
-        hevm.expectRevert(ErrorCallerIsNotDepositsDisabler.selector);
-        gateway.disableDeposits();
-        hevm.stopPrank();
+        // grant first
+        gateway.grantRole(_role, _account);
+        assertBoolEq(gateway.hasRole(_role, _account), true);
+        assertEq(gateway.getRoleMemberCount(_role), 1);
+        assertEq(gateway.getRoleMember(_role, 0), _account);
 
-        hevm.expectEmit(true, true, false, true);
-        emit UpdateDepositsDisabler(address(0), _disabler);
-        gateway.updateDepositsDisabler(_disabler);
+        // revoke
+        hevm.expectEmit(true, true, true, true);
+        emit RoleRevoked(_role, _account, address(this));
+        gateway.revokeRole(_role, _account);
+        assertBoolEq(gateway.hasRole(_role, _account), false);
+        assertEq(gateway.getRoleMemberCount(_role), 0);
 
-        assertBoolEq(true, gateway.isDepositsEnabled());
-        hevm.startPrank(_disabler);
-        gateway.disableDeposits();
-        hevm.stopPrank();
-        assertBoolEq(false, gateway.isDepositsEnabled());
-    }
-
-    function testUpdateWithdrawalsEnabler(address _enabler) external {
-        hevm.assume(_enabler != address(0));
-
-        // revert caller is not owner
-        hevm.startPrank(address(1));
-        hevm.expectRevert("Ownable: caller is not the owner");
-        gateway.updateWithdrawalsEnabler(address(0));
-        hevm.stopPrank();
-
-        gateway.updateWithdrawalsDisabler(address(this));
-        gateway.disableWithdrawals();
-
-        // succeed to set
-        hevm.startPrank(_enabler);
-        hevm.expectRevert(ErrorCallerIsNotWithdrawalsEnabler.selector);
-        gateway.enableWithdrawals();
-        hevm.stopPrank();
-
-        hevm.expectEmit(true, true, false, true);
-        emit UpdateWithdrawalsEnabler(address(0), _enabler);
-        gateway.updateWithdrawalsEnabler(_enabler);
-
-        assertBoolEq(false, gateway.isWithdrawalsEnabled());
-        hevm.startPrank(_enabler);
-        gateway.enableWithdrawals();
-        hevm.stopPrank();
-        assertBoolEq(true, gateway.isWithdrawalsEnabled());
-    }
-
-    function testUpdateWithdrawalsDisabler(address _disabler) external {
-        hevm.assume(_disabler != address(0));
-
-        // revert caller is not owner
-        hevm.startPrank(address(1));
-        hevm.expectRevert("Ownable: caller is not the owner");
-        gateway.updateWithdrawalsDisabler(address(0));
-        hevm.stopPrank();
-
-        // succeed to set
-        hevm.startPrank(_disabler);
-        hevm.expectRevert(ErrorCallerIsNotWithdrawalsDisabler.selector);
-        gateway.disableWithdrawals();
-        hevm.stopPrank();
-
-        hevm.expectEmit(true, true, false, true);
-        emit UpdateWithdrawalsDisabler(address(0), _disabler);
-        gateway.updateWithdrawalsDisabler(_disabler);
-
-        assertBoolEq(true, gateway.isWithdrawalsEnabled());
-        hevm.startPrank(_disabler);
-        gateway.disableWithdrawals();
-        hevm.stopPrank();
-        assertBoolEq(false, gateway.isWithdrawalsEnabled());
+        // revoke again
+        gateway.revokeRole(_role, _account);
+        assertBoolEq(gateway.hasRole(_role, _account), false);
+        assertEq(gateway.getRoleMemberCount(_role), 0);
     }
 
     /********************************
@@ -522,13 +464,13 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         );
 
         // revert when withdrawals disabled
-        mockGateway.updateWithdrawalsDisabler(address(this));
+        mockGateway.grantRole(gateway.WITHDRAWALS_DISABLER_ROLE(), address(this));
         mockGateway.disableWithdrawals();
         hevm.expectRevert(ErrorWithdrawalsDisabled.selector);
         mockMessenger.callTarget(address(mockGateway), message);
 
         // revert when nonzero msg.value
-        mockGateway.updateWithdrawalsEnabler(address(this));
+        mockGateway.grantRole(gateway.WITHDRAWALS_ENABLER_ROLE(), address(this));
         mockGateway.enableWithdrawals();
         hevm.expectRevert(ErrorNonZeroMsgValue.selector);
         mockMessenger.callTarget{value: 1}(address(mockGateway), message);
@@ -632,7 +574,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         }
 
         // revert when deposits disabled
-        gateway.updateDepositsDisabler(address(this));
+        gateway.grantRole(gateway.DEPOSITS_DISABLER_ROLE(), address(this));
         gateway.disableDeposits();
         hevm.expectRevert(ErrorDepositsDisabled.selector);
         _invokeDepositERC20Call(
@@ -647,7 +589,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         );
 
         // revert when deposit zero amount
-        gateway.updateDepositsEnabler(address(this));
+        gateway.grantRole(gateway.DEPOSITS_ENABLER_ROLE(), address(this));
         gateway.enableDeposits();
         hevm.expectRevert(ErrorDepositZeroAmount.selector);
         _invokeDepositERC20Call(useRouter, methodType, address(l1Token), 0, recipient, dataToCall, gasLimit, feePerGas);

@@ -2,11 +2,15 @@
 
 pragma solidity =0.8.16;
 
+import {EnumerableSetUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+
 import {ScrollGatewayBase} from "../libraries/gateway/ScrollGatewayBase.sol";
 
 // solhint-disable func-name-mixedcase
 
 abstract contract LidoGatewayManager is ScrollGatewayBase {
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.AddressSet;
+
     /**********
      * Events *
      **********/
@@ -27,25 +31,19 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
     /// @param disabler The address of caller.
     event WithdrawalsDisabled(address indexed disabler);
 
-    /// @notice Emitted when the deposits enabler is updated.
-    /// @param oldEnabler The address of the previous deposits enabler.
-    /// @param newEnabler The address of the current deposits enabler.
-    event UpdateDepositsEnabler(address indexed oldEnabler, address indexed newEnabler);
+    /// @notice Emitted when `account` is granted `role`.
+    ///
+    /// @param role The role granted.
+    /// @param account The address of account to grant the role.
+    /// @param sender The address of owner.
+    event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender);
 
-    /// @notice Emitted when the deposits disabler is updated.
-    /// @param oldDisabler The address of the previous deposits disabler.
-    /// @param newDisabler The address of the current deposits disabler.
-    event UpdateDepositsDisabler(address indexed oldDisabler, address indexed newDisabler);
-
-    /// @notice Emitted when the withdrawals enabler is updated.
-    /// @param oldEnabler The address of the previous withdrawals enabler.
-    /// @param newEnabler The address of the current withdrawals enabler.
-    event UpdateWithdrawalsEnabler(address indexed oldEnabler, address indexed newEnabler);
-
-    /// @notice Emitted when the withdrawals disabler is updated.
-    /// @param oldDisabler The address of the previous withdrawals disabler.
-    /// @param newDisabler The address of the current withdrawals disabler.
-    event UpdateWithdrawalsDisabler(address indexed oldDisabler, address indexed newDisabler);
+    /// @notice Emitted when `account` is revoked `role`.
+    ///
+    /// @param role The role revoked.
+    /// @param account The address of account to revoke the role.
+    /// @param sender The address of owner.
+    event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender);
 
     /**********
      * Errors *
@@ -89,10 +87,7 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
     struct State {
         bool isDepositsEnabled;
         bool isWithdrawalsEnabled;
-        address depositsEnabler;
-        address depositsDisabler;
-        address withdrawalsEnabler;
-        address withdrawalsDisabler;
+        mapping(bytes32 => EnumerableSetUpgradeable.AddressSet) roles;
     }
 
     /*************
@@ -101,6 +96,18 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
 
     /// @dev The location of the slot with State
     bytes32 private constant STATE_SLOT = keccak256("LidoGatewayManager.bridgingState");
+
+    /// @notice The role for deposits enabler.
+    bytes32 public constant DEPOSITS_ENABLER_ROLE = keccak256("BridgingManager.DEPOSITS_ENABLER_ROLE");
+
+    /// @notice The role for deposits disabler.
+    bytes32 public constant DEPOSITS_DISABLER_ROLE = keccak256("BridgingManager.DEPOSITS_DISABLER_ROLE");
+
+    /// @notice The role for withdrawals enabler.
+    bytes32 public constant WITHDRAWALS_ENABLER_ROLE = keccak256("BridgingManager.WITHDRAWALS_ENABLER_ROLE");
+
+    /// @notice The role for withdrawals disabler.
+    bytes32 public constant WITHDRAWALS_DISABLER_ROLE = keccak256("BridgingManager.WITHDRAWALS_DISABLER_ROLE");
 
     /**********************
      * Function Modifiers *
@@ -141,17 +148,10 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
         s.isWithdrawalsEnabled = true;
         emit WithdrawalsEnabled(_msgSender());
 
-        s.depositsDisabler = _depositsEnabler;
-        emit UpdateDepositsEnabler(address(0), _depositsEnabler);
-
-        s.depositsDisabler = _depositsDisabler;
-        emit UpdateDepositsDisabler(address(0), _depositsDisabler);
-
-        s.withdrawalsEnabler = _withdrawalsEnabler;
-        emit UpdateWithdrawalsEnabler(address(0), _withdrawalsEnabler);
-
-        s.withdrawalsDisabler = _withdrawalsDisabler;
-        emit UpdateWithdrawalsDisabler(address(0), _withdrawalsDisabler);
+        _grantRole(DEPOSITS_ENABLER_ROLE, _depositsEnabler);
+        _grantRole(DEPOSITS_DISABLER_ROLE, _depositsDisabler);
+        _grantRole(WITHDRAWALS_ENABLER_ROLE, _withdrawalsEnabler);
+        _grantRole(WITHDRAWALS_DISABLER_ROLE, _withdrawalsDisabler);
     }
 
     /*************************
@@ -168,6 +168,28 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
         return _loadState().isWithdrawalsEnabled;
     }
 
+    /// @notice Returns `true` if `_account` has been granted `_role`.
+    function hasRole(bytes32 _role, address _account) public view returns (bool) {
+        return _loadState().roles[_role].contains(_account);
+    }
+
+    /// @notice Returns one of the accounts that have `_role`.
+    ///
+    /// @param _role The role to query.
+    /// @param _index The index of account to query. It must be a value between 0 and  {getRoleMemberCount}, non-inclusive.
+    function getRoleMember(bytes32 _role, uint256 _index) external view returns (address) {
+        return _loadState().roles[_role].at(_index);
+    }
+
+    /// @notice Returns the number of accounts that have `role`.
+    ///
+    /// @dev Can be used together with {getRoleMember} to enumerate all bearers of a role.
+    ///
+    /// @param _role The role to query.
+    function getRoleMemberCount(bytes32 _role) external view returns (uint256) {
+        return _loadState().roles[_role].length();
+    }
+
     /************************
      * Restricted Functions *
      ************************/
@@ -175,7 +197,9 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
     /// @notice Enables the deposits if they are disabled
     function enableDeposits() external {
         if (isDepositsEnabled()) revert ErrorDepositsEnabled();
-        if (_msgSender() != _loadState().depositsEnabler) revert ErrorCallerIsNotDepositsEnabler();
+        if (!hasRole(DEPOSITS_ENABLER_ROLE, _msgSender())) {
+            revert ErrorCallerIsNotDepositsEnabler();
+        }
 
         _loadState().isDepositsEnabled = true;
         emit DepositsEnabled(_msgSender());
@@ -183,7 +207,9 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
 
     /// @notice Disables the deposits if they aren't disabled yet
     function disableDeposits() external whenDepositsEnabled {
-        if (_msgSender() != _loadState().depositsDisabler) revert ErrorCallerIsNotDepositsDisabler();
+        if (!hasRole(DEPOSITS_DISABLER_ROLE, _msgSender())) {
+            revert ErrorCallerIsNotDepositsDisabler();
+        }
 
         _loadState().isDepositsEnabled = false;
         emit DepositsDisabled(_msgSender());
@@ -192,7 +218,9 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
     /// @notice Enables the withdrawals if they are disabled
     function enableWithdrawals() external {
         if (isWithdrawalsEnabled()) revert ErrorWithdrawalsEnabled();
-        if (_msgSender() != _loadState().withdrawalsEnabler) revert ErrorCallerIsNotWithdrawalsEnabler();
+        if (!hasRole(WITHDRAWALS_ENABLER_ROLE, _msgSender())) {
+            revert ErrorCallerIsNotWithdrawalsEnabler();
+        }
 
         _loadState().isWithdrawalsEnabled = true;
         emit WithdrawalsEnabled(_msgSender());
@@ -200,50 +228,30 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
 
     /// @notice Disables the withdrawals if they aren't disabled yet
     function disableWithdrawals() external whenWithdrawalsEnabled {
-        if (_msgSender() != _loadState().withdrawalsDisabler) revert ErrorCallerIsNotWithdrawalsDisabler();
+        if (!hasRole(WITHDRAWALS_DISABLER_ROLE, _msgSender())) {
+            revert ErrorCallerIsNotWithdrawalsDisabler();
+        }
 
         _loadState().isWithdrawalsEnabled = false;
         emit WithdrawalsDisabled(_msgSender());
     }
 
-    /// @notice Update the address of deposits enabler.
-    /// @param _newEnabler The address of new deposits enabler.
-    function updateDepositsEnabler(address _newEnabler) external onlyOwner {
-        State storage s = _loadState();
-        address _oldEnabler = s.depositsEnabler;
-        s.depositsEnabler = _newEnabler;
-
-        emit UpdateDepositsEnabler(_oldEnabler, _newEnabler);
+    /// @notice Grants `_role` from `_account`.
+    /// If `account` had been granted `role`, emits a {RoleGranted} event.
+    ///
+    /// @param _role The role to grant.
+    /// @param _account The address of account to grant.
+    function grantRole(bytes32 _role, address _account) external onlyOwner {
+        _grantRole(_role, _account);
     }
 
-    /// @notice Update the address of deposits disabler.
-    /// @param _newDisabler The address of new deposits disabler.
-    function updateDepositsDisabler(address _newDisabler) external onlyOwner {
-        State storage s = _loadState();
-        address _oldDisabler = s.depositsDisabler;
-        s.depositsDisabler = _newDisabler;
-
-        emit UpdateDepositsDisabler(_oldDisabler, _newDisabler);
-    }
-
-    /// @notice Update the address of withdrawals enabler.
-    /// @param _newEnabler The address of new withdrawals enabler.
-    function updateWithdrawalsEnabler(address _newEnabler) external onlyOwner {
-        State storage s = _loadState();
-        address _oldEnabler = s.withdrawalsEnabler;
-        s.withdrawalsEnabler = _newEnabler;
-
-        emit UpdateWithdrawalsEnabler(_oldEnabler, _newEnabler);
-    }
-
-    /// @notice Update the address of withdrawals disabler.
-    /// @param _newDisabler The address of new withdrawals disabler.
-    function updateWithdrawalsDisabler(address _newDisabler) external onlyOwner {
-        State storage s = _loadState();
-        address _oldDisabler = s.withdrawalsDisabler;
-        s.withdrawalsDisabler = _newDisabler;
-
-        emit UpdateWithdrawalsDisabler(_oldDisabler, _newDisabler);
+    /// @notice Revokes `_role` from `_account`.
+    /// If `account` had been granted `role`, emits a {RoleRevoked} event.
+    ///
+    /// @param _role The role to revoke.
+    /// @param _account The address of account to revoke.
+    function revokeRole(bytes32 _role, address _account) external onlyOwner {
+        _revokeRole(_role, _account);
     }
 
     /**********************
@@ -256,6 +264,28 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             r.slot := slot
+        }
+    }
+
+    /// @dev Internal function to grant `_role` from `_account`.
+    /// If `account` had been granted `role`, emits a {RoleGranted} event.
+    ///
+    /// @param _role The role to grant.
+    /// @param _account The address of account to grant.
+    function _grantRole(bytes32 _role, address _account) internal {
+        if (_loadState().roles[_role].add(_account)) {
+            emit RoleGranted(_role, _account, _msgSender());
+        }
+    }
+
+    /// @dev Internal function to revoke `_role` from `_account`.
+    /// If `account` had been granted `role`, emits a {RoleRevoked} event.
+    ///
+    /// @param _role The role to revoke.
+    /// @param _account The address of account to revoke.
+    function _revokeRole(bytes32 _role, address _account) internal {
+        if (_loadState().roles[_role].remove(_account)) {
+            emit RoleRevoked(_role, _account, _msgSender());
         }
     }
 }
