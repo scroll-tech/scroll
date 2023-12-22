@@ -25,11 +25,11 @@ const L1ReorgSafeDepth = 64
 
 // L1FilterResult L1 fetcher result
 type L1FilterResult struct {
-	FailedGatewayRouterTxs []*orm.CrossMessage
-	DepositMessages        []*orm.CrossMessage
-	RelayedMessages        []*orm.CrossMessage
-	BatchEvents            []*orm.BatchEvent
-	MessageQueueEvents     []*orm.MessageQueueEvent
+	DepositMessages    []*orm.CrossMessage
+	RelayedMessages    []*orm.CrossMessage
+	BatchEvents        []*orm.BatchEvent
+	MessageQueueEvents []*orm.MessageQueueEvent
+	RevertedTxs        []*orm.CrossMessage
 }
 
 // L1FetcherLogic the L1 fetcher logic
@@ -120,8 +120,8 @@ func (f *L1FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to u
 	return false, 0, lastBlockHash, blocks, nil
 }
 
-func (f *L1FetcherLogic) getFailedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) (map[uint64]uint64, []*orm.CrossMessage, error) {
-	var l1FailedGatewayRouterTxs []*orm.CrossMessage
+func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) (map[uint64]uint64, []*orm.CrossMessage, error) {
+	var l1RevertedTxs []*orm.CrossMessage
 	blockTimestampsMap := make(map[uint64]uint64)
 
 	for i := from; i <= to; i++ {
@@ -135,7 +135,9 @@ func (f *L1FetcherLogic) getFailedTxs(ctx context.Context, from, to uint64, bloc
 			}
 			toAddress := txTo.String()
 
-			if toAddress != f.cfg.GatewayRouterAddr {
+			// GatewayRouter: L1 deposit.
+			// Messenger: L1 deposit retry (replayMessage), L1 deposit refund (dropMessage), L2 withdrawal's claim (relayMessageWithProof).
+			if toAddress != f.cfg.GatewayRouterAddr && toAddress != f.cfg.MessengerAddr {
 				continue
 			}
 
@@ -158,18 +160,18 @@ func (f *L1FetcherLogic) getFailedTxs(ctx context.Context, from, to uint64, bloc
 				return nil, nil, senderErr
 			}
 
-			l1FailedGatewayRouterTxs = append(l1FailedGatewayRouterTxs, &orm.CrossMessage{
+			l1RevertedTxs = append(l1RevertedTxs, &orm.CrossMessage{
 				L1TxHash:       tx.Hash().String(),
 				MessageType:    int(orm.MessageTypeL1SentMessage),
 				Sender:         sender.String(),
 				Receiver:       (*tx.To()).String(),
 				L1BlockNumber:  receipt.BlockNumber.Uint64(),
 				BlockTimestamp: block.Time(),
-				TxStatus:       int(orm.TxStatusTypeSentFailed),
+				TxStatus:       int(orm.TxStatusTypeSentTxReverted),
 			})
 		}
 	}
-	return blockTimestampsMap, l1FailedGatewayRouterTxs, nil
+	return blockTimestampsMap, l1RevertedTxs, nil
 }
 
 func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]types.Log, error) {
@@ -217,9 +219,9 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return isReorg, reorgHeight, blockHash, nil, nil
 	}
 
-	blockTimestampsMap, l1FailedGatewayRouterTxs, err := f.getFailedTxs(ctx, from, to, blocks)
+	blockTimestampsMap, l1RevertedTxs, err := f.getRevertedTxs(ctx, from, to, blocks)
 	if err != nil {
-		log.Error("L1Fetcher getFailedTxs failed", "from", from, "to", to, "error", err)
+		log.Error("L1Fetcher getRevertedTxs failed", "from", from, "to", to, "error", err)
 		return false, 0, common.Hash{}, nil, err
 	}
 
@@ -248,11 +250,11 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 	}
 
 	res := L1FilterResult{
-		FailedGatewayRouterTxs: l1FailedGatewayRouterTxs,
-		DepositMessages:        l1DepositMessages,
-		RelayedMessages:        l1RelayedMessages,
-		BatchEvents:            l1BatchEvents,
-		MessageQueueEvents:     l1MessageQueueEvents,
+		DepositMessages:    l1DepositMessages,
+		RelayedMessages:    l1RelayedMessages,
+		BatchEvents:        l1BatchEvents,
+		MessageQueueEvents: l1MessageQueueEvents,
+		RevertedTxs:        l1RevertedTxs,
 	}
 
 	f.updateMetrics(res)
@@ -261,7 +263,7 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 }
 
 func (f *L1FetcherLogic) updateMetrics(res L1FilterResult) {
-	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_gateway_router_transaction").Add(float64(len(res.FailedGatewayRouterTxs)))
+	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_gateway_router_transaction").Add(float64(len(res.RevertedTxs)))
 
 	for _, depositMessage := range res.DepositMessages {
 		switch orm.TokenType(depositMessage.TokenType) {

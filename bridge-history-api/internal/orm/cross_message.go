@@ -38,22 +38,21 @@ type TxStatusType int
 
 // Constants for TxStatusType.
 const (
-	// TxStatusTypeSent is one of the initial statuses for cross-chain messages (the other one is TxStatusTypeSentFailed).
+	// TxStatusTypeSent is one of the initial statuses for cross-chain messages.
 	// It is used as the default value to prevent overwriting the transaction status in scenarios where the message status might change
 	// from a later status (e.g., relayed) back to "sent".
-	// Example flow:
-	// 1. A relayed message is processed, setting tx_status to TxStatusTypeRelayed.
-	// 2. If a sent message is later processed for the same cross-chain message, the tx_status
-	//    should remain as TxStatusTypeRelayed and not be modified back to TxStatusTypeSent.
-	TxStatusTypeSent TxStatusType = iota
-	TxStatusTypeSentFailed
-	TxStatusTypeRelayed // terminal status.
+	// Example flow (L1 -> L2 message, and L1 fetcher is slower than L2 fetcher):
+	// 1. The relayed message is first tracked and processed, setting tx_status to TxStatusTypeRelayed.
+	// 2. The sent message is later processed (same cross-chain message), the tx_status should not over-write TxStatusTypeRelayed.
+	TxStatusTypeSent           TxStatusType = iota
+	TxStatusTypeSentTxReverted              // Not track message hash, thus will not be processed again anymore.
+	TxStatusTypeRelayed                     // Terminal status.
 	// FailedRelayedMessage event: encoded tx failed, cannot retry. e.g., https://sepolia.scrollscan.com/tx/0xfc7d3ea5ec8dc9b664a5a886c3b33d21e665355057601033481a439498efb79a
-	TxStatusTypeFailedRelayed // terminal status.
+	TxStatusTypeFailedRelayed // Terminal status.
 	// In some cases, user can retry with a larger gas limit. e.g., https://sepolia.scrollscan.com/tx/0x7323a7ba29492cb47d92206411be99b27896f2823cee0633a596b646b73f1b5b
-	TxStatusTypeRelayedTransactionReverted
+	TxStatusTypeRelayTxReverted
 	TxStatusTypeSkipped
-	TxStatusTypeDropped // terminal status.
+	TxStatusTypeDropped // Terminal status.
 )
 
 // RollupStatusType represents the status of a rollup.
@@ -185,7 +184,7 @@ func (c *CrossMessage) GetL2WithdrawalsByBlockRange(ctx context.Context, startBl
 	db = db.Model(&CrossMessage{})
 	db = db.Where("l2_block_number >= ?", startBlock)
 	db = db.Where("l2_block_number <= ?", endBlock)
-	db = db.Where("tx_status != ?", TxStatusTypeSentFailed)
+	db = db.Where("tx_status != ?", TxStatusTypeSentTxReverted)
 	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
 	db = db.Order("message_nonce asc")
 	if err := db.Find(&messages).Error; err != nil {

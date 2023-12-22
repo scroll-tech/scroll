@@ -26,9 +26,9 @@ const L2ReorgSafeDepth = 256
 
 // L2FilterResult the L2 filter result
 type L2FilterResult struct {
-	FailedGatewayRouterTxs []*orm.CrossMessage
-	WithdrawMessages       []*orm.CrossMessage
-	RelayedMessages        []*orm.CrossMessage
+	WithdrawMessages []*orm.CrossMessage
+	RelayedMessages  []*orm.CrossMessage // relayed, failed relayed, relay tx reverted.
+	OtherRevertedTxs []*orm.CrossMessage // reverted txs except relay tx reverted.
 }
 
 // L2FetcherLogic the L2 fetcher logic
@@ -115,8 +115,8 @@ func (f *L2FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to u
 	return false, 0, lastBlockHash, blocks, nil
 }
 
-func (f *L2FetcherLogic) getFailedTxs(ctx context.Context, from, to uint64, blocks []*types.BlockWithRowConsumption) (map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
-	var l2FailedGatewayRouterTxs []*orm.CrossMessage
+func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.BlockWithRowConsumption) (map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
+	var l2RevertedUserTxs []*orm.CrossMessage
 	var l2RevertedRelayedMessageTxs []*orm.CrossMessage
 	blockTimestampsMap := make(map[uint64]uint64)
 
@@ -131,6 +131,7 @@ func (f *L2FetcherLogic) getFailedTxs(ctx context.Context, from, to uint64, bloc
 			}
 			toAddress := txTo.String()
 
+			// GatewayRouter: L2 withdrawal.
 			if toAddress == f.cfg.GatewayRouterAddr {
 				receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
 				if receiptErr != nil {
@@ -147,14 +148,14 @@ func (f *L2FetcherLogic) getFailedTxs(ctx context.Context, from, to uint64, bloc
 						return nil, nil, nil, signerErr
 					}
 
-					l2FailedGatewayRouterTxs = append(l2FailedGatewayRouterTxs, &orm.CrossMessage{
+					l2RevertedUserTxs = append(l2RevertedUserTxs, &orm.CrossMessage{
 						L2TxHash:       tx.Hash().String(),
 						MessageType:    int(orm.MessageTypeL2SentMessage),
 						Sender:         sender.String(),
 						Receiver:       (*tx.To()).String(),
 						L2BlockNumber:  receipt.BlockNumber.Uint64(),
 						BlockTimestamp: block.Time(),
-						TxStatus:       int(orm.TxStatusTypeSentFailed),
+						TxStatus:       int(orm.TxStatusTypeSentTxReverted),
 					})
 				}
 			}
@@ -171,7 +172,7 @@ func (f *L2FetcherLogic) getFailedTxs(ctx context.Context, from, to uint64, bloc
 					l2RevertedRelayedMessageTxs = append(l2RevertedRelayedMessageTxs, &orm.CrossMessage{
 						MessageHash:   common.BytesToHash(crypto.Keccak256(tx.AsL1MessageTx().Data)).String(),
 						L2TxHash:      tx.Hash().String(),
-						TxStatus:      int(orm.TxStatusTypeRelayedTransactionReverted),
+						TxStatus:      int(orm.TxStatusTypeRelayTxReverted),
 						L2BlockNumber: receipt.BlockNumber.Uint64(),
 						MessageType:   int(orm.MessageTypeL1SentMessage),
 					})
@@ -179,7 +180,7 @@ func (f *L2FetcherLogic) getFailedTxs(ctx context.Context, from, to uint64, bloc
 			}
 		}
 	}
-	return blockTimestampsMap, l2FailedGatewayRouterTxs, l2RevertedRelayedMessageTxs, nil
+	return blockTimestampsMap, l2RevertedUserTxs, l2RevertedRelayedMessageTxs, nil
 }
 
 func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]types.Log, error) {
@@ -220,9 +221,9 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return isReorg, reorgHeight, blockHash, nil, nil
 	}
 
-	blockTimestampsMap, failedRouterTxs, revertedRelayMsgs, routerErr := f.getFailedTxs(ctx, from, to, blocks)
+	blockTimestampsMap, revertedUserTxs, revertedRelayMsgs, routerErr := f.getRevertedTxs(ctx, from, to, blocks)
 	if routerErr != nil {
-		log.Error("L2Fetcher getFailedTxs failed", "from", from, "to", to, "error", routerErr)
+		log.Error("L2Fetcher getRevertedTxs failed", "from", from, "to", to, "error", routerErr)
 		return false, 0, common.Hash{}, nil, routerErr
 	}
 
@@ -239,9 +240,9 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 	}
 
 	res := L2FilterResult{
-		FailedGatewayRouterTxs: failedRouterTxs,
-		WithdrawMessages:       l2WithdrawMessages,
-		RelayedMessages:        append(l2RelayedMessages, revertedRelayMsgs...),
+		WithdrawMessages: l2WithdrawMessages,
+		RelayedMessages:  append(l2RelayedMessages, revertedRelayMsgs...),
+		OtherRevertedTxs: revertedUserTxs,
 	}
 
 	f.updateMetrics(res)
@@ -250,7 +251,7 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 }
 
 func (f *L2FetcherLogic) updateMetrics(res L2FilterResult) {
-	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_gateway_router_transaction").Add(float64(len(res.FailedGatewayRouterTxs)))
+	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_gateway_router_transaction").Add(float64(len(res.OtherRevertedTxs)))
 
 	for _, withdrawMessage := range res.WithdrawMessages {
 		switch orm.TokenType(withdrawMessage.TokenType) {
@@ -271,7 +272,7 @@ func (f *L2FetcherLogic) updateMetrics(res L2FilterResult) {
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_relayed_message").Add(1)
 		case orm.TxStatusTypeFailedRelayed:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_relayed_message").Add(1)
-		case orm.TxStatusTypeRelayedTransactionReverted:
+		case orm.TxStatusTypeRelayTxReverted:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_reverted_relayed_message_transaction").Add(1)
 		}
 	}
