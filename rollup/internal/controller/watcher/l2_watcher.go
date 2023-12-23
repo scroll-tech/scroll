@@ -127,8 +127,8 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 	}
 }
 
-func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
-	txsData := make([]*gethTypes.TransactionData, len(txs))
+func txsToTxsData(txs gethTypes.Transactions) []*types.TransactionData {
+	txsData := make([]*types.TransactionData, len(txs))
 	for i, tx := range txs {
 		v, r, s := tx.RawSignatureValues()
 
@@ -141,21 +141,31 @@ func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
 			nonce = msg.QueueIndex
 		}
 
-		txsData[i] = &gethTypes.TransactionData{
-			Type:     tx.Type(),
-			TxHash:   tx.Hash().String(),
-			Nonce:    nonce,
-			ChainId:  (*hexutil.Big)(tx.ChainId()),
-			Gas:      tx.Gas(),
-			GasPrice: (*hexutil.Big)(tx.GasPrice()),
-			To:       tx.To(),
-			Value:    (*hexutil.Big)(tx.Value()),
-			Data:     hexutil.Encode(tx.Data()),
-			IsCreate: tx.To() == nil,
-			V:        (*hexutil.Big)(v),
-			R:        (*hexutil.Big)(r),
-			S:        (*hexutil.Big)(s),
+		txData := &types.TransactionData{
+			TransactionData: gethTypes.TransactionData{
+				Type:     tx.Type(),
+				TxHash:   tx.Hash().String(),
+				Nonce:    nonce,
+				ChainId:  (*hexutil.Big)(tx.ChainId()),
+				Gas:      tx.Gas(),
+				GasPrice: (*hexutil.Big)(tx.GasPrice()),
+				To:       tx.To(),
+				Value:    (*hexutil.Big)(tx.Value()),
+				Data:     hexutil.Encode(tx.Data()),
+				IsCreate: tx.To() == nil,
+				V:        (*hexutil.Big)(v),
+				R:        (*hexutil.Big)(r),
+				S:        (*hexutil.Big)(s),
+			},
 		}
+
+		if l1blockHashesTx := tx.AsL1BlockHashesTx(); l1blockHashesTx != nil {
+			txData.FirstAppliedL1Block = (*hexutil.Uint64)(&l1blockHashesTx.FirstAppliedL1Block)
+			txData.LastAppliedL1Block = (*hexutil.Uint64)(&l1blockHashesTx.LastAppliedL1Block)
+			txData.BlockRangeHash = l1blockHashesTx.BlockHashesRange
+		}
+
+		txsData[i] = txData
 	}
 	return txsData
 }

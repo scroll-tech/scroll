@@ -129,7 +129,7 @@ func TestChunkHash(t *testing.T) {
 	}
 	hash, err = chunk.Hash(0)
 	assert.NoError(t, err)
-	assert.Equal(t, "0xaca17d4cae322f15537a4b770332171478991fd8b6a158327205ae4596cc838c", hash.Hex())
+	assert.Equal(t, "0x58eedb43e56fa9a7f460a72d966c304df3edab4f20506a6580ebd7b94b7a946e", hash.Hex())
 
 	// Test case 4: successfully hashing a chunk on two blocks each with L1 and L2 txs
 	templateBlockTrace2, err := os.ReadFile("../testdata/blockTrace_04.json")
@@ -144,7 +144,7 @@ func TestChunkHash(t *testing.T) {
 	}
 	hash, err = chunk.Hash(0)
 	assert.NoError(t, err)
-	assert.Equal(t, "0x811b8fd798aacaaeb9857257d5053aabdc65293f301e58916c24b85b11b9db95", hash.Hex())
+	assert.Equal(t, "0xb69e8db42cbc11065ffd691947b1271e3554d0fd60bd9bd343e74221343974bc", hash.Hex())
 }
 
 func TestErrorPaths(t *testing.T) {

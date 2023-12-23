@@ -528,6 +528,8 @@ github.com/leodido/go-urn v1.2.0/go.mod h1:+8+nEpDfqqsY+g338gtMEUOtuK+4dEMhiQEgx
 github.com/leodido/go-urn v1.2.1 h1:BqpAaACuzVSgi/VLzGZIobT2z4v53pjosyNd9Yv6n/w=
 github.com/limechain/scroll-go-ethereum v0.0.0-20231128150717-8a4a05ac3f85 h1:kjmwYeYgZuw2P/wLFlYJJnTLO4H4a4kRsrj7I4Fwjag=
 github.com/limechain/scroll-go-ethereum v0.0.0-20231128150717-8a4a05ac3f85/go.mod h1:4HrFcoStbViFVy/9l/rvKl1XmizVAaPdgqI8v0U8hOc=
+github.com/limechain/scroll-go-ethereum v0.0.0-20231223062238-eaa38f09ce93 h1:sjxxhJX/ZA3vIgwxScgDyAEEoLv+Bh1NrrsJ0cGmaZw=
+github.com/limechain/scroll-go-ethereum v0.0.0-20231223062238-eaa38f09ce93/go.mod h1:4HrFcoStbViFVy/9l/rvKl1XmizVAaPdgqI8v0U8hOc=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 h1:6E+4a0GO5zZEnZ81pIr0yLvtUWk2if982qA3F3QD6H4=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0/go.mod h1:zJYVVT2jmtg6P3p1VtQj7WsuWi/y4VnjVBn7F8KPB3I=
 github.com/magiconair/properties v1.8.0 h1:LLgXmsheXeRoUOBOjtwPQCWIYqM/LU1ayDtDePerRcY=

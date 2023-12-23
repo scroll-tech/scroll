@@ -87,4 +87,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/scroll-tech/go-ethereum => github.com/limechain/scroll-go-ethereum 8a4a05ac3f85dd674f96df83181105d47c0a76d0
+replace github.com/scroll-tech/go-ethereum => github.com/limechain/scroll-go-ethereum eaa38f09ce932a52bd29a665e81526d447af0b95

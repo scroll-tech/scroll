@@ -292,7 +292,7 @@ func (o *Batch) InsertBatch(ctx context.Context, chunks []*types.Chunk, batchMet
 		OracleStatus:              int16(types.GasOraclePending),
 		TotalL1CommitGas:          batchMeta.TotalL1CommitGas,
 		TotalL1CommitCalldataSize: batchMeta.TotalL1CommitCalldataSize,
-		LastAppliedL1Block:        chunks[numChunks-1].LastAppliedL1Block,
+		LastAppliedL1Block:        batchHeader.LastAppliedL1Block(),
 		L1BlockRangeHash:          batchHeader.L1BlockRangeHash().Hex(),
 	}
 

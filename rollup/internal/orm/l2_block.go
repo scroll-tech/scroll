@@ -160,7 +160,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_root, row_consumption")
+	db = db.Select("header, transactions, withdraw_root, row_consumption, last_applied_l1_block")
 	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
 	db = db.Order("number ASC")
 
@@ -192,6 +192,8 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
 		}
+
+		wrappedBlock.LastAppliedL1Block = v.LastAppliedL1Block
 
 		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
 	}

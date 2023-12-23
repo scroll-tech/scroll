@@ -31,10 +31,10 @@ func GetMemoryExpansionCost(memoryByteSize uint64) uint64 {
 type WrappedBlock struct {
 	Header *types.Header `json:"header"`
 	// Transactions is only used for recover types.Transactions, the from of types.TransactionData field is missing.
-	Transactions         []*types.TransactionData `json:"transactions"`
-	WithdrawRoot         common.Hash              `json:"withdraw_trie_root,omitempty"`
-	RowConsumption       *types.RowConsumption    `json:"row_consumption"`
-	LastAppliedL1Block   uint64                   `json:"last_applied_l1_block"`
+	Transactions         []*TransactionData    `json:"transactions"`
+	WithdrawRoot         common.Hash           `json:"withdraw_trie_root,omitempty"`
+	RowConsumption       *types.RowConsumption `json:"row_consumption"`
+	LastAppliedL1Block   uint64                `json:"last_applied_l1_block"`
 	txPayloadLengthCache map[string]uint64
 }
 
@@ -149,7 +149,7 @@ func (w *WrappedBlock) EstimateL1CommitGas() uint64 {
 	return total
 }
 
-func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 {
+func (w *WrappedBlock) getTxPayloadLength(txData *TransactionData) uint64 {
 	if w.txPayloadLengthCache == nil {
 		w.txPayloadLengthCache = make(map[string]uint64)
 	}
@@ -168,23 +168,42 @@ func (w *WrappedBlock) getTxPayloadLength(txData *types.TransactionData) uint64 
 	return txPayloadLength
 }
 
-func convertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
+func convertTxDataToRLPEncoding(txData *TransactionData) ([]byte, error) {
 	data, err := hexutil.Decode(txData.Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode txData.Data: %s, err: %w", txData.Data, err)
 	}
 
-	tx := types.NewTx(&types.LegacyTx{
-		Nonce:    txData.Nonce,
-		To:       txData.To,
-		Value:    txData.Value.ToInt(),
-		Gas:      txData.Gas,
-		GasPrice: txData.GasPrice.ToInt(),
-		Data:     data,
-		V:        txData.V.ToInt(),
-		R:        txData.R.ToInt(),
-		S:        txData.S.ToInt(),
-	})
+	var tx *types.Transaction
+	if txData.Type == types.L1BlockHashesTxType {
+		if txData.FirstAppliedL1Block == nil {
+			return nil, errors.New("missing required field 'firstAppliedL1Block' in transaction")
+		}
+		if txData.LastAppliedL1Block == nil {
+			return nil, errors.New("missing required field 'lastAppliedL1Block' in transaction")
+		}
+
+		tx = types.NewTx(&types.L1BlockHashesTx{
+			FirstAppliedL1Block: uint64(*txData.FirstAppliedL1Block),
+			LastAppliedL1Block:  uint64(*txData.LastAppliedL1Block),
+			BlockHashesRange:    txData.BlockRangeHash,
+			To:                  txData.To,
+			Data:                data,
+			Sender:              txData.From,
+		})
+	} else {
+		tx = types.NewTx(&types.LegacyTx{
+			Nonce:    txData.Nonce,
+			To:       txData.To,
+			Value:    txData.Value.ToInt(),
+			Gas:      txData.Gas,
+			GasPrice: txData.GasPrice.ToInt(),
+			Data:     data,
+			V:        txData.V.ToInt(),
+			R:        txData.R.ToInt(),
+			S:        txData.S.ToInt(),
+		})
+	}
 
 	rlpTxData, err := tx.MarshalBinary()
 	if err != nil {

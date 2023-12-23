@@ -7,6 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -290,7 +291,9 @@ func (p *BatchProposer) dbChunksToRollupChunks(dbChunks []*orm.Chunk) ([]*types.
 			return nil, err
 		}
 		chunks[i] = &types.Chunk{
-			Blocks: wrappedBlocks,
+			Blocks:             wrappedBlocks,
+			LastAppliedL1Block: c.LastAppliedL1Block,
+			L1BlockRangeHash:   common.HexToHash(c.L1BlockRangeHash),
 		}
 	}
 	return chunks, nil

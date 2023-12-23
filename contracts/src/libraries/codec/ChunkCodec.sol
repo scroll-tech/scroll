@@ -93,6 +93,7 @@ library ChunkCodec {
         uint256 index
     ) internal pure returns (uint256) {
         // only first 58 bytes is needed.
+        // TODO(l1blockhashes): skips lastAppliedL1Block.
         assembly {
             chunkPtr := add(chunkPtr, add(1, mul(BLOCK_CONTEXT_LENGTH, index)))
             mstore(dstPtr, mload(chunkPtr)) // first 32 bytes

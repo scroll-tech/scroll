@@ -151,7 +151,7 @@ func TestBatchHeaderEncode(t *testing.T) {
 	assert.NotNil(t, batchHeader)
 	bytes := batchHeader.Encode()
 	assert.Equal(t, 129, len(bytes))
-	assert.Equal(t, "0100000000000000010000000000000000000000000000000010a64c9bd905f8caf5d668fbda622d6558c5a42cdb4b3895709743d159c22e537afdc2ea6f8daaa4b430ce1424f59bcec401d00e34a99b1da457babc405a86070000000000000000290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563", common.Bytes2Hex(bytes))
+	assert.Equal(t, "0100000000000000010000000000000000000000000000000079841093f56d4e454a27371c924b604f9f1831bcecf26ef5549a4b86b5f7cc1b7afdc2ea6f8daaa4b430ce1424f59bcec401d00e34a99b1da457babc405a86070000000000000000290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563", common.Bytes2Hex(bytes))
 
 	// With L1 Msg
 	templateBlockTrace2, err := os.ReadFile("../testdata/blockTrace_04.json")
@@ -169,7 +169,7 @@ func TestBatchHeaderEncode(t *testing.T) {
 	assert.NotNil(t, batchHeader)
 	bytes = batchHeader.Encode()
 	assert.Equal(t, 161, len(bytes))
-	assert.Equal(t, "010000000000000001000000000000000b000000000000000b34f419ce7e882295bdb5aec6cce56ffa788a5fed4744d7fbd77e4acbf409f1ca7afdc2ea6f8daaa4b430ce1424f59bcec401d00e34a99b1da457babc405a860700000000000000000000000000000000000000000000000000000000000003ff0000000000000000290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563", common.Bytes2Hex(bytes))
+	assert.Equal(t, "010000000000000001000000000000000b000000000000000bd66e72c479686e1f25b496c0fa38f8722b3fdd381ce3bf56e78129b510adbbd77afdc2ea6f8daaa4b430ce1424f59bcec401d00e34a99b1da457babc405a860700000000000000000000000000000000000000000000000000000000000003ff0000000000000000290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563", common.Bytes2Hex(bytes))
 }
 
 func TestBatchHeaderHash(t *testing.T) {
@@ -197,7 +197,7 @@ func TestBatchHeaderHash(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	hash := batchHeader.Hash()
-	assert.Equal(t, "e5131040ff2c5c0dafc629651452e3c6d84e2a5512e883cc94a3ca1677fb5d5e", common.Bytes2Hex(hash.Bytes()))
+	assert.Equal(t, "c1c81ddb1216d8bcb26d8fb0b60d3c10a3f37c15cdd53893ea31e76b20de51f4", common.Bytes2Hex(hash.Bytes()))
 
 	templateBlockTrace, err = os.ReadFile("../testdata/blockTrace_03.json")
 	assert.NoError(t, err)
@@ -213,7 +213,7 @@ func TestBatchHeaderHash(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader2)
 	hash2 := batchHeader2.Hash()
-	assert.Equal(t, "922db89ce8a8e3e202d43ca70e59b9277c1f0d90c72daed7270896f410abb3ac", common.Bytes2Hex(hash2.Bytes()))
+	assert.Equal(t, "c2ce574d3331ea9f7a352a0b1fb7e90db246590938c8e7a9b39ff53a23a1a568", common.Bytes2Hex(hash2.Bytes()))
 
 	// With L1 Msg
 	templateBlockTrace3, err := os.ReadFile("../testdata/blockTrace_04.json")
@@ -230,7 +230,7 @@ func TestBatchHeaderHash(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, batchHeader)
 	hash = batchHeader.Hash()
-	assert.Equal(t, "438ed7f9d8d5a312b5eab7527789c7c1fbb26c9b2700e5f4ce0facd7824bd5ba", common.Bytes2Hex(hash.Bytes()))
+	assert.Equal(t, "a66ce437f630868893f2f2fc6894a50363a128a6db1bf25ba0b19a16f1bf5361", common.Bytes2Hex(hash.Bytes()))
 }
 
 func TestBatchHeaderDecode(t *testing.T) {

@@ -64,7 +64,7 @@ func (c *Chunk) Encode(totalL1MessagePoppedBefore uint64) ([]byte, error) {
 		// Append rlp-encoded l2Txs
 		for _, txData := range block.Transactions {
 			// TODO(l1blockhashes): Check if necessary
-			if txData.Type == types.L1MessageTxType || txData.Type == types.L1BlockHashesTxType {
+			if txData.Type == types.L1MessageTxType {
 				continue
 			}
 			rlpTxData, err := convertTxDataToRLPEncoding(txData)
@@ -98,9 +98,11 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 
 	// concatenate block contexts
 	var dataBytes []byte
+
+	chunkBytes = chunkBytes[1:] // remove num blocks
 	for i := 0; i < int(numBlocks); i++ {
-		// only the first 58 bytes of each BlockContext are needed for the hashing process
-		dataBytes = append(dataBytes, chunkBytes[1+60*i:60*i+59]...)
+		block := chunkBytes[68*i : 68*i+68]
+		dataBytes = append(dataBytes, block[:58]...) // TODO(l1blockhashes): skips lastAppliedL1Block
 	}
 
 	// concatenate l1 and l2 tx hashes
@@ -113,8 +115,7 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 			if err != nil {
 				return common.Hash{}, err
 			}
-			// TODO(l1blockhashes): Check if necessary
-			if txData.Type == types.L1MessageTxType || txData.Type == types.L1BlockHashesTxType {
+			if txData.Type == types.L1MessageTxType {
 				l1TxHashes = append(l1TxHashes, hashBytes...)
 			} else {
 				l2TxHashes = append(l2TxHashes, hashBytes...)
@@ -128,7 +129,7 @@ func (c *Chunk) Hash(totalL1MessagePoppedBefore uint64) (common.Hash, error) {
 	binary.BigEndian.PutUint64(lastAppliedL1BlockBytes[:], c.LastAppliedL1Block)
 	dataBytes = append(dataBytes, lastAppliedL1BlockBytes[:]...)
 	dataBytes = append(dataBytes, c.L1BlockRangeHash.Bytes()...)
-	
+
 	hash := crypto.Keccak256Hash(dataBytes)
 	return hash, nil
 }
