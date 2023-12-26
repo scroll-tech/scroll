@@ -304,7 +304,7 @@ func testCheckPendingTransaction(t *testing.T) {
 					},
 				)
 
-				pendingTx := &PendingTransaction{id: "abc", tx: tx, submitAt: header.Number.Uint64() - s.config.EscalateBlocks - 1}
+				pendingTx := &PendingTransaction{id: "abc", tx: tx, signer: s.auth, submitAt: header.Number.Uint64() - s.config.EscalateBlocks - 1}
 				s.pendingTxs.Set(pendingTx.id, pendingTx)
 				s.checkPendingTransaction(header, confirmed)
 
