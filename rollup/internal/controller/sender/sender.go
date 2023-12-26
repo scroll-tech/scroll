@@ -222,13 +222,13 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 
 	if feeData, err = s.getFeeData(s.auth, target, value, data, fallbackGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
-		log.Error("failed to get fee data", "from", s.auth.From.String(), "to", target.String(), "value", value.Uint64(), "fallback gas limit", fallbackGasLimit, "err", err)
+		log.Error("failed to get fee data", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "fallback gas limit", fallbackGasLimit, "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 
 	if tx, err = s.createAndSendTx(s.auth, feeData, target, value, data, nil); err != nil {
 		s.metrics.sendTransactionFailureSendTx.WithLabelValues(s.service, s.name).Inc()
-		log.Error("failed to create and send tx (non-resubmit case)", "from", s.auth.From.String(), "to", target.String(), "nonce", s.auth.Nonce.Uint64(), "value", value.Uint64(), "err", err)
+		log.Error("failed to create and send tx (non-resubmit case)", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "err", err)
 		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
 	}
 
@@ -439,7 +439,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	tx, err := s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
 	if err != nil {
-		log.Error("failed to create and send tx (resubmit case)", "from", s.auth.From.String(), "to", tx.To().String(), "nonce", nonce, "value", tx.Value().Uint64(), "err", err)
+		log.Error("failed to create and send tx (resubmit case)", "from", s.auth.From.String(), "nonce", nonce, "err", err)
 		return nil, err
 	}
 	return tx, nil

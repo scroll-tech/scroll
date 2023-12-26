@@ -43,7 +43,7 @@ func setupEnv(t *testing.T) {
 	var err error
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
-	base.RunImages(t)
+	base.RunL1Geth(t)
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
 	// Load default private key.
@@ -60,7 +60,9 @@ func TestSender(t *testing.T) {
 	t.Run("test new sender", testNewSender)
 	t.Run("test pending limit", testPendLimit)
 	t.Run("test fallback gas limit", testFallbackGasLimit)
-	t.Run("test resubmit transaction", testResubmitTransaction)
+	t.Run("test resubmit zero gas price transaction", testResubmitZeroGasPriceTransaction)
+	t.Run("test resubmit non-zero gas price transaction", testResubmitNonZeroGasPriceTransaction)
+	t.Run("test resubmit under priced transaction", testResubmitUnderpricedTransaction)
 	t.Run("test resubmit transaction with rising base fee", testResubmitTransactionWithRisingBaseFee)
 	t.Run("test check pending transaction", testCheckPendingTransaction)
 }
@@ -138,17 +140,74 @@ func testFallbackGasLimit(t *testing.T) {
 	}
 }
 
-func testResubmitTransaction(t *testing.T) {
+func testResubmitZeroGasPriceTransaction(t *testing.T) {
 	for _, txType := range txTypes {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
 		assert.NoError(t, err)
-		tx := types.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
-		feeData, err := s.getFeeData(s.auth, &common.Address{}, big.NewInt(0), nil, 0)
+		feeData := &FeeData{
+			gasPrice:  big.NewInt(0),
+			gasTipCap: big.NewInt(0),
+			gasFeeCap: big.NewInt(0),
+			gasLimit:  50000,
+		}
+		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
+		assert.NotNil(t, tx)
+		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
 		_, err = s.resubmitTransaction(feeData, s.auth, tx)
 		assert.NoError(t, err)
+		s.Stop()
+	}
+}
+
+func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
+	for _, txType := range txTypes {
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		// Bump gas price, gas tip cap and gas fee cap just touch the minimum threshold of 10% (default config of geth).
+		cfgCopy.EscalateMultipleNum = 110
+		cfgCopy.EscalateMultipleDen = 100
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		assert.NoError(t, err)
+		feeData := &FeeData{
+			gasPrice:  big.NewInt(100000),
+			gasTipCap: big.NewInt(100000),
+			gasFeeCap: big.NewInt(100000),
+			gasLimit:  50000,
+		}
+		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, tx)
+		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
+		_, err = s.resubmitTransaction(feeData, s.auth, tx)
+		assert.NoError(t, err)
+		s.Stop()
+	}
+}
+
+func testResubmitUnderpricedTransaction(t *testing.T) {
+	for _, txType := range txTypes {
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		// Bump gas price, gas tip cap and gas fee cap less than 10% (default config of geth).
+		cfgCopy.EscalateMultipleNum = 109
+		cfgCopy.EscalateMultipleDen = 100
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		assert.NoError(t, err)
+		feeData := &FeeData{
+			gasPrice:  big.NewInt(100000),
+			gasTipCap: big.NewInt(100000),
+			gasFeeCap: big.NewInt(100000),
+			gasLimit:  50000,
+		}
+		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, tx)
+		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
+		_, err = s.resubmitTransaction(feeData, s.auth, tx)
+		assert.Error(t, err, "replacement transaction underpriced")
 		s.Stop()
 	}
 }
