@@ -308,7 +308,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 		return nil, err
 	}
 	if err = s.client.SendTransaction(s.ctx, tx); err != nil {
-		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "from", auth.From.String(), "to", tx.To().String(), "nonce", tx.Nonce(), "err", err)
+		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "from", auth.From.String(), "nonce", tx.Nonce(), "err", err)
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
 		if strings.Contains(err.Error(), "nonce") && overrideNonce == nil {
@@ -357,7 +357,6 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		"tx_hash": tx.Hash().String(),
 		"tx_type": s.config.TxType,
 		"from":    auth.From.String(),
-		"to":      tx.To().String(),
 		"nonce":   tx.Nonce(),
 	}
 
@@ -481,7 +480,6 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 			log.Info("resubmit transaction",
 				"hash", pending.tx.Hash().String(),
 				"from", pending.signer.From.String(),
-				"to", pending.tx.To(),
 				"nonce", pending.tx.Nonce(),
 				"submit block number", pending.submitAt,
 				"current block number", number,

@@ -180,7 +180,6 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
 		_, err = s.resubmitTransaction(feeData, s.auth, tx)
 		assert.NoError(t, err)
 		s.Stop()
@@ -205,7 +204,6 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
 		_, err = s.resubmitTransaction(feeData, s.auth, tx)
 		assert.Error(t, err, "replacement transaction underpriced")
 		s.Stop()
