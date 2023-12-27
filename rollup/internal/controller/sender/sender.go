@@ -372,7 +372,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 			gasPrice = maxGasPrice
 		}
 
-		if originalGasPrice.Cmp(gasPrice) <= 0 {
+		if originalGasPrice.Cmp(gasPrice) == 0 {
 			log.Warn("gas price bump corner case, add 1 wei", "original", originalGasPrice.Uint64(), "adjusted", gasPrice.Uint64())
 			gasPrice = new(big.Int).Add(gasPrice, big.NewInt(1))
 		}
@@ -414,12 +414,12 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 			gasFeeCap = maxGasPrice
 		}
 
-		if originalGasTipCap.Cmp(gasTipCap) <= 0 {
+		if originalGasTipCap.Cmp(gasTipCap) == 0 {
 			log.Warn("gas tip cap bump corner case, add 1 wei", "original", originalGasTipCap.Uint64(), "adjusted", gasTipCap.Uint64())
 			gasTipCap = new(big.Int).Add(gasTipCap, big.NewInt(1))
 		}
 
-		if originalGasFeeCap.Cmp(gasFeeCap) <= 0 {
+		if originalGasFeeCap.Cmp(gasFeeCap) == 0 {
 			log.Warn("gas fee cap bump corner case, add 1 wei", "original", originalGasFeeCap.Uint64(), "adjusted", gasFeeCap.Uint64())
 			gasFeeCap = new(big.Int).Add(gasFeeCap, big.NewInt(1))
 		}
