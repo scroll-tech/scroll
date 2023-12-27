@@ -1,6 +1,6 @@
 # Scroll Contracts
 
-This directory contains the solidity code for Scroll L1 bridge and rollup contracts and L2 bridge and pre-deployed contracts. The [`specs`](../specs/) folder describes the overall Scroll protocol including the cross-domain messaging and rollup process. You can also find contract APIs and more details in the [`docs`](./docs) folder.
+This directory contains the solidity code for Scroll L1 bridge and rollup contracts and L2 bridge and pre-deployed contracts. You can also find contract APIs and more details in the [`docs`](./docs) folder.
 
 ## Directory Structure
 
