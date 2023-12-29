@@ -59,14 +59,10 @@ func action(ctx *cli.Context) error {
 		Password: cfg.Redis.Password,
 	}
 	// Production Redis service has enabled transit_encryption.
-	if cfg.Redis.Local {
-		opts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	if !cfg.Redis.Local {
+		opts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12, InsecureSkipVerify: true}
 	}
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     cfg.Redis.Address,
-		Username: cfg.Redis.Username,
-		Password: cfg.Redis.Password,
-	})
+	redisClient := redis.NewClient(opts)
 	api.InitController(db, redisClient)
 
 	router := gin.Default()
