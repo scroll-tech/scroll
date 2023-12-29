@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE cross_message
+CREATE TABLE cross_message_v2
 (
     id                  BIGSERIAL    PRIMARY KEY,
     message_type        SMALLINT     NOT NULL,
@@ -38,20 +38,20 @@ CREATE TABLE cross_message
     deleted_at          TIMESTAMP(0) DEFAULT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_cm_message_hash ON cross_message (message_hash);
-CREATE INDEX IF NOT EXISTS idx_cm_message_type_l1_block_number ON cross_message (message_type, l1_block_number DESC);
-CREATE INDEX IF NOT EXISTS idx_cm_message_type_l2_block_number ON cross_message (message_type, l2_block_number DESC);
-CREATE INDEX IF NOT EXISTS idx_cm_message_type_rollup_status_message_nonce ON cross_message (message_type, rollup_status, message_nonce DESC);
-CREATE INDEX IF NOT EXISTS idx_cm_message_type_message_nonce_tx_status_l2_block_number ON cross_message (message_type, message_nonce, tx_status, l2_block_number);
-CREATE INDEX IF NOT EXISTS idx_cm_l1_tx_hash ON cross_message (l1_tx_hash);
-CREATE INDEX IF NOT EXISTS idx_cm_l2_tx_hash ON cross_message (l2_tx_hash);
-CREATE INDEX IF NOT EXISTS idx_cm_message_type_tx_status_sender_block_timestamp ON cross_message (message_type, tx_status, sender, block_timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_cm_message_type_sender_block_timestamp ON cross_message (message_type, sender, block_timestamp DESC);
-CREATE INDEX IF NOT EXISTS idx_cm_sender_block_timestamp ON cross_message (sender, block_timestamp DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cm_message_hash ON cross_message_v2 (message_hash);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_l1_block_number ON cross_message_v2 (message_type, l1_block_number DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_l2_block_number ON cross_message_v2 (message_type, l2_block_number DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_rollup_status_message_nonce ON cross_message_v2 (message_type, rollup_status, message_nonce DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_message_nonce_tx_status_l2_block_number ON cross_message_v2 (message_type, message_nonce, tx_status, l2_block_number);
+CREATE INDEX IF NOT EXISTS idx_cm_l1_tx_hash ON cross_message_v2 (l1_tx_hash);
+CREATE INDEX IF NOT EXISTS idx_cm_l2_tx_hash ON cross_message_v2 (l2_tx_hash);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_tx_status_sender_block_timestamp ON cross_message_v2 (message_type, tx_status, sender, block_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_message_type_sender_block_timestamp ON cross_message_v2 (message_type, sender, block_timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_cm_sender_block_timestamp ON cross_message_v2 (sender, block_timestamp DESC);
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS cross_message;
+DROP TABLE IF EXISTS cross_message_v2;
 -- +goose StatementEnd

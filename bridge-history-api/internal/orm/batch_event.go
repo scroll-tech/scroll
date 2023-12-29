@@ -47,7 +47,7 @@ type BatchEvent struct {
 
 // TableName returns the table name for the BatchEvent model.
 func (*BatchEvent) TableName() string {
-	return "batch_event"
+	return "batch_event_v2"
 }
 
 // NewBatchEvent returns a new instance of BatchEvent.
