@@ -124,7 +124,7 @@ type CrossMessage struct {
 
 // TableName returns the table name for the CrossMessage model.
 func (*CrossMessage) TableName() string {
-	return "cross_message"
+	return "cross_message_v2"
 }
 
 // NewCrossMessage returns a new instance of CrossMessage.
