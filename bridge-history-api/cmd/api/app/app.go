@@ -58,7 +58,7 @@ func action(ctx *cli.Context) error {
 		Username: cfg.Redis.Username,
 		Password: cfg.Redis.Password,
 	}
-	// Production Redis service enabled transit_encryption.
+	// Production Redis service has enabled transit_encryption.
 	if cfg.Redis.Local {
 		opts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 	}
