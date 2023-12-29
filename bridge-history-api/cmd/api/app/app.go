@@ -1,6 +1,7 @@
 package app
 
 import (
+	"crypto/tls"
 	"fmt"
 	"os"
 	"os/signal"
@@ -52,10 +53,19 @@ func action(ctx *cli.Context) error {
 			log.Error("failed to close db", "err", err)
 		}
 	}()
+	opts := &redis.Options{
+		Addr:     cfg.Redis.Address,
+		Username: cfg.Redis.Username,
+		Password: cfg.Redis.Password,
+	}
+	// Production Redis service enabled transit_encryption.
+	if cfg.Redis.Local {
+		opts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     cfg.Redis.Address,
+		Username: cfg.Redis.Username,
 		Password: cfg.Redis.Password,
-		DB:       cfg.Redis.DB,
 	})
 	api.InitController(db, redisClient)
 

@@ -45,7 +45,8 @@
 	},
 	"redis": {
 		"address": "localhost:6379",
+		"username": "default",
 		"password": "",
-		"db": 0
+		"local": true
 	}
 }

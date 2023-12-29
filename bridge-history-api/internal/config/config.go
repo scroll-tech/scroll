@@ -33,8 +33,10 @@ type LayerConfig struct {
 // RedisConfig redis config
 type RedisConfig struct {
 	Address  string `json:"address"`
+	Username string `json:"username"`
 	Password string `json:"password"`
 	DB       int    `json:"db"`
+	Local    bool   `json:"local"`
 }
 
 // Config is the configuration of the bridge history backend
