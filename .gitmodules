@@ -1,6 +1,6 @@
 [submodule "l2geth"]
 	path = l2geth
-	url = git@github.com:scroll-tech/go-ethereum.git
+	url = https://github.com/scroll-tech/go-ethereum.git
 [submodule "contracts/lib/ds-test"]
 	path = contracts/lib/ds-test
 	url = https://github.com/dapphub/ds-test
