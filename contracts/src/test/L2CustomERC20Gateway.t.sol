@@ -73,6 +73,9 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
 
         assertEq(address(0), gateway.getL1ERC20Address(address(l2Token)));
 
+        hevm.expectRevert("unimplemented");
+        gateway.getL2ERC20Address(address(l1Token));
+
         hevm.expectRevert("Initializable: contract is already initialized");
         gateway.initialize(address(counterpartGateway), address(router), address(l2Messenger));
     }
@@ -122,6 +125,33 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         uint256 feePerGas
     ) public {
         _withdrawERC20WithRecipientAndCalldata(false, amount, recipient, dataToCall, gasLimit, feePerGas);
+    }
+
+    function testWithdrawERC20ByRouter(
+        uint256 amount,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _withdrawERC20(true, amount, gasLimit, feePerGas);
+    }
+
+    function testWithdrawERC20WithRecipientByRouter(
+        uint256 amount,
+        address recipient,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _withdrawERC20WithRecipient(true, amount, recipient, gasLimit, feePerGas);
+    }
+
+    function testWithdrawERC20WithRecipientAndCalldataByRouter(
+        uint256 amount,
+        address recipient,
+        bytes memory dataToCall,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _withdrawERC20WithRecipientAndCalldata(true, amount, recipient, dataToCall, gasLimit, feePerGas);
     }
 
     function testFinalizeDepositERC20FailedMocking(

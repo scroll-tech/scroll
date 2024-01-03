@@ -65,9 +65,11 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         // Prepare token balances
         l2USDC.mint(address(this), type(uint128).max);
         l2USDC.approve(address(gateway), type(uint256).max);
+        l2USDC.transferOwnership(address(gateway));
     }
 
     function testInitialized() public {
+        assertEq(l2USDC.owner(), address(gateway));
         assertEq(address(counterpartGateway), gateway.counterpart());
         assertEq(address(router), gateway.router());
         assertEq(address(l2Messenger), gateway.messenger());
@@ -78,6 +80,31 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
 
         hevm.expectRevert("Initializable: contract is already initialized");
         gateway.initialize(address(counterpartGateway), address(router), address(l2Messenger));
+    }
+
+    function testTransferUSDCRoles(address owner) external {
+        // non-whitelisted caller call, should revert
+        hevm.expectRevert("only circle caller");
+        gateway.transferUSDCRoles(owner);
+
+        // whitelisted caller call
+        gateway.updateCircleCaller(address(this));
+        assertEq(l2USDC.owner(), address(gateway));
+        gateway.transferUSDCRoles(owner);
+        assertEq(l2USDC.owner(), owner);
+    }
+
+    function testUpdateCircleCaller(address caller) external {
+        // non-owner call pause, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("Ownable: caller is not the owner");
+        gateway.updateCircleCaller(caller);
+        hevm.stopPrank();
+
+        // succeed
+        assertEq(address(0), gateway.circleCaller());
+        gateway.updateCircleCaller(caller);
+        assertEq(caller, gateway.circleCaller());
     }
 
     function testWithdrawPaused() public {
@@ -92,7 +119,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
         // pause withdraw
         gateway.pauseWithdraw(true);
 
-        // deposit paused, should revert
+        // withdraw paused, should revert
         hevm.expectRevert("withdraw paused");
         gateway.withdrawERC20(address(l2USDC), 1, 0);
         hevm.expectRevert("withdraw paused");
@@ -216,6 +243,22 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
                 gateway.finalizeDepositERC20.selector,
                 address(l1USDC),
                 address(l1USDC),
+                sender,
+                recipient,
+                amount,
+                dataToCall
+            )
+        );
+
+        // deposit paused
+        gateway.pauseDeposit(true);
+        hevm.expectRevert("deposit paused");
+        mockMessenger.callTarget(
+            address(gateway),
+            abi.encodeWithSelector(
+                gateway.finalizeDepositERC20.selector,
+                address(l1USDC),
+                address(l2USDC),
                 sender,
                 recipient,
                 amount,
