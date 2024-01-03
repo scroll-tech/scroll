@@ -4,27 +4,21 @@ pragma solidity =0.8.16;
 
 import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
 import {IL1MessageQueue} from "./IL1MessageQueue.sol";
-import {IL1MessageQueueWithOracle} from "./IL1MessageQueueWithOracle.sol";
+import {IL1MessageQueueWithGasPriceOracle} from "./IL1MessageQueueWithGasPriceOracle.sol";
 import {IL2GasPriceOracle} from "./IL2GasPriceOracle.sol";
 
 import {L1MessageQueue} from "./L1MessageQueue.sol";
 
-contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWithOracle {
-    /***********
-     * Structs *
-     ***********/
+contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWithGasPriceOracle {
+    /*************
+     * Constants *
+     *************/
 
-    /// @dev The struct for intrinsic gas parameters.
-    /// @param txGas The intrinsic gas for transaction.
-    /// @param txGasContractCreation The intrinsic gas for contract creation. It is reserved for future use.
-    /// @param zeroGas The intrinsic gas for each zero byte.
-    /// @param nonZeroGas The intrinsic gas for each nonzero byte.
-    struct IntrinsicParams {
-        uint64 txGas;
-        uint64 txGasContractCreation;
-        uint64 zeroGas;
-        uint64 nonZeroGas;
-    }
+    /// @notice The intrinsic gas for transaction.
+    uint256 private constant INTRINSIC_GAS_TX = 21000;
+
+    /// @notice The intrinsic gas for each nonzero byte.
+    uint256 private constant INTRINSIC_GAS_NONZERO_BYTE = 16;
 
     /*************
      * Variables *
@@ -35,9 +29,6 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
 
     /// @notice The address of whitelist contract.
     address public whitelist;
-
-    /// @notice The intrinsic params for transaction.
-    IntrinsicParams public intrinsicParams;
 
     /***************
      * Constructor *
@@ -58,7 +49,6 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
     function initializeV2() external reinitializer(2) {
         l2BaseFee = IL2GasPriceOracle(gasOracle).l2BaseFee();
         whitelist = IL2GasPriceOracle(gasOracle).whitelist();
-        intrinsicParams = IntrinsicParams({txGas: 21000, txGasContractCreation: 53000, zeroGas: 4, nonZeroGas: 16});
     }
 
     /*************************
@@ -78,15 +68,13 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
     /// @inheritdoc IL1MessageQueue
     function calculateIntrinsicGasFee(bytes calldata _calldata)
         public
-        view
+        pure
         override(IL1MessageQueue, L1MessageQueue)
         returns (uint256)
     {
-        IntrinsicParams memory _cachedIntrinsicParams = intrinsicParams;
         // no way this can overflow `uint256`
         unchecked {
-            return
-                uint256(_cachedIntrinsicParams.txGas) + _calldata.length * uint256(_cachedIntrinsicParams.nonZeroGas);
+            return INTRINSIC_GAS_TX + _calldata.length * INTRINSIC_GAS_NONZERO_BYTE;
         }
     }
 
@@ -104,7 +92,7 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
         uint256 _oldL2BaseFee = l2BaseFee;
         l2BaseFee = _newL2BaseFee;
 
-        emit L2BaseFeeUpdated(_oldL2BaseFee, _newL2BaseFee);
+        emit UpdateL2BaseFee(_oldL2BaseFee, _newL2BaseFee);
     }
 
     /************************
@@ -118,49 +106,5 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
         address _oldWhitelist = whitelist;
         whitelist = _newWhitelist;
         emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
-    }
-
-    /// @notice Allows the owner to update parameters for intrinsic gas calculation.
-    /// @param _txGas The intrinsic gas for transaction.
-    /// @param _txGasContractCreation The intrinsic gas for contract creation.
-    /// @param _zeroGas The intrinsic gas for each zero byte.
-    /// @param _nonZeroGas The intrinsic gas for each nonzero byte.
-    function setIntrinsicParams(
-        uint64 _txGas,
-        uint64 _txGasContractCreation,
-        uint64 _zeroGas,
-        uint64 _nonZeroGas
-    ) external onlyOwner {
-        _setIntrinsicParams(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
-    }
-
-    /**********************
-     * Internal Functions *
-     **********************/
-
-    /// @dev Internal function to update parameters for intrinsic gas calculation.
-    /// @param _txGas The intrinsic gas for transaction.
-    /// @param _txGasContractCreation The intrinsic gas for contract creation.
-    /// @param _zeroGas The intrinsic gas for each zero byte.
-    /// @param _nonZeroGas The intrinsic gas for each nonzero byte.
-    function _setIntrinsicParams(
-        uint64 _txGas,
-        uint64 _txGasContractCreation,
-        uint64 _zeroGas,
-        uint64 _nonZeroGas
-    ) internal {
-        if (_txGas == 0) revert ErrorTxGasIsZero();
-        if (_zeroGas == 0) revert ErrorZeroGasIsZero();
-        if (_nonZeroGas == 0) revert ErrorNonZeroGasIsZero();
-        if (_txGasContractCreation <= _txGas) revert ErrorTxGasContractCreationLessThanTxGas();
-
-        intrinsicParams = IntrinsicParams({
-            txGas: _txGas,
-            txGasContractCreation: _txGasContractCreation,
-            zeroGas: _zeroGas,
-            nonZeroGas: _nonZeroGas
-        });
-
-        emit IntrinsicParamsUpdated(_txGas, _txGasContractCreation, _zeroGas, _nonZeroGas);
     }
 }

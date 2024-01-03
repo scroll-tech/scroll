@@ -54,7 +54,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         counterpartGateway = new L2USDCGateway(address(l1USDC), address(l2USDC), address(1), address(1), address(1));
 
         // Deploy L1 contracts
-        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter())));
+        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter(address(l1Messenger)))));
         gateway = _deployGateway(address(l1Messenger));
 
         // Initialize L1 contracts

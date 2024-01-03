@@ -32,10 +32,10 @@ interface IScrollMessenger {
     event FailedRelayedMessage(bytes32 indexed messageHash);
 
     /**********
-     * Events *
+     * Errors *
      **********/
 
-    /// @dev Thrown when the given address if `address(0)`.
+    /// @dev Thrown when the given address is `address(0)`.
     error ErrorZeroAddress();
 
     /*************************

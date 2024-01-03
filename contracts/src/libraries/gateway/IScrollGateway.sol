@@ -7,13 +7,13 @@ interface IScrollGateway {
      * Errors *
      **********/
 
-    /// @dev Thrown when the given address if `address(0)`.
+    /// @dev Thrown when the given address is `address(0)`.
     error ErrorZeroAddress();
 
     /// @dev Thrown when the caller is not corresponding `L1ScrollMessenger` or `L2ScrollMessenger`.
     error ErrorCallerIsNotMessenger();
 
-    /// @dev Thrown when the cross chain sender is not counterpart gateway contract.
+    /// @dev Thrown when the cross chain sender is not the counterpart gateway contract.
     error ErrorCallerIsNotCounterpartGateway();
 
     /// @dev Thrown when ScrollMessenger is not dropping message.

@@ -109,7 +109,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         address _messageQueue,
         address _verifier
     ) {
-        if (_verifier == address(0)) {
+        if (_messageQueue == address(0) || _verifier == address(0)) {
             revert ErrorZeroAddress();
         }
 

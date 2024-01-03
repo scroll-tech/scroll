@@ -28,7 +28,7 @@ interface IScrollChain {
      * Errors *
      **********/
 
-    /// @dev Thrown when the given address if `address(0)`.
+    /// @dev Thrown when the given address is `address(0)`.
     error ErrorZeroAddress();
 
     /*************************

@@ -206,7 +206,6 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
     }
 
     function testIntrinsicGasLimit() external {
-        messageQueue.setIntrinsicParams(21000, 53000, 4, 16);
         uint256 _fee = messageQueue.l2BaseFee() * 24000;
         uint256 value = 1;
 

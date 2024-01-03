@@ -57,7 +57,7 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
         // Deploy L2 contracts
         l2StandardERC20Gateway = L2StandardERC20Gateway(_deployProxy(address(0)));
         l2ETHGateway = L2ETHGateway(_deployProxy(address(0)));
-        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter())));
+        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter(address(l2Messenger)))));
 
         admin.upgrade(
             ITransparentUpgradeableProxy(address(l2StandardERC20Gateway)),

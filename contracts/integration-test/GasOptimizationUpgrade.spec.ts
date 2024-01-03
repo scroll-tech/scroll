@@ -206,11 +206,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       // after upgrade
       await showGasUsage(
         await gateway["depositERC20(address,uint256,uint256)"](L1_WETH, amountIn, 1e6, { value: fee }),
-        "L1WETHGateway.depositERC20 WETH before upgrade"
+        "L1WETHGateway.depositERC20 WETH after upgrade"
       );
       await showGasUsage(
         await router["depositERC20(address,uint256,uint256)"](L1_WETH, amountIn, 1e6, { value: fee }),
-        "L1GatewayRouter.depositERC20 WETH before upgrade"
+        "L1GatewayRouter.depositERC20 WETH after upgrade"
       );
     });
 
@@ -250,11 +250,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       // after upgrade
       await showGasUsage(
         await gateway["depositERC20(address,uint256,uint256)"](L1_USDT, amountIn, 1e6, { value: fee }),
-        "L1StandardERC20Gateway.depositERC20 USDT before upgrade"
+        "L1StandardERC20Gateway.depositERC20 USDT after upgrade"
       );
       await showGasUsage(
         await router["depositERC20(address,uint256,uint256)"](L1_USDT, amountIn, 1e6, { value: fee }),
-        "L1GatewayRouter.depositERC20 USDT before upgrade"
+        "L1GatewayRouter.depositERC20 USDT after upgrade"
       );
     });
 
@@ -288,11 +288,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       // after upgrade
       await showGasUsage(
         await gateway["depositERC20(address,uint256,uint256)"](L1_DAI, amountIn, 1e6, { value: fee }),
-        "L1CustomERC20Gateway.depositERC20 DAI before upgrade"
+        "L1CustomERC20Gateway.depositERC20 DAI after upgrade"
       );
       await showGasUsage(
         await router["depositERC20(address,uint256,uint256)"](L1_DAI, amountIn, 1e6, { value: fee }),
-        "L1GatewayRouter.depositERC20 DAI before upgrade"
+        "L1GatewayRouter.depositERC20 DAI after upgrade"
       );
     });
 
@@ -327,11 +327,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       // after upgrade
       await showGasUsage(
         await gateway["depositERC20(address,uint256,uint256)"](L1_USDC, amountIn, 1e6, { value: fee }),
-        "L1USDCGateway.depositERC20 USDC before upgrade"
+        "L1USDCGateway.depositERC20 USDC after upgrade"
       );
       await showGasUsage(
         await router["depositERC20(address,uint256,uint256)"](L1_USDC, amountIn, 1e6, { value: fee }),
-        "L1GatewayRouter.depositERC20 USDC before upgrade"
+        "L1GatewayRouter.depositERC20 USDC after upgrade"
       );
     });
   });
@@ -460,11 +460,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       // after upgrade
       await showGasUsage(
         await gateway["withdrawERC20(address,uint256,uint256)"](L2_WETH, amountIn, 1e6),
-        "L2WETHGateway.withdrawERC20 WETH before upgrade"
+        "L2WETHGateway.withdrawERC20 WETH after upgrade"
       );
       await showGasUsage(
         await router["withdrawERC20(address,uint256,uint256)"](L2_WETH, amountIn, 1e6),
-        "L2GatewayRouter.withdrawERC20 WETH before upgrade"
+        "L2GatewayRouter.withdrawERC20 WETH after upgrade"
       );
     });
 
@@ -502,11 +502,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       // after upgrade
       await showGasUsage(
         await gateway["withdrawERC20(address,uint256,uint256)"](L2_USDT, amountIn, 1e6),
-        "L2StandardERC20Gateway.withdrawERC20 USDT before upgrade"
+        "L2StandardERC20Gateway.withdrawERC20 USDT after upgrade"
       );
       await showGasUsage(
         await router["withdrawERC20(address,uint256,uint256)"](L2_USDT, amountIn, 1e6),
-        "L2GatewayRouter.withdrawERC20 USDT before upgrade"
+        "L2GatewayRouter.withdrawERC20 USDT after upgrade"
       );
     });
 
@@ -539,11 +539,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       // after upgrade
       await showGasUsage(
         await gateway["withdrawERC20(address,uint256,uint256)"](L2_DAI, amountIn, 1e6),
-        "L2CustomERC20Gateway.withdrawERC20 DAI before upgrade"
+        "L2CustomERC20Gateway.withdrawERC20 DAI after upgrade"
       );
       await showGasUsage(
         await router["withdrawERC20(address,uint256,uint256)"](L2_DAI, amountIn, 1e6),
-        "L2GatewayRouter.withdrawERC20 DAI before upgrade"
+        "L2GatewayRouter.withdrawERC20 DAI after upgrade"
       );
     });
 
@@ -577,11 +577,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       // after upgrade
       await showGasUsage(
         await gateway["withdrawERC20(address,uint256,uint256)"](L2_USDC, amountIn, 1e6),
-        "L2USDCGateway.withdrawERC20 USDC before upgrade"
+        "L2USDCGateway.withdrawERC20 USDC after upgrade"
       );
       await showGasUsage(
         await router["withdrawERC20(address,uint256,uint256)"](L2_USDC, amountIn, 1e6),
-        "L2GatewayRouter.withdrawERC20 USDC before upgrade"
+        "L2GatewayRouter.withdrawERC20 USDC after upgrade"
       );
     });
   });

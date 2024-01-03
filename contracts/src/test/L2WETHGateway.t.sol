@@ -54,7 +54,7 @@ contract L2WETHGatewayTest is L2GatewayTestBase {
         counterpartGateway = new L1WETHGateway(address(l1weth), address(l2weth), address(1), address(1), address(1));
 
         // Deploy L2 contracts
-        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter())));
+        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter(address(l2Messenger)))));
         gateway = _deployGateway(address(l2Messenger));
 
         // Initialize L2 contracts

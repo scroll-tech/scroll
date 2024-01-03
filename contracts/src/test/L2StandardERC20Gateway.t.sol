@@ -68,7 +68,7 @@ contract L2StandardERC20GatewayTest is L2GatewayTestBase {
         );
 
         // Deploy L2 contracts
-        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter())));
+        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter(address(l2Messenger)))));
         gateway = _deployGateway(address(l2Messenger));
 
         // Initialize L2 contracts

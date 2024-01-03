@@ -63,7 +63,9 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
         address _router,
         address _messenger
     ) ScrollGatewayBase(_counterpart, _router, _messenger) {
-        if (_router == address(0)) revert ErrorZeroAddress();
+        if (_l1USDC == address(0) || _l2USDC == address(0) || _router == address(0)) {
+            revert ErrorZeroAddress();
+        }
 
         _disableInitializers();
 

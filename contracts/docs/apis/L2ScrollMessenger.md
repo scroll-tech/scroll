@@ -458,7 +458,7 @@ error ErrorZeroAddress()
 
 
 
-*Thrown when the given address if `address(0)`.*
+*Thrown when the given address is `address(0)`.*
 
 
 

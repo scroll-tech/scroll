@@ -68,7 +68,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
         counterpartGateway = new L2StandardERC20Gateway(address(1), address(1), address(1), address(factory));
 
         // Deploy L1 contracts
-        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter())));
+        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter(address(l1Messenger)))));
         gateway = _deployGateway(address(l1Messenger));
 
         // Initialize L1 contracts

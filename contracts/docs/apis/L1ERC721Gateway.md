@@ -499,7 +499,7 @@ error ErrorCallerIsNotCounterpartGateway()
 
 
 
-*Thrown when the cross chain sender is not counterpart gateway contract.*
+*Thrown when the cross chain sender is not the counterpart gateway contract.*
 
 
 ### ErrorCallerIsNotMessenger
@@ -532,7 +532,7 @@ error ErrorZeroAddress()
 
 
 
-*Thrown when the given address if `address(0)`.*
+*Thrown when the given address is `address(0)`.*
 
 
 
