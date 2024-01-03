@@ -34,8 +34,7 @@
 		"USDCGatewayAddr": "0x33B60d5Dd260d453cAC3782b0bDC01ce84672142",
 		"LIDOGatewayAddr": "0x8aE8f22226B9d789A36AC81474e633f8bE2856c9",
 		"DAIGatewayAddr": "0xaC78dff3A87b5b534e366A93E785a0ce8fA6Cc62",
-		"GatewayRouterAddr": "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79",
-		"MessageQueueAddr": "0x5300000000000000000000000000000000000000"
+		"GatewayRouterAddr": "0x4C0926FF5252A435FD19e10ED15e5a249Ba19d79"
 	},
 	"db": {
 		"dsn": "postgres://postgres:123456@localhost:5444/test?sslmode=disable",

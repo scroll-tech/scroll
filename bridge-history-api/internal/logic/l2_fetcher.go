@@ -61,13 +61,15 @@ func NewL2FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 	}
 
 	// Optional erc20 gateways.
-	if cfg.USDCGatewayAddr != "" {
+	if common.HexToAddress(cfg.USDCGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.USDCGatewayAddr))
 	}
 
-	if cfg.LIDOGatewayAddr != "" {
+	if common.HexToAddress(cfg.LIDOGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.LIDOGatewayAddr))
 	}
+
+	log.Info("L2 Fetcher configured with the following address list", "addresses", addressList)
 
 	f := &L2FetcherLogic{
 		db:              db,
