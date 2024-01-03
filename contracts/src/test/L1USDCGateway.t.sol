@@ -44,7 +44,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
     L2USDCGateway private counterpartGateway;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
 
         // Deploy tokens
         l1USDC = new MockERC20("USDC", "USDC", 6);

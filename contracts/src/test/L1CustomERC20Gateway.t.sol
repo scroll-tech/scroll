@@ -47,7 +47,8 @@ contract L1CustomERC20GatewayTest is L1GatewayTestBase {
     MockERC20 private l2Token;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
+
         // Deploy tokens
         l1Token = new MockERC20("Mock L1", "ML1", 18);
         l2Token = new MockERC20("Mock L2", "ML2", 18);

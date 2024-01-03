@@ -19,7 +19,7 @@ contract L1ScrollMessengerTest is L1GatewayTestBase {
     event UpdateMaxReplayTimes(uint256 oldMaxReplayTimes, uint256 newMaxReplayTimes);
 
     function setUp() public {
-        L1GatewayTestBase.setUpBase();
+        __L1GatewayTestBase_setUp();
     }
 
     function testForbidCallMessageQueueFromL2() external {

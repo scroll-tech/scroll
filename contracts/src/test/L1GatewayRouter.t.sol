@@ -37,7 +37,7 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
     MockERC20 private l1Token;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
 
         // Deploy tokens
         l1Token = new MockERC20("Mock", "M", 18);

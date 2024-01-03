@@ -12,7 +12,7 @@ interface IL1MessageQueueWithGasPriceOracle is IL1MessageQueue {
     /// @notice Emitted when owner updates whitelist contract.
     /// @param _oldWhitelist The address of old whitelist contract.
     /// @param _newWhitelist The address of new whitelist contract.
-    event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
+    event UpdateWhitelist(address indexed _oldWhitelist, address indexed _newWhitelist);
 
     /// @notice Emitted when current l2 base fee is updated.
     /// @param oldL2BaseFee The original l2 base fee before update.
@@ -25,16 +25,4 @@ interface IL1MessageQueueWithGasPriceOracle is IL1MessageQueue {
 
     /// @dev Thrown when the caller is not whitelisted.
     error ErrorNotWhitelistedSender();
-
-    /// @dev Thrown when the given `txGas` is zero.
-    error ErrorTxGasIsZero();
-
-    /// @dev Thrown when the given `zeroGas` is zero.
-    error ErrorZeroGasIsZero();
-
-    /// @dev Thrown when the given `nonZeroGas` is zero.
-    error ErrorNonZeroGasIsZero();
-
-    /// @dev Thrown when the given `txGasContractCreation` is smaller than `txGas`.
-    error ErrorTxGasContractCreationLessThanTxGas();
 }

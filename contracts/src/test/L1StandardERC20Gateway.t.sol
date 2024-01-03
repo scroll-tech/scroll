@@ -55,7 +55,7 @@ contract L1StandardERC20GatewayTest is L1GatewayTestBase {
     FeeOnTransferToken private feeToken;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
 
         // Deploy tokens
         l1Token = new MockERC20("Mock", "M", 18);

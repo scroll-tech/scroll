@@ -27,7 +27,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
     L2ETHGateway private counterpartGateway;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
 
         // Deploy L2 contracts
         counterpartGateway = new L2ETHGateway(address(1), address(1), address(1));

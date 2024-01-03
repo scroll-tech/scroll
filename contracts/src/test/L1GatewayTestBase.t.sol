@@ -4,8 +4,7 @@ pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
-import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
-import {ITransparentUpgradeableProxy, TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {EnforcedTxGateway} from "../L1/gateways/EnforcedTxGateway.sol";
 import {L1MessageQueueWithGasPriceOracle} from "../L1/rollup/L1MessageQueueWithGasPriceOracle.sol";
@@ -17,10 +16,11 @@ import {L2ScrollMessenger} from "../L2/L2ScrollMessenger.sol";
 import {EmptyContract} from "../misc/EmptyContract.sol";
 
 import {MockRollupVerifier} from "./mocks/MockRollupVerifier.sol";
+import {ScrollTestBase} from "./ScrollTestBase.t.sol";
 
 // solhint-disable no-inline-assembly
 
-abstract contract L1GatewayTestBase is DSTestPlus {
+abstract contract L1GatewayTestBase is ScrollTestBase {
     // from L1MessageQueue
     event QueueTransaction(
         address indexed sender,
@@ -58,9 +58,6 @@ abstract contract L1GatewayTestBase is DSTestPlus {
 
     uint32 internal constant defaultGasLimit = 1000000;
 
-    ProxyAdmin internal admin;
-    EmptyContract private placeholder;
-
     L1ScrollMessenger internal l1Messenger;
     L1MessageQueueWithGasPriceOracle internal messageQueue;
     L2GasPriceOracle internal gasOracle;
@@ -82,9 +79,9 @@ abstract contract L1GatewayTestBase is DSTestPlus {
         }
     }
 
-    function setUpBase() internal {
-        placeholder = new EmptyContract();
-        admin = new ProxyAdmin();
+    function __L1GatewayTestBase_setUp() internal {
+        __ScrollTestBase_setUp();
+
         feeVault = address(uint160(address(this)) - 1);
 
         // deploy proxy and contracts in L1
@@ -180,11 +177,5 @@ abstract contract L1GatewayTestBase is DSTestPlus {
             new bytes(0)
         );
         hevm.stopPrank();
-    }
-
-    function _deployProxy(address _logic) internal returns (address) {
-        if (_logic == address(0)) _logic = address(placeholder);
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(_logic, address(admin), new bytes(0));
-        return address(proxy);
     }
 }

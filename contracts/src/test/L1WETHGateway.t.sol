@@ -46,7 +46,7 @@ contract L1WETHGatewayTest is L1GatewayTestBase {
     L2WETHGateway private counterpartGateway;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
 
         // Deploy tokens
         l1weth = new WETH();

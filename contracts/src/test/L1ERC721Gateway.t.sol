@@ -61,7 +61,7 @@ contract L1ERC721GatewayTest is L1GatewayTestBase, ERC721TokenReceiver {
     MockERC721Recipient private mockRecipient;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
 
         // Deploy tokens
         l1Token = new MockERC721("Mock L1", "ML1");

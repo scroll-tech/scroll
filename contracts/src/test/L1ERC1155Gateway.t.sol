@@ -67,7 +67,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
     MockERC1155Recipient private mockRecipient;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
 
         // Deploy tokens
         l1Token = new MockERC1155();
