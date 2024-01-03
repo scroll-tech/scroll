@@ -55,7 +55,7 @@ func NewBatchEvent(db *gorm.DB) *BatchEvent {
 	return &BatchEvent{db: db}
 }
 
-// GetBatchEventSyncedHeightInDB returns the maximum l1_block_number from the batch_event table.
+// GetBatchEventSyncedHeightInDB returns the maximum l1_block_number from the batch_event_v2 table.
 func (c *BatchEvent) GetBatchEventSyncedHeightInDB(ctx context.Context) (uint64, error) {
 	var batch BatchEvent
 	db := c.db.WithContext(ctx)

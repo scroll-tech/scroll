@@ -475,9 +475,9 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 			Exprs: []clause.Expression{
 				clause.And(
 					// do not over-write terminal statuses.
-					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed},
-					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeFailedRelayed},
-					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeDropped},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeRelayed},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeFailedRelayed},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeDropped},
 				),
 			},
 		},
@@ -531,9 +531,9 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 			Exprs: []clause.Expression{
 				clause.And(
 					// do not over-write terminal statuses.
-					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeRelayed},
-					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeFailedRelayed},
-					clause.Neq{Column: "cross_message.tx_status", Value: TxStatusTypeDropped},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeRelayed},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeFailedRelayed},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeDropped},
 				),
 			},
 		},
