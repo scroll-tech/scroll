@@ -15,6 +15,7 @@ var (
 		&MetricsEnabled,
 		&MetricsAddr,
 		&MetricsPort,
+		&ServicePortFlag,
 	}
 	// RollupRelayerFlags contains flags only used in rollup-relayer
 	RollupRelayerFlags = []cli.Flag{
@@ -24,7 +25,7 @@ var (
 	ConfigFileFlag = cli.StringFlag{
 		Name:  "config",
 		Usage: "JSON configuration file",
-		Value: "./config.json",
+		Value: "./conf/config.json",
 	}
 	// VerbosityFlag log level.
 	VerbosityFlag = cli.IntFlag{
@@ -75,5 +76,11 @@ var (
 		Name:  "import-genesis",
 		Usage: "Import genesis batch into L1 contract during startup",
 		Value: false,
+	}
+	// ServicePortFlag is the port the service will listen on
+	ServicePortFlag = cli.IntFlag{
+		Name:  "service.port",
+		Usage: "Port that the service will listen on",
+		Value: 8080,
 	}
 )
