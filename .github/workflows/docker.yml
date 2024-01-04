@@ -69,7 +69,7 @@ jobs:
         tags: scrolltech/rollup-relayer:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
-  bridgehistoryapi-cross-msg-fetcher:
+  bridgehistoryapi-fetcher:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -81,16 +81,16 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Build and push bridgehistoryapi-cross-msg-fetcher docker
+    - name: Build and push bridgehistoryapi-fetcher docker
       uses: docker/build-push-action@v2
       with:
         context: .
-        file: ./build/dockerfiles/bridgehistoryapi-cross-msg-fetcher.Dockerfile
+        file: ./build/dockerfiles/bridgehistoryapi-fetcher.Dockerfile
         push: true
-        tags: scrolltech/bridgehistoryapi-cross-msg-fetcher:${{github.ref_name}}
+        tags: scrolltech/bridgehistoryapi-fetcher:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
-  bridgehistoryapi-server:
+  bridgehistoryapi-api:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -102,13 +102,13 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Build and push bridgehistoryapi-server docker
+    - name: Build and push bridgehistoryapi-api docker
       uses: docker/build-push-action@v2
       with:
         context: .
-        file: ./build/dockerfiles/bridgehistoryapi-server.Dockerfile
+        file: ./build/dockerfiles/bridgehistoryapi-api.Dockerfile
         push: true
-        tags: scrolltech/bridgehistoryapi-server:${{github.ref_name}}
+        tags: scrolltech/bridgehistoryapi-api:${{github.ref_name}}
         # cache-from: type=gha,scope=${{ github.workflow }}
         # cache-to: type=gha,scope=${{ github.workflow }}
   coordinator-api:

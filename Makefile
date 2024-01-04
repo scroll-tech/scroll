@@ -1,4 +1,4 @@
-.PHONY: fmt dev_docker build_test_docker run_test_docker clean
+.PHONY: fmt dev_docker build_test_docker run_test_docker clean update
 
 L2GETH_TAG=scroll-v5.1.6
 
@@ -6,6 +6,15 @@ help: ## Display this help message
 	@grep -h \
 		-E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+update:
+	go work sync
+	cd $(PWD)/bridge-history-api/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
+	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG}&& go mod tidy
+	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
+	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
+	cd $(PWD)/prover/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG}&& go mod tidy
+	cd $(PWD)/rollup/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
+	cd $(PWD)/tests/integration-test/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 
 lint: ## The code's format and security checks.
 	make -C rollup lint
@@ -17,13 +26,13 @@ lint: ## The code's format and security checks.
 
 fmt: ## format the code
 	go work sync
-	cd $(PWD)/bridge-history-api/ && go get -u github.com/ethereum/go-ethereum@latest && go mod tidy
-	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/prover/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/rollup/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/tests/integration-test/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
+	cd $(PWD)/bridge-history-api/ && go mod tidy
+	cd $(PWD)/common/ && go mod tidy
+	cd $(PWD)/coordinator/ && go mod tidy
+	cd $(PWD)/database/ && go mod tidy
+	cd $(PWD)/prover/ && go mod tidy
+	cd $(PWD)/rollup/ && go mod tidy
+	cd $(PWD)/tests/integration-test/ && go mod tidy
 
 	goimports -local $(PWD)/bridge-history-api/ -w .
 	goimports -local $(PWD)/common/ -w .
