@@ -17,6 +17,7 @@ import {L1WETHGateway} from "../../src/L1/gateways/L1WETHGateway.sol";
 import {MultipleVersionRollupVerifier} from "../../src/L1/rollup/MultipleVersionRollupVerifier.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
 import {L1MessageQueue} from "../../src/L1/rollup/L1MessageQueue.sol";
+import {L1MessageQueueWithGasPriceOracle} from "../../src/L1/rollup/L1MessageQueueWithGasPriceOracle.sol";
 import {L2GasPriceOracle} from "../../src/L1/rollup/L2GasPriceOracle.sol";
 import {EnforcedTxGateway} from "../../src/L1/gateways/EnforcedTxGateway.sol";
 
@@ -101,7 +102,7 @@ contract InitializeL1BridgeContracts is Script {
         );
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).updateWhitelist(L1_WHITELIST_ADDR);
 
-        // initialize L1MessageQueue
+        // initialize L1MessageQueueWithGasPriceOracle
         proxyAdmin.upgradeAndCall(
             ITransparentUpgradeableProxy(L1_MESSAGE_QUEUE_PROXY_ADDR),
             L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR,
@@ -116,6 +117,7 @@ contract InitializeL1BridgeContracts is Script {
                 )
             )
         );
+        L1MessageQueueWithGasPriceOracle(L1_MESSAGE_QUEUE_PROXY_ADDR).initializeV2();
 
         // initialize L1ScrollMessenger
         proxyAdmin.upgradeAndCall(
