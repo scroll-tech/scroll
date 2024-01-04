@@ -19,10 +19,16 @@ import (
 )
 
 const (
-	cacheKeyPrefixL2ClaimableWithdrawalsByAddr = "l2ClaimableWithdrawalsByAddr:"
-	cacheKeyPrefixL2WithdrawalsByAddr          = "l2WithdrawalsByAddr:"
-	cacheKeyPrefixTxsByAddr                    = "txsByAddr:"
-	cacheKeyPrefixQueryTxsByHashes             = "queryTxsByHashes:"
+	// cacheKeyPrefixBridgeHistory serves as a specific namespace for all Redis cache keys
+	// associated with the 'bridge-history' user. This prefix is used to enforce access controls
+	// in Redis, allowing permissions to be set such that only users with the appropriate
+	// access rights can read or write to keys starting with "bridge-history".
+	cacheKeyPrefixBridgeHistory = "bridge-history-"
+
+	cacheKeyPrefixL2ClaimableWithdrawalsByAddr = cacheKeyPrefixBridgeHistory + "l2ClaimableWithdrawalsByAddr:"
+	cacheKeyPrefixL2WithdrawalsByAddr          = cacheKeyPrefixBridgeHistory + "l2WithdrawalsByAddr:"
+	cacheKeyPrefixTxsByAddr                    = cacheKeyPrefixBridgeHistory + "txsByAddr:"
+	cacheKeyPrefixQueryTxsByHashes             = cacheKeyPrefixBridgeHistory + "queryTxsByHashes:"
 	cacheKeyExpiredTime                        = 1 * time.Minute
 )
 
