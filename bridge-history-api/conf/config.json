@@ -46,6 +46,9 @@
 		"address": "localhost:6379",
 		"username": "default",
 		"password": "",
-		"local": true
+		"local": true,
+		"poolSize": 200,
+		"minIdleConns": 10,
+		"readTimeoutMs": 500
 	}
 }
