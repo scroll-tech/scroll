@@ -64,27 +64,23 @@ func action(ctx *cli.Context) error {
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
-		log.Error("failed to connect l2 geth", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
 	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis, registry)
 	if err != nil {
-		log.Error("failed to create l2 relayer", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
 	chunkProposer := watcher.NewChunkProposer(instanceCtx, cfg.L2Config.ChunkProposerConfig, db, registry)
 	if err != nil {
-		log.Error("failed to create chunkProposer", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to create chunkProposer", "config file", cfgFile, "error", err)
 	}
 
 	batchProposer := watcher.NewBatchProposer(instanceCtx, cfg.L2Config.BatchProposerConfig, db, registry)
 	if err != nil {
-		log.Error("failed to create batchProposer", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
 	}
 
 	l2watcher := watcher.NewL2WatcherClient(instanceCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress,
@@ -109,14 +105,14 @@ func action(ctx *cli.Context) error {
 	defer func() {
 		log.Info("Graceful shutdown initiated")
 
-		// Prevent new transactions by cancelling the loop context.
+		// Prevent new transactions by canceling the loop context.
 		loopCancel()
 
 		// Close relayers to ensure all pending transactions are processed.
 		// This includes any in-flight transactions that have not yet been confirmed.
 		l2relayer.Close()
 
-		// Halt confirmation signal handling by cancelling the instance context.
+		// Halt confirmation signal handling by canceling the instance context.
 		instanceCancel()
 
 		// Close the database connection.

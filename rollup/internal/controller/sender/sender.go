@@ -603,6 +603,7 @@ func (s *Sender) loop(ctx context.Context) {
 	}
 }
 
+// Close attempts to gracefully shut down the Sender by handling all pending transactions.
 func (s *Sender) Close() {
 	for attempt := 0; attempt < s.config.MaxCloseAttempts; attempt++ {
 		if s.pendingTxs.IsEmpty() {

@@ -721,6 +721,7 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 	}
 }
 
+// Close attempts to gracefully shut down the Layer2Relayer by handling all pending transactions in the sender(s).
 func (r *Layer2Relayer) Close() {
 	r.commitSender.Close()
 	r.finalizeSender.Close()

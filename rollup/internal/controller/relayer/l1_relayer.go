@@ -162,6 +162,7 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 	}
 }
 
+// Close attempts to gracefully shut down the Layer1Relayer by handling all pending transactions in the sender(s).
 func (r *Layer1Relayer) Close() {
 	r.gasOracleSender.Close()
 }
