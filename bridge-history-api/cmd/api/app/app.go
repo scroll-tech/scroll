@@ -66,7 +66,7 @@ func action(ctx *cli.Context) error {
 	if !cfg.Redis.Local {
 		opts.TLSConfig = &tls.Config{
 			MinVersion:         tls.VersionTLS12,
-			InsecureSkipVerify: true,
+			InsecureSkipVerify: true, //nolint:gosec
 		}
 	}
 	log.Info("init redis client", "addr", opts.Addr, "user name", opts.Username, "is local", cfg.Redis.Local,
