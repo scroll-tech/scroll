@@ -720,3 +720,9 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		}
 	}
 }
+
+func (r *Layer2Relayer) Close() {
+	r.commitSender.Close()
+	r.finalizeSender.Close()
+	r.gasOracleSender.Close()
+}

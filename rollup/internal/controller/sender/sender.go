@@ -145,6 +145,24 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	}
 	sender.metrics = initSenderMetrics(reg)
 
+	log.Info("Creating new sender",
+		"Service", service,
+		"Name", name,
+		"Endpoint", config.Endpoint,
+		"ChainID", chainID.Uint64(),
+		"TxType", config.TxType,
+		"MaxGasPrice", config.MaxGasPrice,
+		"MinBalance", config.MinBalance.Uint64(),
+		"EscalateBlocks", config.EscalateBlocks,
+		"Confirmations", config.Confirmations,
+		"EscalateMultiple", fmt.Sprintf("%d/%d", config.EscalateMultipleNum, config.EscalateMultipleDen),
+		"CheckPendingTimeSec", config.CheckPendingTime,
+		"CheckBalanceTimeSec", config.CheckBalanceTime,
+		"PendingLimit", config.PendingLimit,
+		"MaxCloseAttempts", config.MaxCloseAttempts,
+		"CloseAttemptIntervalMs", config.CloseAttemptIntervalMs,
+	)
+
 	go sender.loop(ctx)
 
 	return sender, nil
@@ -583,4 +601,34 @@ func (s *Sender) loop(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (s *Sender) Close() {
+	for attempt := 0; attempt < s.config.MaxCloseAttempts; attempt++ {
+		if s.pendingTxs.IsEmpty() {
+			break
+		}
+		log.Info("Attempting to close Sender: pending transactions unhandled.",
+			"sender", s.auth.From.String(),
+			"attempt", attempt+1,
+			"txCount", s.pendingTxs.Count(),
+		)
+		for item := range s.pendingTxs.IterBuffered() {
+			key, pending := item.Key, item.Val
+			log.Info("Handling pending transaction",
+				"keyInMap", key,
+				"from", s.auth.From.String(),
+				"hash", pending.tx.Hash().String(),
+				"nonce", pending.tx.Nonce(),
+			)
+		}
+		time.Sleep(time.Duration(s.config.CloseAttemptIntervalMs) * time.Millisecond)
+	}
+	if !s.pendingTxs.IsEmpty() {
+		log.Warn("Sender closing with unhandled pending transactions.",
+			"sender", s.auth.From.String(),
+			"unhandledTxCount", s.pendingTxs.Count(),
+		)
+	}
+	close(s.stopCh)
 }

@@ -161,3 +161,7 @@ func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 		}
 	}
 }
+
+func (r *Layer1Relayer) Close() {
+	r.gasOracleSender.Close()
+}

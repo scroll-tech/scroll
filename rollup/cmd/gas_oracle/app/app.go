@@ -50,18 +50,13 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-	subCtx, cancel := context.WithCancel(ctx.Context)
+	instanceCtx, instanceCancel := context.WithCancel(ctx.Context)
+	loopCtx, loopCancel := context.WithCancel(ctx.Context)
 	// Init db connection
 	db, err := database.InitDB(cfg.DBConfig)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
 	}
-	defer func() {
-		cancel()
-		if err = database.CloseDB(db); err != nil {
-			log.Error("can not close ormFactory", "error", err)
-		}
-	}()
 
 	registry := prometheus.DefaultRegisterer
 	observability.Server(ctx, db)
@@ -79,20 +74,20 @@ func action(ctx *cli.Context) error {
 		return err
 	}
 
-	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db, registry)
+	l1watcher := watcher.NewL1WatcherClient(instanceCtx, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db, registry)
 
-	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, registry)
+	l1relayer, err := relayer.NewLayer1Relayer(instanceCtx, db, cfg.L1Config.RelayerConfig, registry)
 	if err != nil {
 		log.Error("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 		return err
 	}
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, false /* initGenesis */, registry)
+	l2relayer, err := relayer.NewLayer2Relayer(instanceCtx, l2client, db, cfg.L2Config.RelayerConfig, false /* initGenesis */, registry)
 	if err != nil {
 		log.Error("failed to create new l2 relayer", "config file", cfgFile, "error", err)
 		return err
 	}
 	// Start l1 watcher process
-	go utils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
+	go utils.LoopWithContext(loopCtx, 10*time.Second, func(ctx context.Context) {
 		// Fetch the latest block number to decrease the delay when fetching gas prices
 		// Use latest block number - 1 to prevent frequent reorg
 		number, loopErr := butils.GetLatestConfirmedBlockNumber(ctx, l1client, rpc.LatestBlockNumber)
@@ -106,9 +101,30 @@ func action(ctx *cli.Context) error {
 		}
 	})
 
-	// Start l1relayer process
-	go utils.Loop(subCtx, 10*time.Second, l1relayer.ProcessGasPriceOracle)
-	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessGasPriceOracle)
+	// Goroutines that may send transactions periodically.
+	go utils.Loop(loopCtx, 10*time.Second, l1relayer.ProcessGasPriceOracle)
+	go utils.Loop(loopCtx, 2*time.Second, l2relayer.ProcessGasPriceOracle)
+
+	defer func() {
+		// Initiate the graceful shutdown process.
+		log.Info("Graceful shutdown initiated")
+
+		// Prevent new transactions by cancelling the loop context.
+		loopCancel()
+
+		// Close relayers to ensure all pending transactions are processed.
+		// This includes any in-flight transactions that have not yet been confirmed.
+		l1relayer.Close()
+		l2relayer.Close()
+
+		// Halt confirmation signal handling by cancelling the instance context.
+		instanceCancel()
+
+		// Close the database connection.
+		if err = database.CloseDB(db); err != nil {
+			log.Error("Failed to close database connection", "error", err)
+		}
+	}()
 
 	// Finish start all message relayer functions
 	log.Info("Start gas-oracle successfully")

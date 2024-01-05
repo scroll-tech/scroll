@@ -35,6 +35,10 @@ type SenderConfig struct {
 	CheckBalanceTime uint64 `json:"check_balance_time"`
 	// The sender's pending count limit.
 	PendingLimit int `json:"pending_limit"`
+	// The maximum number of attempts to close the sender.
+	MaxCloseAttempts int `json:"max_close_attempts"`
+	// The interval (in seconds) between each close attempt.
+	CloseAttemptIntervalMs int `json:"close_attempt_interval_ms"`
 }
 
 // ChainMonitor this config is used to get batch status from chain_monitor API.
