@@ -58,7 +58,6 @@ func action(ctx *cli.Context) error {
 		Addr:         cfg.Redis.Address,
 		Username:     cfg.Redis.Username,
 		Password:     cfg.Redis.Password,
-		PoolSize:     cfg.Redis.PoolSize,
 		MinIdleConns: cfg.Redis.MinIdleConns,
 		ReadTimeout:  time.Duration(cfg.Redis.ReadTimeoutMs * int(time.Millisecond)),
 	}
@@ -70,7 +69,7 @@ func action(ctx *cli.Context) error {
 		}
 	}
 	log.Info("init redis client", "addr", opts.Addr, "user name", opts.Username, "is local", cfg.Redis.Local,
-		"pool size", opts.PoolSize, "min idle connections", opts.MinIdleConns, "read timeout", opts.ReadTimeout)
+		"min idle connections", opts.MinIdleConns, "read timeout", opts.ReadTimeout)
 	redisClient := redis.NewClient(opts)
 	api.InitController(db, redisClient)
 

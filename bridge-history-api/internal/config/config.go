@@ -37,7 +37,6 @@ type RedisConfig struct {
 	Password      string `json:"password"`
 	DB            int    `json:"db"`
 	Local         bool   `json:"local"`
-	PoolSize      int    `json:"poolSize"`
 	MinIdleConns  int    `json:"minIdleConns"`
 	ReadTimeoutMs int    `json:"readTimeoutMs"`
 }

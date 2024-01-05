@@ -47,7 +47,6 @@
 		"username": "default",
 		"password": "",
 		"local": true,
-		"poolSize": 200,
 		"minIdleConns": 10,
 		"readTimeoutMs": 500
 	}
