@@ -106,7 +106,6 @@ func action(ctx *cli.Context) error {
 	go utils.Loop(loopCtx, 2*time.Second, l2relayer.ProcessGasPriceOracle)
 
 	defer func() {
-		// Initiate the graceful shutdown process.
 		log.Info("Graceful shutdown initiated")
 
 		// Prevent new transactions by cancelling the loop context.
@@ -124,6 +123,8 @@ func action(ctx *cli.Context) error {
 		if err = database.CloseDB(db); err != nil {
 			log.Error("Failed to close database connection", "error", err)
 		}
+
+		log.Info("Graceful shutdown done")
 	}()
 
 	// Finish start all message relayer functions
