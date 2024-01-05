@@ -37,7 +37,7 @@ type SenderConfig struct {
 	PendingLimit int `json:"pending_limit"`
 	// The maximum number of attempts to close the sender.
 	MaxCloseAttempts int `json:"max_close_attempts"`
-	// The interval (in milli seconds) between each close attempt.
+	// The interval (in milliseconds) between each close attempt.
 	CloseAttemptIntervalMs int `json:"close_attempt_interval_ms"`
 }
 
