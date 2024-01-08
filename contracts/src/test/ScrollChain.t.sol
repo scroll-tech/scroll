@@ -4,12 +4,13 @@ pragma solidity =0.8.16;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {ITransparentUpgradeableProxy, TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {L1MessageQueue} from "../L1/rollup/L1MessageQueue.sol";
 import {ScrollChain, IScrollChain} from "../L1/rollup/ScrollChain.sol";
+import {EmptyContract} from "../misc/EmptyContract.sol";
 
-import {MockScrollChain} from "./mocks/MockScrollChain.sol";
 import {MockRollupVerifier} from "./mocks/MockRollupVerifier.sol";
 
 // solhint-disable no-inline-assembly
@@ -18,27 +19,38 @@ contract ScrollChainTest is DSTestPlus {
     // from ScrollChain
     event UpdateSequencer(address indexed account, bool status);
     event UpdateProver(address indexed account, bool status);
-    event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier);
     event UpdateMaxNumTxInChunk(uint256 oldMaxNumTxInChunk, uint256 newMaxNumTxInChunk);
 
     event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
     event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
     event RevertBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
 
+    ProxyAdmin internal admin;
+    EmptyContract private placeholder;
+
     ScrollChain private rollup;
     L1MessageQueue internal messageQueue;
-    MockScrollChain internal chain;
     MockRollupVerifier internal verifier;
 
     function setUp() public {
-        messageQueue = L1MessageQueue(address(new ERC1967Proxy(address(new L1MessageQueue()), new bytes(0))));
-        rollup = ScrollChain(address(new ERC1967Proxy(address(new ScrollChain(233)), new bytes(0))));
+        placeholder = new EmptyContract();
+        admin = new ProxyAdmin();
+        messageQueue = L1MessageQueue(_deployProxy(address(0)));
+        rollup = ScrollChain(_deployProxy(address(0)));
         verifier = new MockRollupVerifier();
 
+        // Upgrade the L1MessageQueue implementation and initialize
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(messageQueue)),
+            address(new L1MessageQueue(address(this), address(rollup), address(1)))
+        );
+        messageQueue.initialize(address(this), address(rollup), address(0), address(0), 10000000);
+        // Upgrade the ScrollChain implementation and initialize
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(rollup)),
+            address(new ScrollChain(233, address(messageQueue), address(verifier)))
+        );
         rollup.initialize(address(messageQueue), address(verifier), 100);
-        messageQueue.initialize(address(this), address(rollup), address(0), address(0), 1000000);
-
-        chain = new MockScrollChain();
     }
 
     function testInitialized() public {
@@ -688,22 +700,6 @@ contract ScrollChainTest is DSTestPlus {
         assertBoolEq(false, rollup.paused());
     }
 
-    function testUpdateVerifier(address _newVerifier) public {
-        // set by non-owner, should revert
-        hevm.startPrank(address(1));
-        hevm.expectRevert("Ownable: caller is not the owner");
-        rollup.updateVerifier(_newVerifier);
-        hevm.stopPrank();
-
-        // change to random operator
-        hevm.expectEmit(true, true, false, true);
-        emit UpdateVerifier(address(verifier), _newVerifier);
-
-        assertEq(rollup.verifier(), address(verifier));
-        rollup.updateVerifier(_newVerifier);
-        assertEq(rollup.verifier(), _newVerifier);
-    }
-
     function testUpdateMaxNumTxInChunk(uint256 _maxNumTxInChunk) public {
         // set by non-owner, should revert
         hevm.startPrank(address(1));
@@ -787,5 +783,11 @@ contract ScrollChainTest is DSTestPlus {
         // Genesis batch imported, revert
         hevm.expectRevert("Genesis batch imported");
         rollup.importGenesisBatch(batchHeader, bytes32(uint256(1)));
+    }
+
+    function _deployProxy(address _logic) internal returns (address) {
+        if (_logic == address(0)) _logic = address(placeholder);
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(_logic, address(admin), new bytes(0));
+        return address(proxy);
     }
 }

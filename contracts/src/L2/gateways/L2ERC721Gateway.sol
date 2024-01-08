@@ -39,10 +39,21 @@ contract L2ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL2ERC72
     /***************
      * Constructor *
      ***************/
-    constructor() {
+
+    /// @notice Constructor for `L2ERC721Gateway` implementation contract.
+    ///
+    /// @param _counterpart The address of `L1ERC721Gateway` contract in L1.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
+    constructor(address _counterpart, address _messenger) ScrollGatewayBase(_counterpart, address(0), _messenger) {
         _disableInitializers();
     }
 
+    /// @notice Initialize the storage of `L2ERC721Gateway`.
+    ///
+    /// @dev The parameters `_counterpart` and `_messenger` are no longer used.
+    ///
+    /// @param _counterpart The address of `L1ERC721Gateway` contract in L1.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
     function initialize(address _counterpart, address _messenger) external initializer {
         ERC721HolderUpgradeable.__ERC721Holder_init();
 

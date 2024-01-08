@@ -33,7 +33,24 @@ contract L1WETHGateway is L1ERC20Gateway {
      * Constructor *
      ***************/
 
-    constructor(address _WETH, address _l2WETH) {
+    /// @notice Constructor for `L1WETHGateway` implementation contract.
+    ///
+    /// @param _WETH The address of WETH in L1.
+    /// @param _l2WETH The address of WETH in L2.
+    /// @param _counterpart The address of `L2WETHGateway` contract in L2.
+    /// @param _router The address of `L1GatewayRouter` contract.
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    constructor(
+        address _WETH,
+        address _l2WETH,
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_WETH == address(0) || _l2WETH == address(0) || _router == address(0)) {
+            revert ErrorZeroAddress();
+        }
+
         _disableInitializers();
 
         WETH = _WETH;
@@ -49,7 +66,6 @@ contract L1WETHGateway is L1ERC20Gateway {
         address _router,
         address _messenger
     ) external initializer {
-        require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 

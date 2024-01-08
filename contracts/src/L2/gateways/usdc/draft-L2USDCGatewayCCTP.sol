@@ -28,12 +28,20 @@ contract L2USDCGatewayCCTP is CCTPGatewayBase, L2ERC20Gateway {
     constructor(
         address _l1USDC,
         address _l2USDC,
-        uint32 _destinationDomain
-    ) CCTPGatewayBase(_l1USDC, _l2USDC, _destinationDomain) {
+        uint32 _destinationDomain,
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) CCTPGatewayBase(_l1USDC, _l2USDC, _destinationDomain) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_router == address(0)) revert ErrorZeroAddress();
+
         _disableInitializers();
     }
 
     /// @notice Initialize the storage of L2USDCGatewayCCTP.
+    ///
+    /// @dev The parameters `_counterpart`, `_router`, `_messenger` are no longer used.
+    ///
     /// @param _counterpart The address of L1USDCGatewayCCTP in L1.
     /// @param _router The address of L2GatewayRouter.
     /// @param _messenger The address of L2ScrollMessenger.
@@ -46,7 +54,6 @@ contract L2USDCGatewayCCTP is CCTPGatewayBase, L2ERC20Gateway {
         address _cctpMessenger,
         address _cctpTransmitter
     ) external initializer {
-        require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
         CCTPGatewayBase._initialize(_cctpMessenger, _cctpTransmitter);
     }

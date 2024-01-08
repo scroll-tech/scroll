@@ -27,14 +27,21 @@ abstract contract ScrollMessengerBase is
     event UpdateFeeVault(address _oldFeeVault, address _newFeeVault);
 
     /*************
+     * Constants *
+     *************/
+
+    /// @notice The address of counterpart ScrollMessenger contract in L1/L2.
+    address public immutable counterpart;
+
+    /*************
      * Variables *
      *************/
 
     /// @notice See {IScrollMessenger-xDomainMessageSender}
     address public override xDomainMessageSender;
 
-    /// @notice The address of counterpart ScrollMessenger contract in L1/L2.
-    address public counterpart;
+    /// @dev The storage slot used as counterpart ScrollMessenger contract, which is deprecated now.
+    address private __counterpart;
 
     /// @notice The address of fee vault, collecting cross domain messaging fee.
     address public feeVault;
@@ -61,7 +68,15 @@ abstract contract ScrollMessengerBase is
      * Constructor *
      ***************/
 
-    function __ScrollMessengerBase_init(address _counterpart, address _feeVault) internal onlyInitializing {
+    constructor(address _counterpart) {
+        if (_counterpart == address(0)) {
+            revert ErrorZeroAddress();
+        }
+
+        counterpart = _counterpart;
+    }
+
+    function __ScrollMessengerBase_init(address, address _feeVault) internal onlyInitializing {
         OwnableUpgradeable.__Ownable_init();
         PausableUpgradeable.__Pausable_init();
         ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
@@ -69,7 +84,6 @@ abstract contract ScrollMessengerBase is
         // initialize to a nonzero value
         xDomainMessageSender = ScrollConstants.DEFAULT_XDOMAIN_MESSAGE_SENDER;
 
-        counterpart = _counterpart;
         if (_feeVault != address(0)) {
             feeVault = _feeVault;
         }
