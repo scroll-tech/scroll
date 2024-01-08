@@ -2,7 +2,7 @@
 
 pragma solidity =0.8.16;
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
 import {IL1ETHGateway, L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
@@ -27,14 +27,14 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
     L2ETHGateway private counterpartGateway;
 
     function setUp() public {
-        setUpBase();
-
-        // Deploy L1 contracts
-        gateway = _deployGateway();
-        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
+        __L1GatewayTestBase_setUp();
 
         // Deploy L2 contracts
-        counterpartGateway = new L2ETHGateway();
+        counterpartGateway = new L2ETHGateway(address(1), address(1), address(1));
+
+        // Deploy L1 contracts
+        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter(address(l1Messenger)))));
+        gateway = _deployGateway(address(l1Messenger));
 
         // Initialize L1 contracts
         gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
@@ -106,15 +106,15 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
     function testDropMessageMocking() public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only messenger can call, revert
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.onDropMessage(new bytes(0));
 
         // only called in drop context, revert
-        hevm.expectRevert("only called in drop context");
+        hevm.expectRevert(ErrorNotInDropMessageContext.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(0))
@@ -190,15 +190,15 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, address(this).balance / 2);
 
         // revert when caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeWithdrawETH(sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(gateway.finalizeWithdrawETH.selector, sender, recipient, amount, dataToCall)
@@ -341,32 +341,30 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
 
         uint256 feeToPay = feePerGas * gasLimit;
-        bytes memory message = abi.encodeWithSelector(
-            IL2ETHGateway.finalizeDepositETH.selector,
-            address(this),
-            address(this),
-            amount,
-            new bytes(0)
-        );
+        bytes memory message = useRouter
+            ? new bytes(0)
+            : abi.encodeWithSelector(
+                IL2ETHGateway.finalizeDepositETH.selector,
+                address(this),
+                address(this),
+                amount,
+                new bytes(0)
+            );
         bytes memory xDomainCalldata = abi.encodeWithSignature(
             "relayMessage(address,address,uint256,uint256,bytes)",
-            address(gateway),
-            address(counterpartGateway),
+            useRouter ? address(router) : address(gateway),
+            useRouter ? address(this) : address(counterpartGateway),
             amount,
             0,
             message
         );
 
-        if (amount == 0) {
+        if (amount == 0 && !useRouter) {
             hevm.expectRevert("deposit zero eth");
-            if (useRouter) {
-                router.depositETH{value: amount}(amount, gasLimit);
-            } else {
-                gateway.depositETH{value: amount}(amount, gasLimit);
-            }
+            gateway.depositETH{value: amount}(amount, gasLimit);
         } else {
             // emit QueueTransaction from L1MessageQueue
             {
@@ -378,12 +376,18 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
             // emit SentMessage from L1ScrollMessenger
             {
                 hevm.expectEmit(true, true, false, true);
-                emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
+                if (useRouter) {
+                    emit SentMessage(address(router), address(this), amount, 0, gasLimit, message);
+                } else {
+                    emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
+                }
             }
 
-            // emit DepositETH from L1ETHGateway
-            hevm.expectEmit(true, true, false, true);
-            emit DepositETH(address(this), address(this), amount, new bytes(0));
+            if (!useRouter) {
+                // emit DepositETH from L1ETHGateway
+                hevm.expectEmit(true, true, false, true);
+                emit DepositETH(address(this), address(this), amount, new bytes(0));
+            }
 
             uint256 messengerBalance = address(l1Messenger).balance;
             uint256 feeVaultBalance = address(feeVault).balance;
@@ -410,32 +414,30 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
 
         uint256 feeToPay = feePerGas * gasLimit;
-        bytes memory message = abi.encodeWithSelector(
-            IL2ETHGateway.finalizeDepositETH.selector,
-            address(this),
-            recipient,
-            amount,
-            new bytes(0)
-        );
+        bytes memory message = useRouter
+            ? new bytes(0)
+            : abi.encodeWithSelector(
+                IL2ETHGateway.finalizeDepositETH.selector,
+                address(this),
+                recipient,
+                amount,
+                new bytes(0)
+            );
         bytes memory xDomainCalldata = abi.encodeWithSignature(
             "relayMessage(address,address,uint256,uint256,bytes)",
-            address(gateway),
-            address(counterpartGateway),
+            useRouter ? address(router) : address(gateway),
+            useRouter ? recipient : address(counterpartGateway),
             amount,
             0,
             message
         );
 
-        if (amount == 0) {
+        if (amount == 0 && !useRouter) {
             hevm.expectRevert("deposit zero eth");
-            if (useRouter) {
-                router.depositETH{value: amount}(recipient, amount, gasLimit);
-            } else {
-                gateway.depositETH{value: amount}(recipient, amount, gasLimit);
-            }
+            gateway.depositETH{value: amount}(recipient, amount, gasLimit);
         } else {
             // emit QueueTransaction from L1MessageQueue
             {
@@ -447,12 +449,18 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
             // emit SentMessage from L1ScrollMessenger
             {
                 hevm.expectEmit(true, true, false, true);
-                emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
+                if (useRouter) {
+                    emit SentMessage(address(router), recipient, amount, 0, gasLimit, message);
+                } else {
+                    emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
+                }
             }
 
-            // emit DepositETH from L1ETHGateway
-            hevm.expectEmit(true, true, false, true);
-            emit DepositETH(address(this), recipient, amount, new bytes(0));
+            if (!useRouter) {
+                // emit DepositETH from L1ETHGateway
+                hevm.expectEmit(true, true, false, true);
+                emit DepositETH(address(this), recipient, amount, new bytes(0));
+            }
 
             uint256 messengerBalance = address(l1Messenger).balance;
             uint256 feeVaultBalance = address(feeVault).balance;
@@ -480,32 +488,30 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
 
         uint256 feeToPay = feePerGas * gasLimit;
-        bytes memory message = abi.encodeWithSelector(
-            IL2ETHGateway.finalizeDepositETH.selector,
-            address(this),
-            recipient,
-            amount,
-            dataToCall
-        );
+        bytes memory message = useRouter
+            ? dataToCall
+            : abi.encodeWithSelector(
+                IL2ETHGateway.finalizeDepositETH.selector,
+                address(this),
+                recipient,
+                amount,
+                dataToCall
+            );
         bytes memory xDomainCalldata = abi.encodeWithSignature(
             "relayMessage(address,address,uint256,uint256,bytes)",
-            address(gateway),
-            address(counterpartGateway),
+            useRouter ? address(router) : address(gateway),
+            useRouter ? recipient : address(counterpartGateway),
             amount,
             0,
             message
         );
 
-        if (amount == 0) {
+        if (amount == 0 && !useRouter) {
             hevm.expectRevert("deposit zero eth");
-            if (useRouter) {
-                router.depositETHAndCall{value: amount}(recipient, amount, dataToCall, gasLimit);
-            } else {
-                gateway.depositETHAndCall{value: amount}(recipient, amount, dataToCall, gasLimit);
-            }
+            gateway.depositETHAndCall{value: amount}(recipient, amount, dataToCall, gasLimit);
         } else {
             // emit QueueTransaction from L1MessageQueue
             {
@@ -517,12 +523,18 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
             // emit SentMessage from L1ScrollMessenger
             {
                 hevm.expectEmit(true, true, false, true);
-                emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
+                if (useRouter) {
+                    emit SentMessage(address(router), recipient, amount, 0, gasLimit, message);
+                } else {
+                    emit SentMessage(address(gateway), address(counterpartGateway), amount, 0, gasLimit, message);
+                }
             }
 
-            // emit DepositETH from L1ETHGateway
-            hevm.expectEmit(true, true, false, true);
-            emit DepositETH(address(this), recipient, amount, dataToCall);
+            if (!useRouter) {
+                // emit DepositETH from L1ETHGateway
+                hevm.expectEmit(true, true, false, true);
+                emit DepositETH(address(this), recipient, amount, dataToCall);
+            }
 
             uint256 messengerBalance = address(l1Messenger).balance;
             uint256 feeVaultBalance = address(feeVault).balance;
@@ -548,7 +560,12 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         }
     }
 
-    function _deployGateway() internal returns (L1ETHGateway) {
-        return L1ETHGateway(address(new ERC1967Proxy(address(new L1ETHGateway()), new bytes(0))));
+    function _deployGateway(address messenger) internal returns (L1ETHGateway _gateway) {
+        _gateway = L1ETHGateway(_deployProxy(address(0)));
+
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(_gateway)),
+            address(new L1ETHGateway(address(counterpartGateway), address(router), address(messenger)))
+        );
     }
 }

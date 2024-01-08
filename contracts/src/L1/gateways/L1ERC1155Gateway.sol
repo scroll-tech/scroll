@@ -41,7 +41,11 @@ contract L1ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL1ERC
      * Constructor *
      ***************/
 
-    constructor() {
+    /// @notice Constructor for `L1ERC1155Gateway` implementation contract.
+    ///
+    /// @param _counterpart The address of `L1ERC1155Gateway` contract in L2.
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    constructor(address _counterpart, address _messenger) ScrollGatewayBase(_counterpart, address(0), _messenger) {
         _disableInitializers();
     }
 

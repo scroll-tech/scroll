@@ -148,17 +148,17 @@ Import layer 2 genesis block
 function initialize(address _messageQueue, address _verifier, uint256 _maxNumTxInChunk) external nonpayable
 ```
 
+Initialize the storage of ScrollChain.
 
-
-
+*The parameters `_messageQueue` are no longer used.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _messageQueue | address | undefined |
-| _verifier | address | undefined |
-| _maxNumTxInChunk | uint256 | undefined |
+| _messageQueue | address | The address of `L1MessageQueue` contract. |
+| _verifier | address | The address of zkevm verifier contract. |
+| _maxNumTxInChunk | uint256 | The maximum number of transactions allowed in each chunk. |
 
 ### isBatchFinalized
 
@@ -283,7 +283,7 @@ The maximum number of transactions allowed in each chunk.
 function messageQueue() external view returns (address)
 ```
 
-The address of L1MessageQueue.
+The address of L1MessageQueue contract.
 
 
 
@@ -435,22 +435,6 @@ Update the value of `maxNumTxInChunk`.
 | Name | Type | Description |
 |---|---|---|
 | _maxNumTxInChunk | uint256 | The new value of `maxNumTxInChunk`. |
-
-### updateVerifier
-
-```solidity
-function updateVerifier(address _newVerifier) external nonpayable
-```
-
-Update the address verifier contract.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newVerifier | address | The address of new verifier contract. |
 
 ### verifier
 
@@ -664,22 +648,19 @@ Emitted when owner updates the status of sequencer.
 | account `indexed` | address | The address of account updated. |
 | status  | bool | The status of the account updated. |
 
-### UpdateVerifier
+
+
+## Errors
+
+### ErrorZeroAddress
 
 ```solidity
-event UpdateVerifier(address indexed oldVerifier, address indexed newVerifier)
+error ErrorZeroAddress()
 ```
 
-Emitted when the address of rollup verifier is updated.
 
 
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| oldVerifier `indexed` | address | The address of old rollup verifier. |
-| newVerifier `indexed` | address | The address of new rollup verifier. |
+*Thrown when the given address is `address(0)`.*
 
 
 

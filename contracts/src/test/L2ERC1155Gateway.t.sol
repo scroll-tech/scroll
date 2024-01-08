@@ -14,6 +14,16 @@ import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
 import {MockERC1155Recipient} from "./mocks/MockERC1155Recipient.sol";
 
 contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
+    /**********
+     * Errors *
+     **********/
+
+    // from IScrollGateway
+    error ErrorZeroAddress();
+    error ErrorCallerIsNotMessenger();
+    error ErrorCallerIsNotCounterpartGateway();
+    error ErrorNotInDropMessageContext();
+
     uint256 private constant TOKEN_COUNT = 100;
 
     MockScrollMessenger private messenger;
@@ -25,9 +35,9 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
 
     function setUp() public {
         messenger = new MockScrollMessenger();
+        counterpart = new L1ERC1155Gateway(address(1), address(1));
 
-        counterpart = new L1ERC1155Gateway();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(messenger));
         gateway.initialize(address(counterpart), address(messenger));
 
         token = new MockERC1155();
@@ -201,11 +211,11 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
     /// @dev failed to finalize deposit erc1155
     function testFinalizeDepositERC1155Failed() public {
         // should revert, called by non-messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeDepositERC1155(address(0), address(0), address(0), address(0), 0, 1);
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -221,7 +231,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -270,7 +280,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
     /// @dev failed to finalize batch deposit erc1155
     function testFinalizeBatchDepositERC1155Failed() public {
         // should revert, called by non-messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeBatchDepositERC1155(
             address(0),
             address(0),
@@ -281,7 +291,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         );
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -297,7 +307,7 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -350,7 +360,15 @@ contract L2ERC1155GatewayTest is DSTestPlus, ERC1155TokenReceiver {
         }
     }
 
-    function _deployGateway() internal returns (L2ERC1155Gateway) {
-        return L2ERC1155Gateway(address(new ERC1967Proxy(address(new L2ERC1155Gateway()), new bytes(0))));
+    function _deployGateway(address _messenger) internal returns (L2ERC1155Gateway) {
+        return
+            L2ERC1155Gateway(
+                address(
+                    new ERC1967Proxy(
+                        address(new L2ERC1155Gateway(address(counterpart), address(_messenger))),
+                        new bytes(0)
+                    )
+                )
+            );
     }
 }

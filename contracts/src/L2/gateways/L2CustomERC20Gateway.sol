@@ -35,17 +35,34 @@ contract L2CustomERC20Gateway is L2ERC20Gateway {
     /***************
      * Constructor *
      ***************/
-    constructor() {
+
+    /// @notice Constructor for `L2CustomERC20Gateway` implementation contract.
+    ///
+    /// @param _counterpart The address of `L1CustomERC20Gateway` contract in L1.
+    /// @param _router The address of `L2GatewayRouter` contract in L2.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
+    constructor(
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_router == address(0)) revert ErrorZeroAddress();
+
         _disableInitializers();
     }
 
+    /// @notice Initialize the storage of `L2CustomERC20Gateway`.
+    ///
+    /// @dev The parameters `_counterpart`, `_router` and `_messenger` are no longer used.
+    ///
+    /// @param _counterpart The address of `L1CustomERC20Gateway` contract in L1.
+    /// @param _router The address of `L2GatewayRouter` contract in L2.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
     function initialize(
         address _counterpart,
         address _router,
         address _messenger
     ) external initializer {
-        require(_router != address(0), "zero router address");
-
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 

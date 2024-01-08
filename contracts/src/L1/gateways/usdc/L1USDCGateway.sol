@@ -49,15 +49,35 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
      * Constructor *
      ***************/
 
-    constructor(address _l1USDC, address _l2USDC) {
+    /// @notice Constructor for `L1USDCGateway` implementation contract.
+    ///
+    /// @param _l1USDC The address of USDC in L1.
+    /// @param _l2USDC The address of USDC in L2.
+    /// @param _counterpart The address of `L2USDCGateway` contract in L2.
+    /// @param _router The address of `L1GatewayRouter` contract.
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    constructor(
+        address _l1USDC,
+        address _l2USDC,
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_l1USDC == address(0) || _l2USDC == address(0) || _router == address(0)) {
+            revert ErrorZeroAddress();
+        }
+
         _disableInitializers();
 
         l1USDC = _l1USDC;
         l2USDC = _l2USDC;
     }
 
-    /// @notice Initialize the storage of L1WETHGateway.
-    /// @param _counterpart The address of L2ETHGateway in L2.
+    /// @notice Initialize the storage of L1USDCGateway.
+    ///
+    /// @dev The parameters `_counterpart`, `_router` and `_messenger` are no longer used.
+    ///
+    /// @param _counterpart The address of L2USDCGateway in L2.
     /// @param _router The address of L1GatewayRouter.
     /// @param _messenger The address of L1ScrollMessenger.
     function initialize(
@@ -65,7 +85,6 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
         address _router,
         address _messenger
     ) external initializer {
-        require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 
