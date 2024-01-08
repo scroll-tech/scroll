@@ -15,7 +15,7 @@ import {ScrollTestBase} from "./ScrollTestBase.t.sol";
 
 contract L1MessageQueueWithGasPriceOracleTest is ScrollTestBase {
     // events
-    event UpdateWhitelist(address indexed _oldWhitelist, address indexed _newWhitelist);
+    event UpdateWhitelistChecker(address indexed _oldWhitelistChecker, address indexed _newWhitelistChecker);
     event UpdateL2BaseFee(uint256 oldL2BaseFee, uint256 newL2BaseFee);
 
     L1MessageQueueWithGasPriceOracle private queue;
@@ -47,21 +47,21 @@ contract L1MessageQueueWithGasPriceOracleTest is ScrollTestBase {
         queue.initializeV2();
     }
 
-    function testUpdateWhitelist(address _newWhitelist) external {
-        hevm.assume(_newWhitelist != address(whitelist));
+    function testUpdateWhitelistChecker(address _newWhitelistChecker) external {
+        hevm.assume(_newWhitelistChecker != address(whitelist));
 
         // call by non-owner, should revert
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
-        queue.updateWhitelist(_newWhitelist);
+        queue.updateWhitelistChecker(_newWhitelistChecker);
         hevm.stopPrank();
 
         // call by owner, should succeed
-        assertEq(address(queue.whitelist()), address(whitelist));
+        assertEq(address(queue.whitelistChecker()), address(whitelist));
         hevm.expectEmit(true, true, false, true);
-        emit UpdateWhitelist(address(whitelist), _newWhitelist);
-        queue.updateWhitelist(_newWhitelist);
-        assertEq(address(queue.whitelist()), _newWhitelist);
+        emit UpdateWhitelistChecker(address(whitelist), _newWhitelistChecker);
+        queue.updateWhitelistChecker(_newWhitelistChecker);
+        assertEq(address(queue.whitelistChecker()), _newWhitelistChecker);
     }
 
     function testSetL2BaseFee(uint256 _baseFee1, uint256 _baseFee2) external {

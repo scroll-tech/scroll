@@ -27,8 +27,8 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
     /// @notice The latest known l2 base fee.
     uint256 public l2BaseFee;
 
-    /// @notice The address of whitelist contract.
-    address public whitelist;
+    /// @notice The address of whitelist checker contract.
+    address public whitelistChecker;
 
     /***************
      * Constructor *
@@ -48,7 +48,7 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
     /// @notice Initialize the storage of L1MessageQueueWithGasPriceOracle.
     function initializeV2() external reinitializer(2) {
         l2BaseFee = IL2GasPriceOracle(gasOracle).l2BaseFee();
-        whitelist = IL2GasPriceOracle(gasOracle).whitelist();
+        whitelistChecker = IL2GasPriceOracle(gasOracle).whitelist();
     }
 
     /*************************
@@ -82,10 +82,10 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
      * Public Mutating Functions *
      *****************************/
 
-    /// @notice Allows whitelisted caller to modify the l2 base fee.
+    /// @notice Allows whitelistCheckered caller to modify the l2 base fee.
     /// @param _newL2BaseFee The new l2 base fee.
     function setL2BaseFee(uint256 _newL2BaseFee) external {
-        if (!IWhitelist(whitelist).isSenderAllowed(_msgSender())) {
+        if (!IWhitelist(whitelistChecker).isSenderAllowed(_msgSender())) {
             revert ErrorNotWhitelistedSender();
         }
 
@@ -99,12 +99,12 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
      * Restricted Functions *
      ************************/
 
-    /// @notice Update whitelist contract.
+    /// @notice Update whitelist checker contract.
     /// @dev This function can only called by contract owner.
-    /// @param _newWhitelist The address of new whitelist contract.
-    function updateWhitelist(address _newWhitelist) external onlyOwner {
-        address _oldWhitelist = whitelist;
-        whitelist = _newWhitelist;
-        emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
+    /// @param _newWhitelistChecker The address of new whitelist checker contract.
+    function updateWhitelistChecker(address _newWhitelistChecker) external onlyOwner {
+        address _oldWhitelistChecker = whitelistChecker;
+        whitelistChecker = _newWhitelistChecker;
+        emit UpdateWhitelistChecker(_oldWhitelistChecker, _newWhitelistChecker);
     }
 }

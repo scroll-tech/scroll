@@ -9,10 +9,10 @@ interface IL1MessageQueueWithGasPriceOracle is IL1MessageQueue {
      * Events *
      **********/
 
-    /// @notice Emitted when owner updates whitelist contract.
-    /// @param _oldWhitelist The address of old whitelist contract.
-    /// @param _newWhitelist The address of new whitelist contract.
-    event UpdateWhitelist(address indexed _oldWhitelist, address indexed _newWhitelist);
+    /// @notice Emitted when owner updates whitelist checker contract.
+    /// @param _oldWhitelistChecker The address of old whitelist checker contract.
+    /// @param _newWhitelistChecker The address of new whitelist checker contract.
+    event UpdateWhitelistChecker(address indexed _oldWhitelistChecker, address indexed _newWhitelistChecker);
 
     /// @notice Emitted when current l2 base fee is updated.
     /// @param oldL2BaseFee The original l2 base fee before update.
