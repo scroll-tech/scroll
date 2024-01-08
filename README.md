@@ -13,7 +13,7 @@
 ## Directory Structure
 
 <pre>
-├── <a href="./bridge-history-api/">bridge-history-api</a>: Bridge history service that collects deposit and withdraw events from both L1 and L2 chain and generates withdrawal proofs
+├── <a href="./bridge-history-api/">bridge-history-api</a>: Bridge history service that collects deposit and withdraw events from both L1 and L2 chains and generates withdrawal proofs
 ├── <a href="./common/">common</a>: Common libraries and types
 ├── <a href="./coordinator/">coordinator</a>: Prover coordinator service that dispatches proving tasks to provers
 ├── <a href="./database">database</a>: Database client and schema definition
@@ -29,7 +29,7 @@
 We welcome community contributions to this repository. Before you submit any issues or PRs, please read the [Code of Conduct](CODE_OF_CONDUCT.md) and the [Contribution Guideline](CONTRIBUTING.md).
 
 ## Prerequisites
-+ Go 1.19
++ Go 1.20
 + Rust (for version, see [rust-toolchain](./common/libzkp/impl/rust-toolchain))
 + Hardhat / Foundry
 + Docker

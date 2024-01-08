@@ -168,7 +168,7 @@ function ethGateway() external view returns (address)
 
 The address of L1ETHGateway.
 
-
+*This variable is no longer used.*
 
 
 #### Returns
@@ -286,7 +286,7 @@ function initialize(address _ethGateway, address _defaultERC20Gateway) external 
 
 Initialize the storage of L1GatewayRouter.
 
-
+*The parameters `_ethGateway` is no longer used.*
 
 #### Parameters
 
@@ -294,6 +294,23 @@ Initialize the storage of L1GatewayRouter.
 |---|---|---|
 | _ethGateway | address | The address of L1ETHGateway contract. |
 | _defaultERC20Gateway | address | The address of default ERC20 Gateway contract. |
+
+### messenger
+
+```solidity
+function messenger() external view returns (address)
+```
+
+The address of `L1ScrollMessenger`.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 ### owner
 
@@ -615,6 +632,20 @@ Emitted when the address of ETH Gateway is updated.
 |---|---|---|
 | oldETHGateway `indexed` | address | undefined |
 | newEthGateway `indexed` | address | undefined |
+
+
+
+## Errors
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address is `address(0)`.*
 
 
 

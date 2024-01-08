@@ -6,17 +6,13 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"bridge-history-api/utils"
+	"scroll-tech/common/utils"
 )
 
-var (
-	// Set up database app info.
-	app *cli.App
-)
+var app *cli.App
 
 func init() {
 	app = cli.NewApp()
-	// Set up database app info.
 	app.Name = "db_cli"
 	app.Usage = "The Scroll Bridge-history-api DB CLI"
 	app.Flags = append(app.Flags, utils.CommonFlags...)
@@ -60,7 +56,8 @@ func init() {
 					Name:  "version",
 					Usage: "Rollback to the specified version.",
 					Value: 0,
-				}},
+				},
+			},
 		},
 	}
 }

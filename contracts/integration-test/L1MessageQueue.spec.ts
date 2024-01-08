@@ -17,10 +17,10 @@ describe("L1MessageQueue", async () => {
   let oracle: L2GasPriceOracle;
   let queue: L1MessageQueue;
 
-  const deployProxy = async (name: string, admin: string): Promise<string> => {
+  const deployProxy = async (name: string, admin: string, args: any[]): Promise<string> => {
     const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
     const Factory = await ethers.getContractFactory(name, deployer);
-    const impl = await Factory.deploy();
+    const impl = args.length > 0 ? await Factory.deploy(...args) : await Factory.deploy();
     await impl.deployed();
     const proxy = await TransparentUpgradeableProxy.deploy(impl.address, admin, "0x");
     await proxy.deployed();
@@ -34,16 +34,20 @@ describe("L1MessageQueue", async () => {
     const admin = await ProxyAdmin.deploy();
     await admin.deployed();
 
-    queue = await ethers.getContractAt("L1MessageQueue", await deployProxy("L1MessageQueue", admin.address), deployer);
+    queue = await ethers.getContractAt(
+      "L1MessageQueue",
+      await deployProxy("L1MessageQueue", admin.address, [messenger.address, scrollChain.address, gateway.address]),
+      deployer
+    );
 
     oracle = await ethers.getContractAt(
       "L2GasPriceOracle",
-      await deployProxy("L2GasPriceOracle", admin.address),
+      await deployProxy("L2GasPriceOracle", admin.address, []),
       deployer
     );
 
     await oracle.initialize(21000, 50000, 8, 16);
-    await queue.initialize(messenger.address, scrollChain.address, gateway.address, oracle.address, 10000000);
+    await queue.initialize(messenger.address, scrollChain.address, constants.AddressZero, oracle.address, 10000000);
   });
 
   context("auth", async () => {
@@ -75,22 +79,6 @@ describe("L1MessageQueue", async () => {
           .to.emit(queue, "UpdateGasOracle")
           .withArgs(oracle.address, deployer.address);
         expect(await queue.gasOracle()).to.eq(deployer.address);
-      });
-    });
-
-    context("#updateEnforcedTxGateway", async () => {
-      it("should revert, when non-owner call", async () => {
-        await expect(queue.connect(signer).updateEnforcedTxGateway(constants.AddressZero)).to.revertedWith(
-          "Ownable: caller is not the owner"
-        );
-      });
-
-      it("should succeed", async () => {
-        expect(await queue.enforcedTxGateway()).to.eq(gateway.address);
-        await expect(queue.updateEnforcedTxGateway(deployer.address))
-          .to.emit(queue, "UpdateEnforcedTxGateway")
-          .withArgs(gateway.address, deployer.address);
-        expect(await queue.enforcedTxGateway()).to.eq(deployer.address);
       });
     });
 

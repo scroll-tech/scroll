@@ -1,13 +1,15 @@
 package app
 
 import (
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 	"gorm.io/gorm"
 
-	"bridge-history-api/config"
-	"bridge-history-api/orm/migrate"
-	"bridge-history-api/utils"
+	"scroll-tech/common/database"
+	"scroll-tech/common/utils"
+
+	"scroll-tech/bridge-history-api/internal/config"
+	"scroll-tech/bridge-history-api/internal/orm/migrate"
 )
 
 func getConfig(ctx *cli.Context) (*config.Config, error) {
@@ -19,8 +21,8 @@ func getConfig(ctx *cli.Context) (*config.Config, error) {
 	return dbCfg, nil
 }
 
-func initDB(dbCfg *config.DBConfig) (*gorm.DB, error) {
-	return utils.InitDB(dbCfg)
+func initDB(dbCfg *database.Config) (*gorm.DB, error) {
+	return database.InitDB(dbCfg)
 }
 
 // resetDB clean or reset database.

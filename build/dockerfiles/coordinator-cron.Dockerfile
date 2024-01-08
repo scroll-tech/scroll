@@ -1,5 +1,5 @@
 # Download Go dependencies
-FROM scrolltech/go-alpine-builder:1.19 as base
+FROM scrolltech/go-alpine-builder:1.20 as base
 
 WORKDIR /src
 COPY go.work* ./

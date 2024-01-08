@@ -10,6 +10,10 @@ import {L2GasPriceOracle} from "../L1/rollup/L2GasPriceOracle.sol";
 import {Whitelist} from "../L2/predeploys/Whitelist.sol";
 
 contract L2GasPriceOracleTest is DSTestPlus {
+    // events
+    event L2BaseFeeUpdated(uint256 oldL2BaseFee, uint256 newL2BaseFee);
+    event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
+
     L2GasPriceOracle private oracle;
     Whitelist private whitelist;
     uint256 fee;
@@ -54,9 +58,33 @@ contract L2GasPriceOracleTest is DSTestPlus {
         oracle.setIntrinsicParams(1, 0, 0, 1);
     }
 
-    // forge t --match-contract L2GasPriceOracleTest --match-test testBenchmark --gas-report
-    // function testBenchmark() external {
-    //     // 50 bytes
-    //     fee = oracle.calculateIntrinsicGasFee(hex"11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111");
-    // }
+    function testSetL2BaseFee(uint256 _baseFee1, uint256 _baseFee2) external {
+        // call by non-whitelister, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("Not whitelisted sender");
+        oracle.setL2BaseFee(_baseFee1);
+        hevm.stopPrank();
+
+        // call by owner, should succeed
+        assertEq(oracle.l2BaseFee(), 0);
+        hevm.expectEmit(false, false, false, true);
+        emit L2BaseFeeUpdated(0, _baseFee1);
+        oracle.setL2BaseFee(_baseFee1);
+        assertEq(oracle.l2BaseFee(), _baseFee1);
+
+        hevm.expectEmit(false, false, false, true);
+        emit L2BaseFeeUpdated(_baseFee1, _baseFee2);
+        oracle.setL2BaseFee(_baseFee2);
+        assertEq(oracle.l2BaseFee(), _baseFee2);
+    }
+
+    function testEstimateCrossDomainMessageFee(uint256 baseFee, uint256 gasLimit) external {
+        gasLimit = bound(gasLimit, 0, 3000000);
+        baseFee = bound(baseFee, 0, 1000000000);
+
+        assertEq(oracle.estimateCrossDomainMessageFee(gasLimit), 0);
+
+        oracle.setL2BaseFee(baseFee);
+        assertEq(oracle.estimateCrossDomainMessageFee(gasLimit), baseFee * gasLimit);
+    }
 }
