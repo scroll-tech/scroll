@@ -106,7 +106,7 @@ func action(ctx *cli.Context) error {
 		log.Info("Graceful shutdown initiated")
 
 		// Cancel the loop context to immediately stop the periodic goroutines that are responsible
-		// for sending new transactions. Only waiting for confirmation of in-flight transactions.
+		// for adding new transactions to senders. Only waiting for confirmation of in-flight transactions.
 		loopCancel()
 
 		// Close relayers to ensure all pending transactions are processed.
