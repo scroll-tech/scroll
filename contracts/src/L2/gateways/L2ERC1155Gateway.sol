@@ -39,10 +39,21 @@ contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC
     /***************
      * Constructor *
      ***************/
-    constructor() {
+
+    /// @notice Constructor for `L2ERC1155Gateway` implementation contract.
+    ///
+    /// @param _counterpart The address of `L1ERC1155Gateway` contract in L1.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
+    constructor(address _counterpart, address _messenger) ScrollGatewayBase(_counterpart, address(0), _messenger) {
         _disableInitializers();
     }
 
+    /// @notice Initialize the storage of `L2ERC1155Gateway`.
+    ///
+    /// @dev The parameters `_counterpart` and `_messenger` are no longer used.
+    ///
+    /// @param _counterpart The address of `L1ERC1155Gateway` contract in L1.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
     function initialize(address _counterpart, address _messenger) external initializer {
         ERC1155HolderUpgradeable.__ERC1155Holder_init();
         ERC1155ReceiverUpgradeable.__ERC1155Receiver_init();

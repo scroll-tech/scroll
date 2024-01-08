@@ -6,7 +6,7 @@ import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {MockERC1155} from "solmate/test/utils/mocks/MockERC1155.sol";
 import {ERC1155TokenReceiver} from "solmate/tokens/ERC1155.sol";
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {IL1ERC1155Gateway, L1ERC1155Gateway} from "../L1/gateways/L1ERC1155Gateway.sol";
 import {IL1ScrollMessenger} from "../L1/IL1ScrollMessenger.sol";
@@ -67,17 +67,17 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
     MockERC1155Recipient private mockRecipient;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
 
         // Deploy tokens
         l1Token = new MockERC1155();
         l2Token = new MockERC1155();
 
-        // Deploy L1 contracts
-        gateway = _deployGateway();
-
         // Deploy L2 contracts
-        counterpartGateway = new L2ERC1155Gateway();
+        counterpartGateway = new L2ERC1155Gateway(address(1), address(1));
+
+        // Deploy L1 contracts
+        gateway = _deployGateway(address(l1Messenger));
 
         // Initialize L1 contracts
         gateway.initialize(address(counterpartGateway), address(l1Messenger));
@@ -162,15 +162,15 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
 
     function testDropMessageMocking() public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only messenger can call, revert
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.onDropMessage(new bytes(0));
 
         // only called in drop context, revert
-        hevm.expectRevert("only called in drop context");
+        hevm.expectRevert(ErrorNotInDropMessageContext.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(gateway.onDropMessage.selector, new bytes(0))
@@ -287,15 +287,15 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         amount = bound(amount, 1, MAX_TOKEN_BALANCE);
 
         // revert when caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeWithdrawERC1155(address(l1Token), address(l2Token), sender, recipient, tokenId, amount);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only call by counterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -465,7 +465,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         }
 
         // revert when caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeBatchWithdrawERC1155(
             address(l1Token),
             address(l2Token),
@@ -476,11 +476,11 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         );
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
 
         // only call by counterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -672,7 +672,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         uint256 amount
     ) public {
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(mockMessenger));
         l1Token.setApprovalForAll(address(gateway), true);
 
@@ -742,7 +742,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
         bytes memory message = abi.encodeWithSelector(
@@ -810,7 +810,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
         bytes memory message = abi.encodeWithSelector(
@@ -889,7 +889,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
         uint256[] memory _tokenIds = new uint256[](tokenCount);
@@ -974,7 +974,7 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
 
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
         uint256 feeToPay = feePerGas * gasLimit;
 
         uint256[] memory _tokenIds = new uint256[](tokenCount);
@@ -1053,7 +1053,12 @@ contract L1ERC1155GatewayTest is L1GatewayTestBase, ERC1155TokenReceiver {
         assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
     }
 
-    function _deployGateway() internal returns (L1ERC1155Gateway) {
-        return L1ERC1155Gateway(address(new ERC1967Proxy(address(new L1ERC1155Gateway()), new bytes(0))));
+    function _deployGateway(address messenger) internal returns (L1ERC1155Gateway _gateway) {
+        _gateway = L1ERC1155Gateway(_deployProxy(address(0)));
+
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(_gateway)),
+            address(new L1ERC1155Gateway(address(counterpartGateway), address(messenger)))
+        );
     }
 }

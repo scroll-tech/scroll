@@ -20,14 +20,24 @@ import {L1ERC20Gateway} from "./L1ERC20Gateway.sol";
 /// should use a separate gateway.
 contract L1StandardERC20Gateway is L1ERC20Gateway {
     /*************
-     * Variables *
+     * Constants *
      *************/
 
     /// @notice The address of ScrollStandardERC20 implementation in L2.
-    address public l2TokenImplementation;
+    address public immutable l2TokenImplementation;
 
     /// @notice The address of ScrollStandardERC20Factory contract in L2.
-    address public l2TokenFactory;
+    address public immutable l2TokenFactory;
+
+    /*************
+     * Variables *
+     *************/
+
+    /// @dev The storage slot used as ScrollStandardERC20 implementation in L2, which is deprecated now.
+    address private __l2TokenImplementation;
+
+    /// @dev The storage slot used as ScrollStandardERC20Factory contract in L2, which is deprecated now.
+    address private __l2TokenFactory;
 
     /// @notice Mapping from l1 token address to l2 token address.
     /// @dev This is not necessary, since we can compute the address directly. But, we use this mapping
@@ -39,11 +49,35 @@ contract L1StandardERC20Gateway is L1ERC20Gateway {
      * Constructor *
      ***************/
 
-    constructor() {
+    /// @notice Constructor for `L1StandardERC20Gateway` implementation contract.
+    ///
+    /// @param _counterpart The address of `L2StandardERC20Gateway` contract in L2.
+    /// @param _router The address of `L1GatewayRouter` contract.
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    /// @param _l2TokenImplementation The address of `ScrollStandardERC20` implementation in L2.
+    /// @param _l2TokenFactory The address of `ScrollStandardERC20Factory` contract in L2.
+    constructor(
+        address _counterpart,
+        address _router,
+        address _messenger,
+        address _l2TokenImplementation,
+        address _l2TokenFactory
+    ) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_router == address(0) || _l2TokenImplementation == address(0) || _l2TokenFactory == address(0)) {
+            revert ErrorZeroAddress();
+        }
+
         _disableInitializers();
+
+        l2TokenImplementation = _l2TokenImplementation;
+        l2TokenFactory = _l2TokenFactory;
     }
 
     /// @notice Initialize the storage of L1StandardERC20Gateway.
+    ///
+    /// @dev The parameters `_counterpart`, `_router`, `_messenger`, `_l2TokenImplementation` and
+    /// `_l2TokenFactory` are no longer used.
+    ///
     /// @param _counterpart The address of L2StandardERC20Gateway in L2.
     /// @param _router The address of L1GatewayRouter.
     /// @param _messenger The address of L1ScrollMessenger.
@@ -56,14 +90,10 @@ contract L1StandardERC20Gateway is L1ERC20Gateway {
         address _l2TokenImplementation,
         address _l2TokenFactory
     ) external initializer {
-        require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
 
-        require(_l2TokenImplementation != address(0), "zero implementation hash");
-        require(_l2TokenFactory != address(0), "zero factory address");
-
-        l2TokenImplementation = _l2TokenImplementation;
-        l2TokenFactory = _l2TokenFactory;
+        __l2TokenImplementation = _l2TokenImplementation;
+        __l2TokenFactory = _l2TokenFactory;
     }
 
     /*************************

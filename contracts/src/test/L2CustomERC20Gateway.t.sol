@@ -4,7 +4,7 @@ pragma solidity =0.8.16;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
-import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {IL1ERC20Gateway, L1CustomERC20Gateway} from "../L1/gateways/L1CustomERC20Gateway.sol";
 import {IL2ERC20Gateway, L2CustomERC20Gateway} from "../L2/gateways/L2CustomERC20Gateway.sol";
@@ -49,12 +49,12 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         l1Token = new MockERC20("Mock L1", "ML1", 18);
         l2Token = new MockERC20("Mock L2", "ML2", 18);
 
-        // Deploy L2 contracts
-        gateway = _deployGateway();
-        router = L2GatewayRouter(address(new ERC1967Proxy(address(new L2GatewayRouter()), new bytes(0))));
-
         // Deploy L1 contracts
-        counterpartGateway = new L1CustomERC20Gateway();
+        counterpartGateway = new L1CustomERC20Gateway(address(1), address(1), address(1));
+
+        // Deploy L2 contracts
+        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter(address(l2Messenger)))));
+        gateway = _deployGateway(address(l2Messenger));
 
         // Initialize L2 contracts
         gateway.initialize(address(counterpartGateway), address(router), address(l2Messenger));
@@ -72,6 +72,9 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         assertEq(address(l2Messenger), gateway.messenger());
 
         assertEq(address(0), gateway.getL1ERC20Address(address(l2Token)));
+
+        hevm.expectRevert("unimplemented");
+        gateway.getL2ERC20Address(address(l1Token));
 
         hevm.expectRevert("Initializable: contract is already initialized");
         gateway.initialize(address(counterpartGateway), address(router), address(l2Messenger));
@@ -124,6 +127,33 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         _withdrawERC20WithRecipientAndCalldata(false, amount, recipient, dataToCall, gasLimit, feePerGas);
     }
 
+    function testWithdrawERC20ByRouter(
+        uint256 amount,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _withdrawERC20(true, amount, gasLimit, feePerGas);
+    }
+
+    function testWithdrawERC20WithRecipientByRouter(
+        uint256 amount,
+        address recipient,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _withdrawERC20WithRecipient(true, amount, recipient, gasLimit, feePerGas);
+    }
+
+    function testWithdrawERC20WithRecipientAndCalldataByRouter(
+        uint256 amount,
+        address recipient,
+        bytes memory dataToCall,
+        uint256 gasLimit,
+        uint256 feePerGas
+    ) public {
+        _withdrawERC20WithRecipientAndCalldata(true, amount, recipient, dataToCall, gasLimit, feePerGas);
+    }
+
     function testFinalizeDepositERC20FailedMocking(
         address sender,
         address recipient,
@@ -133,15 +163,15 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         amount = bound(amount, 1, 100000);
 
         // revert when caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeDepositERC20(address(l1Token), address(l2Token), sender, recipient, amount, dataToCall);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
         // only call by counterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -542,7 +572,12 @@ contract L2CustomERC20GatewayTest is L2GatewayTestBase {
         }
     }
 
-    function _deployGateway() internal returns (L2CustomERC20Gateway) {
-        return L2CustomERC20Gateway(address(new ERC1967Proxy(address(new L2CustomERC20Gateway()), new bytes(0))));
+    function _deployGateway(address messenger) internal returns (L2CustomERC20Gateway _gateway) {
+        _gateway = L2CustomERC20Gateway(_deployProxy(address(0)));
+
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(_gateway)),
+            address(new L2CustomERC20Gateway(address(counterpartGateway), address(router), address(messenger)))
+        );
     }
 }

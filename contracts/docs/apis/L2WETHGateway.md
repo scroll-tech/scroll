@@ -115,17 +115,17 @@ Return the corresponding l2 token address given l1 token address.
 function initialize(address _counterpart, address _router, address _messenger) external nonpayable
 ```
 
+Initialize the storage of `L2WETHGateway`.
 
-
-
+*The parameters `_counterpart`, `_router` and `_messenger` are no longer used.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
-| _router | address | undefined |
-| _messenger | address | undefined |
+| _counterpart | address | The address of `L1WETHGateway` contract in L1. |
+| _router | address | The address of `L2GatewayRouter` contract in L2. |
+| _messenger | address | The address of `L2ScrollMessenger` contract in L2. |
 
 ### l1WETH
 
@@ -357,6 +357,53 @@ Emitted when someone withdraw ERC20 token from L2 to L1.
 | to  | address | undefined |
 | amount  | uint256 | undefined |
 | data  | bytes | undefined |
+
+
+
+## Errors
+
+### ErrorCallerIsNotCounterpartGateway
+
+```solidity
+error ErrorCallerIsNotCounterpartGateway()
+```
+
+
+
+*Thrown when the cross chain sender is not the counterpart gateway contract.*
+
+
+### ErrorCallerIsNotMessenger
+
+```solidity
+error ErrorCallerIsNotMessenger()
+```
+
+
+
+*Thrown when the caller is not corresponding `L1ScrollMessenger` or `L2ScrollMessenger`.*
+
+
+### ErrorNotInDropMessageContext
+
+```solidity
+error ErrorNotInDropMessageContext()
+```
+
+
+
+*Thrown when ScrollMessenger is not dropping message.*
+
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address is `address(0)`.*
 
 
 

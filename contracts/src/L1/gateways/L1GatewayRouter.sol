@@ -6,6 +6,7 @@ import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Own
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
+import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ETHGateway} from "./IL1ETHGateway.sol";
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
 import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
@@ -18,11 +19,26 @@ import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
 contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /**********
+     * Errors *
+     **********/
+
+    /// @dev Thrown when the given address is `address(0)`.
+    error ErrorZeroAddress();
+
+    /*************
+     * Constants *
+     *************/
+
+    /// @notice The address of `L1ScrollMessenger`.
+    address public immutable messenger;
+
     /*************
      * Variables *
      *************/
 
     /// @notice The address of L1ETHGateway.
+    /// @dev This variable is no longer used.
     address public ethGateway;
 
     /// @notice The addess of default ERC20 gateway, normally the L1StandardERC20Gateway contract.
@@ -53,11 +69,18 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
      * Constructor *
      ***************/
 
-    constructor() {
+    constructor(address _messenger) {
+        if (_messenger == address(0)) revert ErrorZeroAddress();
+
         _disableInitializers();
+
+        messenger = _messenger;
     }
 
     /// @notice Initialize the storage of L1GatewayRouter.
+    ///
+    /// @dev The parameters `_ethGateway` is no longer used.
+    ///
     /// @param _ethGateway The address of L1ETHGateway contract.
     /// @param _defaultERC20Gateway The address of default ERC20 Gateway contract.
     function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
@@ -200,13 +223,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         bytes memory _data,
         uint256 _gasLimit
     ) public payable override onlyNotInContext {
-        address _gateway = ethGateway;
-        require(_gateway != address(0), "eth gateway available");
-
-        // encode msg.sender with _data
-        bytes memory _routerData = abi.encode(_msgSender(), _data);
-
-        IL1ETHGateway(_gateway).depositETHAndCall{value: msg.value}(_to, _amount, _routerData, _gasLimit);
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(_to, _amount, _data, _gasLimit, _msgSender());
     }
 
     /// @inheritdoc IL1ETHGateway
