@@ -104,7 +104,8 @@ func action(ctx *cli.Context) error {
 	defer func() {
 		log.Info("Graceful shutdown initiated")
 
-		// Prevent new transactions by canceling the loop context.
+		// Cancel the loop context to immediately stop the periodic goroutines that are responsible
+		// for sending new transactions. Only waiting for confirmation of in-flight transactions.
 		loopCancel()
 
 		// Close relayers to ensure all pending transactions are processed.
@@ -112,7 +113,8 @@ func action(ctx *cli.Context) error {
 		l1relayer.Close()
 		l2relayer.Close()
 
-		// Halt confirmation signal handling by canceling the instance context.
+		// Cancel the instance context to stop all operations across the application,
+		// which includes halting the processing of any ongoing confirmation signals.
 		instanceCancel()
 
 		// Close the database connection.
