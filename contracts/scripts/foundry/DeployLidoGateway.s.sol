@@ -21,16 +21,36 @@ contract DeployLidoGateway is Script {
 
     address L2_WSTETH_ADDR = vm.envAddress("L2_WSTETH_ADDR");
 
+    address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
+    address L1_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L1_GATEWAY_ROUTER_PROXY_ADDR");
+    address L1_LIDO_GATEWAY_PROXY_ADDR = vm.envAddress("L1_LIDO_GATEWAY_PROXY_ADDR");
+
+    address L2_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_PROXY_ADDR");
+    address L2_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L2_GATEWAY_ROUTER_PROXY_ADDR");
+    address L2_LIDO_GATEWAY_PROXY_ADDR = vm.envAddress("L2_LIDO_GATEWAY_PROXY_ADDR");
+
     function run() external {
         vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
 
         if (keccak256(abi.encodePacked(NETWORK)) == keccak256(abi.encodePacked("L1"))) {
             // depoly l1 lido gateway
-            L1LidoGateway gateway = new L1LidoGateway(L1_WSTETH_ADDR, L2_WSTETH_ADDR);
+            L1LidoGateway gateway = new L1LidoGateway(
+                L1_WSTETH_ADDR,
+                L2_WSTETH_ADDR,
+                L2_LIDO_GATEWAY_PROXY_ADDR,
+                L1_GATEWAY_ROUTER_PROXY_ADDR,
+                L1_SCROLL_MESSENGER_PROXY_ADDR
+            );
             logAddress("L1_LIDO_GATEWAY_IMPLEMENTATION_ADDR", address(gateway));
         } else if (keccak256(abi.encodePacked(NETWORK)) == keccak256(abi.encodePacked("L2"))) {
             // depoly l2 lido gateway
-            L2LidoGateway gateway = new L2LidoGateway(L1_WSTETH_ADDR, L2_WSTETH_ADDR);
+            L2LidoGateway gateway = new L2LidoGateway(
+                L1_WSTETH_ADDR,
+                L2_WSTETH_ADDR,
+                L1_LIDO_GATEWAY_PROXY_ADDR,
+                L2_GATEWAY_ROUTER_PROXY_ADDR,
+                L2_SCROLL_MESSENGER_PROXY_ADDR
+            );
             logAddress("L2_LIDO_GATEWAY_IMPLEMENTATION_ADDR", address(gateway));
         }
 

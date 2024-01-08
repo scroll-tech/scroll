@@ -5,6 +5,7 @@ pragma solidity =0.8.16;
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
 import {IL2ERC20Gateway} from "../../L2/gateways/IL2ERC20Gateway.sol";
@@ -73,12 +74,12 @@ contract L2LidoGatewayTest is L2GatewayTestBase {
         l1Token = new MockERC20("Mock L1", "ML1", 18);
         l2Token = ScrollStandardERC20(address(new ERC1967Proxy(address(new ScrollStandardERC20()), new bytes(0))));
 
-        // Deploy L2 contracts
-        gateway = _deployGateway();
-        router = L2GatewayRouter(address(new ERC1967Proxy(address(new L2GatewayRouter()), new bytes(0))));
-
         // Deploy L1 contracts
-        counterpartGateway = new L1LidoGateway(address(l1Token), address(l2Token));
+        counterpartGateway = new L1LidoGateway(address(l1Token), address(l2Token), address(1), address(1), address(1));
+
+        // Deploy L2 contracts
+        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter(address(l2Messenger)))));
+        gateway = _deployGateway(address(l2Messenger));
 
         // Initialize L2 contracts
         gateway.initialize(address(counterpartGateway), address(router), address(l2Messenger));
@@ -337,12 +338,12 @@ contract L2LidoGatewayTest is L2GatewayTestBase {
         );
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        MockL2LidoGateway mockGateway = _deployGateway();
+        MockL2LidoGateway mockGateway = _deployGateway(address(mockMessenger));
         mockGateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
         mockGateway.initializeV2(address(0), address(0), address(0), address(0));
 
         // revert caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         mockGateway.finalizeDepositERC20(
             address(l1Token),
             address(l2Token),
@@ -353,7 +354,7 @@ contract L2LidoGatewayTest is L2GatewayTestBase {
         );
 
         // revert not called by counterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(address(mockGateway), message);
 
         // revert when reentrant
@@ -545,12 +546,20 @@ contract L2LidoGatewayTest is L2GatewayTestBase {
         }
     }
 
-    function _deployGateway() internal returns (MockL2LidoGateway) {
-        return
-            MockL2LidoGateway(
-                address(
-                    new ERC1967Proxy(address(new MockL2LidoGateway(address(l1Token), address(l2Token))), new bytes(0))
+    function _deployGateway(address messenger) internal returns (MockL2LidoGateway _gateway) {
+        _gateway = MockL2LidoGateway(_deployProxy(address(0)));
+
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(_gateway)),
+            address(
+                new MockL2LidoGateway(
+                    address(l1Token),
+                    address(l2Token),
+                    address(counterpartGateway),
+                    address(router),
+                    address(messenger)
                 )
-            );
+            )
+        );
     }
 }

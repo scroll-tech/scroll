@@ -5,6 +5,7 @@ pragma solidity =0.8.16;
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {IL1ERC20Gateway} from "../../L1/gateways/IL1ERC20Gateway.sol";
 import {L1GatewayRouter} from "../../L1/gateways/L1GatewayRouter.sol";
@@ -70,17 +71,18 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
     MockERC20 private l2Token;
 
     function setUp() public {
-        setUpBase();
+        __L1GatewayTestBase_setUp();
+
         // Deploy tokens
         l1Token = new MockERC20("Mock L1", "ML1", 18);
         l2Token = new MockERC20("Mock L2", "ML2", 18);
 
-        // Deploy L1 contracts
-        gateway = _deployGateway();
-        router = L1GatewayRouter(address(new ERC1967Proxy(address(new L1GatewayRouter()), new bytes(0))));
-
         // Deploy L2 contracts
-        counterpartGateway = new L2LidoGateway(address(l1Token), address(l2Token));
+        counterpartGateway = new L2LidoGateway(address(l1Token), address(l2Token), address(1), address(1), address(1));
+
+        // Deploy L1 contracts
+        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter(address(l1Messenger)))));
+        gateway = _deployGateway(address(l1Messenger));
 
         // Initialize L1 contracts
         gateway.initialize(address(counterpartGateway), address(router), address(l1Messenger));
@@ -335,16 +337,16 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         gateway.depositERC20AndCall(address(l1Token), recipient, amount, new bytes(0), defaultGasLimit);
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        MockL1LidoGateway mockGateway = _deployGateway();
+        MockL1LidoGateway mockGateway = _deployGateway(address(mockMessenger));
         mockGateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
         mockGateway.initializeV2(address(0), address(0), address(0), address(0));
 
         // revert caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         mockGateway.onDropMessage(new bytes(0));
 
         // revert not in drop context
-        hevm.expectRevert("only called in drop context");
+        hevm.expectRevert(ErrorNotInDropMessageContext.selector);
         mockMessenger.callTarget(address(mockGateway), abi.encodeCall(mockGateway.onDropMessage, (new bytes(0))));
 
         // revert when reentrant
@@ -416,12 +418,12 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         gateway.depositERC20(address(l1Token), amount, defaultGasLimit); // deposit some token to L1LidoGateway
 
         MockScrollMessenger mockMessenger = new MockScrollMessenger();
-        MockL1LidoGateway mockGateway = _deployGateway();
+        MockL1LidoGateway mockGateway = _deployGateway(address(mockMessenger));
         mockGateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
         mockGateway.initializeV2(address(0), address(0), address(0), address(0));
 
         // revert caller is not messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         mockGateway.finalizeWithdrawERC20(
             address(l1Token),
             address(l2Token),
@@ -432,7 +434,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         );
 
         // revert not called by counterpart
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(address(mockGateway), message);
 
         // revert when reentrant
@@ -514,7 +516,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         amount = bound(amount, 1, l1Token.balanceOf(address(this)));
         gasLimit = bound(gasLimit, defaultGasLimit / 2, defaultGasLimit);
         feePerGas = bound(feePerGas, 0, 1000);
-        gasOracle.setL2BaseFee(feePerGas);
+        messageQueue.setL2BaseFee(feePerGas);
         feePerGas = feePerGas * gasLimit;
 
         // revert when reentrant
@@ -684,12 +686,20 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         }
     }
 
-    function _deployGateway() internal returns (MockL1LidoGateway) {
-        return
-            MockL1LidoGateway(
-                address(
-                    new ERC1967Proxy(address(new MockL1LidoGateway(address(l1Token), address(l2Token))), new bytes(0))
+    function _deployGateway(address messenger) internal returns (MockL1LidoGateway _gateway) {
+        _gateway = MockL1LidoGateway(_deployProxy(address(0)));
+
+        admin.upgrade(
+            ITransparentUpgradeableProxy(address(_gateway)),
+            address(
+                new MockL1LidoGateway(
+                    address(l1Token),
+                    address(l2Token),
+                    address(counterpartGateway),
+                    address(router),
+                    address(messenger)
                 )
-            );
+            )
+        );
     }
 }

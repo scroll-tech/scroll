@@ -34,20 +34,39 @@ contract L1LidoGateway is L1ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
      * Constructor *
      ***************/
 
+    /// @notice Constructor for `L1LidoGateway` implementation contract.
+    ///
     /// @param _l1Token The address of the bridged token in the L1 chain
     /// @param _l2Token The address of the token minted on the L2 chain when token bridged
-    constructor(address _l1Token, address _l2Token) LidoBridgeableTokens(_l1Token, _l2Token) {
+    /// @param _counterpart The address of `L2LidoGateway` contract in L2.
+    /// @param _router The address of `L1GatewayRouter` contract.
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    constructor(
+        address _l1Token,
+        address _l2Token,
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) LidoBridgeableTokens(_l1Token, _l2Token) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_l1Token == address(0) || _l2Token == address(0) || _router == address(0)) {
+            revert ErrorZeroAddress();
+        }
+
         _disableInitializers();
     }
 
     /// @notice Initialize the storage of L1LidoGateway v1.
+    ///
+    /// @dev The parameters `_counterpart`, `_router` and `_messenger` are no longer used.
+    ///
+    /// @param _counterpart The address of `L2LidoGateway` contract in L2.
+    /// @param _router The address of `L1GatewayRouter` contract.
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
     function initialize(
         address _counterpart,
         address _router,
         address _messenger
     ) external initializer {
-        require(_router != address(0), "zero router address");
-
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 

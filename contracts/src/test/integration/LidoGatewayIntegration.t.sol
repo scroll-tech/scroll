@@ -40,11 +40,19 @@ contract LidoGatewayIntegrationTest is GatewayIntegrationBase {
         __GatewayIntegrationBase_setUp();
 
         mainnet.selectFork();
-        upgrade(true, L1_LIDO_GATEWAY, address(new L1LidoGateway(L1_WSTETH, L2_WSTETH)));
+        upgrade(
+            true,
+            L1_LIDO_GATEWAY,
+            address(new L1LidoGateway(L1_WSTETH, L2_WSTETH, L2_LIDO_GATEWAY, L1_GATEWAY_ROUTER, L1_SCROLL_MESSENGER))
+        );
         L1LidoGateway(L1_LIDO_GATEWAY).initializeV2(address(0), address(0), address(0), address(0));
 
         scroll.selectFork();
-        upgrade(false, L2_LIDO_GATEWAY, address(new L2LidoGateway(L1_WSTETH, L2_WSTETH)));
+        upgrade(
+            false,
+            L2_LIDO_GATEWAY,
+            address(new L2LidoGateway(L1_WSTETH, L2_WSTETH, L1_LIDO_GATEWAY, L2_GATEWAY_ROUTER, L2_SCROLL_MESSENGER))
+        );
         L2LidoGateway(L2_LIDO_GATEWAY).initializeV2(address(0), address(0), address(0), address(0));
     }
 
