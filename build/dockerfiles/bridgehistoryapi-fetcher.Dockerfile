@@ -17,5 +17,5 @@ RUN --mount=target=. \
 FROM alpine:latest
 
 COPY --from=builder /bin/bridgehistoryapi-fetcher /bin/
-
+WORKDIR /app
 ENTRYPOINT ["bridgehistoryapi-fetcher"]

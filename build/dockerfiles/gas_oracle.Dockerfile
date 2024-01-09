@@ -21,7 +21,6 @@ RUN --mount=target=. \
 
 # Pull gas_oracle into a second stage deploy alpine container
 FROM alpine:latest
-
 COPY --from=builder /bin/gas_oracle /bin/
-
+WORKDIR /app
 ENTRYPOINT ["gas_oracle"]
