@@ -14,7 +14,6 @@ RUN --mount=target=. \
 
 # Pull db_cli into a second stage deploy alpine container
 FROM alpine:latest
-
 COPY --from=builder /bin/db_cli /bin/
-
+WORKDIR /app
 ENTRYPOINT ["db_cli"]

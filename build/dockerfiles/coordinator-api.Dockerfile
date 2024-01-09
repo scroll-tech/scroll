@@ -46,5 +46,5 @@ RUN mkdir -p /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/lib /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/coordinator_api /bin/
 RUN /bin/coordinator_api --version
-
+WORKDIR /app
 ENTRYPOINT ["/bin/coordinator_api"]
