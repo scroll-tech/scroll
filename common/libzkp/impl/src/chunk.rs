@@ -66,16 +66,16 @@ pub unsafe extern "C" fn get_chunk_vk() -> *const c_char {
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const c_char {
+pub unsafe extern "C" fn gen_chunk_proof(chunk_trace: *const c_char) -> *const c_char {
     let proof_result: Result<Vec<u8>, String> = panic_catch(|| {
-        let block_traces = c_char_to_vec(block_traces);
-        let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces)
+        let chunk_trace = c_char_to_vec(chunk_trace);
+        let chunk_trace = serde_json::from_slice::<Vec<BlockTrace>>(&chunk_trace)
             .map_err(|e| format!("failed to deserialize block traces: {e:?}"))?;
 
         let proof = PROVER
             .get_mut()
             .expect("failed to get mutable reference to PROVER.")
-            .gen_chunk_proof(block_traces, None, None, OUTPUT_DIR.as_deref())
+            .gen_chunk_proof(chunk_trace, None, None, OUTPUT_DIR.as_deref())
             .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 
         serde_json::to_vec(&proof).map_err(|e| format!("failed to serialize the proof: {e:?}"))

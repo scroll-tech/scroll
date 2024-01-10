@@ -8,7 +8,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [patch.crates-io]
-ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
+ethers-core = { git = "https://github.com/LimeChain/scroll-ethers-rs.git", branch = "LimeChain/l1-block-hashes-poc", features = ["scroll"] }
 [patch."https://github.com/privacy-scaling-explorations/halo2.git"]
 halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "develop" }
 [patch."https://github.com/privacy-scaling-explorations/poseidon.git"]
@@ -21,7 +21,7 @@ halo2curves = { git = "https://github.com/scroll-tech/halo2curves.git", branch =
 
 [dependencies]
 halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "develop" }
-prover = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.9.7", default-features = false, features = ["parallel_syn", "scroll", "shanghai"] }
+prover = { git = "https://github.com/LimeChain/scroll-zkevm-circuits", branch = "LimeChain/wip-block-hashes-poc", default-features = false, features = ["parallel_syn", "scroll", "shanghai"] }
 
 base64 = "0.13.0"
 env_logger = "0.9.0"
