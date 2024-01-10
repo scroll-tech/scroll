@@ -113,11 +113,11 @@ func (p *ProverCore) ProveChunk(
 		return nil, fmt.Errorf("prover is not a chunk-prover (type: %v), but is trying to prove a chunk", p.cfg.ProofType)
 	}
 
-	chunkTraceByt, err := json.Marshal(chunkTrace)
+	chunkTraceByt, err := json.Marshal(chunkTrace.BlockTraces)
 	if err != nil {
 		return nil, err
 	}
-	proofByt, err := p.proveChunk(chunkTraceByt)
+	proofByt, err := p.proveChunk(chunkTraceByt, chunkTrace.PrevLastAppliedL1Block, chunkTrace.LastAppliedL1Block, chunkTrace.L1BlockRangeHash)
 	if err != nil {
 		return nil, err
 	}
