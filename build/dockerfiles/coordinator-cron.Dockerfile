@@ -19,7 +19,7 @@ RUN --mount=target=. \
     cd /src/coordinator/cmd/cron/ && go build -v -p 4 -o /bin/coordinator_cron
 
 # Pull coordinator into a second stage deploy alpine container
-FROM alpine:latest
+FROM --platform=linux/amd64 alpine:latest
 COPY --from=builder /bin/coordinator_cron /bin/
 
 ENTRYPOINT ["coordinator_cron"]
