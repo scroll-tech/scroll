@@ -35,7 +35,7 @@ func (c *HistoryController) GetL2UnclaimedWithdrawalsByAddress(ctx *gin.Context)
 		return
 	}
 
-	resultData := &types.ResultData{Result: pagedTxs, Total: total}
+	resultData := &types.ResultData{Results: pagedTxs, Total: total}
 	types.RenderSuccess(ctx, resultData)
 }
 
@@ -53,7 +53,7 @@ func (c *HistoryController) GetL2WithdrawalsByAddress(ctx *gin.Context) {
 		return
 	}
 
-	resultData := &types.ResultData{Result: pagedTxs, Total: total}
+	resultData := &types.ResultData{Results: pagedTxs, Total: total}
 	types.RenderSuccess(ctx, resultData)
 }
 
@@ -71,7 +71,7 @@ func (c *HistoryController) GetTxsByAddress(ctx *gin.Context) {
 		return
 	}
 
-	resultData := &types.ResultData{Result: pagedTxs, Total: total}
+	resultData := &types.ResultData{Results: pagedTxs, Total: total}
 	types.RenderSuccess(ctx, resultData)
 }
 
@@ -89,6 +89,6 @@ func (c *HistoryController) PostQueryTxsByHashes(ctx *gin.Context) {
 		return
 	}
 
-	resultData := &types.ResultData{Result: results, Total: uint64(len(results))}
+	resultData := &types.ResultData{Results: results, Total: uint64(len(results))}
 	types.RenderSuccess(ctx, resultData)
 }

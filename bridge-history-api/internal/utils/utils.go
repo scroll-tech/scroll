@@ -191,6 +191,18 @@ func ConvertBigIntArrayToString(array []*big.Int) string {
 	return result
 }
 
+// ConvertStringToStringArray takes a string with values separated by commas and returns a slice of strings
+func ConvertStringToStringArray(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	stringParts := strings.Split(s, ",")
+	for i, part := range stringParts {
+		stringParts[i] = strings.TrimSpace(part)
+	}
+	return stringParts
+}
+
 // GetSkippedQueueIndices get the skipped queue indices
 func GetSkippedQueueIndices(startIndex uint64, skippedBitmap *big.Int) []uint64 {
 	var indices []uint64
