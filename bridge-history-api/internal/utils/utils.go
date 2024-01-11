@@ -203,7 +203,7 @@ func ConvertStringToStringArray(s string) []string {
 	return stringParts
 }
 
-// GetSkippedQueueIndices get the skipped queue indices
+// GetSkippedQueueIndices gets the skipped queue indices
 func GetSkippedQueueIndices(startIndex uint64, skippedBitmap *big.Int) []uint64 {
 	var indices []uint64
 	for i := 0; i < 256; i++ {
