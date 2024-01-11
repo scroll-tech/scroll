@@ -10,6 +10,7 @@ contract L1BlocksTest is DSTestPlus {
     L1Blocks private l1Blocks;
     uint32 private blockHashesSize;
     uint64 private firstAppliedL1Block = 1;
+    address private sequencer = 0x5300000000000000000000000000000000000005;
 
     function setUp() public {
         l1Blocks = new L1Blocks(firstAppliedL1Block);
@@ -39,7 +40,7 @@ contract L1BlocksTest is DSTestPlus {
             }
         }
 
-        hevm.startPrank(address(0));
+        hevm.startPrank(sequencer);
         l1Blocks.appendBlockhashes(hashes);
         hevm.stopPrank();
 
@@ -57,7 +58,7 @@ contract L1BlocksTest is DSTestPlus {
         bytes32[] memory hashes = new bytes32[](1);
         hashes[0] = keccak256(abi.encodePacked(lowerBound));
 
-        hevm.startPrank(address(0));
+        hevm.startPrank(sequencer);
         l1Blocks.appendBlockhashes(hashes);
         hevm.stopPrank();
 
@@ -74,7 +75,7 @@ contract L1BlocksTest is DSTestPlus {
         bytes32[] memory hashes = new bytes32[](1);
         hashes[0] = keccak256(abi.encodePacked(upperBound));
 
-        hevm.startPrank(address(0));
+        hevm.startPrank(sequencer);
         l1Blocks.appendBlockhashes(hashes);
         hevm.stopPrank();
 
@@ -97,7 +98,7 @@ contract L1BlocksTest is DSTestPlus {
     }
 
     function testGetL1BlockHashOverwrittenRingMapSuccess() external {
-        hevm.startPrank(address(0));
+        hevm.startPrank(sequencer);
 
         uint64 lowerBound = 0;
         uint8 times = 3;

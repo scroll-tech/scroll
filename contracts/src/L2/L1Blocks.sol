@@ -17,7 +17,10 @@ contract L1Blocks {
         0x46b6ca24459c6768b3d8d5d90e9189b00e3ebb5fe38fb16cb9819816d9fe1c2d;
 
     modifier onlySequencer() {
-        require(msg.sender == address(0), "L1Blocks: caller is not the sequencer");
+        require(
+            msg.sender == address(0x5300000000000000000000000000000000000005),
+            "L1Blocks: caller is not the sequencer"
+        );
         _;
     }
 
