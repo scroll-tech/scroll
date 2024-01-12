@@ -3,11 +3,6 @@
 pragma solidity ^0.8.16;
 
 interface IScrollMessenger {
-    /***********
-     * Errors *
-     ***********/
-    error ErrZeroAddress();
-
     /**********
      * Events *
      **********/
@@ -35,6 +30,13 @@ interface IScrollMessenger {
     /// @notice Emitted when a cross domain message is failed to relay.
     /// @param messageHash The hash of the message.
     event FailedRelayedMessage(bytes32 indexed messageHash);
+
+    /**********
+     * Errors *
+     **********/
+
+    /// @dev Thrown when the given address is `address(0)`.
+    error ErrorZeroAddress();
 
     /*************************
      * Public View Functions *

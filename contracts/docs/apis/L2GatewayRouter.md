@@ -189,6 +189,23 @@ function initialize(address _ethGateway, address _defaultERC20Gateway) external 
 | _ethGateway | address | undefined |
 | _defaultERC20Gateway | address | undefined |
 
+### messenger
+
+```solidity
+function messenger() external view returns (address)
+```
+
+The address of `L2ScrollMessenger`.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
+
 ### owner
 
 ```solidity
@@ -561,6 +578,20 @@ Emitted when someone withdraw ETH from L2 to L1.
 | to `indexed` | address | undefined |
 | amount  | uint256 | undefined |
 | data  | bytes | undefined |
+
+
+
+## Errors
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address is `address(0)`.*
 
 
 

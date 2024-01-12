@@ -135,7 +135,7 @@ function initialize(address _counterpart, address _router, address _messenger, a
 
 Initialize the storage of L1StandardERC20Gateway.
 
-
+*The parameters `_counterpart`, `_router`, `_messenger`, `_l2TokenImplementation` and `_l2TokenFactory` are no longer used.*
 
 #### Parameters
 
@@ -371,6 +371,53 @@ Emitted when some ERC20 token is refunded.
 | token `indexed` | address | undefined |
 | recipient `indexed` | address | undefined |
 | amount  | uint256 | undefined |
+
+
+
+## Errors
+
+### ErrorCallerIsNotCounterpartGateway
+
+```solidity
+error ErrorCallerIsNotCounterpartGateway()
+```
+
+
+
+*Thrown when the cross chain sender is not the counterpart gateway contract.*
+
+
+### ErrorCallerIsNotMessenger
+
+```solidity
+error ErrorCallerIsNotMessenger()
+```
+
+
+
+*Thrown when the caller is not corresponding `L1ScrollMessenger` or `L2ScrollMessenger`.*
+
+
+### ErrorNotInDropMessageContext
+
+```solidity
+error ErrorNotInDropMessageContext()
+```
+
+
+
+*Thrown when ScrollMessenger is not dropping message.*
+
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address is `address(0)`.*
 
 
 

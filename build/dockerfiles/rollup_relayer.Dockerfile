@@ -21,7 +21,6 @@ RUN --mount=target=. \
 
 # Pull rollup_relayer into a second stage deploy alpine container
 FROM alpine:latest
-
 COPY --from=builder /bin/rollup_relayer /bin/
-
+WORKDIR /app
 ENTRYPOINT ["rollup_relayer"]

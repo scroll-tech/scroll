@@ -17,12 +17,27 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
     /***************
      * Constructor *
      ***************/
-    constructor() {
+
+    /// @notice Constructor for `L2ETHGateway` implementation contract.
+    ///
+    /// @param _counterpart The address of `L1ETHGateway` contract in L1.
+    /// @param _router The address of `L1GatewayRouter` contract.
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    constructor(
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_router == address(0)) revert ErrorZeroAddress();
+
         _disableInitializers();
     }
 
     /// @notice Initialize the storage of L2ETHGateway.
-    /// @param _counterpart The address of L1ETHGateway in L2.
+    ///
+    /// @dev The parameters `_counterpart`, `_router` and `_messenger` are no longer used.
+    ///
+    /// @param _counterpart The address of L1ETHGateway in L1.
     /// @param _router The address of L2GatewayRouter.
     /// @param _messenger The address of L2ScrollMessenger.
     function initialize(
@@ -30,7 +45,6 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
         address _router,
         address _messenger
     ) external initializer {
-        require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 
@@ -94,9 +108,12 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
 
         // 1. Extract real sender if this call is from L1GatewayRouter.
         address _from = _msgSender();
+
+        /* comment out since router won't use this contract anymore
         if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
+        */
 
         // @note no rate limit here, since ETH is limited in messenger
 

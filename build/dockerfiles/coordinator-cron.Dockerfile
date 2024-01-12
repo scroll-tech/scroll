@@ -21,5 +21,5 @@ RUN --mount=target=. \
 # Pull coordinator into a second stage deploy alpine container
 FROM alpine:latest
 COPY --from=builder /bin/coordinator_cron /bin/
-
+WORKDIR /app
 ENTRYPOINT ["coordinator_cron"]

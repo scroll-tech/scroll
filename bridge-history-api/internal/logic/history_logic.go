@@ -16,13 +16,20 @@ import (
 
 	"scroll-tech/bridge-history-api/internal/orm"
 	"scroll-tech/bridge-history-api/internal/types"
+	"scroll-tech/bridge-history-api/internal/utils"
 )
 
 const (
-	cacheKeyPrefixL2ClaimableWithdrawalsByAddr = "l2ClaimableWithdrawalsByAddr:"
-	cacheKeyPrefixL2WithdrawalsByAddr          = "l2WithdrawalsByAddr:"
-	cacheKeyPrefixTxsByAddr                    = "txsByAddr:"
-	cacheKeyPrefixQueryTxsByHashes             = "queryTxsByHashes:"
+	// cacheKeyPrefixBridgeHistory serves as a specific namespace for all Redis cache keys
+	// associated with the 'bridge-history' user. This prefix is used to enforce access controls
+	// in Redis, allowing permissions to be set such that only users with the appropriate
+	// access rights can read or write to keys starting with "bridge-history".
+	cacheKeyPrefixBridgeHistory = "bridge-history-"
+
+	cacheKeyPrefixL2ClaimableWithdrawalsByAddr = cacheKeyPrefixBridgeHistory + "l2ClaimableWithdrawalsByAddr:"
+	cacheKeyPrefixL2WithdrawalsByAddr          = cacheKeyPrefixBridgeHistory + "l2WithdrawalsByAddr:"
+	cacheKeyPrefixTxsByAddr                    = cacheKeyPrefixBridgeHistory + "txsByAddr:"
+	cacheKeyPrefixQueryTxsByHashes             = cacheKeyPrefixBridgeHistory + "queryTxsByHashes:"
 	cacheKeyExpiredTime                        = 1 * time.Minute
 )
 
@@ -255,40 +262,44 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 
 func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 	txHistory := &types.TxHistoryInfo{
-		MsgHash:        message.MessageHash,
-		Amount:         message.TokenAmounts,
-		L1Token:        message.L1TokenAddress,
-		L2Token:        message.L2TokenAddress,
-		IsL1:           orm.MessageType(message.MessageType) == orm.MessageTypeL1SentMessage,
-		TxStatus:       message.TxStatus,
+		MessageHash:    message.MessageHash,
+		TokenType:      orm.TokenType(message.TokenType),
+		TokenIDs:       utils.ConvertStringToStringArray(message.TokenIDs),
+		TokenAmounts:   utils.ConvertStringToStringArray(message.TokenAmounts),
+		L1TokenAddress: message.L1TokenAddress,
+		L2TokenAddress: message.L2TokenAddress,
+		MessageType:    orm.MessageType(message.MessageType),
+		TxStatus:       orm.TxStatusType(message.TxStatus),
 		BlockTimestamp: message.BlockTimestamp,
 	}
-	if txHistory.IsL1 {
+	if txHistory.MessageType == orm.MessageTypeL1SentMessage {
 		txHistory.Hash = message.L1TxHash
 		txHistory.ReplayTxHash = message.L1ReplayTxHash
 		txHistory.RefundTxHash = message.L1RefundTxHash
 		txHistory.BlockNumber = message.L1BlockNumber
-		txHistory.FinalizeTx = &types.Finalized{
+		txHistory.CounterpartChainTx = &types.CounterpartChainTx{
 			Hash:        message.L2TxHash,
 			BlockNumber: message.L2BlockNumber,
 		}
 	} else {
 		txHistory.Hash = message.L2TxHash
 		txHistory.BlockNumber = message.L2BlockNumber
-		txHistory.FinalizeTx = &types.Finalized{
+		txHistory.CounterpartChainTx = &types.CounterpartChainTx{
 			Hash:        message.L1TxHash,
 			BlockNumber: message.L1BlockNumber,
 		}
 		if orm.RollupStatusType(message.RollupStatus) == orm.RollupStatusTypeFinalized {
-			txHistory.ClaimInfo = &types.UserClaimInfo{
-				From:       message.MessageFrom,
-				To:         message.MessageTo,
-				Value:      message.MessageValue,
-				Nonce:      strconv.FormatUint(message.MessageNonce, 10),
-				Message:    message.MessageData,
-				Proof:      "0x" + common.Bytes2Hex(message.MerkleProof),
-				BatchIndex: strconv.FormatUint(message.BatchIndex, 10),
-				Claimable:  true,
+			txHistory.ClaimInfo = &types.ClaimInfo{
+				From:    message.MessageFrom,
+				To:      message.MessageTo,
+				Value:   message.MessageValue,
+				Nonce:   strconv.FormatUint(message.MessageNonce, 10),
+				Message: message.MessageData,
+				Proof: types.L2MessageProof{
+					BatchIndex:  strconv.FormatUint(message.BatchIndex, 10),
+					MerkleProof: "0x" + common.Bytes2Hex(message.MerkleProof),
+				},
+				Claimable: true,
 			}
 		}
 	}

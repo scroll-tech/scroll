@@ -48,17 +48,18 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
      * Constructor *
      ***************/
 
-    constructor(address _messageQueue) {
-        if (_messageQueue == address(0)) revert ErrZeroAddress();
+    constructor(address _counterpart, address _messageQueue) ScrollMessengerBase(_counterpart) {
+        if (_messageQueue == address(0)) {
+            revert ErrorZeroAddress();
+        }
 
         _disableInitializers();
 
         messageQueue = _messageQueue;
     }
 
-    function initialize(address _counterpart) external initializer {
-        if (_counterpart == address(0)) revert ErrZeroAddress();
-        ScrollMessengerBase.__ScrollMessengerBase_init(_counterpart, address(0));
+    function initialize(address) external initializer {
+        ScrollMessengerBase.__ScrollMessengerBase_init(address(0), address(0));
     }
 
     /*****************************

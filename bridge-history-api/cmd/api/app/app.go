@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
@@ -54,14 +55,21 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 	opts := &redis.Options{
-		Addr:     cfg.Redis.Address,
-		Username: cfg.Redis.Username,
-		Password: cfg.Redis.Password,
+		Addr:         cfg.Redis.Address,
+		Username:     cfg.Redis.Username,
+		Password:     cfg.Redis.Password,
+		MinIdleConns: cfg.Redis.MinIdleConns,
+		ReadTimeout:  time.Duration(cfg.Redis.ReadTimeoutMs * int(time.Millisecond)),
 	}
 	// Production Redis service has enabled transit_encryption.
 	if !cfg.Redis.Local {
-		opts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+		opts.TLSConfig = &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true, //nolint:gosec
+		}
 	}
+	log.Info("init redis client", "addr", opts.Addr, "user name", opts.Username, "is local", cfg.Redis.Local,
+		"min idle connections", opts.MinIdleConns, "read timeout", opts.ReadTimeout)
 	redisClient := redis.NewClient(opts)
 	api.InitController(db, redisClient)
 

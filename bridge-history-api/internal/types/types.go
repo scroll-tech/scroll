@@ -4,6 +4,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"scroll-tech/bridge-history-api/internal/orm"
 )
 
 const (
@@ -37,8 +39,8 @@ type QueryByHashRequest struct {
 
 // ResultData contains return txs and total
 type ResultData struct {
-	Result []*TxHistoryInfo `json:"result"`
-	Total  uint64           `json:"total"`
+	Results []*TxHistoryInfo `json:"results"`
+	Total   uint64           `json:"total"`
 }
 
 // Response the response schema
@@ -48,39 +50,46 @@ type Response struct {
 	Data    interface{} `json:"data"`
 }
 
-// Finalized the schema of tx finalized infos
-type Finalized struct {
+// CounterpartChainTx is the schema of counterpart chain tx info
+type CounterpartChainTx struct {
 	Hash        string `json:"hash"`
-	BlockNumber uint64 `json:"blockNumber"`
+	BlockNumber uint64 `json:"block_number"`
 }
 
-// UserClaimInfo the schema of tx claim infos
-type UserClaimInfo struct {
-	From       string `json:"from"`
-	To         string `json:"to"`
-	Value      string `json:"value"`
-	Nonce      string `json:"nonce"`
-	Message    string `json:"message"`
-	Proof      string `json:"proof"`
-	BatchIndex string `json:"batch_index"`
-	Claimable  bool   `json:"claimable"`
+// ClaimInfo is the schema of tx claim info
+type ClaimInfo struct {
+	From      string         `json:"from"`
+	To        string         `json:"to"`
+	Value     string         `json:"value"`
+	Nonce     string         `json:"nonce"`
+	Message   string         `json:"message"`
+	Proof     L2MessageProof `json:"proof"`
+	Claimable bool           `json:"claimable"`
+}
+
+// L2MessageProof is the schema of L2 message proof
+type L2MessageProof struct {
+	BatchIndex  string `json:"batch_index"`
+	MerkleProof string `json:"merkle_proof"`
 }
 
 // TxHistoryInfo the schema of tx history infos
 type TxHistoryInfo struct {
-	Hash           string         `json:"hash"`
-	ReplayTxHash   string         `json:"replayTxHash"`
-	RefundTxHash   string         `json:"refundTxHash"`
-	MsgHash        string         `json:"msgHash"`
-	Amount         string         `json:"amount"`
-	IsL1           bool           `json:"isL1"`
-	L1Token        string         `json:"l1Token"`
-	L2Token        string         `json:"l2Token"`
-	BlockNumber    uint64         `json:"blockNumber"`
-	TxStatus       int            `json:"txStatus"`
-	FinalizeTx     *Finalized     `json:"finalizeTx"`
-	ClaimInfo      *UserClaimInfo `json:"claimInfo"`
-	BlockTimestamp uint64         `json:"blockTimestamp"`
+	Hash               string              `json:"hash"`
+	ReplayTxHash       string              `json:"replay_tx_hash"`
+	RefundTxHash       string              `json:"refund_tx_hash"`
+	MessageHash        string              `json:"message_hash"`
+	TokenType          orm.TokenType       `json:"token_type"`    // 0: unknown, 1: eth, 2: erc20, 3: erc721, 4: erc1155
+	TokenIDs           []string            `json:"token_ids"`     // only for erc721 and erc1155
+	TokenAmounts       []string            `json:"token_amounts"` // for eth and erc20, the length is 1, for erc721 and erc1155, the length could be > 1
+	MessageType        orm.MessageType     `json:"message_type"`  // 0: unknown, 1: layer 1 message, 2: layer 2 message
+	L1TokenAddress     string              `json:"l1_token_address"`
+	L2TokenAddress     string              `json:"l2_token_address"`
+	BlockNumber        uint64              `json:"block_number"`
+	TxStatus           orm.TxStatusType    `json:"tx_status"` // 0: sent, 1: sent failed, 2: relayed, 3: failed relayed, 4: relayed reverted, 5: skipped, 6: dropped
+	CounterpartChainTx *CounterpartChainTx `json:"counterpart_chain_tx"`
+	ClaimInfo          *ClaimInfo          `json:"claim_info"`
+	BlockTimestamp     uint64              `json:"block_timestamp"`
 }
 
 // RenderJSON renders response with json

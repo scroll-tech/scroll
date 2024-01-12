@@ -15,17 +15,30 @@ import {ITokenRateLimiter} from "../../rate-limiter/ITokenRateLimiter.sol";
 /// @notice The `ScrollGatewayBase` is a base contract for gateway contracts used in both in L1 and L2.
 abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, OwnableUpgradeable, IScrollGateway {
     /*************
-     * Variables *
+     * Constants *
      *************/
 
     /// @inheritdoc IScrollGateway
-    address public override counterpart;
+    address public immutable override counterpart;
 
     /// @inheritdoc IScrollGateway
-    address public override router;
+    address public immutable override router;
 
     /// @inheritdoc IScrollGateway
-    address public override messenger;
+    address public immutable override messenger;
+
+    /*************
+     * Variables *
+     *************/
+
+    /// @dev The storage slot used as counterpart gateway contract, which is deprecated now.
+    address private __counterpart;
+
+    /// @dev The storage slot used as gateway router contract, which is deprecated now.
+    address private __router;
+
+    /// @dev The storage slot used as scroll messenger contract, which is deprecated now.
+    address private __messenger;
 
     /// @dev The storage slot used as token rate limiter contract, which is deprecated now.
     address private __rateLimiter;
@@ -38,19 +51,28 @@ abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, OwnableUpgrad
      **********************/
 
     modifier onlyCallByCounterpart() {
-        address _messenger = messenger; // gas saving
-        require(_msgSender() == _messenger, "only messenger can call");
-        require(counterpart == IScrollMessenger(_messenger).xDomainMessageSender(), "only call by counterpart");
+        // check caller is messenger
+        if (_msgSender() != messenger) {
+            revert ErrorCallerIsNotMessenger();
+        }
+
+        // check cross domain caller is counterpart gateway
+        if (counterpart != IScrollMessenger(messenger).xDomainMessageSender()) {
+            revert ErrorCallerIsNotCounterpartGateway();
+        }
         _;
     }
 
     modifier onlyInDropContext() {
-        address _messenger = messenger; // gas saving
-        require(_msgSender() == _messenger, "only messenger can call");
-        require(
-            ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER == IScrollMessenger(_messenger).xDomainMessageSender(),
-            "only called in drop context"
-        );
+        // check caller is messenger
+        if (_msgSender() != messenger) {
+            revert ErrorCallerIsNotMessenger();
+        }
+
+        // check we are dropping message in ScrollMessenger.
+        if (ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER != IScrollMessenger(messenger).xDomainMessageSender()) {
+            revert ErrorNotInDropMessageContext();
+        }
         _;
     }
 
@@ -58,24 +80,27 @@ abstract contract ScrollGatewayBase is ReentrancyGuardUpgradeable, OwnableUpgrad
      * Constructor *
      ***************/
 
-    function _initialize(
+    constructor(
         address _counterpart,
         address _router,
         address _messenger
-    ) internal {
-        require(_counterpart != address(0), "zero counterpart address");
-        require(_messenger != address(0), "zero messenger address");
-
-        ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
-        OwnableUpgradeable.__Ownable_init();
+    ) {
+        if (_counterpart == address(0) || _messenger == address(0)) {
+            revert ErrorZeroAddress();
+        }
 
         counterpart = _counterpart;
+        router = _router;
         messenger = _messenger;
+    }
 
-        // @note: the address of router could be zero, if this contract is GatewayRouter.
-        if (_router != address(0)) {
-            router = _router;
-        }
+    function _initialize(
+        address,
+        address,
+        address
+    ) internal {
+        ReentrancyGuardUpgradeable.__ReentrancyGuard_init();
+        OwnableUpgradeable.__Ownable_init();
     }
 
     /**********************
