@@ -2,7 +2,6 @@ package relayer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 
@@ -44,7 +43,7 @@ type Layer1Relayer struct {
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
 func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, reg prometheus.Registerer) (*Layer1Relayer, error) {
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l1_relayer", "gas_oracle_sender", reg)
+	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
@@ -85,7 +84,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
-	r.metrics.rollupL1RelayerGasPriceOraclerRunTotal.Inc()
+	r.metrics.rollupL1RelayerGasPriceOracleRunTotal.Inc()
 	latestBlockHeight, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
 	if err != nil {
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)
@@ -118,9 +117,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 
 			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
-				if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-					log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
-				}
+				log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
 			}
 
@@ -136,28 +133,38 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 	}
 }
 
+func (r *Layer1Relayer) handleConfirmation(cfm *sender.Confirmation) {
+	switch cfm.SenderType {
+	case types.SenderTypeL1GasOracle:
+		var status types.GasOracleStatus
+		if cfm.IsSuccessful {
+			status = types.GasOracleImported
+			r.metrics.rollupL1UpdateGasOracleConfirmedTotal.Inc()
+			log.Info("UpdateGasOracleTxType transaction confirmed in layer2", "confirmation", cfm)
+		} else {
+			status = types.GasOracleImportedFailed
+			r.metrics.rollupL1UpdateGasOracleConfirmedFailedTotal.Inc()
+			log.Warn("UpdateGasOracleTxType transaction confirmed but failed in layer2", "confirmation", cfm)
+		}
+
+		err := r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ContextID, status, cfm.TxHash.String())
+		if err != nil {
+			log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "confirmation", cfm, "err", err)
+		}
+	default:
+		log.Warn("Unknown transaction type", "confirmation", cfm)
+	}
+
+	log.Info("Transaction confirmed in layer2", "confirmation", cfm)
+}
+
 func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case cfm := <-r.gasOracleSender.ConfirmChan():
-			r.metrics.rollupL1GasOraclerConfirmedTotal.Inc()
-			if !cfm.IsSuccessful {
-				// @discuss: maybe make it pending again?
-				err := r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-				if err != nil {
-					log.Warn("UpdateL1GasOracleStatusAndOracleTxHash failed", "err", err)
-				}
-				log.Warn("transaction confirmed but failed in layer2", "confirmation", cfm)
-			} else {
-				// @todo handle db error
-				err := r.l1BlockOrm.UpdateL1GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-				if err != nil {
-					log.Warn("UpdateGasOracleStatusAndOracleTxHash failed", "err", err)
-				}
-				log.Info("transaction confirmed in layer2", "confirmation", cfm)
-			}
+			r.handleConfirmation(cfm)
 		}
 	}
 }

@@ -10,7 +10,7 @@ import (
 type l2RelayerMetrics struct {
 	rollupL2RelayerProcessPendingBatchTotal                     prometheus.Counter
 	rollupL2RelayerProcessPendingBatchSuccessTotal              prometheus.Counter
-	rollupL2RelayerGasPriceOraclerRunTotal                      prometheus.Counter
+	rollupL2RelayerGasPriceOracleRunTotal                       prometheus.Counter
 	rollupL2RelayerLastGasPrice                                 prometheus.Gauge
 	rollupL2RelayerProcessCommittedBatchesTotal                 prometheus.Counter
 	rollupL2RelayerProcessCommittedBatchesFinalizedTotal        prometheus.Counter
@@ -19,7 +19,8 @@ type l2RelayerMetrics struct {
 	rollupL2BatchesCommittedConfirmedFailedTotal                prometheus.Counter
 	rollupL2BatchesFinalizedConfirmedTotal                      prometheus.Counter
 	rollupL2BatchesFinalizedConfirmedFailedTotal                prometheus.Counter
-	rollupL2BatchesGasOraclerConfirmedTotal                     prometheus.Counter
+	rollupL2UpdateL1GasOracleConfirmedTotal                     prometheus.Counter
+	rollupL2UpdateL1GasOracleConfirmedFailedTotal               prometheus.Counter
 	rollupL2ChainMonitorLatestFailedCall                        prometheus.Counter
 	rollupL2ChainMonitorLatestFailedBatchStatus                 prometheus.Counter
 }
@@ -40,9 +41,9 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 				Name: "rollup_layer2_process_pending_batch_success_total",
 				Help: "The total number of layer2 process pending success batch",
 			}),
-			rollupL2RelayerGasPriceOraclerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_layer2_gas_price_oracler_total",
-				Help: "The total number of layer2 gas price oracler run total",
+			rollupL2RelayerGasPriceOracleRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_layer2_gas_price_oracle_run_total",
+				Help: "The total number of layer2 gas price oracle run total",
 			}),
 			rollupL2RelayerLastGasPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 				Name: "rollup_layer2_gas_price_latest_gas_price",
@@ -76,9 +77,13 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 				Name: "rollup_layer2_process_finalized_batches_confirmed_failed_total",
 				Help: "The total number of layer2 process finalized batches confirmed failed total",
 			}),
-			rollupL2BatchesGasOraclerConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_layer2_process_gras_oracler_confirmed_total",
-				Help: "The total number of layer2 process finalized batches confirmed total",
+			rollupL2UpdateL1GasOracleConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_layer2_update_layer1_gas_oracle_confirmed_total",
+				Help: "The total number of layer2 update layer1 gas oracle confirmed",
+			}),
+			rollupL2UpdateL1GasOracleConfirmedFailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_layer2_update_layer1_gas_oracle_confirmed_failed_total",
+				Help: "The total number of layer2 update layer1 gas oracle confirmed failed",
 			}),
 			rollupL2ChainMonitorLatestFailedCall: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer2_chain_monitor_latest_failed_batch_call",

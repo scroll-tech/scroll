@@ -59,7 +59,7 @@ func action(ctx *cli.Context) error {
 	defer func() {
 		cancel()
 		if err = database.CloseDB(db); err != nil {
-			log.Error("can not close ormFactory", "error", err)
+			log.Crit("failed to close db connection", "error", err)
 		}
 	}()
 
@@ -68,28 +68,24 @@ func action(ctx *cli.Context) error {
 
 	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
-		log.Error("failed to connect l1 geth", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
 	}
 
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
-		log.Error("failed to connect l2 geth", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
 	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db, registry)
 
 	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, registry)
 	if err != nil {
-		log.Error("failed to create new l1 relayer", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 	}
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, false /* initGenesis */, registry)
 	if err != nil {
-		log.Error("failed to create new l2 relayer", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to create new l2 relayer", "config file", cfgFile, "error", err)
 	}
 	// Start l1 watcher process
 	go utils.LoopWithContext(subCtx, 10*time.Second, func(ctx context.Context) {
@@ -103,6 +99,7 @@ func action(ctx *cli.Context) error {
 
 		if loopErr = l1watcher.FetchBlockHeader(number - 1); loopErr != nil {
 			log.Error("Failed to fetch L1 block header", "lastest", number-1, "err", loopErr)
+			return
 		}
 	})
 

@@ -9,16 +9,13 @@
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://sepolia-rpc.scroll.io",
-        "check_pending_time": 2,
-        "check_balance_time": 100,
         "escalate_blocks": 100,
         "confirmations": "0x1",
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
         "tx_type": "LegacyTx",
-        "min_balance": 100000000000000000000,
-        "pending_limit": 10
+        "check_pending_time": 3
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
@@ -37,16 +34,13 @@
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://sepolia-rpc.scroll.io",
-        "check_pending_time": 10,
-        "check_balance_time": 100,
         "escalate_blocks": 100,
         "confirmations": "0x6",
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
         "tx_type": "LegacyTx",
-        "min_balance": 100000000000000000000,
-        "pending_limit": 10
+        "check_pending_time": 12
       },
       "gas_oracle_config": {
         "min_gas_price": 0,

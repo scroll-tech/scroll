@@ -56,7 +56,7 @@ func action(ctx *cli.Context) error {
 	defer func() {
 		cancel()
 		if err = database.CloseDB(db); err != nil {
-			log.Error("can not close ormFactory", "error", err)
+			log.Crit("failed to close db connection", "error", err)
 		}
 	}()
 
@@ -64,14 +64,12 @@ func action(ctx *cli.Context) error {
 	observability.Server(ctx, db)
 	l1client, err := ethclient.Dial(cfg.L1Config.Endpoint)
 	if err != nil {
-		log.Error("failed to connect l1 geth", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to connect l1 geth", "config file", cfgFile, "error", err)
 	}
 
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
-		log.Error("failed to connect l2 geth", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
 	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations,

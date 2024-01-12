@@ -1,6 +1,7 @@
 package sender
 
 import (
+	"bytes"
 	"context"
 	"crypto/ecdsa"
 	"errors"
@@ -10,15 +11,18 @@ import (
 	"sync/atomic"
 	"time"
 
-	cmapV2 "github.com/orcaman/concurrent-map/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rlp"
+	"gorm.io/gorm"
 
+	"scroll-tech/common/types"
 	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
 )
 
@@ -33,18 +37,12 @@ const (
 	LegacyTxType = "LegacyTx"
 )
 
-var (
-	// ErrNoAvailableAccount indicates no available account error in the account pool.
-	ErrNoAvailableAccount = errors.New("sender has no available account to send transaction")
-	// ErrFullPending sender's pending pool is full.
-	ErrFullPending = errors.New("sender's pending pool is full")
-)
-
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
-	ID           string
+	ContextID    string
 	IsSuccessful bool
 	TxHash       common.Hash
+	SenderType   types.SenderType
 }
 
 // FeeData fee struct used to estimate gas price
@@ -56,40 +54,36 @@ type FeeData struct {
 	gasLimit uint64
 }
 
-// PendingTransaction submitted but pending transactions
-type PendingTransaction struct {
-	submitAt uint64
-	id       string
-	feeData  *FeeData
-	signer   *bind.TransactOpts
-	tx       *types.Transaction
-}
-
 // Sender Transaction sender to send transaction to l1/l2 geth
 type Sender struct {
-	config  *config.SenderConfig
-	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
-	chainID *big.Int          // The chain id of the endpoint
-	ctx     context.Context
-	service string
-	name    string
+	config     *config.SenderConfig
+	client     *ethclient.Client // The client to retrieve on chain data or send transaction.
+	chainID    *big.Int          // The chain id of the endpoint
+	ctx        context.Context
+	service    string
+	name       string
+	senderType types.SenderType
 
-	auth       *bind.TransactOpts
-	minBalance *big.Int
+	auth *bind.TransactOpts
 
-	blockNumber   uint64                                            // Current block number on chain.
-	baseFeePerGas uint64                                            // Current base fee per gas on chain
-	pendingTxs    cmapV2.ConcurrentMap[string, *PendingTransaction] // Mapping from nonce to pending transaction
-	confirmCh     chan *Confirmation
+	blockNumber   uint64 // Current block number on chain
+	baseFeePerGas uint64 // Current base fee per gas on chain
 
-	stopCh chan struct{}
+	transactionOrm *orm.Transaction
+
+	confirmCh chan *Confirmation
+	stopCh    chan struct{}
 
 	metrics *senderMetrics
 }
 
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
-func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey, service, name string, reg prometheus.Registerer) (*Sender, error) {
+func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey, service, name string, senderType types.SenderType, db *gorm.DB, reg prometheus.Registerer) (*Sender, error) {
+	if config.EscalateMultipleNum <= config.EscalateMultipleDen {
+		return nil, fmt.Errorf("invalid params, EscalateMultipleNum; %v, EscalateMultipleDen: %v", config.EscalateMultipleNum, config.EscalateMultipleDen)
+	}
+
 	client, err := ethclient.Dial(config.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial eth client, err: %w", err)
@@ -129,40 +123,25 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	}
 
 	sender := &Sender{
-		ctx:           ctx,
-		config:        config,
-		client:        client,
-		chainID:       chainID,
-		auth:          auth,
-		minBalance:    config.MinBalance,
-		confirmCh:     make(chan *Confirmation, 128),
-		blockNumber:   header.Number.Uint64(),
-		baseFeePerGas: baseFeePerGas,
-		pendingTxs:    cmapV2.New[*PendingTransaction](),
-		stopCh:        make(chan struct{}),
-		name:          name,
-		service:       service,
+		ctx:            ctx,
+		config:         config,
+		client:         client,
+		chainID:        chainID,
+		auth:           auth,
+		blockNumber:    header.Number.Uint64(),
+		baseFeePerGas:  baseFeePerGas,
+		transactionOrm: orm.NewTransaction(db),
+		confirmCh:      make(chan *Confirmation, 128),
+		stopCh:         make(chan struct{}),
+		name:           name,
+		service:        service,
+		senderType:     senderType,
 	}
 	sender.metrics = initSenderMetrics(reg)
 
 	go sender.loop(ctx)
 
 	return sender, nil
-}
-
-// PendingCount returns the current number of pending txs.
-func (s *Sender) PendingCount() int {
-	return s.pendingTxs.Count()
-}
-
-// PendingLimit returns the maximum number of pending txs the sender can handle.
-func (s *Sender) PendingLimit() int {
-	return s.config.PendingLimit
-}
-
-// IsFull returns true if the sender's pending tx pool is full.
-func (s *Sender) IsFull() bool {
-	return s.pendingTxs.Count() >= s.config.PendingLimit
 }
 
 // GetChainID returns the chain ID associated with the sender.
@@ -173,7 +152,7 @@ func (s *Sender) GetChainID() *big.Int {
 // Stop stop the sender module.
 func (s *Sender) Stop() {
 	close(s.stopCh)
-	log.Info("Transaction sender stopped")
+	log.Info("sender stopped", "name", s.name, "service", s.service, "address", s.auth.From.String())
 }
 
 // ConfirmChan channel used to communicate with transaction sender
@@ -195,30 +174,13 @@ func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, val
 }
 
 // SendTransaction send a signed L2tL1 transaction.
-func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (common.Hash, error) {
+func (s *Sender) SendTransaction(contextID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (common.Hash, error) {
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
-	if s.IsFull() {
-		s.metrics.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(1)
-		return common.Hash{}, ErrFullPending
-	}
-
-	s.metrics.sendTransactionFailureFullTx.WithLabelValues(s.service, s.name).Set(0)
-	if ok := s.pendingTxs.SetIfAbsent(ID, nil); !ok {
-		s.metrics.sendTransactionFailureRepeatTransaction.WithLabelValues(s.service, s.name).Inc()
-		return common.Hash{}, fmt.Errorf("repeat transaction ID: %s", ID)
-	}
-
 	var (
 		feeData *FeeData
-		tx      *types.Transaction
+		tx      *gethTypes.Transaction
 		err     error
 	)
-
-	defer func() {
-		if err != nil {
-			s.pendingTxs.Remove(ID) // release the ID on failure
-		}
-	}()
 
 	if feeData, err = s.getFeeData(s.auth, target, value, data, fallbackGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
@@ -232,22 +194,17 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
 	}
 
-	// add pending transaction
-	pending := &PendingTransaction{
-		tx:       tx,
-		id:       ID,
-		signer:   s.auth,
-		submitAt: atomic.LoadUint64(&s.blockNumber),
-		feeData:  feeData,
+	if err = s.transactionOrm.InsertTransaction(s.ctx, contextID, s.getSenderMeta(), tx, atomic.LoadUint64(&s.blockNumber)); err != nil {
+		log.Error("failed to insert transaction", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "err", err)
+		return common.Hash{}, fmt.Errorf("failed to insert transaction, err: %w", err)
 	}
-	s.pendingTxs.Set(ID, pending)
 	return tx.Hash(), nil
 }
 
-func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (*types.Transaction, error) {
+func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (*gethTypes.Transaction, error) {
 	var (
 		nonce  = auth.Nonce.Uint64()
-		txData types.TxData
+		txData gethTypes.TxData
 	)
 
 	// this is a resubmit call, override the nonce
@@ -259,7 +216,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	switch s.config.TxType {
 	case LegacyTxType:
 		// for ganache mock node
-		txData = &types.LegacyTx{
+		txData = &gethTypes.LegacyTx{
 			Nonce:    nonce,
 			GasPrice: feeData.gasPrice,
 			Gas:      feeData.gasLimit,
@@ -271,7 +228,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			S:        new(big.Int),
 		}
 	case AccessListTxType:
-		txData = &types.AccessListTx{
+		txData = &gethTypes.AccessListTx{
 			ChainID:    s.chainID,
 			Nonce:      nonce,
 			GasPrice:   feeData.gasPrice,
@@ -279,18 +236,18 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			To:         target,
 			Value:      new(big.Int).Set(value),
 			Data:       common.CopyBytes(data),
-			AccessList: make(types.AccessList, 0),
+			AccessList: make(gethTypes.AccessList, 0),
 			V:          new(big.Int),
 			R:          new(big.Int),
 			S:          new(big.Int),
 		}
 	default:
-		txData = &types.DynamicFeeTx{
+		txData = &gethTypes.DynamicFeeTx{
 			Nonce:      nonce,
 			To:         target,
 			Data:       common.CopyBytes(data),
 			Gas:        feeData.gasLimit,
-			AccessList: make(types.AccessList, 0),
+			AccessList: make(gethTypes.AccessList, 0),
 			Value:      new(big.Int).Set(value),
 			ChainID:    s.chainID,
 			GasTipCap:  feeData.gasTipCap,
@@ -302,7 +259,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	}
 
 	// sign and send
-	tx, err := auth.Signer(auth.From, types.NewTx(txData))
+	tx, err := auth.Signer(auth.From, gethTypes.NewTx(txData))
 	if err != nil {
 		log.Error("failed to sign tx", "address", auth.From.String(), "err", err)
 		return nil, err
@@ -338,7 +295,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	return tx, nil
 }
 
-// reSetNonce reset nonce if send signed tx failed.
+// resetNonce reset nonce if send signed tx failed.
 func (s *Sender) resetNonce(ctx context.Context) {
 	nonce, err := s.client.PendingNonceAt(ctx, s.auth.From)
 	if err != nil {
@@ -348,7 +305,7 @@ func (s *Sender) resetNonce(ctx context.Context) {
 	s.auth.Nonce = big.NewInt(int64(nonce))
 }
 
-func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
+func (s *Sender) resubmitTransaction(auth *bind.TransactOpts, tx *gethTypes.Transaction) (*gethTypes.Transaction, error) {
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -360,14 +317,13 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		"nonce":   tx.Nonce(),
 	}
 
+	var feeData FeeData
+	feeData.gasLimit = tx.Gas()
 	switch s.config.TxType {
 	case LegacyTxType, AccessListTxType: // `LegacyTxType`is for ganache mock node
-		originalGasPrice := feeData.gasPrice
-		gasPrice := escalateMultipleNum.Mul(escalateMultipleNum, big.NewInt(feeData.gasPrice.Int64()))
+		originalGasPrice := tx.GasPrice()
+		gasPrice := new(big.Int).Mul(escalateMultipleNum, originalGasPrice)
 		gasPrice = gasPrice.Div(gasPrice, escalateMultipleDen)
-		if gasPrice.Cmp(feeData.gasPrice) < 0 {
-			gasPrice = feeData.gasPrice
-		}
 		if gasPrice.Cmp(maxGasPrice) > 0 {
 			gasPrice = maxGasPrice
 		}
@@ -381,27 +337,16 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		txInfo["original_gas_price"] = originalGasPrice.Uint64()
 		txInfo["adjusted_gas_price"] = gasPrice.Uint64()
 	default:
-		originalGasTipCap := big.NewInt(feeData.gasTipCap.Int64())
-		originalGasFeeCap := big.NewInt(feeData.gasFeeCap.Int64())
+		originalGasTipCap := tx.GasTipCap()
+		originalGasFeeCap := tx.GasFeeCap()
 
-		gasTipCap := big.NewInt(feeData.gasTipCap.Int64())
-		gasTipCap = gasTipCap.Mul(gasTipCap, escalateMultipleNum)
+		gasTipCap := new(big.Int).Mul(originalGasTipCap, escalateMultipleNum)
 		gasTipCap = gasTipCap.Div(gasTipCap, escalateMultipleDen)
-		gasFeeCap := big.NewInt(feeData.gasFeeCap.Int64())
-		gasFeeCap = gasFeeCap.Mul(gasFeeCap, escalateMultipleNum)
+		gasFeeCap := new(big.Int).Mul(originalGasFeeCap, escalateMultipleNum)
 		gasFeeCap = gasFeeCap.Div(gasFeeCap, escalateMultipleDen)
-		if gasFeeCap.Cmp(feeData.gasFeeCap) < 0 {
-			gasFeeCap = feeData.gasFeeCap
-		}
-		if gasTipCap.Cmp(feeData.gasTipCap) < 0 {
-			gasTipCap = feeData.gasTipCap
-		}
 
 		// adjust for rising basefee
-		adjBaseFee := big.NewInt(0)
-		if feeGas := atomic.LoadUint64(&s.baseFeePerGas); feeGas != 0 {
-			adjBaseFee.SetUint64(feeGas)
-		}
+		adjBaseFee := new(big.Int).SetUint64(atomic.LoadUint64(&s.baseFeePerGas))
 		adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
 		adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
 		currentGasFeeCap := new(big.Int).Add(gasTipCap, adjBaseFee)
@@ -412,6 +357,11 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		// but don't exceed maxGasPrice
 		if gasFeeCap.Cmp(maxGasPrice) > 0 {
 			gasFeeCap = maxGasPrice
+		}
+
+		// gasTipCap <= gasFeeCap
+		if gasTipCap.Cmp(gasFeeCap) > 0 {
+			gasTipCap = gasFeeCap
 		}
 
 		if originalGasTipCap.Cmp(gasTipCap) == 0 {
@@ -436,7 +386,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
-	tx, err := s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
+	tx, err := s.createAndSendTx(auth, &feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
 	if err != nil {
 		log.Error("failed to create and send tx (resubmit case)", "from", s.auth.From.String(), "nonce", nonce, "err", err)
 		return nil, err
@@ -446,7 +396,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 
 // checkPendingTransaction checks the confirmation status of pending transactions against the latest confirmed block number.
 // If a transaction hasn't been confirmed after a certain number of blocks, it will be resubmitted with an increased gas price.
-func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64) {
+func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uint64) {
 	number := header.Number.Uint64()
 	atomic.StoreUint64(&s.blockNumber, number)
 
@@ -458,101 +408,61 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 		}
 	}
 
-	for item := range s.pendingTxs.IterBuffered() {
-		key, pending := item.Key, item.Val
-		// ignore empty id, since we use empty id to occupy pending task
-		if pending == nil {
+	pendingTransactions, err := s.transactionOrm.GetPendingTransactionsBySenderType(s.ctx, s.senderType, 100)
+	if err != nil {
+		log.Error("failed to load pending transactions", "sender meta", s.getSenderMeta(), "error", err)
+		return
+	}
+
+	for _, t := range pendingTransactions {
+		tx := new(gethTypes.Transaction)
+		rlpStream := rlp.NewStream(bytes.NewReader(t.RLPEncoding), 0)
+		if err := tx.DecodeRLP(rlpStream); err != nil {
+			log.Error("failed to decode RLP", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "error", err)
 			continue
 		}
 
-		receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
+		receipt, err := s.client.TransactionReceipt(s.ctx, tx.Hash())
 		if (err == nil) && (receipt != nil) {
 			if receipt.BlockNumber.Uint64() <= confirmed {
-				s.pendingTxs.Remove(key)
+				if err = s.transactionOrm.UpdateTransactionStatusByContextID(s.ctx, t.ContextID, types.TxStatusConfirmed); err != nil {
+					log.Error("failed to update transaction status by context ID", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)
+					return
+				}
 				// send confirm message
 				s.confirmCh <- &Confirmation{
-					ID:           pending.id,
-					IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
-					TxHash:       pending.tx.Hash(),
+					ContextID:    t.ContextID,
+					IsSuccessful: receipt.Status == gethTypes.ReceiptStatusSuccessful,
+					TxHash:       tx.Hash(),
+					SenderType:   s.senderType,
 				}
 			}
-		} else if s.config.EscalateBlocks+pending.submitAt < number {
+		} else if s.config.EscalateBlocks+t.SubmitAt < number {
 			log.Info("resubmit transaction",
-				"hash", pending.tx.Hash().String(),
-				"from", pending.signer.From.String(),
-				"nonce", pending.tx.Nonce(),
-				"submit block number", pending.submitAt,
+				"hash", tx.Hash().String(),
+				"from", s.auth.From.String(),
+				"nonce", tx.Nonce(),
+				"submit block number", t.SubmitAt,
 				"current block number", number,
 				"configured escalateBlocks", s.config.EscalateBlocks)
 
-			if tx, err := s.resubmitTransaction(pending.feeData, pending.signer, pending.tx); err != nil {
-				// If account pool is empty, it will try again in next loop.
-				if !errors.Is(err, ErrNoAvailableAccount) {
-					log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)
-				}
-				// This means one of the old transactions is confirmed
-				// One scenario is
-				//   1. Initially, we replace the tx three times and submit it to local node.
-				//      Currently, we keep the last tx hash in the memory.
-				//   2. Other node packed the 2-nd tx or 3-rd tx, and the local node has received the block now.
-				//   3. When we resubmit the 4-th tx, we got a nonce error.
-				//   4. We need to check the status of 3-rd tx stored in our memory
-				//     4.1 If the 3-rd tx is packed, we got a receipt and 3-nd is marked as confirmed.
-				//     4.2 If the 2-nd tx is packed, we got nothing from `TransactionReceipt` call. Since we
-				//         cannot do  anything about, we just log some information. In this case, the caller
-				//         of `sender.SendTransaction` should write extra code to handle the situation.
-				// Another scenario is private key leaking and someone send a transaction with the same nonce.
-				// We need to stop the program and manually handle the situation.
-				if strings.Contains(err.Error(), "nonce") {
-					// This key can be deleted
-					s.pendingTxs.Remove(key)
-					// Try get receipt by the latest replaced tx hash
-					receipt, err := s.client.TransactionReceipt(s.ctx, pending.tx.Hash())
-					if (err == nil) && (receipt != nil) {
-						// send confirm message
-						s.confirmCh <- &Confirmation{
-							ID:           pending.id,
-							IsSuccessful: receipt.Status == types.ReceiptStatusSuccessful,
-							TxHash:       pending.tx.Hash(),
-						}
-					} else {
-						// The receipt can be nil since the confirmed transaction may not be the latest one.
-						// We just ignore it, the caller of the sender pool should handle this situation.
-						log.Warn("Pending transaction is confirmed by one of the replaced transactions", "key", key, "signer", pending.signer.From, "nonce", pending.tx.Nonce())
-					}
-				}
+			if newTx, err := s.resubmitTransaction(s.auth, tx); err != nil {
+				s.metrics.resubmitTransactionFailedTotal.WithLabelValues(s.service, s.name).Inc()
+				log.Error("failed to resubmit transaction", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", newTx.Nonce(), "err", err)
 			} else {
-				// flush submitAt
-				pending.tx = tx
-				pending.submitAt = number
+				if err := s.transactionOrm.InsertTransaction(s.ctx, t.ContextID, s.getSenderMeta(), newTx, number); err != nil {
+					log.Error("failed to insert transaction", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", newTx.Nonce(), "err", err)
+					return
+				}
 			}
 		}
 	}
-}
-
-// checkBalance checks balance and print error log if balance is under a threshold.
-func (s *Sender) checkBalance(ctx context.Context) error {
-	bls, err := s.client.BalanceAt(ctx, s.auth.From, nil)
-	if err != nil {
-		log.Warn("failed to get balance", "address", s.auth.From.String(), "err", err)
-		return err
-	}
-
-	if bls.Cmp(s.minBalance) < 0 {
-		return fmt.Errorf("insufficient account balance - actual balance: %s, minimum required balance: %s, address: %s",
-			bls.String(), s.minBalance.String(), s.auth.From.String())
-	}
-
-	return nil
 }
 
 // Loop is the main event loop
 func (s *Sender) loop(ctx context.Context) {
 	checkTick := time.NewTicker(time.Duration(s.config.CheckPendingTime) * time.Second)
 	defer checkTick.Stop()
-
-	checkBalanceTicker := time.NewTicker(time.Duration(s.config.CheckBalanceTime) * time.Second)
-	defer checkBalanceTicker.Stop()
 
 	for {
 		select {
@@ -571,16 +481,19 @@ func (s *Sender) loop(ctx context.Context) {
 			}
 
 			s.checkPendingTransaction(header, confirmed)
-		case <-checkBalanceTicker.C:
-			s.metrics.senderCheckBalancerTotal.WithLabelValues(s.service, s.name).Inc()
-			// Check and set balance.
-			if err := s.checkBalance(ctx); err != nil {
-				log.Error("check balance error", "err", err)
-			}
 		case <-ctx.Done():
 			return
 		case <-s.stopCh:
 			return
 		}
+	}
+}
+
+func (s *Sender) getSenderMeta() *orm.SenderMeta {
+	return &orm.SenderMeta{
+		Name:    s.name,
+		Service: s.service,
+		Address: s.auth.From,
+		Type:    s.senderType,
 	}
 }

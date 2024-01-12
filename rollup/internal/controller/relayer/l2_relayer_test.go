@@ -182,9 +182,8 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	}
 
 	for i, key := range processingKeys {
-		l2Relayer.processingCommitment.Store(key, batchHashes[i])
 		l2Relayer.commitSender.SendConfirmation(&sender.Confirmation{
-			ID:           key,
+			ContextID:    key,
 			IsSuccessful: isSuccessful[i],
 			TxHash:       common.HexToHash("0x123456789abcdef"),
 		})
@@ -238,9 +237,8 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	}
 
 	for i, key := range processingKeys {
-		l2Relayer.processingFinalization.Store(key, batchHashes[i])
 		l2Relayer.finalizeSender.SendConfirmation(&sender.Confirmation{
-			ID:           key,
+			ContextID:    key,
 			IsSuccessful: isSuccessful[i],
 			TxHash:       common.HexToHash("0x123456789abcdef"),
 		})
@@ -307,13 +305,13 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 
 	for _, confirmation := range confirmations {
 		l2Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
-			ID:           confirmation.batchHash,
+			ContextID:    confirmation.batchHash,
 			IsSuccessful: confirmation.isSuccessful,
 		})
 	}
 	// Check the database for the updated status using TryTimes.
 	ok := utils.TryTimes(5, func() bool {
-		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleFailed}
+		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleImportedFailed}
 		for i, confirmation := range confirmations {
 			gasOracle, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": confirmation.batchHash}, nil, 0)
 			if err != nil || len(gasOracle) != 1 || types.GasOracleStatus(gasOracle[0].OracleStatus) != expectedStatuses[i] {
@@ -378,13 +376,13 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("Failed to send setL2BaseFee tx to layer2", t, func() {
 		targetErr := errors.New("failed to send setL2BaseFee tx to layer2 error")
-		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
 		relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
+	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
 		return common.HexToHash("0x56789abcdef1234"), nil
 	})
 

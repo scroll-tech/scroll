@@ -5,20 +5,22 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"math/big"
-	"strconv"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/core/types"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
-
+	"scroll-tech/common/types"
+	"scroll-tech/database/migrate"
 	"scroll-tech/rollup/internal/config"
 )
 
@@ -29,6 +31,7 @@ var (
 	cfg        *config.Config
 	base       *docker.App
 	txTypes    = []string{"LegacyTx", "AccessListTx", "DynamicFeeTx"}
+	db         *gorm.DB
 )
 
 func TestMain(m *testing.M) {
@@ -43,14 +46,27 @@ func setupEnv(t *testing.T) {
 	var err error
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
-	base.RunL1Geth(t)
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
 	// Load default private key.
 	privateKey = priv
 
+	base.RunL1Geth(t)
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.CheckBalanceTime = 1
+
+	base.RunDBImage(t)
+	db, err = database.InitDB(
+		&database.Config{
+			DSN:        base.DBConfig.DSN,
+			DriverName: base.DBConfig.DriverName,
+			MaxOpenNum: base.DBConfig.MaxOpenNum,
+			MaxIdleNum: base.DBConfig.MaxIdleNum,
+		},
+	)
+	assert.NoError(t, err)
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 }
 
 func TestSender(t *testing.T) {
@@ -58,21 +74,22 @@ func TestSender(t *testing.T) {
 	setupEnv(t)
 
 	t.Run("test new sender", testNewSender)
-	t.Run("test pending limit", testPendLimit)
 	t.Run("test fallback gas limit", testFallbackGasLimit)
 	t.Run("test resubmit zero gas price transaction", testResubmitZeroGasPriceTransaction)
 	t.Run("test resubmit non-zero gas price transaction", testResubmitNonZeroGasPriceTransaction)
 	t.Run("test resubmit under priced transaction", testResubmitUnderpricedTransaction)
 	t.Run("test resubmit transaction with rising base fee", testResubmitTransactionWithRisingBaseFee)
-	t.Run("test check pending transaction", testCheckPendingTransaction)
 }
 
 func testNewSender(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
 		// exit by Stop()
 		cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy1.TxType = txType
-		newSender1, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", nil)
+		newSender1, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		newSender1.Stop()
 
@@ -80,36 +97,21 @@ func testNewSender(t *testing.T) {
 		cfgCopy2 := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy2.TxType = txType
 		subCtx, cancel := context.WithCancel(context.Background())
-		_, err = NewSender(subCtx, &cfgCopy2, privateKey, "test", "test", nil)
+		_, err = NewSender(subCtx, &cfgCopy2, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		cancel()
 	}
 }
 
-func testPendLimit(t *testing.T) {
-	for _, txType := range txTypes {
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
-		cfgCopy.TxType = txType
-		cfgCopy.Confirmations = rpc.LatestBlockNumber
-		cfgCopy.PendingLimit = 2
-		newSender, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
-		assert.NoError(t, err)
-
-		for i := 0; i < 2*newSender.PendingLimit(); i++ {
-			_, err = newSender.SendTransaction(strconv.Itoa(i), &common.Address{}, big.NewInt(1), nil, 0)
-			assert.True(t, err == nil || (err != nil && err.Error() == "sender's pending pool is full"))
-		}
-		assert.True(t, newSender.PendingCount() <= newSender.PendingLimit())
-		newSender.Stop()
-	}
-}
-
 func testFallbackGasLimit(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.Confirmations = rpc.LatestBlockNumber
-		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
 		client, err := ethclient.Dial(cfgCopy.Endpoint)
@@ -141,10 +143,13 @@ func testFallbackGasLimit(t *testing.T) {
 }
 
 func testResubmitZeroGasPriceTransaction(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		feeData := &FeeData{
 			gasPrice:  big.NewInt(0),
@@ -156,20 +161,23 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
-		_, err = s.resubmitTransaction(feeData, s.auth, tx)
+		_, err = s.resubmitTransaction(s.auth, tx)
 		assert.NoError(t, err)
 		s.Stop()
 	}
 }
 
 func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		// Bump gas price, gas tip cap and gas fee cap just touch the minimum threshold of 10% (default config of geth).
 		cfgCopy.EscalateMultipleNum = 110
 		cfgCopy.EscalateMultipleDen = 100
 		cfgCopy.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		feeData := &FeeData{
 			gasPrice:  big.NewInt(100000),
@@ -180,20 +188,23 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(feeData, s.auth, tx)
+		_, err = s.resubmitTransaction(s.auth, tx)
 		assert.NoError(t, err)
 		s.Stop()
 	}
 }
 
 func testResubmitUnderpricedTransaction(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		// Bump gas price, gas tip cap and gas fee cap less than 10% (default config of geth).
 		cfgCopy.EscalateMultipleNum = 109
 		cfgCopy.EscalateMultipleDen = 100
 		cfgCopy.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		feeData := &FeeData{
 			gasPrice:  big.NewInt(100000),
@@ -204,27 +215,28 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(feeData, s.auth, tx)
+		_, err = s.resubmitTransaction(s.auth, tx)
 		assert.Error(t, err, "replacement transaction underpriced")
 		s.Stop()
 	}
 }
 
 func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
-	txType := "DynamicFeeTx"
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
 
+	txType := "DynamicFeeTx"
 	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 	cfgCopy.TxType = txType
-	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 	assert.NoError(t, err)
-	tx := types.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
+	tx := gethTypes.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 21000, big.NewInt(0), nil)
 	s.baseFeePerGas = 1000
-	feeData, err := s.getFeeData(s.auth, &common.Address{}, big.NewInt(0), nil, 0)
-	assert.NoError(t, err)
 	// bump the basefee by 10x
 	s.baseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.resubmitTransaction(feeData, s.auth, tx)
+	newTx, err := s.resubmitTransaction(s.auth, tx)
 	assert.NoError(t, err)
 
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
@@ -236,100 +248,11 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 	adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
 	adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
 
-	expectedGasFeeCap := new(big.Int).Add(feeData.gasTipCap, adjBaseFee)
+	expectedGasFeeCap := new(big.Int).Add(tx.GasTipCap(), adjBaseFee)
 	if expectedGasFeeCap.Cmp(maxGasPrice) > 0 {
 		expectedGasFeeCap = maxGasPrice
 	}
 
 	assert.Equal(t, expectedGasFeeCap.Int64(), newTx.GasFeeCap().Int64())
-
 	s.Stop()
-}
-
-func testCheckPendingTransaction(t *testing.T) {
-	for _, txType := range txTypes {
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
-		cfgCopy.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
-		assert.NoError(t, err)
-
-		header := &types.Header{Number: big.NewInt(100), BaseFee: big.NewInt(100)}
-		confirmed := uint64(100)
-		receipt := &types.Receipt{Status: types.ReceiptStatusSuccessful, BlockNumber: big.NewInt(90)}
-		tx := types.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
-
-		testCases := []struct {
-			name          string
-			receipt       *types.Receipt
-			receiptErr    error
-			resubmitErr   error
-			expectedCount int
-			expectedFound bool
-		}{
-			{
-				name:          "Normal case, transaction receipt exists and successful",
-				receipt:       receipt,
-				receiptErr:    nil,
-				resubmitErr:   nil,
-				expectedCount: 0,
-				expectedFound: false,
-			},
-			{
-				name:          "Resubmit case, resubmitTransaction error (not nonce) case",
-				receipt:       receipt,
-				receiptErr:    errors.New("receipt error"),
-				resubmitErr:   errors.New("resubmit error"),
-				expectedCount: 1,
-				expectedFound: true,
-			},
-			{
-				name:          "Resubmit case, resubmitTransaction success case",
-				receipt:       receipt,
-				receiptErr:    errors.New("receipt error"),
-				resubmitErr:   nil,
-				expectedCount: 1,
-				expectedFound: true,
-			},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				var c *ethclient.Client
-				patchGuard := gomonkey.ApplyMethodFunc(c, "TransactionReceipt", func(ctx context.Context, txHash common.Hash) (*types.Receipt, error) {
-					return tc.receipt, tc.receiptErr
-				})
-				patchGuard.ApplyPrivateMethod(s, "resubmitTransaction",
-					func(feeData *FeeData, auth *bind.TransactOpts, tx *types.Transaction) (*types.Transaction, error) {
-						return tx, tc.resubmitErr
-					},
-				)
-
-				pendingTx := &PendingTransaction{id: "abc", tx: tx, signer: s.auth, submitAt: header.Number.Uint64() - s.config.EscalateBlocks - 1}
-				s.pendingTxs.Set(pendingTx.id, pendingTx)
-				s.checkPendingTransaction(header, confirmed)
-
-				if tc.receiptErr == nil {
-					expectedConfirmation := &Confirmation{
-						ID:           pendingTx.id,
-						IsSuccessful: tc.receipt.Status == types.ReceiptStatusSuccessful,
-						TxHash:       pendingTx.tx.Hash(),
-					}
-					actualConfirmation := <-s.confirmCh
-					assert.Equal(t, expectedConfirmation, actualConfirmation)
-				}
-
-				if tc.expectedFound && tc.resubmitErr == nil {
-					actualPendingTx, found := s.pendingTxs.Get(pendingTx.id)
-					assert.Equal(t, true, found)
-					assert.Equal(t, header.Number.Uint64(), actualPendingTx.submitAt)
-				}
-
-				_, found := s.pendingTxs.Get(pendingTx.id)
-				assert.Equal(t, tc.expectedFound, found)
-				assert.Equal(t, tc.expectedCount, s.pendingTxs.Count())
-				patchGuard.Reset()
-			})
-		}
-		s.Stop()
-	}
 }

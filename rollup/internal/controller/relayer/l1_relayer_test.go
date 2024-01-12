@@ -61,11 +61,11 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 
 	// Simulate message confirmations.
 	l1Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
-		ID:           "gas-oracle-1",
+		ContextID:    "gas-oracle-1",
 		IsSuccessful: true,
 	})
 	l1Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
-		ID:           "gas-oracle-2",
+		ContextID:    "gas-oracle-2",
 		IsSuccessful: false,
 	})
 
@@ -74,7 +74,7 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 		msg1, err1 := l1BlockOrm.GetL1Blocks(ctx, map[string]interface{}{"hash": "gas-oracle-1"})
 		msg2, err2 := l1BlockOrm.GetL1Blocks(ctx, map[string]interface{}{"hash": "gas-oracle-2"})
 		return err1 == nil && len(msg1) == 1 && types.GasOracleStatus(msg1[0].GasOracleStatus) == types.GasOracleImported &&
-			err2 == nil && len(msg2) == 1 && types.GasOracleStatus(msg2[0].GasOracleStatus) == types.GasOracleFailed
+			err2 == nil && len(msg2) == 1 && types.GasOracleStatus(msg2[0].GasOracleStatus) == types.GasOracleImportedFailed
 	})
 	assert.True(t, ok)
 }
