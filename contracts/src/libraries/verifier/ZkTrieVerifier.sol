@@ -196,8 +196,17 @@ library ZkTrieVerifier {
                 let rootHash
                 ptr, rootHash, leafHash := walkTree(hasher, key, ptr)
 
-                // the root hash of the storage tree must match the value from the account leaf
-                require(eq(rootHash, storageRootHash), "StorageRootMismatch")
+                // The root hash of the storage tree must match the value from the account leaf.
+                // But when the leaf node is the same as the root node, the function `walkTree` will return
+                // `rootHash=0` and `leafHash=0`. In such case, we don't need to check the value of `rootHash`.
+                // And the value of `leafHash` should be the same as `storageRootHash`.
+                switch rootHash
+                case 0 {
+                    leafHash := storageRootHash
+                }
+                default {
+                    require(eq(rootHash, storageRootHash), "StorageRootMismatch")
+                }
 
                 switch byte(0, calldataload(ptr))
                 case 4 {
