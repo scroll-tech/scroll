@@ -91,7 +91,7 @@ type MessageQueueEvent struct {
 type CrossMessage struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	ID             uint64     `json:"id" gorm:"column:id;primary_key"`
+	ID             uint64     `json:"id" gorm:"column:primary_key"`
 	MessageType    int        `json:"message_type" gorm:"column:message_type"`
 	RollupStatus   int        `json:"rollup_status" gorm:"column:rollup_status"`
 	TxStatus       int        `json:"tx_status" gorm:"column:tx_status"`

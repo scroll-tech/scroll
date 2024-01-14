@@ -90,8 +90,8 @@ func NewL2FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 	return f
 }
 
-func (f *L2FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, common.Hash, []*types.BlockWithRowConsumption, error) {
-	blocks, err := utils.GetL2BlocksInRange(ctx, f.client, from, to)
+func (f *L2FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, common.Hash, []*types.Block, error) {
+	blocks, err := utils.GetBlocksInRange(ctx, f.client, from, to)
 	if err != nil {
 		log.Error("failed to get L2 blocks in range", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err
@@ -117,7 +117,7 @@ func (f *L2FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to u
 	return false, 0, lastBlockHash, blocks, nil
 }
 
-func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.BlockWithRowConsumption) (map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
+func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, blocks []*types.Block) (map[uint64]uint64, []*orm.CrossMessage, []*orm.CrossMessage, error) {
 	var l2RevertedUserTxs []*orm.CrossMessage
 	var l2RevertedRelayedMessageTxs []*orm.CrossMessage
 	blockTimestampsMap := make(map[uint64]uint64)
