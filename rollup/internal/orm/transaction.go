@@ -25,7 +25,7 @@ type SenderMeta struct {
 type Transaction struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	ID            uint             `json:"id" gorm:"primaryKey"`
+	ID            uint             `json:"id" gorm:"id;primaryKey"`
 	ContextID     string           `json:"context_id" gorm:"context_id"`
 	Hash          string           `json:"hash" gorm:"hash"`
 	Type          uint8            `json:"type" gorm:"type"`
