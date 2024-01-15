@@ -22,11 +22,11 @@ import (
 var (
 	base *docker.App
 
-	db             *gorm.DB
-	l2BlockOrm     *L2Block
-	chunkOrm       *Chunk
-	batchOrm       *Batch
-	transactionOrm *Transaction
+	db                    *gorm.DB
+	l2BlockOrm            *L2Block
+	chunkOrm              *Chunk
+	batchOrm              *Batch
+	pendingTransactionOrm *PendingTransaction
 
 	wrappedBlock1 *types.WrappedBlock
 	wrappedBlock2 *types.WrappedBlock
@@ -63,7 +63,7 @@ func setupEnv(t *testing.T) {
 	batchOrm = NewBatch(db)
 	chunkOrm = NewChunk(db)
 	l2BlockOrm = NewL2Block(db)
-	transactionOrm = NewTransaction(db)
+	pendingTransactionOrm = NewPendingTransaction(db)
 
 	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
@@ -359,20 +359,20 @@ func TestTransactionOrm(t *testing.T) {
 		Type:    types.SenderTypeUnknown,
 	}
 
-	err = transactionOrm.InsertTransaction(context.Background(), "context1", senderMeta, tx1, uint64(time.Now().Unix()))
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "context1", senderMeta, tx1, uint64(time.Now().Unix()))
 	assert.NoError(t, err)
 
-	err = transactionOrm.InsertTransaction(context.Background(), "context1", senderMeta, tx2, uint64(time.Now().Unix()))
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "context1", senderMeta, tx2, uint64(time.Now().Unix()))
 	assert.NoError(t, err)
 
-	txs, err := transactionOrm.GetPendingTransactionsBySenderType(context.Background(), senderMeta.Type, 100)
+	txs, err := pendingTransactionOrm.GetPendingTransactionsBySenderType(context.Background(), senderMeta.Type, 100)
 	assert.NoError(t, err)
 	assert.Len(t, txs, 2)
 
-	err = transactionOrm.UpdateTransactionStatusByContextID(context.Background(), "context1", types.TxStatusConfirmed)
+	err = pendingTransactionOrm.UpdatePendingTransactionStatusByContextID(context.Background(), "context1", types.TxStatusConfirmed)
 	assert.NoError(t, err)
 
-	txs, err = transactionOrm.GetPendingTransactionsBySenderType(context.Background(), senderMeta.Type, 100)
+	txs, err = pendingTransactionOrm.GetPendingTransactionsBySenderType(context.Background(), senderMeta.Type, 100)
 	assert.NoError(t, err)
 	assert.Len(t, txs, 0)
 }

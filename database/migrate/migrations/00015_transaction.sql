@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-CREATE TABLE transaction
+CREATE TABLE pending_transaction
 (
     id                  SERIAL       PRIMARY KEY,
 
@@ -16,7 +16,7 @@ CREATE TABLE transaction
     gas_price           NUMERIC      NOT NULL,
     gas_limit           BIGINT       NOT NULL,
     nonce               BIGINT       NOT NULL,
-    submit_at           BIGINT       NOT NULL,           
+    submit_block_number BIGINT       NOT NULL,
 
     sender_name         VARCHAR      NOT NULL,
     sender_service      VARCHAR      NOT NULL,
@@ -28,19 +28,19 @@ CREATE TABLE transaction
     deleted_at          TIMESTAMP(0) DEFAULT NULL
 );
 
-CREATE INDEX idx_transaction_on_context_id
-ON transaction (context_id);
+CREATE INDEX idx_pending_transaction_on_context_id_status
+ON pending_transaction (context_id, status);
 
-CREATE INDEX idx_transaction_on_sender_type_status_nonce
-ON transaction (sender_type, status, nonce);
+CREATE INDEX idx_pending_transaction_on_sender_type_status_nonce
+ON pending_transaction (sender_type, status, nonce);
 
-COMMENT ON COLUMN transaction.type IS 'unknown, commit batch, finalize batch, L1 gas oracle, L2 gas oracle';
+COMMENT ON COLUMN pending_transaction.type IS 'unknown, commit batch, finalize batch, L1 gas oracle, L2 gas oracle';
 
-COMMENT ON COLUMN transaction.status IS 'unknown, pending, confirmed, failed';
+COMMENT ON COLUMN pending_transaction.status IS 'unknown, pending, confirmed, failed';
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS transaction;
+DROP TABLE IF EXISTS pending_transaction;
 -- +goose StatementEnd

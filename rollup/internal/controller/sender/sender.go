@@ -70,7 +70,7 @@ type Sender struct {
 	blockNumber   uint64 // Current block number on chain
 	baseFeePerGas uint64 // Current base fee per gas on chain
 
-	transactionOrm *orm.Transaction
+	pendingTransactionOrm *orm.PendingTransaction
 
 	confirmCh chan *Confirmation
 	stopCh    chan struct{}
@@ -124,19 +124,19 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	}
 
 	sender := &Sender{
-		ctx:            ctx,
-		config:         config,
-		client:         client,
-		chainID:        chainID,
-		auth:           auth,
-		blockNumber:    header.Number.Uint64(),
-		baseFeePerGas:  baseFeePerGas,
-		transactionOrm: orm.NewTransaction(db),
-		confirmCh:      make(chan *Confirmation, 128),
-		stopCh:         make(chan struct{}),
-		name:           name,
-		service:        service,
-		senderType:     senderType,
+		ctx:                   ctx,
+		config:                config,
+		client:                client,
+		chainID:               chainID,
+		auth:                  auth,
+		blockNumber:           header.Number.Uint64(),
+		baseFeePerGas:         baseFeePerGas,
+		pendingTransactionOrm: orm.NewPendingTransaction(db),
+		confirmCh:             make(chan *Confirmation, 128),
+		stopCh:                make(chan struct{}),
+		name:                  name,
+		service:               service,
+		senderType:            senderType,
 	}
 	sender.metrics = initSenderMetrics(reg)
 
@@ -195,7 +195,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, value
 		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
 	}
 
-	if err = s.transactionOrm.InsertTransaction(s.ctx, contextID, s.getSenderMeta(), tx, atomic.LoadUint64(&s.blockNumber)); err != nil {
+	if err = s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, contextID, s.getSenderMeta(), tx, atomic.LoadUint64(&s.blockNumber)); err != nil {
 		log.Error("failed to insert transaction", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "err", err)
 		return common.Hash{}, fmt.Errorf("failed to insert transaction, err: %w", err)
 	}
@@ -409,7 +409,7 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 		}
 	}
 
-	pendingTransactions, err := s.transactionOrm.GetPendingTransactionsBySenderType(s.ctx, s.senderType, 100)
+	pendingTransactions, err := s.pendingTransactionOrm.GetPendingTransactionsBySenderType(s.ctx, s.senderType, 100)
 	if err != nil {
 		log.Error("failed to load pending transactions", "sender meta", s.getSenderMeta(), "error", err)
 		return
@@ -426,7 +426,7 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 		receipt, err := s.client.TransactionReceipt(s.ctx, tx.Hash())
 		if (err == nil) && (receipt != nil) {
 			if receipt.BlockNumber.Uint64() <= confirmed {
-				if err = s.transactionOrm.UpdateTransactionStatusByContextID(s.ctx, t.ContextID, types.TxStatusConfirmed); err != nil {
+				if err = s.pendingTransactionOrm.UpdatePendingTransactionStatusByContextID(s.ctx, t.ContextID, types.TxStatusConfirmed); err != nil {
 					log.Error("failed to update transaction status by context ID", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)
 					return
 				}
@@ -438,12 +438,12 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 					SenderType:   s.senderType,
 				}
 			}
-		} else if s.config.EscalateBlocks+t.SubmitAt < number {
+		} else if s.config.EscalateBlocks+t.SubmitBlockNumber < number {
 			log.Info("resubmit transaction",
 				"hash", tx.Hash().String(),
 				"from", s.auth.From.String(),
 				"nonce", tx.Nonce(),
-				"submit block number", t.SubmitAt,
+				"submit block number", t.SubmitBlockNumber,
 				"current block number", number,
 				"configured escalateBlocks", s.config.EscalateBlocks)
 
@@ -451,7 +451,7 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 				s.metrics.resubmitTransactionFailedTotal.WithLabelValues(s.service, s.name).Inc()
 				log.Error("failed to resubmit transaction", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", newTx.Nonce(), "err", err)
 			} else {
-				if err := s.transactionOrm.InsertTransaction(s.ctx, t.ContextID, s.getSenderMeta(), newTx, number); err != nil {
+				if err := s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, t.ContextID, s.getSenderMeta(), newTx, number); err != nil {
 					log.Error("failed to insert transaction", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", newTx.Nonce(), "err", err)
 					return
 				}
