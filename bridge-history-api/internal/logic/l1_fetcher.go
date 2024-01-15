@@ -96,7 +96,7 @@ func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 }
 
 func (f *L1FetcherLogic) getBlocksAndDetectReorg(ctx context.Context, from, to uint64, lastBlockHash common.Hash) (bool, uint64, common.Hash, []*types.Block, error) {
-	blocks, err := utils.GetL1BlocksInRange(ctx, f.client, from, to)
+	blocks, err := utils.GetBlocksInRange(ctx, f.client, from, to)
 	if err != nil {
 		log.Error("failed to get L1 blocks in range", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err
