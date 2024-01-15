@@ -55,7 +55,7 @@ type FeeData struct {
 	gasTipCap *big.Int
 	gasPrice  *big.Int
 
-	accessList *types.AccessList
+	accessList types.AccessList
 
 	gasLimit uint64
 }
@@ -285,7 +285,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			To:         target,
 			Value:      new(big.Int).Set(value),
 			Data:       common.CopyBytes(data),
-			AccessList: *feeData.accessList,
+			AccessList: feeData.accessList,
 			V:          new(big.Int),
 			R:          new(big.Int),
 			S:          new(big.Int),
@@ -296,7 +296,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			To:         target,
 			Data:       common.CopyBytes(data),
 			Gas:        feeData.gasLimit,
-			AccessList: *feeData.accessList,
+			AccessList: feeData.accessList,
 			Value:      new(big.Int).Set(value),
 			ChainID:    s.chainID,
 			GasTipCap:  feeData.gasTipCap,

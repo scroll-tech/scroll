@@ -1,7 +1,6 @@
 package sender
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"sync/atomic"
@@ -63,12 +62,15 @@ func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Ad
 	} else {
 		gasLimit = gasLimit * 12 / 10 // 20% extra gas to avoid out of gas error
 	}
-	return &FeeData{
-		gasLimit:   gasLimit,
-		gasTipCap:  gasTipCap,
-		gasFeeCap:  gasFeeCap,
-		accessList: accessList,
-	}, nil
+	feeData := &FeeData{
+		gasLimit:  gasLimit,
+		gasTipCap: gasTipCap,
+		gasFeeCap: gasFeeCap,
+	}
+	if accessList != nil {
+		feeData.accessList = *accessList
+	}
+	return feeData, nil
 }
 
 func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int, useAccessList bool) (uint64, *types.AccessList, error) {
@@ -92,7 +94,7 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 	}
 
 	var gasLimitWithAccessList uint64
-	accessList, _, errStr, rpcErr := s.gethClient.CreateAccessList(context.Background(), msg)
+	accessList, _, errStr, rpcErr := s.gethClient.CreateAccessList(s.ctx, msg)
 	if rpcErr != nil {
 		log.Error("CreateAccessList RPC error", "error", rpcErr)
 		return gasLimitWithoutAccessList, nil, rpcErr
