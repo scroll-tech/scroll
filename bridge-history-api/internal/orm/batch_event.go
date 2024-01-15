@@ -32,7 +32,7 @@ const (
 type BatchEvent struct {
 	db *gorm.DB `gorm:"column:-"`
 
-	ID               uint64     `json:"id" gorm:"column:primary_key"`
+	ID               uint64     `json:"id" gorm:"column:id;primary_key"`
 	L1BlockNumber    uint64     `json:"l1_block_number" gorm:"column:l1_block_number"`
 	BatchStatus      int        `json:"batch_status" gorm:"column:batch_status"`
 	BatchIndex       uint64     `json:"batch_index" gorm:"column:batch_index"`
