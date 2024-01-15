@@ -164,11 +164,9 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
-	processingKeys := []string{"committed-1", "committed-2"}
 	isSuccessful := []bool{true, false}
-
 	batchOrm := orm.NewBatch(db)
-	batchHashes := make([]string, len(processingKeys))
+	batchHashes := make([]string, len(isSuccessful))
 	for i := range batchHashes {
 		batchMeta := &types.BatchMeta{
 			StartChunkIndex: 0,
@@ -181,11 +179,12 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 		batchHashes[i] = batch.Hash
 	}
 
-	for i, key := range processingKeys {
+	for i, batchHash := range batchHashes {
 		l2Relayer.commitSender.SendConfirmation(&sender.Confirmation{
-			ContextID:    key,
+			ContextID:    batchHash,
 			IsSuccessful: isSuccessful[i],
 			TxHash:       common.HexToHash("0x123456789abcdef"),
+			SenderType:   types.SenderTypeCommitBatch,
 		})
 	}
 
@@ -219,11 +218,9 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
-	processingKeys := []string{"finalized-1", "finalized-2"}
 	isSuccessful := []bool{true, false}
-
 	batchOrm := orm.NewBatch(db)
-	batchHashes := make([]string, len(processingKeys))
+	batchHashes := make([]string, len(isSuccessful))
 	for i := range batchHashes {
 		batchMeta := &types.BatchMeta{
 			StartChunkIndex: 0,
@@ -236,11 +233,12 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 		batchHashes[i] = batch.Hash
 	}
 
-	for i, key := range processingKeys {
+	for i, batchHash := range batchHashes {
 		l2Relayer.finalizeSender.SendConfirmation(&sender.Confirmation{
-			ContextID:    key,
+			ContextID:    batchHash,
 			IsSuccessful: isSuccessful[i],
 			TxHash:       common.HexToHash("0x123456789abcdef"),
+			SenderType:   types.SenderTypeFinalizeBatch,
 		})
 	}
 
@@ -307,6 +305,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		l2Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
 			ContextID:    confirmation.batchHash,
 			IsSuccessful: confirmation.isSuccessful,
+			SenderType:   types.SenderTypeL2GasOracle,
 		})
 	}
 	// Check the database for the updated status using TryTimes.

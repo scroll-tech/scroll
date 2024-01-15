@@ -21,6 +21,7 @@ import (
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
+
 	"scroll-tech/rollup/internal/config"
 )
 

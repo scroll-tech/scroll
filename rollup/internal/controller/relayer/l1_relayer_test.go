@@ -63,10 +63,12 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	l1Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
 		ContextID:    "gas-oracle-1",
 		IsSuccessful: true,
+		SenderType:   types.SenderTypeL1GasOracle,
 	})
 	l1Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
 		ContextID:    "gas-oracle-2",
 		IsSuccessful: false,
+		SenderType:   types.SenderTypeL1GasOracle,
 	})
 
 	// Check the database for the updated status using TryTimes.
