@@ -28,11 +28,12 @@ CREATE TABLE pending_transaction
     deleted_at          TIMESTAMP(0) DEFAULT NULL
 );
 
-CREATE INDEX idx_pending_transaction_on_context_id_status
-ON pending_transaction (context_id, status);
-
 CREATE INDEX idx_pending_transaction_on_sender_type_status_nonce
 ON pending_transaction (sender_type, status, nonce);
+
+CREATE INDEX idx_pending_transaction_on_hash ON pending_transaction(hash);
+
+CREATE INDEX idx_pending_transaction_on_sender_address_nonce ON pending_transaction(sender_address, nonce);
 
 COMMENT ON COLUMN pending_transaction.type IS 'unknown, commit batch, finalize batch, L1 gas oracle, L2 gas oracle';
 

@@ -271,6 +271,8 @@ const (
 	TxStatusUnknown TxStatus = iota
 	// TxStatusPending indicates that the transaction is yet to be processed.
 	TxStatusPending
+	// TxStatusReplaced indicates that the transaction has been replaced by another one, typically due to a higher gas price.
+	TxStatusReplaced
 	// TxStatusConfirmed indicates that the transaction has been successfully processed and confirmed.
 	TxStatusConfirmed
 	// TxStatusFailed indicates that the transaction has failed during processing.
@@ -282,6 +284,8 @@ func (s TxStatus) String() string {
 	switch s {
 	case TxStatusPending:
 		return "TxStatusPending"
+	case TxStatusReplaced:
+		return "TxStatusReplaced"
 	case TxStatusConfirmed:
 		return "TxStatusConfirmed"
 	case TxStatusFailed:

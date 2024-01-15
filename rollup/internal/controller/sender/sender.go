@@ -70,6 +70,7 @@ type Sender struct {
 	blockNumber   uint64 // Current block number on chain
 	baseFeePerGas uint64 // Current base fee per gas on chain
 
+	db                    *gorm.DB
 	pendingTransactionOrm *orm.PendingTransaction
 
 	confirmCh chan *Confirmation
@@ -131,6 +132,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 		auth:                  auth,
 		blockNumber:           header.Number.Uint64(),
 		baseFeePerGas:         baseFeePerGas,
+		db:                    db,
 		pendingTransactionOrm: orm.NewPendingTransaction(db),
 		confirmCh:             make(chan *Confirmation, 128),
 		stopCh:                make(chan struct{}),
@@ -213,7 +215,6 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 		nonce = *overrideNonce
 	}
 
-	// lock here to avoit blocking when call `SuggestGasPrice`
 	switch s.config.TxType {
 	case LegacyTxType:
 		// for ganache mock node
@@ -265,6 +266,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 		log.Error("failed to sign tx", "address", auth.From.String(), "err", err)
 		return nil, err
 	}
+
 	if err = s.client.SendTransaction(s.ctx, tx); err != nil {
 		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "from", auth.From.String(), "nonce", tx.Nonce(), "err", err)
 		// Check if contain nonce, and reset nonce
@@ -409,51 +411,89 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 		}
 	}
 
-	pendingTransactions, err := s.pendingTransactionOrm.GetPendingTransactionsBySenderType(s.ctx, s.senderType, 100)
+	transactionsToCheck, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(s.ctx, s.senderType, 100)
 	if err != nil {
 		log.Error("failed to load pending transactions", "sender meta", s.getSenderMeta(), "error", err)
 		return
 	}
 
-	for _, t := range pendingTransactions {
+	for _, txnToCheck := range transactionsToCheck {
 		tx := new(gethTypes.Transaction)
-		rlpStream := rlp.NewStream(bytes.NewReader(t.RLPEncoding), 0)
+		rlpStream := rlp.NewStream(bytes.NewReader(txnToCheck.RLPEncoding), 0)
 		if err := tx.DecodeRLP(rlpStream); err != nil {
-			log.Error("failed to decode RLP", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "error", err)
+			log.Error("failed to decode RLP", "context ID", txnToCheck.ContextID, "sender meta", s.getSenderMeta(), "error", err)
 			continue
 		}
 
 		receipt, err := s.client.TransactionReceipt(s.ctx, tx.Hash())
 		if (err == nil) && (receipt != nil) {
 			if receipt.BlockNumber.Uint64() <= confirmed {
-				if err = s.pendingTransactionOrm.UpdatePendingTransactionStatusByContextID(s.ctx, t.ContextID, types.TxStatusConfirmed); err != nil {
-					log.Error("failed to update transaction status by context ID", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)
-					return
+				err := s.db.Transaction(func(dbTX *gorm.DB) error {
+					// Update the status of the transaction to TxStatusConfirmed
+					if err := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, tx.Hash().String(), types.TxStatusConfirmed, dbTX); err != nil {
+						log.Error("failed to update transaction status by tx hash", "hash", tx.Hash().String(), "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)
+						return err
+					}
+					// Update other transactions with the same nonce and sender address as failed
+					if err := s.pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(s.ctx, txnToCheck.SenderAddress, txnToCheck.Nonce, txnToCheck.Hash, dbTX); err != nil {
+						log.Error("failed to update other transactions as failed by nonce", "senderAddress", txnToCheck.SenderAddress, "nonce", txnToCheck.Nonce, "excludedTxHash", txnToCheck.Hash, "err", err)
+						return err
+					}
+
+					return nil
+				})
+				if err != nil {
+					log.Error("db transaction failed", "err", err)
 				}
+
 				// send confirm message
 				s.confirmCh <- &Confirmation{
-					ContextID:    t.ContextID,
+					ContextID:    txnToCheck.ContextID,
 					IsSuccessful: receipt.Status == gethTypes.ReceiptStatusSuccessful,
 					TxHash:       tx.Hash(),
 					SenderType:   s.senderType,
 				}
 			}
-		} else if s.config.EscalateBlocks+t.SubmitBlockNumber < number {
+		} else if txnToCheck.Status == types.TxStatusPending && // Only resubmit the last pending transaction of the same ContextID.
+			s.config.EscalateBlocks+txnToCheck.SubmitBlockNumber < number {
+			// The pending transaction may be marked as failed in the same loop (one of the replaced transaction is confirmed),
+			// thus checking the transaction status again.
+			status, err := s.pendingTransactionOrm.GetTxStatusByTxHash(s.ctx, tx.Hash().String())
+			if err != nil {
+				log.Error("failed to get transaction status by tx hash", "hash", tx.Hash().String(), "err", err)
+				return
+			}
+
+			if status == types.TxStatusFailed {
+				log.Info("transaction already marked as failed, skipping resubmission", "hash", tx.Hash().String())
+				return
+			}
+
 			log.Info("resubmit transaction",
 				"hash", tx.Hash().String(),
 				"from", s.auth.From.String(),
 				"nonce", tx.Nonce(),
-				"submit block number", t.SubmitBlockNumber,
+				"submit block number", txnToCheck.SubmitBlockNumber,
 				"current block number", number,
 				"configured escalateBlocks", s.config.EscalateBlocks)
 
 			if newTx, err := s.resubmitTransaction(s.auth, tx); err != nil {
 				s.metrics.resubmitTransactionFailedTotal.WithLabelValues(s.service, s.name).Inc()
-				log.Error("failed to resubmit transaction", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", newTx.Nonce(), "err", err)
+				log.Error("failed to resubmit transaction", "context ID", txnToCheck.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", newTx.Nonce(), "err", err)
 			} else {
-				if err := s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, t.ContextID, s.getSenderMeta(), newTx, number); err != nil {
-					log.Error("failed to insert transaction", "context ID", t.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", newTx.Nonce(), "err", err)
-					return
+				err := s.db.Transaction(func(dbTX *gorm.DB) error {
+					// Update the status of the original transaction as replaced, while still checking its confirmation status.
+					if err := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, tx.Hash().String(), types.TxStatusReplaced, dbTX); err != nil {
+						return fmt.Errorf("failed to update pending transaction status by tx hash, err: %w", err)
+					}
+					// Record the new transaction that has replaced the original one.
+					if err := s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, txnToCheck.ContextID, s.getSenderMeta(), tx, txnToCheck.SubmitBlockNumber, dbTX); err != nil {
+						return fmt.Errorf("failed to insert pending transaction, err: %w", err)
+					}
+					return nil
+				})
+				if err != nil {
+					log.Error("db transaction failed", "err", err)
 				}
 			}
 		}

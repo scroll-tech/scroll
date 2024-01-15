@@ -56,8 +56,35 @@ func NewPendingTransaction(db *gorm.DB) *PendingTransaction {
 	return &PendingTransaction{db: db}
 }
 
+// GetTxStatusByTxHash retrieves the status of a transaction by its hash.
+func (o *PendingTransaction) GetTxStatusByTxHash(ctx context.Context, hash string) (types.TxStatus, error) {
+	var status types.TxStatus
+	db := o.db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+	db = db.Select("status")
+	db = db.Where("hash = ?", hash)
+	if err := db.First(&status).Error; err != nil {
+		return types.TxStatusUnknown, fmt.Errorf("failed to get tx status by hash, hash: %v, err: %w", hash, err)
+	}
+	return status, nil
+}
+
+// GetPendingOrReplacedTransactionsBySenderType retrieves pending or replaced transactions filtered by sender type, ordered by nonce, and limited to a specified count.
+func (o *PendingTransaction) GetPendingOrReplacedTransactionsBySenderType(ctx context.Context, senderType types.SenderType, limit int) ([]PendingTransaction, error) {
+	var transactions []PendingTransaction
+	db := o.db.WithContext(ctx)
+	db = db.Where("sender_type = ?", senderType)
+	db = db.Where("status = ? OR status = ?", types.TxStatusPending, types.TxStatusReplaced)
+	db = db.Order("nonce asc")
+	db = db.Limit(limit)
+	if err := db.Find(&transactions).Error; err != nil {
+		return nil, fmt.Errorf("failed to get pending or replaced transactions by sender type, error: %w", err)
+	}
+	return transactions, nil
+}
+
 // InsertPendingTransaction creates a new pending transaction record and stores it in the database.
-func (t *PendingTransaction) InsertPendingTransaction(ctx context.Context, contextID string, senderMeta *SenderMeta, tx *gethTypes.Transaction, submitBlockNumber uint64) error {
+func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, contextID string, senderMeta *SenderMeta, tx *gethTypes.Transaction, submitBlockNumber uint64, dbTX ...*gorm.DB) error {
 	rlp := new(bytes.Buffer)
 	if err := tx.EncodeRLP(rlp); err != nil {
 		return fmt.Errorf("failed to encode rlp, err: %w", err)
@@ -81,35 +108,46 @@ func (t *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 		SenderType:        senderMeta.Type,
 	}
 
-	db := t.db.WithContext(ctx)
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	if err := db.Create(newTransaction).Error; err != nil {
 		return fmt.Errorf("failed to InsertTransaction, error: %w", err)
 	}
 	return nil
 }
 
-// UpdatePendingTransactionStatusByContextID updates the status of a transaction based on the given context ID.
-func (t *PendingTransaction) UpdatePendingTransactionStatusByContextID(ctx context.Context, contextID string, status types.TxStatus) error {
-	db := t.db.WithContext(ctx)
+// UpdatePendingTransactionStatusByTxHash updates the status of a transaction based on the transaction hash.
+func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.Context, txHash string, status types.TxStatus, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+
 	db = db.Model(&PendingTransaction{})
-	db = db.Where("context_id = ?", contextID)
-	db = db.Where("status = ?", types.TxStatusPending)
+	db = db.Where("hash = ?", txHash)
 	if err := db.Update("status", status).Error; err != nil {
-		return fmt.Errorf("failed to UpdateTransactionStatus, error: %w", err)
+		return fmt.Errorf("failed to UpdatePendingTransactionStatusByTxHash, txHash: %s, error: %w", txHash, err)
 	}
 	return nil
 }
 
-// GetPendingTransactionsBySenderType retrieves pending transactions filtered by sender type, ordered by nonce, and limited to a specified count.
-func (t *PendingTransaction) GetPendingTransactionsBySenderType(ctx context.Context, senderType types.SenderType, limit int) ([]PendingTransaction, error) {
-	var pendingTransactions []PendingTransaction
-	db := t.db.WithContext(ctx)
-	db = db.Where("sender_type = ?", senderType)
-	db = db.Where("status = ?", types.TxStatusPending)
-	db = db.Order("nonce asc")
-	db = db.Limit(limit)
-	if err := db.Find(&pendingTransactions).Error; err != nil {
-		return nil, fmt.Errorf("failed to get pending transactions by sender type, error: %w", err)
+// UpdateOtherTransactionsAsFailedByNonce updates the status of all transactions to TxStatusFailed for a specific nonce and sender address, excluding a specified transaction hash.
+func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.Context, senderAddress string, nonce uint64, txHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
 	}
-	return pendingTransactions, nil
+
+	db = db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+	db = db.Where("sender_address = ?", senderAddress)
+	db = db.Where("nonce = ?", nonce)
+	db = db.Where("hash != ?", txHash)
+	if err := db.Update("status", types.TxStatusFailed).Error; err != nil {
+		return fmt.Errorf("failed to update other transactions as failed by nonce, senderAddress: %s, nonce: %d, txHash: %s, error: %w", senderAddress, nonce, txHash, err)
+	}
+	return nil
 }

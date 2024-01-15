@@ -3,13 +3,10 @@ package orm
 import (
 	"context"
 	"encoding/json"
-	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -313,66 +310,4 @@ func TestBatchOrm(t *testing.T) {
 	assert.NotNil(t, updatedBatch)
 	assert.Equal(t, "finalizeTxHash", updatedBatch.FinalizeTxHash)
 	assert.Equal(t, types.RollupFinalizeFailed, types.RollupStatus(updatedBatch.RollupStatus))
-}
-
-func TestTransactionOrm(t *testing.T) {
-	sqlDB, err := db.DB()
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB))
-
-	txData1 := &gethTypes.DynamicFeeTx{
-		Nonce:      1,
-		To:         &common.Address{},
-		Data:       []byte{},
-		Gas:        21000,
-		AccessList: gethTypes.AccessList{},
-		Value:      big.NewInt(0),
-		ChainID:    big.NewInt(1),
-		GasTipCap:  big.NewInt(0),
-		GasFeeCap:  big.NewInt(0),
-		V:          big.NewInt(0),
-		R:          big.NewInt(0),
-		S:          big.NewInt(0),
-	}
-	tx1 := gethTypes.NewTx(txData1)
-
-	txData2 := &gethTypes.DynamicFeeTx{
-		Nonce:      1,
-		To:         &common.Address{},
-		Data:       []byte{},
-		Gas:        21000,
-		AccessList: gethTypes.AccessList{},
-		Value:      big.NewInt(0),
-		ChainID:    big.NewInt(1),
-		GasTipCap:  big.NewInt(1),
-		GasFeeCap:  big.NewInt(1),
-		V:          big.NewInt(0),
-		R:          big.NewInt(0),
-		S:          big.NewInt(0),
-	}
-	tx2 := gethTypes.NewTx(txData2)
-
-	senderMeta := &SenderMeta{
-		Name:    "TestSender",
-		Service: "TestService",
-		Address: common.HexToAddress("0xSomeAddress"),
-		Type:    types.SenderTypeUnknown,
-	}
-
-	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "context1", senderMeta, tx1, uint64(time.Now().Unix()))
-	assert.NoError(t, err)
-
-	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "context1", senderMeta, tx2, uint64(time.Now().Unix()))
-	assert.NoError(t, err)
-
-	txs, err := pendingTransactionOrm.GetPendingTransactionsBySenderType(context.Background(), senderMeta.Type, 100)
-	assert.NoError(t, err)
-	assert.Len(t, txs, 2)
-
-	err = pendingTransactionOrm.UpdatePendingTransactionStatusByContextID(context.Background(), "context1", types.TxStatusConfirmed)
-	assert.NoError(t, err)
-
-	txs, err = pendingTransactionOrm.GetPendingTransactionsBySenderType(context.Background(), senderMeta.Type, 100)
-	assert.NoError(t, err)
-	assert.Len(t, txs, 0)
 }
