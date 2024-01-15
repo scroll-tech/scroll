@@ -429,12 +429,12 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 		if (err == nil) && (receipt != nil) {
 			if receipt.BlockNumber.Uint64() <= confirmed {
 				err := s.db.Transaction(func(dbTX *gorm.DB) error {
-					// Update the status of the transaction to TxStatusConfirmed
+					// Update the status of the transaction to TxStatusConfirmed.
 					if err := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, tx.Hash().String(), types.TxStatusConfirmed, dbTX); err != nil {
 						log.Error("failed to update transaction status by tx hash", "hash", tx.Hash().String(), "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)
 						return err
 					}
-					// Update other transactions with the same nonce and sender address as failed
+					// Update other transactions with the same nonce and sender address as failed.
 					if err := s.pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(s.ctx, txnToCheck.SenderAddress, txnToCheck.Nonce, txnToCheck.Hash, dbTX); err != nil {
 						log.Error("failed to update other transactions as failed by nonce", "senderAddress", txnToCheck.SenderAddress, "nonce", txnToCheck.Nonce, "excludedTxHash", txnToCheck.Hash, "err", err)
 						return err
@@ -456,16 +456,15 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 			}
 		} else if txnToCheck.Status == types.TxStatusPending && // Only resubmit the last pending transaction of the same ContextID.
 			s.config.EscalateBlocks+txnToCheck.SubmitBlockNumber < number {
-			// The pending transaction may be marked as failed in the same loop (one of the replaced transaction is confirmed),
-			// thus checking the transaction status again.
+			// It's possible that the pending transaction was marked as failed earlier in this loop (e.g., if one of its replacements has already been confirmed).
+			// Therefore, we fetch the current transaction status again for accuracy before proceeding.
 			status, err := s.pendingTransactionOrm.GetTxStatusByTxHash(s.ctx, tx.Hash().String())
 			if err != nil {
 				log.Error("failed to get transaction status by tx hash", "hash", tx.Hash().String(), "err", err)
 				return
 			}
-
 			if status == types.TxStatusFailed {
-				log.Info("transaction already marked as failed, skipping resubmission", "hash", tx.Hash().String())
+				log.Warn("transaction already marked as failed, skipping resubmission", "hash", tx.Hash().String())
 				return
 			}
 
@@ -484,11 +483,11 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 				err := s.db.Transaction(func(dbTX *gorm.DB) error {
 					// Update the status of the original transaction as replaced, while still checking its confirmation status.
 					if err := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, tx.Hash().String(), types.TxStatusReplaced, dbTX); err != nil {
-						return fmt.Errorf("failed to update pending transaction status by tx hash, err: %w", err)
+						return fmt.Errorf("failed to update status of transaction with hash %s to TxStatusReplaced, err: %w", tx.Hash().String(), err)
 					}
 					// Record the new transaction that has replaced the original one.
-					if err := s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, txnToCheck.ContextID, s.getSenderMeta(), tx, txnToCheck.SubmitBlockNumber, dbTX); err != nil {
-						return fmt.Errorf("failed to insert pending transaction, err: %w", err)
+					if err := s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, txnToCheck.ContextID, s.getSenderMeta(), newTx, txnToCheck.SubmitBlockNumber, dbTX); err != nil {
+						return fmt.Errorf("failed to insert new pending transaction with context ID: %s, nonce: %d, hash: %v, err: %w", txnToCheck.ContextID, newTx.Nonce(), newTx.Hash().String(), err)
 					}
 					return nil
 				})
