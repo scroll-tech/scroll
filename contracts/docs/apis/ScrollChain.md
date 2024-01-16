@@ -42,6 +42,28 @@ Add an account to the sequencer list.
 |---|---|---|
 | _account | address | The address of account to add. |
 
+### commitAndFinalizeBatchEnforced
+
+```solidity
+function commitAndFinalizeBatchEnforced(bytes _parentBatchHeader, bytes[] _chunks, bytes _skippedL1MessageBitmap, bytes32 _postStateRoot, bytes32 _withdrawRoot, bytes _withdrawRootProof, bytes _aggrProof) external nonpayable
+```
+
+Commit and finalize enforced batch.
+
+*This function can by used to commit and finalize a new batch in a single step if all previous batches are finalized. It can also be used to finalize the earliest pending batch. In this case, the provided batch should match the pending batch. If user choose to finalize a pending batch, the batch hash of current header should match with `committedBatches[currentIndex]`. Otherwise, `committedBatches[currentIndex]` should be `bytes32(0)`.*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _parentBatchHeader | bytes | undefined |
+| _chunks | bytes[] | undefined |
+| _skippedL1MessageBitmap | bytes | undefined |
+| _postStateRoot | bytes32 | undefined |
+| _withdrawRoot | bytes32 | undefined |
+| _withdrawRootProof | bytes | undefined |
+| _aggrProof | bytes | undefined |
+
 ### commitBatch
 
 ```solidity
@@ -86,7 +108,7 @@ Return the batch hash of a committed batch.
 ### finalizeBatchWithProof
 
 ```solidity
-function finalizeBatchWithProof(bytes _batchHeader, bytes32 _prevStateRoot, bytes32 _postStateRoot, bytes32 _withdrawRoot, bytes _aggrProof) external nonpayable
+function finalizeBatchWithProof(bytes _batchHeader, bytes32, bytes32 _postStateRoot, bytes32 _withdrawRoot, bytes _aggrProof) external nonpayable
 ```
 
 Finalize a committed batch on layer 1.
@@ -98,7 +120,7 @@ Finalize a committed batch on layer 1.
 | Name | Type | Description |
 |---|---|---|
 | _batchHeader | bytes | undefined |
-| _prevStateRoot | bytes32 | undefined |
+| _1 | bytes32 | undefined |
 | _postStateRoot | bytes32 | undefined |
 | _withdrawRoot | bytes32 | undefined |
 | _aggrProof | bytes | undefined |
@@ -159,6 +181,22 @@ Initialize the storage of ScrollChain.
 | _messageQueue | address | The address of `L1MessageQueue` contract. |
 | _verifier | address | The address of zkevm verifier contract. |
 | _maxNumTxInChunk | uint256 | The maximum number of transactions allowed in each chunk. |
+
+### initializeV2
+
+```solidity
+function initializeV2(address _zkTrieVerifier) external nonpayable
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _zkTrieVerifier | address | undefined |
 
 ### isBatchFinalized
 
@@ -259,6 +297,23 @@ The chain id of the corresponding layer 2 chain.
 | Name | Type | Description |
 |---|---|---|
 | _0 | uint64 | undefined |
+
+### maxFinalizationDelay
+
+```solidity
+function maxFinalizationDelay() external view returns (uint256)
+```
+
+The maximum finalization delay in seconds before entering the enforced mode.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
 
 ### maxNumTxInChunk
 
@@ -474,6 +529,23 @@ Return the message root of a committed batch.
 | Name | Type | Description |
 |---|---|---|
 | _0 | bytes32 | undefined |
+
+### zkTrieVerifier
+
+```solidity
+function zkTrieVerifier() external view returns (address)
+```
+
+The address of zk trie verifier.
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | address | undefined |
 
 
 

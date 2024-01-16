@@ -8,6 +8,6 @@ contract MockScrollChain is ScrollChain {
     constructor(address _messageQueue, address _verifier) ScrollChain(0, _messageQueue, _verifier) {}
 
     function setLastFinalizedBatchIndex(uint256 _lastFinalizedBatchIndex) external {
-        lastFinalizedBatchIndex = _lastFinalizedBatchIndex;
+        finalizationState.lastIndex = uint128(_lastFinalizedBatchIndex);
     }
 }
