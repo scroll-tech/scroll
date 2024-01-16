@@ -63,7 +63,7 @@ func (o *PendingTransaction) GetTxStatusByTxHash(ctx context.Context, hash strin
 	db = db.Model(&PendingTransaction{})
 	db = db.Select("status")
 	db = db.Where("hash = ?", hash)
-	if err := db.First(&status).Error; err != nil {
+	if err := db.Scan(&status).Error; err != nil {
 		return types.TxStatusUnknown, fmt.Errorf("failed to get tx status by hash, hash: %v, err: %w", hash, err)
 	}
 	return status, nil
@@ -73,6 +73,7 @@ func (o *PendingTransaction) GetTxStatusByTxHash(ctx context.Context, hash strin
 func (o *PendingTransaction) GetPendingOrReplacedTransactionsBySenderType(ctx context.Context, senderType types.SenderType, limit int) ([]PendingTransaction, error) {
 	var transactions []PendingTransaction
 	db := o.db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
 	db = db.Where("sender_type = ?", senderType)
 	db = db.Where("status = ? OR status = ?", types.TxStatusPending, types.TxStatusReplaced)
 	db = db.Order("nonce asc")
@@ -113,6 +114,7 @@ func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 		db = dbTX[0]
 	}
 	db = db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
 	if err := db.Create(newTransaction).Error; err != nil {
 		return fmt.Errorf("failed to InsertTransaction, error: %w", err)
 	}
@@ -120,16 +122,16 @@ func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 }
 
 // UpdatePendingTransactionStatusByTxHash updates the status of a transaction based on the transaction hash.
-func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.Context, txHash string, status types.TxStatus, dbTX ...*gorm.DB) error {
+func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.Context, hash string, status types.TxStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-
+	db = db.WithContext(ctx)
 	db = db.Model(&PendingTransaction{})
-	db = db.Where("hash = ?", txHash)
+	db = db.Where("hash = ?", hash)
 	if err := db.Update("status", status).Error; err != nil {
-		return fmt.Errorf("failed to UpdatePendingTransactionStatusByTxHash, txHash: %s, error: %w", txHash, err)
+		return fmt.Errorf("failed to UpdatePendingTransactionStatusByTxHash, txHash: %s, error: %w", hash, err)
 	}
 	return nil
 }
@@ -140,7 +142,6 @@ func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-
 	db = db.WithContext(ctx)
 	db = db.Model(&PendingTransaction{})
 	db = db.Where("sender_address = ?", senderAddress)

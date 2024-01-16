@@ -3,10 +3,12 @@ package orm
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"os"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -310,4 +312,72 @@ func TestBatchOrm(t *testing.T) {
 	assert.NotNil(t, updatedBatch)
 	assert.Equal(t, "finalizeTxHash", updatedBatch.FinalizeTxHash)
 	assert.Equal(t, types.RollupFinalizeFailed, types.RollupStatus(updatedBatch.RollupStatus))
+}
+
+func TestTransactionOrm(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	tx1 := createTestTransaction(1, big.NewInt(0), big.NewInt(0))
+	tx2 := createTestTransaction(1, big.NewInt(1), big.NewInt(1))
+	senderMeta := createTestSenderMeta("0xSomeAddress", "TestSender", "TestService", types.SenderTypeUnknown)
+
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "TestContextID", senderMeta, tx1, 0)
+	assert.NoError(t, err)
+
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "TestContextID", senderMeta, tx2, 0)
+	assert.NoError(t, err)
+
+	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx1.Hash().String(), types.TxStatusReplaced)
+	assert.NoError(t, err)
+
+	txs, err := pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
+	assert.NoError(t, err)
+	assert.Len(t, txs, 2)
+
+	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx2.Hash().String(), types.TxStatusConfirmed)
+	assert.NoError(t, err)
+
+	txs, err = pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
+	assert.NoError(t, err)
+	assert.Len(t, txs, 1)
+
+	err = pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(context.Background(), senderMeta.Address.String(), tx2.Nonce(), tx2.Hash().String())
+	assert.NoError(t, err)
+
+	txs, err = pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
+	assert.NoError(t, err)
+	assert.Len(t, txs, 0)
+
+	status, err := pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx1.Hash().String())
+	assert.NoError(t, err)
+	assert.Equal(t, types.TxStatusFailed, status)
+}
+
+func createTestTransaction(nonce uint64, gasTipCap, gasFeeCap *big.Int) *gethTypes.Transaction {
+	txData := &gethTypes.DynamicFeeTx{
+		Nonce:      nonce,
+		To:         &common.Address{},
+		Data:       []byte{},
+		Gas:        21000,
+		AccessList: gethTypes.AccessList{},
+		Value:      big.NewInt(0),
+		ChainID:    big.NewInt(1),
+		GasTipCap:  gasTipCap,
+		GasFeeCap:  gasFeeCap,
+		V:          big.NewInt(0),
+		R:          big.NewInt(0),
+		S:          big.NewInt(0),
+	}
+	return gethTypes.NewTx(txData)
+}
+
+func createTestSenderMeta(address, name, service string, senderType types.SenderType) *SenderMeta {
+	return &SenderMeta{
+		Name:    name,
+		Service: service,
+		Address: common.HexToAddress(address),
+		Type:    senderType,
+	}
 }
