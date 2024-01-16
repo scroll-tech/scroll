@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -35,4 +36,56 @@ func TestGetBatchRangeFromCalldata(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, start, uint64(0))
 	assert.Equal(t, finish, uint64(0))
+}
+
+// TestConvertBigIntArrayToString tests the ConvertBigIntArrayToString function
+func TestConvertBigIntArrayToString(t *testing.T) {
+	tests := []struct {
+		array    []*big.Int
+		expected string
+	}{
+		{[]*big.Int{big.NewInt(1), big.NewInt(2), big.NewInt(3)}, "1, 2, 3"},
+		{[]*big.Int{big.NewInt(0), big.NewInt(-1)}, "0, -1"},
+		{[]*big.Int{}, ""},
+	}
+
+	for _, test := range tests {
+		got := ConvertBigIntArrayToString(test.array)
+		assert.Equal(t, test.expected, got)
+	}
+}
+
+// TestConvertStringToStringArray tests the ConvertStringToStringArray function
+func TestConvertStringToStringArray(t *testing.T) {
+	tests := []struct {
+		s        string
+		expected []string
+	}{
+		{"1, 2, 3", []string{"1", "2", "3"}},
+		{" 4 , 5 , 6 ", []string{"4", "5", "6"}},
+		{"", []string{}},
+	}
+
+	for _, test := range tests {
+		got := ConvertStringToStringArray(test.s)
+		assert.Equal(t, test.expected, got)
+	}
+}
+
+// TestGetSkippedQueueIndices tests the GetSkippedQueueIndices function
+func TestGetSkippedQueueIndices(t *testing.T) {
+	tests := []struct {
+		startIndex uint64
+		bitmap     *big.Int
+		expected   []uint64
+	}{
+		{0, big.NewInt(0b101), []uint64{0, 2}},
+		{10, big.NewInt(0b110), []uint64{11, 12}},
+		{0, big.NewInt(0), nil}, // No bits set
+	}
+
+	for _, test := range tests {
+		got := GetSkippedQueueIndices(test.startIndex, test.bitmap)
+		assert.Equal(t, test.expected, got)
+	}
 }
