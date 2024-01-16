@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -67,9 +66,6 @@ type Sender struct {
 
 	auth *bind.TransactOpts
 
-	blockNumber   uint64 // Current block number on chain
-	baseFeePerGas uint64 // Current base fee per gas on chain
-
 	db                    *gorm.DB
 	pendingTransactionOrm *orm.PendingTransaction
 
@@ -109,29 +105,12 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	}
 	auth.Nonce = big.NewInt(int64(nonce))
 
-	// get header by number
-	header, err := client.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get header by number, err: %w", err)
-	}
-
-	var baseFeePerGas uint64
-	if config.TxType == DynamicFeeTxType {
-		if header.BaseFee != nil {
-			baseFeePerGas = header.BaseFee.Uint64()
-		} else {
-			return nil, errors.New("dynamic fee tx type not supported: header.BaseFee is nil")
-		}
-	}
-
 	sender := &Sender{
 		ctx:                   ctx,
 		config:                config,
 		client:                client,
 		chainID:               chainID,
 		auth:                  auth,
-		blockNumber:           header.Number.Uint64(),
-		baseFeePerGas:         baseFeePerGas,
 		db:                    db,
 		pendingTransactionOrm: orm.NewPendingTransaction(db),
 		confirmCh:             make(chan *Confirmation, 128),
@@ -169,9 +148,9 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
-func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64, baseFee uint64) (*FeeData, error) {
 	if s.config.TxType == DynamicFeeTxType {
-		return s.estimateDynamicGas(auth, target, value, data, fallbackGasLimit)
+		return s.estimateDynamicGas(auth, target, value, data, fallbackGasLimit, baseFee)
 	}
 	return s.estimateLegacyGas(auth, target, value, data, fallbackGasLimit)
 }
@@ -185,7 +164,13 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, value
 		err     error
 	)
 
-	if feeData, err = s.getFeeData(s.auth, target, value, data, fallbackGasLimit); err != nil {
+	blockNumber, baseFee, err := s.getBlockNumberAndBaseFee(s.ctx)
+	if err != nil {
+		log.Error("failed to get block number and base fee", "error", err)
+		return common.Hash{}, fmt.Errorf("failed to get block number and base fee, err: %w", err)
+	}
+
+	if feeData, err = s.getFeeData(s.auth, target, value, data, fallbackGasLimit, baseFee); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
 		log.Error("failed to get fee data", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "fallback gas limit", fallbackGasLimit, "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
@@ -197,7 +182,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, value
 		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
 	}
 
-	if err = s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, contextID, s.getSenderMeta(), tx, atomic.LoadUint64(&s.blockNumber)); err != nil {
+	if err = s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, contextID, s.getSenderMeta(), tx, blockNumber); err != nil {
 		log.Error("failed to insert transaction", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "err", err)
 		return common.Hash{}, fmt.Errorf("failed to insert transaction, err: %w", err)
 	}
@@ -308,7 +293,7 @@ func (s *Sender) resetNonce(ctx context.Context) {
 	s.auth.Nonce = big.NewInt(int64(nonce))
 }
 
-func (s *Sender) resubmitTransaction(auth *bind.TransactOpts, tx *gethTypes.Transaction) (*gethTypes.Transaction, error) {
+func (s *Sender) resubmitTransaction(auth *bind.TransactOpts, tx *gethTypes.Transaction, baseFee uint64) (*gethTypes.Transaction, error) {
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -349,7 +334,7 @@ func (s *Sender) resubmitTransaction(auth *bind.TransactOpts, tx *gethTypes.Tran
 		gasFeeCap = gasFeeCap.Div(gasFeeCap, escalateMultipleDen)
 
 		// adjust for rising basefee
-		adjBaseFee := new(big.Int).SetUint64(atomic.LoadUint64(&s.baseFeePerGas))
+		adjBaseFee := new(big.Int).SetUint64(baseFee)
 		adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
 		adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
 		currentGasFeeCap := new(big.Int).Add(gasTipCap, adjBaseFee)
@@ -399,21 +384,24 @@ func (s *Sender) resubmitTransaction(auth *bind.TransactOpts, tx *gethTypes.Tran
 
 // checkPendingTransaction checks the confirmation status of pending transactions against the latest confirmed block number.
 // If a transaction hasn't been confirmed after a certain number of blocks, it will be resubmitted with an increased gas price.
-func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uint64) {
-	number := header.Number.Uint64()
-	atomic.StoreUint64(&s.blockNumber, number)
+func (s *Sender) checkPendingTransaction() {
+	s.metrics.senderCheckPendingTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 
-	if s.config.TxType == DynamicFeeTxType {
-		if header.BaseFee != nil {
-			atomic.StoreUint64(&s.baseFeePerGas, header.BaseFee.Uint64())
-		} else {
-			log.Error("DynamicFeeTxType not supported, header.BaseFee nil")
-		}
+	blockNumber, baseFee, err := s.getBlockNumberAndBaseFee(s.ctx)
+	if err != nil {
+		log.Error("failed to get block number and base fee", "error", err)
+		return
 	}
 
 	transactionsToCheck, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(s.ctx, s.senderType, 100)
 	if err != nil {
 		log.Error("failed to load pending transactions", "sender meta", s.getSenderMeta(), "error", err)
+		return
+	}
+
+	confirmed, err := utils.GetLatestConfirmedBlockNumber(s.ctx, s.client, s.config.Confirmations)
+	if err != nil {
+		log.Error("failed to get latest confirmed block number", "err", err)
 		return
 	}
 
@@ -455,7 +443,7 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 				}
 			}
 		} else if txnToCheck.Status == types.TxStatusPending && // Only resubmit the last pending transaction of the same ContextID.
-			s.config.EscalateBlocks+txnToCheck.SubmitBlockNumber < number {
+			s.config.EscalateBlocks+txnToCheck.SubmitBlockNumber < blockNumber {
 			// It's possible that the pending transaction was marked as failed earlier in this loop (e.g., if one of its replacements has already been confirmed).
 			// Therefore, we fetch the current transaction status again for accuracy before proceeding.
 			status, err := s.pendingTransactionOrm.GetTxStatusByTxHash(s.ctx, tx.Hash().String())
@@ -473,10 +461,10 @@ func (s *Sender) checkPendingTransaction(header *gethTypes.Header, confirmed uin
 				"from", s.auth.From.String(),
 				"nonce", tx.Nonce(),
 				"submit block number", txnToCheck.SubmitBlockNumber,
-				"current block number", number,
+				"current block number", blockNumber,
 				"configured escalateBlocks", s.config.EscalateBlocks)
 
-			if newTx, err := s.resubmitTransaction(s.auth, tx); err != nil {
+			if newTx, err := s.resubmitTransaction(s.auth, tx, baseFee); err != nil {
 				s.metrics.resubmitTransactionFailedTotal.WithLabelValues(s.service, s.name).Inc()
 				log.Error("failed to resubmit transaction", "context ID", txnToCheck.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", newTx.Nonce(), "err", err)
 			} else {
@@ -507,20 +495,7 @@ func (s *Sender) loop(ctx context.Context) {
 	for {
 		select {
 		case <-checkTick.C:
-			s.metrics.senderCheckPendingTransactionTotal.WithLabelValues(s.service, s.name).Inc()
-			header, err := s.client.HeaderByNumber(s.ctx, nil)
-			if err != nil {
-				log.Error("failed to get latest head", "err", err)
-				continue
-			}
-
-			confirmed, err := utils.GetLatestConfirmedBlockNumber(s.ctx, s.client, s.config.Confirmations)
-			if err != nil {
-				log.Error("failed to get latest confirmed block number", "err", err)
-				continue
-			}
-
-			s.checkPendingTransaction(header, confirmed)
+			s.checkPendingTransaction()
 		case <-ctx.Done():
 			return
 		case <-s.stopCh:
@@ -536,4 +511,21 @@ func (s *Sender) getSenderMeta() *orm.SenderMeta {
 		Address: s.auth.From,
 		Type:    s.senderType,
 	}
+}
+
+func (s *Sender) getBlockNumberAndBaseFee(ctx context.Context) (uint64, uint64, error) {
+	header, err := s.client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get header by number, err: %w", err)
+	}
+
+	var baseFeePerGas uint64
+	if s.config.TxType == DynamicFeeTxType {
+		if header.BaseFee != nil {
+			baseFeePerGas = header.BaseFee.Uint64()
+		} else {
+			return 0, 0, errors.New("dynamic fee tx type not supported: header.BaseFee is nil")
+		}
+	}
+	return header.Number.Uint64(), baseFeePerGas, nil
 }

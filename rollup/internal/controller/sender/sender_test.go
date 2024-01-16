@@ -162,7 +162,7 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
-		_, err = s.resubmitTransaction(s.auth, tx)
+		_, err = s.resubmitTransaction(s.auth, tx, 0)
 		assert.NoError(t, err)
 		s.Stop()
 	}
@@ -189,7 +189,7 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(s.auth, tx)
+		_, err = s.resubmitTransaction(s.auth, tx, 0)
 		assert.NoError(t, err)
 		s.Stop()
 	}
@@ -216,7 +216,7 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(s.auth, tx)
+		_, err = s.resubmitTransaction(s.auth, tx, 0)
 		assert.Error(t, err, "replacement transaction underpriced")
 		s.Stop()
 	}
@@ -233,11 +233,11 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 	assert.NoError(t, err)
 	tx := gethTypes.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 21000, big.NewInt(0), nil)
-	s.baseFeePerGas = 1000
+	baseFeePerGas := uint64(1000)
 	// bump the basefee by 10x
-	s.baseFeePerGas *= 10
+	baseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.resubmitTransaction(s.auth, tx)
+	newTx, err := s.resubmitTransaction(s.auth, tx, baseFeePerGas)
 	assert.NoError(t, err)
 
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
@@ -245,7 +245,7 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
 
 	adjBaseFee := new(big.Int)
-	adjBaseFee.SetUint64(s.baseFeePerGas)
+	adjBaseFee.SetUint64(baseFeePerGas)
 	adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
 	adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
 

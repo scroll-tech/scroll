@@ -2,7 +2,6 @@ package sender
 
 import (
 	"math/big"
-	"sync/atomic"
 
 	"github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
@@ -31,21 +30,14 @@ func (s *Sender) estimateLegacyGas(auth *bind.TransactOpts, contract *common.Add
 	}, nil
 }
 
-func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Address, value *big.Int, input []byte, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) estimateDynamicGas(auth *bind.TransactOpts, contract *common.Address, value *big.Int, input []byte, fallbackGasLimit uint64, baseFee uint64) (*FeeData, error) {
 	gasTipCap, err := s.client.SuggestGasTipCap(s.ctx)
 	if err != nil {
 		log.Error("estimateDynamicGas SuggestGasTipCap failure", "error", err)
 		return nil, err
 	}
 
-	baseFee := big.NewInt(0)
-	if feeGas := atomic.LoadUint64(&s.baseFeePerGas); feeGas != 0 {
-		baseFee.SetUint64(feeGas)
-	}
-	gasFeeCap := new(big.Int).Add(
-		gasTipCap,
-		new(big.Int).Mul(baseFee, big.NewInt(2)),
-	)
+	gasFeeCap := new(big.Int).Add(gasTipCap, new(big.Int).Mul(new(big.Int).SetUint64(baseFee), big.NewInt(2)))
 	gasLimit, err := s.estimateGasLimit(auth, contract, input, nil, gasTipCap, gasFeeCap, value)
 	if err != nil {
 		log.Error("estimateDynamicGas estimateGasLimit failure",
