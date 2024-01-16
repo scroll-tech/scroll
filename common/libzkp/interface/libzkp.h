@@ -11,5 +11,5 @@ char* get_chunk_vk();
 char* gen_chunk_proof(char* chunk_trace);
 char verify_chunk_proof(char* proof);
 
-char* block_traces_to_chunk_info(char* block_traces);
+char* chunk_trace_to_chunk_info(char* chunk_trace);
 void free_c_chars(char* ptr);

@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"unsafe"
 
-	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types/message"
@@ -132,12 +131,12 @@ func (p *ProverCore) ProveChunk(
 }
 
 // TracesToChunkInfo convert traces to chunk info
-func (p *ProverCore) TracesToChunkInfo(traces []*types.BlockTrace) (*message.ChunkInfo, error) {
-	tracesByt, err := json.Marshal(traces)
+func (p *ProverCore) TracesToChunkInfo(trace *message.ChunkTrace) (*message.ChunkInfo, error) {
+	traceByt, err := json.Marshal(trace)
 	if err != nil {
 		return nil, err
 	}
-	chunkInfoByt := p.tracesToChunkInfo(tracesByt)
+	chunkInfoByt := p.tracesToChunkInfo(traceByt)
 
 	chunkInfo := &message.ChunkInfo{}
 	return chunkInfo, json.Unmarshal(chunkInfoByt, chunkInfo)
@@ -249,11 +248,11 @@ func (p *ProverCore) mayDumpProof(id string, proofByt []byte) error {
 	return err
 }
 
-func (p *ProverCore) tracesToChunkInfo(tracesByt []byte) []byte {
-	tracesStr := C.CString(string(tracesByt))
-	defer C.free(unsafe.Pointer(tracesStr))
+func (p *ProverCore) tracesToChunkInfo(traceByt []byte) []byte {
+	traceStr := C.CString(string(traceByt))
+	defer C.free(unsafe.Pointer(traceStr))
 
-	cChunkInfo := C.block_traces_to_chunk_info(tracesStr)
+	cChunkInfo := C.chunk_trace_to_chunk_info(traceStr)
 	defer C.free_c_chars(cChunkInfo)
 
 	chunkInfo := C.GoString(cChunkInfo)

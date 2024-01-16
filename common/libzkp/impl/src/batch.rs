@@ -10,7 +10,7 @@ use prover::{
     aggregator::{Prover, Verifier},
     consts::AGG_VK_FILENAME,
     utils::{chunk_trace_to_witness_block, init_env_and_log},
-    BatchProof, BlockTrace, ChunkHash, ChunkProof,
+    BatchProof, ChunkHash, ChunkProof, ChunkTrace,
 };
 use std::{cell::OnceCell, env, ptr::null};
 
@@ -119,7 +119,7 @@ pub unsafe extern "C" fn gen_batch_proof(
 
         let chunk_hashes_proofs = chunk_hashes
             .into_iter()
-            .zip(chunk_proofs.into_iter())
+            .zip(chunk_proofs)
             .collect();
 
         let proof = PROVER
@@ -159,11 +159,11 @@ pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char) -> c_char {
 // This function is only used for debugging on Go side.
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn block_traces_to_chunk_info(block_traces: *const c_char) -> *const c_char {
-    let block_traces = c_char_to_vec(block_traces);
-    let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces).unwrap();
+pub unsafe extern "C" fn chunk_trace_to_chunk_info(chunk_trace: *const c_char) -> *const c_char {
+    let chunk_trace = c_char_to_vec(chunk_trace);
+    let chunk_trace = serde_json::from_slice::<ChunkTrace>(&chunk_trace).unwrap();
 
-    let witness_block = chunk_trace_to_witness_block(block_traces).unwrap();
+    let witness_block = chunk_trace_to_witness_block(chunk_trace).unwrap();
     let chunk_info = ChunkHash::from_witness_block(&witness_block, false);
 
     let chunk_info_bytes = serde_json::to_vec(&chunk_info).unwrap();
