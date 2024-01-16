@@ -14,7 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/rpc"
 	"golang.org/x/sync/errgroup"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
@@ -116,8 +115,8 @@ func GetBatchRangeFromCalldata(calldata []byte) (uint64, uint64, error) {
 	return startBlock, finishBlock, err
 }
 
-// GetL1BlocksInRange gets a batch of blocks for a block range [start, end] inclusive.
-func GetL1BlocksInRange(ctx context.Context, cli *ethclient.Client, start, end uint64) ([]*types.Block, error) {
+// GetBlocksInRange gets a batch of blocks for a block range [start, end] inclusive.
+func GetBlocksInRange(ctx context.Context, cli *ethclient.Client, start, end uint64) ([]*types.Block, error) {
 	var (
 		eg          errgroup.Group
 		blocks      = make([]*types.Block, end-start+1)
@@ -132,38 +131,6 @@ func GetL1BlocksInRange(ctx context.Context, cli *ethclient.Client, start, end u
 		eg.Go(func() error {
 			defer func() { <-sem }() // Release the slot when done
 			block, err := cli.BlockByNumber(ctx, big.NewInt(blockNum))
-			if err != nil {
-				log.Error("Failed to fetch block number", "number", blockNum, "error", err)
-				return err
-			}
-			blocks[index] = block
-			return nil
-		})
-	}
-
-	if err := eg.Wait(); err != nil {
-		log.Error("Error waiting for block fetching routines", "error", err)
-		return nil, err
-	}
-	return blocks, nil
-}
-
-// GetL2BlocksInRange gets a batch of blocks for a block range [start, end] inclusive.
-func GetL2BlocksInRange(ctx context.Context, cli *ethclient.Client, start, end uint64) ([]*types.BlockWithRowConsumption, error) {
-	var (
-		eg          errgroup.Group
-		blocks      = make([]*types.BlockWithRowConsumption, end-start+1)
-		concurrency = 32
-		sem         = make(chan struct{}, concurrency)
-	)
-
-	for i := start; i <= end; i++ {
-		sem <- struct{}{} // Acquire a slot in the semaphore
-		blockNum := rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(i))
-		index := i - start
-		eg.Go(func() error {
-			defer func() { <-sem }() // Release the slot when done
-			block, err := cli.GetBlockByNumberOrHash(ctx, blockNum)
 			if err != nil {
 				log.Error("Failed to fetch block number", "number", blockNum, "error", err)
 				return err
