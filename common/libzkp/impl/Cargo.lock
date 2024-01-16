@@ -31,13 +31,13 @@ dependencies = [
 [[package]]
 name = "aggregator"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "ark-std",
  "env_logger 0.10.0",
  "eth-types",
  "ethers-core",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "hex",
  "itertools 0.11.0",
  "log",
@@ -323,14 +323,14 @@ checksum = "a3e2c3daef883ecc1b5d58c15adae93470a91d425f3532ba1695849656af3fc1"
 [[package]]
 name = "bus-mapping"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "eth-types",
  "ethers-core",
  "ethers-providers",
  "ethers-signers",
  "gadgets",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "hex",
  "itertools 0.11.0",
  "log",
@@ -908,12 +908,12 @@ dependencies = [
 [[package]]
 name = "eth-types"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "ethers-core",
  "ethers-signers",
  "halo2-base",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "hex",
  "itertools 0.11.0",
  "num",
@@ -1061,7 +1061,7 @@ dependencies = [
 [[package]]
 name = "external-tracer"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "eth-types",
  "geth-utils",
@@ -1241,10 +1241,10 @@ dependencies = [
 [[package]]
 name = "gadgets"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "eth-types",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "sha3 0.10.8",
  "strum 0.25.0",
 ]
@@ -1263,7 +1263,7 @@ dependencies = [
 [[package]]
 name = "geth-utils"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "env_logger 0.10.0",
  "gobuild",
@@ -1373,10 +1373,10 @@ dependencies = [
 [[package]]
 name = "halo2-base"
 version = "0.2.2"
-source = "git+https://github.com/scroll-tech/halo2-lib?branch=develop#b7c53bb7456063936f4ca6df8fa8e751d9c17d85"
+source = "git+https://github.com/scroll-tech/halo2-lib?branch=develop#40ba7e3bbf013b55c59283534c9489701f9212d0"
 dependencies = [
  "ff 0.13.0",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.1)",
  "itertools 0.10.5",
  "num-bigint",
  "num-integer",
@@ -1388,7 +1388,7 @@ dependencies = [
 [[package]]
 name = "halo2-ecc"
 version = "0.2.2"
-source = "git+https://github.com/scroll-tech/halo2-lib?branch=develop#b7c53bb7456063936f4ca6df8fa8e751d9c17d85"
+source = "git+https://github.com/scroll-tech/halo2-lib?branch=develop#40ba7e3bbf013b55c59283534c9489701f9212d0"
 dependencies = [
  "ff 0.13.0",
  "group 0.13.0",
@@ -1409,7 +1409,7 @@ name = "halo2-gate-generator"
 version = "0.1.0"
 source = "git+https://github.com/scroll-tech/halo2gategen.git#8ccf462e1eff4ed0e602d7ba19771b2c53dee0e3"
 dependencies = [
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "lazy_static",
  "num-bigint",
  "rand",
@@ -1427,7 +1427,7 @@ source = "git+https://github.com/scroll-tech/mpt-circuit.git?branch=v0.7#32ab964
 dependencies = [
  "env_logger 0.10.0",
  "ethers-core",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "hex",
  "itertools 0.10.5",
  "lazy_static",
@@ -1453,7 +1453,7 @@ dependencies = [
  "bitvec",
  "ff 0.13.0",
  "group 0.13.0",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "halo2curves 0.3.2",
  "lazy_static",
  "rand",
@@ -1477,6 +1477,31 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "poseidon",
+ "rand_core",
+ "rayon",
+ "sha3 0.9.1",
+ "subtle",
+ "tracing",
+]
+
+[[package]]
+name = "halo2_proofs"
+version = "0.2.0"
+source = "git+https://github.com/scroll-tech/halo2.git?branch=v1.1#0008b866c1b458bf7129fcd88e877d5b58c25e2f"
+dependencies = [
+ "ark-std",
+ "blake2b_simd",
+ "cfg-if 0.1.10",
+ "crossbeam",
+ "ff 0.13.0",
+ "group 0.13.0",
+ "halo2curves 0.1.0",
+ "log",
+ "maybe-rayon",
+ "num-bigint",
+ "num-integer",
+ "poseidon",
+ "rand_chacha",
  "rand_core",
  "rayon",
  "sha3 0.9.1",
@@ -1825,6 +1850,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1878,11 +1912,11 @@ dependencies = [
 [[package]]
 name = "keccak256"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "env_logger 0.10.0",
  "eth-types",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "itertools 0.11.0",
  "log",
  "num-bigint",
@@ -1953,6 +1987,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "maybe-rayon"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ea1f30cedd69f0a2954655f7188c6a834246d2bcf1e315e2ac40c4b24dc9519"
+dependencies = [
+ "cfg-if 1.0.0",
+ "rayon",
+]
+
+[[package]]
 name = "memchr"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1999,7 +2043,7 @@ version = "0.1.0"
 source = "git+https://github.com/scroll-tech/misc-precompiled-circuit.git?branch=main#f46cf8fd0072e5531315739b20b5248f4bd2caac"
 dependencies = [
  "halo2-gate-generator",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "num-bigint",
  "rand",
  "serde",
@@ -2012,7 +2056,7 @@ dependencies = [
 [[package]]
 name = "mock"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "eth-types",
  "ethabi",
@@ -2028,11 +2072,11 @@ dependencies = [
 [[package]]
 name = "mpt-zktrie"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "eth-types",
  "halo2-mpt-circuits",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "hex",
  "log",
  "num-bigint",
@@ -2378,7 +2422,7 @@ source = "git+https://github.com/scroll-tech/poseidon-circuit.git?branch=scroll-
 dependencies = [
  "bitvec",
  "ff 0.13.0",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "lazy_static",
  "log",
  "rand",
@@ -2458,7 +2502,7 @@ dependencies = [
 [[package]]
 name = "prover"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "aggregator",
  "anyhow",
@@ -2470,7 +2514,7 @@ dependencies = [
  "eth-types",
  "ethers-core",
  "git-version",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "hex",
  "itertools 0.11.0",
  "log",
@@ -3215,15 +3259,14 @@ checksum = "62bb4feee49fdd9f707ef802e22365a35de4b7b299de4763d44bfea899442ff9"
 [[package]]
 name = "snark-verifier"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/snark-verifier?branch=develop#12c1121a855564936a267b37bc9c27306de3eb3b"
+source = "git+https://github.com/scroll-tech/snark-verifier?branch=develop#8085ab39dd8386b804083951d85e609b79af87c9"
 dependencies = [
  "bytes",
  "ethereum-types",
  "halo2-base",
  "halo2-ecc",
  "hex",
- "itertools 0.10.5",
- "lazy_static",
+ "itertools 0.12.0",
  "num-bigint",
  "num-integer",
  "num-traits",
@@ -3239,15 +3282,14 @@ dependencies = [
 [[package]]
 name = "snark-verifier-sdk"
 version = "0.0.1"
-source = "git+https://github.com/scroll-tech/snark-verifier?branch=develop#12c1121a855564936a267b37bc9c27306de3eb3b"
+source = "git+https://github.com/scroll-tech/snark-verifier?branch=develop#8085ab39dd8386b804083951d85e609b79af87c9"
 dependencies = [
  "bincode",
  "ethereum-types",
  "ff 0.13.0",
  "halo2-base",
  "hex",
- "itertools 0.10.5",
- "lazy_static",
+ "itertools 0.12.0",
  "log",
  "num-bigint",
  "num-integer",
@@ -4003,7 +4045,7 @@ checksum = "2a0956f1ba7c7909bfb66c2e9e4124ab6f6482560f6628b5aaeba39207c9aad9"
 [[package]]
 name = "zkevm-circuits"
 version = "0.1.0"
-source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#95086e12dc3d1fa343886d89aec1082876bfa183"
+source = "git+https://github.com/LimeChain/scroll-zkevm-circuits?branch=LimeChain/wip-block-hashes-poc#27b1ffe635250dc35c0fd6888938c0a8d82ccc71"
 dependencies = [
  "array-init",
  "bus-mapping",
@@ -4018,7 +4060,7 @@ dependencies = [
  "halo2-base",
  "halo2-ecc",
  "halo2_gadgets",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "hex",
  "itertools 0.11.0",
  "keccak256",
@@ -4050,7 +4092,7 @@ dependencies = [
  "base64 0.13.1",
  "env_logger 0.9.3",
  "gobuild",
- "halo2_proofs",
+ "halo2_proofs 0.2.0 (git+https://github.com/scroll-tech/halo2.git?branch=v1.0)",
  "libc",
  "log",
  "once_cell",
