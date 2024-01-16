@@ -33,7 +33,7 @@ contract DeployLidoGateway is Script {
         vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
 
         if (keccak256(abi.encodePacked(NETWORK)) == keccak256(abi.encodePacked("L1"))) {
-            // depoly l1 lido gateway
+            // deploy l1 lido gateway
             L1LidoGateway gateway = new L1LidoGateway(
                 L1_WSTETH_ADDR,
                 L2_WSTETH_ADDR,
@@ -43,7 +43,7 @@ contract DeployLidoGateway is Script {
             );
             logAddress("L1_LIDO_GATEWAY_IMPLEMENTATION_ADDR", address(gateway));
         } else if (keccak256(abi.encodePacked(NETWORK)) == keccak256(abi.encodePacked("L2"))) {
-            // depoly l2 lido gateway
+            // deploy l2 lido gateway
             L2LidoGateway gateway = new L2LidoGateway(
                 L1_WSTETH_ADDR,
                 L2_WSTETH_ADDR,

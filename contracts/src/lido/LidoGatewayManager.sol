@@ -80,10 +80,7 @@ abstract contract LidoGatewayManager is ScrollGatewayBase {
     /// @dev Stores the state of the bridging
     /// @param isDepositsEnabled Stores the state of the deposits
     /// @param isWithdrawalsEnabled Stores the state of the withdrawals
-    /// @param depositsEnabler The address of user who can enable deposits
-    /// @param depositsEnabler The address of user who can disable deposits
-    /// @param withdrawalsEnabler The address of user who can enable withdrawals
-    /// @param withdrawalsDisabler The address of user who can disable withdrawals
+    /// @param roles Mapping from role to list of role members.
     struct State {
         bool isDepositsEnabled;
         bool isWithdrawalsEnabled;
