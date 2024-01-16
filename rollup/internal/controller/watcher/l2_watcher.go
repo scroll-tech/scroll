@@ -160,6 +160,7 @@ func txsToTxsData(txs gethTypes.Transactions) []*types.TransactionData {
 		}
 
 		if l1blockHashesTx := tx.AsL1BlockHashesTx(); l1blockHashesTx != nil {
+			txData.From = l1blockHashesTx.Sender
 			txData.FirstAppliedL1Block = (*hexutil.Uint64)(&l1blockHashesTx.FirstAppliedL1Block)
 			txData.LastAppliedL1Block = (*hexutil.Uint64)(&l1blockHashesTx.LastAppliedL1Block)
 			txData.BlockRangeHash = l1blockHashesTx.BlockHashesRange
