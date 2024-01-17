@@ -113,6 +113,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	sender := &Sender{
 		ctx:                   ctx,
 		config:                config,
+		gethClient:            gethclient.New(rpcClient),
 		client:                client,
 		chainID:               chainID,
 		auth:                  auth,
