@@ -334,6 +334,46 @@ describe("GasOptimizationUpgrade.spec", async () => {
         "L1GatewayRouter.depositERC20 USDC after upgrade"
       );
     });
+
+    it.skip("should succeed on L1LidoGateway", async () => {
+      const L1_WSTETH = "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0";
+      const L2_WSTETH = "0xf610A9dfB7C89644979b4A0f27063E9e7d7Cda32";
+      const L1_GATEWAY = "0x6625C6332c9F91F2D27c304E729B86db87A3f504";
+      const L2_GATEWAY = "0x8aE8f22226B9d789A36AC81474e633f8bE2856c9";
+      const L1LidoGateway = await ethers.getContractFactory("L1LidoGateway", deployer);
+      const impl = await L1LidoGateway.deploy(L1_WSTETH, L2_WSTETH, L2_GATEWAY, L1_ROUTER, L1_MESSENGER);
+      const gateway = await ethers.getContractAt("L1LidoGateway", L1_GATEWAY, deployer);
+      const amountIn = ethers.utils.parseUnits("1", 6);
+      const fee = await queue.estimateCrossDomainMessageFee(1e6);
+      const token = await ethers.getContractAt("MockERC20", L1_WSTETH, deployer);
+      await mockERC20Balance(token.address, amountIn.mul(10), 0);
+      await token.approve(L1_GATEWAY, constants.MaxUint256);
+      await token.approve(L1_ROUTER, constants.MaxUint256);
+
+      // before upgrade
+      await showGasUsage(
+        await gateway["depositERC20(address,uint256,uint256)"](L1_WSTETH, amountIn, 1e6, { value: fee }),
+        "L1LidoGateway.depositERC20 wstETH before upgrade"
+      );
+      await showGasUsage(
+        await router["depositERC20(address,uint256,uint256)"](L1_WSTETH, amountIn, 1e6, { value: fee }),
+        "L1GatewayRouter.depositERC20 wstETH before upgrade"
+      );
+
+      // do upgrade
+      await upgradeL1(L1_GATEWAY, impl.address);
+      await gateway.initializeV2(deployer.address, deployer.address, deployer.address, deployer.address);
+
+      // after upgrade
+      await showGasUsage(
+        await gateway["depositERC20(address,uint256,uint256)"](L1_WSTETH, amountIn, 1e6, { value: fee }),
+        "L1LidoGateway.depositERC20 wstETH after upgrade"
+      );
+      await showGasUsage(
+        await router["depositERC20(address,uint256,uint256)"](L1_WSTETH, amountIn, 1e6, { value: fee }),
+        "L1GatewayRouter.depositERC20 wstETH after upgrade"
+      );
+    });
   });
 
   context("L2 upgrade", async () => {
@@ -582,6 +622,45 @@ describe("GasOptimizationUpgrade.spec", async () => {
       await showGasUsage(
         await router["withdrawERC20(address,uint256,uint256)"](L2_USDC, amountIn, 1e6),
         "L2GatewayRouter.withdrawERC20 USDC after upgrade"
+      );
+    });
+
+    it.skip("should succeed on L2LidoGateway", async () => {
+      const L1_WSTETH = "0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0";
+      const L2_WSTETH = "0xf610A9dfB7C89644979b4A0f27063E9e7d7Cda32";
+      const L1_GATEWAY = "0x6625C6332c9F91F2D27c304E729B86db87A3f504";
+      const L2_GATEWAY = "0x8aE8f22226B9d789A36AC81474e633f8bE2856c9";
+      const L2LidoGateway = await ethers.getContractFactory("L2LidoGateway", deployer);
+      const impl = await L2LidoGateway.deploy(L1_WSTETH, L2_WSTETH, L1_GATEWAY, L2_ROUTER, L2_MESSENGER);
+      const gateway = await ethers.getContractAt("L2LidoGateway", L2_GATEWAY, deployer);
+      const amountIn = ethers.utils.parseUnits("1", 6);
+      const token = await ethers.getContractAt("MockERC20", L2_WSTETH, deployer);
+      await mockERC20Balance(token.address, amountIn.mul(10), 51);
+      await token.approve(L2_GATEWAY, constants.MaxUint256);
+      await token.approve(L2_ROUTER, constants.MaxUint256);
+
+      // before upgrade
+      await showGasUsage(
+        await gateway["withdrawERC20(address,uint256,uint256)"](L2_WSTETH, amountIn, 1e6),
+        "L2LidoGateway.withdrawERC20 wstETH before upgrade"
+      );
+      await showGasUsage(
+        await router["withdrawERC20(address,uint256,uint256)"](L2_WSTETH, amountIn, 1e6),
+        "L2GatewayRouter.withdrawERC20 wstETH before upgrade"
+      );
+
+      // do upgrade
+      await upgradeL2(L2_GATEWAY, impl.address);
+      await gateway.initializeV2(deployer.address, deployer.address, deployer.address, deployer.address);
+
+      // after upgrade
+      await showGasUsage(
+        await gateway["withdrawERC20(address,uint256,uint256)"](L2_WSTETH, amountIn, 1e6),
+        "L2LidoGateway.withdrawERC20 wstETH after upgrade"
+      );
+      await showGasUsage(
+        await router["withdrawERC20(address,uint256,uint256)"](L2_WSTETH, amountIn, 1e6),
+        "L2GatewayRouter.withdrawERC20 wstETH after upgrade"
       );
     });
   });
