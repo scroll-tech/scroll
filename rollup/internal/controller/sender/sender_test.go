@@ -76,6 +76,7 @@ func TestSender(t *testing.T) {
 
 	t.Run("test new sender", testNewSender)
 	t.Run("test fallback gas limit", testFallbackGasLimit)
+	t.Run("test send and retrieve transaction", testSendAndRetrieveTransaction)
 	t.Run("test resubmit zero gas price transaction", testResubmitZeroGasPriceTransaction)
 	t.Run("test resubmit non-zero gas price transaction", testResubmitNonZeroGasPriceTransaction)
 	t.Run("test resubmit under priced transaction", testResubmitUnderpricedTransaction)
@@ -83,10 +84,11 @@ func TestSender(t *testing.T) {
 }
 
 func testNewSender(t *testing.T) {
-	sqlDB, err := db.DB()
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
 		// exit by Stop()
 		cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy1.TxType = txType
@@ -104,11 +106,40 @@ func testNewSender(t *testing.T) {
 	}
 }
 
+func testSendAndRetrieveTransaction(t *testing.T) {
+	for i, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
+		cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy1.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+		assert.NoError(t, err)
+		defer s.Stop()
+
+		hash, err := s.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
+		assert.NoError(t, err)
+		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
+		assert.NoError(t, err)
+		assert.Len(t, txs, 1)
+		assert.Equal(t, "0", txs[0].ContextID)
+		assert.Equal(t, hash.String(), txs[0].Hash)
+		assert.Equal(t, uint8(i), txs[0].Type)
+		assert.Equal(t, types.TxStatusPending, types.TxStatus(txs[0].Status))
+		assert.Equal(t, "0x1C5A77d9FA7eF466951B2F01F724BCa3A5820b63", txs[0].SenderAddress)
+		assert.Equal(t, types.SenderTypeUnknown, txs[0].SenderType)
+		assert.Equal(t, "test", txs[0].SenderService)
+		assert.Equal(t, "test", txs[0].SenderName)
+	}
+}
+
 func testFallbackGasLimit(t *testing.T) {
-	sqlDB, err := db.DB()
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.Confirmations = rpc.LatestBlockNumber
@@ -144,10 +175,11 @@ func testFallbackGasLimit(t *testing.T) {
 }
 
 func testResubmitZeroGasPriceTransaction(t *testing.T) {
-	sqlDB, err := db.DB()
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
@@ -169,10 +201,11 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 }
 
 func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
-	sqlDB, err := db.DB()
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		// Bump gas price, gas tip cap and gas fee cap just touch the minimum threshold of 10% (default config of geth).
 		cfgCopy.EscalateMultipleNum = 110
@@ -196,10 +229,11 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 }
 
 func testResubmitUnderpricedTransaction(t *testing.T) {
-	sqlDB, err := db.DB()
-	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(sqlDB))
 	for _, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		// Bump gas price, gas tip cap and gas fee cap less than 10% (default config of geth).
 		cfgCopy.EscalateMultipleNum = 109
