@@ -275,8 +275,8 @@ const (
 	TxStatusReplaced
 	// TxStatusConfirmed indicates that the transaction has been successfully processed and confirmed.
 	TxStatusConfirmed
-	// TxStatusFailed indicates that the transaction has failed during processing.
-	TxStatusFailed
+	// TxStatusConfirmedFailed indicates that the transaction has failed during processing.
+	TxStatusConfirmedFailed
 )
 
 // String returns a string representation of the TxStatus.
@@ -288,8 +288,8 @@ func (s TxStatus) String() string {
 		return "TxStatusReplaced"
 	case TxStatusConfirmed:
 		return "TxStatusConfirmed"
-	case TxStatusFailed:
-		return "TxStatusFailed"
+	case TxStatusConfirmedFailed:
+		return "TxStatusConfirmedFailed"
 	default:
 		return fmt.Sprintf("Unknown (%d)", int32(s))
 	}

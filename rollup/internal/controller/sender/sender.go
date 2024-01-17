@@ -451,7 +451,7 @@ func (s *Sender) checkPendingTransaction() {
 				log.Error("failed to get transaction status by tx hash", "hash", tx.Hash().String(), "err", err)
 				return
 			}
-			if status == types.TxStatusFailed {
+			if status == types.TxStatusConfirmedFailed {
 				log.Warn("transaction already marked as failed, skipping resubmission", "hash", tx.Hash().String())
 				return
 			}

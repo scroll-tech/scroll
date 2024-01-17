@@ -352,7 +352,7 @@ func TestTransactionOrm(t *testing.T) {
 
 	status, err := pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx1.Hash().String())
 	assert.NoError(t, err)
-	assert.Equal(t, types.TxStatusFailed, status)
+	assert.Equal(t, types.TxStatusConfirmedFailed, status)
 }
 
 func createTestTransaction(nonce uint64, gasTipCap, gasFeeCap *big.Int) *gethTypes.Transaction {

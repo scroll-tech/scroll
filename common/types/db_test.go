@@ -218,9 +218,9 @@ func TestTxStatus(t *testing.T) {
 			"TxStatusConfirmed",
 		},
 		{
-			"TxStatusFailed",
-			TxStatusFailed,
-			"TxStatusFailed",
+			"TxStatusConfirmedFailed",
+			TxStatusConfirmedFailed,
+			"TxStatusConfirmedFailed",
 		},
 		{
 			"Invalid Value",

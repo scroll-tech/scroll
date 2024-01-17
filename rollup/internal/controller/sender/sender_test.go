@@ -126,7 +126,7 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		assert.Equal(t, "0", txs[0].ContextID)
 		assert.Equal(t, hash.String(), txs[0].Hash)
 		assert.Equal(t, uint8(i), txs[0].Type)
-		assert.Equal(t, types.TxStatusPending, types.TxStatus(txs[0].Status))
+		assert.Equal(t, types.TxStatusPending, txs[0].Status)
 		assert.Equal(t, "0x1C5A77d9FA7eF466951B2F01F724BCa3A5820b63", txs[0].SenderAddress)
 		assert.Equal(t, types.SenderTypeUnknown, txs[0].SenderType)
 		assert.Equal(t, "test", txs[0].SenderService)

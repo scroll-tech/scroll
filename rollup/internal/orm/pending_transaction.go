@@ -136,7 +136,7 @@ func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.
 	return nil
 }
 
-// UpdateOtherTransactionsAsFailedByNonce updates the status of all transactions to TxStatusFailed for a specific nonce and sender address, excluding a specified transaction hash.
+// UpdateOtherTransactionsAsFailedByNonce updates the status of all transactions to TxStatusConfirmedFailed for a specific nonce and sender address, excluding a specified transaction hash.
 func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.Context, senderAddress string, nonce uint64, txHash string, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
@@ -147,7 +147,7 @@ func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.
 	db = db.Where("sender_address = ?", senderAddress)
 	db = db.Where("nonce = ?", nonce)
 	db = db.Where("hash != ?", txHash)
-	if err := db.Update("status", types.TxStatusFailed).Error; err != nil {
+	if err := db.Update("status", types.TxStatusConfirmedFailed).Error; err != nil {
 		return fmt.Errorf("failed to update other transactions as failed by nonce, senderAddress: %s, nonce: %d, txHash: %s, error: %w", senderAddress, nonce, txHash, err)
 	}
 	return nil
