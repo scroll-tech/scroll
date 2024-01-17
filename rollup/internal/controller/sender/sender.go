@@ -15,8 +15,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/ethclient/gethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rlp"
+	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -51,12 +53,15 @@ type FeeData struct {
 	gasTipCap *big.Int
 	gasPrice  *big.Int
 
+	accessList gethTypes.AccessList
+
 	gasLimit uint64
 }
 
 // Sender Transaction sender to send transaction to l1/l2 geth
 type Sender struct {
 	config     *config.SenderConfig
+	gethClient *gethclient.Client
 	client     *ethclient.Client // The client to retrieve on chain data or send transaction.
 	chainID    *big.Int          // The chain id of the endpoint
 	ctx        context.Context
@@ -82,12 +87,12 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 		return nil, fmt.Errorf("invalid params, EscalateMultipleNum; %v, EscalateMultipleDen: %v", config.EscalateMultipleNum, config.EscalateMultipleDen)
 	}
 
-	client, err := ethclient.Dial(config.Endpoint)
+	rpcClient, err := rpc.Dial(config.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial eth client, err: %w", err)
 	}
 
-	// get chainID from client
+	client := ethclient.NewClient(rpcClient)
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID, err: %w", err)
@@ -223,7 +228,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			To:         target,
 			Value:      new(big.Int).Set(value),
 			Data:       common.CopyBytes(data),
-			AccessList: make(gethTypes.AccessList, 0),
+			AccessList: feeData.accessList,
 			V:          new(big.Int),
 			R:          new(big.Int),
 			S:          new(big.Int),
@@ -234,7 +239,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			To:         target,
 			Data:       common.CopyBytes(data),
 			Gas:        feeData.gasLimit,
-			AccessList: make(gethTypes.AccessList, 0),
+			AccessList: feeData.accessList,
 			Value:      new(big.Int).Set(value),
 			ChainID:    s.chainID,
 			GasTipCap:  feeData.gasTipCap,

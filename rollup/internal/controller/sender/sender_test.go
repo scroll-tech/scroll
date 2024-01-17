@@ -162,8 +162,8 @@ func testFallbackGasLimit(t *testing.T) {
 
 		// FallbackGasLimit = 100000
 		patchGuard := gomonkey.ApplyPrivateMethod(s, "estimateGasLimit",
-			func(opts *bind.TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, error) {
-				return 0, errors.New("estimateGasLimit error")
+			func(opts *bind.TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, *gethTypes.AccessList, error) {
+				return 0, nil, errors.New("estimateGasLimit error")
 			},
 		)
 
