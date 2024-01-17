@@ -94,7 +94,7 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 	}
 
 	var gasLimitWithAccessList uint64
-	accessList, _, errStr, rpcErr := s.gethClient.CreateAccessList(s.ctx, msg)
+	accessList, gasUsed, errStr, rpcErr := s.gethClient.CreateAccessList(s.ctx, msg)
 	if rpcErr != nil {
 		log.Error("CreateAccessList RPC error", "error", rpcErr)
 		return gasLimitWithoutAccessList, nil, rpcErr
@@ -111,7 +111,7 @@ func (s *Sender) estimateGasLimit(opts *bind.TransactOpts, contract *common.Addr
 		return gasLimitWithoutAccessList, nil, err
 	}
 
-	log.Info("gas", "gasLimitWithAccessList", gasLimitWithAccessList, "gasLimitWithoutAccessList", gasLimitWithoutAccessList)
+	log.Info("gas", "senderName", s.name, "senderService", s.service, "accessListGasUsed", gasUsed, "gasLimitWithAccessList", gasLimitWithAccessList, "gasLimitWithoutAccessList", gasLimitWithoutAccessList)
 
 	if gasLimitWithAccessList < gasLimitWithoutAccessList {
 		return gasLimitWithAccessList, accessList, nil
