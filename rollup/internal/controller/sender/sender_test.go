@@ -23,17 +23,21 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
 
+	bridgeAbi "scroll-tech/rollup/abi"
+
 	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/mock_bridge"
 )
 
 const TXBatch = 50
 
 var (
-	privateKey *ecdsa.PrivateKey
-	cfg        *config.Config
-	base       *docker.App
-	txTypes    = []string{"LegacyTx", "AccessListTx", "DynamicFeeTx"}
-	db         *gorm.DB
+	privateKey         *ecdsa.PrivateKey
+	cfg                *config.Config
+	base               *docker.App
+	txTypes            = []string{"LegacyTx", "AccessListTx", "DynamicFeeTx"}
+	db                 *gorm.DB
+	scrollChainAddress common.Address
 )
 
 func TestMain(m *testing.M) {
@@ -50,7 +54,6 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
-	// Load default private key.
 	privateKey = priv
 
 	base.RunL1Geth(t)
@@ -69,6 +72,18 @@ func setupEnv(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, base.L1gethImg.ChainID())
+	assert.NoError(t, err)
+
+	l1Client, err := base.L1Client()
+	assert.NoError(t, err)
+
+	_, tx, _, err := mock_bridge.DeployMockBridgeL1(auth, l1Client)
+	assert.NoError(t, err)
+
+	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	assert.NoError(t, err)
 }
 
 func TestSender(t *testing.T) {
@@ -78,6 +93,7 @@ func TestSender(t *testing.T) {
 	t.Run("test new sender", testNewSender)
 	t.Run("test fallback gas limit", testFallbackGasLimit)
 	t.Run("test send and retrieve transaction", testSendAndRetrieveTransaction)
+	t.Run("test access list transaction gas limit", testAccessListTransactionGasLimit)
 	t.Run("test resubmit zero gas price transaction", testResubmitZeroGasPriceTransaction)
 	t.Run("test resubmit non-zero gas price transaction", testResubmitNonZeroGasPriceTransaction)
 	t.Run("test resubmit under priced transaction", testResubmitUnderpricedTransaction)
@@ -121,7 +137,7 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		hash, err := s.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
+		hash, err := s.SendTransaction("0", &common.Address{}, big.NewInt(0), nil, 0)
 		assert.NoError(t, err)
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
 		assert.NoError(t, err)
@@ -134,6 +150,33 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		assert.Equal(t, types.SenderTypeUnknown, txs[0].SenderType)
 		assert.Equal(t, "test", txs[0].SenderService)
 		assert.Equal(t, "test", txs[0].SenderName)
+		s.Stop()
+	}
+}
+
+func testAccessListTransactionGasLimit(t *testing.T) {
+	for _, txType := range txTypes {
+		cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy1.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+		assert.NoError(t, err)
+
+		l2GasOracleABI, err := bridgeAbi.L2GasPriceOracleMetaData.GetAbi()
+		assert.NoError(t, err)
+
+		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(2333))
+		assert.NoError(t, err)
+
+		gasLimit, accessList, err := s.estimateGasLimit(&scrollChainAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), true)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(43927), gasLimit)
+		assert.Nil(t, accessList)
+
+		gasLimit, accessList, err = s.estimateGasLimit(&scrollChainAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), false)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(43927), gasLimit)
+		assert.Nil(t, accessList)
+
 		s.Stop()
 	}
 }
@@ -154,7 +197,7 @@ func testFallbackGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 
 		// FallbackGasLimit = 0
-		txHash0, err := s.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
+		txHash0, err := s.SendTransaction("0", &common.Address{}, big.NewInt(0), nil, 0)
 		assert.NoError(t, err)
 		tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
 		assert.NoError(t, err)
@@ -167,7 +210,7 @@ func testFallbackGasLimit(t *testing.T) {
 			},
 		)
 
-		txHash1, err := s.SendTransaction("1", &common.Address{}, big.NewInt(1), nil, 100000)
+		txHash1, err := s.SendTransaction("1", &common.Address{}, big.NewInt(0), nil, 100000)
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
@@ -194,7 +237,7 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(0),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
@@ -223,7 +266,7 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(100000),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		_, err = s.resubmitTransaction(s.auth, tx, 0)
@@ -251,7 +294,7 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(100000),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(s.auth, feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		_, err = s.resubmitTransaction(s.auth, tx, 0)
@@ -307,7 +350,7 @@ func testCheckPendingTransactionTxConfirmed(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(1), nil, 0)
+		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -342,7 +385,7 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		originTxHash, err := s.SendTransaction("test", &common.Address{}, big.NewInt(1), nil, 0)
+		originTxHash, err := s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -385,7 +428,7 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(1), nil, 0)
+		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)

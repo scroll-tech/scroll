@@ -84,11 +84,15 @@ contract MockBridgeL1 {
 
   mapping(uint256 => bytes32) public committedBatches;
 
+  /// @notice The latest known l2 base fee.
+  uint256 public l2BaseFee;
+
   /***********************************
    * Functions from L2GasPriceOracle *
    ***********************************/
 
-  function setL2BaseFee(uint256) external {
+  function setL2BaseFee(uint256 _newL2BaseFee) external {
+    l2BaseFee = _newL2BaseFee;
   }
 
   /************************************
