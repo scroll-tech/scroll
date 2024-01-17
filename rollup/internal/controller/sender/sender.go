@@ -401,7 +401,7 @@ func (s *Sender) checkPendingTransaction() {
 
 	confirmed, err := utils.GetLatestConfirmedBlockNumber(s.ctx, s.client, s.config.Confirmations)
 	if err != nil {
-		log.Error("failed to get latest confirmed block number", "err", err)
+		log.Error("failed to get latest confirmed block number", "confirmations", s.config.Confirmations, "err", err)
 		return
 	}
 
@@ -427,7 +427,6 @@ func (s *Sender) checkPendingTransaction() {
 						log.Error("failed to update other transactions as failed by nonce", "senderAddress", txnToCheck.SenderAddress, "nonce", txnToCheck.Nonce, "excludedTxHash", txnToCheck.Hash, "err", err)
 						return err
 					}
-
 					return nil
 				})
 				if err != nil {
@@ -443,7 +442,7 @@ func (s *Sender) checkPendingTransaction() {
 				}
 			}
 		} else if txnToCheck.Status == types.TxStatusPending && // Only resubmit the last pending transaction of the same ContextID.
-			s.config.EscalateBlocks+txnToCheck.SubmitBlockNumber < blockNumber {
+			s.config.EscalateBlocks+txnToCheck.SubmitBlockNumber <= blockNumber {
 			// It's possible that the pending transaction was marked as failed earlier in this loop (e.g., if one of its replacements has already been confirmed).
 			// Therefore, we fetch the current transaction status again for accuracy before proceeding.
 			status, err := s.pendingTransactionOrm.GetTxStatusByTxHash(s.ctx, tx.Hash().String())

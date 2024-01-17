@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -81,6 +82,9 @@ func TestSender(t *testing.T) {
 	t.Run("test resubmit non-zero gas price transaction", testResubmitNonZeroGasPriceTransaction)
 	t.Run("test resubmit under priced transaction", testResubmitUnderpricedTransaction)
 	t.Run("test resubmit transaction with rising base fee", testResubmitTransactionWithRisingBaseFee)
+	t.Run("test check pending transaction tx confirmed", testCheckPendingTransactionTxConfirmed)
+	t.Run("test check pending transaction resubmit tx confirmed", testCheckPendingTransactionResubmitTxConfirmed)
+	t.Run("test check pending transaction replaced tx confirmed", testCheckPendingTransactionReplacedTxConfirmed)
 }
 
 func testNewSender(t *testing.T) {
@@ -116,7 +120,6 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		cfgCopy1.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
-		defer s.Stop()
 
 		hash, err := s.SendTransaction("0", &common.Address{}, big.NewInt(1), nil, 0)
 		assert.NoError(t, err)
@@ -131,6 +134,7 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		assert.Equal(t, types.SenderTypeUnknown, txs[0].SenderType)
 		assert.Equal(t, "test", txs[0].SenderService)
 		assert.Equal(t, "test", txs[0].SenderName)
+		s.Stop()
 	}
 }
 
@@ -290,4 +294,134 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 
 	assert.Equal(t, expectedGasFeeCap.Int64(), newTx.GasFeeCap().Int64())
 	s.Stop()
+}
+
+func testCheckPendingTransactionTxConfirmed(t *testing.T) {
+	for _, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+		assert.NoError(t, err)
+
+		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(1), nil, 0)
+		assert.NoError(t, err)
+
+		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
+		assert.NoError(t, err)
+		assert.Len(t, txs, 1)
+
+		patchGuard := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
+			return &gethTypes.Receipt{TxHash: hash, BlockNumber: big.NewInt(0), Status: gethTypes.ReceiptStatusSuccessful}, nil
+		})
+
+		s.checkPendingTransaction()
+		assert.NoError(t, err)
+
+		txs, err = s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
+		assert.NoError(t, err)
+		assert.Len(t, txs, 0)
+
+		s.Stop()
+		patchGuard.Reset()
+	}
+}
+
+func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
+	for _, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy.TxType = txType
+		cfgCopy.EscalateBlocks = 0
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+		assert.NoError(t, err)
+
+		originTxHash, err := s.SendTransaction("test", &common.Address{}, big.NewInt(1), nil, 0)
+		assert.NoError(t, err)
+
+		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
+		assert.NoError(t, err)
+		assert.Len(t, txs, 1)
+
+		patchGuard := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
+			if hash == originTxHash {
+				return nil, fmt.Errorf("simulated transaction receipt error")
+			}
+			return &gethTypes.Receipt{TxHash: hash, BlockNumber: big.NewInt(0), Status: gethTypes.ReceiptStatusSuccessful}, nil
+		})
+
+		// Attempt to resubmit the transaction.
+		s.checkPendingTransaction()
+		assert.NoError(t, err)
+
+		// Check the pending transactions again after attempting to resubmit.
+		s.checkPendingTransaction()
+		assert.NoError(t, err)
+
+		txs, err = s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
+		assert.NoError(t, err)
+		assert.Len(t, txs, 0)
+
+		s.Stop()
+		patchGuard.Reset()
+	}
+}
+
+func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
+	for _, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy.TxType = txType
+		cfgCopy.EscalateBlocks = 0
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+		assert.NoError(t, err)
+
+		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(1), nil, 0)
+		assert.NoError(t, err)
+
+		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
+		assert.NoError(t, err)
+		assert.Len(t, txs, 1)
+
+		patchGuard := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
+			var status types.TxStatus
+			status, err = s.pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), hash.Hex())
+			if err != nil {
+				return nil, fmt.Errorf("failed to get transaction status, hash: %s, err: %w", hash.Hex(), err)
+			}
+			// If the transaction status is 'replaced', return a successful receipt.
+			if status == types.TxStatusReplaced {
+				return &gethTypes.Receipt{
+					TxHash:      hash,
+					BlockNumber: big.NewInt(0),
+					Status:      gethTypes.ReceiptStatusSuccessful,
+				}, nil
+			}
+			return nil, fmt.Errorf("simulated transaction receipt error")
+		})
+
+		// Attempt to resubmit the transaction.
+		s.checkPendingTransaction()
+		assert.NoError(t, err)
+
+		// Check the pending transactions again after attempting to resubmit.
+		s.checkPendingTransaction()
+		assert.NoError(t, err)
+
+		txs, err = s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
+		assert.NoError(t, err)
+		assert.Len(t, txs, 0)
+
+		s.Stop()
+		patchGuard.Reset()
+	}
 }
