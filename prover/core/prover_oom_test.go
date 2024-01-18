@@ -36,9 +36,7 @@ func TestFFI(t *testing.T) {
 	chunkTrace1 := readChunkTrace(*tracePath1, as)
 
 	for i := 1; i <= 2000; i++ {
-		t.Log("Proof-", i, " BEGIN mem: ", memUsage(as))
 		chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
-		t.Log("Proof-", i, " END mem: ", memUsage(as))
 	}
 }
 
