@@ -132,9 +132,9 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
-		cfgCopy1.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
 		hash, err := s.SendTransaction("0", &common.Address{}, big.NewInt(0), nil, 0)
@@ -156,9 +156,9 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 
 func testAccessListTransactionGasLimit(t *testing.T) {
 	for _, txType := range txTypes {
-		cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
-		cfgCopy1.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
 		l2GasOracleABI, err := bridgeAbi.L2GasPriceOracleMetaData.GetAbi()
