@@ -193,11 +193,11 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
-func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) getFeeData(target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (*FeeData, error) {
 	if s.config.TxType == DynamicFeeTxType {
-		return s.estimateDynamicGas(auth, target, value, data, fallbackGasLimit)
+		return s.estimateDynamicGas(target, value, data, fallbackGasLimit)
 	}
-	return s.estimateLegacyGas(auth, target, value, data, fallbackGasLimit)
+	return s.estimateLegacyGas(target, value, data, fallbackGasLimit)
 }
 
 // SendTransaction send a signed L2tL1 transaction.
@@ -226,13 +226,13 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		}
 	}()
 
-	if feeData, err = s.getFeeData(s.auth, target, value, data, fallbackGasLimit); err != nil {
+	if feeData, err = s.getFeeData(target, value, data, fallbackGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
 		log.Error("failed to get fee data", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "fallback gas limit", fallbackGasLimit, "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 
-	if tx, err = s.createAndSendTx(s.auth, feeData, target, value, data, nil); err != nil {
+	if tx, err = s.createAndSendTx(feeData, target, value, data, nil); err != nil {
 		s.metrics.sendTransactionFailureSendTx.WithLabelValues(s.service, s.name).Inc()
 		log.Error("failed to create and send tx (non-resubmit case)", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "err", err)
 		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
@@ -250,9 +250,9 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	return tx.Hash(), nil
 }
 
-func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (*types.Transaction, error) {
+func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (*types.Transaction, error) {
 	var (
-		nonce  = auth.Nonce.Uint64()
+		nonce  = s.auth.Nonce.Uint64()
 		txData types.TxData
 	)
 
@@ -308,13 +308,13 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	}
 
 	// sign and send
-	tx, err := auth.Signer(auth.From, types.NewTx(txData))
+	tx, err := s.auth.Signer(s.auth.From, types.NewTx(txData))
 	if err != nil {
-		log.Error("failed to sign tx", "address", auth.From.String(), "err", err)
+		log.Error("failed to sign tx", "address", s.auth.From.String(), "err", err)
 		return nil, err
 	}
 	if err = s.client.SendTransaction(s.ctx, tx); err != nil {
-		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "from", auth.From.String(), "nonce", tx.Nonce(), "err", err)
+		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
 		if strings.Contains(err.Error(), "nonce") && overrideNonce == nil {
@@ -339,7 +339,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 
 	// update nonce when it is not from resubmit
 	if overrideNonce == nil {
-		auth.Nonce = big.NewInt(int64(nonce + 1))
+		s.auth.Nonce = big.NewInt(int64(nonce + 1))
 	}
 	return tx, nil
 }
@@ -442,7 +442,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
-	tx, err := s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
+	tx, err := s.createAndSendTx(feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
 	if err != nil {
 		log.Error("failed to create and send tx (resubmit case)", "from", s.auth.From.String(), "nonce", nonce, "err", err)
 		return nil, err
