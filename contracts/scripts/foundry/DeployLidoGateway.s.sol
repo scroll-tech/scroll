@@ -30,9 +30,8 @@ contract DeployLidoGateway is Script {
     address L2_LIDO_GATEWAY_PROXY_ADDR = vm.envAddress("L2_LIDO_GATEWAY_PROXY_ADDR");
 
     function run() external {
-        vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
-
         if (keccak256(abi.encodePacked(NETWORK)) == keccak256(abi.encodePacked("L1"))) {
+            vm.startBroadcast(L1_DEPLOYER_PRIVATE_KEY);
             // deploy l1 lido gateway
             L1LidoGateway gateway = new L1LidoGateway(
                 L1_WSTETH_ADDR,
@@ -43,6 +42,7 @@ contract DeployLidoGateway is Script {
             );
             logAddress("L1_LIDO_GATEWAY_IMPLEMENTATION_ADDR", address(gateway));
         } else if (keccak256(abi.encodePacked(NETWORK)) == keccak256(abi.encodePacked("L2"))) {
+            vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
             // deploy l2 lido gateway
             L2LidoGateway gateway = new L2LidoGateway(
                 L1_WSTETH_ADDR,
