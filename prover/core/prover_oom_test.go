@@ -7,6 +7,7 @@ import (
 	"flag"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -35,8 +36,9 @@ func TestFFI(t *testing.T) {
 	chunkProverCore, _ := core.NewProverCore(chunkProverConfig)
 	chunkTrace1 := readChunkTrace(*tracePath1, as)
 
-	for i := 1; i <= 2000; i++ {
+	for {
 		chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
+		time.Sleep(time.Millisecond * 100)
 	}
 }
 
