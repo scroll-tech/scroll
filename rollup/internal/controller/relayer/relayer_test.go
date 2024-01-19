@@ -10,6 +10,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
@@ -25,8 +26,8 @@ var (
 
 	base *docker.App
 
-	// l2geth client
-	l2Cli *ethclient.Client
+	// geth client
+	l1Cli *ethclient.Client
 
 	// l2 block
 	wrappedBlock1 *types.WrappedBlock
@@ -40,6 +41,10 @@ var (
 )
 
 func setupEnv(t *testing.T) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	// Load config.
 	var err error
 	cfg, err = config.NewConfig("../../../conf/config.json")
@@ -60,8 +65,8 @@ func setupEnv(t *testing.T) {
 	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
 	cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 
-	// Create l2geth client.
-	l2Cli, err = base.L2Client()
+	// Create geth client.
+	l1Cli, err = base.L1Client()
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")

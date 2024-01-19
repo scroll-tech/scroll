@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -24,8 +25,8 @@ var (
 
 	base *docker.App
 
-	// l2geth client
-	l2Cli *ethclient.Client
+	// geth client
+	l1Cli *ethclient.Client
 
 	// block trace
 	wrappedBlock1 *types.WrappedBlock
@@ -33,6 +34,10 @@ var (
 )
 
 func setupEnv(t *testing.T) (err error) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	// Load config.
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
@@ -48,8 +53,8 @@ func setupEnv(t *testing.T) (err error) {
 		MaxIdleNum: base.DBConfig.MaxIdleNum,
 	}
 
-	// Create l2geth client.
-	l2Cli, err = base.L2Client()
+	// Create geth client.
+	l1Cli, err = base.L1Client()
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")

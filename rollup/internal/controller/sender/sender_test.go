@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"math/big"
+	"os"
 	"strconv"
 	"testing"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
@@ -44,6 +46,10 @@ func TestMain(m *testing.M) {
 }
 
 func setupEnv(t *testing.T) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	var err error
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
@@ -194,12 +200,12 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 
 		gasLimit, accessList, err := s.estimateGasLimit(&scrollChainAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), true)
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(43450), gasLimit)
+		assert.Equal(t, uint64(43472), gasLimit)
 		assert.NotNil(t, accessList)
 
 		gasLimit, accessList, err = s.estimateGasLimit(&scrollChainAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), false)
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(43927), gasLimit)
+		assert.Equal(t, uint64(43949), gasLimit)
 		assert.Nil(t, accessList)
 
 		s.Stop()

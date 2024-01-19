@@ -20,6 +20,34 @@ import (
 	"scroll-tech/rollup/internal/orm"
 )
 
+func testCommitAndFinalizeGenesisBatch(t *testing.T) {
+	db := setupDB(t)
+	defer database.CloseDB(db)
+
+	prepareContracts(t)
+
+	l2Cfg := rollupApp.Config.L2Config
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l1Client, db, l2Cfg.RelayerConfig, true, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, l2Relayer)
+
+	genesisChunkHash := common.HexToHash("0xf1222139f0d95986daec1c21b95367d1b93088912f547a2acab11f6ca721e885")
+	chunkOrm := orm.NewChunk(db)
+	dbChunk, err := chunkOrm.GetChunksInRange(context.Background(), 0, 0)
+	assert.NoError(t, err)
+	assert.Len(t, dbChunk, 1)
+	assert.Equal(t, genesisChunkHash.String(), dbChunk[0].Hash)
+	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(dbChunk[0].ProvingStatus))
+
+	genesisBatchHash := common.HexToHash("0x3a16fb8146290a4ce3b0e146d23f083d663c584d093b12c3cc3062f41b5a0286")
+	batchOrm := orm.NewBatch(db)
+	batch, err := batchOrm.GetBatchByIndex(context.Background(), 0)
+	assert.NoError(t, err)
+	assert.Equal(t, genesisBatchHash.String(), batch.Hash)
+	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(batch.ProvingStatus))
+	assert.Equal(t, types.RollupFinalized, types.RollupStatus(batch.RollupStatus))
+}
+
 func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	db := setupDB(t)
 	defer database.CloseDB(db)
@@ -28,12 +56,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l1Client, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 
 	// Create L1Watcher
 	l1Cfg := rollupApp.Config.L1Config
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l2Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// add some blocks to db
 	var wrappedBlocks []*types.WrappedBlock
