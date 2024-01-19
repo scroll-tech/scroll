@@ -25,8 +25,8 @@ var (
 
 	base *docker.App
 
-	// geth client
-	l1Cli *ethclient.Client
+	// l2geth client
+	l2Cli *ethclient.Client
 
 	// block trace
 	wrappedBlock1 *types.WrappedBlock
@@ -53,8 +53,8 @@ func setupEnv(t *testing.T) (err error) {
 		MaxIdleNum: base.DBConfig.MaxIdleNum,
 	}
 
-	// Create geth client.
-	l1Cli, err = base.L1Client()
+	// Create l2geth client.
+	l2Cli, err = base.L2Client()
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
