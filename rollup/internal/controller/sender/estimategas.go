@@ -126,7 +126,7 @@ func finetuneAccessList(accessList *types.AccessList, gasLimitWithAccessList uin
 			// If so, we remove it and adjust the gas limit estimate accordingly.
 			// This removal helps in preventing double-counting of the 'to' address in access list calculations.
 			gasLimitWithAccessList -= 2400
-			gasLimitWithAccessList += uint64(100 * len(entry.StorageKeys)) // Assuming these slots can save 100 gas compared with len(entry.StorageKeys times cold sload.
+			gasLimitWithAccessList += uint64(100 * len(entry.StorageKeys)) // Assuming that these slots can save 100 gas units compared to the product of len(entry.StorageKeys) and cold sload operations
 		} else {
 			// Otherwise, keep the entry in the new access list.
 			newAccessList = append(newAccessList, entry)
