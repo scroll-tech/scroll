@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	_ "net/http/pprof"
+
+	"github.com/grafana/pyroscope-go"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
@@ -24,7 +27,39 @@ var (
 	tracePath1 = flag.String("trace1", "/assets/traces/1_transfer.json", "chunk trace 1")
 )
 
+func initPyroscopse() {
+	pyroscope.Start(pyroscope.Config{
+		ApplicationName: "prover-idc-us-19",
+
+		ServerAddress: "http://pyroscope.mainnet.scroll.tech:4040",
+
+		// you can disable logging by setting this to nil
+		Logger: pyroscope.StandardLogger,
+
+		// you can provide static tags via a map:
+		Tags: map[string]string{"hostname": os.Getenv("HOSTNAME")},
+
+		ProfileTypes: []pyroscope.ProfileType{
+			// these profile types are enabled by default:
+			pyroscope.ProfileCPU,
+			pyroscope.ProfileAllocObjects,
+			pyroscope.ProfileAllocSpace,
+			pyroscope.ProfileInuseObjects,
+			pyroscope.ProfileInuseSpace,
+
+			// these profile types are optional:
+			pyroscope.ProfileGoroutines,
+			pyroscope.ProfileMutexCount,
+			pyroscope.ProfileMutexDuration,
+			pyroscope.ProfileBlockCount,
+			pyroscope.ProfileBlockDuration,
+		},
+	})
+}
+
 func TestFFI(t *testing.T) {
+	initPyroscopse()
+
 	as := assert.New(t)
 
 	chunkProverConfig := &config.ProverCoreConfig{
