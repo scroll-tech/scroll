@@ -5,13 +5,15 @@ package core_test
 
 import (
 	"flag"
+	"io/ioutil"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/grafana/pyroscope-go"
 	_ "net/http/pprof"
 
-	"github.com/grafana/pyroscope-go"
+	"github.com/json-iterator/go"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
@@ -84,8 +86,6 @@ var blockTracePool = sync.Pool{
 }
 
 func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
-	/* gupeng
-
 	buf := blockTracePool.Get().([]byte)
 	defer blockTracePool.Put(buf)
 
@@ -97,7 +97,4 @@ func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
 	as.NoError(json.Unmarshal(buf, trace))
 
 	return []*types.BlockTrace{trace}
-
-	*/
-	return []*types.BlockTrace{}
 }
