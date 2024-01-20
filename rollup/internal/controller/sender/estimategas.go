@@ -102,7 +102,7 @@ func (s *Sender) estimateGasLimit(contract *common.Address, data []byte, gasPric
 		return gasLimitWithoutAccessList, nil, fmt.Errorf(errStr)
 	}
 
-	// Heuristically fine-tune accessList because 'to' address is automatically included in the access list by the Ethereum protocol: https://github.com/ethereum/go-ethereum/blob/v1.13.10/core/state/statedb.go#L1322
+	// Fine-tune accessList because 'to' address is automatically included in the access list by the Ethereum protocol: https://github.com/ethereum/go-ethereum/blob/v1.13.10/core/state/statedb.go#L1322
 	// This function returns a gas estimation because GO SDK does not support access list: https://github.com/ethereum/go-ethereum/blob/v1.13.10/ethclient/ethclient.go#L642
 	accessList, gasLimitWithAccessList = finetuneAccessList(accessList, gasLimitWithAccessList, msg.To)
 
@@ -122,11 +122,11 @@ func finetuneAccessList(accessList *types.AccessList, gasLimitWithAccessList uin
 	var newAccessList types.AccessList
 	for _, entry := range *accessList {
 		if entry.Address == *to && len(entry.StorageKeys) < 24 {
-			// This is a heuristic method, we check if number of slots is < 24.
-			// If so, we remove it and adjust the gas limit estimate accordingly.
+			// Based on: https://arxiv.org/pdf/2312.06574.pdf
+			// We remove the address and respective storage keys as long as the number of storage keys < 24.
 			// This removal helps in preventing double-counting of the 'to' address in access list calculations.
 			gasLimitWithAccessList -= 2400
-			// Assuming each slot saves 100 gas units as access list storage key cost (1900 gas) plus warm sload (100 gas) is cheaper than cold sload (2100 gas).
+			// Each storage key saves 100 gas units.
 			gasLimitWithAccessList += uint64(100 * len(entry.StorageKeys))
 		} else {
 			// Otherwise, keep the entry in the new access list.
