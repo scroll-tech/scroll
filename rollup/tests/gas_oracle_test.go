@@ -30,12 +30,12 @@ func testImportL1GasPrice(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create L1Watcher
-	startHeight, err := l2Client.BlockNumber(context.Background())
+	startHeight, err := l1Client.BlockNumber(context.Background())
 	assert.NoError(t, err)
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l2Client, startHeight-1, 0, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, 0, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// fetch new blocks
-	number, err := l2Client.BlockNumber(context.Background())
+	number, err := l1Client.BlockNumber(context.Background())
 	assert.Greater(t, number, startHeight-1)
 	assert.NoError(t, err)
 	err = l1Watcher.FetchBlockHeader(number)
@@ -67,7 +67,7 @@ func testImportL2GasPrice(t *testing.T) {
 	prepareContracts(t)
 
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l1Client, db, l2Cfg.RelayerConfig, false, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 
 	// add fake chunk

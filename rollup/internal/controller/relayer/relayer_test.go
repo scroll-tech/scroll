@@ -26,8 +26,8 @@ var (
 
 	base *docker.App
 
-	// geth client
-	l1Cli *ethclient.Client
+	// l2geth client
+	l2Cli *ethclient.Client
 
 	// l2 block
 	wrappedBlock1 *types.WrappedBlock
@@ -65,8 +65,8 @@ func setupEnv(t *testing.T) {
 	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
 	cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 
-	// Create geth client.
-	l1Cli, err = base.L1Client()
+	// Create l2geth client.
+	l2Cli, err = base.L2Client()
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
