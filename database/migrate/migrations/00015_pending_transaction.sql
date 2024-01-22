@@ -37,7 +37,7 @@ CREATE INDEX idx_pending_transaction_on_sender_address_nonce ON pending_transact
 
 COMMENT ON COLUMN pending_transaction.type IS 'unknown, commit batch, finalize batch, L1 gas oracle, L2 gas oracle';
 
-COMMENT ON COLUMN pending_transaction.status IS 'unknown, pending, confirmed, confirmed failed';
+COMMENT ON COLUMN pending_transaction.status IS 'unknown, pending, replaced, confirmed, confirmed failed';
 
 -- +goose StatementEnd
 
