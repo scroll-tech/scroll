@@ -391,10 +391,10 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 	return nil
 }
 
-// InsertFailedL2GatewayRouterTxs inserts a list of transactions that failed to interact with the L2 gateway router into the database.
+// InsertFailedL2GatewayTxs inserts a list of transactions that failed to interact with the L2 gateways into the database.
 // To resolve unique index confliction, L2 tx hash is used as the MessageHash.
 // The OnConflict clause is used to prevent inserting same failed transactions multiple times.
-func (c *CrossMessage) InsertFailedL2GatewayRouterTxs(ctx context.Context, messages []*CrossMessage) error {
+func (c *CrossMessage) InsertFailedL2GatewayTxs(ctx context.Context, messages []*CrossMessage) error {
 	if len(messages) == 0 {
 		return nil
 	}
@@ -417,10 +417,10 @@ func (c *CrossMessage) InsertFailedL2GatewayRouterTxs(ctx context.Context, messa
 	return nil
 }
 
-// InsertFailedL1GatewayRouterAndL1MessengerTxs inserts a list of transactions that failed to interact with the L1 gateway router and L1 messenger into the database.
+// InsertFailedL1GatewayTxs inserts a list of transactions that failed to interact with the L1 gateways into the database.
 // To resolve unique index confliction, L1 tx hash is used as the MessageHash.
 // The OnConflict clause is used to prevent inserting same failed transactions multiple times.
-func (c *CrossMessage) InsertFailedL1GatewayRouterAndL1MessengerTxs(ctx context.Context, messages []*CrossMessage) error {
+func (c *CrossMessage) InsertFailedL1GatewayTxs(ctx context.Context, messages []*CrossMessage) error {
 	if len(messages) == 0 {
 		return nil
 	}

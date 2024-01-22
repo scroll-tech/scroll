@@ -128,10 +128,10 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			}
 			from := event.Sender.String()
 			if event.Sender.String() == e.cfg.GatewayRouterAddr {
-				tx, isPending, err := e.client.TransactionByHash(ctx, vlog.TxHash)
+				tx, isPending, rpcErr := e.client.TransactionByHash(ctx, vlog.TxHash)
 				if err != nil || isPending {
-					log.Warn("Failed to get tx or the tx is still pending", "err", err, "isPending", isPending)
-					return nil, nil, err
+					log.Warn("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)
+					return nil, nil, rpcErr
 				}
 				signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
 				sender, senderErr := signer.Sender(tx)

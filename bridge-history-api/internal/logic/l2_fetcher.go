@@ -36,6 +36,7 @@ type L2FetcherLogic struct {
 	cfg             *config.FetcherConfig
 	client          *ethclient.Client
 	addressList     []common.Address
+	gatewayList     []common.Address
 	parser          *L2EventParser
 	db              *gorm.DB
 	crossMessageOrm *orm.CrossMessage
@@ -60,16 +61,34 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		common.HexToAddress(cfg.MessengerAddr),
 	}
 
+	gatewayList := []common.Address{
+		common.HexToAddress(cfg.ETHGatewayAddr),
+
+		common.HexToAddress(cfg.StandardERC20GatewayAddr),
+		common.HexToAddress(cfg.CustomERC20GatewayAddr),
+		common.HexToAddress(cfg.WETHGatewayAddr),
+		common.HexToAddress(cfg.DAIGatewayAddr),
+
+		common.HexToAddress(cfg.ERC721GatewayAddr),
+		common.HexToAddress(cfg.ERC1155GatewayAddr),
+
+		common.HexToAddress(cfg.MessengerAddr),
+
+		common.HexToAddress(cfg.GatewayRouterAddr),
+	}
+
 	// Optional erc20 gateways.
 	if common.HexToAddress(cfg.USDCGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.USDCGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.USDCGatewayAddr))
 	}
 
 	if common.HexToAddress(cfg.LIDOGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.LIDOGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.USDCGatewayAddr))
 	}
 
-	log.Info("L2 Fetcher configured with the following address list", "addresses", addressList)
+	log.Info("L2 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)
 
 	f := &L2FetcherLogic{
 		db:              db,
@@ -78,6 +97,7 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		cfg:             cfg,
 		client:          client,
 		addressList:     addressList,
+		gatewayList:     gatewayList,
 		parser:          NewL2EventParser(cfg, client),
 	}
 
@@ -127,42 +147,7 @@ func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 		blockTimestampsMap[block.NumberU64()] = block.Time()
 
 		for _, tx := range block.Transactions() {
-			txTo := tx.To()
-			if txTo == nil {
-				continue
-			}
-			toAddress := txTo.String()
-
-			// GatewayRouter: L2 withdrawal.
-			if toAddress == f.cfg.GatewayRouterAddr {
-				receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
-				if receiptErr != nil {
-					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", receiptErr)
-					return nil, nil, nil, receiptErr
-				}
-
-				// Check if the transaction is failed
-				if receipt.Status == types.ReceiptStatusFailed {
-					signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
-					sender, signerErr := signer.Sender(tx)
-					if signerErr != nil {
-						log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", signerErr)
-						return nil, nil, nil, signerErr
-					}
-
-					l2RevertedUserTxs = append(l2RevertedUserTxs, &orm.CrossMessage{
-						L2TxHash:       tx.Hash().String(),
-						MessageType:    int(orm.MessageTypeL2SentMessage),
-						Sender:         sender.String(),
-						Receiver:       (*tx.To()).String(),
-						L2BlockNumber:  receipt.BlockNumber.Uint64(),
-						BlockTimestamp: block.Time(),
-						TxStatus:       int(orm.TxStatusTypeSentTxReverted),
-					})
-				}
-			}
-
-			if tx.Type() == types.L1MessageTxType {
+			if tx.IsL1MessageTx() {
 				receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
 				if receiptErr != nil {
 					log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", receiptErr)
@@ -179,6 +164,38 @@ func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 						MessageType:   int(orm.MessageTypeL1SentMessage),
 					})
 				}
+				continue
+			}
+
+			// Gateways: L2 withdrawal.
+			if !isTransactionToGateway(tx, f.gatewayList) {
+				continue
+			}
+
+			receipt, receiptErr := f.client.TransactionReceipt(ctx, tx.Hash())
+			if receiptErr != nil {
+				log.Error("Failed to get transaction receipt", "txHash", tx.Hash().String(), "err", receiptErr)
+				return nil, nil, nil, receiptErr
+			}
+
+			// Check if the transaction is failed
+			if receipt.Status == types.ReceiptStatusFailed {
+				signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+				sender, signerErr := signer.Sender(tx)
+				if signerErr != nil {
+					log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", signerErr)
+					return nil, nil, nil, signerErr
+				}
+
+				l2RevertedUserTxs = append(l2RevertedUserTxs, &orm.CrossMessage{
+					L2TxHash:       tx.Hash().String(),
+					MessageType:    int(orm.MessageTypeL2SentMessage),
+					Sender:         sender.String(),
+					Receiver:       (*tx.To()).String(),
+					L2BlockNumber:  receipt.BlockNumber.Uint64(),
+					BlockTimestamp: block.Time(),
+					TxStatus:       int(orm.TxStatusTypeSentTxReverted),
+				})
 			}
 		}
 	}
@@ -278,4 +295,16 @@ func (f *L2FetcherLogic) updateMetrics(res L2FilterResult) {
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_reverted_relayed_message_transaction").Add(1)
 		}
 	}
+}
+
+func isTransactionToGateway(tx *types.Transaction, gatewayList []common.Address) bool {
+	if tx.To() == nil {
+		return false
+	}
+	for _, gateway := range gatewayList {
+		if *tx.To() == gateway {
+			return true
+		}
+	}
+	return false
 }

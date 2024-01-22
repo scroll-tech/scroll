@@ -37,6 +37,7 @@ type L1FetcherLogic struct {
 	cfg             *config.FetcherConfig
 	client          *ethclient.Client
 	addressList     []common.Address
+	gatewayList     []common.Address
 	parser          *L1EventParser
 	db              *gorm.DB
 	crossMessageOrm *orm.CrossMessage
@@ -65,16 +66,34 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		common.HexToAddress(cfg.MessageQueueAddr),
 	}
 
+	gatewayList := []common.Address{
+		common.HexToAddress(cfg.ETHGatewayAddr),
+
+		common.HexToAddress(cfg.StandardERC20GatewayAddr),
+		common.HexToAddress(cfg.CustomERC20GatewayAddr),
+		common.HexToAddress(cfg.WETHGatewayAddr),
+		common.HexToAddress(cfg.DAIGatewayAddr),
+
+		common.HexToAddress(cfg.ERC721GatewayAddr),
+		common.HexToAddress(cfg.ERC1155GatewayAddr),
+
+		common.HexToAddress(cfg.MessengerAddr),
+
+		common.HexToAddress(cfg.GatewayRouterAddr),
+	}
+
 	// Optional erc20 gateways.
 	if common.HexToAddress(cfg.USDCGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.USDCGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.USDCGatewayAddr))
 	}
 
 	if common.HexToAddress(cfg.LIDOGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.LIDOGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.LIDOGatewayAddr))
 	}
 
-	log.Info("L1 Fetcher configured with the following address list", "addresses", addressList)
+	log.Info("L1 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)
 
 	f := &L1FetcherLogic{
 		db:              db,
@@ -83,6 +102,7 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		cfg:             cfg,
 		client:          client,
 		addressList:     addressList,
+		gatewayList:     gatewayList,
 		parser:          NewL1EventParser(cfg, client),
 	}
 
@@ -131,15 +151,9 @@ func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 		blockTimestampsMap[block.NumberU64()] = block.Time()
 
 		for _, tx := range block.Transactions() {
-			txTo := tx.To()
-			if txTo == nil {
-				continue
-			}
-			toAddress := txTo.String()
-
-			// GatewayRouter: L1 deposit.
+			// Gateways: L1 deposit.
 			// Messenger: L1 deposit retry (replayMessage), L1 deposit refund (dropMessage), L2 withdrawal's claim (relayMessageWithProof).
-			if toAddress != f.cfg.GatewayRouterAddr && toAddress != f.cfg.MessengerAddr {
+			if !isTransactionToGateway(tx, f.gatewayList) {
 				continue
 			}
 
