@@ -33,7 +33,7 @@ func (s *Sender) estimateLegacyGas(to *common.Address, value *big.Int, data []by
 	}, nil
 }
 
-func (s *Sender) estimateDynamicGas(to *common.Address, value *big.Int, input []byte, fallbackGasLimit uint64, baseFee uint64) (*FeeData, error) {
+func (s *Sender) estimateDynamicGas(to *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64, baseFee uint64) (*FeeData, error) {
 	gasTipCap, err := s.client.SuggestGasTipCap(s.ctx)
 	if err != nil {
 		log.Error("estimateDynamicGas SuggestGasTipCap failure", "error", err)
@@ -41,7 +41,7 @@ func (s *Sender) estimateDynamicGas(to *common.Address, value *big.Int, input []
 	}
 
 	gasFeeCap := new(big.Int).Add(gasTipCap, new(big.Int).Mul(new(big.Int).SetUint64(baseFee), big.NewInt(2)))
-	gasLimit, accessList, err := s.estimateGasLimit(to, input, nil, gasTipCap, gasFeeCap, value, true)
+	gasLimit, accessList, err := s.estimateGasLimit(to, data, nil, gasTipCap, gasFeeCap, value, true)
 	if err != nil {
 		log.Error("estimateDynamicGas estimateGasLimit failure",
 			"from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "to address", to.String(),

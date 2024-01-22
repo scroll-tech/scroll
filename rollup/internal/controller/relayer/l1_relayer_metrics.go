@@ -24,7 +24,7 @@ func initL1RelayerMetrics(reg prometheus.Registerer) *l1RelayerMetrics {
 		l1RelayerMetric = &l1RelayerMetrics{
 			rollupL1RelayerGasPriceOracleRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer1_gas_price_oracle_run_total",
-				Help: "Total number of times the Layer 1 gas price oracle has been run",
+				Help: "Total number of times the layer1 gas price oracle has been run",
 			}),
 			rollupL1RelayerLastGasPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 				Name: "rollup_layer1_gas_price_latest_gas_price",
@@ -32,11 +32,11 @@ func initL1RelayerMetrics(reg prometheus.Registerer) *l1RelayerMetrics {
 			}),
 			rollupL1UpdateGasOracleConfirmedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer1_update_gas_oracle_confirmed_total",
-				Help: "The total number of layer1 update gas oracle confirmed",
+				Help: "The total number of updating layer1 gas oracle confirmed",
 			}),
 			rollupL1UpdateGasOracleConfirmedFailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer1_update_gas_oracle_confirmed_failed_total",
-				Help: "The total number of layer1 update gas oracle confirmed failed",
+				Help: "The total number of updating layer1 gas oracle confirmed failed",
 			}),
 		}
 	})

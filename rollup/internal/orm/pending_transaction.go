@@ -29,9 +29,9 @@ type PendingTransaction struct {
 	ContextID         string           `json:"context_id" gorm:"context_id"`
 	Hash              string           `json:"hash" gorm:"hash"`
 	Type              uint8            `json:"type" gorm:"type"`
-	GasFeeCap         string           `json:"gas_fee_cap" gorm:"gas_fee_cap"`
-	GasTipCap         string           `json:"gas_tip_cap" gorm:"gas_tip_cap"`
-	GasPrice          string           `json:"gas_price" gorm:"gas_price"`
+	GasFeeCap         uint64           `json:"gas_fee_cap" gorm:"gas_fee_cap"`
+	GasTipCap         uint64           `json:"gas_tip_cap" gorm:"gas_tip_cap"`
+	GasPrice          uint64           `json:"gas_price" gorm:"gas_price"`
 	GasLimit          uint64           `json:"gas_limit" gorm:"gas_limit"`
 	Nonce             uint64           `json:"nonce" gorm:"nonce"`
 	SubmitBlockNumber uint64           `json:"submit_block_number" gorm:"submit_block_number"`
@@ -95,9 +95,9 @@ func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 		ContextID:         contextID,
 		Hash:              tx.Hash().String(),
 		Type:              tx.Type(),
-		GasFeeCap:         tx.GasFeeCap().String(),
-		GasTipCap:         tx.GasTipCap().String(),
-		GasPrice:          tx.GasPrice().String(),
+		GasFeeCap:         tx.GasFeeCap().Uint64(),
+		GasTipCap:         tx.GasTipCap().Uint64(),
+		GasPrice:          tx.GasPrice().Uint64(),
 		GasLimit:          tx.Gas(),
 		Nonce:             tx.Nonce(),
 		SubmitBlockNumber: submitBlockNumber,

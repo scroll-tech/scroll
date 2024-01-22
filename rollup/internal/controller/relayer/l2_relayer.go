@@ -658,10 +658,10 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 		var status types.GasOracleStatus
 		if cfm.IsSuccessful {
 			status = types.GasOracleImported
-			r.metrics.rollupL2UpdateL1GasOracleConfirmedTotal.Inc()
+			r.metrics.rollupL2UpdateGasOracleConfirmedTotal.Inc()
 		} else {
 			status = types.GasOracleImportedFailed
-			r.metrics.rollupL2UpdateL1GasOracleConfirmedFailedTotal.Inc()
+			r.metrics.rollupL2UpdateGasOracleConfirmedFailedTotal.Inc()
 			log.Warn("UpdateGasOracleTxType transaction confirmed but failed in layer1", "confirmation", cfm)
 		}
 
