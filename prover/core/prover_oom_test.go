@@ -33,7 +33,7 @@ func initPyroscopse() {
 	pyroscope.Start(pyroscope.Config{
 		ApplicationName: "prover-idc-us-19",
 
-		ServerAddress: "http://pyroscope.mainnet.scroll.tech:4040",
+		ServerAddress: "http://127.0.0.1:4040",
 
 		// you can disable logging by setting this to nil
 		Logger: pyroscope.StandardLogger,
