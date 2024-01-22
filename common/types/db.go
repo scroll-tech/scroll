@@ -279,7 +279,6 @@ const (
 	TxStatusConfirmedFailed
 )
 
-// String returns a string representation of the TxStatus.
 func (s TxStatus) String() string {
 	switch s {
 	case TxStatusPending:

@@ -26,10 +26,6 @@ import (
 	"scroll-tech/database/migrate"
 
 	bridgeAbi "scroll-tech/rollup/abi"
-
-	bridgeAbi "scroll-tech/rollup/abi"
-	"scroll-tech/rollup/mock_bridge"
-
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/mock_bridge"
 )
@@ -163,33 +159,6 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 	}
 }
 
-func testAccessListTransactionGasLimit(t *testing.T) {
-	for _, txType := range txTypes {
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
-		cfgCopy.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
-		assert.NoError(t, err)
-
-		l2GasOracleABI, err := bridgeAbi.L2GasPriceOracleMetaData.GetAbi()
-		assert.NoError(t, err)
-
-		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(2333))
-		assert.NoError(t, err)
-
-		gasLimit, accessList, err := s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), true)
-		assert.NoError(t, err)
-		assert.Equal(t, uint64(43927), gasLimit)
-		assert.Nil(t, accessList)
-
-		gasLimit, accessList, err = s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), false)
-		assert.NoError(t, err)
-		assert.Equal(t, uint64(43927), gasLimit)
-		assert.Nil(t, accessList)
-
-		s.Stop()
-	}
-}
-
 func testFallbackGasLimit(t *testing.T) {
 	for _, txType := range txTypes {
 		sqlDB, err := db.DB()
@@ -214,7 +183,7 @@ func testFallbackGasLimit(t *testing.T) {
 
 		// FallbackGasLimit = 100000
 		patchGuard := gomonkey.ApplyPrivateMethod(s, "estimateGasLimit",
-			func(contract *common.Address, data []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, *types.AccessList, error) {
+			func(contract *common.Address, data []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, *gethTypes.AccessList, error) {
 				return 0, nil, errors.New("estimateGasLimit error")
 			},
 		)
@@ -258,9 +227,13 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 
 func testAccessListTransactionGasLimit(t *testing.T) {
 	for _, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
-		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
 		l2GasOracleABI, err := bridgeAbi.L2GasPriceOracleMetaData.GetAbi()
