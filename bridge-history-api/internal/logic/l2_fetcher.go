@@ -33,7 +33,7 @@ type L2FilterResult struct {
 
 // L2FetcherLogic the L2 fetcher logic
 type L2FetcherLogic struct {
-	cfg             *config.LayerConfig
+	cfg             *config.FetcherConfig
 	client          *ethclient.Client
 	addressList     []common.Address
 	parser          *L2EventParser
@@ -45,7 +45,7 @@ type L2FetcherLogic struct {
 }
 
 // NewL2FetcherLogic create L2 fetcher logic
-func NewL2FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L2FetcherLogic {
+func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L2FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
 
@@ -78,7 +78,7 @@ func NewL2FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 		cfg:             cfg,
 		client:          client,
 		addressList:     addressList,
-		parser:          NewL2EventParser(),
+		parser:          NewL2EventParser(cfg, client),
 	}
 
 	reg := prometheus.DefaultRegisterer
@@ -235,7 +235,7 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, common.Hash{}, nil, err
 	}
 
-	l2WithdrawMessages, l2RelayedMessages, err := f.parser.ParseL2EventLogs(eventLogs, blockTimestampsMap)
+	l2WithdrawMessages, l2RelayedMessages, err := f.parser.ParseL2EventLogs(ctx, eventLogs, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L2 event logs", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err

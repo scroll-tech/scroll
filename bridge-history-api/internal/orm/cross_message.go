@@ -473,7 +473,7 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	for _, msg := range mergedL2RelayedMessages {
 		uniqueL2RelayedMessages = append(uniqueL2RelayedMessages, msg)
 	}
-	// Do not update tx status of "relayed" messages,
+	// Do not update tx status of successfully relayed messages,
 	// because if a message is handled, the later relayed message tx would be reverted.
 	// ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L2/L2ScrollMessenger.sol#L102
 	// e.g.,

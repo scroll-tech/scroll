@@ -34,7 +34,7 @@ type L1FilterResult struct {
 
 // L1FetcherLogic the L1 fetcher logic
 type L1FetcherLogic struct {
-	cfg             *config.LayerConfig
+	cfg             *config.FetcherConfig
 	client          *ethclient.Client
 	addressList     []common.Address
 	parser          *L1EventParser
@@ -46,7 +46,7 @@ type L1FetcherLogic struct {
 }
 
 // NewL1FetcherLogic creates L1 fetcher logic
-func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
+func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
 
@@ -83,7 +83,7 @@ func NewL1FetcherLogic(cfg *config.LayerConfig, db *gorm.DB, client *ethclient.C
 		cfg:             cfg,
 		client:          client,
 		addressList:     addressList,
-		parser:          NewL1EventParser(),
+		parser:          NewL1EventParser(cfg, client),
 	}
 
 	reg := prometheus.DefaultRegisterer
@@ -233,7 +233,7 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, common.Hash{}, nil, err
 	}
 
-	l1DepositMessages, l1RelayedMessages, err := f.parser.ParseL1CrossChainEventLogs(eventLogs, blockTimestampsMap)
+	l1DepositMessages, l1RelayedMessages, err := f.parser.ParseL1CrossChainEventLogs(ctx, eventLogs, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L1 cross chain event logs", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err

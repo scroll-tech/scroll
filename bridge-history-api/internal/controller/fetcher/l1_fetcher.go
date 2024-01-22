@@ -20,7 +20,7 @@ import (
 // L1MessageFetcher fetches cross message events from L1 and saves them to database.
 type L1MessageFetcher struct {
 	ctx    context.Context
-	cfg    *config.LayerConfig
+	cfg    *config.FetcherConfig
 	client *ethclient.Client
 
 	l1SyncHeight        uint64
@@ -35,7 +35,7 @@ type L1MessageFetcher struct {
 }
 
 // NewL1MessageFetcher creates a new L1MessageFetcher instance.
-func NewL1MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L1MessageFetcher {
+func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1MessageFetcher {
 	c := &L1MessageFetcher{
 		ctx:              ctx,
 		cfg:              cfg,

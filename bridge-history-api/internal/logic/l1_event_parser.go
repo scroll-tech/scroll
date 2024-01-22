@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -10,21 +11,27 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
+	"scroll-tech/bridge-history-api/internal/config"
 	"scroll-tech/bridge-history-api/internal/orm"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
 // L1EventParser the l1 event parser
 type L1EventParser struct {
+	cfg    *config.FetcherConfig
+	client *ethclient.Client
 }
 
 // NewL1EventParser creates l1 event parser
-func NewL1EventParser() *L1EventParser {
-	return &L1EventParser{}
+func NewL1EventParser(cfg *config.FetcherConfig, client *ethclient.Client) *L1EventParser {
+	return &L1EventParser{
+		cfg:    cfg,
+		client: client,
+	}
 }
 
 // ParseL1CrossChainEventLogs parses L1 watched cross chain events.
-func (e *L1EventParser) ParseL1CrossChainEventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
+func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
 	var l1DepositMessages []*orm.CrossMessage
 	var l1RelayedMessages []*orm.CrossMessage
 	for _, vlog := range logs {
@@ -114,9 +121,24 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(logs []types.Log, blockTimest
 				log.Warn("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
+			from := event.Sender.String()
+			if event.Sender.String() == e.cfg.GatewayRouterAddr {
+				tx, isPending, err := e.client.TransactionByHash(ctx, vlog.TxHash)
+				if err != nil || isPending {
+					log.Warn("Failed to get tx or the tx is still pending", "err", err, "isPending", isPending)
+					return nil, nil, err
+				}
+				signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+				sender, senderErr := signer.Sender(tx)
+				if senderErr != nil {
+					log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", senderErr)
+					return nil, nil, senderErr
+				}
+				from = sender.String()
+			}
 			l1DepositMessages = append(l1DepositMessages, &orm.CrossMessage{
 				L1BlockNumber:  vlog.BlockNumber,
-				Sender:         event.Sender.String(),
+				Sender:         from,
 				Receiver:       event.Target.String(),
 				TokenType:      int(orm.TokenTypeETH),
 				L1TxHash:       vlog.TxHash.String(),
@@ -171,7 +193,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 			}
 			commitTx, isPending, err := client.TransactionByHash(ctx, vlog.TxHash)
 			if err != nil || isPending {
-				log.Warn("Failed to get commit Batch tx receipt or the tx is still pending", "err", err)
+				log.Warn("Failed to get commit batch tx or the tx is still pending", "err", err, "isPending", isPending)
 				return nil, err
 			}
 			startBlock, endBlock, err := utils.GetBatchRangeFromCalldata(commitTx.Data())

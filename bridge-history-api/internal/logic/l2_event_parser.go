@@ -1,26 +1,36 @@
 package logic
 
 import (
+	"context"
+	"math/big"
+
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
+	"scroll-tech/bridge-history-api/internal/config"
 	"scroll-tech/bridge-history-api/internal/orm"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
 // L2EventParser the L2 event parser
 type L2EventParser struct {
+	cfg    *config.FetcherConfig
+	client *ethclient.Client
 }
 
 // NewL2EventParser creates the L2 event parser
-func NewL2EventParser() *L2EventParser {
-	return &L2EventParser{}
+func NewL2EventParser(cfg *config.FetcherConfig, client *ethclient.Client) *L2EventParser {
+	return &L2EventParser{
+		cfg:    cfg,
+		client: client,
+	}
 }
 
 // ParseL2EventLogs parses L2 watched events
-func (e *L2EventParser) ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
+func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
 	var l2WithdrawMessages []*orm.CrossMessage
 	var l2RelayedMessages []*orm.CrossMessage
 	for _, vlog := range logs {
@@ -116,9 +126,24 @@ func (e *L2EventParser) ParseL2EventLogs(logs []types.Log, blockTimestampsMap ma
 				log.Warn("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
+			from := event.Sender.String()
+			if event.Sender.String() == e.cfg.GatewayRouterAddr {
+				tx, isPending, err := e.client.TransactionByHash(ctx, vlog.TxHash)
+				if err != nil || isPending {
+					log.Warn("Failed to get tx or the tx is still pending", "err", err, "isPending", isPending)
+					return nil, nil, err
+				}
+				signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+				sender, senderErr := signer.Sender(tx)
+				if senderErr != nil {
+					log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", senderErr)
+					return nil, nil, senderErr
+				}
+				from = sender.String()
+			}
 			l2WithdrawMessages = append(l2WithdrawMessages, &orm.CrossMessage{
 				MessageHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message).String(),
-				Sender:         event.Sender.String(),
+				Sender:         from,
 				Receiver:       event.Target.String(),
 				TokenType:      int(orm.TokenTypeETH),
 				L2TxHash:       vlog.TxHash.String(),

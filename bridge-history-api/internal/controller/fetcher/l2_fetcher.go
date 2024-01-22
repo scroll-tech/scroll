@@ -20,7 +20,7 @@ import (
 // L2MessageFetcher fetches cross message events from L2 and saves them to database.
 type L2MessageFetcher struct {
 	ctx                 context.Context
-	cfg                 *config.LayerConfig
+	cfg                 *config.FetcherConfig
 	db                  *gorm.DB
 	client              *ethclient.Client
 	l2SyncHeight        uint64
@@ -35,7 +35,7 @@ type L2MessageFetcher struct {
 }
 
 // NewL2MessageFetcher creates a new L2MessageFetcher instance.
-func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L2MessageFetcher {
+func NewL2MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L2MessageFetcher {
 	c := &L2MessageFetcher{
 		ctx:              ctx,
 		cfg:              cfg,
