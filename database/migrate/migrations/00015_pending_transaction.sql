@@ -31,7 +31,7 @@ CREATE TABLE pending_transaction
 CREATE INDEX idx_pending_transaction_on_sender_type_status_nonce
 ON pending_transaction (sender_type, status, nonce);
 
-CREATE INDEX idx_pending_transaction_on_hash ON pending_transaction(hash);
+CREATE UNIQUE INDEX unique_idx_pending_transaction_on_hash ON pending_transaction(hash);
 
 CREATE INDEX idx_pending_transaction_on_sender_address_nonce ON pending_transaction(sender_address, nonce);
 
