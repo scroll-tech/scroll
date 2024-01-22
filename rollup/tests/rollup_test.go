@@ -27,7 +27,7 @@ func testCommitAndFinalizeGenesisBatch(t *testing.T) {
 	prepareContracts(t)
 
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l1Client, db, l2Cfg.RelayerConfig, true, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, true, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, l2Relayer)
 
@@ -56,12 +56,12 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l1Client, db, l2Cfg.RelayerConfig, false, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
 
 	// Create L1Watcher
 	l1Cfg := rollupApp.Config.L1Config
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l2Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// add some blocks to db
 	var wrappedBlocks []*types.WrappedBlock
