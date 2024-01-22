@@ -6,17 +6,17 @@ package core_test
 import (
 	"flag"
 	"io/ioutil"
+	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/grafana/pyroscope-go"
+	"github.com/stretchr/testify/assert"
 	_ "net/http/pprof"
 
 	"github.com/json-iterator/go"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/stretchr/testify/assert"
-
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/prover/config"
@@ -31,7 +31,7 @@ var (
 
 func initPyroscopse() {
 	pyroscope.Start(pyroscope.Config{
-		ApplicationName: "prover-idc-us-19",
+		ApplicationName: "idc-us-19",
 
 		ServerAddress: "http://127.0.0.1:4040",
 
@@ -62,8 +62,6 @@ func initPyroscopse() {
 func TestFFI(t *testing.T) {
 	initPyroscopse()
 
-	as := assert.New(t)
-
 	chunkProverConfig := &config.ProverCoreConfig{
 		ParamsPath: *paramsPath,
 		AssetsPath: *assetsPath,
@@ -71,7 +69,7 @@ func TestFFI(t *testing.T) {
 	}
 
 	chunkProverCore, _ := core.NewProverCore(chunkProverConfig)
-	chunkTrace1 := readChunkTrace(*tracePath1, as)
+	chunkTrace1 := readChunkTrace(t, *tracePath1)
 
 	for {
 		chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
@@ -85,7 +83,7 @@ var blockTracePool = sync.Pool{
 	},
 }
 
-func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
+func readChunkTrace(t *testing.T, filePat string) []*types.BlockTrace {
 	buf := blockTracePool.Get().([]byte)
 	defer blockTracePool.Put(buf)
 
@@ -94,7 +92,7 @@ func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
 
 	trace := &types.BlockTrace{}
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	as.NoError(json.Unmarshal(buf, trace))
+	assert.NoError(t, json.Unmarshal(buf, trace))
 
 	return []*types.BlockTrace{trace}
 }
