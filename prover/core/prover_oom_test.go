@@ -6,12 +6,10 @@ package core_test
 import (
 	"flag"
 	"io/ioutil"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/grafana/pyroscope-go"
 	"github.com/stretchr/testify/assert"
 	_ "net/http/pprof"
 
@@ -30,33 +28,11 @@ var (
 )
 
 func initPyroscopse() {
-	pyroscope.Start(pyroscope.Config{
-		ApplicationName: "idc-us-19",
-
-		ServerAddress: "http://127.0.0.1:4040",
-
-		// you can disable logging by setting this to nil
-		Logger: pyroscope.StandardLogger,
-
-		// you can provide static tags via a map:
-		Tags: map[string]string{"hostname": os.Getenv("HOSTNAME")},
-
-		ProfileTypes: []pyroscope.ProfileType{
-			// these profile types are enabled by default:
-			pyroscope.ProfileCPU,
-			pyroscope.ProfileAllocObjects,
-			pyroscope.ProfileAllocSpace,
-			pyroscope.ProfileInuseObjects,
-			pyroscope.ProfileInuseSpace,
-
-			// these profile types are optional:
-			pyroscope.ProfileGoroutines,
-			pyroscope.ProfileMutexCount,
-			pyroscope.ProfileMutexDuration,
-			pyroscope.ProfileBlockCount,
-			pyroscope.ProfileBlockDuration,
-		},
-	})
+	go func() {
+		if runServerErr := http.ListenAndServe(":8089", nil); runServerErr != nil {
+			panic(runServerErr)
+		}
+	}()
 }
 
 func TestFFI(t *testing.T) {
@@ -73,7 +49,7 @@ func TestFFI(t *testing.T) {
 
 	for {
 		chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
-		time.Sleep(time.Millisecond * 100)
+		time.Sleep(time.Millisecond * 10)
 	}
 }
 
