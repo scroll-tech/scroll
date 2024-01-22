@@ -79,16 +79,16 @@ contract MockBridgeL1 {
    * Variables *
    *************/
 
-  /// @notice Message nonce, used to avoid relay attack.
   uint256 public messageNonce;
-
   mapping(uint256 => bytes32) public committedBatches;
+  uint256 public l2BaseFee;
 
   /***********************************
    * Functions from L2GasPriceOracle *
    ***********************************/
 
-  function setL2BaseFee(uint256) external {
+  function setL2BaseFee(uint256 _newL2BaseFee) external {
+    l2BaseFee = _newL2BaseFee;
   }
 
   /************************************
@@ -127,6 +127,10 @@ contract MockBridgeL1 {
   /******************************
    * Functions from ScrollChain *
    ******************************/
+
+  /// @notice Import layer 2 genesis block
+  function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
+  }
 
   function commitBatch(
     uint8 /*version*/,
