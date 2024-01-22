@@ -31,7 +31,7 @@ func testCommitAndFinalizeGenesisBatch(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, l2Relayer)
 
-	genesisChunkHash := common.HexToHash("0xf1222139f0d95986daec1c21b95367d1b93088912f547a2acab11f6ca721e885")
+	genesisChunkHash := common.HexToHash("0x00e076380b00a3749816fcc9a2a576b529952ef463222a54544d21b7d434dfe1")
 	chunkOrm := orm.NewChunk(db)
 	dbChunk, err := chunkOrm.GetChunksInRange(context.Background(), 0, 0)
 	assert.NoError(t, err)
@@ -39,7 +39,7 @@ func testCommitAndFinalizeGenesisBatch(t *testing.T) {
 	assert.Equal(t, genesisChunkHash.String(), dbChunk[0].Hash)
 	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(dbChunk[0].ProvingStatus))
 
-	genesisBatchHash := common.HexToHash("0x3a16fb8146290a4ce3b0e146d23f083d663c584d093b12c3cc3062f41b5a0286")
+	genesisBatchHash := common.HexToHash("0x2d214b024f5337d83a5681f88575ab225f345ec2e4e3ce53cf4dc4b0cb5c96b1")
 	batchOrm := orm.NewBatch(db)
 	batch, err := batchOrm.GetBatchByIndex(context.Background(), 0)
 	assert.NoError(t, err)
