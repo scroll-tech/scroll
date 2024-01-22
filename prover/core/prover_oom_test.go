@@ -6,6 +6,7 @@ package core_test
 import (
 	"flag"
 	"io/ioutil"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
