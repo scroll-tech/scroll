@@ -76,39 +76,30 @@ func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (ui
 
 // L1InsertOrUpdate inserts or updates l1 messages
 func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult *L1FilterResult) error {
-	err := b.db.Transaction(func(tx *gorm.DB) error {
-		if txErr := b.crossMessageOrm.InsertOrUpdateL1Messages(ctx, l1FetcherResult.DepositMessages, tx); txErr != nil {
-			log.Error("failed to insert L1 deposit messages", "err", txErr)
-			return txErr
-		}
-
-		if txErr := b.crossMessageOrm.InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx, l1FetcherResult.RelayedMessages, tx); txErr != nil {
-			log.Error("failed to update L1 relayed messages of L2 withdrawals", "err", txErr)
-			return txErr
-		}
-
-		if txErr := b.batchEventOrm.InsertOrUpdateBatchEvents(ctx, l1FetcherResult.BatchEvents, tx); txErr != nil {
-			log.Error("failed to insert or update batch events", "err", txErr)
-			return txErr
-		}
-
-		if txErr := b.crossMessageOrm.UpdateL1MessageQueueEventsInfo(ctx, l1FetcherResult.MessageQueueEvents, tx); txErr != nil {
-			log.Error("failed to insert L1 message queue events", "err", txErr)
-			return txErr
-		}
-
-		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l1FetcherResult.RevertedTxs, tx); txErr != nil {
-			log.Error("failed to insert L1 failed gateway router transactions", "err", txErr)
-			return txErr
-		}
-		return nil
-	})
-
-	if err != nil {
-		log.Error("failed to update db of L1 events", "err", err)
-		return err
+	if txErr := b.crossMessageOrm.InsertOrUpdateL1Messages(ctx, l1FetcherResult.DepositMessages); txErr != nil {
+		log.Error("failed to insert L1 deposit messages", "err", txErr)
+		return txErr
 	}
 
+	if txErr := b.crossMessageOrm.InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx, l1FetcherResult.RelayedMessages); txErr != nil {
+		log.Error("failed to update L1 relayed messages of L2 withdrawals", "err", txErr)
+		return txErr
+	}
+
+	if txErr := b.batchEventOrm.InsertOrUpdateBatchEvents(ctx, l1FetcherResult.BatchEvents); txErr != nil {
+		log.Error("failed to insert or update batch events", "err", txErr)
+		return txErr
+	}
+
+	if txErr := b.crossMessageOrm.UpdateL1MessageQueueEventsInfo(ctx, l1FetcherResult.MessageQueueEvents); txErr != nil {
+		log.Error("failed to insert L1 message queue events", "err", txErr)
+		return txErr
+	}
+
+	if txErr := b.crossMessageOrm.InsertFailedL1GatewayRouterAndL1MessengerTxs(ctx, l1FetcherResult.RevertedTxs); txErr != nil {
+		log.Error("failed to insert failed L1 gateway router and L1 messenger transactions", "err", txErr)
+		return txErr
+	}
 	return nil
 }
 
@@ -186,25 +177,17 @@ func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, heig
 
 // L2InsertOrUpdate inserts or updates L2 messages
 func (b *EventUpdateLogic) L2InsertOrUpdate(ctx context.Context, l2FetcherResult *L2FilterResult) error {
-	err := b.db.Transaction(func(tx *gorm.DB) error {
-		if txErr := b.crossMessageOrm.InsertOrUpdateL2Messages(ctx, l2FetcherResult.WithdrawMessages, tx); txErr != nil {
-			log.Error("failed to insert L2 withdrawal messages", "err", txErr)
-			return txErr
-		}
-		if txErr := b.crossMessageOrm.InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx, l2FetcherResult.RelayedMessages, tx); txErr != nil {
-			log.Error("failed to update L2 relayed messages of L1 deposits", "err", txErr)
-			return txErr
-		}
-		if txErr := b.crossMessageOrm.InsertFailedGatewayRouterTxs(ctx, l2FetcherResult.OtherRevertedTxs, tx); txErr != nil {
-			log.Error("failed to insert L2 failed gateway router transactions", "err", txErr)
-			return txErr
-		}
-		return nil
-	})
-
-	if err != nil {
-		log.Error("failed to update db of L2 events", "err", err)
-		return err
+	if txErr := b.crossMessageOrm.InsertOrUpdateL2Messages(ctx, l2FetcherResult.WithdrawMessages); txErr != nil {
+		log.Error("failed to insert L2 withdrawal messages", "err", txErr)
+		return txErr
+	}
+	if txErr := b.crossMessageOrm.InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx, l2FetcherResult.RelayedMessages); txErr != nil {
+		log.Error("failed to update L2 relayed messages of L1 deposits", "err", txErr)
+		return txErr
+	}
+	if txErr := b.crossMessageOrm.InsertFailedL2GatewayRouterTxs(ctx, l2FetcherResult.OtherRevertedTxs); txErr != nil {
+		log.Error("failed to insert failed L2 gateway router transactions", "err", txErr)
+		return txErr
 	}
 	return nil
 }

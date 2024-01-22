@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/scroll-tech/go-ethereum/common"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -47,9 +46,9 @@ const (
 	TxStatusTypeSent           TxStatusType = iota
 	TxStatusTypeSentTxReverted              // Not track message hash, thus will not be processed again anymore.
 	TxStatusTypeRelayed                     // Terminal status.
-	// FailedRelayedMessage event: encoded tx failed, cannot retry. e.g., https://sepolia.scrollscan.com/tx/0xfc7d3ea5ec8dc9b664a5a886c3b33d21e665355057601033481a439498efb79a
-	TxStatusTypeFailedRelayed // Terminal status.
-	// In some cases, user can retry with a larger gas limit. e.g., https://sepolia.scrollscan.com/tx/0x7323a7ba29492cb47d92206411be99b27896f2823cee0633a596b646b73f1b5b
+	// Retry: this often occurs due to an out of gas (OOG) issue if the transaction was initiated via the frontend.
+	TxStatusTypeFailedRelayed
+	// Retry: this often occurs due to an out of gas (OOG) issue if the transaction was initiated via the frontend.
 	TxStatusTypeRelayTxReverted
 	TxStatusTypeSkipped
 	TxStatusTypeDropped // Terminal status.
@@ -254,18 +253,14 @@ func (c *CrossMessage) GetTxsByAddress(ctx context.Context, sender string) ([]*C
 }
 
 // UpdateL1MessageQueueEventsInfo updates the information about L1 message queue events in the database.
-func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1MessageQueueEvents []*MessageQueueEvent, dbTX ...*gorm.DB) error {
+func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1MessageQueueEvents []*MessageQueueEvent) error {
 	// update tx statuses.
 	for _, l1MessageQueueEvent := range l1MessageQueueEvents {
 		db := c.db
-		if len(dbTX) > 0 && dbTX[0] != nil {
-			db = dbTX[0]
-		}
 		db = db.WithContext(ctx)
 		db = db.Model(&CrossMessage{})
 		// do not over-write terminal statuses.
 		db = db.Where("tx_status != ?", TxStatusTypeRelayed)
-		db = db.Where("tx_status != ?", TxStatusTypeFailedRelayed)
 		db = db.Where("tx_status != ?", TxStatusTypeDropped)
 		txStatusUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
@@ -298,9 +293,6 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 	// update tx hashes of replay and refund.
 	for _, l1MessageQueueEvent := range l1MessageQueueEvents {
 		db := c.db
-		if len(dbTX) > 0 && dbTX[0] != nil {
-			db = dbTX[0]
-		}
 		db = db.WithContext(ctx)
 		db = db.Model(&CrossMessage{})
 		txHashUpdateFields := make(map[string]interface{})
@@ -362,14 +354,11 @@ func (c *CrossMessage) UpdateBatchIndexRollupStatusMerkleProofOfL2Messages(ctx c
 }
 
 // InsertOrUpdateL1Messages inserts or updates a list of L1 cross messages into the database.
-func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
+func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []*CrossMessage) error {
 	if len(messages) == 0 {
 		return nil
 	}
 	db := c.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
@@ -384,18 +373,14 @@ func (c *CrossMessage) InsertOrUpdateL1Messages(ctx context.Context, messages []
 }
 
 // InsertOrUpdateL2Messages inserts or updates a list of L2 cross messages into the database.
-func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
+func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []*CrossMessage) error {
 	if len(messages) == 0 {
 		return nil
 	}
 	db := c.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
-	// The merkle_proof is updated separately in batch status updates and hence is not included here.
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "message_hash"}},
 		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l2_block_number", "l2_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_from", "message_to", "message_value", "message_data", "message_nonce"}),
@@ -406,31 +391,60 @@ func (c *CrossMessage) InsertOrUpdateL2Messages(ctx context.Context, messages []
 	return nil
 }
 
-// InsertFailedGatewayRouterTxs inserts a list of transactions that failed to interact with the gateway router into the database.
-// These failed transactions are only fetched once, so they are inserted without checking for duplicates.
-// To resolve unique index confliction, a random UUID will be generated and used as the MessageHash.
-func (c *CrossMessage) InsertFailedGatewayRouterTxs(ctx context.Context, messages []*CrossMessage, dbTX ...*gorm.DB) error {
+// InsertFailedL2GatewayRouterTxs inserts a list of transactions that failed to interact with the L2 gateway router into the database.
+// To resolve unique index confliction, L2 tx hash is used as the MessageHash.
+// The OnConflict clause is used to prevent inserting same failed transactions multiple times.
+func (c *CrossMessage) InsertFailedL2GatewayRouterTxs(ctx context.Context, messages []*CrossMessage) error {
 	if len(messages) == 0 {
 		return nil
 	}
-	db := c.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
+
+	for _, message := range messages {
+		message.MessageHash = message.L2TxHash
 	}
 
+	db := c.db
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
-	for _, message := range messages {
-		message.MessageHash = uuid.New().String()
+	db = db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "message_hash"}},
+		DoNothing: true,
+	})
+
+	if err := db.Create(&messages).Error; err != nil {
+		return fmt.Errorf("failed to insert failed gateway router txs, error: %w", err)
 	}
-	if err := db.Create(messages).Error; err != nil {
+	return nil
+}
+
+// InsertFailedL1GatewayRouterAndL1MessengerTxs inserts a list of transactions that failed to interact with the L1 gateway router and L1 messenger into the database.
+// To resolve unique index confliction, L1 tx hash is used as the MessageHash.
+// The OnConflict clause is used to prevent inserting same failed transactions multiple times.
+func (c *CrossMessage) InsertFailedL1GatewayRouterAndL1MessengerTxs(ctx context.Context, messages []*CrossMessage) error {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	for _, message := range messages {
+		message.MessageHash = message.L1TxHash
+	}
+
+	db := c.db
+	db = db.WithContext(ctx)
+	db = db.Model(&CrossMessage{})
+	db = db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "message_hash"}},
+		DoNothing: true,
+	})
+
+	if err := db.Create(&messages).Error; err != nil {
 		return fmt.Errorf("failed to insert failed gateway router txs, error: %w", err)
 	}
 	return nil
 }
 
 // InsertOrUpdateL2RelayedMessagesOfL1Deposits inserts or updates the database with a list of L2 relayed messages related to L1 deposits.
-func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.Context, l2RelayedMessages []*CrossMessage, dbTX ...*gorm.DB) error {
+func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.Context, l2RelayedMessages []*CrossMessage) error {
 	if len(l2RelayedMessages) == 0 {
 		return nil
 	}
@@ -459,7 +473,7 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	for _, msg := range mergedL2RelayedMessages {
 		uniqueL2RelayedMessages = append(uniqueL2RelayedMessages, msg)
 	}
-	// Do not update tx status of successfully or failed relayed messages,
+	// Do not update tx status of "relayed" messages,
 	// because if a message is handled, the later relayed message tx would be reverted.
 	// ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L2/L2ScrollMessenger.sol#L102
 	// e.g.,
@@ -476,7 +490,6 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 				clause.And(
 					// do not over-write terminal statuses.
 					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeRelayed},
-					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeFailedRelayed},
 					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeDropped},
 				),
 			},
@@ -489,7 +502,7 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 }
 
 // InsertOrUpdateL1RelayedMessagesOfL2Withdrawals inserts or updates the database with a list of L1 relayed messages related to L2 withdrawals.
-func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx context.Context, l1RelayedMessages []*CrossMessage, dbTX ...*gorm.DB) error {
+func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx context.Context, l1RelayedMessages []*CrossMessage) error {
 	if len(l1RelayedMessages) == 0 {
 		return nil
 	}
@@ -519,9 +532,6 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 		uniqueL1RelayedMessages = append(uniqueL1RelayedMessages, msg)
 	}
 	db := c.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
 	db = db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	db = db.Clauses(clause.OnConflict{
@@ -532,7 +542,6 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 				clause.And(
 					// do not over-write terminal statuses.
 					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeRelayed},
-					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeFailedRelayed},
 					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeDropped},
 				),
 			},
