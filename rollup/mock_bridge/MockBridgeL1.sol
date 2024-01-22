@@ -128,6 +128,10 @@ contract MockBridgeL1 {
    * Functions from ScrollChain *
    ******************************/
 
+  /// @notice Import layer 2 genesis block
+  function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
+  }
+
   function commitBatch(
     uint8 /*version*/,
     bytes calldata _parentBatchHeader,
