@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -68,6 +70,10 @@ func TestMain(m *testing.M) {
 }
 
 func setupEnv(t *testing.T) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	base.RunImages(t)
 
 	var err error
@@ -138,15 +144,10 @@ func TestFunction(t *testing.T) {
 	t.Run("TestProcessStartEnableMetrics", testProcessStartEnableMetrics)
 
 	// l1 rollup and watch rollup events
+	t.Run("TestCommitAndFinalizeGenesisBatch", testCommitAndFinalizeGenesisBatch)
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
-
-	// l1 message
-
-	// l2 message
-	// TODO: add a "user relay l2msg Succeed" test
 
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
 	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
-
 }

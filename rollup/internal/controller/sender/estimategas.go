@@ -19,7 +19,7 @@ func (s *Sender) estimateLegacyGas(to *common.Address, value *big.Int, data []by
 	gasLimit, _, err := s.estimateGasLimit(to, data, gasPrice, nil, nil, value, false)
 	if err != nil {
 		log.Error("estimateLegacyGas estimateGasLimit failure", "gas price", gasPrice, "from", s.auth.From.String(),
-			"nonce", s.auth.Nonce.Uint64(), "contract address", to.String(), "fallback gas limit", fallbackGasLimit, "error", err)
+			"nonce", s.auth.Nonce.Uint64(), "to address", to.String(), "fallback gas limit", fallbackGasLimit, "error", err)
 		if fallbackGasLimit == 0 {
 			return nil, err
 		}
@@ -94,10 +94,36 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, gasPrice, gas
 		return gasLimitWithoutAccessList, nil, fmt.Errorf(errStr)
 	}
 
-	log.Info("gas comparison", "senderName", s.name, "senderService", s.service, "gasLimitWithAccessList", gasLimitWithAccessList, "gasLimitWithoutAccessList", gasLimitWithoutAccessList, "accessList", accessList)
+	// Fine-tune accessList because 'to' address is automatically included in the access list by the Ethereum protocol: https://github.com/ethereum/go-ethereum/blob/v1.13.10/core/state/statedb.go#L1322
+	// This function returns a gas estimation because GO SDK does not support access list: https://github.com/ethereum/go-ethereum/blob/v1.13.10/ethclient/ethclient.go#L642
+	accessList, gasLimitWithAccessList = finetuneAccessList(accessList, gasLimitWithAccessList, msg.To)
+
+	log.Info("gas", "senderName", s.name, "senderService", s.service, "gasLimitWithAccessList", gasLimitWithAccessList, "gasLimitWithoutAccessList", gasLimitWithoutAccessList, "accessList", accessList)
 
 	if gasLimitWithAccessList < gasLimitWithoutAccessList {
 		return gasLimitWithAccessList, accessList, nil
 	}
 	return gasLimitWithoutAccessList, nil, nil
+}
+
+func finetuneAccessList(accessList *types.AccessList, gasLimitWithAccessList uint64, to *common.Address) (*types.AccessList, uint64) {
+	if accessList == nil || to == nil {
+		return accessList, gasLimitWithAccessList
+	}
+
+	var newAccessList types.AccessList
+	for _, entry := range *accessList {
+		if entry.Address == *to && len(entry.StorageKeys) < 24 {
+			// Based on: https://arxiv.org/pdf/2312.06574.pdf
+			// We remove the address and respective storage keys as long as the number of storage keys < 24.
+			// This removal helps in preventing double-counting of the 'to' address in access list calculations.
+			gasLimitWithAccessList -= 2400
+			// Each storage key saves 100 gas units.
+			gasLimitWithAccessList += uint64(100 * len(entry.StorageKeys))
+		} else {
+			// Otherwise, keep the entry in the new access list.
+			newAccessList = append(newAccessList, entry)
+		}
+	}
+	return &newAccessList, gasLimitWithAccessList
 }

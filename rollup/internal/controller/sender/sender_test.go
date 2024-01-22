@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
@@ -14,6 +15,7 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -25,6 +27,9 @@ import (
 
 	bridgeAbi "scroll-tech/rollup/abi"
 
+	bridgeAbi "scroll-tech/rollup/abi"
+	"scroll-tech/rollup/mock_bridge"
+
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/mock_bridge"
 )
@@ -32,12 +37,12 @@ import (
 const TXBatch = 50
 
 var (
-	privateKey         *ecdsa.PrivateKey
-	cfg                *config.Config
-	base               *docker.App
-	txTypes            = []string{"LegacyTx", "AccessListTx", "DynamicFeeTx"}
-	db                 *gorm.DB
-	scrollChainAddress common.Address
+	privateKey             *ecdsa.PrivateKey
+	cfg                    *config.Config
+	base                   *docker.App
+	txTypes                = []string{"LegacyTx", "AccessListTx", "DynamicFeeTx"}
+	db                     *gorm.DB
+	mockL1ContractsAddress common.Address
 )
 
 func TestMain(m *testing.M) {
@@ -49,6 +54,10 @@ func TestMain(m *testing.M) {
 }
 
 func setupEnv(t *testing.T) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	var err error
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
@@ -82,7 +91,7 @@ func setupEnv(t *testing.T) {
 	_, tx, _, err := mock_bridge.DeployMockBridgeL1(auth, l1Client)
 	assert.NoError(t, err)
 
-	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	mockL1ContractsAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
 }
 
@@ -167,12 +176,12 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(2333))
 		assert.NoError(t, err)
 
-		gasLimit, accessList, err := s.estimateGasLimit(&scrollChainAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), true)
+		gasLimit, accessList, err := s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), true)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(43927), gasLimit)
 		assert.Nil(t, accessList)
 
-		gasLimit, accessList, err = s.estimateGasLimit(&scrollChainAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), false)
+		gasLimit, accessList, err = s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), false)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(43927), gasLimit)
 		assert.Nil(t, accessList)
@@ -205,7 +214,7 @@ func testFallbackGasLimit(t *testing.T) {
 
 		// FallbackGasLimit = 100000
 		patchGuard := gomonkey.ApplyPrivateMethod(s, "estimateGasLimit",
-			func(opts *bind.TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, *gethTypes.AccessList, error) {
+			func(contract *common.Address, data []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, *types.AccessList, error) {
 				return 0, nil, errors.New("estimateGasLimit error")
 			},
 		)
@@ -243,6 +252,33 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
 		_, err = s.resubmitTransaction(s.auth, tx, 0)
 		assert.NoError(t, err)
+		s.Stop()
+	}
+}
+
+func testAccessListTransactionGasLimit(t *testing.T) {
+	for _, txType := range txTypes {
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		assert.NoError(t, err)
+
+		l2GasOracleABI, err := bridgeAbi.L2GasPriceOracleMetaData.GetAbi()
+		assert.NoError(t, err)
+
+		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(2333))
+		assert.NoError(t, err)
+
+		gasLimit, accessList, err := s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), true)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(43472), gasLimit)
+		assert.NotNil(t, accessList)
+
+		gasLimit, accessList, err = s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), false)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(43949), gasLimit)
+		assert.Nil(t, accessList)
+
 		s.Stop()
 	}
 }
@@ -311,6 +347,7 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 	txType := "DynamicFeeTx"
 	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 	cfgCopy.TxType = txType
+
 	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 	assert.NoError(t, err)
 	tx := gethTypes.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 21000, big.NewInt(0), nil)

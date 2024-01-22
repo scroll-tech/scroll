@@ -79,10 +79,9 @@ contract MockBridgeL1 {
    * Variables *
    *************/
 
-  /// @notice Message nonce, used to avoid relay attack.
   uint256 public messageNonce;
-
   mapping(uint256 => bytes32) public committedBatches;
+  uint256 public l2BaseFee;
 
   /// @notice The latest known l2 base fee.
   uint256 public l2BaseFee;
@@ -131,6 +130,10 @@ contract MockBridgeL1 {
   /******************************
    * Functions from ScrollChain *
    ******************************/
+
+  /// @notice Import layer 2 genesis block
+  function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
+  }
 
   function commitBatch(
     uint8 /*version*/,
