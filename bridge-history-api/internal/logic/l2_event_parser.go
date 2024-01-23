@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -132,9 +133,16 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 					log.Error("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)
 					return nil, nil, rpcErr
 				}
-				// EOA -> multisig -> gateway router.
-				if tx.To() != nil {
+				if tx.To() != nil && (*tx.To()).String() != e.cfg.GatewayRouterAddr { // EOA -> multisig -> gateway router.
 					from = (*tx.To()).String()
+				} else { // EOA -> gateway router.
+					signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+					sender, senderErr := signer.Sender(tx)
+					if senderErr != nil {
+						log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", senderErr)
+						return nil, nil, senderErr
+					}
+					from = sender.String()
 				}
 			}
 			l2WithdrawMessages = append(l2WithdrawMessages, &orm.CrossMessage{
