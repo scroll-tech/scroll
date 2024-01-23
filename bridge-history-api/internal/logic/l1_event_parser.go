@@ -121,24 +121,10 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 				log.Error("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
-			from := event.Sender.String()
-			if from == e.cfg.GatewayRouterAddr {
-				tx, isPending, rpcErr := e.client.TransactionByHash(ctx, vlog.TxHash)
-				if rpcErr != nil || isPending {
-					log.Error("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)
-					return nil, nil, rpcErr
-				}
-				if tx.To() != nil && (*tx.To()).String() != e.cfg.GatewayRouterAddr { // EOA -> multisig -> gateway router.
-					from = (*tx.To()).String()
-				} else { // EOA -> gateway router.
-					signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
-					sender, senderErr := signer.Sender(tx)
-					if senderErr != nil {
-						log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", senderErr)
-						return nil, nil, senderErr
-					}
-					from = sender.String()
-				}
+			from, err := getRealFromAddress(ctx, event.Sender, e.client, vlog.TxHash, e.cfg.GatewayRouterAddr)
+			if err != nil {
+				log.Error("Failed to get real 'from' address", "err", err)
+				return nil, nil, err
 			}
 			l1DepositMessages = append(l1DepositMessages, &orm.CrossMessage{
 				L1BlockNumber:  vlog.BlockNumber,
@@ -295,4 +281,28 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 		}
 	}
 	return l1MessageQueueEvents, nil
+}
+
+func getRealFromAddress(ctx context.Context, eventSender common.Address, client *ethclient.Client, txHash common.Hash, gatewayRouterAddr string) (string, error) {
+	from := eventSender.String()
+	if from == gatewayRouterAddr {
+		tx, isPending, rpcErr := client.TransactionByHash(ctx, txHash)
+		if rpcErr != nil || isPending {
+			log.Error("Failed to get transaction or the transaction is still pending", "rpcErr", rpcErr, "isPending", isPending)
+			return "", rpcErr
+		}
+		// Case 1: deposit/withdraw ETH: EOA -> multisig -> gateway router -> messenger.
+		if tx.To() != nil && (*tx.To()).String() != gatewayRouterAddr {
+			return (*tx.To()).String(), nil
+		}
+		// Case 2: deposit/withdraw ETH: EOA -> gateway router -> messenger.
+		signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+		sender, err := signer.Sender(tx)
+		if err != nil {
+			log.Error("Get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", err)
+			return "", err
+		}
+		return sender.String(), nil
+	}
+	return from, nil
 }
