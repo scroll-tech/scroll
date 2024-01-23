@@ -2,7 +2,7 @@
 import * as dotenv from "dotenv";
 
 import { ethers } from "hardhat";
-import poseidonUnit from "circomlib/src/poseidon_gencontract";
+import { generateABI, createCode } from "../scripts/poseidon";
 
 dotenv.config();
 
@@ -15,11 +15,7 @@ async function main() {
   let PoseidonUnit2Address = process.env.POSEIDON_UNIT2_ADDR;
 
   if (!PoseidonUnit2Address) {
-    const Poseidon2Elements = new ethers.ContractFactory(
-      poseidonUnit.generateABI(2),
-      poseidonUnit.createCode(2),
-      deployer
-    );
+    const Poseidon2Elements = new ethers.ContractFactory(generateABI(2), createCode(2), deployer);
 
     const poseidon = await Poseidon2Elements.deploy();
     console.log("Deploy PoseidonUnit2 contract, hash:", poseidon.deployTransaction.hash);
@@ -28,7 +24,9 @@ async function main() {
     PoseidonUnit2Address = poseidon.address;
   }
 
-  const verifier = await ScrollChainCommitmentVerifier.deploy(PoseidonUnit2Address, L1ScrollChainAddress);
+  const verifier = await ScrollChainCommitmentVerifier.deploy(PoseidonUnit2Address, L1ScrollChainAddress, {
+    gasPrice: 1e9,
+  });
   console.log("Deploy ScrollChainCommitmentVerifier contract, hash:", verifier.deployTransaction.hash);
   const receipt = await verifier.deployTransaction.wait();
   console.log(`✅ Deploy ScrollChainCommitmentVerifier contract at: ${verifier.address}, gas used: ${receipt.gasUsed}`);
