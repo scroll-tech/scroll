@@ -297,6 +297,8 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		db = db.Model(&CrossMessage{})
 		txHashUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
+		case MessageQueueEventTypeDequeueTransaction:
+			continue
 		case MessageQueueEventTypeQueueTransaction:
 			// only replayMessages or enforced txs (whose message hashes would not be found), sentMessages have been filtered out.
 			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
@@ -306,11 +308,8 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
 			txHashUpdateFields["l1_refund_tx_hash"] = l1MessageQueueEvent.TxHash.String()
 		}
-		// Check if there are fields to update to avoid empty update operation (skip message).
-		if len(txHashUpdateFields) > 0 {
-			if err := db.Updates(txHashUpdateFields).Error; err != nil {
-				return fmt.Errorf("failed to update tx hashes of replay and refund in L1 message queue events info, update fields: %v, error: %w", txHashUpdateFields, err)
-			}
+		if err := db.Updates(txHashUpdateFields).Error; err != nil {
+			return fmt.Errorf("failed to update tx hashes of replay and refund in L1 message queue events info, update fields: %v, error: %w", txHashUpdateFields, err)
 		}
 	}
 	return nil

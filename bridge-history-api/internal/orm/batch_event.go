@@ -99,11 +99,10 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 		switch BatchStatusType(l1BatchEvent.BatchStatus) {
 		case BatchStatusTypeCommitted:
 			// Use the clause to either insert or ignore on conflict
-			onConflict := clause.OnConflict{
+			db = db.Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "batch_hash"}},
 				DoNothing: true,
-			}
-			db = db.Clauses(onConflict)
+			})
 			if err := db.Create(l1BatchEvent).Error; err != nil {
 				return fmt.Errorf("failed to insert or ignore batch event, error: %w", err)
 			}
