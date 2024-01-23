@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // BatchStatusType represents the type of batch status.
@@ -89,19 +90,22 @@ func (c *BatchEvent) GetFinalizedBatchesLEBlockHeight(ctx context.Context, block
 }
 
 // InsertOrUpdateBatchEvents inserts a new batch event or updates an existing one based on the BatchStatusType.
-func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvents []*BatchEvent, dbTX ...*gorm.DB) error {
+func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvents []*BatchEvent) error {
 	for _, l1BatchEvent := range l1BatchEvents {
 		db := c.db
-		if len(dbTX) > 0 && dbTX[0] != nil {
-			db = dbTX[0]
-		}
 		db = db.WithContext(ctx)
 		db = db.Model(&BatchEvent{})
 		updateFields := make(map[string]interface{})
 		switch BatchStatusType(l1BatchEvent.BatchStatus) {
 		case BatchStatusTypeCommitted:
+			// Use the clause to either insert or ignore on conflict
+			onConflict := clause.OnConflict{
+				Columns:   []clause.Column{{Name: "batch_hash"}},
+				DoNothing: true,
+			}
+			db = db.Clauses(onConflict)
 			if err := db.Create(l1BatchEvent).Error; err != nil {
-				return fmt.Errorf("failed to insert batch event, error: %w", err)
+				return fmt.Errorf("failed to insert or ignore batch event, error: %w", err)
 			}
 		case BatchStatusTypeFinalized:
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
