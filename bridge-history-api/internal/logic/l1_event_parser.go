@@ -2,7 +2,6 @@ package logic
 
 import (
 	"context"
-	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -128,13 +127,10 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 					log.Error("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)
 					return nil, nil, rpcErr
 				}
-				signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
-				sender, senderErr := signer.Sender(tx)
-				if senderErr != nil {
-					log.Error("get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", senderErr)
-					return nil, nil, senderErr
+				// EOA -> multisig -> gateway router.
+				if tx.To() != nil {
+					from = (*tx.To()).String()
 				}
-				from = sender.String()
 			}
 			l1DepositMessages = append(l1DepositMessages, &orm.CrossMessage{
 				L1BlockNumber:  vlog.BlockNumber,
