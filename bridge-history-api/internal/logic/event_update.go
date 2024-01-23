@@ -181,10 +181,12 @@ func (b *EventUpdateLogic) L2InsertOrUpdate(ctx context.Context, l2FetcherResult
 		log.Error("failed to insert L2 withdrawal messages", "err", err)
 		return err
 	}
+
 	if err := b.crossMessageOrm.InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx, l2FetcherResult.RelayedMessages); err != nil {
 		log.Error("failed to update L2 relayed messages of L1 deposits", "err", err)
 		return err
 	}
+
 	if err := b.crossMessageOrm.InsertFailedL2GatewayTxs(ctx, l2FetcherResult.OtherRevertedTxs); err != nil {
 		log.Error("failed to insert failed L2 gateway transactions", "err", err)
 		return err

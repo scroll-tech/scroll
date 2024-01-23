@@ -39,7 +39,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			event := backendabi.ETHMessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ETHGatewayABI, &event, "WithdrawETH", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack WithdrawETH event", "err", err)
+				log.Error("Failed to unpack WithdrawETH event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
@@ -51,7 +51,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			event := backendabi.ERC20MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC20GatewayABI, &event, "WithdrawERC20", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack WithdrawERC20 event", "err", err)
+				log.Error("Failed to unpack WithdrawERC20 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
@@ -65,7 +65,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			event := backendabi.ERC721MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC721GatewayABI, &event, "WithdrawERC721", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack WithdrawERC721 event", "err", err)
+				log.Error("Failed to unpack WithdrawERC721 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
@@ -79,7 +79,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			event := backendabi.BatchERC721MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC721GatewayABI, &event, "BatchWithdrawERC721", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack BatchWithdrawERC721 event", "err", err)
+				log.Error("Failed to unpack BatchWithdrawERC721 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
@@ -93,7 +93,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			event := backendabi.ERC1155MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC1155GatewayABI, &event, "WithdrawERC1155", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack WithdrawERC1155 event", "err", err)
+				log.Error("Failed to unpack WithdrawERC1155 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
@@ -108,7 +108,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			event := backendabi.BatchERC1155MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ERC1155GatewayABI, &event, "BatchWithdrawERC1155", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack BatchWithdrawERC1155 event", "err", err)
+				log.Error("Failed to unpack BatchWithdrawERC1155 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l2WithdrawMessages[len(l2WithdrawMessages)-1]
@@ -123,14 +123,14 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			event := backendabi.L2SentMessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ScrollMessengerABI, &event, "SentMessage", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack SentMessage event", "err", err)
+				log.Error("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
 			from := event.Sender.String()
 			if from == e.cfg.GatewayRouterAddr {
 				tx, isPending, rpcErr := e.client.TransactionByHash(ctx, vlog.TxHash)
 				if err != nil || isPending {
-					log.Warn("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)
+					log.Error("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)
 					return nil, nil, rpcErr
 				}
 				signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
@@ -162,7 +162,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			event := backendabi.L2RelayedMessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ScrollMessengerABI, &event, "RelayedMessage", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack RelayedMessage event", "err", err)
+				log.Error("Failed to unpack RelayedMessage event", "err", err)
 				return nil, nil, err
 			}
 			l2RelayedMessages = append(l2RelayedMessages, &orm.CrossMessage{
@@ -176,7 +176,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 			event := backendabi.L2RelayedMessageEvent{}
 			err := utils.UnpackLog(backendabi.IL2ScrollMessengerABI, &event, "FailedRelayedMessage", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack FailedRelayedMessage event", "err", err)
+				log.Error("Failed to unpack FailedRelayedMessage event", "err", err)
 				return nil, nil, err
 			}
 			l2RelayedMessages = append(l2RelayedMessages, &orm.CrossMessage{

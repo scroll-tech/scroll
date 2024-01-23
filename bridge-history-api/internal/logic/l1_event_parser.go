@@ -39,7 +39,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 		case backendabi.L1DepositETHSig:
 			event := backendabi.ETHMessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ETHGatewayABI, &event, "DepositETH", vlog); err != nil {
-				log.Warn("Failed to unpack DepositETH event", "err", err)
+				log.Error("Failed to unpack DepositETH event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
@@ -51,7 +51,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 			event := backendabi.ERC20MessageEvent{}
 			err := utils.UnpackLog(backendabi.IL1ERC20GatewayABI, &event, "DepositERC20", vlog)
 			if err != nil {
-				log.Warn("Failed to unpack DepositERC20 event", "err", err)
+				log.Error("Failed to unpack DepositERC20 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
@@ -64,7 +64,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 		case backendabi.L1DepositERC721Sig:
 			event := backendabi.ERC721MessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ERC721GatewayABI, &event, "DepositERC721", vlog); err != nil {
-				log.Warn("Failed to unpack DepositERC721 event", "err", err)
+				log.Error("Failed to unpack DepositERC721 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
@@ -77,7 +77,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 		case backendabi.L1BatchDepositERC721Sig:
 			event := backendabi.BatchERC721MessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ERC721GatewayABI, &event, "BatchDepositERC721", vlog); err != nil {
-				log.Warn("Failed to unpack BatchDepositERC721 event", "err", err)
+				log.Error("Failed to unpack BatchDepositERC721 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
@@ -90,7 +90,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 		case backendabi.L1DepositERC1155Sig:
 			event := backendabi.ERC1155MessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ERC1155GatewayABI, &event, "DepositERC1155", vlog); err != nil {
-				log.Warn("Failed to unpack DepositERC1155 event", "err", err)
+				log.Error("Failed to unpack DepositERC1155 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
@@ -104,7 +104,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 		case backendabi.L1BatchDepositERC1155Sig:
 			event := backendabi.BatchERC1155MessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ERC1155GatewayABI, &event, "BatchDepositERC1155", vlog); err != nil {
-				log.Warn("Failed to unpack BatchDepositERC1155 event", "err", err)
+				log.Error("Failed to unpack BatchDepositERC1155 event", "err", err)
 				return nil, nil, err
 			}
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
@@ -118,14 +118,14 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 		case backendabi.L1SentMessageEventSig:
 			event := backendabi.L1SentMessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ScrollMessengerABI, &event, "SentMessage", vlog); err != nil {
-				log.Warn("Failed to unpack SentMessage event", "err", err)
+				log.Error("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
 			from := event.Sender.String()
 			if from == e.cfg.GatewayRouterAddr {
 				tx, isPending, rpcErr := e.client.TransactionByHash(ctx, vlog.TxHash)
 				if rpcErr != nil || isPending {
-					log.Warn("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)
+					log.Error("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)
 					return nil, nil, rpcErr
 				}
 				signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
@@ -152,7 +152,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 		case backendabi.L1RelayedMessageEventSig:
 			event := backendabi.L1RelayedMessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ScrollMessengerABI, &event, "RelayedMessage", vlog); err != nil {
-				log.Warn("Failed to unpack RelayedMessage event", "err", err)
+				log.Error("Failed to unpack RelayedMessage event", "err", err)
 				return nil, nil, err
 			}
 			l1RelayedMessages = append(l1RelayedMessages, &orm.CrossMessage{
@@ -165,7 +165,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 		case backendabi.L1FailedRelayedMessageEventSig:
 			event := backendabi.L1FailedRelayedMessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ScrollMessengerABI, &event, "FailedRelayedMessage", vlog); err != nil {
-				log.Warn("Failed to unpack FailedRelayedMessage event", "err", err)
+				log.Error("Failed to unpack FailedRelayedMessage event", "err", err)
 				return nil, nil, err
 			}
 			l1RelayedMessages = append(l1RelayedMessages, &orm.CrossMessage{
@@ -188,17 +188,17 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 		case backendabi.L1CommitBatchEventSig:
 			event := backendabi.L1CommitBatchEvent{}
 			if err := utils.UnpackLog(backendabi.IScrollChainABI, &event, "CommitBatch", vlog); err != nil {
-				log.Warn("Failed to unpack CommitBatch event", "err", err)
+				log.Error("Failed to unpack CommitBatch event", "err", err)
 				return nil, err
 			}
 			commitTx, isPending, err := client.TransactionByHash(ctx, vlog.TxHash)
 			if err != nil || isPending {
-				log.Warn("Failed to get commit batch tx or the tx is still pending", "err", err, "isPending", isPending)
+				log.Error("Failed to get commit batch tx or the tx is still pending", "err", err, "isPending", isPending)
 				return nil, err
 			}
 			startBlock, endBlock, err := utils.GetBatchRangeFromCalldata(commitTx.Data())
 			if err != nil {
-				log.Warn("Failed to get batch range from calldata", "hash", commitTx.Hash().String(), "height", vlog.BlockNumber)
+				log.Error("Failed to get batch range from calldata", "hash", commitTx.Hash().String(), "height", vlog.BlockNumber)
 				return nil, err
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
@@ -212,7 +212,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 		case backendabi.L1RevertBatchEventSig:
 			event := backendabi.L1RevertBatchEvent{}
 			if err := utils.UnpackLog(backendabi.IScrollChainABI, &event, "RevertBatch", vlog); err != nil {
-				log.Warn("Failed to unpack RevertBatch event", "err", err)
+				log.Error("Failed to unpack RevertBatch event", "err", err)
 				return nil, err
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
@@ -224,7 +224,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 		case backendabi.L1FinalizeBatchEventSig:
 			event := backendabi.L1FinalizeBatchEvent{}
 			if err := utils.UnpackLog(backendabi.IScrollChainABI, &event, "FinalizeBatch", vlog); err != nil {
-				log.Warn("Failed to unpack FinalizeBatch event", "err", err)
+				log.Error("Failed to unpack FinalizeBatch event", "err", err)
 				return nil, err
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
@@ -251,7 +251,7 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 		case backendabi.L1QueueTransactionEventSig:
 			event := backendabi.L1QueueTransactionEvent{}
 			if err := utils.UnpackLog(backendabi.IL1MessageQueueABI, &event, "QueueTransaction", vlog); err != nil {
-				log.Warn("Failed to unpack QueueTransaction event", "err", err)
+				log.Error("Failed to unpack QueueTransaction event", "err", err)
 				return nil, err
 			}
 			messageHash := common.BytesToHash(crypto.Keccak256(event.Data))
@@ -267,7 +267,7 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 		case backendabi.L1DequeueTransactionEventSig:
 			event := backendabi.L1DequeueTransactionEvent{}
 			if err := utils.UnpackLog(backendabi.IL1MessageQueueABI, &event, "DequeueTransaction", vlog); err != nil {
-				log.Warn("Failed to unpack DequeueTransaction event", "err", err)
+				log.Error("Failed to unpack DequeueTransaction event", "err", err)
 				return nil, err
 			}
 			skippedIndices := utils.GetSkippedQueueIndices(event.StartIndex.Uint64(), event.SkippedBitmap)
@@ -280,7 +280,7 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 		case backendabi.L1DropTransactionEventSig:
 			event := backendabi.L1DropTransactionEvent{}
 			if err := utils.UnpackLog(backendabi.IL1MessageQueueABI, &event, "DropTransaction", vlog); err != nil {
-				log.Warn("Failed to unpack DropTransaction event", "err", err)
+				log.Error("Failed to unpack DropTransaction event", "err", err)
 				return nil, err
 			}
 			l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
