@@ -127,7 +127,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 				return nil, nil, err
 			}
 			from := event.Sender.String()
-			if event.Sender.String() == e.cfg.GatewayRouterAddr {
+			if from == e.cfg.GatewayRouterAddr {
 				tx, isPending, rpcErr := e.client.TransactionByHash(ctx, vlog.TxHash)
 				if err != nil || isPending {
 					log.Warn("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)

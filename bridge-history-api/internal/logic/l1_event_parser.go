@@ -122,7 +122,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 				return nil, nil, err
 			}
 			from := event.Sender.String()
-			if event.Sender.String() == e.cfg.GatewayRouterAddr {
+			if from == e.cfg.GatewayRouterAddr {
 				tx, isPending, rpcErr := e.client.TransactionByHash(ctx, vlog.TxHash)
 				if rpcErr != nil || isPending {
 					log.Warn("Failed to get tx or the tx is still pending", "rpcErr", rpcErr, "isPending", isPending)
