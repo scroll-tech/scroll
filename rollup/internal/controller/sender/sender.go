@@ -376,7 +376,7 @@ func (s *Sender) resubmitTransaction(auth *bind.TransactOpts, tx *gethTypes.Tran
 		txInfo["adjusted_gas_fee_cap"] = gasFeeCap.Uint64()
 	}
 
-	log.Info("Transaction gas adjustment details", txInfo)
+	log.Info("Transaction gas adjustment details", "txInfo", txInfo)
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
