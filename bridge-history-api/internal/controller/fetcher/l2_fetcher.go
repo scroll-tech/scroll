@@ -20,7 +20,7 @@ import (
 // L2MessageFetcher fetches cross message events from L2 and saves them to database.
 type L2MessageFetcher struct {
 	ctx                 context.Context
-	cfg                 *config.LayerConfig
+	cfg                 *config.FetcherConfig
 	db                  *gorm.DB
 	client              *ethclient.Client
 	l2SyncHeight        uint64
@@ -35,7 +35,7 @@ type L2MessageFetcher struct {
 }
 
 // NewL2MessageFetcher creates a new L2MessageFetcher instance.
-func NewL2MessageFetcher(ctx context.Context, cfg *config.LayerConfig, db *gorm.DB, client *ethclient.Client) *L2MessageFetcher {
+func NewL2MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L2MessageFetcher {
 	c := &L2MessageFetcher{
 		ctx:              ctx,
 		cfg:              cfg,
@@ -110,7 +110,6 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 		return
 	}
 	log.Info("fetch and save missing L2 events", "start height", startHeight, "end height", endHeight, "confirmation", confirmation)
-	c.l2MessageFetcherRunningTotal.Inc()
 
 	for from := startHeight; from <= endHeight; from += c.cfg.FetchLimit {
 		to := from + c.cfg.FetchLimit - 1
@@ -128,6 +127,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			c.l2MessageFetcherReorgTotal.Inc()
 			log.Warn("L2 reorg happened, exit and re-enter fetchAndSaveEvents", "re-sync height", resyncHeight)
 			c.updateL2SyncHeight(resyncHeight, lastBlockHash)
+			c.l2MessageFetcherRunningTotal.Inc()
 			return
 		}
 
@@ -142,6 +142,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 		}
 
 		c.updateL2SyncHeight(to, lastBlockHash)
+		c.l2MessageFetcherRunningTotal.Inc()
 	}
 }
 
