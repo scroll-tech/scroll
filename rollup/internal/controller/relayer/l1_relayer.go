@@ -84,7 +84,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 // ProcessGasPriceOracle imports gas price to layer2
 func (r *Layer1Relayer) ProcessGasPriceOracle() {
-	r.metrics.rollupL1RelayerGasPriceOracleRunTotal.Inc()
+	r.metrics.rollupL1RelayerGasPriceOraclerRunTotal.Inc()
 	latestBlockHeight, err := r.l1BlockOrm.GetLatestL1BlockHeight(r.ctx)
 	if err != nil {
 		log.Warn("Failed to fetch latest L1 block height from db", "err", err)

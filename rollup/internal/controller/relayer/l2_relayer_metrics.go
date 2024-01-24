@@ -10,7 +10,7 @@ import (
 type l2RelayerMetrics struct {
 	rollupL2RelayerProcessPendingBatchTotal                     prometheus.Counter
 	rollupL2RelayerProcessPendingBatchSuccessTotal              prometheus.Counter
-	rollupL2RelayerGasPriceOracleRunTotal                       prometheus.Counter
+	rollupL2RelayerGasPriceOraclerRunTotal                      prometheus.Counter
 	rollupL2RelayerLastGasPrice                                 prometheus.Gauge
 	rollupL2RelayerProcessCommittedBatchesTotal                 prometheus.Counter
 	rollupL2RelayerProcessCommittedBatchesFinalizedTotal        prometheus.Counter
@@ -41,9 +41,9 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 				Name: "rollup_layer2_process_pending_batch_success_total",
 				Help: "The total number of layer2 process pending success batch",
 			}),
-			rollupL2RelayerGasPriceOracleRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_layer2_gas_price_oracle_run_total",
-				Help: "Total number of times the layer2 gas price oracle has been run",
+			rollupL2RelayerGasPriceOraclerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_layer2_gas_price_oracler_total",
+				Help: "The total number of layer2 gas price oracler run total",
 			}),
 			rollupL2RelayerLastGasPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 				Name: "rollup_layer2_gas_price_latest_gas_price",

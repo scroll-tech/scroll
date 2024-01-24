@@ -8,7 +8,7 @@ import (
 )
 
 type l1RelayerMetrics struct {
-	rollupL1RelayerGasPriceOracleRunTotal       prometheus.Counter
+	rollupL1RelayerGasPriceOraclerRunTotal      prometheus.Counter
 	rollupL1RelayerLastGasPrice                 prometheus.Gauge
 	rollupL1UpdateGasOracleConfirmedTotal       prometheus.Counter
 	rollupL1UpdateGasOracleConfirmedFailedTotal prometheus.Counter
@@ -22,9 +22,9 @@ var (
 func initL1RelayerMetrics(reg prometheus.Registerer) *l1RelayerMetrics {
 	initL1RelayerMetricOnce.Do(func() {
 		l1RelayerMetric = &l1RelayerMetrics{
-			rollupL1RelayerGasPriceOracleRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_layer1_gas_price_oracle_run_total",
-				Help: "Total number of times the layer1 gas price oracle has been run",
+			rollupL1RelayerGasPriceOraclerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_layer1_gas_price_oracler_total",
+				Help: "The total number of layer1 gas price oracler run total",
 			}),
 			rollupL1RelayerLastGasPrice: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 				Name: "rollup_layer1_gas_price_latest_gas_price",

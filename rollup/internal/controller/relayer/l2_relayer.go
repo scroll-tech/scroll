@@ -255,7 +255,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 
 // ProcessGasPriceOracle imports gas price to layer1
 func (r *Layer2Relayer) ProcessGasPriceOracle() {
-	r.metrics.rollupL2RelayerGasPriceOracleRunTotal.Inc()
+	r.metrics.rollupL2RelayerGasPriceOraclerRunTotal.Inc()
 	batch, err := r.batchOrm.GetLatestBatch(r.ctx)
 	if batch == nil || err != nil {
 		log.Error("Failed to GetLatestBatch", "batch", batch, "err", err)
