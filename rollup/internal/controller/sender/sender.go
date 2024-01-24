@@ -445,7 +445,7 @@ func (s *Sender) checkPendingTransaction() {
 					SenderType:   s.senderType,
 				}
 			}
-		} else if txnToCheck.Status == types.TxStatusPending && // Only check the last transaction (status pending) of the same ContextID.
+		} else if txnToCheck.Status == types.TxStatusPending && // Only try resubmitting a new transaction based on gas price of the last transaction (status pending) with same ContextID.
 			s.config.EscalateBlocks+txnToCheck.SubmitBlockNumber <= blockNumber {
 			// It's possible that the pending transaction was marked as failed earlier in this loop (e.g., if one of its replacements has already been confirmed).
 			// Therefore, we fetch the current transaction status again for accuracy before proceeding.
