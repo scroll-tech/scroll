@@ -259,18 +259,21 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		db := c.db
 		db = db.WithContext(ctx)
 		db = db.Model(&CrossMessage{})
-		// do not over-write terminal statuses.
-		db = db.Where("tx_status != ?", TxStatusTypeRelayed)
-		db = db.Where("tx_status != ?", TxStatusTypeDropped)
 		txStatusUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
 		case MessageQueueEventTypeQueueTransaction:
 			continue
 		case MessageQueueEventTypeDequeueTransaction:
+			// do not over-write terminal statuses.
+			db = db.Where("tx_status != ?", TxStatusTypeRelayed)
+			db = db.Where("tx_status != ?", TxStatusTypeDropped)
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
 			txStatusUpdateFields["tx_status"] = TxStatusTypeSkipped
 		case MessageQueueEventTypeDropTransaction:
+			// do not over-write terminal statuses.
+			db = db.Where("tx_status != ?", TxStatusTypeRelayed)
+			db = db.Where("tx_status != ?", TxStatusTypeDropped)
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
 			txStatusUpdateFields["tx_status"] = TxStatusTypeDropped
