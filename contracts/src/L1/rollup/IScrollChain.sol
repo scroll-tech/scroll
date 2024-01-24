@@ -24,6 +24,13 @@ interface IScrollChain {
     /// @param withdrawRoot The merkle root on layer2 after this batch.
     event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
 
+    /**********
+     * Errors *
+     **********/
+
+    /// @dev Thrown when the given address is `address(0)`.
+    error ErrorZeroAddress();
+
     /*************************
      * Public View Functions *
      *************************/

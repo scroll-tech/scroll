@@ -48,7 +48,7 @@ type App struct {
 	Timestamp int
 }
 
-// NewDockerApp returns new instance of dokerApp struct
+// NewDockerApp returns new instance of dockerApp struct
 func NewDockerApp() *App {
 	timestamp := time.Now().Nanosecond()
 	app := &App{

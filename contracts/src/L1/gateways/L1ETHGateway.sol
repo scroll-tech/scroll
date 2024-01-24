@@ -21,11 +21,25 @@ contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback 
      * Constructor *
      ***************/
 
-    constructor() {
+    /// @notice Constructor for `L1ETHGateway` implementation contract.
+    ///
+    /// @param _counterpart The address of `L2ETHGateway` contract in L2.
+    /// @param _router The address of `L1GatewayRouter` contract.
+    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    constructor(
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_router == address(0)) revert ErrorZeroAddress();
+
         _disableInitializers();
     }
 
     /// @notice Initialize the storage of L1ETHGateway.
+    ///
+    /// @dev The parameters `_counterpart`, `_router` and `_messenger` are no longer used.
+    ///
     /// @param _counterpart The address of L2ETHGateway in L2.
     /// @param _router The address of L1GatewayRouter.
     /// @param _messenger The address of L1ScrollMessenger.
@@ -34,7 +48,6 @@ contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback 
         address _router,
         address _messenger
     ) external initializer {
-        require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 
@@ -44,7 +57,7 @@ contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback 
 
     /// @inheritdoc IL1ETHGateway
     function depositETH(uint256 _amount, uint256 _gasLimit) external payable override {
-        _deposit(msg.sender, _amount, new bytes(0), _gasLimit);
+        _deposit(_msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL1ETHGateway
@@ -119,10 +132,13 @@ contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback 
         require(_amount > 0, "deposit zero eth");
 
         // 1. Extract real sender if this call is from L1GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
+        address _from = _msgSender();
+
+        /* comment out since router won't use this contract anymore
+        if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
+        */
 
         // @note no rate limit here, since ETH is limited in messenger
 

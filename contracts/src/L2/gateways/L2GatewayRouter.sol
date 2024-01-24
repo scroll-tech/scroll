@@ -4,6 +4,7 @@ pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
+import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL2GatewayRouter} from "./IL2GatewayRouter.sol";
 import {IL2ETHGateway} from "./IL2ETHGateway.sol";
 import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
@@ -14,6 +15,20 @@ import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
 contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
+    /**********
+     * Errors *
+     **********/
+
+    /// @dev Thrown when the given address is `address(0)`.
+    error ErrorZeroAddress();
+
+    /*************
+     * Constants *
+     *************/
+
+    /// @notice The address of `L2ScrollMessenger`.
+    address public immutable messenger;
+
     /*************
      * Variables *
      *************/
@@ -32,8 +47,12 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
      * Constructor *
      ***************/
 
-    constructor() {
+    constructor(address _messenger) {
+        if (_messenger == address(0)) revert ErrorZeroAddress();
+
         _disableInitializers();
+
+        messenger = _messenger;
     }
 
     function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
@@ -91,7 +110,7 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         uint256 _amount,
         uint256 _gasLimit
     ) external payable override {
-        withdrawERC20AndCall(_token, msg.sender, _amount, new bytes(0), _gasLimit);
+        withdrawERC20AndCall(_token, _msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL2ERC20Gateway
@@ -116,14 +135,14 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         require(_gateway != address(0), "no gateway available");
 
         // encode msg.sender with _data
-        bytes memory _routerData = abi.encode(msg.sender, _data);
+        bytes memory _routerData = abi.encode(_msgSender(), _data);
 
         IL2ERC20Gateway(_gateway).withdrawERC20AndCall{value: msg.value}(_token, _to, _amount, _routerData, _gasLimit);
     }
 
     /// @inheritdoc IL2ETHGateway
     function withdrawETH(uint256 _amount, uint256 _gasLimit) external payable override {
-        withdrawETHAndCall(msg.sender, _amount, new bytes(0), _gasLimit);
+        withdrawETHAndCall(_msgSender(), _amount, new bytes(0), _gasLimit);
     }
 
     /// @inheritdoc IL2ETHGateway
@@ -142,13 +161,7 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         bytes memory _data,
         uint256 _gasLimit
     ) public payable override {
-        address _gateway = ethGateway;
-        require(_gateway != address(0), "eth gateway available");
-
-        // encode msg.sender with _data
-        bytes memory _routerData = abi.encode(msg.sender, _data);
-
-        IL2ETHGateway(_gateway).withdrawETHAndCall{value: msg.value}(_to, _amount, _routerData, _gasLimit);
+        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(_to, _amount, _data, _gasLimit);
     }
 
     /// @inheritdoc IL2ETHGateway

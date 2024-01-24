@@ -17,10 +17,10 @@ describe("L1MessageQueue", async () => {
   let oracle: L2GasPriceOracle;
   let queue: L1MessageQueue;
 
-  const deployProxy = async (name: string, admin: string): Promise<string> => {
+  const deployProxy = async (name: string, admin: string, args: any[]): Promise<string> => {
     const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
     const Factory = await ethers.getContractFactory(name, deployer);
-    const impl = await Factory.deploy();
+    const impl = args.length > 0 ? await Factory.deploy(...args) : await Factory.deploy();
     await impl.deployed();
     const proxy = await TransparentUpgradeableProxy.deploy(impl.address, admin, "0x");
     await proxy.deployed();
@@ -34,16 +34,20 @@ describe("L1MessageQueue", async () => {
     const admin = await ProxyAdmin.deploy();
     await admin.deployed();
 
-    queue = await ethers.getContractAt("L1MessageQueue", await deployProxy("L1MessageQueue", admin.address), deployer);
+    queue = await ethers.getContractAt(
+      "L1MessageQueue",
+      await deployProxy("L1MessageQueue", admin.address, [messenger.address, scrollChain.address, gateway.address]),
+      deployer
+    );
 
     oracle = await ethers.getContractAt(
       "L2GasPriceOracle",
-      await deployProxy("L2GasPriceOracle", admin.address),
+      await deployProxy("L2GasPriceOracle", admin.address, []),
       deployer
     );
 
     await oracle.initialize(21000, 50000, 8, 16);
-    await queue.initialize(messenger.address, scrollChain.address, gateway.address, oracle.address, 10000000);
+    await queue.initialize(messenger.address, scrollChain.address, constants.AddressZero, oracle.address, 10000000);
   });
 
   context("auth", async () => {
@@ -75,22 +79,6 @@ describe("L1MessageQueue", async () => {
           .to.emit(queue, "UpdateGasOracle")
           .withArgs(oracle.address, deployer.address);
         expect(await queue.gasOracle()).to.eq(deployer.address);
-      });
-    });
-
-    context("#updateEnforcedTxGateway", async () => {
-      it("should revert, when non-owner call", async () => {
-        await expect(queue.connect(signer).updateEnforcedTxGateway(constants.AddressZero)).to.revertedWith(
-          "Ownable: caller is not the owner"
-        );
-      });
-
-      it("should succeed", async () => {
-        expect(await queue.enforcedTxGateway()).to.eq(gateway.address);
-        await expect(queue.updateEnforcedTxGateway(deployer.address))
-          .to.emit(queue, "UpdateEnforcedTxGateway")
-          .withArgs(gateway.address, deployer.address);
-        expect(await queue.enforcedTxGateway()).to.eq(deployer.address);
       });
     });
 
@@ -318,6 +306,53 @@ describe("L1MessageQueue", async () => {
         expect(await queue.isMessageDropped(i)).to.eq(false);
       }
     });
+
+    // @note skip this random benchmark tests
+    for (const count1 of [1, 2, 128, 129, 256]) {
+      for (const count2 of [1, 2, 128, 129, 256]) {
+        for (const count3 of [1, 2, 128, 129, 256]) {
+          it.skip(`should succeed on random tests, pop three times each with ${count1} ${count2} ${count3} msgs`, async () => {
+            // append count1 + count2 + count3 messages
+            for (let i = 0; i < count1 + count2 + count3; i++) {
+              await queue.connect(messenger).appendCrossDomainMessage(constants.AddressZero, 1000000, "0x");
+            }
+
+            // first pop `count1` messages
+            const bitmap1 = BigNumber.from(randomBytes(32));
+            let tx = await queue.connect(scrollChain).popCrossDomainMessage(0, count1, bitmap1);
+            await expect(tx)
+              .to.emit(queue, "DequeueTransaction")
+              .withArgs(0, count1, bitmap1.and(constants.One.shl(count1).sub(1)));
+            for (let i = 0; i < count1; i++) {
+              expect(await queue.isMessageSkipped(i)).to.eq(bitmap1.shr(i).and(1).eq(1));
+              expect(await queue.isMessageDropped(i)).to.eq(false);
+            }
+
+            // then pop `count2` messages
+            const bitmap2 = BigNumber.from(randomBytes(32));
+            tx = await queue.connect(scrollChain).popCrossDomainMessage(count1, count2, bitmap2);
+            await expect(tx)
+              .to.emit(queue, "DequeueTransaction")
+              .withArgs(count1, count2, bitmap2.and(constants.One.shl(count2).sub(1)));
+            for (let i = 0; i < count2; i++) {
+              expect(await queue.isMessageSkipped(i + count1)).to.eq(bitmap2.shr(i).and(1).eq(1));
+              expect(await queue.isMessageDropped(i + count1)).to.eq(false);
+            }
+
+            // last pop `count3` messages
+            const bitmap3 = BigNumber.from(randomBytes(32));
+            tx = await queue.connect(scrollChain).popCrossDomainMessage(count1 + count2, count3, bitmap3);
+            await expect(tx)
+              .to.emit(queue, "DequeueTransaction")
+              .withArgs(count1 + count2, count3, bitmap3.and(constants.One.shl(count3).sub(1)));
+            for (let i = 0; i < count3; i++) {
+              expect(await queue.isMessageSkipped(i + count1 + count2)).to.eq(bitmap3.shr(i).and(1).eq(1));
+              expect(await queue.isMessageDropped(i + count1 + count2)).to.eq(false);
+            }
+          });
+        }
+      }
+    }
   });
 
   context("#dropCrossDomainMessage", async () => {

@@ -12,24 +12,31 @@ describe("ScrollChain", async () => {
   beforeEach(async () => {
     const [deployer] = await ethers.getSigners();
 
+    const EmptyContract = await ethers.getContractFactory("EmptyContract", deployer);
+    const empty = await EmptyContract.deploy();
+    await empty.deployed();
+
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin", deployer);
     const admin = await ProxyAdmin.deploy();
     await admin.deployed();
 
     const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
+    const queueProxy = await TransparentUpgradeableProxy.deploy(empty.address, admin.address, "0x");
+    await queueProxy.deployed();
+    const chainProxy = await TransparentUpgradeableProxy.deploy(empty.address, admin.address, "0x");
+    await chainProxy.deployed();
 
     const L1MessageQueue = await ethers.getContractFactory("L1MessageQueue", deployer);
-    const queueImpl = await L1MessageQueue.deploy();
+    const queueImpl = await L1MessageQueue.deploy(constants.AddressZero, chainProxy.address, deployer.address);
     await queueImpl.deployed();
-    const queueProxy = await TransparentUpgradeableProxy.deploy(queueImpl.address, admin.address, "0x");
-    await queueProxy.deployed();
-    queue = await ethers.getContractAt("L1MessageQueue", queueProxy.address, deployer);
+    await admin.upgrade(queueProxy.address, queueImpl.address);
 
     const ScrollChain = await ethers.getContractFactory("ScrollChain", deployer);
-    const chainImpl = await ScrollChain.deploy(0);
+    const chainImpl = await ScrollChain.deploy(0, queueProxy.address, deployer.address);
     await chainImpl.deployed();
-    const chainProxy = await TransparentUpgradeableProxy.deploy(chainImpl.address, admin.address, "0x");
-    await chainProxy.deployed();
+    await admin.upgrade(chainProxy.address, chainImpl.address);
+
+    queue = await ethers.getContractAt("L1MessageQueue", queueProxy.address, deployer);
     chain = await ethers.getContractAt("ScrollChain", chainProxy.address, deployer);
 
     await chain.initialize(queue.address, constants.AddressZero, 100);

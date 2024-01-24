@@ -40,7 +40,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     uint256 public l2BaseFee;
 
     /// @notice The address of whitelist contract.
-    IWhitelist public whitelist;
+    address public whitelist;
 
     struct IntrinsicParams {
         // The intrinsic gas for transaction.
@@ -111,7 +111,7 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @notice Allows whitelisted caller to modify the l2 base fee.
     /// @param _newL2BaseFee The new l2 base fee.
     function setL2BaseFee(uint256 _newL2BaseFee) external {
-        require(whitelist.isSenderAllowed(msg.sender), "Not whitelisted sender");
+        require(IWhitelist(whitelist).isSenderAllowed(_msgSender()), "Not whitelisted sender");
 
         uint256 _oldL2BaseFee = l2BaseFee;
         l2BaseFee = _newL2BaseFee;
@@ -127,9 +127,9 @@ contract L2GasPriceOracle is OwnableUpgradeable, IL2GasPriceOracle {
     /// @dev This function can only called by contract owner.
     /// @param _newWhitelist The address of new whitelist contract.
     function updateWhitelist(address _newWhitelist) external onlyOwner {
-        address _oldWhitelist = address(whitelist);
+        address _oldWhitelist = whitelist;
 
-        whitelist = IWhitelist(_newWhitelist);
+        whitelist = _newWhitelist;
         emit UpdateWhitelist(_oldWhitelist, _newWhitelist);
     }
 

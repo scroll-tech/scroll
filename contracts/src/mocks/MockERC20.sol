@@ -2,9 +2,10 @@
 
 pragma solidity =0.8.16;
 
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-contract MockERC20 is ERC20Permit {
+contract MockERC20 is Ownable, ERC20Permit {
     uint8 private decimals_;
 
     constructor(

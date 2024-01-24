@@ -1,14 +1,14 @@
 {
   "l1_config": {
     "confirmations": "0x6",
-    "endpoint": "DUMMY_ENDPOINT",
+    "endpoint": "https://rpc.ankr.com/eth",
     "l1_message_queue_address": "0x0000000000000000000000000000000000000000",
     "scroll_chain_address": "0x0000000000000000000000000000000000000000",
     "start_height": 0,
     "relayer_config": {
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
-        "endpoint": "https://sepolia-rpc.scroll.io",
+        "endpoint": "https://rpc.scroll.io",
         "check_pending_time": 2,
         "check_balance_time": 100,
         "escalate_blocks": 100,
@@ -24,20 +24,19 @@
         "min_gas_price": 0,
         "gas_price_diff": 50000
       },
-      "finalize_batch_interval_sec": 0,
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }
   },
   "l2_config": {
     "confirmations": "0x1",
-    "endpoint": "https://sepolia-rpc.scroll.io",
+    "endpoint": "https://rpc.scroll.io",
     "l2_messenger_address": "0x0000000000000000000000000000000000000000",
     "l2_message_queue_address": "0x0000000000000000000000000000000000000000",
     "relayer_config": {
       "rollup_contract_address": "0x0000000000000000000000000000000000000000",
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
-        "endpoint": "https://sepolia-rpc.scroll.io",
+        "endpoint": "https://rpc.ankr.com/eth",
         "check_pending_time": 10,
         "check_balance_time": 100,
         "escalate_blocks": 100,
@@ -45,7 +44,7 @@
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
         "max_gas_price": 10000000000,
-        "tx_type": "LegacyTx",
+        "tx_type": "DynamicFeeTx",
         "min_balance": 100000000000000000000,
         "pending_limit": 10
       },
@@ -59,7 +58,8 @@
         "try_times": 5,
         "base_url": "http://localhost:8750"
       },
-      "finalize_batch_interval_sec": 0,
+      "enable_test_env_bypass_features": true,
+      "finalize_batch_without_proof_timeout_sec": 7200,
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
       "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
       "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",

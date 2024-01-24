@@ -39,10 +39,21 @@ contract L2ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL2ERC72
     /***************
      * Constructor *
      ***************/
-    constructor() {
+
+    /// @notice Constructor for `L2ERC721Gateway` implementation contract.
+    ///
+    /// @param _counterpart The address of `L1ERC721Gateway` contract in L1.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
+    constructor(address _counterpart, address _messenger) ScrollGatewayBase(_counterpart, address(0), _messenger) {
         _disableInitializers();
     }
 
+    /// @notice Initialize the storage of `L2ERC721Gateway`.
+    ///
+    /// @dev The parameters `_counterpart` and `_messenger` are no longer used.
+    ///
+    /// @param _counterpart The address of `L1ERC721Gateway` contract in L1.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
     function initialize(address _counterpart, address _messenger) external initializer {
         ERC721HolderUpgradeable.__ERC721Holder_init();
 
@@ -59,7 +70,7 @@ contract L2ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL2ERC72
         uint256 _tokenId,
         uint256 _gasLimit
     ) external payable override {
-        _withdrawERC721(_token, msg.sender, _tokenId, _gasLimit);
+        _withdrawERC721(_token, _msgSender(), _tokenId, _gasLimit);
     }
 
     /// @inheritdoc IL2ERC721Gateway
@@ -78,7 +89,7 @@ contract L2ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL2ERC72
         uint256[] calldata _tokenIds,
         uint256 _gasLimit
     ) external payable override {
-        _batchWithdrawERC721(_token, msg.sender, _tokenIds, _gasLimit);
+        _batchWithdrawERC721(_token, _msgSender(), _tokenIds, _gasLimit);
     }
 
     /// @inheritdoc IL2ERC721Gateway
@@ -159,21 +170,23 @@ contract L2ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL2ERC72
         address _l1Token = tokenMapping[_token];
         require(_l1Token != address(0), "no corresponding l1 token");
 
+        address _sender = _msgSender();
+
         // 1. burn token
         // @note in case the token has given too much power to the gateway, we check owner here.
-        require(IScrollERC721(_token).ownerOf(_tokenId) == msg.sender, "token not owned");
+        require(IScrollERC721(_token).ownerOf(_tokenId) == _sender, "token not owned");
         IScrollERC721(_token).burn(_tokenId);
 
         // 2. Generate message passed to L1ERC721Gateway.
         bytes memory _message = abi.encodeCall(
             IL1ERC721Gateway.finalizeWithdrawERC721,
-            (_l1Token, _token, msg.sender, _to, _tokenId)
+            (_l1Token, _token, _sender, _to, _tokenId)
         );
 
         // 3. Send message to L2ScrollMessenger.
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
 
-        emit WithdrawERC721(_l1Token, _token, msg.sender, _to, _tokenId);
+        emit WithdrawERC721(_l1Token, _token, _sender, _to, _tokenId);
     }
 
     /// @dev Internal function to batch withdraw ERC721 NFT to layer 1.
@@ -192,22 +205,24 @@ contract L2ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL2ERC72
         address _l1Token = tokenMapping[_token];
         require(_l1Token != address(0), "no corresponding l1 token");
 
+        address _sender = _msgSender();
+
         // 1. transfer token to this contract
         for (uint256 i = 0; i < _tokenIds.length; i++) {
             // @note in case the token has given too much power to the gateway, we check owner here.
-            require(IScrollERC721(_token).ownerOf(_tokenIds[i]) == msg.sender, "token not owned");
+            require(IScrollERC721(_token).ownerOf(_tokenIds[i]) == _sender, "token not owned");
             IScrollERC721(_token).burn(_tokenIds[i]);
         }
 
         // 2. Generate message passed to L1ERC721Gateway.
         bytes memory _message = abi.encodeCall(
             IL1ERC721Gateway.finalizeBatchWithdrawERC721,
-            (_l1Token, _token, msg.sender, _to, _tokenIds)
+            (_l1Token, _token, _sender, _to, _tokenIds)
         );
 
         // 3. Send message to L2ScrollMessenger.
         IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
 
-        emit BatchWithdrawERC721(_l1Token, _token, msg.sender, _to, _tokenIds);
+        emit BatchWithdrawERC721(_l1Token, _token, _sender, _to, _tokenIds);
     }
 }

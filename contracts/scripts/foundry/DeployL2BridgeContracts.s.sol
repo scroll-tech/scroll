@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+pragma solidity =0.8.16;
+
+// solhint-disable no-console
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
@@ -15,7 +17,6 @@ import {L2GatewayRouter} from "../../src/L2/gateways/L2GatewayRouter.sol";
 import {L2ScrollMessenger} from "../../src/L2/L2ScrollMessenger.sol";
 import {L2StandardERC20Gateway} from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
 import {L2WETHGateway} from "../../src/L2/gateways/L2WETHGateway.sol";
-import {L2DAIGateway} from "../../src/L2/gateways/L2DAIGateway.sol";
 import {L1GasPriceOracle} from "../../src/L2/predeploys/L1GasPriceOracle.sol";
 import {L2MessageQueue} from "../../src/L2/predeploys/L2MessageQueue.sol";
 import {L2TxFeeVault} from "../../src/L2/predeploys/L2TxFeeVault.sol";
@@ -23,8 +24,14 @@ import {Whitelist} from "../../src/L2/predeploys/Whitelist.sol";
 import {ScrollStandardERC20} from "../../src/libraries/token/ScrollStandardERC20.sol";
 import {ScrollStandardERC20Factory} from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
+// solhint-disable max-states-count
+// solhint-disable state-visibility
+// solhint-disable var-name-mixedcase
+
 contract DeployL2BridgeContracts is Script {
     uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
+
+    address L2_PROXY_ADMIN_ADDR = vm.envAddress("L2_PROXY_ADMIN_ADDR");
 
     address L1_TX_FEE_RECIPIENT_ADDR = vm.envAddress("L1_TX_FEE_RECIPIENT_ADDR");
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
@@ -33,6 +40,18 @@ contract DeployL2BridgeContracts is Script {
     L1GasPriceOracle oracle;
     L2MessageQueue queue;
     ProxyAdmin proxyAdmin;
+    L2GatewayRouter router;
+    ScrollStandardERC20Factory factory;
+
+    address L2_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_PROXY_ADDR");
+
+    address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
+    address L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
+    address L1_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC721_GATEWAY_PROXY_ADDR");
+    address L1_ERC1155_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC1155_GATEWAY_PROXY_ADDR");
+    address L1_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ETH_GATEWAY_PROXY_ADDR");
+    address L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
+    address L1_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_WETH_GATEWAY_PROXY_ADDR");
 
     // predeploy contracts
     address L1_GAS_PRICE_ORACLE_PREDEPLOY_ADDR = vm.envOr("L1_GAS_PRICE_ORACLE_PREDEPLOY_ADDR", address(0));
@@ -41,6 +60,8 @@ contract DeployL2BridgeContracts is Script {
     address L2_WHITELIST_PREDEPLOY_ADDR = vm.envOr("L2_WHITELIST_PREDEPLOY_ADDR", address(0));
 
     function run() external {
+        proxyAdmin = ProxyAdmin(L2_PROXY_ADMIN_ADDR);
+
         vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
 
         // predeploys
@@ -50,17 +71,15 @@ contract DeployL2BridgeContracts is Script {
         deployL2Whitelist();
 
         // upgradable
-        deployProxyAdmin();
         deployL2ScrollMessenger();
-        deployL2ETHGateway();
-        deployL2WETHGateway();
-        deployL2StandardERC20Gateway();
         deployL2GatewayRouter();
         deployScrollStandardERC20Factory();
+        deployL2StandardERC20Gateway();
+        deployL2ETHGateway();
+        deployL2WETHGateway();
         deployL2CustomERC20Gateway();
         deployL2ERC721Gateway();
         deployL2ERC1155Gateway();
-        deployL2DAIGateway();
 
         vm.stopBroadcast();
     }
@@ -115,62 +134,14 @@ contract DeployL2BridgeContracts is Script {
         logAddress("L2_WHITELIST_ADDR", address(whitelist));
     }
 
-    function deployProxyAdmin() internal {
-        proxyAdmin = new ProxyAdmin();
-
-        logAddress("L2_PROXY_ADMIN_ADDR", address(proxyAdmin));
-    }
-
     function deployL2ScrollMessenger() internal {
-        L2ScrollMessenger impl = new L2ScrollMessenger(address(queue));
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
-        );
+        L2ScrollMessenger impl = new L2ScrollMessenger(L1_SCROLL_MESSENGER_PROXY_ADDR, address(queue));
 
         logAddress("L2_SCROLL_MESSENGER_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_SCROLL_MESSENGER_PROXY_ADDR", address(proxy));
-    }
-
-    function deployL2StandardERC20Gateway() internal {
-        L2StandardERC20Gateway impl = new L2StandardERC20Gateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
-        );
-
-        logAddress("L2_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR", address(proxy));
-    }
-
-    function deployL2ETHGateway() internal {
-        L2ETHGateway impl = new L2ETHGateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
-        );
-
-        logAddress("L2_ETH_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_ETH_GATEWAY_PROXY_ADDR", address(proxy));
-    }
-
-    function deployL2WETHGateway() internal {
-        L2WETHGateway impl = new L2WETHGateway(L2_WETH_ADDR, L1_WETH_ADDR);
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
-        );
-
-        logAddress("L2_WETH_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_WETH_GATEWAY_PROXY_ADDR", address(proxy));
     }
 
     function deployL2GatewayRouter() internal {
-        L2GatewayRouter impl = new L2GatewayRouter();
+        L2GatewayRouter impl = new L2GatewayRouter(L2_SCROLL_MESSENGER_PROXY_ADDR);
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
             address(proxyAdmin),
@@ -179,62 +150,70 @@ contract DeployL2BridgeContracts is Script {
 
         logAddress("L2_GATEWAY_ROUTER_IMPLEMENTATION_ADDR", address(impl));
         logAddress("L2_GATEWAY_ROUTER_PROXY_ADDR", address(proxy));
+
+        router = L2GatewayRouter(address(proxy));
     }
 
     function deployScrollStandardERC20Factory() internal {
         ScrollStandardERC20 tokenImpl = new ScrollStandardERC20();
-        ScrollStandardERC20Factory scrollStandardERC20Factory = new ScrollStandardERC20Factory(address(tokenImpl));
+        factory = new ScrollStandardERC20Factory(address(tokenImpl));
 
         logAddress("L2_SCROLL_STANDARD_ERC20_ADDR", address(tokenImpl));
-        logAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR", address(scrollStandardERC20Factory));
+        logAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR", address(factory));
+    }
+
+    function deployL2StandardERC20Gateway() internal {
+        L2StandardERC20Gateway impl = new L2StandardERC20Gateway(
+            L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR,
+            address(router),
+            L2_SCROLL_MESSENGER_PROXY_ADDR,
+            address(factory)
+        );
+
+        logAddress("L2_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    }
+
+    function deployL2ETHGateway() internal {
+        L2ETHGateway impl = new L2ETHGateway(
+            L1_ETH_GATEWAY_PROXY_ADDR,
+            address(router),
+            L2_SCROLL_MESSENGER_PROXY_ADDR
+        );
+
+        logAddress("L2_ETH_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
+    }
+
+    function deployL2WETHGateway() internal {
+        L2WETHGateway impl = new L2WETHGateway(
+            L2_WETH_ADDR,
+            L1_WETH_ADDR,
+            L1_WETH_GATEWAY_PROXY_ADDR,
+            address(router),
+            L2_SCROLL_MESSENGER_PROXY_ADDR
+        );
+
+        logAddress("L2_WETH_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
     }
 
     function deployL2CustomERC20Gateway() internal {
-        L2CustomERC20Gateway impl = new L2CustomERC20Gateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
+        L2CustomERC20Gateway impl = new L2CustomERC20Gateway(
+            L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR,
+            address(router),
+            L2_SCROLL_MESSENGER_PROXY_ADDR
         );
 
         logAddress("L2_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR", address(proxy));
-    }
-
-    function deployL2DAIGateway() internal {
-        L2DAIGateway impl = new L2DAIGateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
-        );
-
-        logAddress("L2_DAI_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_DAI_GATEWAY_PROXY_ADDR", address(proxy));
     }
 
     function deployL2ERC721Gateway() internal {
-        L2ERC721Gateway impl = new L2ERC721Gateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
-        );
+        L2ERC721Gateway impl = new L2ERC721Gateway(L1_ERC721_GATEWAY_PROXY_ADDR, L2_SCROLL_MESSENGER_PROXY_ADDR);
 
         logAddress("L2_ERC721_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_ERC721_GATEWAY_PROXY_ADDR", address(proxy));
     }
 
     function deployL2ERC1155Gateway() internal {
-        L2ERC1155Gateway impl = new L2ERC1155Gateway();
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
-            address(impl),
-            address(proxyAdmin),
-            new bytes(0)
-        );
-
+        L2ERC1155Gateway impl = new L2ERC1155Gateway(L1_ERC1155_GATEWAY_PROXY_ADDR, L2_SCROLL_MESSENGER_PROXY_ADDR);
         logAddress("L2_ERC1155_GATEWAY_IMPLEMENTATION_ADDR", address(impl));
-        logAddress("L2_ERC1155_GATEWAY_PROXY_ADDR", address(proxy));
     }
 
     function logAddress(string memory name, address addr) internal view {

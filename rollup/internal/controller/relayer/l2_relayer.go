@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"sync"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
@@ -86,6 +88,11 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
+	}
+
+	// Ensure test features aren't enabled on the mainnet.
+	if commitSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
+		return nil, fmt.Errorf("cannot enable test env features in mainnet")
 	}
 
 	var minGasPrice uint64
@@ -307,12 +314,12 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
-	pendingBatches, err := r.batchOrm.GetPendingBatches(r.ctx, 5)
+	batches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, 5)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
 	}
-	for _, batch := range pendingBatches {
+	for _, batch := range batches {
 		r.metrics.rollupL2RelayerProcessPendingBatchTotal.Inc()
 		// get current header and parent header.
 		currentBatchHeader, err := types.DecodeBatchHeader(batch.BatchHeader)
@@ -325,6 +332,12 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			parentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
 			if err != nil {
 				log.Error("Failed to get parent batch header", "index", batch.Index-1, "error", err)
+				return
+			}
+
+			if types.RollupStatus(parentBatch.RollupStatus) == types.RollupCommitFailed {
+				log.Error("Previous batch commit failed, halting further committing",
+					"index", parentBatch.Index, "tx hash", parentBatch.CommitTxHash)
 				return
 			}
 		}
@@ -371,6 +384,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// send transaction
 		txID := batch.Hash + "-commit"
 		fallbackGasLimit := uint64(float64(batch.TotalL1CommitGas) * r.cfg.L1CommitGasLimitMultiplier)
+		if types.RollupStatus(batch.RollupStatus) == types.RollupCommitFailed {
+			// use eth_estimateGas if this batch has been committed failed.
+			fallbackGasLimit = 0
+			log.Warn("Batch commit previously failed, using eth_estimateGas for the re-submission", "hash", batch.Hash)
+		}
 		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, fallbackGasLimit)
 		if err != nil {
 			log.Error(
@@ -423,107 +441,26 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	r.metrics.rollupL2RelayerProcessCommittedBatchesTotal.Inc()
 
 	batch := batches[0]
-	hash := batch.Hash
 	status := types.ProvingStatus(batch.ProvingStatus)
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
-		// The proof for this block is not ready yet.
-		return
+		if batch.CommittedAt == nil {
+			log.Error("batch.CommittedAt is nil", "index", batch.Index, "hash", batch.Hash)
+			return
+		}
+
+		if r.cfg.EnableTestEnvBypassFeatures && utils.NowUTC().Sub(*batch.CommittedAt) > time.Duration(r.cfg.FinalizeBatchWithoutProofTimeoutSec)*time.Second {
+			if err := r.finalizeBatch(batch, false); err != nil {
+				log.Error("Failed to finalize timeout batch without proof", "index", batch.Index, "hash", batch.Hash, "err", err)
+			}
+		}
+
 	case types.ProvingTaskVerified:
-		log.Info("Start to roll up zk proof", "hash", hash)
+		log.Info("Start to roll up zk proof", "hash", batch.Hash)
 		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
-
-		// Check batch status before send `finalizeBatchWithProof` tx.
-		if r.cfg.ChainMonitor.Enabled {
-			var batchStatus bool
-			batchStatus, err = r.getBatchStatusByIndex(batch.Index)
-			if err != nil {
-				r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
-				log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
-				return
-			}
-			if !batchStatus {
-				r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
-				log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
-				return
-			}
+		if err := r.finalizeBatch(batch, true); err != nil {
+			log.Error("Failed to finalize batch with proof", "index", batch.Index, "hash", batch.Hash, "err", err)
 		}
-
-		var parentBatchStateRoot string
-		if batch.Index > 0 {
-			var parentBatch *orm.Batch
-			parentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
-			// handle unexpected db error
-			if err != nil {
-				log.Error("Failed to get batch", "index", batch.Index-1, "err", err)
-				return
-			}
-			parentBatchStateRoot = parentBatch.StateRoot
-		}
-
-		aggProof, err := r.batchOrm.GetVerifiedProofByHash(r.ctx, hash)
-		if err != nil {
-			log.Error("get verified proof by hash failed", "hash", hash, "err", err)
-			return
-		}
-
-		if err = aggProof.SanityCheck(); err != nil {
-			log.Error("agg_proof sanity check fails", "hash", hash, "error", err)
-			return
-		}
-
-		data, err := r.l1RollupABI.Pack(
-			"finalizeBatchWithProof",
-			batch.BatchHeader,
-			common.HexToHash(parentBatchStateRoot),
-			common.HexToHash(batch.StateRoot),
-			common.HexToHash(batch.WithdrawRoot),
-			aggProof.Proof,
-		)
-		if err != nil {
-			log.Error("Pack finalizeBatchWithProof failed", "err", err)
-			return
-		}
-
-		txID := hash + "-finalize"
-		// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-		txHash, err := r.finalizeSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), data, 0)
-		finalizeTxHash := &txHash
-		if err != nil {
-			if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-				// This can happen normally if we try to finalize 2 or more
-				// batches around the same time. The 2nd tx might fail since
-				// the client does not see the 1st tx's updates at this point.
-				// TODO: add more fine-grained error handling
-				log.Error(
-					"finalizeBatchWithProof in layer1 failed",
-					"index", batch.Index,
-					"hash", batch.Hash,
-					"RollupContractAddress", r.cfg.RollupContractAddress,
-					"err", err,
-				)
-				log.Debug(
-					"finalizeBatchWithProof in layer1 failed",
-					"index", batch.Index,
-					"hash", batch.Hash,
-					"RollupContractAddress", r.cfg.RollupContractAddress,
-					"calldata", common.Bytes2Hex(data),
-					"err", err,
-				)
-			}
-			return
-		}
-		log.Info("finalizeBatchWithProof in layer1", "index", batch.Index, "batch hash", batch.Hash, "tx hash", hash)
-
-		// record and sync with db, @todo handle db error
-		err = r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, hash, finalizeTxHash.String(), types.RollupFinalizing)
-		if err != nil {
-			log.Error("UpdateFinalizeTxHashAndRollupStatus failed",
-				"index", batch.Index, "batch hash", batch.Hash,
-				"tx hash", finalizeTxHash.String(), "err", err)
-		}
-		r.processingFinalization.Store(txID, hash)
-		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal.Inc()
 
 	case types.ProvingTaskFailed:
 		// We were unable to prove this batch. There are two possibilities:
@@ -542,11 +479,121 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			"ProvedAt", batch.ProvedAt,
 			"ProofTimeSec", batch.ProofTimeSec,
 		)
-		return
 
 	default:
 		log.Error("encounter unreachable case in ProcessCommittedBatches", "proving status", status)
 	}
+}
+
+func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
+	// Check batch status before send `finalizeBatch` tx.
+	if r.cfg.ChainMonitor.Enabled {
+		var batchStatus bool
+		batchStatus, err := r.getBatchStatusByIndex(batch)
+		if err != nil {
+			r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
+			log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", batch.Index, "err", err)
+			return err
+		}
+		if !batchStatus {
+			r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
+			log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", batch.Index)
+			return err
+		}
+	}
+
+	var parentBatchStateRoot string
+	if batch.Index > 0 {
+		var parentBatch *orm.Batch
+		parentBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
+		// handle unexpected db error
+		if err != nil {
+			log.Error("Failed to get batch", "index", batch.Index-1, "err", err)
+			return err
+		}
+		parentBatchStateRoot = parentBatch.StateRoot
+	}
+
+	var txCalldata []byte
+	if withProof {
+		aggProof, err := r.batchOrm.GetVerifiedProofByHash(r.ctx, batch.Hash)
+		if err != nil {
+			log.Error("get verified proof by hash failed", "hash", batch.Hash, "err", err)
+			return err
+		}
+
+		if err = aggProof.SanityCheck(); err != nil {
+			log.Error("agg_proof sanity check fails", "hash", batch.Hash, "error", err)
+			return err
+		}
+
+		txCalldata, err = r.l1RollupABI.Pack(
+			"finalizeBatchWithProof",
+			batch.BatchHeader,
+			common.HexToHash(parentBatchStateRoot),
+			common.HexToHash(batch.StateRoot),
+			common.HexToHash(batch.WithdrawRoot),
+			aggProof.Proof,
+		)
+		if err != nil {
+			log.Error("Pack finalizeBatchWithProof failed", "err", err)
+			return err
+		}
+	} else {
+		var err error
+		txCalldata, err = r.l1RollupABI.Pack(
+			"finalizeBatch",
+			batch.BatchHeader,
+			common.HexToHash(parentBatchStateRoot),
+			common.HexToHash(batch.StateRoot),
+			common.HexToHash(batch.WithdrawRoot),
+		)
+		if err != nil {
+			log.Error("Pack finalizeBatch failed", "err", err)
+			return err
+		}
+	}
+
+	txID := batch.Hash + "-finalize"
+	// add suffix `-finalize` to avoid duplication with commit tx in unit tests
+	txHash, err := r.finalizeSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), txCalldata, 0)
+	finalizeTxHash := &txHash
+	if err != nil {
+		if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
+			// This can happen normally if we try to finalize 2 or more
+			// batches around the same time. The 2nd tx might fail since
+			// the client does not see the 1st tx's updates at this point.
+			// TODO: add more fine-grained error handling
+			log.Error(
+				"finalizeBatch in layer1 failed",
+				"with proof", withProof,
+				"index", batch.Index,
+				"hash", batch.Hash,
+				"RollupContractAddress", r.cfg.RollupContractAddress,
+				"err", err,
+			)
+			log.Debug(
+				"finalizeBatch in layer1 failed",
+				"with proof", withProof,
+				"index", batch.Index,
+				"hash", batch.Hash,
+				"RollupContractAddress", r.cfg.RollupContractAddress,
+				"calldata", common.Bytes2Hex(txCalldata),
+				"err", err,
+			)
+		}
+		return err
+	}
+	log.Info("finalizeBatch in layer1", "with proof", withProof, "index", batch.Index, "batch hash", batch.Hash, "tx hash", batch.Hash)
+
+	// record and sync with db, @todo handle db error
+	if err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batch.Hash, finalizeTxHash.String(), types.RollupFinalizing); err != nil {
+		log.Error("UpdateFinalizeTxHashAndRollupStatus failed", "index", batch.Index, "batch hash", batch.Hash, "tx hash", finalizeTxHash.String(), "err", err)
+		return err
+	}
+	r.processingFinalization.Store(txID, batch.Hash)
+	r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal.Inc()
+	return nil
 }
 
 // batchStatusResponse the response schema
@@ -556,9 +603,32 @@ type batchStatusResponse struct {
 	Data    bool   `json:"data"`
 }
 
-func (r *Layer2Relayer) getBatchStatusByIndex(batchIndex uint64) (bool, error) {
+func (r *Layer2Relayer) getBatchStatusByIndex(batch *orm.Batch) (bool, error) {
+	chunks, getChunkErr := r.chunkOrm.GetChunksInRange(r.ctx, batch.StartChunkIndex, batch.EndChunkIndex)
+	if getChunkErr != nil {
+		log.Error("Layer2Relayer.getBatchStatusByIndex get chunks range failed", "startChunkIndex", batch.StartChunkIndex, "endChunkIndex", batch.EndChunkIndex, "err", getChunkErr)
+		return false, getChunkErr
+	}
+	if len(chunks) == 0 {
+		log.Error("Layer2Relayer.getBatchStatusByIndex get empty chunks", "startChunkIndex", batch.StartChunkIndex, "endChunkIndex", batch.EndChunkIndex)
+		return false, fmt.Errorf("startChunksIndex:%d endChunkIndex:%d get empty chunks", batch.StartChunkIndex, batch.EndChunkIndex)
+	}
+
+	sort.Slice(chunks, func(i, j int) bool {
+		return chunks[i].StartBlockNumber < chunks[j].StartBlockNumber
+	})
+
+	startBlockNum := chunks[0].StartBlockNumber
+	endBlockNum := chunks[len(chunks)-1].EndBlockNumber
 	var response batchStatusResponse
-	resp, err := r.chainMonitorClient.R().SetResult(&response).Get(fmt.Sprintf("%s/v1/batch_status?batch_index=%d", r.cfg.ChainMonitor.BaseURL, batchIndex))
+	resp, err := r.chainMonitorClient.R().
+		SetQueryParams(map[string]string{
+			"batch_index":        fmt.Sprintf("%d", batch.Index),
+			"start_block_number": fmt.Sprintf("%d", startBlockNum),
+			"end_block_number":   fmt.Sprintf("%d", endBlockNum),
+		}).
+		SetResult(&response).
+		Get(fmt.Sprintf("%s/v1/batch_status", r.cfg.ChainMonitor.BaseURL))
 	if err != nil {
 		return false, err
 	}

@@ -88,9 +88,9 @@ func (b *MockApp) MockConfig(store bool) error {
 	}
 
 	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
 	cfg.DBConfig.DSN = base.DBImg.Endpoint()
 	b.Config = cfg
 

@@ -177,6 +177,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	}
 
 	// Add extra gas costs
+	totalL1CommitGas += 100000                       // constant to account for ops like _getAdmin, _implementation, _requireNotPaused, etc
 	totalL1CommitGas += 4 * 2100                     // 4 one-time cold sload for commitBatch
 	totalL1CommitGas += 20000                        // 1 time sstore
 	totalL1CommitGas += 21000                        // base fee for tx
@@ -206,9 +207,11 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 		// adjust batch header hash gas cost, batch header size: 89 + 32 * ceil(l1MessagePopped / 256)
 		totalL1CommitGas -= types.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
 		totalL1CommitGas -= types.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
+		totalL1CommitGas -= types.GetMemoryExpansionCost(uint64(totalL1CommitCalldataSize))
 		totalL1MessagePopped += uint64(chunk.TotalL1MessagesPoppedInChunk)
 		totalL1CommitGas += types.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
 		totalL1CommitGas += types.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
+		totalL1CommitGas += types.GetMemoryExpansionCost(uint64(totalL1CommitCalldataSize))
 		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
 		if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {

@@ -16,7 +16,9 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/ethclient/gethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rpc"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/utils"
@@ -53,6 +55,8 @@ type FeeData struct {
 	gasTipCap *big.Int
 	gasPrice  *big.Int
 
+	accessList types.AccessList
+
 	gasLimit uint64
 }
 
@@ -67,12 +71,13 @@ type PendingTransaction struct {
 
 // Sender Transaction sender to send transaction to l1/l2 geth
 type Sender struct {
-	config  *config.SenderConfig
-	client  *ethclient.Client // The client to retrieve on chain data or send transaction.
-	chainID *big.Int          // The chain id of the endpoint
-	ctx     context.Context
-	service string
-	name    string
+	config     *config.SenderConfig
+	gethClient *gethclient.Client
+	client     *ethclient.Client // The client to retrieve on chain data or send transaction.
+	chainID    *big.Int          // The chain id of the endpoint
+	ctx        context.Context
+	service    string
+	name       string
 
 	auth       *bind.TransactOpts
 	minBalance *big.Int
@@ -90,12 +95,12 @@ type Sender struct {
 // NewSender returns a new instance of transaction sender
 // txConfirmationCh is used to notify confirmed transaction
 func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey, service, name string, reg prometheus.Registerer) (*Sender, error) {
-	client, err := ethclient.Dial(config.Endpoint)
+	rpcClient, err := rpc.Dial(config.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial eth client, err: %w", err)
 	}
 
-	// get chainID from client
+	client := ethclient.NewClient(rpcClient)
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get chain ID, err: %w", err)
@@ -131,6 +136,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	sender := &Sender{
 		ctx:           ctx,
 		config:        config,
+		gethClient:    gethclient.New(rpcClient),
 		client:        client,
 		chainID:       chainID,
 		auth:          auth,
@@ -165,6 +171,11 @@ func (s *Sender) IsFull() bool {
 	return s.pendingTxs.Count() >= s.config.PendingLimit
 }
 
+// GetChainID returns the chain ID associated with the sender.
+func (s *Sender) GetChainID() *big.Int {
+	return s.chainID
+}
+
 // Stop stop the sender module.
 func (s *Sender) Stop() {
 	close(s.stopCh)
@@ -182,11 +193,11 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
-func (s *Sender) getFeeData(auth *bind.TransactOpts, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) getFeeData(target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (*FeeData, error) {
 	if s.config.TxType == DynamicFeeTxType {
-		return s.estimateDynamicGas(auth, target, value, data, fallbackGasLimit)
+		return s.estimateDynamicGas(target, value, data, fallbackGasLimit)
 	}
-	return s.estimateLegacyGas(auth, target, value, data, fallbackGasLimit)
+	return s.estimateLegacyGas(target, value, data, fallbackGasLimit)
 }
 
 // SendTransaction send a signed L2tL1 transaction.
@@ -215,14 +226,15 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 		}
 	}()
 
-	if feeData, err = s.getFeeData(s.auth, target, value, data, fallbackGasLimit); err != nil {
+	if feeData, err = s.getFeeData(target, value, data, fallbackGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
-		log.Error("failed to get fee data", "err", err)
+		log.Error("failed to get fee data", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "fallback gas limit", fallbackGasLimit, "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 
-	if tx, err = s.createAndSendTx(s.auth, feeData, target, value, data, nil); err != nil {
+	if tx, err = s.createAndSendTx(feeData, target, value, data, nil); err != nil {
 		s.metrics.sendTransactionFailureSendTx.WithLabelValues(s.service, s.name).Inc()
+		log.Error("failed to create and send tx (non-resubmit case)", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "err", err)
 		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
 	}
 
@@ -238,9 +250,9 @@ func (s *Sender) SendTransaction(ID string, target *common.Address, value *big.I
 	return tx.Hash(), nil
 }
 
-func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (*types.Transaction, error) {
+func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, value *big.Int, data []byte, overrideNonce *uint64) (*types.Transaction, error) {
 	var (
-		nonce  = auth.Nonce.Uint64()
+		nonce  = s.auth.Nonce.Uint64()
 		txData types.TxData
 	)
 
@@ -273,7 +285,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			To:         target,
 			Value:      new(big.Int).Set(value),
 			Data:       common.CopyBytes(data),
-			AccessList: make(types.AccessList, 0),
+			AccessList: feeData.accessList,
 			V:          new(big.Int),
 			R:          new(big.Int),
 			S:          new(big.Int),
@@ -284,7 +296,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 			To:         target,
 			Data:       common.CopyBytes(data),
 			Gas:        feeData.gasLimit,
-			AccessList: make(types.AccessList, 0),
+			AccessList: feeData.accessList,
 			Value:      new(big.Int).Set(value),
 			ChainID:    s.chainID,
 			GasTipCap:  feeData.gasTipCap,
@@ -296,13 +308,13 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 	}
 
 	// sign and send
-	tx, err := auth.Signer(auth.From, types.NewTx(txData))
+	tx, err := s.auth.Signer(s.auth.From, types.NewTx(txData))
 	if err != nil {
-		log.Error("failed to sign tx", "err", err)
+		log.Error("failed to sign tx", "address", s.auth.From.String(), "err", err)
 		return nil, err
 	}
 	if err = s.client.SendTransaction(s.ctx, tx); err != nil {
-		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "err", err)
+		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
 		if strings.Contains(err.Error(), "nonce") && overrideNonce == nil {
@@ -327,7 +339,7 @@ func (s *Sender) createAndSendTx(auth *bind.TransactOpts, feeData *FeeData, targ
 
 	// update nonce when it is not from resubmit
 	if overrideNonce == nil {
-		auth.Nonce = big.NewInt(int64(nonce + 1))
+		s.auth.Nonce = big.NewInt(int64(nonce + 1))
 	}
 	return tx, nil
 }
@@ -351,6 +363,7 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		"tx_hash": tx.Hash().String(),
 		"tx_type": s.config.TxType,
 		"from":    auth.From.String(),
+		"nonce":   tx.Nonce(),
 	}
 
 	switch s.config.TxType {
@@ -364,10 +377,15 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		if gasPrice.Cmp(maxGasPrice) > 0 {
 			gasPrice = maxGasPrice
 		}
-		feeData.gasPrice = gasPrice
 
-		txInfo["original_gas_price"] = originalGasPrice
-		txInfo["adjusted_gas_price"] = gasPrice
+		if originalGasPrice.Cmp(gasPrice) == 0 {
+			log.Warn("gas price bump corner case, add 1 wei", "original", originalGasPrice.Uint64(), "adjusted", gasPrice.Uint64())
+			gasPrice = new(big.Int).Add(gasPrice, big.NewInt(1))
+		}
+
+		feeData.gasPrice = gasPrice
+		txInfo["original_gas_price"] = originalGasPrice.Uint64()
+		txInfo["adjusted_gas_price"] = gasPrice.Uint64()
 	default:
 		originalGasTipCap := big.NewInt(feeData.gasTipCap.Int64())
 		originalGasFeeCap := big.NewInt(feeData.gasFeeCap.Int64())
@@ -401,20 +419,35 @@ func (s *Sender) resubmitTransaction(feeData *FeeData, auth *bind.TransactOpts, 
 		if gasFeeCap.Cmp(maxGasPrice) > 0 {
 			gasFeeCap = maxGasPrice
 		}
+
+		if originalGasTipCap.Cmp(gasTipCap) == 0 {
+			log.Warn("gas tip cap bump corner case, add 1 wei", "original", originalGasTipCap.Uint64(), "adjusted", gasTipCap.Uint64())
+			gasTipCap = new(big.Int).Add(gasTipCap, big.NewInt(1))
+		}
+
+		if originalGasFeeCap.Cmp(gasFeeCap) == 0 {
+			log.Warn("gas fee cap bump corner case, add 1 wei", "original", originalGasFeeCap.Uint64(), "adjusted", gasFeeCap.Uint64())
+			gasFeeCap = new(big.Int).Add(gasFeeCap, big.NewInt(1))
+		}
+
 		feeData.gasFeeCap = gasFeeCap
 		feeData.gasTipCap = gasTipCap
-
-		txInfo["original_gas_tip_cap"] = originalGasTipCap
-		txInfo["adjusted_gas_tip_cap"] = gasTipCap
-		txInfo["original_gas_fee_cap"] = originalGasFeeCap
-		txInfo["adjusted_gas_fee_cap"] = gasFeeCap
+		txInfo["original_gas_tip_cap"] = originalGasTipCap.Uint64()
+		txInfo["adjusted_gas_tip_cap"] = gasTipCap.Uint64()
+		txInfo["original_gas_fee_cap"] = originalGasFeeCap.Uint64()
+		txInfo["adjusted_gas_fee_cap"] = gasFeeCap.Uint64()
 	}
 
-	log.Debug("Transaction gas adjustment details", txInfo)
+	log.Info("Transaction gas adjustment details", txInfo)
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
-	return s.createAndSendTx(auth, feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
+	tx, err := s.createAndSendTx(feeData, tx.To(), tx.Value(), tx.Data(), &nonce)
+	if err != nil {
+		log.Error("failed to create and send tx (resubmit case)", "from", s.auth.From.String(), "nonce", nonce, "err", err)
+		return nil, err
+	}
+	return tx, nil
 }
 
 // checkPendingTransaction checks the confirmation status of pending transactions against the latest confirmed block number.
@@ -450,15 +483,15 @@ func (s *Sender) checkPendingTransaction(header *types.Header, confirmed uint64)
 				}
 			}
 		} else if s.config.EscalateBlocks+pending.submitAt < number {
-			log.Debug("resubmit transaction",
-				"tx hash", pending.tx.Hash().String(),
+			log.Info("resubmit transaction",
+				"hash", pending.tx.Hash().String(),
+				"from", pending.signer.From.String(),
+				"nonce", pending.tx.Nonce(),
 				"submit block number", pending.submitAt,
 				"current block number", number,
-				"escalateBlocks", s.config.EscalateBlocks)
+				"configured escalateBlocks", s.config.EscalateBlocks)
 
-			var tx *types.Transaction
-			tx, err := s.resubmitTransaction(pending.feeData, pending.signer, pending.tx)
-			if err != nil {
+			if tx, err := s.resubmitTransaction(pending.feeData, pending.signer, pending.tx); err != nil {
 				// If account pool is empty, it will try again in next loop.
 				if !errors.Is(err, ErrNoAvailableAccount) {
 					log.Error("failed to resubmit transaction, reset submitAt", "tx hash", pending.tx.Hash().String(), "err", err)

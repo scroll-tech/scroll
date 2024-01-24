@@ -1,5 +1,5 @@
 # Download Go dependencies
-FROM scrolltech/go-alpine-builder:1.19 as base
+FROM scrolltech/go-alpine-builder:1.20 as base
 
 WORKDIR /src
 COPY go.work* ./
@@ -21,7 +21,6 @@ RUN --mount=target=. \
 
 # Pull event_watcher into a second stage deploy alpine container
 FROM alpine:latest
-
 COPY --from=builder /bin/event_watcher /bin/
-
+WORKDIR /app
 ENTRYPOINT ["event_watcher"]

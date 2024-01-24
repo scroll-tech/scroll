@@ -28,7 +28,7 @@ contract L2ScrollMessengerTest is DSTestPlus {
 
     function setUp() public {
         // Deploy L1 contracts
-        l1Messenger = new L1ScrollMessenger();
+        l1Messenger = new L1ScrollMessenger(address(1), address(1), address(1));
 
         // Deploy L2 contracts
         whitelist = new Whitelist(address(this));
@@ -36,7 +36,12 @@ contract L2ScrollMessengerTest is DSTestPlus {
         l2MessageQueue = new L2MessageQueue(address(this));
         l1GasOracle = new L1GasPriceOracle(address(this));
         l2Messenger = L2ScrollMessenger(
-            payable(new ERC1967Proxy(address(new L2ScrollMessenger(address(l2MessageQueue))), new bytes(0)))
+            payable(
+                new ERC1967Proxy(
+                    address(new L2ScrollMessenger(address(l1Messenger), address(l2MessageQueue))),
+                    new bytes(0)
+                )
+            )
         );
 
         // Initialize L2 contracts
@@ -51,14 +56,9 @@ contract L2ScrollMessengerTest is DSTestPlus {
     }
 
     function testForbidCallFromL1() external {
-        l2Messenger.updateRateLimiter(address(1));
-
         hevm.startPrank(AddressAliasHelper.applyL1ToL2Alias(address(l1Messenger)));
         hevm.expectRevert("Forbid to call message queue");
         l2Messenger.relayMessage(address(this), address(l2MessageQueue), 0, 0, new bytes(0));
-
-        hevm.expectRevert("Forbid to call rate limiter");
-        l2Messenger.relayMessage(address(this), address(1), 0, 0, new bytes(0));
 
         hevm.expectRevert("Forbid to call self");
         l2Messenger.relayMessage(address(this), address(l2Messenger), 0, 0, new bytes(0));

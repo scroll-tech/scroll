@@ -50,14 +50,34 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
      * Constructor *
      ***************/
 
-    constructor(address _l1USDC, address _l2USDC) {
+    /// @notice Constructor for `L2USDCGateway` implementation contract.
+    ///
+    /// @param _l1USDC The address of USDC in L1.
+    /// @param _l2USDC The address of USDC in L2.
+    /// @param _counterpart The address of `L1USDCGateway` contract in L1.
+    /// @param _router The address of `L2GatewayRouter` contract in L2.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
+    constructor(
+        address _l1USDC,
+        address _l2USDC,
+        address _counterpart,
+        address _router,
+        address _messenger
+    ) ScrollGatewayBase(_counterpart, _router, _messenger) {
+        if (_l1USDC == address(0) || _l2USDC == address(0) || _router == address(0)) {
+            revert ErrorZeroAddress();
+        }
+
         _disableInitializers();
 
         l1USDC = _l1USDC;
         l2USDC = _l2USDC;
     }
 
-    /// @notice Initializer for `L2USDCGateway`.
+    /// @notice Initialize the storage of `L2USDCGateway`.
+    ///
+    /// @dev The parameters `_counterpart`, `_router` and `_messenger` are no longer used.
+    ///
     /// @param _counterpart The address of `L1USDCGateway` contract in L1.
     /// @param _router The address of `L2GatewayRouter` contract in L2.
     /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
@@ -66,7 +86,6 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
         address _router,
         address _messenger
     ) external initializer {
-        require(_router != address(0), "zero router address");
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 
@@ -116,7 +135,7 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
 
     /// @inheritdoc IUSDCDestinationBridge
     function transferUSDCRoles(address _owner) external {
-        require(msg.sender == circleCaller, "only circle caller");
+        require(_msgSender() == circleCaller, "only circle caller");
 
         OwnableUpgradeable(l2USDC).transferOwnership(_owner);
     }
@@ -156,14 +175,11 @@ contract L2USDCGateway is L2ERC20Gateway, IUSDCDestinationBridge {
         require(!withdrawPaused, "withdraw paused");
 
         // 1. Extract real sender if this call is from L2GatewayRouter.
-        address _from = msg.sender;
-        if (router == msg.sender) {
+        address _from = _msgSender();
+        if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
         require(_data.length == 0, "call is not allowed");
-
-        // rate limit
-        _addUsedAmount(_token, _amount);
 
         // 2. Transfer token into this contract.
         IERC20Upgradeable(_token).safeTransferFrom(_from, address(this), _amount);

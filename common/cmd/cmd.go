@@ -15,7 +15,7 @@ var verbose bool
 
 func init() {
 	v := os.Getenv("LOG_DOCKER")
-	if v == "true" || v == "TRUE" {
+	if strings.ToLower(v) == "true" {
 		verbose = true
 	}
 }
@@ -95,8 +95,7 @@ func (c *Cmd) Write(data []byte) (int, error) {
 	if verbose || c.openLog {
 		fmt.Printf("%s:\n\t%v", c.name, out)
 	} else if strings.Contains(strings.ToLower(out), "error") ||
-		strings.Contains(strings.ToLower(out), "warning") ||
-		strings.Contains(strings.ToLower(out), "info") {
+		strings.Contains(strings.ToLower(out), "warning") {
 		fmt.Printf("%s:\n\t%v", c.name, out)
 	}
 	go c.checkFuncs.IterCb(func(_ string, value interface{}) {

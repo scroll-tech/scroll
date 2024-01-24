@@ -1,12 +1,16 @@
 package relayer
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"math/big"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
@@ -37,6 +41,10 @@ var (
 )
 
 func setupEnv(t *testing.T) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	// Load config.
 	var err error
 	cfg, err = config.NewConfig("../../../conf/config.json")
@@ -52,6 +60,10 @@ func setupEnv(t *testing.T) {
 		MaxOpenNum: base.DBConfig.MaxOpenNum,
 		MaxIdleNum: base.DBConfig.MaxIdleNum,
 	}
+	port, err := rand.Int(rand.Reader, big.NewInt(10000))
+	assert.NoError(t, err)
+	svrPort := strconv.FormatInt(port.Int64()+50000, 10)
+	cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 
 	// Create l2geth client.
 	l2Cli, err = base.L2Client()
@@ -99,6 +111,7 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
+	t.Run("TestL2RelayerFinalizeTimeoutBatches", testL2RelayerFinalizeTimeoutBatches)
 	t.Run("TestL2RelayerCommitConfirm", testL2RelayerCommitConfirm)
 	t.Run("TestL2RelayerFinalizeConfirm", testL2RelayerFinalizeConfirm)
 	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)

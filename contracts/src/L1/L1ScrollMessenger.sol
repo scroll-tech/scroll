@@ -27,6 +27,16 @@ import {IMessageDropCallback} from "../libraries/callbacks/IMessageDropCallback.
 /// @dev All deposited Ether (including `WETH` deposited throng `L1WETHGateway`) will locked in
 /// this contract.
 contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
+    /*************
+     * Constants *
+     *************/
+
+    /// @notice The address of Rollup contract.
+    address public immutable rollup;
+
+    /// @notice The address of L1MessageQueue contract.
+    address public immutable messageQueue;
+
     /***********
      * Structs *
      ***********/
@@ -51,11 +61,11 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
     /// @notice Mapping from L1 message hash to drop status.
     mapping(bytes32 => bool) public isL1MessageDropped;
 
-    /// @notice The address of Rollup contract.
-    address public rollup;
+    /// @dev The storage slot used as Rollup contract, which is deprecated now.
+    address private __rollup;
 
-    /// @notice The address of L1MessageQueue contract.
-    address public messageQueue;
+    /// @dev The storage slot used as L1MessageQueue contract, which is deprecated now.
+    address private __messageQueue;
 
     /// @notice The maximum number of times each L1 message can be replayed.
     uint256 public maxReplayTimes;
@@ -80,11 +90,25 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
      * Constructor *
      ***************/
 
-    constructor() {
+    constructor(
+        address _counterpart,
+        address _rollup,
+        address _messageQueue
+    ) ScrollMessengerBase(_counterpart) {
+        if (_rollup == address(0) || _messageQueue == address(0)) {
+            revert ErrorZeroAddress();
+        }
+
         _disableInitializers();
+
+        rollup = _rollup;
+        messageQueue = _messageQueue;
     }
 
     /// @notice Initialize the storage of L1ScrollMessenger.
+    ///
+    /// @dev The parameters `_counterpart`, `_rollup` and `_messageQueue` are no longer used.
+    ///
     /// @param _counterpart The address of L2ScrollMessenger contract in L2.
     /// @param _feeVault The address of fee vault, which will be used to collect relayer fee.
     /// @param _rollup The address of ScrollChain contract.
@@ -97,8 +121,8 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
     ) public initializer {
         ScrollMessengerBase.__ScrollMessengerBase_init(_counterpart, _feeVault);
 
-        rollup = _rollup;
-        messageQueue = _messageQueue;
+        __rollup = _rollup;
+        __messageQueue = _messageQueue;
 
         maxReplayTimes = 3;
         emit UpdateMaxReplayTimes(0, 3);
@@ -115,7 +139,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         bytes memory _message,
         uint256 _gasLimit
     ) external payable override whenNotPaused {
-        _sendMessage(_to, _value, _message, _gasLimit, msg.sender);
+        _sendMessage(_to, _value, _message, _gasLimit, _msgSender());
     }
 
     /// @inheritdoc IScrollMessenger
@@ -142,9 +166,8 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         require(!isL2MessageExecuted[_xDomainCalldataHash], "Message was already successfully executed");
 
         {
-            address _rollup = rollup;
-            require(IScrollChain(_rollup).isBatchFinalized(_proof.batchIndex), "Batch is not finalized");
-            bytes32 _messageRoot = IScrollChain(_rollup).withdrawRoots(_proof.batchIndex);
+            require(IScrollChain(rollup).isBatchFinalized(_proof.batchIndex), "Batch is not finalized");
+            bytes32 _messageRoot = IScrollChain(rollup).withdrawRoots(_proof.batchIndex);
             require(
                 WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
                 "Invalid proof"
@@ -185,8 +208,6 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         // is encoded in the `_message`. We will check the `xDomainCalldata` on layer 2 to avoid duplicated execution.
         // So, only one message will succeed on layer 2. If one of the message is executed successfully, the other one
         // will revert with "Message was already successfully executed".
-        address _messageQueue = messageQueue;
-        address _counterpart = counterpart;
         bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _messageNonce, _message);
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
 
@@ -195,7 +216,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         require(!isL1MessageDropped[_xDomainCalldataHash], "Message already dropped");
 
         // compute and deduct the messaging fee to fee vault.
-        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_newGasLimit);
+        uint256 _fee = IL1MessageQueue(messageQueue).estimateCrossDomainMessageFee(_newGasLimit);
 
         // charge relayer fee
         require(msg.value >= _fee, "Insufficient msg.value for fee");
@@ -205,8 +226,8 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         }
 
         // enqueue the new transaction
-        uint256 _nextQueueIndex = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
-        IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _newGasLimit, _xDomainCalldata);
+        uint256 _nextQueueIndex = IL1MessageQueue(messageQueue).nextCrossDomainMessageIndex();
+        IL1MessageQueue(messageQueue).appendCrossDomainMessage(counterpart, _newGasLimit, _xDomainCalldata);
 
         ReplayState memory _replayState = replayStates[_xDomainCalldataHash];
         // update the replayed message chain.
@@ -257,8 +278,6 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         //
         // We limit the number of `replayMessage` calls of each message, which may solve the above problem.
 
-        address _messageQueue = messageQueue;
-
         // check message exists
         bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _messageNonce, _message);
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
@@ -274,7 +293,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         // check message is skipped and drop it.
         // @note If the list is very long, the message may never be dropped.
         while (true) {
-            IL1MessageQueue(_messageQueue).dropCrossDomainMessage(_lastIndex);
+            IL1MessageQueue(messageQueue).dropCrossDomainMessage(_lastIndex);
             _lastIndex = prevReplayIndex[_lastIndex];
             if (_lastIndex == 0) break;
             unchecked {
@@ -316,17 +335,12 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         uint256 _gasLimit,
         address _refundAddress
     ) internal nonReentrant {
-        _addUsedAmount(_value);
-
-        address _messageQueue = messageQueue; // gas saving
-        address _counterpart = counterpart; // gas saving
-
         // compute the actual cross domain message calldata.
-        uint256 _messageNonce = IL1MessageQueue(_messageQueue).nextCrossDomainMessageIndex();
-        bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, _to, _value, _messageNonce, _message);
+        uint256 _messageNonce = IL1MessageQueue(messageQueue).nextCrossDomainMessageIndex();
+        bytes memory _xDomainCalldata = _encodeXDomainCalldata(_msgSender(), _to, _value, _messageNonce, _message);
 
         // compute and deduct the messaging fee to fee vault.
-        uint256 _fee = IL1MessageQueue(_messageQueue).estimateCrossDomainMessageFee(_gasLimit);
+        uint256 _fee = IL1MessageQueue(messageQueue).estimateCrossDomainMessageFee(_gasLimit);
         require(msg.value >= _fee + _value, "Insufficient msg.value");
         if (_fee > 0) {
             (bool _success, ) = feeVault.call{value: _fee}("");
@@ -334,7 +348,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         }
 
         // append message to L1MessageQueue
-        IL1MessageQueue(_messageQueue).appendCrossDomainMessage(_counterpart, _gasLimit, _xDomainCalldata);
+        IL1MessageQueue(messageQueue).appendCrossDomainMessage(counterpart, _gasLimit, _xDomainCalldata);
 
         // record the message hash for future use.
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
@@ -343,7 +357,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         require(messageSendTimestamp[_xDomainCalldataHash] == 0, "Duplicated message");
         messageSendTimestamp[_xDomainCalldataHash] = block.timestamp;
 
-        emit SentMessage(msg.sender, _to, _value, _messageNonce, _gasLimit, _message);
+        emit SentMessage(_msgSender(), _to, _value, _messageNonce, _gasLimit, _message);
 
         // refund fee to `_refundAddress`
         unchecked {

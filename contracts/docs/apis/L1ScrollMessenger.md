@@ -72,7 +72,7 @@ function initialize(address _counterpart, address _feeVault, address _rollup, ad
 
 Initialize the storage of L1ScrollMessenger.
 
-
+*The parameters `_counterpart`, `_rollup` and `_messageQueue` are no longer used.*
 
 #### Parameters
 
@@ -238,23 +238,6 @@ Mapping from queue index to previous replay queue index.
 | Name | Type | Description |
 |---|---|---|
 | _0 | uint256 | undefined |
-
-### rateLimiter
-
-```solidity
-function rateLimiter() external view returns (address)
-```
-
-The address of ETH rate limiter contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### relayMessageWithProof
 
@@ -453,22 +436,6 @@ Update max replay times.
 |---|---|---|
 | _newMaxReplayTimes | uint256 | The new max replay times. |
 
-### updateRateLimiter
-
-```solidity
-function updateRateLimiter(address _newRateLimiter) external nonpayable
-```
-
-Update rate limiter contract.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newRateLimiter | address | The address of new rate limiter contract. |
-
 ### xDomainMessageSender
 
 ```solidity
@@ -642,22 +609,19 @@ Emitted when the maximum number of times each message can be replayed is updated
 | oldMaxReplayTimes  | uint256 | undefined |
 | newMaxReplayTimes  | uint256 | undefined |
 
-### UpdateRateLimiter
+
+
+## Errors
+
+### ErrorZeroAddress
 
 ```solidity
-event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
+error ErrorZeroAddress()
 ```
 
-Emitted when owner updates rate limiter contract.
 
 
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldRateLimiter `indexed` | address | undefined |
-| _newRateLimiter `indexed` | address | undefined |
+*Thrown when the given address is `address(0)`.*
 
 
 

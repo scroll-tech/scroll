@@ -17,7 +17,7 @@ import (
 
 	"scroll-tech/database/migrate"
 
-	capp "scroll-tech/coordinator/cmd/app"
+	capp "scroll-tech/coordinator/cmd/api/app"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"

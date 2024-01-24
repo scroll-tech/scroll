@@ -114,16 +114,16 @@ Complete ERC1155 deposit from layer 1 to layer 2 and send NFT to recipient&#39;s
 function initialize(address _counterpart, address _messenger) external nonpayable
 ```
 
+Initialize the storage of `L2ERC1155Gateway`.
 
-
-
+*The parameters `_counterpart` and `_messenger` are no longer used.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
-| _messenger | address | undefined |
+| _counterpart | address | The address of `L1ERC1155Gateway` contract in L1. |
+| _messenger | address | The address of `L2ScrollMessenger` contract in L2. |
 
 ### messenger
 
@@ -203,23 +203,6 @@ function owner() external view returns (address)
 
 
 *Returns the address of the current owner.*
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
-### rateLimiter
-
-```solidity
-function rateLimiter() external view returns (address)
-```
-
-The address of token rate limiter contract.
-
-
 
 
 #### Returns
@@ -315,22 +298,6 @@ function transferOwnership(address newOwner) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | newOwner | address | undefined |
-
-### updateRateLimiter
-
-```solidity
-function updateRateLimiter(address _newRateLimiter) external nonpayable
-```
-
-Update rate limiter contract.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newRateLimiter | address | The address of new rate limiter contract. |
 
 ### updateTokenMapping
 
@@ -488,23 +455,6 @@ event OwnershipTransferred(address indexed previousOwner, address indexed newOwn
 | previousOwner `indexed` | address | undefined |
 | newOwner `indexed` | address | undefined |
 
-### UpdateRateLimiter
-
-```solidity
-event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
-```
-
-Emitted when owner updates rate limiter contract.
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldRateLimiter `indexed` | address | undefined |
-| _newRateLimiter `indexed` | address | undefined |
-
 ### UpdateTokenMapping
 
 ```solidity
@@ -543,6 +493,53 @@ Emitted when the ERC1155 NFT is transfered to gateway on layer 2.
 | to  | address | undefined |
 | tokenId  | uint256 | undefined |
 | amount  | uint256 | undefined |
+
+
+
+## Errors
+
+### ErrorCallerIsNotCounterpartGateway
+
+```solidity
+error ErrorCallerIsNotCounterpartGateway()
+```
+
+
+
+*Thrown when the cross chain sender is not the counterpart gateway contract.*
+
+
+### ErrorCallerIsNotMessenger
+
+```solidity
+error ErrorCallerIsNotMessenger()
+```
+
+
+
+*Thrown when the caller is not corresponding `L1ScrollMessenger` or `L2ScrollMessenger`.*
+
+
+### ErrorNotInDropMessageContext
+
+```solidity
+error ErrorNotInDropMessageContext()
+```
+
+
+
+*Thrown when ScrollMessenger is not dropping message.*
+
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address is `address(0)`.*
 
 
 

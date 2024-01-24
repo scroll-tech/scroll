@@ -1,5 +1,5 @@
 # Download Go dependencies
-FROM scrolltech/go-alpine-builder:1.19 as base
+FROM scrolltech/go-alpine-builder:1.20 as base
 
 WORKDIR /src
 COPY go.work* ./
@@ -21,7 +21,6 @@ RUN --mount=target=. \
 
 # Pull db_cli into a second stage deploy alpine container
 FROM alpine:latest
-
 COPY --from=builder /bin/db_cli /bin/
-
+WORKDIR /app
 ENTRYPOINT ["db_cli"]

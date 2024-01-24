@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"math/big"
+	"os"
 	"strconv"
 	"testing"
 
@@ -14,10 +15,14 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
+
+	bridgeAbi "scroll-tech/rollup/abi"
+	"scroll-tech/rollup/mock_bridge"
 
 	"scroll-tech/rollup/internal/config"
 )
@@ -25,10 +30,11 @@ import (
 const TXBatch = 50
 
 var (
-	privateKey *ecdsa.PrivateKey
-	cfg        *config.Config
-	base       *docker.App
-	txTypes    = []string{"LegacyTx", "AccessListTx", "DynamicFeeTx"}
+	privateKey         *ecdsa.PrivateKey
+	cfg                *config.Config
+	base               *docker.App
+	txTypes            = []string{"LegacyTx", "AccessListTx", "DynamicFeeTx"}
+	scrollChainAddress common.Address
 )
 
 func TestMain(m *testing.M) {
@@ -40,10 +46,14 @@ func TestMain(m *testing.M) {
 }
 
 func setupEnv(t *testing.T) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	var err error
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
-	base.RunImages(t)
+	base.RunL1Geth(t)
 	priv, err := crypto.HexToECDSA("1212121212121212121212121212121212121212121212121212121212121212")
 	assert.NoError(t, err)
 	// Load default private key.
@@ -51,6 +61,18 @@ func setupEnv(t *testing.T) {
 
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.CheckBalanceTime = 1
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, base.L1gethImg.ChainID())
+	assert.NoError(t, err)
+
+	l1Client, err := base.L1Client()
+	assert.NoError(t, err)
+
+	_, tx, _, err := mock_bridge.DeployMockBridgeL1(auth, l1Client)
+	assert.NoError(t, err)
+
+	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	assert.NoError(t, err)
 }
 
 func TestSender(t *testing.T) {
@@ -60,7 +82,10 @@ func TestSender(t *testing.T) {
 	t.Run("test new sender", testNewSender)
 	t.Run("test pending limit", testPendLimit)
 	t.Run("test fallback gas limit", testFallbackGasLimit)
-	t.Run("test resubmit transaction", testResubmitTransaction)
+	t.Run("test access list transaction gas limit", testAccessListTransactionGasLimit)
+	t.Run("test resubmit zero gas price transaction", testResubmitZeroGasPriceTransaction)
+	t.Run("test resubmit non-zero gas price transaction", testResubmitNonZeroGasPriceTransaction)
+	t.Run("test resubmit under priced transaction", testResubmitUnderpricedTransaction)
 	t.Run("test resubmit transaction with rising base fee", testResubmitTransactionWithRisingBaseFee)
 	t.Run("test check pending transaction", testCheckPendingTransaction)
 }
@@ -122,8 +147,8 @@ func testFallbackGasLimit(t *testing.T) {
 
 		// FallbackGasLimit = 100000
 		patchGuard := gomonkey.ApplyPrivateMethod(s, "estimateGasLimit",
-			func(opts *bind.TransactOpts, contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, error) {
-				return 0, errors.New("estimateGasLimit error")
+			func(contract *common.Address, input []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, *types.AccessList, error) {
+				return 0, nil, errors.New("estimateGasLimit error")
 			},
 		)
 
@@ -138,17 +163,99 @@ func testFallbackGasLimit(t *testing.T) {
 	}
 }
 
-func testResubmitTransaction(t *testing.T) {
+func testResubmitZeroGasPriceTransaction(t *testing.T) {
 	for _, txType := range txTypes {
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
 		assert.NoError(t, err)
-		tx := types.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
-		feeData, err := s.getFeeData(s.auth, &common.Address{}, big.NewInt(0), nil, 0)
+		feeData := &FeeData{
+			gasPrice:  big.NewInt(0),
+			gasTipCap: big.NewInt(0),
+			gasFeeCap: big.NewInt(0),
+			gasLimit:  50000,
+		}
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
 		assert.NoError(t, err)
+		assert.NotNil(t, tx)
+		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
 		_, err = s.resubmitTransaction(feeData, s.auth, tx)
 		assert.NoError(t, err)
+		s.Stop()
+	}
+}
+
+func testAccessListTransactionGasLimit(t *testing.T) {
+	for _, txType := range txTypes {
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		assert.NoError(t, err)
+
+		l2GasOracleABI, err := bridgeAbi.L2GasPriceOracleMetaData.GetAbi()
+		assert.NoError(t, err)
+
+		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(2333))
+		assert.NoError(t, err)
+
+		gasLimit, accessList, err := s.estimateGasLimit(&scrollChainAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), true)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(43472), gasLimit)
+		assert.NotNil(t, accessList)
+
+		gasLimit, accessList, err = s.estimateGasLimit(&scrollChainAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), false)
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(43949), gasLimit)
+		assert.Nil(t, accessList)
+
+		s.Stop()
+	}
+}
+
+func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
+	for _, txType := range txTypes {
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		// Bump gas price, gas tip cap and gas fee cap just touch the minimum threshold of 10% (default config of geth).
+		cfgCopy.EscalateMultipleNum = 110
+		cfgCopy.EscalateMultipleDen = 100
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		assert.NoError(t, err)
+		feeData := &FeeData{
+			gasPrice:  big.NewInt(100000),
+			gasTipCap: big.NewInt(100000),
+			gasFeeCap: big.NewInt(100000),
+			gasLimit:  50000,
+		}
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, tx)
+		_, err = s.resubmitTransaction(feeData, s.auth, tx)
+		assert.NoError(t, err)
+		s.Stop()
+	}
+}
+
+func testResubmitUnderpricedTransaction(t *testing.T) {
+	for _, txType := range txTypes {
+		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		// Bump gas price, gas tip cap and gas fee cap less than 10% (default config of geth).
+		cfgCopy.EscalateMultipleNum = 109
+		cfgCopy.EscalateMultipleDen = 100
+		cfgCopy.TxType = txType
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", nil)
+		assert.NoError(t, err)
+		feeData := &FeeData{
+			gasPrice:  big.NewInt(100000),
+			gasTipCap: big.NewInt(100000),
+			gasFeeCap: big.NewInt(100000),
+			gasLimit:  50000,
+		}
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, tx)
+		_, err = s.resubmitTransaction(feeData, s.auth, tx)
+		assert.Error(t, err, "replacement transaction underpriced")
 		s.Stop()
 	}
 }
@@ -162,7 +269,7 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 	assert.NoError(t, err)
 	tx := types.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 0, big.NewInt(0), nil)
 	s.baseFeePerGas = 1000
-	feeData, err := s.getFeeData(s.auth, &common.Address{}, big.NewInt(0), nil, 0)
+	feeData, err := s.getFeeData(&common.Address{}, big.NewInt(0), nil, 0)
 	assert.NoError(t, err)
 	// bump the basefee by 10x
 	s.baseFeePerGas *= 10
@@ -247,7 +354,7 @@ func testCheckPendingTransaction(t *testing.T) {
 					},
 				)
 
-				pendingTx := &PendingTransaction{id: "abc", tx: tx, submitAt: header.Number.Uint64() - s.config.EscalateBlocks - 1}
+				pendingTx := &PendingTransaction{id: "abc", tx: tx, signer: s.auth, submitAt: header.Number.Uint64() - s.config.EscalateBlocks - 1}
 				s.pendingTxs.Set(pendingTx.id, pendingTx)
 				s.checkPendingTransaction(header, confirmed)
 

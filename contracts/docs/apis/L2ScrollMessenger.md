@@ -47,7 +47,7 @@ The address of fee vault, collecting cross domain messaging fee.
 ### initialize
 
 ```solidity
-function initialize(address _counterpart) external nonpayable
+function initialize(address) external nonpayable
 ```
 
 
@@ -58,7 +58,7 @@ function initialize(address _counterpart) external nonpayable
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | undefined |
+| _0 | address | undefined |
 
 ### isL1MessageExecuted
 
@@ -154,23 +154,6 @@ function paused() external view returns (bool)
 | Name | Type | Description |
 |---|---|---|
 | _0 | bool | undefined |
-
-### rateLimiter
-
-```solidity
-function rateLimiter() external view returns (address)
-```
-
-The address of ETH rate limiter contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### relayMessage
 
@@ -289,22 +272,6 @@ Update fee vault contract.
 | Name | Type | Description |
 |---|---|---|
 | _newFeeVault | address | The address of new fee vault contract. |
-
-### updateRateLimiter
-
-```solidity
-function updateRateLimiter(address _newRateLimiter) external nonpayable
-```
-
-Update rate limiter contract.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newRateLimiter | address | The address of new rate limiter contract. |
 
 ### xDomainMessageSender
 
@@ -479,22 +446,19 @@ Emitted when the maximum number of times each message can fail in L2 is updated.
 | oldMaxFailedExecutionTimes  | uint256 | undefined |
 | newMaxFailedExecutionTimes  | uint256 | undefined |
 
-### UpdateRateLimiter
+
+
+## Errors
+
+### ErrorZeroAddress
 
 ```solidity
-event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
+error ErrorZeroAddress()
 ```
 
-Emitted when owner updates rate limiter contract.
 
 
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _oldRateLimiter `indexed` | address | undefined |
-| _newRateLimiter `indexed` | address | undefined |
+*Thrown when the given address is `address(0)`.*
 
 
 

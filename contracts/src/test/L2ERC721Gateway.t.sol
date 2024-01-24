@@ -13,6 +13,16 @@ import {MockScrollMessenger} from "./mocks/MockScrollMessenger.sol";
 import {MockERC721Recipient} from "./mocks/MockERC721Recipient.sol";
 
 contract L2ERC721GatewayTest is DSTestPlus {
+    /**********
+     * Errors *
+     **********/
+
+    // from IScrollGateway
+    error ErrorZeroAddress();
+    error ErrorCallerIsNotMessenger();
+    error ErrorCallerIsNotCounterpartGateway();
+    error ErrorNotInDropMessageContext();
+
     uint256 private constant TOKEN_COUNT = 100;
     uint256 private constant NOT_OWNED_TOKEN_ID = 233333;
 
@@ -25,9 +35,9 @@ contract L2ERC721GatewayTest is DSTestPlus {
 
     function setUp() public {
         messenger = new MockScrollMessenger();
+        counterpart = new L1ERC721Gateway(address(1), address(1));
 
-        counterpart = new L1ERC721Gateway();
-        gateway = _deployGateway();
+        gateway = _deployGateway(address(messenger));
         gateway.initialize(address(counterpart), address(messenger));
 
         token = new MockERC721("Mock", "M");
@@ -183,11 +193,11 @@ contract L2ERC721GatewayTest is DSTestPlus {
     /// @dev failed to finalize withdraw erc721
     function testFinalizeDepositERC721Failed() public {
         // should revert, called by non-messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeDepositERC721(address(0), address(0), address(0), address(0), 0);
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -202,7 +212,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -248,11 +258,11 @@ contract L2ERC721GatewayTest is DSTestPlus {
     /// @dev failed to finalize batch withdraw erc721
     function testFinalizeBatchDepositERC721Failed() public {
         // should revert, called by non-messenger
-        hevm.expectRevert("only messenger can call");
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
         gateway.finalizeBatchDepositERC721(address(0), address(0), address(0), address(0), new uint256[](0));
 
         // should revert, called by messenger, xDomainMessageSender not set
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -267,7 +277,7 @@ contract L2ERC721GatewayTest is DSTestPlus {
 
         // should revert, called by messenger, xDomainMessageSender set wrong
         messenger.setXDomainMessageSender(address(2));
-        hevm.expectRevert("only call by counterpart");
+        hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         messenger.callTarget(
             address(gateway),
             abi.encodeWithSelector(
@@ -319,7 +329,15 @@ contract L2ERC721GatewayTest is DSTestPlus {
         }
     }
 
-    function _deployGateway() internal returns (L2ERC721Gateway) {
-        return L2ERC721Gateway(address(new ERC1967Proxy(address(new L2ERC721Gateway()), new bytes(0))));
+    function _deployGateway(address _messenger) internal returns (L2ERC721Gateway) {
+        return
+            L2ERC721Gateway(
+                address(
+                    new ERC1967Proxy(
+                        address(new L2ERC721Gateway(address(counterpart), address(_messenger))),
+                        new bytes(0)
+                    )
+                )
+            );
     }
 }

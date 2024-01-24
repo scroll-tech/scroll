@@ -135,7 +135,7 @@ function initialize(address _counterpart, address _router, address _messenger, a
 
 Initialize the storage of L1StandardERC20Gateway.
 
-
+*The parameters `_counterpart`, `_router`, `_messenger`, `_l2TokenImplementation` and `_l2TokenFactory` are no longer used.*
 
 #### Parameters
 
@@ -231,23 +231,6 @@ function owner() external view returns (address)
 |---|---|---|
 | _0 | address | undefined |
 
-### rateLimiter
-
-```solidity
-function rateLimiter() external view returns (address)
-```
-
-The address of token rate limiter contract.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
-
 ### renounceOwnership
 
 ```solidity
@@ -291,22 +274,6 @@ function transferOwnership(address newOwner) external nonpayable
 | Name | Type | Description |
 |---|---|---|
 | newOwner | address | undefined |
-
-### updateRateLimiter
-
-```solidity
-function updateRateLimiter(address _newRateLimiter) external nonpayable
-```
-
-Update rate limiter contract.
-
-*This function can only called by contract owner.*
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _newRateLimiter | address | The address of new rate limiter contract. |
 
 
 
@@ -405,22 +372,52 @@ Emitted when some ERC20 token is refunded.
 | recipient `indexed` | address | undefined |
 | amount  | uint256 | undefined |
 
-### UpdateRateLimiter
+
+
+## Errors
+
+### ErrorCallerIsNotCounterpartGateway
 
 ```solidity
-event UpdateRateLimiter(address indexed _oldRateLimiter, address indexed _newRateLimiter)
+error ErrorCallerIsNotCounterpartGateway()
 ```
 
-Emitted when owner updates rate limiter contract.
+
+
+*Thrown when the cross chain sender is not the counterpart gateway contract.*
+
+
+### ErrorCallerIsNotMessenger
+
+```solidity
+error ErrorCallerIsNotMessenger()
+```
 
 
 
-#### Parameters
+*Thrown when the caller is not corresponding `L1ScrollMessenger` or `L2ScrollMessenger`.*
 
-| Name | Type | Description |
-|---|---|---|
-| _oldRateLimiter `indexed` | address | undefined |
-| _newRateLimiter `indexed` | address | undefined |
+
+### ErrorNotInDropMessageContext
+
+```solidity
+error ErrorNotInDropMessageContext()
+```
+
+
+
+*Thrown when ScrollMessenger is not dropping message.*
+
+
+### ErrorZeroAddress
+
+```solidity
+error ErrorZeroAddress()
+```
+
+
+
+*Thrown when the given address is `address(0)`.*
 
 
 

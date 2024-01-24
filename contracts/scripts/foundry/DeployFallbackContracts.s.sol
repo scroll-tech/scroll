@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.10;
+pragma solidity =0.8.16;
+
+// solhint-disable no-console
 
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
 import {Fallback} from "../../src/misc/Fallback.sol";
+
+// solhint-disable state-visibility
+// solhint-disable var-name-mixedcase
 
 contract DeployFallbackContracts is Script {
     uint256 DEPLOYER_PRIVATE_KEY = vm.envUint("DEPLOYER_PRIVATE_KEY");
