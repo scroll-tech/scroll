@@ -4,17 +4,16 @@
 package core_test
 
 import (
+	"encoding/json"
 	"flag"
 	"io/ioutil"
 	"net/http"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	_ "net/http/pprof"
 
-	"github.com/json-iterator/go"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"scroll-tech/common/types/message"
 
@@ -54,22 +53,12 @@ func TestFFI(t *testing.T) {
 	}
 }
 
-var blockTracePool = sync.Pool{
-	New: func() interface{} {
-		return make([]byte, 0, 4000000000) // Adjust the capacity based on your needs
-	},
-}
-
 func readChunkTrace(t *testing.T, filePat string) []*types.BlockTrace {
-	buf := blockTracePool.Get().([]byte)
-	defer blockTracePool.Put(buf)
-
-	byt, _ := ioutil.ReadFile(filePat)
-	buf = append(buf[:0], byt...)
+	byt, err := ioutil.ReadFile(filePat)
+	assert.NoError(t, err)
 
 	trace := &types.BlockTrace{}
-	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	assert.NoError(t, json.Unmarshal(buf, trace))
+	assert.NoError(t, json.Unmarshal(byt, trace))
 
 	return []*types.BlockTrace{trace}
 }
