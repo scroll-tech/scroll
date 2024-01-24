@@ -542,9 +542,6 @@ func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
 	txHash, err := r.finalizeSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, big.NewInt(0), txCalldata, 0)
 	finalizeTxHash := &txHash
 	if err != nil {
-		// This can happen normally if we try to finalize 2 or more
-		// batches around the same time. The 2nd tx might fail since
-		// the client does not see the 1st tx's updates at this point.
 		log.Error(
 			"finalizeBatch in layer1 failed",
 			"with proof", withProof,
