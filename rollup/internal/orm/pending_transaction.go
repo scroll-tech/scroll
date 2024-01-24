@@ -28,8 +28,8 @@ type PendingTransaction struct {
 	ID                uint             `json:"id" gorm:"id;primaryKey"`
 	ContextID         string           `json:"context_id" gorm:"context_id"`
 	Hash              string           `json:"hash" gorm:"hash"`
-	Type              uint8            `json:"type" gorm:"type"`
 	ChainID           uint64           `json:"chain_id" gorm:"chain_id"`
+	Type              uint8            `json:"type" gorm:"type"`
 	GasTipCap         uint64           `json:"gas_tip_cap" gorm:"gas_tip_cap"`
 	GasFeeCap         uint64           `json:"gas_fee_cap" gorm:"gas_fee_cap"`
 	GasLimit          uint64           `json:"gas_limit" gorm:"gas_limit"`

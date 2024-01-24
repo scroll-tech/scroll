@@ -319,7 +319,7 @@ func TestTransactionOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	tx1 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+	tx0 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
 		Nonce:      0,
 		To:         &common.Address{},
 		Data:       []byte{},
@@ -333,7 +333,7 @@ func TestTransactionOrm(t *testing.T) {
 		R:          big.NewInt(0),
 		S:          big.NewInt(0),
 	})
-	tx2 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+	tx1 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
 		Nonce:      0,
 		To:         &common.Address{},
 		Data:       []byte{},
@@ -348,50 +348,50 @@ func TestTransactionOrm(t *testing.T) {
 		S:          big.NewInt(0),
 	})
 	senderMeta := &SenderMeta{
-		Name:    "test",
-		Service: "test",
+		Name:    "testName",
+		Service: "testService",
 		Address: common.HexToAddress("0x1"),
-		Type:    types.SenderTypeUnknown,
+		Type:    types.SenderTypeCommitBatch,
 	}
+
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx0, 0)
+	assert.NoError(t, err)
 
 	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx1, 0)
 	assert.NoError(t, err)
 
-	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx2, 0)
-	assert.NoError(t, err)
-
-	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx1.Hash().String(), types.TxStatusReplaced)
+	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx0.Hash().String(), types.TxStatusReplaced)
 	assert.NoError(t, err)
 
 	txs, err := pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
 	assert.NoError(t, err)
 	assert.Len(t, txs, 2)
-	assert.Equal(t, uint64(0), txs[0].Nonce)
-	assert.Equal(t, uint64(0), txs[1].Nonce)
-	assert.Equal(t, uint64(21000), txs[0].GasLimit)
-	assert.Equal(t, uint64(42000), txs[1].GasLimit)
-	assert.Equal(t, uint64(0), txs[0].GasTipCap)
-	assert.Equal(t, uint64(1), txs[1].GasTipCap)
-	assert.Equal(t, uint64(1), txs[0].GasFeeCap)
-	assert.Equal(t, uint64(2), txs[1].GasFeeCap)
-	assert.Equal(t, uint64(1), txs[0].ChainID)
-	assert.Equal(t, uint64(1), txs[1].ChainID)
+	assert.Equal(t, tx1.Type(), txs[1].Type)
+	assert.Equal(t, tx1.Nonce(), txs[1].Nonce)
+	assert.Equal(t, tx1.Gas(), txs[1].GasLimit)
+	assert.Equal(t, tx1.GasTipCap().Uint64(), txs[1].GasTipCap)
+	assert.Equal(t, tx1.GasFeeCap().Uint64(), txs[1].GasFeeCap)
+	assert.Equal(t, tx1.ChainId().Uint64(), txs[1].ChainID)
+	assert.Equal(t, senderMeta.Name, txs[1].SenderName)
+	assert.Equal(t, senderMeta.Service, txs[1].SenderService)
+	assert.Equal(t, senderMeta.Address.String(), txs[1].SenderAddress)
+	assert.Equal(t, senderMeta.Type, txs[1].SenderType)
 
-	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx2.Hash().String(), types.TxStatusConfirmed)
+	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx1.Hash().String(), types.TxStatusConfirmed)
 	assert.NoError(t, err)
 
 	txs, err = pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
 	assert.NoError(t, err)
 	assert.Len(t, txs, 1)
 
-	err = pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(context.Background(), senderMeta.Address.String(), tx2.Nonce(), tx2.Hash().String())
+	err = pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(context.Background(), senderMeta.Address.String(), tx1.Nonce(), tx1.Hash().String())
 	assert.NoError(t, err)
 
 	txs, err = pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
 	assert.NoError(t, err)
 	assert.Len(t, txs, 0)
 
-	status, err := pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx1.Hash().String())
+	status, err := pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx0.Hash().String())
 	assert.NoError(t, err)
 	assert.Equal(t, types.TxStatusConfirmedFailed, status)
 }
