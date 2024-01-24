@@ -18,7 +18,6 @@ type senderMetrics struct {
 	currentGasTipCap                   *prometheus.GaugeVec
 	currentGasPrice                    *prometheus.GaugeVec
 	currentGasLimit                    *prometheus.GaugeVec
-	currentNonce                       *prometheus.GaugeVec
 }
 
 var (
@@ -64,10 +63,6 @@ func initSenderMetrics(reg prometheus.Registerer) *senderMetrics {
 			currentGasLimit: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 				Name: "rollup_sender_gas_limit",
 				Help: "The gas limit of current transaction.",
-			}, []string{"service", "name"}),
-			currentNonce: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
-				Name: "rollup_sender_nonce",
-				Help: "The nonce of current transaction.",
 			}, []string{"service", "name"}),
 			senderCheckPendingTransactionTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 				Name: "rollup_sender_check_pending_transaction_total",
