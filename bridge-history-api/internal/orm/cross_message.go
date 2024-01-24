@@ -259,28 +259,21 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		db := c.db
 		db = db.WithContext(ctx)
 		db = db.Model(&CrossMessage{})
-		// do not over-write terminal statuses.
-		db = db.Where("tx_status != ?", TxStatusTypeRelayed)
-		db = db.Where("tx_status != ?", TxStatusTypeDropped)
 		txStatusUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
 		case MessageQueueEventTypeQueueTransaction:
-			// only replayMessages or enforced txs (whose message hashes would not be found), sentMessages have been filtered out.
-			// replayMessage case:
-			// First SentMessage in L1: https://sepolia.etherscan.io/tx/0xbee4b631312448fcc2caac86e4dccf0a2ae0a88acd6c5fd8764d39d746e472eb
-			// Transaction reverted in L2: https://sepolia.scrollscan.com/tx/0xde6ef307a7da255888aad7a4c40a6b8c886e46a8a05883070bbf18b736cbfb8c
-			// replayMessage: https://sepolia.etherscan.io/tx/0xa5392891232bb32d98fcdbaca0d91b4d22ef2755380d07d982eebd47b147ce28
-			//
-			// Note: update l1_tx_hash if the user calls replayMessage, cannot use queue index here,
-			// because in replayMessage, queue index != message nonce.
-			// Ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
-			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
-			txStatusUpdateFields["tx_status"] = TxStatusTypeSent // reset status to "sent".
+			continue
 		case MessageQueueEventTypeDequeueTransaction:
+			// do not over-write terminal statuses.
+			db = db.Where("tx_status != ?", TxStatusTypeRelayed)
+			db = db.Where("tx_status != ?", TxStatusTypeDropped)
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
 			txStatusUpdateFields["tx_status"] = TxStatusTypeSkipped
 		case MessageQueueEventTypeDropTransaction:
+			// do not over-write terminal statuses.
+			db = db.Where("tx_status != ?", TxStatusTypeRelayed)
+			db = db.Where("tx_status != ?", TxStatusTypeDropped)
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
 			txStatusUpdateFields["tx_status"] = TxStatusTypeDropped
@@ -300,7 +293,15 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		case MessageQueueEventTypeDequeueTransaction:
 			continue
 		case MessageQueueEventTypeQueueTransaction:
-			// only replayMessages or enforced txs (whose message hashes would not be found), sentMessages have been filtered out.
+			// only replayMessages or enforced txs (whose message hashes would not be found), sendMessages have been filtered out.
+			// replayMessage case:
+			// First SentMessage in L1: https://sepolia.etherscan.io/tx/0xbee4b631312448fcc2caac86e4dccf0a2ae0a88acd6c5fd8764d39d746e472eb
+			// Transaction reverted in L2: https://sepolia.scrollscan.com/tx/0xde6ef307a7da255888aad7a4c40a6b8c886e46a8a05883070bbf18b736cbfb8c
+			// replayMessage: https://sepolia.etherscan.io/tx/0xa5392891232bb32d98fcdbaca0d91b4d22ef2755380d07d982eebd47b147ce28
+			//
+			// Note: update l1_tx_hash if the user calls replayMessage, cannot use queue index here,
+			// because in replayMessage, queue index != message nonce.
+			// Ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
 			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
 			txHashUpdateFields["l1_replay_tx_hash"] = l1MessageQueueEvent.TxHash.String()
 		case MessageQueueEventTypeDropTransaction:
