@@ -15,6 +15,7 @@ CREATE TABLE batch_event_v2
     deleted_at          TIMESTAMP(0)  DEFAULT NULL
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS unique_idx_be_batch_hash ON batch_event_v2 (batch_hash);
 CREATE INDEX IF NOT EXISTS idx_be_l1_block_number ON batch_event_v2 (l1_block_number);
 CREATE INDEX IF NOT EXISTS idx_be_batch_index ON batch_event_v2 (batch_index);
 CREATE INDEX IF NOT EXISTS idx_be_batch_index_batch_hash ON batch_event_v2 (batch_index, batch_hash);

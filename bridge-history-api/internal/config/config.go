@@ -8,11 +8,11 @@ import (
 	"scroll-tech/common/database"
 )
 
-// LayerConfig is the configuration of Layer1/Layer2
-type LayerConfig struct {
+// FetcherConfig is the configuration of Layer1 or Layer2 fetcher.
+type FetcherConfig struct {
 	Confirmation             uint64 `json:"confirmation"`
 	Endpoint                 string `json:"endpoint"`
-	StartHeight              uint64 `json:"startHeight"` // Can only be configured to contract deployment height, otherwise in the current implementation, the message proof could not be successfully updated.
+	StartHeight              uint64 `json:"startHeight"` // Can only be configured to contract deployment height, message proof should be updated from the very beginning.
 	BlockTime                int64  `json:"blockTime"`
 	FetchLimit               uint64 `json:"fetchLimit"`
 	MessengerAddr            string `json:"MessengerAddr"`
@@ -43,8 +43,8 @@ type RedisConfig struct {
 
 // Config is the configuration of the bridge history backend
 type Config struct {
-	L1    *LayerConfig     `json:"L1"`
-	L2    *LayerConfig     `json:"L2"`
+	L1    *FetcherConfig   `json:"L1"`
+	L2    *FetcherConfig   `json:"L2"`
 	DB    *database.Config `json:"db"`
 	Redis *RedisConfig     `json:"redis"`
 }
