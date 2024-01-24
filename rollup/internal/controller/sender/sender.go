@@ -81,7 +81,6 @@ type Sender struct {
 }
 
 // NewSender returns a new instance of transaction sender
-// txConfirmationCh is used to notify confirmed transaction
 func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey, service, name string, senderType types.SenderType, db *gorm.DB, reg prometheus.Registerer) (*Sender, error) {
 	if config.EscalateMultipleNum <= config.EscalateMultipleDen {
 		return nil, fmt.Errorf("invalid params, EscalateMultipleNum; %v, EscalateMultipleDen: %v", config.EscalateMultipleNum, config.EscalateMultipleDen)
