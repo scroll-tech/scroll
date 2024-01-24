@@ -57,12 +57,12 @@ func NewPendingTransaction(db *gorm.DB) *PendingTransaction {
 }
 
 // GetTxStatusByTxHash retrieves the status of a transaction by its hash.
-func (o *PendingTransaction) GetTxStatusByTxHash(ctx context.Context, hash string) (types.TxStatus, error) {
+func (o *PendingTransaction) GetTxStatusByTxHash(ctx context.Context, hash common.Hash) (types.TxStatus, error) {
 	var status types.TxStatus
 	db := o.db.WithContext(ctx)
 	db = db.Model(&PendingTransaction{})
 	db = db.Select("status")
-	db = db.Where("hash = ?", hash)
+	db = db.Where("hash = ?", hash.String())
 	if err := db.Scan(&status).Error; err != nil {
 		return types.TxStatusUnknown, fmt.Errorf("failed to get tx status by hash, hash: %v, err: %w", hash, err)
 	}
@@ -123,14 +123,14 @@ func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 }
 
 // UpdatePendingTransactionStatusByTxHash updates the status of a transaction based on the transaction hash.
-func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.Context, hash string, status types.TxStatus, dbTX ...*gorm.DB) error {
+func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.Context, hash common.Hash, status types.TxStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
 	db = db.WithContext(ctx)
 	db = db.Model(&PendingTransaction{})
-	db = db.Where("hash = ?", hash)
+	db = db.Where("hash = ?", hash.String())
 	if err := db.Update("status", status).Error; err != nil {
 		return fmt.Errorf("failed to UpdatePendingTransactionStatusByTxHash, txHash: %s, error: %w", hash, err)
 	}
@@ -138,7 +138,7 @@ func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.
 }
 
 // UpdateOtherTransactionsAsFailedByNonce updates the status of all transactions to TxStatusConfirmedFailed for a specific nonce and sender address, excluding a specified transaction hash.
-func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.Context, senderAddress string, nonce uint64, txHash string, dbTX ...*gorm.DB) error {
+func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.Context, senderAddress string, nonce uint64, hash common.Hash, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -147,9 +147,9 @@ func (o *PendingTransaction) UpdateOtherTransactionsAsFailedByNonce(ctx context.
 	db = db.Model(&PendingTransaction{})
 	db = db.Where("sender_address = ?", senderAddress)
 	db = db.Where("nonce = ?", nonce)
-	db = db.Where("hash != ?", txHash)
+	db = db.Where("hash != ?", hash.String())
 	if err := db.Update("status", types.TxStatusConfirmedFailed).Error; err != nil {
-		return fmt.Errorf("failed to update other transactions as failed by nonce, senderAddress: %s, nonce: %d, txHash: %s, error: %w", senderAddress, nonce, txHash, err)
+		return fmt.Errorf("failed to update other transactions as failed by nonce, senderAddress: %s, nonce: %d, txHash: %s, error: %w", senderAddress, nonce, hash, err)
 	}
 	return nil
 }

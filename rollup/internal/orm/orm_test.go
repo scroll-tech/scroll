@@ -360,7 +360,7 @@ func TestTransactionOrm(t *testing.T) {
 	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx1, 0)
 	assert.NoError(t, err)
 
-	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx0.Hash().String(), types.TxStatusReplaced)
+	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx0.Hash(), types.TxStatusReplaced)
 	assert.NoError(t, err)
 
 	txs, err := pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
@@ -377,21 +377,21 @@ func TestTransactionOrm(t *testing.T) {
 	assert.Equal(t, senderMeta.Address.String(), txs[1].SenderAddress)
 	assert.Equal(t, senderMeta.Type, txs[1].SenderType)
 
-	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx1.Hash().String(), types.TxStatusConfirmed)
+	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx1.Hash(), types.TxStatusConfirmed)
 	assert.NoError(t, err)
 
 	txs, err = pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
 	assert.NoError(t, err)
 	assert.Len(t, txs, 1)
 
-	err = pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(context.Background(), senderMeta.Address.String(), tx1.Nonce(), tx1.Hash().String())
+	err = pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(context.Background(), senderMeta.Address.String(), tx1.Nonce(), tx1.Hash())
 	assert.NoError(t, err)
 
 	txs, err = pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
 	assert.NoError(t, err)
 	assert.Len(t, txs, 0)
 
-	status, err := pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx0.Hash().String())
+	status, err := pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx0.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, types.TxStatusConfirmedFailed, status)
 }

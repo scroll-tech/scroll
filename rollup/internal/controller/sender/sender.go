@@ -400,7 +400,7 @@ func (s *Sender) checkPendingTransaction() {
 
 	transactionsToCheck, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(s.ctx, s.senderType, 100)
 	if err != nil {
-		log.Error("failed to load pending transactions", "sender meta", s.getSenderMeta(), "error", err)
+		log.Error("failed to load pending transactions", "sender meta", s.getSenderMeta(), "err", err)
 		return
 	}
 
@@ -412,24 +412,23 @@ func (s *Sender) checkPendingTransaction() {
 
 	for _, txnToCheck := range transactionsToCheck {
 		tx := new(gethTypes.Transaction)
-		rlpStream := rlp.NewStream(bytes.NewReader(txnToCheck.RLPEncoding), 0)
-		if err := tx.DecodeRLP(rlpStream); err != nil {
-			log.Error("failed to decode RLP", "context ID", txnToCheck.ContextID, "sender meta", s.getSenderMeta(), "error", err)
+		if err := tx.DecodeRLP(rlp.NewStream(bytes.NewReader(txnToCheck.RLPEncoding), 0)); err != nil {
+			log.Error("failed to decode RLP", "context ID", txnToCheck.ContextID, "sender meta", s.getSenderMeta(), "err", err)
 			continue
 		}
 
 		receipt, err := s.client.TransactionReceipt(s.ctx, tx.Hash())
-		if (err == nil) && (receipt != nil) {
+		if (err == nil) && (receipt != nil) { // tx confirmed.
 			if receipt.BlockNumber.Uint64() <= confirmed {
 				err := s.db.Transaction(func(dbTX *gorm.DB) error {
 					// Update the status of the transaction to TxStatusConfirmed.
-					if err := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, tx.Hash().String(), types.TxStatusConfirmed, dbTX); err != nil {
+					if err := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, tx.Hash(), types.TxStatusConfirmed, dbTX); err != nil {
 						log.Error("failed to update transaction status by tx hash", "hash", tx.Hash().String(), "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)
 						return err
 					}
 					// Update other transactions with the same nonce and sender address as failed.
-					if err := s.pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(s.ctx, txnToCheck.SenderAddress, txnToCheck.Nonce, txnToCheck.Hash, dbTX); err != nil {
-						log.Error("failed to update other transactions as failed by nonce", "senderAddress", txnToCheck.SenderAddress, "nonce", txnToCheck.Nonce, "excludedTxHash", txnToCheck.Hash, "err", err)
+					if err := s.pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(s.ctx, txnToCheck.SenderAddress, tx.Nonce(), tx.Hash(), dbTX); err != nil {
+						log.Error("failed to update other transactions as failed by nonce", "senderAddress", txnToCheck.SenderAddress, "nonce", tx.Nonce(), "excludedTxHash", tx.Hash(), "err", err)
 						return err
 					}
 					return nil
@@ -446,11 +445,11 @@ func (s *Sender) checkPendingTransaction() {
 					SenderType:   s.senderType,
 				}
 			}
-		} else if txnToCheck.Status == types.TxStatusPending && // Only resubmit the last pending transaction of the same ContextID.
+		} else if txnToCheck.Status == types.TxStatusPending && // Only check the last transaction (status pending) of the same ContextID.
 			s.config.EscalateBlocks+txnToCheck.SubmitBlockNumber <= blockNumber {
 			// It's possible that the pending transaction was marked as failed earlier in this loop (e.g., if one of its replacements has already been confirmed).
 			// Therefore, we fetch the current transaction status again for accuracy before proceeding.
-			status, err := s.pendingTransactionOrm.GetTxStatusByTxHash(s.ctx, tx.Hash().String())
+			status, err := s.pendingTransactionOrm.GetTxStatusByTxHash(s.ctx, tx.Hash())
 			if err != nil {
 				log.Error("failed to get transaction status by tx hash", "hash", tx.Hash().String(), "err", err)
 				return
@@ -464,9 +463,9 @@ func (s *Sender) checkPendingTransaction() {
 				"hash", tx.Hash().String(),
 				"from", s.auth.From.String(),
 				"nonce", tx.Nonce(),
-				"submit block number", txnToCheck.SubmitBlockNumber,
-				"current block number", blockNumber,
-				"configured escalateBlocks", s.config.EscalateBlocks)
+				"submitBlockNumber", txnToCheck.SubmitBlockNumber,
+				"currentBlockNumber", blockNumber,
+				"escalateBlocks", s.config.EscalateBlocks)
 
 			if newTx, err := s.resubmitTransaction(s.auth, tx, baseFee); err != nil {
 				s.metrics.resubmitTransactionFailedTotal.WithLabelValues(s.service, s.name).Inc()
@@ -474,7 +473,7 @@ func (s *Sender) checkPendingTransaction() {
 			} else {
 				err := s.db.Transaction(func(dbTX *gorm.DB) error {
 					// Update the status of the original transaction as replaced, while still checking its confirmation status.
-					if err := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, tx.Hash().String(), types.TxStatusReplaced, dbTX); err != nil {
+					if err := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, tx.Hash(), types.TxStatusReplaced, dbTX); err != nil {
 						return fmt.Errorf("failed to update status of transaction with hash %s to TxStatusReplaced, err: %w", tx.Hash().String(), err)
 					}
 					// Record the new transaction that has replaced the original one.
