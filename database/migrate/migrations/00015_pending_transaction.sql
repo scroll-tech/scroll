@@ -11,9 +11,9 @@ CREATE TABLE pending_transaction
     status              SMALLINT     NOT NULL,
     rlp_encoding        BYTEA        NOT NULL,
 
-    gas_fee_cap         BIGINT       NOT NULL,
+    chain_id            BIGINT       NOT NULL,
     gas_tip_cap         BIGINT       NOT NULL,
-    gas_price           BIGINT       NOT NULL,
+    gas_fee_cap         BIGINT       NOT NULL,
     gas_limit           BIGINT       NOT NULL,
     nonce               BIGINT       NOT NULL,
     submit_block_number BIGINT       NOT NULL,

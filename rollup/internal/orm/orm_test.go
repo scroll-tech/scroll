@@ -319,14 +319,45 @@ func TestTransactionOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	tx1 := createTestTransaction(1, big.NewInt(0), big.NewInt(0))
-	tx2 := createTestTransaction(1, big.NewInt(1), big.NewInt(1))
-	senderMeta := createTestSenderMeta("0xSomeAddress", "TestSender", "TestService", types.SenderTypeUnknown)
+	tx1 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+		Nonce:      0,
+		To:         &common.Address{},
+		Data:       []byte{},
+		Gas:        21000,
+		AccessList: gethTypes.AccessList{},
+		Value:      big.NewInt(0),
+		ChainID:    big.NewInt(1),
+		GasTipCap:  big.NewInt(0),
+		GasFeeCap:  big.NewInt(1),
+		V:          big.NewInt(0),
+		R:          big.NewInt(0),
+		S:          big.NewInt(0),
+	})
+	tx2 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+		Nonce:      0,
+		To:         &common.Address{},
+		Data:       []byte{},
+		Gas:        42000,
+		AccessList: gethTypes.AccessList{},
+		Value:      big.NewInt(0),
+		ChainID:    big.NewInt(1),
+		GasTipCap:  big.NewInt(1),
+		GasFeeCap:  big.NewInt(2),
+		V:          big.NewInt(0),
+		R:          big.NewInt(0),
+		S:          big.NewInt(0),
+	})
+	senderMeta := &SenderMeta{
+		Name:    "test",
+		Service: "test",
+		Address: common.HexToAddress("0x1"),
+		Type:    types.SenderTypeUnknown,
+	}
 
-	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "TestContextID", senderMeta, tx1, 0)
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx1, 0)
 	assert.NoError(t, err)
 
-	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "TestContextID", senderMeta, tx2, 0)
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx2, 0)
 	assert.NoError(t, err)
 
 	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx1.Hash().String(), types.TxStatusReplaced)
@@ -335,6 +366,16 @@ func TestTransactionOrm(t *testing.T) {
 	txs, err := pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
 	assert.NoError(t, err)
 	assert.Len(t, txs, 2)
+	assert.Equal(t, uint64(0), txs[0].Nonce)
+	assert.Equal(t, uint64(0), txs[1].Nonce)
+	assert.Equal(t, uint64(21000), txs[0].GasLimit)
+	assert.Equal(t, uint64(42000), txs[1].GasLimit)
+	assert.Equal(t, uint64(0), txs[0].GasTipCap)
+	assert.Equal(t, uint64(1), txs[1].GasTipCap)
+	assert.Equal(t, uint64(1), txs[0].GasFeeCap)
+	assert.Equal(t, uint64(2), txs[1].GasFeeCap)
+	assert.Equal(t, uint64(1), txs[0].ChainID)
+	assert.Equal(t, uint64(1), txs[1].ChainID)
 
 	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx2.Hash().String(), types.TxStatusConfirmed)
 	assert.NoError(t, err)
@@ -353,31 +394,4 @@ func TestTransactionOrm(t *testing.T) {
 	status, err := pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx1.Hash().String())
 	assert.NoError(t, err)
 	assert.Equal(t, types.TxStatusConfirmedFailed, status)
-}
-
-func createTestTransaction(nonce uint64, gasTipCap, gasFeeCap *big.Int) *gethTypes.Transaction {
-	txData := &gethTypes.DynamicFeeTx{
-		Nonce:      nonce,
-		To:         &common.Address{},
-		Data:       []byte{},
-		Gas:        21000,
-		AccessList: gethTypes.AccessList{},
-		Value:      big.NewInt(0),
-		ChainID:    big.NewInt(1),
-		GasTipCap:  gasTipCap,
-		GasFeeCap:  gasFeeCap,
-		V:          big.NewInt(0),
-		R:          big.NewInt(0),
-		S:          big.NewInt(0),
-	}
-	return gethTypes.NewTx(txData)
-}
-
-func createTestSenderMeta(address, name, service string, senderType types.SenderType) *SenderMeta {
-	return &SenderMeta{
-		Name:    name,
-		Service: service,
-		Address: common.HexToAddress(address),
-		Type:    senderType,
-	}
 }

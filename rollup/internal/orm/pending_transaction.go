@@ -29,9 +29,9 @@ type PendingTransaction struct {
 	ContextID         string           `json:"context_id" gorm:"context_id"`
 	Hash              string           `json:"hash" gorm:"hash"`
 	Type              uint8            `json:"type" gorm:"type"`
-	GasFeeCap         uint64           `json:"gas_fee_cap" gorm:"gas_fee_cap"`
+	ChainID           uint64           `json:"chain_id" gorm:"chain_id"`
 	GasTipCap         uint64           `json:"gas_tip_cap" gorm:"gas_tip_cap"`
-	GasPrice          uint64           `json:"gas_price" gorm:"gas_price"`
+	GasFeeCap         uint64           `json:"gas_fee_cap" gorm:"gas_fee_cap"`
 	GasLimit          uint64           `json:"gas_limit" gorm:"gas_limit"`
 	Nonce             uint64           `json:"nonce" gorm:"nonce"`
 	SubmitBlockNumber uint64           `json:"submit_block_number" gorm:"submit_block_number"`
@@ -69,7 +69,7 @@ func (o *PendingTransaction) GetTxStatusByTxHash(ctx context.Context, hash strin
 	return status, nil
 }
 
-// GetPendingOrReplacedTransactionsBySenderType retrieves pending or replaced transactions filtered by sender type, ordered by nonce, and limited to a specified count.
+// GetPendingOrReplacedTransactionsBySenderType retrieves pending or replaced transactions filtered by sender type, ordered by nonce, then gas_fee_cap (gas_price in legacy tx), and limited to a specified count.
 func (o *PendingTransaction) GetPendingOrReplacedTransactionsBySenderType(ctx context.Context, senderType types.SenderType, limit int) ([]PendingTransaction, error) {
 	var transactions []PendingTransaction
 	db := o.db.WithContext(ctx)
@@ -77,6 +77,7 @@ func (o *PendingTransaction) GetPendingOrReplacedTransactionsBySenderType(ctx co
 	db = db.Where("sender_type = ?", senderType)
 	db = db.Where("status = ? OR status = ?", types.TxStatusPending, types.TxStatusReplaced)
 	db = db.Order("nonce asc")
+	db = db.Order("gas_fee_cap asc")
 	db = db.Limit(limit)
 	if err := db.Find(&transactions).Error; err != nil {
 		return nil, fmt.Errorf("failed to get pending or replaced transactions by sender type, error: %w", err)
@@ -95,9 +96,9 @@ func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 		ContextID:         contextID,
 		Hash:              tx.Hash().String(),
 		Type:              tx.Type(),
+		ChainID:           tx.ChainId().Uint64(),
 		GasFeeCap:         tx.GasFeeCap().Uint64(),
 		GasTipCap:         tx.GasTipCap().Uint64(),
-		GasPrice:          tx.GasPrice().Uint64(),
 		GasLimit:          tx.Gas(),
 		Nonce:             tx.Nonce(),
 		SubmitBlockNumber: submitBlockNumber,
