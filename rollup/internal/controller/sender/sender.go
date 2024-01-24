@@ -165,11 +165,6 @@ func (s *Sender) IsFull() bool {
 	return s.pendingTxs.Count() >= s.config.PendingLimit
 }
 
-// GetChainID returns the chain ID associated with the sender.
-func (s *Sender) GetChainID() *big.Int {
-	return s.chainID
-}
-
 // Stop stop the sender module.
 func (s *Sender) Stop() {
 	close(s.stopCh)
