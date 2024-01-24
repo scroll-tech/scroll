@@ -11,7 +11,7 @@ CREATE TABLE pending_transaction
     status              SMALLINT     NOT NULL,
     rlp_encoding        BYTEA        NOT NULL,
 
--- debugging info
+-- debug info
     chain_id            BIGINT       NOT NULL,
     type                SMALLINT     NOT NULL,
     gas_tip_cap         BIGINT       NOT NULL,
