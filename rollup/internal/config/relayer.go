@@ -4,7 +4,6 @@ import (
 	"crypto/ecdsa"
 	"encoding/json"
 	"fmt"
-	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -29,12 +28,6 @@ type SenderConfig struct {
 	MaxGasPrice uint64 `json:"max_gas_price"`
 	// The transaction type to use: LegacyTx, AccessListTx, DynamicFeeTx
 	TxType string `json:"tx_type"`
-	// The min balance set for check and set balance for sender's accounts.
-	MinBalance *big.Int `json:"min_balance"`
-	// The interval (in seconds) to check balance and top up sender's accounts
-	CheckBalanceTime uint64 `json:"check_balance_time"`
-	// The sender's pending count limit.
-	PendingLimit int `json:"pending_limit"`
 }
 
 // ChainMonitor this config is used to get batch status from chain_monitor API.

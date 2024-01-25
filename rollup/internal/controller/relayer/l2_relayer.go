@@ -2,11 +2,9 @@ package relayer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/big"
 	"sort"
-	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -60,31 +58,23 @@ type Layer2Relayer struct {
 	// Used to get batch status from chain_monitor api.
 	chainMonitorClient *resty.Client
 
-	// A list of processing batches commitment.
-	// key(string): confirmation ID, value(string): batch hash.
-	processingCommitment sync.Map
-
-	// A list of processing batch finalization.
-	// key(string): confirmation ID, value(string): batch hash.
-	processingFinalization sync.Map
-
 	metrics *l2RelayerMetrics
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool, reg prometheus.Registerer) (*Layer2Relayer, error) {
-	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey, "l2_relayer", "commit_sender", reg)
+	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
 	}
-	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey, "l2_relayer", "finalize_sender", reg)
+	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey, "l2_relayer", "finalize_sender", types.SenderTypeFinalizeBatch, db, reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
 	}
 
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l2_relayer", "gas_oracle_sender", reg)
+	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
 	if err != nil {
 		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
 		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
@@ -125,9 +115,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
 
-		cfg:                    cfg,
-		processingCommitment:   sync.Map{},
-		processingFinalization: sync.Map{},
+		cfg: cfg,
 	}
 
 	// chain_monitor client
@@ -253,8 +241,8 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 
 		// handle confirmation
 		case confirmation := <-r.commitSender.ConfirmChan():
-			if confirmation.ID != batchHash {
-				return fmt.Errorf("unexpected import genesis confirmation id, expected: %v, got: %v", batchHash, confirmation.ID)
+			if confirmation.ContextID != batchHash {
+				return fmt.Errorf("unexpected import genesis confirmation id, expected: %v, got: %v", batchHash, confirmation.ContextID)
 			}
 			if !confirmation.IsSuccessful {
 				return fmt.Errorf("import genesis batch tx failed")
@@ -293,9 +281,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 
 			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
 			if err != nil {
-				if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-					log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
-				}
+				log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
 				return
 			}
 
@@ -382,14 +368,13 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 
 		// send transaction
-		txID := batch.Hash + "-commit"
 		fallbackGasLimit := uint64(float64(batch.TotalL1CommitGas) * r.cfg.L1CommitGasLimitMultiplier)
 		if types.RollupStatus(batch.RollupStatus) == types.RollupCommitFailed {
 			// use eth_estimateGas if this batch has been committed failed.
 			fallbackGasLimit = 0
 			log.Warn("Batch commit previously failed, using eth_estimateGas for the re-submission", "hash", batch.Hash)
 		}
-		txHash, err := r.commitSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, fallbackGasLimit)
+		txHash, err := r.commitSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, fallbackGasLimit)
 		if err != nil {
 			log.Error(
 				"Failed to send commitBatch tx to layer1",
@@ -415,7 +400,6 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			return
 		}
 		r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Inc()
-		r.processingCommitment.Store(txID, batch.Hash)
 		log.Info("Sent the commitBatch tx to layer1", "batch index", batch.Index, "batch hash", batch.Hash, "tx hash", txHash.Hex())
 	}
 }
@@ -554,34 +538,27 @@ func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
 		}
 	}
 
-	txID := batch.Hash + "-finalize"
 	// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-	txHash, err := r.finalizeSender.SendTransaction(txID, &r.cfg.RollupContractAddress, big.NewInt(0), txCalldata, 0)
+	txHash, err := r.finalizeSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, big.NewInt(0), txCalldata, 0)
 	finalizeTxHash := &txHash
 	if err != nil {
-		if !errors.Is(err, sender.ErrNoAvailableAccount) && !errors.Is(err, sender.ErrFullPending) {
-			// This can happen normally if we try to finalize 2 or more
-			// batches around the same time. The 2nd tx might fail since
-			// the client does not see the 1st tx's updates at this point.
-			// TODO: add more fine-grained error handling
-			log.Error(
-				"finalizeBatch in layer1 failed",
-				"with proof", withProof,
-				"index", batch.Index,
-				"hash", batch.Hash,
-				"RollupContractAddress", r.cfg.RollupContractAddress,
-				"err", err,
-			)
-			log.Debug(
-				"finalizeBatch in layer1 failed",
-				"with proof", withProof,
-				"index", batch.Index,
-				"hash", batch.Hash,
-				"RollupContractAddress", r.cfg.RollupContractAddress,
-				"calldata", common.Bytes2Hex(txCalldata),
-				"err", err,
-			)
-		}
+		log.Error(
+			"finalizeBatch in layer1 failed",
+			"with proof", withProof,
+			"index", batch.Index,
+			"hash", batch.Hash,
+			"RollupContractAddress", r.cfg.RollupContractAddress,
+			"err", err,
+		)
+		log.Debug(
+			"finalizeBatch in layer1 failed",
+			"with proof", withProof,
+			"index", batch.Index,
+			"hash", batch.Hash,
+			"RollupContractAddress", r.cfg.RollupContractAddress,
+			"calldata", common.Bytes2Hex(txCalldata),
+			"err", err,
+		)
 		return err
 	}
 	log.Info("finalizeBatch in layer1", "with proof", withProof, "index", batch.Index, "batch hash", batch.Hash, "tx hash", batch.Hash)
@@ -591,7 +568,6 @@ func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
 		log.Error("UpdateFinalizeTxHashAndRollupStatus failed", "index", batch.Index, "batch hash", batch.Hash, "tx hash", finalizeTxHash.String(), "err", err)
 		return err
 	}
-	r.processingFinalization.Store(txID, batch.Hash)
 	r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal.Inc()
 	return nil
 }
@@ -642,53 +618,59 @@ func (r *Layer2Relayer) getBatchStatusByIndex(batch *orm.Batch) (bool, error) {
 	return response.Data, nil
 }
 
-func (r *Layer2Relayer) handleConfirmation(confirmation *sender.Confirmation) {
-	transactionType := "Unknown"
-	// check whether it is CommitBatches transaction
-	if batchHash, ok := r.processingCommitment.Load(confirmation.ID); ok {
-		transactionType = "BatchesCommitment"
+func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
+	switch cfm.SenderType {
+	case types.SenderTypeCommitBatch:
 		var status types.RollupStatus
-		if confirmation.IsSuccessful {
+		if cfm.IsSuccessful {
 			status = types.RollupCommitted
+			r.metrics.rollupL2BatchesCommittedConfirmedTotal.Inc()
 		} else {
 			status = types.RollupCommitFailed
 			r.metrics.rollupL2BatchesCommittedConfirmedFailedTotal.Inc()
-			log.Warn("commitBatch transaction confirmed but failed in layer1", "confirmation", confirmation)
+			log.Warn("CommitBatchTxType transaction confirmed but failed in layer1", "confirmation", cfm)
 		}
-		// @todo handle db error
-		err := r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), status)
-		if err != nil {
-			log.Warn("UpdateCommitTxHashAndRollupStatus failed",
-				"batch hash", batchHash.(string),
-				"tx hash", confirmation.TxHash.String(), "err", err)
-		}
-		r.metrics.rollupL2BatchesCommittedConfirmedTotal.Inc()
-		r.processingCommitment.Delete(confirmation.ID)
-	}
 
-	// check whether it is proof finalization transaction
-	if batchHash, ok := r.processingFinalization.Load(confirmation.ID); ok {
-		transactionType = "ProofFinalization"
+		err := r.batchOrm.UpdateCommitTxHashAndRollupStatus(r.ctx, cfm.ContextID, cfm.TxHash.String(), status)
+		if err != nil {
+			log.Warn("UpdateCommitTxHashAndRollupStatus failed", "confirmation", cfm, "err", err)
+		}
+	case types.SenderTypeFinalizeBatch:
 		var status types.RollupStatus
-		if confirmation.IsSuccessful {
+		if cfm.IsSuccessful {
 			status = types.RollupFinalized
+			r.metrics.rollupL2BatchesFinalizedConfirmedTotal.Inc()
 		} else {
 			status = types.RollupFinalizeFailed
 			r.metrics.rollupL2BatchesFinalizedConfirmedFailedTotal.Inc()
-			log.Warn("finalizeBatchWithProof transaction confirmed but failed in layer1", "confirmation", confirmation)
+			log.Warn("FinalizeBatchTxType transaction confirmed but failed in layer1", "confirmation", cfm)
 		}
 
-		// @todo handle db error
-		err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, batchHash.(string), confirmation.TxHash.String(), status)
+		err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, cfm.ContextID, cfm.TxHash.String(), status)
 		if err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed",
-				"batch hash", batchHash.(string),
-				"tx hash", confirmation.TxHash.String(), "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "confirmation", cfm, "err", err)
 		}
-		r.metrics.rollupL2BatchesFinalizedConfirmedTotal.Inc()
-		r.processingFinalization.Delete(confirmation.ID)
+	case types.SenderTypeL2GasOracle:
+		batchHash := cfm.ContextID
+		var status types.GasOracleStatus
+		if cfm.IsSuccessful {
+			status = types.GasOracleImported
+			r.metrics.rollupL2UpdateGasOracleConfirmedTotal.Inc()
+		} else {
+			status = types.GasOracleImportedFailed
+			r.metrics.rollupL2UpdateGasOracleConfirmedFailedTotal.Inc()
+			log.Warn("UpdateGasOracleTxType transaction confirmed but failed in layer1", "confirmation", cfm)
+		}
+
+		err := r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, batchHash, status, cfm.TxHash.String())
+		if err != nil {
+			log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "confirmation", cfm, "err", err)
+		}
+	default:
+		log.Warn("Unknown transaction type", "confirmation", cfm)
 	}
-	log.Info("transaction confirmed in layer1", "type", transactionType, "confirmation", confirmation)
+
+	log.Info("Transaction confirmed in layer1", "confirmation", cfm)
 }
 
 func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
@@ -696,27 +678,12 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case confirmation := <-r.commitSender.ConfirmChan():
-			r.handleConfirmation(confirmation)
-		case confirmation := <-r.finalizeSender.ConfirmChan():
-			r.handleConfirmation(confirmation)
+		case cfm := <-r.commitSender.ConfirmChan():
+			r.handleConfirmation(cfm)
+		case cfm := <-r.finalizeSender.ConfirmChan():
+			r.handleConfirmation(cfm)
 		case cfm := <-r.gasOracleSender.ConfirmChan():
-			r.metrics.rollupL2BatchesGasOraclerConfirmedTotal.Inc()
-			if !cfm.IsSuccessful {
-				// @discuss: maybe make it pending again?
-				err := r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleFailed, cfm.TxHash.String())
-				if err != nil {
-					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
-				}
-				log.Warn("transaction confirmed but failed in layer1", "confirmation", cfm)
-			} else {
-				// @todo handle db error
-				err := r.batchOrm.UpdateL2GasOracleStatusAndOracleTxHash(r.ctx, cfm.ID, types.GasOracleImported, cfm.TxHash.String())
-				if err != nil {
-					log.Warn("UpdateL2GasOracleStatusAndOracleTxHash failed", "err", err)
-				}
-				log.Info("transaction confirmed in layer1", "confirmation", cfm)
-			}
+			r.handleConfirmation(cfm)
 		}
 	}
 }
