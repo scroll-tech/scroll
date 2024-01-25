@@ -259,7 +259,7 @@ func (t SenderType) String() string {
 	case SenderTypeL2GasOracle:
 		return "SenderTypeL2GasOracle"
 	default:
-		return fmt.Sprintf("Unknown (%d)", int32(t))
+		return fmt.Sprintf("Unknown SenderType (%d)", int32(t))
 	}
 }
 
@@ -290,6 +290,6 @@ func (s TxStatus) String() string {
 	case TxStatusConfirmedFailed:
 		return "TxStatusConfirmedFailed"
 	default:
-		return fmt.Sprintf("Unknown (%d)", int32(s))
+		return fmt.Sprintf("Unknown TxStatus (%d)", int32(s))
 	}
 }

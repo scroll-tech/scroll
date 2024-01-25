@@ -180,7 +180,7 @@ func TestSenderType(t *testing.T) {
 		{
 			"Invalid Value",
 			SenderType(999),
-			"Unknown (999)",
+			"Unknown SenderType (999)",
 		},
 	}
 
@@ -225,7 +225,7 @@ func TestTxStatus(t *testing.T) {
 		{
 			"Invalid Value",
 			TxStatus(999),
-			"Unknown (999)",
+			"Unknown TxStatus (999)",
 		},
 	}
 
