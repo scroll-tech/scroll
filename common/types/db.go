@@ -38,7 +38,7 @@ func (s GasOracleStatus) String() string {
 	case GasOracleImportedFailed:
 		return "GasOracleImportedFailed"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(s))
+		return fmt.Sprintf("Undefined GasOracleStatus (%d)", int32(s))
 	}
 }
 
@@ -159,7 +159,7 @@ func (ps ProvingStatus) String() string {
 	case ProvingTaskFailed:
 		return "failed"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(ps))
+		return fmt.Sprintf("Undefined ProvingStatus (%d)", int32(ps))
 	}
 }
 
@@ -184,7 +184,7 @@ func (s ChunkProofsStatus) String() string {
 	case ChunkProofsStatusReady:
 		return "ChunkProofsStatusReady"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(s))
+		return fmt.Sprintf("Undefined ChunkProofsStatus (%d)", int32(s))
 	}
 }
 
@@ -227,7 +227,7 @@ func (s RollupStatus) String() string {
 	case RollupFinalizeFailed:
 		return "RollupFinalizeFailed"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(s))
+		return fmt.Sprintf("Undefined RollupStatus (%d)", int32(s))
 	}
 }
 

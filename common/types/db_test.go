@@ -75,7 +75,7 @@ func TestProvingStatus(t *testing.T) {
 		{
 			"Undefined",
 			ProvingStatus(999), // Invalid value.
-			"Undefined (999)",
+			"Undefined ProvingStatus (999)",
 		},
 	}
 
@@ -95,7 +95,7 @@ func TestRollupStatus(t *testing.T) {
 		{
 			"RollupUndefined",
 			RollupUndefined,
-			"Undefined (0)",
+			"Undefined RollupStatus (0)",
 		},
 		{
 			"RollupPending",
@@ -135,7 +135,7 @@ func TestRollupStatus(t *testing.T) {
 		{
 			"Invalid Value",
 			RollupStatus(999),
-			"Undefined (999)",
+			"Undefined RollupStatus (999)",
 		},
 	}
 
@@ -155,7 +155,7 @@ func TestSenderType(t *testing.T) {
 		{
 			"SenderTypeUnknown",
 			SenderTypeUnknown,
-			"Unknown (0)",
+			"Unknown SenderType (0)",
 		},
 		{
 			"SenderTypeCommitBatch",
@@ -200,7 +200,7 @@ func TestTxStatus(t *testing.T) {
 		{
 			"TxStatusUnknown",
 			TxStatusUnknown,
-			"Unknown (0)",
+			"Unknown TxStatus (0)",
 		},
 		{
 			"TxStatusPending",
@@ -270,7 +270,7 @@ func TestGasOracleStatus(t *testing.T) {
 		{
 			"Invalid Value",
 			GasOracleStatus(999),
-			"Undefined (999)",
+			"Undefined GasOracleStatus (999)",
 		},
 	}
 
