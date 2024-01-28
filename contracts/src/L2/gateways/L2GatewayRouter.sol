@@ -55,7 +55,15 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         messenger = _messenger;
     }
 
-    function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
+    /// @notice Initialize the storage of L2GatewayRouter.
+    ///
+    /// @dev The parameters `_ethGateway` is no longer used.
+    ///
+    /// @param _defaultERC20Gateway The address of default ERC20 Gateway contract.
+    function initialize(
+        address, /*_ethGateway*/
+        address _defaultERC20Gateway
+    ) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         // it can be zero during initialization
@@ -64,11 +72,13 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
             emit SetDefaultERC20Gateway(address(0), _defaultERC20Gateway);
         }
 
+        /* comments out since no longer used
         // it can be zero during initialization
         if (_ethGateway != address(0)) {
             ethGateway = _ethGateway;
             emit SetETHGateway(address(0), _ethGateway);
         }
+        */
     }
 
     /*************************

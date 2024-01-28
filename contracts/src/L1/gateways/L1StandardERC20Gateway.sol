@@ -52,8 +52,8 @@ contract L1StandardERC20Gateway is L1ERC20Gateway {
     /// @notice Constructor for `L1StandardERC20Gateway` implementation contract.
     ///
     /// @param _counterpart The address of `L2StandardERC20Gateway` contract in L2.
-    /// @param _router The address of `L1GatewayRouter` contract.
-    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    /// @param _router The address of `L1GatewayRouter` contract in L1.
+    /// @param _messenger The address of `L1ScrollMessenger` contract in L1.
     /// @param _l2TokenImplementation The address of `ScrollStandardERC20` implementation in L2.
     /// @param _l2TokenFactory The address of `ScrollStandardERC20Factory` contract in L2.
     constructor(
@@ -79,8 +79,8 @@ contract L1StandardERC20Gateway is L1ERC20Gateway {
     /// `_l2TokenFactory` are no longer used.
     ///
     /// @param _counterpart The address of L2StandardERC20Gateway in L2.
-    /// @param _router The address of L1GatewayRouter.
-    /// @param _messenger The address of L1ScrollMessenger.
+    /// @param _router The address of L1GatewayRouter in L1.
+    /// @param _messenger The address of L1ScrollMessenger in L1.
     /// @param _l2TokenImplementation The address of ScrollStandardERC20 implementation in L2.
     /// @param _l2TokenFactory The address of ScrollStandardERC20Factory contract in L2.
     function initialize(

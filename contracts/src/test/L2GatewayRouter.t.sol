@@ -114,7 +114,6 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
     }
 
     function testInitialized() public {
-        assertEq(address(l2ETHGateway), router.ethGateway());
         assertEq(address(l2StandardERC20Gateway), router.defaultERC20Gateway());
         assertEq(address(l2StandardERC20Gateway), router.getERC20Gateway(address(l2Token)));
 
@@ -191,9 +190,9 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
 
         // set by owner, should succeed
         hevm.expectEmit(true, true, false, true);
-        emit SetETHGateway(address(l2ETHGateway), gateway);
+        emit SetETHGateway(address(0), gateway);
 
-        assertEq(address(l2ETHGateway), router.ethGateway());
+        assertEq(address(0), router.ethGateway());
         router.setETHGateway(gateway);
         assertEq(gateway, router.ethGateway());
     }
