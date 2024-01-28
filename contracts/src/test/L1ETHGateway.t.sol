@@ -181,6 +181,56 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
         assertEq(balance + amount, address(this).balance);
     }
 
+    function testDropMessageInGatewayRouterMocking() public {
+        MockScrollMessenger mockMessenger = new MockScrollMessenger();
+        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter(address(mockMessenger)))));
+        router.initialize(address(gateway), address(0));
+
+        // only messenger can call, revert
+        hevm.expectRevert(ErrorCallerIsNotMessenger.selector);
+        router.onDropMessage(new bytes(0));
+
+        // only called in drop context, revert
+        hevm.expectRevert(ErrorNotInDropMessageContext.selector);
+        mockMessenger.callTarget(address(router), abi.encodeWithSelector(router.onDropMessage.selector, new bytes(0)));
+
+        mockMessenger.setXDomainMessageSender(ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER);
+
+        // invalid bytes length
+        hevm.expectRevert(new bytes(0));
+        mockMessenger.callTarget(address(router), abi.encodeWithSelector(router.onDropMessage.selector, new bytes(31)));
+    }
+
+    function testDropMessageInGatewayRouter(
+        uint256 amount,
+        address recipient,
+        bytes memory dataToCall
+    ) public {
+        amount = bound(amount, 1, address(this).balance);
+        bytes memory message = abi.encode(address(this), dataToCall);
+        router.depositETHAndCall{value: amount}(recipient, amount, dataToCall, defaultGasLimit);
+
+        // skip message 0
+        hevm.startPrank(address(rollup));
+        messageQueue.popCrossDomainMessage(0, 1, 0x1);
+        assertEq(messageQueue.pendingQueueIndex(), 1);
+        hevm.stopPrank();
+
+        // ETH transfer failed, revert
+        revertOnReceive = true;
+        hevm.expectRevert("Address: unable to send value, recipient may have reverted");
+        l1Messenger.dropMessage(address(router), address(recipient), amount, 0, message);
+
+        // drop message 0
+        hevm.expectEmit(true, true, false, true);
+        emit RefundETH(address(this), amount);
+
+        revertOnReceive = false;
+        uint256 balance = address(this).balance;
+        l1Messenger.dropMessage(address(router), address(recipient), amount, 0, message);
+        assertEq(balance + amount, address(this).balance);
+    }
+
     function testFinalizeWithdrawETHFailedMocking(
         address sender,
         address recipient,
@@ -345,7 +395,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = useRouter
-            ? new bytes(0)
+            ? abi.encode(address(this), new bytes(0))
             : abi.encodeWithSelector(
                 IL2ETHGateway.finalizeDepositETH.selector,
                 address(this),
@@ -418,13 +468,13 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = useRouter
-            ? new bytes(0)
+            ? abi.encode(address(this), new bytes(0))
             : abi.encodeWithSelector(
                 IL2ETHGateway.finalizeDepositETH.selector,
                 address(this),
                 recipient,
                 amount,
-                new bytes(0)
+                useRouter ? abi.encode(address(this), new bytes(0)) : new bytes(0)
             );
         bytes memory xDomainCalldata = abi.encodeWithSignature(
             "relayMessage(address,address,uint256,uint256,bytes)",
@@ -492,7 +542,7 @@ contract L1ETHGatewayTest is L1GatewayTestBase {
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = useRouter
-            ? dataToCall
+            ? abi.encode(address(this), dataToCall)
             : abi.encodeWithSelector(
                 IL2ETHGateway.finalizeDepositETH.selector,
                 address(this),

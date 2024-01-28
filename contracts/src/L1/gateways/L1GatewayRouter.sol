@@ -5,7 +5,11 @@ pragma solidity =0.8.16;
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import {AddressUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
+import {IMessageDropCallback} from "../../libraries/callbacks/IMessageDropCallback.sol";
+import {ScrollConstants} from "../../libraries/constants/ScrollConstants.sol";
+import {IScrollMessenger} from "../../libraries/IScrollMessenger.sol";
 import {IL1ScrollMessenger} from "../IL1ScrollMessenger.sol";
 import {IL1ETHGateway} from "./IL1ETHGateway.sol";
 import {IL1ERC20Gateway} from "./IL1ERC20Gateway.sol";
@@ -16,7 +20,7 @@ import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
 /// All deposited tokens are routed to corresponding gateways.
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
-contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
+contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter, IMessageDropCallback {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /**********
@@ -25,6 +29,12 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
 
     /// @dev Thrown when the given address is `address(0)`.
     error ErrorZeroAddress();
+
+    /// @dev Thrown when the caller is not corresponding `L1ScrollMessenger`.
+    error ErrorCallerIsNotMessenger();
+
+    /// @dev Thrown when ScrollMessenger is not dropping message.
+    error ErrorNotInDropMessageContext();
 
     /*************
      * Constants *
@@ -62,6 +72,19 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
 
     modifier onlyInContext() {
         require(_msgSender() == gatewayInContext, "Only in deposit context");
+        _;
+    }
+
+    modifier onlyInDropContext() {
+        // check caller is messenger
+        if (_msgSender() != messenger) {
+            revert ErrorCallerIsNotMessenger();
+        }
+
+        // check we are dropping message in ScrollMessenger.
+        if (ScrollConstants.DROP_XDOMAIN_MESSAGE_SENDER != IScrollMessenger(messenger).xDomainMessageSender()) {
+            revert ErrorNotInDropMessageContext();
+        }
         _;
     }
 
@@ -138,6 +161,14 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         IERC20Upgradeable(_token).safeTransferFrom(_sender, _caller, _amount);
         _amount = IERC20Upgradeable(_token).balanceOf(_caller) - _balance;
         return _amount;
+    }
+
+    /// @inheritdoc IMessageDropCallback
+    function onDropMessage(bytes calldata _message) external payable virtual onlyInDropContext {
+        // decode (receiver, data)
+        (address _receiver, ) = abi.decode(_message, (address, bytes));
+        AddressUpgradeable.sendValue(payable(_receiver), msg.value);
+        emit RefundETH(_receiver, msg.value);
     }
 
     /*************************************************
@@ -223,7 +254,13 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
         bytes memory _data,
         uint256 _gasLimit
     ) public payable override onlyNotInContext {
-        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(_to, _amount, _data, _gasLimit, _msgSender());
+        IL1ScrollMessenger(messenger).sendMessage{value: msg.value}(
+            _to,
+            _amount,
+            abi.encode(_msgSender(), _data),
+            _gasLimit,
+            _msgSender()
+        );
     }
 
     /// @inheritdoc IL1ETHGateway
