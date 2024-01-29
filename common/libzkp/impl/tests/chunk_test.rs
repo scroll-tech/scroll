@@ -1,4 +1,3 @@
-use log::info;
 use prover::utils::get_block_trace_from_file;
 use std::{
     ffi::{CStr, CString},
@@ -16,7 +15,6 @@ fn chunk_test() {
         let trace_path = "/assets/traces/1_transfer.json".to_string();
         let chunk_trace = get_block_trace_from_file(Path::new(&trace_path));
         let json_str = serde_json::to_string(&chunk_trace).expect("Serialization failed");
-        println!("json str: {}", json_str);
 
         let c_string = CString::new(json_str).expect("CString conversion failed");
         let c_str_ptr = c_string.as_ptr();
