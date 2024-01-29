@@ -7,6 +7,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
@@ -71,8 +72,8 @@ func testImportL2GasPrice(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add fake chunk
-	chunk := &types.Chunk{
-		Blocks: []*types.WrappedBlock{
+	chunk := &rollupTypes.Chunk{
+		Blocks: []*rollupTypes.WrappedBlock{
 			{
 				Header: &gethTypes.Header{
 					Number:     big.NewInt(1),
@@ -89,14 +90,14 @@ func testImportL2GasPrice(t *testing.T) {
 	chunkHash, err := chunk.Hash(0)
 	assert.NoError(t, err)
 
-	batchMeta := &types.BatchMeta{
+	batchMeta := &rollupTypes.BatchMeta{
 		StartChunkIndex: 0,
 		StartChunkHash:  chunkHash.Hex(),
 		EndChunkIndex:   0,
 		EndChunkHash:    chunkHash.Hex(),
 	}
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk}, batchMeta)
+	_, err = batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk}, batchMeta)
 	assert.NoError(t, err)
 
 	// check db status

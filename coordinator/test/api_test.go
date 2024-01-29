@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -44,9 +45,9 @@ var (
 	batchOrm      *orm.Batch
 	proverTaskOrm *orm.ProverTask
 
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
-	chunk         *types.Chunk
+	wrappedBlock1 *rollupTypes.WrappedBlock
+	wrappedBlock2 *rollupTypes.WrappedBlock
+	chunk         *rollupTypes.Chunk
 
 	tokenTimeout int
 )
@@ -136,17 +137,17 @@ func setEnv(t *testing.T) {
 
 	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
-	wrappedBlock1 = &types.WrappedBlock{}
+	wrappedBlock1 = &rollupTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace, wrappedBlock1)
 	assert.NoError(t, err)
 
 	templateBlockTrace, err = os.ReadFile("../../common/testdata/blockTrace_03.json")
 	assert.NoError(t, err)
-	wrappedBlock2 = &types.WrappedBlock{}
+	wrappedBlock2 = &rollupTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace, wrappedBlock2)
 	assert.NoError(t, err)
 
-	chunk = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1, wrappedBlock2}}
+	chunk = &rollupTypes.Chunk{Blocks: []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2}}
 	assert.NoError(t, err)
 }
 
@@ -208,13 +209,13 @@ func testValidProof(t *testing.T) {
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*rollupTypes.Chunk{chunk})
 	assert.NoError(t, err)
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
 	assert.NoError(t, err)
@@ -292,13 +293,13 @@ func testInvalidProof(t *testing.T) {
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*rollupTypes.Chunk{chunk})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
@@ -368,13 +369,13 @@ func testProofGeneratedFailed(t *testing.T) {
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*rollupTypes.Chunk{chunk})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
@@ -462,13 +463,13 @@ func testTimeoutProof(t *testing.T) {
 		batchMaxAttempts    int16
 	)
 
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*rollupTypes.Chunk{chunk})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)

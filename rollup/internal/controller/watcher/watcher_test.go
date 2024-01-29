@@ -7,12 +7,12 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
 
 	"scroll-tech/database/migrate"
 
@@ -29,8 +29,8 @@ var (
 	l2Cli *ethclient.Client
 
 	// block trace
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
+	wrappedBlock1 *rollupTypes.WrappedBlock
+	wrappedBlock2 *rollupTypes.WrappedBlock
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -62,7 +62,7 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock1 = &types.WrappedBlock{}
+	wrappedBlock1 = &rollupTypes.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock2 = &types.WrappedBlock{}
+	wrappedBlock2 = &rollupTypes.WrappedBlock{}
 	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
 		return err
 	}

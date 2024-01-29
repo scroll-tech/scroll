@@ -9,6 +9,7 @@ import (
 	"scroll-tech/common/types"
 
 	"github.com/scroll-tech/go-ethereum/log"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"gorm.io/gorm"
 )
 
@@ -135,7 +136,7 @@ func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) (
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *rollupTypes.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}

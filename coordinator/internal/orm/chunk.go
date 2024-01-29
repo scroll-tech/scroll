@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/log"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -219,7 +220,7 @@ func (o *Chunk) GetAttemptsByHash(ctx context.Context, hash string) (int16, int1
 
 // InsertChunk inserts a new chunk into the database.
 // for unit test
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *rollupTypes.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}

@@ -11,11 +11,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
 
 	"scroll-tech/rollup/internal/config"
 )
@@ -30,12 +30,12 @@ var (
 	l2Cli *ethclient.Client
 
 	// l2 block
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
+	wrappedBlock1 *rollupTypes.WrappedBlock
+	wrappedBlock2 *rollupTypes.WrappedBlock
 
 	// chunk
-	chunk1     *types.Chunk
-	chunk2     *types.Chunk
+	chunk1     *rollupTypes.Chunk
+	chunk2     *rollupTypes.Chunk
 	chunkHash1 common.Hash
 	chunkHash2 common.Hash
 )
@@ -71,19 +71,19 @@ func setupEnv(t *testing.T) {
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
 	assert.NoError(t, err)
-	wrappedBlock1 = &types.WrappedBlock{}
+	wrappedBlock1 = &rollupTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace1, wrappedBlock1)
 	assert.NoError(t, err)
-	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
+	chunk1 = &rollupTypes.Chunk{Blocks: []*rollupTypes.WrappedBlock{wrappedBlock1}}
 	chunkHash1, err = chunk1.Hash(0)
 	assert.NoError(t, err)
 
 	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
 	assert.NoError(t, err)
-	wrappedBlock2 = &types.WrappedBlock{}
+	wrappedBlock2 = &rollupTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace2, wrappedBlock2)
 	assert.NoError(t, err)
-	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
+	chunk2 = &rollupTypes.Chunk{Blocks: []*rollupTypes.WrappedBlock{wrappedBlock2}}
 	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
@@ -64,7 +65,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// add some blocks to db
-	var wrappedBlocks []*types.WrappedBlock
+	var wrappedBlocks []*rollupTypes.WrappedBlock
 	for i := 0; i < 10; i++ {
 		header := gethTypes.Header{
 			Number:     big.NewInt(int64(i)),
@@ -72,7 +73,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			Difficulty: big.NewInt(0),
 			BaseFee:    big.NewInt(0),
 		}
-		wrappedBlocks = append(wrappedBlocks, &types.WrappedBlock{
+		wrappedBlocks = append(wrappedBlocks, &rollupTypes.WrappedBlock{
 			Header:         &header,
 			Transactions:   nil,
 			WithdrawRoot:   common.Hash{},

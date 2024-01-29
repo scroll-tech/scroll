@@ -11,6 +11,7 @@ import (
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -52,21 +53,21 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	assert.NoError(t, err)
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	chunkOrm := orm.NewChunk(db)
 	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
 	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
-	batchMeta := &types.BatchMeta{
+	batchMeta := &rollupTypes.BatchMeta{
 		StartChunkIndex: 0,
 		StartChunkHash:  dbChunk1.Hash,
 		EndChunkIndex:   1,
 		EndChunkHash:    dbChunk2.Hash,
 	}
 	batchOrm := orm.NewBatch(db)
-	batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
+	batch, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk1, chunk2}, batchMeta)
 	assert.NoError(t, err)
 
 	relayer.ProcessPendingBatches()
@@ -84,14 +85,14 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
-	batchMeta := &types.BatchMeta{
+	batchMeta := &rollupTypes.BatchMeta{
 		StartChunkIndex: 0,
 		StartChunkHash:  chunkHash1.Hex(),
 		EndChunkIndex:   1,
 		EndChunkHash:    chunkHash2.Hex(),
 	}
 	batchOrm := orm.NewBatch(db)
-	batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
+	batch, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk1, chunk2}, batchMeta)
 	assert.NoError(t, err)
 
 	err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, types.RollupCommitted)
@@ -130,14 +131,14 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, nil)
 	assert.NoError(t, err)
-	batchMeta := &types.BatchMeta{
+	batchMeta := &rollupTypes.BatchMeta{
 		StartChunkIndex: 0,
 		StartChunkHash:  chunkHash1.Hex(),
 		EndChunkIndex:   1,
 		EndChunkHash:    chunkHash2.Hex(),
 	}
 	batchOrm := orm.NewBatch(db)
-	batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
+	batch, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk1, chunk2}, batchMeta)
 	assert.NoError(t, err)
 
 	err = batchOrm.UpdateRollupStatus(context.Background(), batch.Hash, types.RollupCommitted)
@@ -168,13 +169,13 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	batchOrm := orm.NewBatch(db)
 	batchHashes := make([]string, len(isSuccessful))
 	for i := range batchHashes {
-		batchMeta := &types.BatchMeta{
+		batchMeta := &rollupTypes.BatchMeta{
 			StartChunkIndex: 0,
 			StartChunkHash:  chunkHash1.Hex(),
 			EndChunkIndex:   1,
 			EndChunkHash:    chunkHash2.Hex(),
 		}
-		batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
+		batch, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk1, chunk2}, batchMeta)
 		assert.NoError(t, err)
 		batchHashes[i] = batch.Hash
 	}
@@ -222,13 +223,13 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	batchOrm := orm.NewBatch(db)
 	batchHashes := make([]string, len(isSuccessful))
 	for i := range batchHashes {
-		batchMeta := &types.BatchMeta{
+		batchMeta := &rollupTypes.BatchMeta{
 			StartChunkIndex: 0,
 			StartChunkHash:  chunkHash1.Hex(),
 			EndChunkIndex:   1,
 			EndChunkHash:    chunkHash2.Hex(),
 		}
-		batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
+		batch, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk1, chunk2}, batchMeta)
 		assert.NoError(t, err)
 		batchHashes[i] = batch.Hash
 	}
@@ -264,23 +265,23 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
-	batchMeta1 := &types.BatchMeta{
+	batchMeta1 := &rollupTypes.BatchMeta{
 		StartChunkIndex: 0,
 		StartChunkHash:  chunkHash1.Hex(),
 		EndChunkIndex:   0,
 		EndChunkHash:    chunkHash1.Hex(),
 	}
 	batchOrm := orm.NewBatch(db)
-	batch1, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1}, batchMeta1)
+	batch1, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk1}, batchMeta1)
 	assert.NoError(t, err)
 
-	batchMeta2 := &types.BatchMeta{
+	batchMeta2 := &rollupTypes.BatchMeta{
 		StartChunkIndex: 1,
 		StartChunkHash:  chunkHash2.Hex(),
 		EndChunkIndex:   1,
 		EndChunkHash:    chunkHash2.Hex(),
 	}
-	batch2, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk2}, batchMeta2)
+	batch2, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk2}, batchMeta2)
 	assert.NoError(t, err)
 
 	// Create and set up the Layer2 Relayer.
@@ -421,21 +422,21 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 	chunkOrm := orm.NewChunk(db)
 	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
 	assert.NoError(t, err)
 	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
 	assert.NoError(t, err)
-	batchMeta := &types.BatchMeta{
+	batchMeta := &rollupTypes.BatchMeta{
 		StartChunkIndex: 0,
 		StartChunkHash:  dbChunk1.Hash,
 		EndChunkIndex:   1,
 		EndChunkHash:    dbChunk2.Hash,
 	}
 	batchOrm := orm.NewBatch(db)
-	batch, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1, chunk2}, batchMeta)
+	batch, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk1, chunk2}, batchMeta)
 	assert.NoError(t, err)
 
 	cfg.L2Config.RelayerConfig.ChainMonitor.Enabled = true

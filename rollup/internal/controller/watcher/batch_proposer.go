@@ -8,9 +8,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/log"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -117,7 +116,7 @@ func (p *BatchProposer) TryProposeBatch() {
 	}
 }
 
-func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk, batchMeta *types.BatchMeta) error {
+func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk, batchMeta *rollupTypes.BatchMeta) error {
 	p.proposeBatchUpdateInfoTotal.Inc()
 	numChunks := len(dbChunks)
 	if numChunks <= 0 {
@@ -149,7 +148,7 @@ func (p *BatchProposer) updateBatchInfoInDB(dbChunks []*orm.Chunk, batchMeta *ty
 	return err
 }
 
-func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, error) {
+func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *rollupTypes.BatchMeta, error) {
 	unbatchedChunkIndex, err := p.batchOrm.GetFirstUnbatchedChunkIndex(p.ctx)
 	if err != nil {
 		return nil, nil, err
@@ -169,7 +168,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	var totalL1CommitGas uint64
 	var totalChunks uint64
 	var totalL1MessagePopped uint64
-	var batchMeta types.BatchMeta
+	var batchMeta rollupTypes.BatchMeta
 
 	parentBatch, err := p.batchOrm.GetLatestBatch(p.ctx)
 	if err != nil {
@@ -177,11 +176,11 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	}
 
 	// Add extra gas costs
-	totalL1CommitGas += 100000                       // constant to account for ops like _getAdmin, _implementation, _requireNotPaused, etc
-	totalL1CommitGas += 4 * 2100                     // 4 one-time cold sload for commitBatch
-	totalL1CommitGas += 20000                        // 1 time sstore
-	totalL1CommitGas += 21000                        // base fee for tx
-	totalL1CommitGas += types.CalldataNonZeroByteGas // version in calldata
+	totalL1CommitGas += 100000                             // constant to account for ops like _getAdmin, _implementation, _requireNotPaused, etc
+	totalL1CommitGas += 4 * 2100                           // 4 one-time cold sload for commitBatch
+	totalL1CommitGas += 20000                              // 1 time sstore
+	totalL1CommitGas += 21000                              // base fee for tx
+	totalL1CommitGas += rollupTypes.CalldataNonZeroByteGas // version in calldata
 
 	// adjusting gas:
 	// add 1 time cold sload (2100 gas) for L1MessageQueue
@@ -189,8 +188,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	// minus 1 time warm sload (100 gas) & 1 time warm address access (100 gas)
 	totalL1CommitGas += (2100 + 2600 - 100 - 100)
 	if parentBatch != nil {
-		totalL1CommitGas += types.GetKeccak256Gas(uint64(len(parentBatch.BatchHeader)))         // parent batch header hash
-		totalL1CommitGas += types.CalldataNonZeroByteGas * uint64(len(parentBatch.BatchHeader)) // parent batch header in calldata
+		totalL1CommitGas += rollupTypes.GetKeccak256Gas(uint64(len(parentBatch.BatchHeader)))         // parent batch header hash
+		totalL1CommitGas += rollupTypes.CalldataNonZeroByteGas * uint64(len(parentBatch.BatchHeader)) // parent batch header in calldata
 	}
 
 	for i, chunk := range dbChunks {
@@ -201,17 +200,17 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 		totalL1CommitCalldataSize += chunk.TotalL1CommitCalldataSize
 		totalL1CommitGas += chunk.TotalL1CommitGas
 		// adjust batch data hash gas cost
-		totalL1CommitGas -= types.GetKeccak256Gas(32 * totalChunks)
+		totalL1CommitGas -= rollupTypes.GetKeccak256Gas(32 * totalChunks)
 		totalChunks++
-		totalL1CommitGas += types.GetKeccak256Gas(32 * totalChunks)
+		totalL1CommitGas += rollupTypes.GetKeccak256Gas(32 * totalChunks)
 		// adjust batch header hash gas cost, batch header size: 89 + 32 * ceil(l1MessagePopped / 256)
-		totalL1CommitGas -= types.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
-		totalL1CommitGas -= types.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
-		totalL1CommitGas -= types.GetMemoryExpansionCost(uint64(totalL1CommitCalldataSize))
+		totalL1CommitGas -= rollupTypes.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
+		totalL1CommitGas -= rollupTypes.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
+		totalL1CommitGas -= rollupTypes.GetMemoryExpansionCost(uint64(totalL1CommitCalldataSize))
 		totalL1MessagePopped += uint64(chunk.TotalL1MessagesPoppedInChunk)
-		totalL1CommitGas += types.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
-		totalL1CommitGas += types.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
-		totalL1CommitGas += types.GetMemoryExpansionCost(uint64(totalL1CommitCalldataSize))
+		totalL1CommitGas += rollupTypes.CalldataNonZeroByteGas * (32 * (totalL1MessagePopped + 255) / 256)
+		totalL1CommitGas += rollupTypes.GetKeccak256Gas(89 + 32*(totalL1MessagePopped+255)/256)
+		totalL1CommitGas += rollupTypes.GetMemoryExpansionCost(uint64(totalL1CommitCalldataSize))
 		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
 		if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {
@@ -280,8 +279,8 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	return nil, nil, nil
 }
 
-func (p *BatchProposer) dbChunksToRollupChunks(dbChunks []*orm.Chunk) ([]*types.Chunk, error) {
-	chunks := make([]*types.Chunk, len(dbChunks))
+func (p *BatchProposer) dbChunksToRollupChunks(dbChunks []*orm.Chunk) ([]*rollupTypes.Chunk, error) {
+	chunks := make([]*rollupTypes.Chunk, len(dbChunks))
 	for i, c := range dbChunks {
 		wrappedBlocks, err := p.l2BlockOrm.GetL2BlocksInRange(p.ctx, c.StartBlockNumber, c.EndBlockNumber)
 		if err != nil {
@@ -289,7 +288,7 @@ func (p *BatchProposer) dbChunksToRollupChunks(dbChunks []*orm.Chunk) ([]*types.
 				"start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
 			return nil, err
 		}
-		chunks[i] = &types.Chunk{
+		chunks[i] = &rollupTypes.Chunk{
 			Blocks: wrappedBlocks,
 		}
 	}

@@ -9,6 +9,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/integration-test/orm"
@@ -21,7 +22,6 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -85,21 +85,21 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 		log.Fatalf("Failed to retrieve L2 genesis header after multiple attempts: %v", err)
 	}
 
-	wrappedBlock := &types.WrappedBlock{
+	wrappedBlock := &rollupTypes.WrappedBlock{
 		Header:         header,
 		Transactions:   nil,
 		WithdrawRoot:   common.Hash{},
 		RowConsumption: &gethTypes.RowConsumption{},
 	}
-	chunk := &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock}}
+	chunk := &rollupTypes.Chunk{Blocks: []*rollupTypes.WrappedBlock{wrappedBlock}}
 
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*rollupTypes.Chunk{chunk})
 	assert.NoError(t, err)
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
 	assert.NoError(t, err)

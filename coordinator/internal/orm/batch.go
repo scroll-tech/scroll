@@ -9,6 +9,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -187,7 +188,7 @@ func (o *Batch) GetAttemptsByHash(ctx context.Context, hash string) (int16, int1
 
 // InsertBatch inserts a new batch into the database.
 // for unit test
-func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*types.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, startChunkHash, endChunkHash string, chunks []*rollupTypes.Chunk, dbTX ...*gorm.DB) (*Batch, error) {
 	if len(chunks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -210,8 +211,8 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		batchIndex = parentBatch.Index + 1
 		parentBatchHash = common.HexToHash(parentBatch.Hash)
 
-		var parentBatchHeader *types.BatchHeader
-		parentBatchHeader, err = types.DecodeBatchHeader(parentBatch.BatchHeader)
+		var parentBatchHeader *rollupTypes.BatchHeader
+		parentBatchHeader, err = rollupTypes.DecodeBatchHeader(parentBatch.BatchHeader)
 		if err != nil {
 			log.Error("failed to decode parent batch header", "index", parentBatch.Index, "hash", parentBatch.Hash, "err", err)
 			return nil, err
@@ -221,7 +222,7 @@ func (o *Batch) InsertBatch(ctx context.Context, startChunkIndex, endChunkIndex 
 		version = parentBatchHeader.Version()
 	}
 
-	batchHeader, err := types.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
+	batchHeader, err := rollupTypes.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
 	if err != nil {
 		log.Error("failed to create batch header",
 			"index", batchIndex, "total l1 message popped before", totalL1MessagePoppedBefore,

@@ -15,6 +15,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -152,8 +153,8 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	chunk := &types.Chunk{
-		Blocks: []*types.WrappedBlock{{
+	chunk := &rollupTypes.Chunk{
+		Blocks: []*rollupTypes.WrappedBlock{{
 			Header:         genesis,
 			Transactions:   nil,
 			WithdrawRoot:   common.Hash{},
@@ -172,14 +173,14 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
 		}
 
-		batchMeta := &types.BatchMeta{
+		batchMeta := &rollupTypes.BatchMeta{
 			StartChunkIndex: 0,
 			StartChunkHash:  dbChunk.Hash,
 			EndChunkIndex:   0,
 			EndChunkHash:    dbChunk.Hash,
 		}
 		var batch *orm.Batch
-		batch, err = r.batchOrm.InsertBatch(r.ctx, []*types.Chunk{chunk}, batchMeta, dbTX)
+		batch, err = r.batchOrm.InsertBatch(r.ctx, []*rollupTypes.Chunk{chunk}, batchMeta, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
@@ -308,7 +309,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	for _, batch := range batches {
 		r.metrics.rollupL2RelayerProcessPendingBatchTotal.Inc()
 		// get current header and parent header.
-		currentBatchHeader, err := types.DecodeBatchHeader(batch.BatchHeader)
+		currentBatchHeader, err := rollupTypes.DecodeBatchHeader(batch.BatchHeader)
 		if err != nil {
 			log.Error("Failed to decode batch header", "index", batch.Index, "error", err)
 			return
@@ -341,7 +342,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
-			var wrappedBlocks []*types.WrappedBlock
+			var wrappedBlocks []*rollupTypes.WrappedBlock
 			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				log.Error("Failed to fetch wrapped blocks",
@@ -349,7 +350,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 					"end number", c.EndBlockNumber, "error", err)
 				return
 			}
-			chunk := &types.Chunk{
+			chunk := &rollupTypes.Chunk{
 				Blocks: wrappedBlocks,
 			}
 			var chunkBytes []byte

@@ -9,6 +9,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -27,10 +28,10 @@ var (
 	batchOrm              *Batch
 	pendingTransactionOrm *PendingTransaction
 
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
-	chunk1        *types.Chunk
-	chunk2        *types.Chunk
+	wrappedBlock1 *rollupTypes.WrappedBlock
+	wrappedBlock2 *rollupTypes.WrappedBlock
+	chunk1        *rollupTypes.Chunk
+	chunk2        *rollupTypes.Chunk
 	chunkHash1    common.Hash
 	chunkHash2    common.Hash
 )
@@ -66,21 +67,21 @@ func setupEnv(t *testing.T) {
 
 	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
-	wrappedBlock1 = &types.WrappedBlock{}
+	wrappedBlock1 = &rollupTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace, wrappedBlock1)
 	assert.NoError(t, err)
 
 	templateBlockTrace, err = os.ReadFile("../../../common/testdata/blockTrace_03.json")
 	assert.NoError(t, err)
-	wrappedBlock2 = &types.WrappedBlock{}
+	wrappedBlock2 = &rollupTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace, wrappedBlock2)
 	assert.NoError(t, err)
 
-	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
+	chunk1 = &rollupTypes.Chunk{Blocks: []*rollupTypes.WrappedBlock{wrappedBlock1}}
 	chunkHash1, err = chunk1.Hash(0)
 	assert.NoError(t, err)
 
-	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
+	chunk2 = &rollupTypes.Chunk{Blocks: []*rollupTypes.WrappedBlock{wrappedBlock2}}
 	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
 }
@@ -144,7 +145,7 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
 	height, err := l2BlockOrm.GetL2BlocksLatestHeight(context.Background())
@@ -223,36 +224,36 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	batchMeta1 := &types.BatchMeta{
+	batchMeta1 := &rollupTypes.BatchMeta{
 		StartChunkIndex: 0,
 		StartChunkHash:  chunkHash1.Hex(),
 		EndChunkIndex:   0,
 		EndChunkHash:    chunkHash1.Hex(),
 	}
-	batch1, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1}, batchMeta1)
+	batch1, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk1}, batchMeta1)
 	assert.NoError(t, err)
 	hash1 := batch1.Hash
 
 	batch1, err = batchOrm.GetBatchByIndex(context.Background(), 0)
 	assert.NoError(t, err)
-	batchHeader1, err := types.DecodeBatchHeader(batch1.BatchHeader)
+	batchHeader1, err := rollupTypes.DecodeBatchHeader(batch1.BatchHeader)
 	assert.NoError(t, err)
 	batchHash1 := batchHeader1.Hash().Hex()
 	assert.Equal(t, hash1, batchHash1)
 
-	batchMeta2 := &types.BatchMeta{
+	batchMeta2 := &rollupTypes.BatchMeta{
 		StartChunkIndex: 1,
 		StartChunkHash:  chunkHash2.Hex(),
 		EndChunkIndex:   1,
 		EndChunkHash:    chunkHash2.Hex(),
 	}
-	batch2, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk2}, batchMeta2)
+	batch2, err := batchOrm.InsertBatch(context.Background(), []*rollupTypes.Chunk{chunk2}, batchMeta2)
 	assert.NoError(t, err)
 	hash2 := batch2.Hash
 
 	batch2, err = batchOrm.GetBatchByIndex(context.Background(), 1)
 	assert.NoError(t, err)
-	batchHeader2, err := types.DecodeBatchHeader(batch2.BatchHeader)
+	batchHeader2, err := rollupTypes.DecodeBatchHeader(batch2.BatchHeader)
 	assert.NoError(t, err)
 	batchHash2 := batchHeader2.Hash().Hex()
 	assert.Equal(t, hash2, batchHash2)

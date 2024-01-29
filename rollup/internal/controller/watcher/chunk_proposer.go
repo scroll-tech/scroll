@@ -10,9 +10,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -163,7 +162,7 @@ func (p *ChunkProposer) TryProposeChunk() {
 	}
 }
 
-func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
+func (p *ChunkProposer) updateChunkInfoInDB(chunk *rollupTypes.Chunk) error {
 	if chunk == nil {
 		return nil
 	}
@@ -184,7 +183,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	return err
 }
 
-func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
+func (p *ChunkProposer) proposeChunk() (*rollupTypes.Chunk, error) {
 	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
 	if err != nil {
 		return nil, err
@@ -200,7 +199,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, nil
 	}
 
-	var chunk types.Chunk
+	var chunk rollupTypes.Chunk
 	var totalTxGasUsed uint64
 	var totalTxNum uint64
 	var totalL1CommitCalldataSize uint64

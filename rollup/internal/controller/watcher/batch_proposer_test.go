@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
@@ -91,7 +92,7 @@ func testBatchProposerLimits(t *testing.T) {
 			defer database.CloseDB(db)
 
 			l2BlockOrm := orm.NewL2Block(db)
-			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 			assert.NoError(t, err)
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
@@ -150,7 +151,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{

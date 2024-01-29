@@ -9,9 +9,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types"
 )
 
 // L2Block represents a l2 block in the database.
@@ -67,7 +66,7 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (uint64, error) {
 // GetL2WrappedBlocksGEHeight retrieves L2 blocks that have a block number greater than or equal to the given height.
 // The blocks are converted into WrappedBlock format for output.
 // The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64, limit int) ([]*types.WrappedBlock, error) {
+func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64, limit int) ([]*rollupTypes.WrappedBlock, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("header, transactions, withdraw_root, row_consumption")
@@ -83,9 +82,9 @@ func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64,
 		return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
 	}
 
-	var wrappedBlocks []*types.WrappedBlock
+	var wrappedBlocks []*rollupTypes.WrappedBlock
 	for _, v := range l2Blocks {
-		var wrappedBlock types.WrappedBlock
+		var wrappedBlock rollupTypes.WrappedBlock
 
 		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
@@ -138,7 +137,7 @@ func (o *L2Block) GetL2Blocks(ctx context.Context, fields map[string]interface{}
 // GetL2BlocksInRange retrieves the L2 blocks within the specified range (inclusive).
 // The range is closed, i.e., it includes both start and end block numbers.
 // The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
+func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*rollupTypes.WrappedBlock, error) {
 	if startBlockNumber > endBlockNumber {
 		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: start block number should be less than or equal to end block number, start block: %v, end block: %v", startBlockNumber, endBlockNumber)
 	}
@@ -159,9 +158,9 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: unexpected number of results, expected: %v, got: %v", endBlockNumber-startBlockNumber+1, len(l2Blocks))
 	}
 
-	var wrappedBlocks []*types.WrappedBlock
+	var wrappedBlocks []*rollupTypes.WrappedBlock
 	for _, v := range l2Blocks {
-		var wrappedBlock types.WrappedBlock
+		var wrappedBlock rollupTypes.WrappedBlock
 
 		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
@@ -185,7 +184,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 }
 
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
-func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlock) error {
+func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*rollupTypes.WrappedBlock) error {
 	var l2Blocks []L2Block
 	for _, block := range blocks {
 		header, err := json.Marshal(block.Header)
