@@ -1,4 +1,3 @@
-use log::log;
 use prover::utils::get_block_trace_from_file;
 use std::{ffi::CString, path::Path, thread::sleep, time::Duration};
 use zkp::chunk;
