@@ -25,13 +25,7 @@ fn chunk_test() {
         let mut count = 1;
         // loop {
         count += 1;
-        println!(
-            "count {:?}, c_str_ptr {:?}",
-            count,
-            CStr::from_ptr(c_str_ptr)
-                .to_str()
-                .expect("Failed to convert C string to Rust string")
-        );
+        println!("count {:?}", count);
 
         let ret = chunk::gen_chunk_proof(c_str_ptr);
         let ret_cstr = CStr::from_ptr(ret)
