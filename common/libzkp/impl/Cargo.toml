@@ -23,6 +23,7 @@ halo2curves = { git = "https://github.com/scroll-tech/halo2curves.git", branch =
 halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "develop" }
 prover = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.9.8", default-features = false, features = ["parallel_syn", "scroll", "shanghai", "strict-ccc"] }
 
+glob = "0.3"
 base64 = "0.13.0"
 env_logger = "0.9.0"
 libc = "0.2"
