@@ -1,10 +1,11 @@
 use prover::utils::get_block_trace_from_file;
-use std::{ffi::CString, path::Path, thread::sleep, time::Duration};
+use std::{ffi::CString, path::Path};
 use zkp::chunk;
 
 #[test]
 fn chunk_test() {
     unsafe {
+        log::info!("11111111");
         let params = CString::new("/assets/test_params").expect("test_params conversion failed");
         let assets = CString::new("/assets/test_assets").expect("test_assets conversion failed");
 
@@ -20,7 +21,7 @@ fn chunk_test() {
         let mut count = 1;
         loop {
             count += 1;
-            log::info!("count {:?}", count);
+            log::info!("count {:?}, c_str_ptr {:?}", count, *c_str_ptr);
             chunk::gen_chunk_proof(c_str_ptr);
         }
     }
