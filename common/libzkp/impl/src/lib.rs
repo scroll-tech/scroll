@@ -1,6 +1,6 @@
 #![feature(once_cell)]
 
 mod batch;
-mod chunk;
+pub mod chunk;
 mod types;
 mod utils;
