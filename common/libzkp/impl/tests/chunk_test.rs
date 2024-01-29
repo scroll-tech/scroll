@@ -1,9 +1,6 @@
 use glob::glob;
 use prover::{utils::get_block_trace_from_file, BlockTrace};
-use std::{
-    ffi::{CStr, CString},
-    path::Path,
-};
+use std::ffi::{CStr, CString};
 use zkp::chunk;
 
 #[test]
@@ -24,7 +21,7 @@ fn chunk_test() {
             .to_str()
             .expect("Failed to convert C string to Rust string");
 
-        println!("c_str_ptr: {:?}", ptr_cstr);
+        println!("c_str_ptr len: {:?}", ptr_cstr.len());
 
         let mut count = 1;
         // loop {
