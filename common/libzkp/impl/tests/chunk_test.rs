@@ -1,6 +1,9 @@
 use log::info;
 use prover::utils::get_block_trace_from_file;
-use std::{ffi::CString, path::Path};
+use std::{
+    ffi::{CStr, CString},
+    path::Path,
+};
 use zkp::chunk;
 
 #[test]
@@ -22,9 +25,19 @@ fn chunk_test() {
         let mut count = 1;
         // loop {
         count += 1;
-        println!("count {:?}, c_str_ptr {:?}", count, *c_str_ptr);
+        println!(
+            "count {:?}, c_str_ptr {:?}",
+            count,
+            CStr::from_ptr(c_str_ptr)
+                .to_str()
+                .expect("Failed to convert C string to Rust string")
+        );
+
         let ret = chunk::gen_chunk_proof(c_str_ptr);
-        println!("ret: {:?}", *ret)
+        let ret_cstr = CStr::from_ptr(ret)
+            .to_str()
+            .expect("Failed to convert C string to Rust string");
+        println!("ret: {:?}", ret_cstr)
         // }
     }
 }
