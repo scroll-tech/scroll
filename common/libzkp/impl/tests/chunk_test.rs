@@ -20,10 +20,11 @@ fn chunk_test() {
 
         chunk::init_chunk_prover(params.as_ptr(), assets.as_ptr());
         let mut count = 1;
-        loop {
-            count += 1;
-            println!("count {:?}, c_str_ptr {:?}", count, *c_str_ptr);
-            chunk::gen_chunk_proof(c_str_ptr);
-        }
+        // loop {
+        count += 1;
+        println!("count {:?}, c_str_ptr {:?}", count, *c_str_ptr);
+        let ret = chunk::gen_chunk_proof(c_str_ptr);
+        println!("ret: {:?}", *ret)
+        // }
     }
 }
