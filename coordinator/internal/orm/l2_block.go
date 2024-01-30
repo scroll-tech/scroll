@@ -65,8 +65,8 @@ func (o *L2Block) GetL2BlockHashesByChunkHash(ctx context.Context, chunkHash str
 
 	var blockHashes []common.Hash
 	for _, v := range l2Blocks {
-		var header *gethTypes.Header
-		if err := json.Unmarshal([]byte(v.Header), header); err != nil {
+		var header gethTypes.Header
+		if err := json.Unmarshal([]byte(v.Header), &header); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2BlockHashesByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 		}
 		blockHashes = append(blockHashes, header.Hash())
