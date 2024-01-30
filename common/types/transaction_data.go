@@ -11,7 +11,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
 
-// TransactionData represents custom transaction structure for forward compatibility.
+// TransactionData defines a structure compatible with legacy plaintext JSON transaction data.
+// This is used for backward compatibility.
 type TransactionData struct {
 	Type     uint8           `json:"type"`
 	Nonce    uint64          `json:"nonce"`
@@ -25,48 +26,50 @@ type TransactionData struct {
 	S        *hexutil.Big    `json:"s"`
 }
 
-// DecodeTransactions converts hex-encoded RLP transactions to types.Transaction slice.
+// DecodeTransactions decodes hex strings into a slice of types.Transaction.
 func DecodeTransactions(encodedTx string) ([]*types.Transaction, error) {
 	var transactions []*types.Transaction
-	// Try decoding as RLP-encoded transactions first
+	// Decode the base64 string to bytes as RLP-encoded transactions
 	bytes, err := base64.StdEncoding.DecodeString(encodedTx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode base64 string, err: %w", err)
+		return nil, fmt.Errorf("base64 decode failed: %w", err)
 	}
 	rlpErr := rlp.DecodeBytes(bytes, &transactions)
 	if rlpErr == nil {
 		return transactions, nil
 	}
 
-	// RLP decoding failed, then attempt to unmarshal into TransactionData
+	// If RLP decoding fails, try to unmarshal into TransactionData
 	var txData []*TransactionData
 	if jsonErr := json.Unmarshal([]byte(encodedTx), &txData); jsonErr != nil {
-		return nil, fmt.Errorf("fatal: both RLP decode and JSON decode are failed, rlpErr: %w, jsonErr: %w", rlpErr, jsonErr)
+		return nil, fmt.Errorf("RLP and JSON decode failure: rlpErr: %w, jsonErr: %w", rlpErr, jsonErr)
 	}
 
+	// Convert TransactionData to types.Transaction
 	transactions, err = convertTxDataToTxs(txData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert transaction data to transactions, err: %w", err)
+		return nil, fmt.Errorf("conversion of TransactionData failed: %w", err)
 	}
 
+	// Validate the number of decoded transactions
 	if len(transactions) != len(txData) {
-		return nil, fmt.Errorf("validation failed: the number of decoded transactions (%d) does not match the number of transaction data entries (%d)", len(transactions), len(txData))
+		return nil, fmt.Errorf("decoded transaction count mismatch: got %d, want %d", len(transactions), len(txData))
 	}
 
 	return transactions, nil
 }
 
-// convertTxDataToTxs converts a slice of TransactionData to a slice of *types.Transaction.
+// convertTxDataToTxs transforms []*TransactionData into []*types.Transaction.
 func convertTxDataToTxs(txData []*TransactionData) ([]*types.Transaction, error) {
 	var txs []*types.Transaction
 
 	for _, oldTx := range txData {
 		data, err := hexutil.Decode(oldTx.Data)
 		if err != nil {
-			return nil, fmt.Errorf("failed to decode transaction data field, error: %w", err)
+			return nil, fmt.Errorf("hex decode of 'data' field failed: %w", err)
 		}
 
-		// The l2geth only supports legacy and l1 message transactions before enabling EIP-1559.
+		// Handle specific transaction types, considering EIP-1559 is not in use.
 		switch oldTx.Type {
 		case types.LegacyTxType:
 			newTx := types.NewTx(&types.LegacyTx{
@@ -93,7 +96,7 @@ func convertTxDataToTxs(txData []*TransactionData) ([]*types.Transaction, error)
 			txs = append(txs, newTx)
 
 		default:
-			return nil, fmt.Errorf("unexpected tx type: %v", oldTx.Type)
+			return nil, fmt.Errorf("unsupported tx type: %v", oldTx.Type)
 		}
 	}
 
