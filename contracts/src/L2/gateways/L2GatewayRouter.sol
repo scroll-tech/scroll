@@ -161,7 +161,12 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         bytes memory _data,
         uint256 _gasLimit
     ) public payable override {
-        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(_to, _amount, _data, _gasLimit);
+        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(
+            _to,
+            _amount,
+            abi.encode(_msgSender(), _data),
+            _gasLimit
+        );
     }
 
     /// @inheritdoc IL2ETHGateway

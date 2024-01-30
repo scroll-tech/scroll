@@ -258,7 +258,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = useRouter
-            ? new bytes(0)
+            ? abi.encode(address(this), new bytes(0))
             : abi.encodeWithSelector(
                 IL1ETHGateway.finalizeWithdrawETH.selector,
                 address(this),
@@ -330,7 +330,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = useRouter
-            ? new bytes(0)
+            ? abi.encode(address(this), new bytes(0))
             : abi.encodeWithSelector(
                 IL1ETHGateway.finalizeWithdrawETH.selector,
                 address(this),
@@ -403,7 +403,7 @@ contract L2ETHGatewayTest is L2GatewayTestBase {
 
         uint256 feeToPay = feePerGas * gasLimit;
         bytes memory message = useRouter
-            ? dataToCall
+            ? abi.encode(address(this), dataToCall)
             : abi.encodeWithSelector(
                 IL1ETHGateway.finalizeWithdrawETH.selector,
                 address(this),

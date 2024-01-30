@@ -220,6 +220,8 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
     }
 
     function testGrantRole(bytes32 _role, address _account) external {
+        hevm.assume(gateway.getRoleMemberCount(_role) == 0);
+
         // revert not owner
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
@@ -243,6 +245,8 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
     }
 
     function testRevokeRole(bytes32 _role, address _account) external {
+        hevm.assume(gateway.getRoleMemberCount(_role) == 0);
+
         // revert not owner
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
