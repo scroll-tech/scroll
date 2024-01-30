@@ -57,7 +57,7 @@ func setupEnv(t *testing.T) (err error) {
 	l2Cli, err = base.L2Client()
 	assert.NoError(t, err)
 
-	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
+	templateBlockTrace1, err := os.ReadFile("../../../../common/testdata/blockTrace_02.json")
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 
-	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
+	templateBlockTrace2, err := os.ReadFile("../../../../common/testdata/blockTrace_03.json")
 	if err != nil {
 		return err
 	}

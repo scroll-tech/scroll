@@ -112,8 +112,8 @@ func testBatchProposerLimits(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, uint64(6042), chunks[0].TotalL1CommitGas)
 			assert.Equal(t, uint32(298), chunks[0].TotalL1CommitCalldataSize)
-			assert.Equal(t, uint64(94586), chunks[1].TotalL1CommitGas)
-			assert.Equal(t, uint32(5735), chunks[1].TotalL1CommitCalldataSize)
+			assert.Equal(t, uint64(94746), chunks[1].TotalL1CommitGas)
+			assert.Equal(t, uint32(5745), chunks[1].TotalL1CommitCalldataSize)
 
 			bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 				MaxChunkNumPerBatch:             tt.maxChunkNum,
@@ -171,8 +171,8 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(6042), chunks[0].TotalL1CommitGas)
 	assert.Equal(t, uint32(298), chunks[0].TotalL1CommitCalldataSize)
-	assert.Equal(t, uint64(94586), chunks[1].TotalL1CommitGas)
-	assert.Equal(t, uint32(5735), chunks[1].TotalL1CommitCalldataSize)
+	assert.Equal(t, uint64(94746), chunks[1].TotalL1CommitGas)
+	assert.Equal(t, uint32(5745), chunks[1].TotalL1CommitCalldataSize)
 
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		MaxChunkNumPerBatch:             10,
@@ -200,6 +200,6 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(chunk.ProvingStatus))
 	}
 
-	assert.Equal(t, uint64(254562), batches[0].TotalL1CommitGas)
-	assert.Equal(t, uint32(6033), batches[0].TotalL1CommitCalldataSize)
+	assert.Equal(t, uint64(254722), batches[0].TotalL1CommitGas)
+	assert.Equal(t, uint32(6043), batches[0].TotalL1CommitCalldataSize)
 }

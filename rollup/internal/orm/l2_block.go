@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -9,8 +10,11 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/rlp"
 	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"gorm.io/gorm"
+
+	"scroll-tech/common/types"
 )
 
 // L2Block represents a l2 block in the database.
@@ -86,9 +90,11 @@ func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64,
 	for _, v := range l2Blocks {
 		var wrappedBlock rollupTypes.WrappedBlock
 
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
+		transactions, err := types.DecodeTransactions(v.Transactions)
+		if err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
 		}
+		wrappedBlock.Transactions = transactions
 
 		wrappedBlock.Header = &gethTypes.Header{}
 		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
@@ -162,9 +168,11 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 	for _, v := range l2Blocks {
 		var wrappedBlock rollupTypes.WrappedBlock
 
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+		transactions, err := types.DecodeTransactions(v.Transactions)
+		if err != nil {
+			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: failed to decode transactions, err: %w", err)
 		}
+		wrappedBlock.Transactions = transactions
 
 		wrappedBlock.Header = &gethTypes.Header{}
 		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
@@ -193,10 +201,10 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*rollupTypes.Wrap
 			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
 		}
 
-		txs, err := json.Marshal(block.Transactions)
+		encoded, err := rlp.EncodeToBytes(block.Transactions)
 		if err != nil {
-			log.Error("failed to marshal transactions", "hash", block.Header.Hash().String(), "err", err)
-			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
+			log.Error("failed to encode transactions to rlp encoding", "hash", block.Header.Hash().String(), "err", err)
+			return fmt.Errorf("L2Block.InsertL2Blocks, failed to encode transactions to rlp encoding, error: %w", err)
 		}
 
 		rc, err := json.Marshal(block.RowConsumption)
@@ -209,7 +217,7 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*rollupTypes.Wrap
 			Number:         block.Header.Number.Uint64(),
 			Hash:           block.Header.Hash().String(),
 			ParentHash:     block.Header.ParentHash.String(),
-			Transactions:   string(txs),
+			Transactions:   base64.StdEncoding.EncodeToString(encoded),
 			WithdrawRoot:   block.WithdrawRoot.Hex(),
 			StateRoot:      block.Header.Root.Hex(),
 			TxNum:          uint32(len(block.Transactions)),

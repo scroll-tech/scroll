@@ -161,8 +161,20 @@ func TestL2BlockOrm(t *testing.T) {
 	wrappedBlocks, err := l2BlockOrm.GetL2BlocksInRange(context.Background(), 2, 3)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
-	assert.Equal(t, wrappedBlock1, wrappedBlocks[0])
-	assert.Equal(t, wrappedBlock2, wrappedBlocks[1])
+	assert.Equal(t, wrappedBlock1.Header, wrappedBlocks[0].Header)
+	assert.Equal(t, wrappedBlock1.RowConsumption, wrappedBlocks[0].RowConsumption)
+	assert.Equal(t, wrappedBlock1.WithdrawRoot, wrappedBlocks[0].WithdrawRoot)
+	assert.Equal(t, len(wrappedBlock1.Transactions), len(wrappedBlocks[0].Transactions))
+	for i := range wrappedBlock1.Transactions {
+		assert.Equal(t, wrappedBlock1.Transactions[i].Hash(), wrappedBlocks[0].Transactions[i].Hash())
+	}
+	assert.Equal(t, wrappedBlock2.Header, wrappedBlocks[1].Header)
+	assert.Equal(t, wrappedBlock2.RowConsumption, wrappedBlocks[1].RowConsumption)
+	assert.Equal(t, wrappedBlock2.WithdrawRoot, wrappedBlocks[1].WithdrawRoot)
+	assert.Equal(t, len(wrappedBlock2.Transactions), len(wrappedBlocks[1].Transactions))
+	for i := range wrappedBlock2.Transactions {
+		assert.Equal(t, wrappedBlock2.Transactions[i].Hash(), wrappedBlocks[1].Transactions[i].Hash())
+	}
 
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 2, 2, "test hash")
 	assert.NoError(t, err)

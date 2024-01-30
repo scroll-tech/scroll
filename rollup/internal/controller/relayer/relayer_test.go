@@ -69,7 +69,7 @@ func setupEnv(t *testing.T) {
 	l2Cli, err = base.L2Client()
 	assert.NoError(t, err)
 
-	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
+	templateBlockTrace1, err := os.ReadFile("../../../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
 	wrappedBlock1 = &rollupTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace1, wrappedBlock1)
@@ -78,7 +78,7 @@ func setupEnv(t *testing.T) {
 	chunkHash1, err = chunk1.Hash(0)
 	assert.NoError(t, err)
 
-	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
+	templateBlockTrace2, err := os.ReadFile("../../../../common/testdata/blockTrace_03.json")
 	assert.NoError(t, err)
 	wrappedBlock2 = &rollupTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace2, wrappedBlock2)
