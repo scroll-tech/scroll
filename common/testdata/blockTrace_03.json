@@ -26,6 +26,10 @@
         "hash": "0x13ddd94de9c585c50c6885d4ef649292c2624ae7c8fc73781ee8785f2564b44c"
     },
     "row_consumption": [
+        {
+            "name": "keccak",
+            "row_number": 12
+        }
     ],
     "transactions": [
         {

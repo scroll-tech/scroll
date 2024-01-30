@@ -20,11 +20,13 @@ type L2Block struct {
 	Hash           string `json:"hash" gorm:"hash"`
 	ParentHash     string `json:"parent_hash" gorm:"parent_hash"`
 	Header         string `json:"header" gorm:"header"`
+	Transactions   string `json:"transactions" gorm:"transactions"`
 	WithdrawRoot   string `json:"withdraw_root" gorm:"withdraw_root"`
 	StateRoot      string `json:"state_root" gorm:"state_root"`
 	TxNum          uint32 `json:"tx_num" gorm:"tx_num"`
 	GasUsed        uint64 `json:"gas_used" gorm:"gas_used"`
 	BlockTimestamp uint64 `json:"block_timestamp" gorm:"block_timestamp"`
+	RowConsumption string `json:"row_consumption" gorm:"row_consumption"`
 
 	// chunk
 	ChunkHash string `json:"chunk_hash" gorm:"chunk_hash;default:NULL"`
