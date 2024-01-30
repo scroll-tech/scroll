@@ -18,6 +18,7 @@ type TransactionData struct {
 	Nonce    uint64          `json:"nonce"`
 	Gas      uint64          `json:"gas"`
 	GasPrice *hexutil.Big    `json:"gasPrice"`
+	From     common.Address  `json:"from"`
 	To       *common.Address `json:"to"`
 	Value    *hexutil.Big    `json:"value"`
 	Data     string          `json:"data"`
@@ -92,6 +93,7 @@ func convertTxDataToTxs(txData []*TransactionData) ([]*types.Transaction, error)
 				Gas:        oldTx.Gas,
 				Data:       data,
 				QueueIndex: oldTx.Nonce,
+				Sender:     oldTx.From,
 			})
 			txs = append(txs, newTx)
 
