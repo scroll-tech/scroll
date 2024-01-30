@@ -24,16 +24,16 @@ fn chunk_test() {
         println!("c_str_ptr len: {:?}", ptr_cstr.len());
 
         let mut count = 1;
-        // loop {
-        count += 1;
-        println!("count {:?}", count);
+        loop {
+            count += 1;
+            println!("count {:?}", count);
 
-        let ret = chunk::gen_chunk_proof(c_str_ptr);
-        let ret_cstr = CStr::from_ptr(ret)
-            .to_str()
-            .expect("Failed to convert C string to Rust string");
-        println!("ret: {:?}", ret_cstr)
-        // }
+            let ret = chunk::gen_chunk_proof(c_str_ptr);
+            let ret_cstr = CStr::from_ptr(ret)
+                .to_str()
+                .expect("Failed to convert C string to Rust string");
+            println!("ret: {:?}", ret_cstr)
+        }
     }
 }
 
