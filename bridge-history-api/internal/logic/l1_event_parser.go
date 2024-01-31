@@ -2,7 +2,7 @@ package logic
 
 import (
 	"context"
-	"fmt"
+	"math/big"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -31,7 +31,7 @@ func NewL1EventParser(cfg *config.FetcherConfig, client *ethclient.Client) *L1Ev
 }
 
 // ParseL1CrossChainEventLogs parses L1 watched cross chain events.
-func (e *L1EventParser) ParseL1CrossChainEventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
+func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
 	var l1DepositMessages []*orm.CrossMessage
 	var l1RelayedMessages []*orm.CrossMessage
 	for _, vlog := range logs {
@@ -121,7 +121,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(logs []types.Log, blockTimest
 				log.Error("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
-			from, err := getRealFromAddress(event.Sender, event.Message, e.cfg.GatewayRouterAddr)
+			from, err := getRealFromAddress(ctx, event.Sender, event.Message, e.client, vlog.TxHash, e.cfg.GatewayRouterAddr)
 			if err != nil {
 				log.Error("Failed to get real 'from' address", "err", err)
 				return nil, nil, err
@@ -283,19 +283,38 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 	return l1MessageQueueEvents, nil
 }
 
-func getRealFromAddress(eventSender common.Address, eventMessage []byte, gatewayRouterAddr string) (string, error) {
+func getRealFromAddress(ctx context.Context, eventSender common.Address, eventMessage []byte, client *ethclient.Client, txHash common.Hash, gatewayRouterAddr string) (string, error) {
 	if eventSender != common.HexToAddress(gatewayRouterAddr) {
 		return eventSender.String(), nil
 	}
 
 	// deposit/withdraw ETH: EOA -> contract 1 -> ... -> contract n -> gateway router -> messenger.
-	if len(eventMessage) < 32 {
-		return "", fmt.Errorf("event message data too short to contain an address: length %d", len(eventMessage))
+	if len(eventMessage) >= 32 {
+		addressBytes := eventMessage[32-common.AddressLength : 32]
+		var address common.Address
+		address.SetBytes(addressBytes)
+
+		return address.Hex(), nil
 	}
 
-	addressBytes := eventMessage[32-common.AddressLength : 32]
-	var address common.Address
-	address.SetBytes(addressBytes)
+	log.Warn("event message data too short to contain an address", "length", len(eventMessage))
 
-	return address.Hex(), nil
+	// Legacy handling logic if length of message < 32, for backward compatibility before the next contract upgrade.
+	tx, isPending, rpcErr := client.TransactionByHash(ctx, txHash)
+	if rpcErr != nil || isPending {
+		log.Error("Failed to get transaction or the transaction is still pending", "rpcErr", rpcErr, "isPending", isPending)
+		return "", rpcErr
+	}
+	// Case 1: deposit/withdraw ETH: EOA -> multisig -> gateway router -> messenger.
+	if tx.To() != nil && (*tx.To()).String() != gatewayRouterAddr {
+		return (*tx.To()).String(), nil
+	}
+	// Case 2: deposit/withdraw ETH: EOA -> gateway router -> messenger.
+	signer := types.LatestSignerForChainID(new(big.Int).SetUint64(tx.ChainId().Uint64()))
+	sender, err := signer.Sender(tx)
+	if err != nil {
+		log.Error("Get sender failed", "chain id", tx.ChainId().Uint64(), "tx hash", tx.Hash().String(), "err", err)
+		return "", err
+	}
+	return sender.String(), nil
 }
