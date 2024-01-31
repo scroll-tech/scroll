@@ -247,7 +247,7 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, common.Hash{}, nil, err
 	}
 
-	l1DepositMessages, l1RelayedMessages, err := f.parser.ParseL1CrossChainEventLogs(ctx, eventLogs, blockTimestampsMap)
+	l1DepositMessages, l1RelayedMessages, err := f.parser.ParseL1CrossChainEventLogs(eventLogs, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L1 cross chain event logs", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err

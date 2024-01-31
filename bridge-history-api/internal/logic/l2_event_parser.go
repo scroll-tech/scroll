@@ -1,11 +1,8 @@
 package logic
 
 import (
-	"context"
-
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
@@ -16,20 +13,16 @@ import (
 
 // L2EventParser the L2 event parser
 type L2EventParser struct {
-	cfg    *config.FetcherConfig
-	client *ethclient.Client
+	cfg *config.FetcherConfig
 }
 
 // NewL2EventParser creates the L2 event parser
-func NewL2EventParser(cfg *config.FetcherConfig, client *ethclient.Client) *L2EventParser {
-	return &L2EventParser{
-		cfg:    cfg,
-		client: client,
-	}
+func NewL2EventParser(cfg *config.FetcherConfig) *L2EventParser {
+	return &L2EventParser{cfg: cfg}
 }
 
 // ParseL2EventLogs parses L2 watched events
-func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
+func (e *L2EventParser) ParseL2EventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
 	var l2WithdrawMessages []*orm.CrossMessage
 	var l2RelayedMessages []*orm.CrossMessage
 	for _, vlog := range logs {
@@ -125,7 +118,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 				log.Error("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
-			from, err := getRealFromAddress(ctx, event.Sender, e.client, vlog.TxHash, e.cfg.GatewayRouterAddr)
+			from, err := getRealFromAddress(event.Sender, event.Message, e.cfg.GatewayRouterAddr)
 			if err != nil {
 				log.Error("Failed to get real 'from' address", "err", err)
 				return nil, nil, err

@@ -98,7 +98,7 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		client:          client,
 		addressList:     addressList,
 		gatewayList:     gatewayList,
-		parser:          NewL2EventParser(cfg, client),
+		parser:          NewL2EventParser(cfg),
 	}
 
 	reg := prometheus.DefaultRegisterer
@@ -252,7 +252,7 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, common.Hash{}, nil, err
 	}
 
-	l2WithdrawMessages, l2RelayedMessages, err := f.parser.ParseL2EventLogs(ctx, eventLogs, blockTimestampsMap)
+	l2WithdrawMessages, l2RelayedMessages, err := f.parser.ParseL2EventLogs(eventLogs, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L2 event logs", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err
