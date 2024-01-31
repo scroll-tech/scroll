@@ -52,7 +52,7 @@ func testCreateNewWatcherAndStop(t *testing.T) {
 
 	l1cfg := cfg.L1Config
 	l1cfg.RelayerConfig.SenderConfig.Confirmations = rpc.LatestBlockNumber
-	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.GasOracleSenderPrivateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+	newSender, err := sender.NewSender(context.Background(), l1cfg.RelayerConfig.SenderConfig, l1cfg.RelayerConfig.GasOracleSenderPrivateKey, "test", "test", types.SenderTypeUnknown, db, true, nil)
 	assert.NoError(t, err)
 
 	// Create several transactions and commit to block
