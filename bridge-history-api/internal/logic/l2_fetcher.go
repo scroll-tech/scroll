@@ -88,7 +88,11 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.USDCGatewayAddr))
 	}
 
-	log.Info("L2 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)
+	if cfg.BypassReorgDetection {
+		log.Crit("Never bypass reorg detection in L2")
+	}
+
+	log.Info("NewL2FetcherLogic", "bypassReorgDetection", cfg.BypassReorgDetection, "confirmation", cfg.Confirmation, "addresses", addressList, "gateways", gatewayList)
 
 	f := &L2FetcherLogic{
 		db:              db,

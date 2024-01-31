@@ -93,7 +93,13 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.LIDOGatewayAddr))
 	}
 
-	log.Info("L1 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)
+	// The walkaround is used when SDK mismatches the upstream.
+	if cfg.BypassReorgDetection {
+		log.Warn("bypass reorg detction in L1, setting confirmation as L1ReorgSafeDepth (64)")
+		cfg.Confirmation = L1ReorgSafeDepth
+	}
+
+	log.Info("NewL2FetcherLogic", "bypassReorgDetection", cfg.BypassReorgDetection, "confirmation", cfg.Confirmation, "addresses", addressList, "gateways", gatewayList)
 
 	f := &L1FetcherLogic{
 		db:              db,

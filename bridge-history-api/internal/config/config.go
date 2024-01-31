@@ -28,6 +28,7 @@ type FetcherConfig struct {
 	ScrollChainAddr          string `json:"ScrollChainAddr"`
 	GatewayRouterAddr        string `json:"GatewayRouterAddr"`
 	MessageQueueAddr         string `json:"MessageQueueAddr"`
+	BypassReorgDetection     bool   `json:"bypassReorgDetection"`
 }
 
 // RedisConfig redis config
