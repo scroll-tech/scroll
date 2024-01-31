@@ -204,8 +204,8 @@ github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncj
 github.com/rs/cors v1.7.0 h1:+88SsELBHx5r+hZ8TCkggzSstaWNbDvThkVK8H6f9ik=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20231130005111-38a3a9c9198c h1:MnAdt80steCDli4SAD0J0spBGNY+gQvbdptNjWztHcw=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20231130005111-38a3a9c9198c/go.mod h1:4HrFcoStbViFVy/9l/rvKl1XmizVAaPdgqI8v0U8hOc=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20240131010456-d86b42cdaa9d h1:bs/VF0h/J68sFoUqLBlb8pw3s18fAcKSLzljCCJ68KA=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20240131010456-d86b42cdaa9d/go.mod h1:DsirsE0wBU56OTnZUGg4PYs+uXLeO2EXzd8FZFoWteo=
 github.com/scroll-tech/zktrie v0.7.1 h1:NrmZNjuBzsbrKePqdHDG+t2cXnimbtezPAFS0+L9ElE=
 github.com/scroll-tech/zktrie v0.7.1/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/segmentio/asm v1.2.0 h1:9BQrFxC+YOHJlTlHGkTrFWf59nbL3XnCoFLTwDCI7ys=
