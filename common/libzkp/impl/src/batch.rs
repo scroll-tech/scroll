@@ -66,7 +66,7 @@ pub unsafe extern "C" fn get_batch_vk() -> *const c_char {
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *const c_char {
+pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *mut c_char {
     let check_result: Result<bool, String> = panic_catch(|| {
         let chunk_proofs = c_char_to_vec(chunk_proofs);
         let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
@@ -94,7 +94,7 @@ pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *con
         },
     };
 
-    serde_json::to_vec(&r).map_or(null(), vec_to_c_char)
+    serde_json::to_vec(&r).map_or(std::ptr::null_mut(), vec_to_c_char)
 }
 
 /// # Safety
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *con
 pub unsafe extern "C" fn gen_batch_proof(
     chunk_hashes: *const c_char,
     chunk_proofs: *const c_char,
-) -> *const c_char {
+) -> *mut c_char {
     let proof_result: Result<Vec<u8>, String> = panic_catch(|| {
         let chunk_hashes = c_char_to_vec(chunk_hashes);
         let chunk_proofs = c_char_to_vec(chunk_proofs);
@@ -143,7 +143,7 @@ pub unsafe extern "C" fn gen_batch_proof(
         },
     };
 
-    serde_json::to_vec(&r).map_or(null(), vec_to_c_char)
+    serde_json::to_vec(&r).map_or(std::ptr::null_mut(), vec_to_c_char)
 }
 
 /// # Safety
