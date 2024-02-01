@@ -63,26 +63,41 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool, gasOracle bool, reg prometheus.Registerer) (*Layer2Relayer, error) {
-	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, !gasOracle, reg)
-	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
-		return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
-	}
-	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey, "l2_relayer", "finalize_sender", types.SenderTypeFinalizeBatch, db, !gasOracle, reg)
-	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
-		return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
-	}
+	var (
+		commitSender    *sender.Sender
+		finalizeSender  *sender.Sender
+		gasOracleSender *sender.Sender
+		err             error
+	)
 
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, gasOracle, reg)
-	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
-		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
-	}
+	if gasOracle {
+		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
+		if err != nil {
+			addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
+			return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
+		}
 
-	// Ensure test features aren't enabled on the mainnet.
-	if commitSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
-		return nil, fmt.Errorf("cannot enable test env features in mainnet")
+		// Ensure test features aren't enabled on the mainnet.
+		if gasOracleSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
+			return nil, fmt.Errorf("cannot enable test env features in mainnet")
+		}
+	} else {
+		commitSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
+		if err != nil {
+			addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
+			return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
+		}
+
+		finalizeSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey, "l2_relayer", "finalize_sender", types.SenderTypeFinalizeBatch, db, reg)
+		if err != nil {
+			addr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
+			return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
+		}
+
+		// Ensure test features aren't enabled on the mainnet.
+		if commitSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
+			return nil, fmt.Errorf("cannot enable test env features in mainnet")
+		}
 	}
 
 	var minGasPrice uint64
@@ -133,7 +148,12 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	}
 	layer2Relayer.metrics = initL2RelayerMetrics(reg)
 
-	go layer2Relayer.handleConfirmLoop(ctx)
+	if gasOracle {
+		go layer2Relayer.handleGasOracleConfirmLoop(ctx)
+	} else {
+		go layer2Relayer.handleRollupRelayerConfirmLoop(ctx)
+	}
+
 	return layer2Relayer, nil
 }
 
@@ -673,7 +693,18 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 	log.Info("Transaction confirmed in layer1", "confirmation", cfm)
 }
 
-func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
+func (r *Layer2Relayer) handleGasOracleConfirmLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case cfm := <-r.gasOracleSender.ConfirmChan():
+			r.handleConfirmation(cfm)
+		}
+	}
+}
+
+func (r *Layer2Relayer) handleRollupRelayerConfirmLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -681,8 +712,6 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		case cfm := <-r.commitSender.ConfirmChan():
 			r.handleConfirmation(cfm)
 		case cfm := <-r.finalizeSender.ConfirmChan():
-			r.handleConfirmation(cfm)
-		case cfm := <-r.gasOracleSender.ConfirmChan():
 			r.handleConfirmation(cfm)
 		}
 	}

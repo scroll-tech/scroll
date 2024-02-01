@@ -43,15 +43,22 @@ type Layer1Relayer struct {
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
 func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, gasOracle bool, reg prometheus.Registerer) (*Layer1Relayer, error) {
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, gasOracle, reg)
-	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
-		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
-	}
+	var (
+		gasOracleSender *sender.Sender
+		err             error
+	)
 
-	// Ensure test features aren't enabled on the mainnet.
-	if gasOracleSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
-		return nil, fmt.Errorf("cannot enable test env features in mainnet")
+	if gasOracle {
+		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, reg)
+		if err != nil {
+			addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
+			return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
+		}
+
+		// Ensure test features aren't enabled on the mainnet.
+		if gasOracleSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
+			return nil, fmt.Errorf("cannot enable test env features in mainnet")
+		}
 	}
 
 	var minGasPrice uint64
@@ -78,7 +85,10 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 	l1Relayer.metrics = initL1RelayerMetrics(reg)
 
-	go l1Relayer.handleConfirmLoop(ctx)
+	if gasOracle {
+		go l1Relayer.handleGasOracleConfirmLoop(ctx)
+	}
+
 	return l1Relayer, nil
 }
 
@@ -158,7 +168,7 @@ func (r *Layer1Relayer) handleConfirmation(cfm *sender.Confirmation) {
 	log.Info("Transaction confirmed in layer2", "confirmation", cfm)
 }
 
-func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
+func (r *Layer1Relayer) handleGasOracleConfirmLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():

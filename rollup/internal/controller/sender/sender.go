@@ -81,7 +81,7 @@ type Sender struct {
 }
 
 // NewSender returns a new instance of transaction sender
-func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey, service, name string, senderType types.SenderType, db *gorm.DB, enableSender bool, reg prometheus.Registerer) (*Sender, error) {
+func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.PrivateKey, service, name string, senderType types.SenderType, db *gorm.DB, reg prometheus.Registerer) (*Sender, error) {
 	if config.EscalateMultipleNum <= config.EscalateMultipleDen {
 		return nil, fmt.Errorf("invalid params, EscalateMultipleNum; %v, EscalateMultipleDen: %v", config.EscalateMultipleNum, config.EscalateMultipleDen)
 	}
@@ -126,9 +126,7 @@ func NewSender(ctx context.Context, config *config.SenderConfig, priv *ecdsa.Pri
 	}
 	sender.metrics = initSenderMetrics(reg)
 
-	if enableSender {
-		go sender.loop(ctx)
-	}
+	go sender.loop(ctx)
 
 	return sender, nil
 }
