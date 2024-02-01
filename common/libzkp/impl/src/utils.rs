@@ -38,7 +38,7 @@ pub(crate) fn string_to_c_char(string: String) -> *const c_char {
     CString::new(string).unwrap().into_raw()
 }
 
-pub(crate) fn vec_to_c_char(bytes: Vec<u8>) -> *const c_char {
+pub(crate) fn vec_to_c_char(bytes: Vec<u8>) -> *mut c_char {
     CString::new(bytes).unwrap().into_raw()
 }
 
