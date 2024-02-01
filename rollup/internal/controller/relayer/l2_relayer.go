@@ -151,9 +151,9 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 	switch serviceType {
 	case ServiceTypeL2GasOracle:
-		go layer2Relayer.handleGasOracleConfirmLoop(ctx)
+		go layer2Relayer.handleL2GasOracleConfirmLoop(ctx)
 	case ServiceTypeL2RollupRelayer:
-		go layer2Relayer.handleRollupRelayerConfirmLoop(ctx)
+		go layer2Relayer.handleL2RollupRelayerConfirmLoop(ctx)
 	default:
 		return nil, fmt.Errorf("invalid service type for l2_relayer: %v", serviceType)
 	}
@@ -697,7 +697,7 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 	log.Info("Transaction confirmed in layer1", "confirmation", cfm)
 }
 
-func (r *Layer2Relayer) handleGasOracleConfirmLoop(ctx context.Context) {
+func (r *Layer2Relayer) handleL2GasOracleConfirmLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -708,7 +708,7 @@ func (r *Layer2Relayer) handleGasOracleConfirmLoop(ctx context.Context) {
 	}
 }
 
-func (r *Layer2Relayer) handleRollupRelayerConfirmLoop(ctx context.Context) {
+func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():

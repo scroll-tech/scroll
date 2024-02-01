@@ -88,7 +88,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 	switch serviceType {
 	case ServiceTypeL1GasOracle:
-		go l1Relayer.handleGasOracleConfirmLoop(ctx)
+		go l1Relayer.handleL1GasOracleConfirmLoop(ctx)
 	default:
 		return nil, fmt.Errorf("invalid service type for l1_relayer: %v", serviceType)
 	}
@@ -172,7 +172,7 @@ func (r *Layer1Relayer) handleConfirmation(cfm *sender.Confirmation) {
 	log.Info("Transaction confirmed in layer2", "confirmation", cfm)
 }
 
-func (r *Layer1Relayer) handleGasOracleConfirmLoop(ctx context.Context) {
+func (r *Layer1Relayer) handleL1GasOracleConfirmLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
