@@ -86,10 +86,6 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 	l1Relayer.metrics = initL1RelayerMetrics(reg)
 
-	if serviceType == ServiceTypeL1GasOracle {
-		go l1Relayer.handleGasOracleConfirmLoop(ctx)
-	}
-
 	switch serviceType {
 	case ServiceTypeL1GasOracle:
 		go l1Relayer.handleGasOracleConfirmLoop(ctx)
