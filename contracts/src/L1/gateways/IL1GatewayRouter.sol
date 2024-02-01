@@ -10,11 +10,6 @@ interface IL1GatewayRouter is IL1ETHGateway, IL1ERC20Gateway {
      * Events *
      **********/
 
-    /// @notice Emitted when the address of ETH Gateway is updated.
-    /// @param oldETHGateway The address of the old ETH Gateway.
-    /// @param newEthGateway The address of the new ETH Gateway.
-    event SetETHGateway(address indexed oldETHGateway, address indexed newEthGateway);
-
     /// @notice Emitted when the address of default ERC20 Gateway is updated.
     /// @param oldDefaultERC20Gateway The address of the old default ERC20 Gateway.
     /// @param newDefaultERC20Gateway The address of the new default ERC20 Gateway.
@@ -25,6 +20,13 @@ interface IL1GatewayRouter is IL1ETHGateway, IL1ERC20Gateway {
     /// @param oldGateway The corresponding address of the old gateway.
     /// @param newGateway The corresponding address of the new gateway.
     event SetERC20Gateway(address indexed token, address indexed oldGateway, address indexed newGateway);
+
+    /**********
+     * Errors *
+     **********/
+
+    /// @dev Thrown when the given address is `address(0)`.
+    error ErrorZeroAddress();
 
     /*************************
      * Public View Functions *
@@ -51,11 +53,6 @@ interface IL1GatewayRouter is IL1ETHGateway, IL1ERC20Gateway {
     /************************
      * Restricted Functions *
      ************************/
-
-    /// @notice Update the address of ETH gateway contract.
-    /// @dev This function should only be called by contract owner.
-    /// @param _ethGateway The address to update.
-    function setETHGateway(address _ethGateway) external;
 
     /// @notice Update the address of default ERC20 gateway contract.
     /// @dev This function should only be called by contract owner.

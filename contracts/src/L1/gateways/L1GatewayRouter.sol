@@ -19,13 +19,6 @@ import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
 contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /**********
-     * Errors *
-     **********/
-
-    /// @dev Thrown when the given address is `address(0)`.
-    error ErrorZeroAddress();
-
     /*************
      * Constants *
      *************/
@@ -243,14 +236,6 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     /************************
      * Restricted Functions *
      ************************/
-
-    /// @inheritdoc IL1GatewayRouter
-    function setETHGateway(address _newEthGateway) external onlyOwner {
-        address _oldETHGateway = ethGateway;
-        ethGateway = _newEthGateway;
-
-        emit SetETHGateway(_oldETHGateway, _newEthGateway);
-    }
 
     /// @inheritdoc IL1GatewayRouter
     function setDefaultERC20Gateway(address _newDefaultERC20Gateway) external onlyOwner {
