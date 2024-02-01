@@ -42,23 +42,24 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, gasOracle bool, reg prometheus.Registerer) (*Layer1Relayer, error) {
-	var (
-		gasOracleSender *sender.Sender
-		err             error
-	)
+func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, serviceType ServiceType, reg prometheus.Registerer) (*Layer1Relayer, error) {
+	var gasOracleSender *sender.Sender
+	var err error
 
-	if gasOracle {
+	switch serviceType {
+	case ServiceTypeL1GasOracle:
 		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, reg)
 		if err != nil {
 			addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
 			return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
 		}
 
-		// Ensure test features aren't enabled on the mainnet.
-		if gasOracleSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
+		// Ensure test features aren't enabled on the scroll mainnet.
+		if gasOracleSender.GetChainID().Cmp(big.NewInt(534352)) == 0 && cfg.EnableTestEnvBypassFeatures {
 			return nil, fmt.Errorf("cannot enable test env features in mainnet")
 		}
+	default:
+		return nil, fmt.Errorf("invalid service type for l1_relayer: %v", serviceType)
 	}
 
 	var minGasPrice uint64
@@ -85,8 +86,15 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 	l1Relayer.metrics = initL1RelayerMetrics(reg)
 
-	if gasOracle {
+	if serviceType == ServiceTypeL1GasOracle {
 		go l1Relayer.handleGasOracleConfirmLoop(ctx)
+	}
+
+	switch serviceType {
+	case ServiceTypeL1GasOracle:
+		go l1Relayer.handleGasOracleConfirmLoop(ctx)
+	default:
+		return nil, fmt.Errorf("invalid service type for l1_relayer: %v", serviceType)
 	}
 
 	return l1Relayer, nil

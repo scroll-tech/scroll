@@ -38,7 +38,7 @@ func setupL2RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewRelayer(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 }
@@ -48,7 +48,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 
 	l2BlockOrm := orm.NewL2Block(db)
@@ -82,7 +82,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	batchMeta := &types.BatchMeta{
 		StartChunkIndex: 0,
@@ -128,7 +128,7 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
 	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	batchMeta := &types.BatchMeta{
 		StartChunkIndex: 0,
@@ -160,7 +160,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, false, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
@@ -214,7 +214,7 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, false, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
@@ -287,7 +287,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, true, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
@@ -326,7 +326,7 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, true, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 
@@ -439,7 +439,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg.L2Config.RelayerConfig.ChainMonitor.Enabled = true
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 

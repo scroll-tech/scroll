@@ -26,7 +26,7 @@ func testImportL1GasPrice(t *testing.T) {
 	l1Cfg := rollupApp.Config.L1Config
 
 	// Create L1Relayer
-	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, true, nil)
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, relayer.ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 
 	// Create L1Watcher
@@ -67,7 +67,7 @@ func testImportL2GasPrice(t *testing.T) {
 	prepareContracts(t)
 
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, true, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, relayer.ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 
 	// add fake chunk

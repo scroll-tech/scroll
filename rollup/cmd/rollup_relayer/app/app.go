@@ -73,7 +73,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis, false /* rollup-relayer */, registry)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis, relayer.ServiceTypeL2RollupRelayer, registry)
 	if err != nil {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
