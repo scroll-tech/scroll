@@ -532,6 +532,8 @@ github.com/limechain/scroll-go-ethereum v0.0.0-20231223062238-eaa38f09ce93 h1:sj
 github.com/limechain/scroll-go-ethereum v0.0.0-20231223062238-eaa38f09ce93/go.mod h1:4HrFcoStbViFVy/9l/rvKl1XmizVAaPdgqI8v0U8hOc=
 github.com/limechain/scroll-go-ethereum v0.0.0-20240111134224-79313f78bdcb h1:cBgnLqPgdilOqsOKz3aYlTuawDReQuuGE/5HTHUzmSo=
 github.com/limechain/scroll-go-ethereum v0.0.0-20240111134224-79313f78bdcb/go.mod h1:4HrFcoStbViFVy/9l/rvKl1XmizVAaPdgqI8v0U8hOc=
+github.com/limechain/scroll-go-ethereum v0.0.0-20240201082044-06393c57c762 h1:1a/GtdrINsxWMFiMFsn4xRzsK8FUXLpPM6Nl4J2eq3U=
+github.com/limechain/scroll-go-ethereum v0.0.0-20240201082044-06393c57c762/go.mod h1:4HrFcoStbViFVy/9l/rvKl1XmizVAaPdgqI8v0U8hOc=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 h1:6E+4a0GO5zZEnZ81pIr0yLvtUWk2if982qA3F3QD6H4=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0/go.mod h1:zJYVVT2jmtg6P3p1VtQj7WsuWi/y4VnjVBn7F8KPB3I=
 github.com/magiconair/properties v1.8.0 h1:LLgXmsheXeRoUOBOjtwPQCWIYqM/LU1ayDtDePerRcY=
