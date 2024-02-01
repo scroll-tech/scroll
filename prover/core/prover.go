@@ -206,25 +206,11 @@ func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) ([]
 }
 
 func (p *ProverCore) proveChunk(tracesByt []byte) ([]byte, error) {
-	tracesStr := C.CString(string(tracesByt))
-	defer C.free(unsafe.Pointer(tracesStr))
-
 	log.Info("Start to create chunk proof ...")
-	cProof := C.gen_chunk_proof(tracesStr)
+	cProof := C.gen_chunk_proof("")
 	defer C.free_c_chars(cProof)
 	log.Info("Finish creating chunk proof!")
-
-	var result ProofResult
-	err := json.Unmarshal([]byte(C.GoString(cProof)), &result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse chunk proof result: %v", err)
-	}
-
-	if result.Error != "" {
-		return nil, fmt.Errorf("failed to generate chunk proof: %s", result.Error)
-	}
-
-	return result.Message, nil
+	return nil, nil
 }
 
 func (p *ProverCore) mayDumpProof(id string, proofByt []byte) error {

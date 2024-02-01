@@ -5,14 +5,15 @@ use crate::{
         OUTPUT_DIR,
     },
 };
+use glob::glob;
 use libc::c_char;
 use prover::{
     consts::CHUNK_VK_FILENAME,
-    utils::init_env_and_log,
+    utils::{get_block_trace_from_file, init_env_and_log},
     zkevm::{Prover, Verifier},
     BlockTrace, ChunkProof,
 };
-use std::{cell::OnceCell, env, ptr::null};
+use std::{cell::OnceCell, env, ffi::CString, ptr::null};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
 static mut VERIFIER: OnceCell<Verifier> = OnceCell::new();
@@ -66,9 +67,14 @@ pub unsafe extern "C" fn get_chunk_vk() -> *const c_char {
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const c_char {
+pub unsafe extern "C" fn gen_chunk_proof(block_traces1: *const c_char) -> *const c_char {
+    let chunk_trace = load_batch_traces().1;
+    let json_str = serde_json::to_string(&chunk_trace).expect("Serialization failed");
+    let c_string = CString::new(json_str).expect("CString conversion failed");
+    let c_str_ptr = c_string.as_ptr();
+
     let proof_result: Result<Vec<u8>, String> = panic_catch(|| {
-        let block_traces = c_char_to_vec(block_traces);
+        let block_traces = c_char_to_vec(c_str_ptr);
         let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces)
             .map_err(|e| format!("failed to deserialize block traces: {e:?}"))?;
 
@@ -104,4 +110,32 @@ pub unsafe extern "C" fn verify_chunk_proof(proof: *const c_char) -> c_char {
 
     let verified = panic_catch(|| VERIFIER.get().unwrap().verify_chunk_proof(proof));
     verified.unwrap_or(false) as c_char
+}
+
+fn load_batch_traces() -> (Vec<String>, Vec<BlockTrace>) {
+    let file_names: Vec<String> = glob(&"/assets/traces/1_transfer.json".to_string())
+        .unwrap()
+        .map(|p| p.unwrap().to_str().unwrap().to_string())
+        .collect();
+    log::info!("test batch with {:?}", file_names);
+    let mut names_and_traces = file_names
+        .into_iter()
+        .map(|trace_path| {
+            let trace: BlockTrace = get_block_trace_from_file(trace_path.clone());
+            (
+                trace_path,
+                trace.clone(),
+                trace.header.number.unwrap().as_u64(),
+            )
+        })
+        .collect::<Vec<_>>();
+    names_and_traces.sort_by(|a, b| a.2.cmp(&b.2));
+    log::info!(
+        "sorted: {:?}",
+        names_and_traces
+            .iter()
+            .map(|(f, _, _)| f.clone())
+            .collect::<Vec<String>>()
+    );
+    names_and_traces.into_iter().map(|(f, t, _)| (f, t)).unzip()
 }

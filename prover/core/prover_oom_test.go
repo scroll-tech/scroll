@@ -1,24 +1,21 @@
 //go:build ffi
 
 // go test -v -race -gcflags="-l" -ldflags="-s=false" -tags ffi ./...
-package core_test
+package core
 
 import (
 	"encoding/json"
 	"flag"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"net/http"
-	"testing"
-	"time"
-
-	"github.com/stretchr/testify/assert"
 	_ "net/http/pprof"
+	"testing"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/prover/config"
-	"scroll-tech/prover/core"
 )
 
 var (
@@ -44,12 +41,10 @@ func TestFFI(t *testing.T) {
 		ProofType:  message.ProofTypeChunk,
 	}
 
-	chunkProverCore, _ := core.NewProverCore(chunkProverConfig)
-	chunkTrace1 := readChunkTrace(t, *tracePath1)
+	chunkProverCore, _ := NewProverCore(chunkProverConfig)
 
 	for {
-		chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
-		time.Sleep(time.Millisecond * 10)
+		chunkProverCore.proveChunk()
 	}
 }
 
