@@ -8,7 +8,7 @@ char verify_batch_proof(char* proof);
 void init_chunk_prover(char* params_dir, char* assets_dir);
 void init_chunk_verifier(char* params_dir, char* assets_dir);
 char* get_chunk_vk();
-char* gen_chunk_proof(char* block_traces);
+void gen_chunk_proof(char* block_traces);
 char verify_chunk_proof(char* proof);
 
 char* block_traces_to_chunk_info(char* block_traces);

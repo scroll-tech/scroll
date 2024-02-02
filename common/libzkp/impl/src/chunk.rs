@@ -67,7 +67,7 @@ pub unsafe extern "C" fn get_chunk_vk() -> *const c_char {
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn gen_chunk_proof(block_traces1: *const c_char) -> *mut c_char {
+pub unsafe extern "C" fn gen_chunk_proof(block_traces1: *const c_char) {
     let chunk_trace = load_batch_traces().1;
     let json_str = serde_json::to_string(&chunk_trace).expect("Serialization failed");
     let c_string = CString::new(json_str).expect("CString conversion failed");
@@ -88,7 +88,7 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces1: *const c_char) -> *mut c
     })
     .unwrap_or_else(|e| Err(format!("unwind error: {e:?}")));
 
-    let r = match proof_result {
+    let _ = match proof_result {
         Ok(proof_bytes) => ProofResult {
             message: Some(proof_bytes),
             error: None,
@@ -99,7 +99,7 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces1: *const c_char) -> *mut c
         },
     };
 
-    serde_json::to_vec(&r).map_or(std::ptr::null_mut(), vec_to_c_char)
+    // serde_json::to_vec(&r).map_or(std::ptr::null_mut(), vec_to_c_char)
 }
 
 /// # Safety

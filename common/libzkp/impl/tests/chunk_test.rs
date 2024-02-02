@@ -28,11 +28,11 @@ fn chunk_test() {
             count += 1;
             println!("count {:?}", count);
 
-            let ret = chunk::gen_chunk_proof(c_str_ptr);
-            let ret_cstr = CStr::from_ptr(ret)
-                .to_str()
-                .expect("Failed to convert C string to Rust string");
-            println!("ret: {:?}", ret_cstr)
+            let _ = chunk::gen_chunk_proof(c_str_ptr);
+            // let ret_cstr = CStr::from_ptr(ret)
+            //     .to_str()
+            //     .expect("Failed to convert C string to Rust string");
+            // println!("ret: {:?}", ret_cstr)
         }
     }
 }

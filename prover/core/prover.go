@@ -207,8 +207,8 @@ func (p *ProverCore) proveBatch(chunkInfosByt []byte, chunkProofsByt []byte) ([]
 
 func (p *ProverCore) proveChunk(tracesByt []byte) ([]byte, error) {
 	log.Info("Start to create chunk proof ...")
-	cProof := C.gen_chunk_proof("")
-	defer C.free_c_chars(cProof)
+	C.gen_chunk_proof("")
+	//defer C.free_c_chars(cProof)
 	log.Info("Finish creating chunk proof!")
 	return nil, nil
 }
