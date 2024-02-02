@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - v**
-    branches:
-      - "fix-ecr-issue"
 
 env:
   AWS_REGION: us-west-2
