@@ -61,7 +61,7 @@
         "s": "0x0",
         "hash": "0xed6dff31c5516b3b9d169781865276cf27501aadd45c131bf8c841c5e619e56a"
     }
-],
+  ],
   "storageTrace": {
     "rootBefore": "0x16d403e1c55dee3e020457262414ee7a20596922c08cac631385d8ea6d6c2c2b",
     "rootAfter": "0x155c42b3ffa9b88987b02bc8f89fb31f2b555bb8bff971d6fcd92e04a144c248",
