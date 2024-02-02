@@ -14,7 +14,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/prometheus/client_golang v1.14.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240201173512-ae7cbae19c84
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240202113147-d8b3c0c0dedf
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
 	gorm.io/driver/postgres v1.5.0
