@@ -32,6 +32,11 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: event-watcher
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
@@ -71,6 +76,11 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: gas-oracle
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
@@ -110,6 +120,11 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: rollup-relayer
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
@@ -149,6 +164,11 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: bridgehistoryapi-fetcher
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
@@ -188,6 +208,11 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: bridgehistoryapi-api
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
@@ -227,6 +252,11 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: coordinator-api
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
@@ -266,6 +296,11 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: coordinator-cron
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Build and push
         uses: docker/build-push-action@v3
         env:
