@@ -49,6 +49,9 @@ jobs:
   #           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
   #           ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
   #           ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+  #         cache-from: type=gha
+  #         cache-to: type=gha,mode=max
+  #         provenance: false
 
   # gas_oracle:
   #   runs-on: ubuntu-latest
@@ -88,7 +91,10 @@ jobs:
   #           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
   #           ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
   #           ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
-
+  #         cache-from: type=gha
+  #         cache-to: type=gha,mode=max
+  #         provenance: false
+  
   rollup_relayer:
     runs-on: ubuntu-latest
     steps:
@@ -127,6 +133,9 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
 
   bridgehistoryapi-fetcher:
     runs-on: ubuntu-latest
@@ -166,6 +175,9 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
 
   bridgehistoryapi-api:
     runs-on: ubuntu-latest
@@ -205,7 +217,10 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
-
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          
   # coordinator-api:
   #   runs-on: ubuntu-latest
   #   steps:
@@ -244,7 +259,10 @@ jobs:
   #           ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
   #           ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
   #           ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
-
+  #         cache-from: type=gha
+  #         cache-to: type=gha,mode=max
+  #         provenance: false
+  
   coordinator-cron:
     runs-on: ubuntu-latest
     steps:
@@ -283,3 +301,6 @@ jobs:
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
