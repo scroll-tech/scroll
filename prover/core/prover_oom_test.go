@@ -33,6 +33,7 @@ func initPyroscopse() {
 }
 
 func TestFFI(t *testing.T) {
+	ballast := make([]byte, 100*1024*1024*1024) // 10G
 	initPyroscopse()
 
 	chunkProverConfig := &config.ProverCoreConfig{
@@ -46,6 +47,7 @@ func TestFFI(t *testing.T) {
 	for {
 		chunkProverCore.proveChunk()
 	}
+	runtime.KeepAlive(ballast)
 }
 
 func readChunkTrace(t *testing.T, filePat string) []*types.BlockTrace {
