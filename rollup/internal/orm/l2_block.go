@@ -394,10 +394,11 @@ func (o *L2Block) updateTransactions(ctx context.Context) error {
 			return fmt.Errorf("L2Block.GetL2BlocksInRange: failed to decode transactions_rlp, err: %w", err)
 		}
 
-		var txDataSlice []*TransactionData
-		for _, tx := range transactions {
+		// The same initialization as the previous version, thus empty transaction would be "[]" in db.
+		txDataSlice := make([]*TransactionData, len(transactions))
+		for i, tx := range transactions {
 			txData := newTransactionData(tx)
-			txDataSlice = append(txDataSlice, txData)
+			txDataSlice[i] = txData
 		}
 
 		txDataJSON, err := json.Marshal(txDataSlice)

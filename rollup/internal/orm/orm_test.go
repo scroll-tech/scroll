@@ -9,6 +9,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/log"
 	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -44,6 +45,10 @@ func TestMain(m *testing.M) {
 }
 
 func setupEnv(t *testing.T) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	base = docker.NewDockerApp()
 	base.RunDBImage(t)
 	var err error
@@ -177,7 +182,7 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.Equal(t, "", blocks[1].ChunkHash)
 }
 
-func TestL2BlockOrmTransactionBackwardCompatibility(t *testing.T) {
+func TestL2BlockOrmTransactionsBackwardCompatibility(t *testing.T) {
 	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_04.json")
 	assert.NoError(t, err)
 	wrappedBlock3 := &rollupTypes.WrappedBlock{}
@@ -189,6 +194,41 @@ func TestL2BlockOrmTransactionBackwardCompatibility(t *testing.T) {
 	wrappedBlock4 := &rollupTypes.WrappedBlock{}
 	err = json.Unmarshal(templateBlockTrace, wrappedBlock4)
 	assert.NoError(t, err)
+
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	expectedWrappedBlocks := []*rollupTypes.WrappedBlock{wrappedBlock3, wrappedBlock4}
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), expectedWrappedBlocks)
+	assert.NoError(t, err)
+
+	wrappedBlocks1, err := l2BlockOrm.GetL2WrappedBlocksGEHeight(context.Background(), 0, 0)
+	assert.NoError(t, err)
+	assertWrappedBlockEquality(t, expectedWrappedBlocks, wrappedBlocks1)
+
+	err = l2BlockOrm.updateTransactions(context.Background())
+	assert.NoError(t, err)
+
+	wrappedBlocks2, err := l2BlockOrm.GetL2WrappedBlocksGEHeight(context.Background(), 0, 0)
+	assert.NoError(t, err)
+	assertWrappedBlockEquality(t, expectedWrappedBlocks, wrappedBlocks2)
+}
+
+func TestL2BlockOrmEmptyTransactionBackwardCompatibility(t *testing.T) {
+	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_04.json")
+	assert.NoError(t, err)
+	wrappedBlock3 := &rollupTypes.WrappedBlock{}
+	err = json.Unmarshal(templateBlockTrace, wrappedBlock3)
+	assert.NoError(t, err)
+	wrappedBlock3.Transactions = nil
+
+	templateBlockTrace, err = os.ReadFile("../../../common/testdata/blockTrace_05.json")
+	assert.NoError(t, err)
+	wrappedBlock4 := &rollupTypes.WrappedBlock{}
+	err = json.Unmarshal(templateBlockTrace, wrappedBlock4)
+	assert.NoError(t, err)
+	wrappedBlock4.Transactions = nil
 
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
