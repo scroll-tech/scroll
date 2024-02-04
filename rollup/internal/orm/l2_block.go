@@ -2,19 +2,17 @@ package orm
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rlp"
 	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types"
 )
 
 // L2Block represents a l2 block in the database.
@@ -22,17 +20,18 @@ type L2Block struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	// block
-	Number         uint64 `json:"number" gorm:"number"`
-	Hash           string `json:"hash" gorm:"hash"`
-	ParentHash     string `json:"parent_hash" gorm:"parent_hash"`
-	Header         string `json:"header" gorm:"header"`
-	Transactions   string `json:"transactions" gorm:"transactions"`
-	WithdrawRoot   string `json:"withdraw_root" gorm:"withdraw_root"`
-	StateRoot      string `json:"state_root" gorm:"state_root"`
-	TxNum          uint32 `json:"tx_num" gorm:"tx_num"`
-	GasUsed        uint64 `json:"gas_used" gorm:"gas_used"`
-	BlockTimestamp uint64 `json:"block_timestamp" gorm:"block_timestamp"`
-	RowConsumption string `json:"row_consumption" gorm:"row_consumption"`
+	Number          uint64 `json:"number" gorm:"number"`
+	Hash            string `json:"hash" gorm:"hash"`
+	ParentHash      string `json:"parent_hash" gorm:"parent_hash"`
+	Header          string `json:"header" gorm:"header"`
+	Transactions    string `json:"transactions" gorm:"transactions"` // deprecated
+	TransactionsRLP []byte `json:"transactions_rlp" gorm:"transactions_rlp"`
+	WithdrawRoot    string `json:"withdraw_root" gorm:"withdraw_root"`
+	StateRoot       string `json:"state_root" gorm:"state_root"`
+	TxNum           uint32 `json:"tx_num" gorm:"tx_num"`
+	GasUsed         uint64 `json:"gas_used" gorm:"gas_used"`
+	BlockTimestamp  uint64 `json:"block_timestamp" gorm:"block_timestamp"`
+	RowConsumption  string `json:"row_consumption" gorm:"row_consumption"`
 
 	// chunk
 	ChunkHash string `json:"chunk_hash" gorm:"chunk_hash;default:NULL"`
@@ -73,7 +72,7 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (uint64, error) {
 func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64, limit int) ([]*rollupTypes.WrappedBlock, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_root, row_consumption")
+	db = db.Select("header, transactions, transactions_rlp, withdraw_root, row_consumption")
 	db = db.Where("number >= ?", height)
 	db = db.Order("number ASC")
 
@@ -89,10 +88,20 @@ func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64,
 	var wrappedBlocks []*rollupTypes.WrappedBlock
 	for _, v := range l2Blocks {
 		var wrappedBlock rollupTypes.WrappedBlock
+		var transactions []*gethTypes.Transaction
+		var err error
 
-		transactions, err := types.DecodeTransactions(v.Transactions)
-		if err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
+		// Empty transactions in legacy JSON string is "[]", thus can use "" to check is the field is deprecated in this row.
+		if v.Transactions != "" {
+			transactions, err = decodeTransactionDataJSON([]byte(v.Transactions))
+			if err != nil {
+				return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight: failed to decode transactions, err: %w", err)
+			}
+		} else {
+			err := rlp.DecodeBytes(v.TransactionsRLP, &transactions)
+			if err != nil {
+				return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight: failed to decode transactions_rlp, err: %w", err)
+			}
 		}
 		wrappedBlock.Transactions = transactions
 
@@ -150,7 +159,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_root, row_consumption")
+	db = db.Select("header, transactions, transactions_rlp, withdraw_root, row_consumption")
 	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
 	db = db.Order("number ASC")
 
@@ -167,10 +176,20 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 	var wrappedBlocks []*rollupTypes.WrappedBlock
 	for _, v := range l2Blocks {
 		var wrappedBlock rollupTypes.WrappedBlock
+		var transactions []*gethTypes.Transaction
+		var err error
 
-		transactions, err := types.DecodeTransactions(v.Transactions)
-		if err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: failed to decode transactions, err: %w", err)
+		// Empty transactions in legacy JSON string is "[]", thus can use "" to check is the field is deprecated in this row.
+		if v.Transactions != "" {
+			transactions, err = decodeTransactionDataJSON([]byte(v.Transactions))
+			if err != nil {
+				return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: failed to decode transactions, err: %w", err)
+			}
+		} else {
+			err := rlp.DecodeBytes(v.TransactionsRLP, &transactions)
+			if err != nil {
+				return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: failed to decode transactions_rlp, err: %w", err)
+			}
 		}
 		wrappedBlock.Transactions = transactions
 
@@ -201,7 +220,7 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*rollupTypes.Wrap
 			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
 		}
 
-		encoded, err := rlp.EncodeToBytes(block.Transactions)
+		transactionsRLP, err := rlp.EncodeToBytes(block.Transactions)
 		if err != nil {
 			log.Error("failed to encode transactions to rlp encoding", "hash", block.Header.Hash().String(), "err", err)
 			return fmt.Errorf("L2Block.InsertL2Blocks, failed to encode transactions to rlp encoding, error: %w", err)
@@ -214,17 +233,17 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*rollupTypes.Wrap
 		}
 
 		l2Block := L2Block{
-			Number:         block.Header.Number.Uint64(),
-			Hash:           block.Header.Hash().String(),
-			ParentHash:     block.Header.ParentHash.String(),
-			Transactions:   base64.StdEncoding.EncodeToString(encoded),
-			WithdrawRoot:   block.WithdrawRoot.Hex(),
-			StateRoot:      block.Header.Root.Hex(),
-			TxNum:          uint32(len(block.Transactions)),
-			GasUsed:        block.Header.GasUsed,
-			BlockTimestamp: block.Header.Time,
-			RowConsumption: string(rc),
-			Header:         string(header),
+			Number:          block.Header.Number.Uint64(),
+			Hash:            block.Header.Hash().String(),
+			ParentHash:      block.Header.ParentHash.String(),
+			TransactionsRLP: transactionsRLP,
+			WithdrawRoot:    block.WithdrawRoot.Hex(),
+			StateRoot:       block.Header.Root.Hex(),
+			TxNum:           uint32(len(block.Transactions)),
+			GasUsed:         block.Header.GasUsed,
+			BlockTimestamp:  block.Header.Time,
+			RowConsumption:  string(rc),
+			Header:          string(header),
 		}
 		l2Blocks = append(l2Blocks, l2Block)
 	}
@@ -262,4 +281,68 @@ func (o *L2Block) UpdateChunkHashInRange(ctx context.Context, startIndex uint64,
 	}
 
 	return nil
+}
+
+// TransactionData defines a structure compatible with legacy plaintext JSON transaction data.
+// This is used for backward compatibility.
+type TransactionData struct {
+	Type     uint8           `json:"type"`
+	Nonce    uint64          `json:"nonce"`
+	Gas      uint64          `json:"gas"`
+	GasPrice *hexutil.Big    `json:"gasPrice"`
+	From     common.Address  `json:"from"`
+	To       *common.Address `json:"to"`
+	Value    *hexutil.Big    `json:"value"`
+	Data     string          `json:"data"`
+	V        *hexutil.Big    `json:"v"`
+	R        *hexutil.Big    `json:"r"`
+	S        *hexutil.Big    `json:"s"`
+}
+
+func decodeTransactionDataJSON(encodedTx []byte) ([]*gethTypes.Transaction, error) {
+	var txData []*TransactionData
+	if jsonErr := json.Unmarshal(encodedTx, &txData); jsonErr != nil {
+		return nil, fmt.Errorf("JSON decode failed: %w", jsonErr)
+	}
+
+	var transactions []*gethTypes.Transaction
+	for _, oldTx := range txData {
+		data, err := hexutil.Decode(oldTx.Data)
+		if err != nil {
+			return nil, fmt.Errorf("hex decode of 'data' field failed: %w", err)
+		}
+
+		// Handle specific transaction types, considering EIP-1559 is not in use.
+		switch oldTx.Type {
+		case gethTypes.LegacyTxType:
+			newTx := gethTypes.NewTx(&gethTypes.LegacyTx{
+				Nonce:    oldTx.Nonce,
+				To:       oldTx.To,
+				Value:    oldTx.Value.ToInt(),
+				Gas:      oldTx.Gas,
+				GasPrice: oldTx.GasPrice.ToInt(),
+				Data:     data,
+				V:        oldTx.V.ToInt(),
+				R:        oldTx.R.ToInt(),
+				S:        oldTx.S.ToInt(),
+			})
+			transactions = append(transactions, newTx)
+
+		case gethTypes.L1MessageTxType:
+			newTx := gethTypes.NewTx(&gethTypes.L1MessageTx{
+				To:         oldTx.To,
+				Value:      oldTx.Value.ToInt(),
+				Gas:        oldTx.Gas,
+				Data:       data,
+				QueueIndex: oldTx.Nonce,
+				Sender:     oldTx.From,
+			})
+			transactions = append(transactions, newTx)
+
+		default:
+			return nil, fmt.Errorf("unsupported tx type: %v", oldTx.Type)
+		}
+	}
+
+	return transactions, nil
 }
