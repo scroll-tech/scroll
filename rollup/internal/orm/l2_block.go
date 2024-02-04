@@ -124,6 +124,7 @@ func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64,
 
 // GetL2Blocks retrieves selected L2Blocks from the database.
 // The returned L2Blocks are sorted in ascending order by their block number.
+// only used for unit tests.
 func (o *L2Block) GetL2Blocks(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*L2Block, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
@@ -299,6 +300,7 @@ type TransactionData struct {
 	S        *hexutil.Big    `json:"s"`
 }
 
+// This is used for backward compatibility.
 func decodeTransactionDataJSON(encodedTx []byte) ([]*gethTypes.Transaction, error) {
 	var txData []*TransactionData
 	if jsonErr := json.Unmarshal(encodedTx, &txData); jsonErr != nil {
@@ -345,4 +347,76 @@ func decodeTransactionDataJSON(encodedTx []byte) ([]*gethTypes.Transaction, erro
 	}
 
 	return transactions, nil
+}
+
+// newTransactionData returns a transaction that will serialize to the trace
+// representation, with the given location metadata set (if available).
+// only used for unit tests.
+func newTransactionData(tx *gethTypes.Transaction) *TransactionData {
+	v, r, s := tx.RawSignatureValues()
+
+	nonce := tx.Nonce()
+	if tx.IsL1MessageTx() {
+		nonce = tx.L1MessageQueueIndex()
+	}
+
+	result := &TransactionData{
+		Type:     tx.Type(),
+		Nonce:    nonce,
+		Gas:      tx.Gas(),
+		GasPrice: (*hexutil.Big)(tx.GasPrice()),
+		To:       tx.To(),
+		Value:    (*hexutil.Big)(tx.Value()),
+		Data:     hexutil.Encode(tx.Data()),
+		V:        (*hexutil.Big)(v),
+		R:        (*hexutil.Big)(r),
+		S:        (*hexutil.Big)(s),
+	}
+
+	if tx.IsL1MessageTx() {
+		result.From = tx.AsL1MessageTx().Sender
+	}
+
+	return result
+}
+
+// only used for unit tests.
+func (o *L2Block) updateTransactions(ctx context.Context) error {
+	l2Blocks, err := o.GetL2Blocks(ctx, nil, nil, 0)
+	if err != nil {
+		return fmt.Errorf("failed to get L2Blocks: %w", err)
+	}
+
+	for _, block := range l2Blocks {
+		var transactions []*gethTypes.Transaction
+		err := rlp.DecodeBytes(block.TransactionsRLP, &transactions)
+		if err != nil {
+			return fmt.Errorf("L2Block.GetL2BlocksInRange: failed to decode transactions_rlp, err: %w", err)
+		}
+
+		var txDataSlice []*TransactionData
+		for _, tx := range transactions {
+			txData := newTransactionData(tx)
+			txDataSlice = append(txDataSlice, txData)
+		}
+
+		txDataJSON, err := json.Marshal(txDataSlice)
+		if err != nil {
+			return fmt.Errorf("failed to JSON encode transactions for block %d: %w", block.Number, err)
+		}
+
+		updateMap := map[string]interface{}{
+			"transactions":     string(txDataJSON),
+			"transactions_rlp": "",
+		}
+
+		db := o.db.WithContext(ctx)
+		db = db.Model(&L2Block{})
+		db = db.Where("hash", block.Hash)
+		if err := db.Updates(updateMap).Error; err != nil {
+			return fmt.Errorf("failed to update transactions JSON and clear transactions for block %d: %w", block.Number, err)
+		}
+	}
+
+	return nil
 }

@@ -145,45 +145,82 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	expectedWrappedBlocks := []*rollupTypes.WrappedBlock{wrappedBlock1, wrappedBlock2}
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), expectedWrappedBlocks)
 	assert.NoError(t, err)
 
 	height, err := l2BlockOrm.GetL2BlocksLatestHeight(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(3), height)
 
-	blocks, err := l2BlockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{}, 0)
+	blocks, err := l2BlockOrm.GetL2Blocks(context.Background(), nil, nil, 0)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
 	assert.Equal(t, "", blocks[0].ChunkHash)
 	assert.Equal(t, "", blocks[1].ChunkHash)
 
-	wrappedBlocks, err := l2BlockOrm.GetL2BlocksInRange(context.Background(), 2, 3)
+	wrappedBlocks1, err := l2BlockOrm.GetL2BlocksInRange(context.Background(), 2, 3)
 	assert.NoError(t, err)
-	assert.Len(t, blocks, 2)
-	assert.Equal(t, wrappedBlock1.Header, wrappedBlocks[0].Header)
-	assert.Equal(t, wrappedBlock1.RowConsumption, wrappedBlocks[0].RowConsumption)
-	assert.Equal(t, wrappedBlock1.WithdrawRoot, wrappedBlocks[0].WithdrawRoot)
-	assert.Equal(t, len(wrappedBlock1.Transactions), len(wrappedBlocks[0].Transactions))
-	for i := range wrappedBlock1.Transactions {
-		assert.Equal(t, wrappedBlock1.Transactions[i].Hash(), wrappedBlocks[0].Transactions[i].Hash())
-	}
-	assert.Equal(t, wrappedBlock2.Header, wrappedBlocks[1].Header)
-	assert.Equal(t, wrappedBlock2.RowConsumption, wrappedBlocks[1].RowConsumption)
-	assert.Equal(t, wrappedBlock2.WithdrawRoot, wrappedBlocks[1].WithdrawRoot)
-	assert.Equal(t, len(wrappedBlock2.Transactions), len(wrappedBlocks[1].Transactions))
-	for i := range wrappedBlock2.Transactions {
-		assert.Equal(t, wrappedBlock2.Transactions[i].Hash(), wrappedBlocks[1].Transactions[i].Hash())
-	}
+	assertWrappedBlockEquality(t, expectedWrappedBlocks, wrappedBlocks1)
+
+	wrappedBlocks2, err := l2BlockOrm.GetL2WrappedBlocksGEHeight(context.Background(), 0, 2)
+	assert.NoError(t, err)
+	assertWrappedBlockEquality(t, expectedWrappedBlocks, wrappedBlocks2)
 
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 2, 2, "test hash")
 	assert.NoError(t, err)
 
-	blocks, err = l2BlockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{}, 0)
+	blocks, err = l2BlockOrm.GetL2Blocks(context.Background(), nil, nil, 0)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
 	assert.Equal(t, "test hash", blocks[0].ChunkHash)
 	assert.Equal(t, "", blocks[1].ChunkHash)
+}
+
+func TestL2BlockOrmTransactionBackwardCompatibility(t *testing.T) {
+	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_04.json")
+	assert.NoError(t, err)
+	wrappedBlock3 := &rollupTypes.WrappedBlock{}
+	err = json.Unmarshal(templateBlockTrace, wrappedBlock3)
+	assert.NoError(t, err)
+
+	templateBlockTrace, err = os.ReadFile("../../../common/testdata/blockTrace_05.json")
+	assert.NoError(t, err)
+	wrappedBlock4 := &rollupTypes.WrappedBlock{}
+	err = json.Unmarshal(templateBlockTrace, wrappedBlock4)
+	assert.NoError(t, err)
+
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	expectedWrappedBlocks := []*rollupTypes.WrappedBlock{wrappedBlock3, wrappedBlock4}
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), expectedWrappedBlocks)
+	assert.NoError(t, err)
+
+	wrappedBlocks1, err := l2BlockOrm.GetL2WrappedBlocksGEHeight(context.Background(), 0, 0)
+	assert.NoError(t, err)
+	assertWrappedBlockEquality(t, expectedWrappedBlocks, wrappedBlocks1)
+
+	err = l2BlockOrm.updateTransactions(context.Background())
+	assert.NoError(t, err)
+
+	wrappedBlocks2, err := l2BlockOrm.GetL2WrappedBlocksGEHeight(context.Background(), 0, 0)
+	assert.NoError(t, err)
+	assertWrappedBlockEquality(t, expectedWrappedBlocks, wrappedBlocks2)
+}
+
+func assertWrappedBlockEquality(t *testing.T, expected, actual []*rollupTypes.WrappedBlock) {
+	assert.Len(t, actual, len(expected))
+	for i := range expected {
+		assert.Equal(t, expected[i].Header, actual[i].Header)
+		assert.Equal(t, expected[i].RowConsumption, actual[i].RowConsumption)
+		assert.Equal(t, expected[i].WithdrawRoot, actual[i].WithdrawRoot)
+		assert.Equal(t, len(expected[i].Transactions), len(actual[i].Transactions))
+		for j := range expected[i].Transactions {
+			assert.Equal(t, expected[i].Transactions[j].Hash(), actual[i].Transactions[j].Hash())
+		}
+	}
 }
 
 func TestChunkOrm(t *testing.T) {

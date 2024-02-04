@@ -170,7 +170,7 @@ func testChunkProposerLimits(t *testing.T) {
 
 			if len(chunks) > 0 {
 				blockOrm := orm.NewL2Block(db)
-				blocks, err := blockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{"number ASC"}, tt.expectedBlocksInFirstChunk)
+				blocks, err := blockOrm.GetL2Blocks(context.Background(), nil, nil, tt.expectedBlocksInFirstChunk)
 				assert.NoError(t, err)
 				assert.Len(t, blocks, tt.expectedBlocksInFirstChunk)
 				for _, block := range blocks {
