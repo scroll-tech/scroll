@@ -8,7 +8,7 @@ create table l2_block
     hash                    VARCHAR         NOT NULL,
     parent_hash             VARCHAR         NOT NULL,
     header                  TEXT            NOT NULL,
-    transactions            TEXT            NOT NULL,
+    transactions            TEXT            NOT NULL, -- deprecated.
     withdraw_root           VARCHAR         NOT NULL,
     state_root              VARCHAR         NOT NULL,
     tx_num                  INTEGER         NOT NULL,

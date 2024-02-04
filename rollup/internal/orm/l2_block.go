@@ -91,7 +91,7 @@ func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64,
 		var transactions []*gethTypes.Transaction
 		var err error
 
-		// Empty transactions in legacy JSON string is "[]", thus can use "" to check is the field is deprecated in this row.
+		// Empty transactions in legacy JSON string is "[]", thus can use "" to check whether the field is deprecated in this row.
 		if v.Transactions != "" {
 			transactions, err = decodeTransactionDataJSON([]byte(v.Transactions))
 			if err != nil {
@@ -180,7 +180,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 		var transactions []*gethTypes.Transaction
 		var err error
 
-		// Empty transactions in legacy JSON string is "[]", thus can use "" to check is the field is deprecated in this row.
+		// Empty transactions in legacy JSON string is "[]", thus can use "" to check whether the field is deprecated in this row.
 		if v.Transactions != "" {
 			transactions, err = decodeTransactionDataJSON([]byte(v.Transactions))
 			if err != nil {
@@ -224,7 +224,7 @@ func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*rollupTypes.Wrap
 		transactionsRLP, err := rlp.EncodeToBytes(block.Transactions)
 		if err != nil {
 			log.Error("failed to encode transactions to rlp encoding", "hash", block.Header.Hash().String(), "err", err)
-			return fmt.Errorf("L2Block.InsertL2Blocks, failed to encode transactions to rlp encoding, error: %w", err)
+			return fmt.Errorf("L2Block.InsertL2Blocks error: %w", err)
 		}
 
 		rc, err := json.Marshal(block.RowConsumption)
