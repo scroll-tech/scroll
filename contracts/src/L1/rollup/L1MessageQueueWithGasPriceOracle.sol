@@ -24,11 +24,11 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
      * Variables *
      *************/
 
-    /// @notice The latest known l2 base fee.
-    uint256 public l2BaseFee;
+    /// @inheritdoc IL1MessageQueueWithGasPriceOracle
+    uint256 public override l2BaseFee;
 
-    /// @notice The address of whitelist checker contract.
-    address public whitelistChecker;
+    /// @inheritdoc IL1MessageQueueWithGasPriceOracle
+    address public override whitelistChecker;
 
     /***************
      * Constructor *

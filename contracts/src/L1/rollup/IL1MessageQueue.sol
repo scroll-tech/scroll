@@ -71,7 +71,7 @@ interface IL1MessageQueue {
 
     /// @notice Return the amount of intrinsic gas fee should pay for cross domain message.
     /// @param _calldata The calldata of L1-initiated transaction.
-    function calculateIntrinsicGasFee(bytes memory _calldata) external view returns (uint256);
+    function calculateIntrinsicGasFee(bytes calldata _calldata) external view returns (uint256);
 
     /// @notice Return the hash of a L1 message.
     /// @param sender The address of sender.
