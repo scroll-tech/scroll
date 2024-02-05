@@ -15,13 +15,6 @@ import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
 contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
-    /**********
-     * Errors *
-     **********/
-
-    /// @dev Thrown when the given address is `address(0)`.
-    error ErrorZeroAddress();
-
     /*************
      * Constants *
      *************/
@@ -55,7 +48,15 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         messenger = _messenger;
     }
 
-    function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
+    /// @notice Initialize the storage of L2GatewayRouter.
+    ///
+    /// @dev The parameters `_ethGateway` is no longer used.
+    ///
+    /// @param _defaultERC20Gateway The address of default ERC20 Gateway contract.
+    function initialize(
+        address, /*_ethGateway*/
+        address _defaultERC20Gateway
+    ) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         // it can be zero during initialization
@@ -64,11 +65,13 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
             emit SetDefaultERC20Gateway(address(0), _defaultERC20Gateway);
         }
 
+        /* comment out since it is no longer used.
         // it can be zero during initialization
         if (_ethGateway != address(0)) {
             ethGateway = _ethGateway;
             emit SetETHGateway(address(0), _ethGateway);
         }
+        */
     }
 
     /*************************
@@ -189,16 +192,6 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
     /************************
      * Restricted Functions *
      ************************/
-
-    /// @notice Update the address of ETH gateway contract.
-    /// @dev This function should only be called by contract owner.
-    /// @param _newEthGateway The address to update.
-    function setETHGateway(address _newEthGateway) external onlyOwner {
-        address _oldEthGateway = ethGateway;
-        ethGateway = _newEthGateway;
-
-        emit SetETHGateway(_oldEthGateway, _newEthGateway);
-    }
 
     /// @notice Update the address of default ERC20 gateway contract.
     /// @dev This function should only be called by contract owner.

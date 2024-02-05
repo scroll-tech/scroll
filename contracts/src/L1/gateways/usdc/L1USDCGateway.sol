@@ -54,8 +54,8 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
     /// @param _l1USDC The address of USDC in L1.
     /// @param _l2USDC The address of USDC in L2.
     /// @param _counterpart The address of `L2USDCGateway` contract in L2.
-    /// @param _router The address of `L1GatewayRouter` contract.
-    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    /// @param _router The address of `L1GatewayRouter` contract in L1.
+    /// @param _messenger The address of `L1ScrollMessenger` contract in L1.
     constructor(
         address _l1USDC,
         address _l2USDC,
@@ -78,8 +78,8 @@ contract L1USDCGateway is L1ERC20Gateway, IUSDCBurnableSourceBridge {
     /// @dev The parameters `_counterpart`, `_router` and `_messenger` are no longer used.
     ///
     /// @param _counterpart The address of L2USDCGateway in L2.
-    /// @param _router The address of L1GatewayRouter.
-    /// @param _messenger The address of L1ScrollMessenger.
+    /// @param _router The address of L1GatewayRouter in L1.
+    /// @param _messenger The address of L1ScrollMessenger in L1.
     function initialize(
         address _counterpart,
         address _router,

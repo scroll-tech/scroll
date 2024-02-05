@@ -24,8 +24,8 @@ contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback 
     /// @notice Constructor for `L1ETHGateway` implementation contract.
     ///
     /// @param _counterpart The address of `L2ETHGateway` contract in L2.
-    /// @param _router The address of `L1GatewayRouter` contract.
-    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    /// @param _router The address of `L1GatewayRouter` contract in L1.
+    /// @param _messenger The address of `L1ScrollMessenger` contract in L1.
     constructor(
         address _counterpart,
         address _router,
@@ -41,8 +41,8 @@ contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback 
     /// @dev The parameters `_counterpart`, `_router` and `_messenger` are no longer used.
     ///
     /// @param _counterpart The address of L2ETHGateway in L2.
-    /// @param _router The address of L1GatewayRouter.
-    /// @param _messenger The address of L1ScrollMessenger.
+    /// @param _router The address of L1GatewayRouter in L1.
+    /// @param _messenger The address of L1ScrollMessenger in L1.
     function initialize(
         address _counterpart,
         address _router,
