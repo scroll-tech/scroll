@@ -86,7 +86,6 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
     }
 
     function testInitialized() public {
-        assertEq(address(l1ETHGateway), router.ethGateway());
         assertEq(address(l1StandardERC20Gateway), router.defaultERC20Gateway());
         assertEq(
             factory.computeL2TokenAddress(address(l2StandardERC20Gateway), address(l1Token)),
