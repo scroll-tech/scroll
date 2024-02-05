@@ -42,16 +42,24 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, reg prometheus.Registerer) (*Layer1Relayer, error) {
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, reg)
-	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
-		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
-	}
+func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, serviceType ServiceType, reg prometheus.Registerer) (*Layer1Relayer, error) {
+	var gasOracleSender *sender.Sender
+	var err error
 
-	// Ensure test features aren't enabled on the mainnet.
-	if gasOracleSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
-		return nil, fmt.Errorf("cannot enable test env features in mainnet")
+	switch serviceType {
+	case ServiceTypeL1GasOracle:
+		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, reg)
+		if err != nil {
+			addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
+			return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
+		}
+
+		// Ensure test features aren't enabled on the scroll mainnet.
+		if gasOracleSender.GetChainID().Cmp(big.NewInt(534352)) == 0 && cfg.EnableTestEnvBypassFeatures {
+			return nil, fmt.Errorf("cannot enable test env features in mainnet")
+		}
+	default:
+		return nil, fmt.Errorf("invalid service type for l1_relayer: %v", serviceType)
 	}
 
 	var minGasPrice uint64
@@ -78,7 +86,13 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 	l1Relayer.metrics = initL1RelayerMetrics(reg)
 
-	go l1Relayer.handleConfirmLoop(ctx)
+	switch serviceType {
+	case ServiceTypeL1GasOracle:
+		go l1Relayer.handleL1GasOracleConfirmLoop(ctx)
+	default:
+		return nil, fmt.Errorf("invalid service type for l1_relayer: %v", serviceType)
+	}
+
 	return l1Relayer, nil
 }
 
@@ -158,7 +172,7 @@ func (r *Layer1Relayer) handleConfirmation(cfm *sender.Confirmation) {
 	log.Info("Transaction confirmed in layer2", "confirmation", cfm)
 }
 
-func (r *Layer1Relayer) handleConfirmLoop(ctx context.Context) {
+func (r *Layer1Relayer) handleL1GasOracleConfirmLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():

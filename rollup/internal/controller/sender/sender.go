@@ -298,7 +298,7 @@ func (s *Sender) resetNonce(ctx context.Context) {
 	s.auth.Nonce = big.NewInt(int64(nonce))
 }
 
-func (s *Sender) resubmitTransaction(auth *bind.TransactOpts, tx *gethTypes.Transaction, baseFee uint64) (*gethTypes.Transaction, error) {
+func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee uint64) (*gethTypes.Transaction, error) {
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -306,7 +306,7 @@ func (s *Sender) resubmitTransaction(auth *bind.TransactOpts, tx *gethTypes.Tran
 	txInfo := map[string]interface{}{
 		"tx_hash": tx.Hash().String(),
 		"tx_type": s.config.TxType,
-		"from":    auth.From.String(),
+		"from":    s.auth.From.String(),
 		"nonce":   tx.Nonce(),
 	}
 
@@ -375,7 +375,7 @@ func (s *Sender) resubmitTransaction(auth *bind.TransactOpts, tx *gethTypes.Tran
 		txInfo["adjusted_gas_fee_cap"] = gasFeeCap.Uint64()
 	}
 
-	log.Info("Transaction gas adjustment details", "txInfo", txInfo)
+	log.Info("Transaction gas adjustment details", "service", s.service, "name", s.name, "txInfo", txInfo)
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
@@ -434,7 +434,8 @@ func (s *Sender) checkPendingTransaction() {
 					return nil
 				})
 				if err != nil {
-					log.Error("db transaction failed", "err", err)
+					log.Error("db transaction failed after receiving confirmation", "err", err)
+					return
 				}
 
 				// send confirm message
@@ -456,10 +457,12 @@ func (s *Sender) checkPendingTransaction() {
 			}
 			if status == types.TxStatusConfirmedFailed {
 				log.Warn("transaction already marked as failed, skipping resubmission", "hash", tx.Hash().String())
-				return
+				continue
 			}
 
 			log.Info("resubmit transaction",
+				"service", s.service,
+				"name", s.name,
 				"hash", tx.Hash().String(),
 				"from", s.auth.From.String(),
 				"nonce", tx.Nonce(),
@@ -467,7 +470,7 @@ func (s *Sender) checkPendingTransaction() {
 				"currentBlockNumber", blockNumber,
 				"escalateBlocks", s.config.EscalateBlocks)
 
-			if newTx, err := s.resubmitTransaction(s.auth, tx, baseFee); err != nil {
+			if newTx, err := s.resubmitTransaction(tx, baseFee); err != nil {
 				s.metrics.resubmitTransactionFailedTotal.WithLabelValues(s.service, s.name).Inc()
 				log.Error("failed to resubmit transaction", "context ID", txnToCheck.ContextID, "sender meta", s.getSenderMeta(), "from", s.auth.From.String(), "nonce", newTx.Nonce(), "err", err)
 			} else {
@@ -477,13 +480,14 @@ func (s *Sender) checkPendingTransaction() {
 						return fmt.Errorf("failed to update status of transaction with hash %s to TxStatusReplaced, err: %w", tx.Hash().String(), err)
 					}
 					// Record the new transaction that has replaced the original one.
-					if err := s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, txnToCheck.ContextID, s.getSenderMeta(), newTx, txnToCheck.SubmitBlockNumber, dbTX); err != nil {
-						return fmt.Errorf("failed to insert new pending transaction with context ID: %s, nonce: %d, hash: %v, err: %w", txnToCheck.ContextID, newTx.Nonce(), newTx.Hash().String(), err)
+					if err := s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, txnToCheck.ContextID, s.getSenderMeta(), newTx, blockNumber, dbTX); err != nil {
+						return fmt.Errorf("failed to insert new pending transaction with context ID: %s, nonce: %d, hash: %v, previous block number: %v, current block number: %v, err: %w", txnToCheck.ContextID, newTx.Nonce(), newTx.Hash().String(), txnToCheck.SubmitBlockNumber, blockNumber, err)
 					}
 					return nil
 				})
 				if err != nil {
-					log.Error("db transaction failed", "err", err)
+					log.Error("db transaction failed after resubmitting", "err", err)
+					return
 				}
 			}
 		}
