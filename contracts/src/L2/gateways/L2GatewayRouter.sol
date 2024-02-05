@@ -54,8 +54,7 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
     ///
     /// @param _defaultERC20Gateway The address of default ERC20 Gateway contract.
     function initialize(
-        address,
-        /*_ethGateway*/
+        address, /*_ethGateway*/
         address _defaultERC20Gateway
     ) external initializer {
         OwnableUpgradeable.__Ownable_init();
