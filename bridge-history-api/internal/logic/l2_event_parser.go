@@ -125,7 +125,7 @@ func (e *L2EventParser) ParseL2EventLogs(ctx context.Context, logs []types.Log, 
 				log.Error("Failed to unpack SentMessage event", "err", err)
 				return nil, nil, err
 			}
-			from, err := getRealFromAddress(ctx, event.Sender, e.client, vlog.TxHash, e.cfg.GatewayRouterAddr)
+			from, err := getRealFromAddress(ctx, event.Sender, event.Message, e.client, vlog.TxHash, e.cfg.GatewayRouterAddr)
 			if err != nil {
 				log.Error("Failed to get real 'from' address", "err", err)
 				return nil, nil, err

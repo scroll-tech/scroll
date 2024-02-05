@@ -17,8 +17,8 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
     /// @notice The intrinsic gas for transaction.
     uint256 private constant INTRINSIC_GAS_TX = 21000;
 
-    /// @notice The intrinsic gas for each nonzero byte.
-    uint256 private constant INTRINSIC_GAS_NONZERO_BYTE = 16;
+    /// @notice The appropriate intrinsic gas for each byte.
+    uint256 private constant APPROPRIATE_INTRINSIC_GAS_PER_BYTE = 16;
 
     /*************
      * Variables *
@@ -74,7 +74,7 @@ contract L1MessageQueueWithGasPriceOracle is L1MessageQueue, IL1MessageQueueWith
     {
         // no way this can overflow `uint256`
         unchecked {
-            return INTRINSIC_GAS_TX + _calldata.length * INTRINSIC_GAS_NONZERO_BYTE;
+            return INTRINSIC_GAS_TX + _calldata.length * APPROPRIATE_INTRINSIC_GAS_PER_BYTE;
         }
     }
 
