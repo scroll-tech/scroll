@@ -68,16 +68,17 @@ contract L2StandardERC20Gateway is L2ERC20Gateway {
     /// @param _counterpart The address of L1ETHGateway in L1.
     /// @param _router The address of L2GatewayRouter.
     /// @param _messenger The address of L2ScrollMessenger.
-    /// @param _tokenFactory The address of ScrollStandardERC20Factory.
     function initialize(
         address _counterpart,
         address _router,
         address _messenger,
-        address _tokenFactory
+        address /*_tokenFactory*/
     ) external initializer {
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
 
+        /* comment out since no longer used
         __tokenFactory = _tokenFactory;
+        */
     }
 
     /*************************
