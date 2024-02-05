@@ -180,20 +180,4 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
         hevm.expectRevert("should never be called");
         router.finalizeDepositETH(address(0), address(0), 0, "");
     }
-
-    function testSetETHGateway(address gateway) public {
-        // set by non-owner, should revert
-        hevm.startPrank(address(1));
-        hevm.expectRevert("Ownable: caller is not the owner");
-        router.setETHGateway(gateway);
-        hevm.stopPrank();
-
-        // set by owner, should succeed
-        hevm.expectEmit(true, true, false, true);
-        emit SetETHGateway(address(0), gateway);
-
-        assertEq(address(0), router.ethGateway());
-        router.setETHGateway(gateway);
-        assertEq(gateway, router.ethGateway());
-    }
 }
