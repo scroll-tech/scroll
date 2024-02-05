@@ -62,27 +62,43 @@ type Layer2Relayer struct {
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
-func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool, reg prometheus.Registerer) (*Layer2Relayer, error) {
-	commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
-	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
-		return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
-	}
-	finalizeSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey, "l2_relayer", "finalize_sender", types.SenderTypeFinalizeBatch, db, reg)
-	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
-		return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
-	}
+func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
+	var gasOracleSender, commitSender, finalizeSender *sender.Sender
+	var err error
 
-	gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
-	if err != nil {
-		addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
-		return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
-	}
+	switch serviceType {
+	case ServiceTypeL2GasOracle:
+		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderPrivateKey, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
+		if err != nil {
+			addr := crypto.PubkeyToAddress(cfg.GasOracleSenderPrivateKey.PublicKey)
+			return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
+		}
 
-	// Ensure test features aren't enabled on the mainnet.
-	if commitSender.GetChainID() == big.NewInt(1) && cfg.EnableTestEnvBypassFeatures {
-		return nil, fmt.Errorf("cannot enable test env features in mainnet")
+		// Ensure test features aren't enabled on the ethereum mainnet.
+		if gasOracleSender.GetChainID().Cmp(big.NewInt(1)) == 0 && cfg.EnableTestEnvBypassFeatures {
+			return nil, fmt.Errorf("cannot enable test env features in mainnet")
+		}
+
+	case ServiceTypeL2RollupRelayer:
+		commitSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderPrivateKey, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
+		if err != nil {
+			addr := crypto.PubkeyToAddress(cfg.CommitSenderPrivateKey.PublicKey)
+			return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
+		}
+
+		finalizeSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderPrivateKey, "l2_relayer", "finalize_sender", types.SenderTypeFinalizeBatch, db, reg)
+		if err != nil {
+			addr := crypto.PubkeyToAddress(cfg.FinalizeSenderPrivateKey.PublicKey)
+			return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
+		}
+
+		// Ensure test features aren't enabled on the ethereum mainnet.
+		if commitSender.GetChainID().Cmp(big.NewInt(1)) == 0 && cfg.EnableTestEnvBypassFeatures {
+			return nil, fmt.Errorf("cannot enable test env features in mainnet")
+		}
+
+	default:
+		return nil, fmt.Errorf("invalid service type for l2_relayer: %v", serviceType)
 	}
 
 	var minGasPrice uint64
@@ -133,7 +149,15 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	}
 	layer2Relayer.metrics = initL2RelayerMetrics(reg)
 
-	go layer2Relayer.handleConfirmLoop(ctx)
+	switch serviceType {
+	case ServiceTypeL2GasOracle:
+		go layer2Relayer.handleL2GasOracleConfirmLoop(ctx)
+	case ServiceTypeL2RollupRelayer:
+		go layer2Relayer.handleL2RollupRelayerConfirmLoop(ctx)
+	default:
+		return nil, fmt.Errorf("invalid service type for l2_relayer: %v", serviceType)
+	}
+
 	return layer2Relayer, nil
 }
 
@@ -673,7 +697,18 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 	log.Info("Transaction confirmed in layer1", "confirmation", cfm)
 }
 
-func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
+func (r *Layer2Relayer) handleL2GasOracleConfirmLoop(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case cfm := <-r.gasOracleSender.ConfirmChan():
+			r.handleConfirmation(cfm)
+		}
+	}
+}
+
+func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -681,8 +716,6 @@ func (r *Layer2Relayer) handleConfirmLoop(ctx context.Context) {
 		case cfm := <-r.commitSender.ConfirmChan():
 			r.handleConfirmation(cfm)
 		case cfm := <-r.finalizeSender.ConfirmChan():
-			r.handleConfirmation(cfm)
-		case cfm := <-r.gasOracleSender.ConfirmChan():
 			r.handleConfirmation(cfm)
 		}
 	}

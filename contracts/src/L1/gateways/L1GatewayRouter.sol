@@ -19,13 +19,6 @@ import {IL1GatewayRouter} from "./IL1GatewayRouter.sol";
 contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /**********
-     * Errors *
-     **********/
-
-    /// @dev Thrown when the given address is `address(0)`.
-    error ErrorZeroAddress();
-
     /*************
      * Constants *
      *************/
@@ -81,9 +74,11 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     ///
     /// @dev The parameters `_ethGateway` is no longer used.
     ///
-    /// @param _ethGateway The address of L1ETHGateway contract.
     /// @param _defaultERC20Gateway The address of default ERC20 Gateway contract.
-    function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
+    function initialize(
+        address, /*_ethGateway*/
+        address _defaultERC20Gateway
+    ) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         // it can be zero during initialization
@@ -92,11 +87,13 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
             emit SetDefaultERC20Gateway(address(0), _defaultERC20Gateway);
         }
 
+        /* comment out since it is no longer used.
         // it can be zero during initialization
         if (_ethGateway != address(0)) {
             ethGateway = _ethGateway;
             emit SetETHGateway(address(0), _ethGateway);
         }
+        */
     }
 
     /*************************
@@ -239,14 +236,6 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     /************************
      * Restricted Functions *
      ************************/
-
-    /// @inheritdoc IL1GatewayRouter
-    function setETHGateway(address _newEthGateway) external onlyOwner {
-        address _oldETHGateway = ethGateway;
-        ethGateway = _newEthGateway;
-
-        emit SetETHGateway(_oldETHGateway, _newEthGateway);
-    }
 
     /// @inheritdoc IL1GatewayRouter
     function setDefaultERC20Gateway(address _newDefaultERC20Gateway) external onlyOwner {
