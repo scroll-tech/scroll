@@ -81,7 +81,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         counterpartGateway = new L2LidoGateway(address(l1Token), address(l2Token), address(1), address(1), address(1));
 
         // Deploy L1 contracts
-        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter(address(l1Messenger)))));
+        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter())));
         gateway = _deployGateway(address(l1Messenger));
 
         // Initialize L1 contracts

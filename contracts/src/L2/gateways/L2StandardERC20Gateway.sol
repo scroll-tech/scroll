@@ -45,9 +45,9 @@ contract L2StandardERC20Gateway is L2ERC20Gateway {
     /// @notice Constructor for `L2StandardERC20Gateway` implementation contract.
     ///
     /// @param _counterpart The address of `L1StandardERC20Gateway` contract in L1.
-    /// @param _router The address of `L2GatewayRouter` contract.
-    /// @param _messenger The address of `L2ScrollMessenger` contract.
-    /// @param _tokenFactory The address of ScrollStandardERC20Factory.
+    /// @param _router The address of `L2GatewayRouter` contract in L2.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
+    /// @param _tokenFactory The address of `ScrollStandardERC20Factory` contract in L2.
     constructor(
         address _counterpart,
         address _router,
@@ -65,19 +65,16 @@ contract L2StandardERC20Gateway is L2ERC20Gateway {
     ///
     /// @dev The parameters `_counterpart`, `_router`, `_messenger` and `_tokenFactory` are no longer used.
     ///
-    /// @param _counterpart The address of L1ETHGateway in L1.
-    /// @param _router The address of L2GatewayRouter.
-    /// @param _messenger The address of L2ScrollMessenger.
-    /// @param _tokenFactory The address of ScrollStandardERC20Factory.
+    /// @param _counterpart The address of `L1StandardERC20Gateway` contract in L1.
+    /// @param _router The address of `L2GatewayRouter` contract in L2.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
     function initialize(
         address _counterpart,
         address _router,
         address _messenger,
-        address _tokenFactory
+        address /*_tokenFactory*/
     ) external initializer {
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
-
-        __tokenFactory = _tokenFactory;
     }
 
     /*************************

@@ -141,7 +141,7 @@ contract DeployL1BridgeContracts is Script {
     }
 
     function deployL1GatewayRouter() internal {
-        L1GatewayRouter impl = new L1GatewayRouter(L1_SCROLL_MESSENGER_PROXY_ADDR);
+        L1GatewayRouter impl = new L1GatewayRouter();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
             address(proxyAdmin),

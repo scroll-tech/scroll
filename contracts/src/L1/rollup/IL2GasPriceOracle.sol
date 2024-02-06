@@ -3,9 +3,10 @@
 pragma solidity ^0.8.16;
 
 interface IL2GasPriceOracle {
-    /// @notice The latest known l2 base fee.
+    /// @notice Return the latest known l2 base fee.
     function l2BaseFee() external view returns (uint256);
 
+    /// @notice Return the address of whitelist contract.
     function whitelist() external view returns (address);
 
     /// @notice Estimate fee for cross chain message call.

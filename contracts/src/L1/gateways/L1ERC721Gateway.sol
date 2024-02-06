@@ -44,7 +44,7 @@ contract L1ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC72
     /// @notice Constructor for `L2ERC721Gateway` implementation contract.
     ///
     /// @param _counterpart The address of `L2ERC721Gateway` contract in L2.
-    /// @param _messenger The address of `L1ScrollMessenger` contract.
+    /// @param _messenger The address of `L1ScrollMessenger` contract in L1.
     constructor(address _counterpart, address _messenger) ScrollGatewayBase(_counterpart, address(0), _messenger) {
         _disableInitializers();
     }
@@ -54,7 +54,7 @@ contract L1ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL1ERC72
     /// @dev The parameters `_counterpart` and `_messenger` are no longer used.
     ///
     /// @param _counterpart The address of L2ERC721Gateway in L2.
-    /// @param _messenger The address of L1ScrollMessenger.
+    /// @param _messenger The address of L1ScrollMessenger in L1.
     function initialize(address _counterpart, address _messenger) external initializer {
         ERC721HolderUpgradeable.__ERC721Holder_init();
 
