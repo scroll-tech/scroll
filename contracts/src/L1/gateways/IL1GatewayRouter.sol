@@ -66,5 +66,5 @@ interface IL1GatewayRouter is IL1ETHGateway, IL1ERC20Gateway {
     /// @dev This function should only be called by contract owner.
     /// @param _tokens The list of addresses of tokens to update.
     /// @param _gateways The list of addresses of gateways to update.
-    function setERC20Gateway(address[] memory _tokens, address[] memory _gateways) external;
+    function setERC20Gateway(address[] calldata _tokens, address[] calldata _gateways) external;
 }

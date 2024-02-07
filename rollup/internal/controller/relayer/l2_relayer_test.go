@@ -38,7 +38,7 @@ func setupL2RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewRelayer(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 }
@@ -48,7 +48,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 
 	l2BlockOrm := orm.NewL2Block(db)
@@ -82,7 +82,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	batchMeta := &types.BatchMeta{
 		StartChunkIndex: 0,
@@ -128,7 +128,7 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
 	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	batchMeta := &types.BatchMeta{
 		StartChunkIndex: 0,
@@ -160,15 +160,13 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
-	processingKeys := []string{"committed-1", "committed-2"}
 	isSuccessful := []bool{true, false}
-
 	batchOrm := orm.NewBatch(db)
-	batchHashes := make([]string, len(processingKeys))
+	batchHashes := make([]string, len(isSuccessful))
 	for i := range batchHashes {
 		batchMeta := &types.BatchMeta{
 			StartChunkIndex: 0,
@@ -181,12 +179,12 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 		batchHashes[i] = batch.Hash
 	}
 
-	for i, key := range processingKeys {
-		l2Relayer.processingCommitment.Store(key, batchHashes[i])
+	for i, batchHash := range batchHashes {
 		l2Relayer.commitSender.SendConfirmation(&sender.Confirmation{
-			ID:           key,
+			ContextID:    batchHash,
 			IsSuccessful: isSuccessful[i],
 			TxHash:       common.HexToHash("0x123456789abcdef"),
+			SenderType:   types.SenderTypeCommitBatch,
 		})
 	}
 
@@ -216,15 +214,13 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
-	processingKeys := []string{"finalized-1", "finalized-2"}
 	isSuccessful := []bool{true, false}
-
 	batchOrm := orm.NewBatch(db)
-	batchHashes := make([]string, len(processingKeys))
+	batchHashes := make([]string, len(isSuccessful))
 	for i := range batchHashes {
 		batchMeta := &types.BatchMeta{
 			StartChunkIndex: 0,
@@ -237,12 +233,12 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 		batchHashes[i] = batch.Hash
 	}
 
-	for i, key := range processingKeys {
-		l2Relayer.processingFinalization.Store(key, batchHashes[i])
+	for i, batchHash := range batchHashes {
 		l2Relayer.finalizeSender.SendConfirmation(&sender.Confirmation{
-			ID:           key,
+			ContextID:    batchHash,
 			IsSuccessful: isSuccessful[i],
 			TxHash:       common.HexToHash("0x123456789abcdef"),
+			SenderType:   types.SenderTypeFinalizeBatch,
 		})
 	}
 
@@ -291,7 +287,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
@@ -307,13 +303,14 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 
 	for _, confirmation := range confirmations {
 		l2Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
-			ID:           confirmation.batchHash,
+			ContextID:    confirmation.batchHash,
 			IsSuccessful: confirmation.isSuccessful,
+			SenderType:   types.SenderTypeL2GasOracle,
 		})
 	}
 	// Check the database for the updated status using TryTimes.
 	ok := utils.TryTimes(5, func() bool {
-		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleFailed}
+		expectedStatuses := []types.GasOracleStatus{types.GasOracleImported, types.GasOracleImportedFailed}
 		for i, confirmation := range confirmations {
 			gasOracle, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": confirmation.batchHash}, nil, 0)
 			if err != nil || len(gasOracle) != 1 || types.GasOracleStatus(gasOracle[0].OracleStatus) != expectedStatuses[i] {
@@ -329,7 +326,7 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 
@@ -378,13 +375,13 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("Failed to send setL2BaseFee tx to layer2", t, func() {
 		targetErr := errors.New("failed to send setL2BaseFee tx to layer2 error")
-		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
 		relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
+	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
 		return common.HexToHash("0x56789abcdef1234"), nil
 	})
 
@@ -442,7 +439,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg.L2Config.RelayerConfig.ChainMonitor.Enabled = true
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 

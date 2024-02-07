@@ -5,12 +5,17 @@ on:
     tags:
       - v**
 
+env:
+  AWS_REGION: us-west-2
+
 jobs:
   event_watcher:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Docker Hub
@@ -18,22 +23,43 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push event_watcher docker
-        uses: docker/build-push-action@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: event-watcher
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: event-watcher
+          IMAGE_TAG: ${{ github.ref_name }}
         with:
           context: .
           file: ./build/dockerfiles/event_watcher.Dockerfile
           push: true
           tags: |
-            scrolltech/event-watcher:${{github.ref_name}}
-            scrolltech/event-watcher:latest
-          # cache-from: type=gha,scope=${{ github.workflow }}
-          # cache-to: type=gha,scope=${{ github.workflow }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+
   gas_oracle:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Docker Hub
@@ -41,22 +67,43 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push gas_oracle docker
-        uses: docker/build-push-action@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: gas-oracle
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: gas-oracle
+          IMAGE_TAG: ${{ github.ref_name }}
         with:
           context: .
           file: ./build/dockerfiles/gas_oracle.Dockerfile
           push: true
           tags: |
-            scrolltech/gas-oracle:${{github.ref_name}}
-            scrolltech/gas-oracle:latest
-          # cache-from: type=gha,scope=${{ github.workflow }}
-          # cache-to: type=gha,scope=${{ github.workflow }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+
   rollup_relayer:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Docker Hub
@@ -64,68 +111,131 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push rollup_relayer docker
-        uses: docker/build-push-action@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: rollup-relayer
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: rollup-relayer
+          IMAGE_TAG: ${{ github.ref_name }}
         with:
           context: .
           file: ./build/dockerfiles/rollup_relayer.Dockerfile
           push: true
           tags: |
-            scrolltech/rollup-relayer:${{github.ref_name}}
-            scrolltech/rollup-relayer:latest
-          # cache-from: type=gha,scope=${{ github.workflow }}
-          # cache-to: type=gha,scope=${{ github.workflow }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+
   bridgehistoryapi-fetcher:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Build and push bridgehistoryapi-fetcher docker
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: ./build/dockerfiles/bridgehistoryapi-fetcher.Dockerfile
-        push: true
-        tags: |
-          scrolltech/bridgehistoryapi-fetcher:${{github.ref_name}}
-          scrolltech/bridgehistoryapi-fetcher:latest
-        # cache-from: type=gha,scope=${{ github.workflow }}
-        # cache-to: type=gha,scope=${{ github.workflow }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: bridgehistoryapi-fetcher
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: bridgehistoryapi-fetcher
+          IMAGE_TAG: ${{ github.ref_name }}
+        with:
+          context: .
+          file: ./build/dockerfiles/bridgehistoryapi-fetcher.Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+
   bridgehistoryapi-api:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Build and push bridgehistoryapi-api docker
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: ./build/dockerfiles/bridgehistoryapi-api.Dockerfile
-        push: true
-        tags: |
-          scrolltech/bridgehistoryapi-api:${{github.ref_name}}
-          scrolltech/bridgehistoryapi-api:latest
-        # cache-from: type=gha,scope=${{ github.workflow }}
-        # cache-to: type=gha,scope=${{ github.workflow }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: bridgehistoryapi-api
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: bridgehistoryapi-api
+          IMAGE_TAG: ${{ github.ref_name }}
+        with:
+          context: .
+          file: ./build/dockerfiles/bridgehistoryapi-api.Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+
   coordinator-api:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Docker Hub
@@ -133,22 +243,43 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push coordinator docker
-        uses: docker/build-push-action@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: coordinator-api
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: coordinator-api
+          IMAGE_TAG: ${{ github.ref_name }}
         with:
           context: .
           file: ./build/dockerfiles/coordinator-api.Dockerfile
           push: true
           tags: |
-            scrolltech/coordinator-api:${{github.ref_name}}
-            scrolltech/coordinator-api:latest
-          # cache-from: type=gha,scope=${{ github.workflow }}
-          # cache-to: type=gha,scope=${{ github.workflow }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
+
   coordinator-cron:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Docker Hub
@@ -156,14 +287,32 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push coordinator docker
-        uses: docker/build-push-action@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: check repo and create it if not exist
+        env:
+          REPOSITORY: coordinator-cron
+        run: |
+          aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
+      - name: Build and push
+        uses: docker/build-push-action@v3
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY: coordinator-cron
+          IMAGE_TAG: ${{ github.ref_name }}
         with:
           context: .
           file: ./build/dockerfiles/coordinator-cron.Dockerfile
           push: true
           tags: |
-            scrolltech/coordinator-cron:${{github.ref_name}}
-            scrolltech/coordinator-cron:latest
-          # cache-from: type=gha,scope=${{ github.workflow }}
-          # cache-to: type=gha,scope=${{ github.workflow }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest

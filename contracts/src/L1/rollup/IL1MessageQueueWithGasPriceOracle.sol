@@ -25,4 +25,14 @@ interface IL1MessageQueueWithGasPriceOracle is IL1MessageQueue {
 
     /// @dev Thrown when the caller is not whitelisted.
     error ErrorNotWhitelistedSender();
+
+    /*************************
+     * Public View Functions *
+     *************************/
+
+    /// @notice Return the latest known l2 base fee.
+    function l2BaseFee() external view returns (uint256);
+
+    /// @notice Return the address of whitelist checker contract.
+    function whitelistChecker() external view returns (address);
 }

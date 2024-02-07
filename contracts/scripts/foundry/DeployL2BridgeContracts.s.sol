@@ -31,6 +31,8 @@ import {ScrollStandardERC20Factory} from "../../src/libraries/token/ScrollStanda
 contract DeployL2BridgeContracts is Script {
     uint256 L2_DEPLOYER_PRIVATE_KEY = vm.envUint("L2_DEPLOYER_PRIVATE_KEY");
 
+    address L2_PROXY_ADMIN_ADDR = vm.envAddress("L2_PROXY_ADMIN_ADDR");
+
     address L1_TX_FEE_RECIPIENT_ADDR = vm.envAddress("L1_TX_FEE_RECIPIENT_ADDR");
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
@@ -58,6 +60,8 @@ contract DeployL2BridgeContracts is Script {
     address L2_WHITELIST_PREDEPLOY_ADDR = vm.envOr("L2_WHITELIST_PREDEPLOY_ADDR", address(0));
 
     function run() external {
+        proxyAdmin = ProxyAdmin(L2_PROXY_ADMIN_ADDR);
+
         vm.startBroadcast(L2_DEPLOYER_PRIVATE_KEY);
 
         // predeploys
@@ -67,7 +71,6 @@ contract DeployL2BridgeContracts is Script {
         deployL2Whitelist();
 
         // upgradable
-        deployProxyAdmin();
         deployL2ScrollMessenger();
         deployL2GatewayRouter();
         deployScrollStandardERC20Factory();
@@ -131,12 +134,6 @@ contract DeployL2BridgeContracts is Script {
         logAddress("L2_WHITELIST_ADDR", address(whitelist));
     }
 
-    function deployProxyAdmin() internal {
-        proxyAdmin = new ProxyAdmin();
-
-        logAddress("L2_PROXY_ADMIN_ADDR", address(proxyAdmin));
-    }
-
     function deployL2ScrollMessenger() internal {
         L2ScrollMessenger impl = new L2ScrollMessenger(L1_SCROLL_MESSENGER_PROXY_ADDR, address(queue));
 
@@ -144,7 +141,7 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2GatewayRouter() internal {
-        L2GatewayRouter impl = new L2GatewayRouter(L2_SCROLL_MESSENGER_PROXY_ADDR);
+        L2GatewayRouter impl = new L2GatewayRouter();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
             address(proxyAdmin),

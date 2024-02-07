@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -33,6 +34,10 @@ var (
 )
 
 func setupEnv(t *testing.T) (err error) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	// Load config.
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)

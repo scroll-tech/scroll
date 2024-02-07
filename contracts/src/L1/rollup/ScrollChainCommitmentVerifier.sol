@@ -2,7 +2,7 @@
 
 pragma solidity =0.8.16;
 
-import {ScrollChain} from "./ScrollChain.sol";
+import {IScrollChain} from "./IScrollChain.sol";
 import {ZkTrieVerifier} from "../../libraries/verifier/ZkTrieVerifier.sol";
 
 contract ScrollChainCommitmentVerifier {
@@ -49,11 +49,11 @@ contract ScrollChainCommitmentVerifier {
         bytes32 storageKey,
         bytes calldata proof
     ) external view returns (bytes32 storageValue) {
-        require(ScrollChain(rollup).isBatchFinalized(batchIndex), "Batch not finalized");
+        require(IScrollChain(rollup).isBatchFinalized(batchIndex), "Batch not finalized");
 
         bytes32 computedStateRoot;
         (computedStateRoot, storageValue) = ZkTrieVerifier.verifyZkTrieProof(poseidon, account, storageKey, proof);
-        bytes32 expectedStateRoot = ScrollChain(rollup).finalizedStateRoots(batchIndex);
+        bytes32 expectedStateRoot = IScrollChain(rollup).finalizedStateRoots(batchIndex);
         require(computedStateRoot == expectedStateRoot, "Invalid inclusion proof");
     }
 }

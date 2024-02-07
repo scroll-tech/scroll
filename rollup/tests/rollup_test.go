@@ -20,6 +20,34 @@ import (
 	"scroll-tech/rollup/internal/orm"
 )
 
+func testCommitAndFinalizeGenesisBatch(t *testing.T) {
+	db := setupDB(t)
+	defer database.CloseDB(db)
+
+	prepareContracts(t)
+
+	l2Cfg := rollupApp.Config.L2Config
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, l2Relayer)
+
+	genesisChunkHash := common.HexToHash("0x00e076380b00a3749816fcc9a2a576b529952ef463222a54544d21b7d434dfe1")
+	chunkOrm := orm.NewChunk(db)
+	dbChunk, err := chunkOrm.GetChunksInRange(context.Background(), 0, 0)
+	assert.NoError(t, err)
+	assert.Len(t, dbChunk, 1)
+	assert.Equal(t, genesisChunkHash.String(), dbChunk[0].Hash)
+	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(dbChunk[0].ProvingStatus))
+
+	genesisBatchHash := common.HexToHash("0x2d214b024f5337d83a5681f88575ab225f345ec2e4e3ce53cf4dc4b0cb5c96b1")
+	batchOrm := orm.NewBatch(db)
+	batch, err := batchOrm.GetBatchByIndex(context.Background(), 0)
+	assert.NoError(t, err)
+	assert.Equal(t, genesisBatchHash.String(), batch.Hash)
+	assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(batch.ProvingStatus))
+	assert.Equal(t, types.RollupFinalized, types.RollupStatus(batch.RollupStatus))
+}
+
 func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	db := setupDB(t)
 	defer database.CloseDB(db)
@@ -28,7 +56,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, relayer.ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 
 	// Create L1Watcher
