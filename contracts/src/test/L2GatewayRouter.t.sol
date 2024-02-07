@@ -59,7 +59,7 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
         // Deploy L2 contracts
         l2StandardERC20Gateway = L2StandardERC20Gateway(_deployProxy(address(0)));
         l2ETHGateway = L2ETHGateway(_deployProxy(address(0)));
-        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter(address(l2Messenger)))));
+        router = L2GatewayRouter(_deployProxy(address(new L2GatewayRouter())));
 
         admin.upgrade(
             ITransparentUpgradeableProxy(address(l2StandardERC20Gateway)),
@@ -114,7 +114,6 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
     }
 
     function testInitialized() public {
-        assertEq(address(l2ETHGateway), router.ethGateway());
         assertEq(address(l2StandardERC20Gateway), router.defaultERC20Gateway());
         assertEq(address(l2StandardERC20Gateway), router.getERC20Gateway(address(l2Token)));
 
@@ -180,21 +179,5 @@ contract L2GatewayRouterTest is L2GatewayTestBase {
     function testFinalizeDepositETH() public {
         hevm.expectRevert("should never be called");
         router.finalizeDepositETH(address(0), address(0), 0, "");
-    }
-
-    function testSetETHGateway(address gateway) public {
-        // set by non-owner, should revert
-        hevm.startPrank(address(1));
-        hevm.expectRevert("Ownable: caller is not the owner");
-        router.setETHGateway(gateway);
-        hevm.stopPrank();
-
-        // set by owner, should succeed
-        hevm.expectEmit(true, true, false, true);
-        emit SetETHGateway(address(l2ETHGateway), gateway);
-
-        assertEq(address(l2ETHGateway), router.ethGateway());
-        router.setETHGateway(gateway);
-        assertEq(gateway, router.ethGateway());
     }
 }

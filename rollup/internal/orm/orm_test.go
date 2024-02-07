@@ -3,27 +3,29 @@ package orm
 import (
 	"context"
 	"encoding/json"
+	"math/big"
 	"os"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
-
 	"scroll-tech/database/migrate"
 )
 
 var (
 	base *docker.App
 
-	db         *gorm.DB
-	l2BlockOrm *L2Block
-	chunkOrm   *Chunk
-	batchOrm   *Batch
+	db                    *gorm.DB
+	l2BlockOrm            *L2Block
+	chunkOrm              *Chunk
+	batchOrm              *Batch
+	pendingTransactionOrm *PendingTransaction
 
 	wrappedBlock1 *types.WrappedBlock
 	wrappedBlock2 *types.WrappedBlock
@@ -60,6 +62,7 @@ func setupEnv(t *testing.T) {
 	batchOrm = NewBatch(db)
 	chunkOrm = NewChunk(db)
 	l2BlockOrm = NewL2Block(db)
+	pendingTransactionOrm = NewPendingTransaction(db)
 
 	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
@@ -309,4 +312,86 @@ func TestBatchOrm(t *testing.T) {
 	assert.NotNil(t, updatedBatch)
 	assert.Equal(t, "finalizeTxHash", updatedBatch.FinalizeTxHash)
 	assert.Equal(t, types.RollupFinalizeFailed, types.RollupStatus(updatedBatch.RollupStatus))
+}
+
+func TestTransactionOrm(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	tx0 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+		Nonce:      0,
+		To:         &common.Address{},
+		Data:       []byte{},
+		Gas:        21000,
+		AccessList: gethTypes.AccessList{},
+		Value:      big.NewInt(0),
+		ChainID:    big.NewInt(1),
+		GasTipCap:  big.NewInt(0),
+		GasFeeCap:  big.NewInt(1),
+		V:          big.NewInt(0),
+		R:          big.NewInt(0),
+		S:          big.NewInt(0),
+	})
+	tx1 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+		Nonce:      0,
+		To:         &common.Address{},
+		Data:       []byte{},
+		Gas:        42000,
+		AccessList: gethTypes.AccessList{},
+		Value:      big.NewInt(0),
+		ChainID:    big.NewInt(1),
+		GasTipCap:  big.NewInt(1),
+		GasFeeCap:  big.NewInt(2),
+		V:          big.NewInt(0),
+		R:          big.NewInt(0),
+		S:          big.NewInt(0),
+	})
+	senderMeta := &SenderMeta{
+		Name:    "testName",
+		Service: "testService",
+		Address: common.HexToAddress("0x1"),
+		Type:    types.SenderTypeCommitBatch,
+	}
+
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx0, 0)
+	assert.NoError(t, err)
+
+	err = pendingTransactionOrm.InsertPendingTransaction(context.Background(), "test", senderMeta, tx1, 0)
+	assert.NoError(t, err)
+
+	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx0.Hash(), types.TxStatusReplaced)
+	assert.NoError(t, err)
+
+	txs, err := pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
+	assert.NoError(t, err)
+	assert.Len(t, txs, 2)
+	assert.Equal(t, tx1.Type(), txs[1].Type)
+	assert.Equal(t, tx1.Nonce(), txs[1].Nonce)
+	assert.Equal(t, tx1.Gas(), txs[1].GasLimit)
+	assert.Equal(t, tx1.GasTipCap().Uint64(), txs[1].GasTipCap)
+	assert.Equal(t, tx1.GasFeeCap().Uint64(), txs[1].GasFeeCap)
+	assert.Equal(t, tx1.ChainId().Uint64(), txs[1].ChainID)
+	assert.Equal(t, senderMeta.Name, txs[1].SenderName)
+	assert.Equal(t, senderMeta.Service, txs[1].SenderService)
+	assert.Equal(t, senderMeta.Address.String(), txs[1].SenderAddress)
+	assert.Equal(t, senderMeta.Type, txs[1].SenderType)
+
+	err = pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(context.Background(), tx1.Hash(), types.TxStatusConfirmed)
+	assert.NoError(t, err)
+
+	txs, err = pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
+	assert.NoError(t, err)
+	assert.Len(t, txs, 1)
+
+	err = pendingTransactionOrm.UpdateOtherTransactionsAsFailedByNonce(context.Background(), senderMeta.Address.String(), tx1.Nonce(), tx1.Hash())
+	assert.NoError(t, err)
+
+	txs, err = pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), senderMeta.Type, 2)
+	assert.NoError(t, err)
+	assert.Len(t, txs, 0)
+
+	status, err := pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx0.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, types.TxStatusConfirmedFailed, status)
 }

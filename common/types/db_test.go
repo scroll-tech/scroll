@@ -75,13 +75,253 @@ func TestProvingStatus(t *testing.T) {
 		{
 			"Undefined",
 			ProvingStatus(999), // Invalid value.
-			"Undefined (999)",
+			"Undefined ProvingStatus (999)",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, tt.s.String())
+		})
+	}
+}
+
+func TestRollupStatus(t *testing.T) {
+	tests := []struct {
+		name string
+		s    RollupStatus
+		want string
+	}{
+		{
+			"RollupUndefined",
+			RollupUndefined,
+			"Undefined RollupStatus (0)",
+		},
+		{
+			"RollupPending",
+			RollupPending,
+			"RollupPending",
+		},
+		{
+			"RollupCommitting",
+			RollupCommitting,
+			"RollupCommitting",
+		},
+		{
+			"RollupCommitted",
+			RollupCommitted,
+			"RollupCommitted",
+		},
+		{
+			"RollupFinalizing",
+			RollupFinalizing,
+			"RollupFinalizing",
+		},
+		{
+			"RollupFinalized",
+			RollupFinalized,
+			"RollupFinalized",
+		},
+		{
+			"RollupCommitFailed",
+			RollupCommitFailed,
+			"RollupCommitFailed",
+		},
+		{
+			"RollupFinalizeFailed",
+			RollupFinalizeFailed,
+			"RollupFinalizeFailed",
+		},
+		{
+			"Invalid Value",
+			RollupStatus(999),
+			"Undefined RollupStatus (999)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.s.String())
+		})
+	}
+}
+
+func TestSenderType(t *testing.T) {
+	tests := []struct {
+		name string
+		t    SenderType
+		want string
+	}{
+		{
+			"SenderTypeUnknown",
+			SenderTypeUnknown,
+			"Unknown SenderType (0)",
+		},
+		{
+			"SenderTypeCommitBatch",
+			SenderTypeCommitBatch,
+			"SenderTypeCommitBatch",
+		},
+		{
+			"SenderTypeFinalizeBatch",
+			SenderTypeFinalizeBatch,
+			"SenderTypeFinalizeBatch",
+		},
+		{
+			"SenderTypeL1GasOracle",
+			SenderTypeL1GasOracle,
+			"SenderTypeL1GasOracle",
+		},
+		{
+			"SenderTypeL2GasOracle",
+			SenderTypeL2GasOracle,
+			"SenderTypeL2GasOracle",
+		},
+		{
+			"Invalid Value",
+			SenderType(999),
+			"Unknown SenderType (999)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.t.String())
+		})
+	}
+}
+
+func TestTxStatus(t *testing.T) {
+	tests := []struct {
+		name string
+		s    TxStatus
+		want string
+	}{
+		{
+			"TxStatusUnknown",
+			TxStatusUnknown,
+			"Unknown TxStatus (0)",
+		},
+		{
+			"TxStatusPending",
+			TxStatusPending,
+			"TxStatusPending",
+		},
+		{
+			"TxStatusReplaced",
+			TxStatusReplaced,
+			"TxStatusReplaced",
+		},
+		{
+			"TxStatusConfirmed",
+			TxStatusConfirmed,
+			"TxStatusConfirmed",
+		},
+		{
+			"TxStatusConfirmedFailed",
+			TxStatusConfirmedFailed,
+			"TxStatusConfirmedFailed",
+		},
+		{
+			"Invalid Value",
+			TxStatus(999),
+			"Unknown TxStatus (999)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.s.String())
+		})
+	}
+}
+
+func TestGasOracleStatus(t *testing.T) {
+	tests := []struct {
+		name string
+		s    GasOracleStatus
+		want string
+	}{
+		{
+			"GasOracleUndefined",
+			GasOracleUndefined,
+			"GasOracleUndefined",
+		},
+		{
+			"GasOraclePending",
+			GasOraclePending,
+			"GasOraclePending",
+		},
+		{
+			"GasOracleImporting",
+			GasOracleImporting,
+			"GasOracleImporting",
+		},
+		{
+			"GasOracleImported",
+			GasOracleImported,
+			"GasOracleImported",
+		},
+		{
+			"GasOracleImportedFailed",
+			GasOracleImportedFailed,
+			"GasOracleImportedFailed",
+		},
+		{
+			"Invalid Value",
+			GasOracleStatus(999),
+			"Undefined GasOracleStatus (999)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.s.String())
+		})
+	}
+}
+
+func TestProverTaskFailureType(t *testing.T) {
+	tests := []struct {
+		name string
+		r    ProverTaskFailureType
+		want string
+	}{
+		{
+			"ProverTaskFailureTypeUndefined",
+			ProverTaskFailureTypeUndefined,
+			"prover task failure undefined",
+		},
+		{
+			"ProverTaskFailureTypeTimeout",
+			ProverTaskFailureTypeTimeout,
+			"prover task failure timeout",
+		},
+		{
+			"ProverTaskFailureTypeSubmitStatusNotOk",
+			ProverTaskFailureTypeSubmitStatusNotOk,
+			"prover task failure validated submit proof status not ok",
+		},
+		{
+			"ProverTaskFailureTypeVerifiedFailed",
+			ProverTaskFailureTypeVerifiedFailed,
+			"prover task failure verified failed",
+		},
+		{
+			"ProverTaskFailureTypeServerError",
+			ProverTaskFailureTypeServerError,
+			"prover task failure server exception",
+		},
+		{
+			"Invalid Value",
+			ProverTaskFailureType(999),
+			"illegal prover task failure type (999)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.r.String())
 		})
 	}
 }

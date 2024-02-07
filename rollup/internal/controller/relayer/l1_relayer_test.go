@@ -35,7 +35,7 @@ func setupL1RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewL1Relayer(t *testing.T) {
 	db := setupL1RelayerDB(t)
 	defer database.CloseDB(db)
-	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig, nil)
+	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 }
@@ -56,17 +56,19 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, nil)
+	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 
 	// Simulate message confirmations.
 	l1Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
-		ID:           "gas-oracle-1",
+		ContextID:    "gas-oracle-1",
 		IsSuccessful: true,
+		SenderType:   types.SenderTypeL1GasOracle,
 	})
 	l1Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
-		ID:           "gas-oracle-2",
+		ContextID:    "gas-oracle-2",
 		IsSuccessful: false,
+		SenderType:   types.SenderTypeL1GasOracle,
 	})
 
 	// Check the database for the updated status using TryTimes.
@@ -74,7 +76,7 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 		msg1, err1 := l1BlockOrm.GetL1Blocks(ctx, map[string]interface{}{"hash": "gas-oracle-1"})
 		msg2, err2 := l1BlockOrm.GetL1Blocks(ctx, map[string]interface{}{"hash": "gas-oracle-2"})
 		return err1 == nil && len(msg1) == 1 && types.GasOracleStatus(msg1[0].GasOracleStatus) == types.GasOracleImported &&
-			err2 == nil && len(msg2) == 1 && types.GasOracleStatus(msg2[0].GasOracleStatus) == types.GasOracleFailed
+			err2 == nil && len(msg2) == 1 && types.GasOracleStatus(msg2[0].GasOracleStatus) == types.GasOracleImportedFailed
 	})
 	assert.True(t, ok)
 }
@@ -86,7 +88,7 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, nil)
+	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, l1Relayer)
 

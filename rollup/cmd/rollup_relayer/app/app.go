@@ -59,7 +59,7 @@ func action(ctx *cli.Context) error {
 	defer func() {
 		cancel()
 		if err = database.CloseDB(db); err != nil {
-			log.Error("can not close ormFactory", "error", err)
+			log.Crit("failed to close db connection", "error", err)
 		}
 	}()
 
@@ -69,27 +69,23 @@ func action(ctx *cli.Context) error {
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
 	if err != nil {
-		log.Error("failed to connect l2 geth", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
 	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis, registry)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis, relayer.ServiceTypeL2RollupRelayer, registry)
 	if err != nil {
-		log.Error("failed to create l2 relayer", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
 	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db, registry)
 	if err != nil {
-		log.Error("failed to create chunkProposer", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to create chunkProposer", "config file", cfgFile, "error", err)
 	}
 
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, db, registry)
 	if err != nil {
-		log.Error("failed to create batchProposer", "config file", cfgFile, "error", err)
-		return err
+		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
 	}
 
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessengerAddress,

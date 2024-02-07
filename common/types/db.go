@@ -21,8 +21,8 @@ const (
 	// GasOracleImported represents the gas oracle status is imported
 	GasOracleImported
 
-	// GasOracleFailed represents the gas oracle status is failed
-	GasOracleFailed
+	// GasOracleImportedFailed represents the gas oracle status is imported failed
+	GasOracleImportedFailed
 )
 
 func (s GasOracleStatus) String() string {
@@ -35,10 +35,10 @@ func (s GasOracleStatus) String() string {
 		return "GasOracleImporting"
 	case GasOracleImported:
 		return "GasOracleImported"
-	case GasOracleFailed:
-		return "GasOracleFailed"
+	case GasOracleImportedFailed:
+		return "GasOracleImportedFailed"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(s))
+		return fmt.Sprintf("Undefined GasOracleStatus (%d)", int32(s))
 	}
 }
 
@@ -159,7 +159,7 @@ func (ps ProvingStatus) String() string {
 	case ProvingTaskFailed:
 		return "failed"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(ps))
+		return fmt.Sprintf("Undefined ProvingStatus (%d)", int32(ps))
 	}
 }
 
@@ -184,7 +184,7 @@ func (s ChunkProofsStatus) String() string {
 	case ChunkProofsStatusReady:
 		return "ChunkProofsStatusReady"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(s))
+		return fmt.Sprintf("Undefined ChunkProofsStatus (%d)", int32(s))
 	}
 }
 
@@ -227,6 +227,69 @@ func (s RollupStatus) String() string {
 	case RollupFinalizeFailed:
 		return "RollupFinalizeFailed"
 	default:
-		return fmt.Sprintf("Undefined (%d)", int32(s))
+		return fmt.Sprintf("Undefined RollupStatus (%d)", int32(s))
+	}
+}
+
+// SenderType defines the various types of senders sending the transactions.
+type SenderType int
+
+const (
+	// SenderTypeUnknown indicates an unknown sender type.
+	SenderTypeUnknown SenderType = iota
+	// SenderTypeCommitBatch indicates the sender is responsible for committing batches.
+	SenderTypeCommitBatch
+	// SenderTypeFinalizeBatch indicates the sender is responsible for finalizing batches.
+	SenderTypeFinalizeBatch
+	// SenderTypeL1GasOracle indicates a sender from L2 responsible for updating L1 gas prices.
+	SenderTypeL1GasOracle
+	// SenderTypeL2GasOracle indicates a sender from L1 responsible for updating L2 gas prices.
+	SenderTypeL2GasOracle
+)
+
+// String returns a string representation of the SenderType.
+func (t SenderType) String() string {
+	switch t {
+	case SenderTypeCommitBatch:
+		return "SenderTypeCommitBatch"
+	case SenderTypeFinalizeBatch:
+		return "SenderTypeFinalizeBatch"
+	case SenderTypeL1GasOracle:
+		return "SenderTypeL1GasOracle"
+	case SenderTypeL2GasOracle:
+		return "SenderTypeL2GasOracle"
+	default:
+		return fmt.Sprintf("Unknown SenderType (%d)", int32(t))
+	}
+}
+
+// TxStatus represents the current status of a transaction in the transaction lifecycle.
+type TxStatus int
+
+const (
+	// TxStatusUnknown represents an undefined status of the transaction.
+	TxStatusUnknown TxStatus = iota
+	// TxStatusPending indicates that the transaction is yet to be processed.
+	TxStatusPending
+	// TxStatusReplaced indicates that the transaction has been replaced by another one, typically due to a higher gas price.
+	TxStatusReplaced
+	// TxStatusConfirmed indicates that the transaction has been successfully processed and confirmed.
+	TxStatusConfirmed
+	// TxStatusConfirmedFailed indicates that the transaction has failed during processing.
+	TxStatusConfirmedFailed
+)
+
+func (s TxStatus) String() string {
+	switch s {
+	case TxStatusPending:
+		return "TxStatusPending"
+	case TxStatusReplaced:
+		return "TxStatusReplaced"
+	case TxStatusConfirmed:
+		return "TxStatusConfirmed"
+	case TxStatusConfirmedFailed:
+		return "TxStatusConfirmedFailed"
+	default:
+		return fmt.Sprintf("Unknown TxStatus (%d)", int32(s))
 	}
 }
