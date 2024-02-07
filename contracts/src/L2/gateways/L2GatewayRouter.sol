@@ -4,7 +4,6 @@ pragma solidity =0.8.16;
 
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";
 import {IL2GatewayRouter} from "./IL2GatewayRouter.sol";
 import {IL2ETHGateway} from "./IL2ETHGateway.sol";
 import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
@@ -15,13 +14,6 @@ import {IL2ERC20Gateway} from "./IL2ERC20Gateway.sol";
 /// @dev One can also use this contract to query L1/L2 token address mapping.
 /// In the future, ERC-721 and ERC-1155 tokens will be added to the router too.
 contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
-    /*************
-     * Constants *
-     *************/
-
-    /// @notice The address of `L2ScrollMessenger`.
-    address public immutable messenger;
-
     /*************
      * Variables *
      *************/
@@ -40,23 +32,11 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
      * Constructor *
      ***************/
 
-    constructor(address _messenger) {
-        if (_messenger == address(0)) revert ErrorZeroAddress();
-
+    constructor() {
         _disableInitializers();
-
-        messenger = _messenger;
     }
 
-    /// @notice Initialize the storage of L2GatewayRouter.
-    ///
-    /// @dev The parameters `_ethGateway` is no longer used.
-    ///
-    /// @param _defaultERC20Gateway The address of default ERC20 Gateway contract.
-    function initialize(
-        address, /*_ethGateway*/
-        address _defaultERC20Gateway
-    ) external initializer {
+    function initialize(address _ethGateway, address _defaultERC20Gateway) external initializer {
         OwnableUpgradeable.__Ownable_init();
 
         // it can be zero during initialization
@@ -65,13 +45,11 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
             emit SetDefaultERC20Gateway(address(0), _defaultERC20Gateway);
         }
 
-        /* comment out since it is no longer used.
         // it can be zero during initialization
         if (_ethGateway != address(0)) {
             ethGateway = _ethGateway;
             emit SetETHGateway(address(0), _ethGateway);
         }
-        */
     }
 
     /*************************
@@ -164,7 +142,13 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         bytes memory _data,
         uint256 _gasLimit
     ) public payable override {
-        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(_to, _amount, _data, _gasLimit);
+        address _gateway = ethGateway;
+        require(_gateway != address(0), "eth gateway available");
+
+        // encode msg.sender with _data
+        bytes memory _routerData = abi.encode(_msgSender(), _data);
+
+        IL2ETHGateway(_gateway).withdrawETHAndCall{value: msg.value}(_to, _amount, _routerData, _gasLimit);
     }
 
     /// @inheritdoc IL2ETHGateway
@@ -193,9 +177,15 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
      * Restricted Functions *
      ************************/
 
-    /// @notice Update the address of default ERC20 gateway contract.
-    /// @dev This function should only be called by contract owner.
-    /// @param _newDefaultERC20Gateway The address to update.
+    /// @inheritdoc IL2GatewayRouter
+    function setETHGateway(address _newEthGateway) external onlyOwner {
+        address _oldEthGateway = ethGateway;
+        ethGateway = _newEthGateway;
+
+        emit SetETHGateway(_oldEthGateway, _newEthGateway);
+    }
+
+    /// @inheritdoc IL2GatewayRouter
     function setDefaultERC20Gateway(address _newDefaultERC20Gateway) external onlyOwner {
         address _oldDefaultERC20Gateway = defaultERC20Gateway;
         defaultERC20Gateway = _newDefaultERC20Gateway;
@@ -203,10 +193,7 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
         emit SetDefaultERC20Gateway(_oldDefaultERC20Gateway, _newDefaultERC20Gateway);
     }
 
-    /// @notice Update the mapping from token address to gateway address.
-    /// @dev This function should only be called by contract owner.
-    /// @param _tokens The list of addresses of tokens to update.
-    /// @param _gateways The list of addresses of gateways to update.
+    /// @inheritdoc IL2GatewayRouter
     function setERC20Gateway(address[] memory _tokens, address[] memory _gateways) external onlyOwner {
         require(_tokens.length == _gateways.length, "length mismatch");
 

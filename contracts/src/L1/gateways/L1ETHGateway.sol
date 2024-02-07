@@ -134,11 +134,9 @@ contract L1ETHGateway is ScrollGatewayBase, IL1ETHGateway, IMessageDropCallback 
         // 1. Extract real sender if this call is from L1GatewayRouter.
         address _from = _msgSender();
 
-        /* comment out since router won't use this contract anymore
         if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
-        */
 
         // @note no rate limit here, since ETH is limited in messenger
 

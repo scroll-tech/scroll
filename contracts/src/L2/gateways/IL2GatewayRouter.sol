@@ -10,6 +10,11 @@ interface IL2GatewayRouter is IL2ETHGateway, IL2ERC20Gateway {
      * Events *
      **********/
 
+    /// @notice Emitted when the address of ETH Gateway is updated.
+    /// @param oldETHGateway The address of the old ETH Gateway.
+    /// @param newEthGateway The address of the new ETH Gateway.
+    event SetETHGateway(address indexed oldETHGateway, address indexed newEthGateway);
+
     /// @notice Emitted when the address of default ERC20 Gateway is updated.
     /// @param oldDefaultERC20Gateway The address of the old default ERC20 Gateway.
     /// @param newDefaultERC20Gateway The address of the new default ERC20 Gateway.
@@ -21,10 +26,23 @@ interface IL2GatewayRouter is IL2ETHGateway, IL2ERC20Gateway {
     /// @param newGateway The corresponding address of the new gateway.
     event SetERC20Gateway(address indexed token, address indexed oldGateway, address indexed newGateway);
 
-    /**********
-     * Errors *
-     **********/
+    /************************
+     * Restricted Functions *
+     ************************/
 
-    /// @dev Thrown when the given address is `address(0)`.
-    error ErrorZeroAddress();
+    /// @notice Update the address of ETH gateway contract.
+    /// @dev This function should only be called by contract owner.
+    /// @param _newEthGateway The address to update.
+    function setETHGateway(address _newEthGateway) external;
+
+    /// @notice Update the address of default ERC20 gateway contract.
+    /// @dev This function should only be called by contract owner.
+    /// @param _newDefaultERC20Gateway The address to update.
+    function setDefaultERC20Gateway(address _newDefaultERC20Gateway) external;
+
+    /// @notice Update the mapping from token address to gateway address.
+    /// @dev This function should only be called by contract owner.
+    /// @param _tokens The list of addresses of tokens to update.
+    /// @param _gateways The list of addresses of gateways to update.
+    function setERC20Gateway(address[] calldata _tokens, address[] calldata _gateways) external;
 }
