@@ -11,7 +11,7 @@ import {L1USDCGateway} from "../../src/L1/gateways/usdc/L1USDCGateway.sol";
 import {L1CustomERC20Gateway} from "../../src/L1/gateways/L1CustomERC20Gateway.sol";
 import {L1ERC1155Gateway} from "../../src/L1/gateways/L1ERC1155Gateway.sol";
 import {L1ERC721Gateway} from "../../src/L1/gateways/L1ERC721Gateway.sol";
-import {L1GatewayRouter} from "../../src/L1/gateways/L1GatewayRouter.sol";
+import {L1ETHGateway} from "../../src/L1/gateways/L1ETHGateway.sol";
 import {L1StandardERC20Gateway} from "../../src/L1/gateways/L1StandardERC20Gateway.sol";
 import {L1WETHGateway} from "../../src/L1/gateways/L1WETHGateway.sol";
 import {ScrollChain} from "../../src/L1/rollup/ScrollChain.sol";
@@ -22,7 +22,7 @@ import {L2USDCGateway} from "../../src/L2/gateways/usdc/L2USDCGateway.sol";
 import {L2CustomERC20Gateway} from "../../src/L2/gateways/L2CustomERC20Gateway.sol";
 import {L2ERC1155Gateway} from "../../src/L2/gateways/L2ERC1155Gateway.sol";
 import {L2ERC721Gateway} from "../../src/L2/gateways/L2ERC721Gateway.sol";
-import {L2GatewayRouter} from "../../src/L2/gateways/L2GatewayRouter.sol";
+import {L2ETHGateway} from "../../src/L2/gateways/L2ETHGateway.sol";
 import {L2StandardERC20Gateway} from "../../src/L2/gateways/L2StandardERC20Gateway.sol";
 import {L2WETHGateway} from "../../src/L2/gateways/L2WETHGateway.sol";
 import {L2ScrollMessenger} from "../../src/L2/L2ScrollMessenger.sol";
@@ -55,6 +55,7 @@ contract DeployBridgeOptimizationContracts is Script {
     address L1_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L1_SCROLL_MESSENGER_PROXY_ADDR");
     address L1_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L1_GATEWAY_ROUTER_PROXY_ADDR");
     address L1_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_WETH_GATEWAY_PROXY_ADDR");
+    address L1_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ETH_GATEWAY_PROXY_ADDR");
     address L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
     address L1_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L1_ERC721_GATEWAY_PROXY_ADDR");
@@ -65,6 +66,7 @@ contract DeployBridgeOptimizationContracts is Script {
     address L2_SCROLL_MESSENGER_PROXY_ADDR = vm.envAddress("L2_SCROLL_MESSENGER_PROXY_ADDR");
     address L2_GATEWAY_ROUTER_PROXY_ADDR = vm.envAddress("L2_GATEWAY_ROUTER_PROXY_ADDR");
     address L2_WETH_GATEWAY_PROXY_ADDR = vm.envAddress("L2_WETH_GATEWAY_PROXY_ADDR");
+    address L2_ETH_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ETH_GATEWAY_PROXY_ADDR");
     address L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR");
     address L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = vm.envAddress("L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR");
     address L2_ERC721_GATEWAY_PROXY_ADDR = vm.envAddress("L2_ERC721_GATEWAY_PROXY_ADDR");
@@ -106,10 +108,6 @@ contract DeployBridgeOptimizationContracts is Script {
         );
         logAddress("L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR", address(implL1MessageQueue));
 
-        // deploy L1GatewayRouter impl
-        L1GatewayRouter implL1GatewayRouter = new L1GatewayRouter(L1_SCROLL_MESSENGER_PROXY_ADDR);
-        logAddress("L1_GATEWAY_ROUTER_IMPLEMENTATION_ADDR", address(implL1GatewayRouter));
-
         // deploy L1StandardERC20Gateway impl
         L1StandardERC20Gateway implL1StandardERC20Gateway = new L1StandardERC20Gateway(
             L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR,
@@ -119,6 +117,14 @@ contract DeployBridgeOptimizationContracts is Script {
             L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR
         );
         logAddress("L1_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(implL1StandardERC20Gateway));
+
+        // deploy L1ETHGateway impl
+        L1ETHGateway implL1ETHGateway = new L1ETHGateway(
+            L2_ETH_GATEWAY_PROXY_ADDR,
+            L1_GATEWAY_ROUTER_PROXY_ADDR,
+            L1_SCROLL_MESSENGER_PROXY_ADDR
+        );
+        logAddress("L1_ETH_GATEWAY_IMPLEMENTATION_ADDR", address(implL1ETHGateway));
 
         // deploy L1WETHGateway impl
         L1WETHGateway implL1WETHGateway = new L1WETHGateway(
@@ -155,10 +161,10 @@ contract DeployBridgeOptimizationContracts is Script {
         // deploy L1USDCGateway impl only in mainnet
         if (CHAIN_ID_L2 != 534351) {
             address L1_USDC_ADDR = vm.envAddress("L1_USDC_ADDR");
-            address L2_USDC_ADDR = vm.envAddress("L2_USDC_ADDR");
+            address L2_USDC_PROXY_ADDR = vm.envAddress("L2_USDC_PROXY_ADDR");
             L1USDCGateway implL1USDCGateway = new L1USDCGateway(
                 L1_USDC_ADDR,
-                L2_USDC_ADDR,
+                L2_USDC_PROXY_ADDR,
                 L2_USDC_GATEWAY_PROXY_ADDR,
                 L1_GATEWAY_ROUTER_PROXY_ADDR,
                 L1_SCROLL_MESSENGER_PROXY_ADDR
@@ -179,10 +185,6 @@ contract DeployBridgeOptimizationContracts is Script {
         );
         logAddress("L2_SCROLL_MESSENGER_IMPLEMENTATION_ADDR", address(implL2ScrollMessenger));
 
-        // deploy L2GatewayRouter impl
-        L2GatewayRouter implL2GatewayRouter = new L2GatewayRouter(L2_SCROLL_MESSENGER_PROXY_ADDR);
-        logAddress("L2_GATEWAY_ROUTER_IMPLEMENTATION_ADDR", address(implL2GatewayRouter));
-
         // deploy L2StandardERC20Gateway impl
         L2StandardERC20Gateway implL2StandardERC20Gateway = new L2StandardERC20Gateway(
             L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR,
@@ -191,6 +193,14 @@ contract DeployBridgeOptimizationContracts is Script {
             L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR
         );
         logAddress("L2_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR", address(implL2StandardERC20Gateway));
+
+        // deploy L2ETHGateway impl
+        L2ETHGateway implL2ETHGateway = new L2ETHGateway(
+            L1_ETH_GATEWAY_PROXY_ADDR,
+            L2_GATEWAY_ROUTER_PROXY_ADDR,
+            L2_SCROLL_MESSENGER_PROXY_ADDR
+        );
+        logAddress("L2_ETH_GATEWAY_IMPLEMENTATION_ADDR", address(implL2ETHGateway));
 
         // deploy L2WETHGateway impl
         L2WETHGateway implL2WETHGateway = new L2WETHGateway(
@@ -227,10 +237,10 @@ contract DeployBridgeOptimizationContracts is Script {
         // deploy L2USDCGateway impl only in mainnet
         if (CHAIN_ID_L2 != 534351) {
             address L1_USDC_ADDR = vm.envAddress("L1_USDC_ADDR");
-            address L2_USDC_ADDR = vm.envAddress("L2_USDC_ADDR");
+            address L2_USDC_PROXY_ADDR = vm.envAddress("L2_USDC_PROXY_ADDR");
             L2USDCGateway implL2USDCGateway = new L2USDCGateway(
                 L1_USDC_ADDR,
-                L2_USDC_ADDR,
+                L2_USDC_PROXY_ADDR,
                 L1_USDC_GATEWAY_PROXY_ADDR,
                 L2_GATEWAY_ROUTER_PROXY_ADDR,
                 L2_SCROLL_MESSENGER_PROXY_ADDR
