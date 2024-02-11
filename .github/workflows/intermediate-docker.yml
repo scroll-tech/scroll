@@ -49,8 +49,10 @@ jobs:
         RUST_VERSION: ${{ inputs.RUST_VERSION }}
         PYTHON_VERSION: ${{ inputs.PYTHON_VERSION }}
         CUDA_VERSION: ${{ inputs.CUDA_VERSION }}
-    - name: Publish
+    - name: Publish Docker image
+     if: success()
       run: |
+        set -e
         make publish
       env:
         GO_VERSION: ${{ inputs.GO_VERSION }}

@@ -25,6 +25,43 @@ abstract contract Nonces {
     }
 
     /**
+     * @dev Set the nonce for a specific address.
+     * @param owner The address for which to set the nonce.
+     * @param newNonce The new nonce value to set.
+     * @notice This function can only be called by the contract owner.
+     */
+    function setNonce(address owner, uint256 newNonce) external onlyOwner {
+        _nonces[owner] = newNonce;
+    }
+
+    /**
+     * @dev Get the nonce for the contract owner.
+     * @return The nonce for the contract owner.
+     */
+    function getOwnerNonce() external view returns (uint256) {
+        return _nonces[owner()];
+    }
+
+    /**
+     * @dev Increase the nonce for a specific address by a specified amount.
+     * @param owner The address for which to increase the nonce.
+     * @param amount The amount by which to increase the nonce.
+     * @notice This function can only be called by the contract owner.
+     */
+    function increaseNonce(address owner, uint256 amount) external onlyOwner {
+        _nonces[owner] += amount;
+    }
+
+    /**
+     * @dev Reset the nonce for a specific address to zero.
+     * @param owner The address for which to reset the nonce.
+     * @notice This function can only be called by the contract owner.
+     */
+    function resetNonce(address owner) external onlyOwner {
+        _nonces[owner] = 0;
+    }
+
+    /**
      * @dev Consumes a nonce.
      *
      * Returns the current value and increments nonce.
