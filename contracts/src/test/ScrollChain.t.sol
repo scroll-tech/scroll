@@ -690,6 +690,531 @@ contract ScrollChainTest is DSTestPlus {
         assertBoolEq(rollup.isSequencer(_sequencer), false);
     }
 
+    // commit batch, 10 chunks with 10 blocks, 3 L1 Block Hashes in each chunk
+    function testCommitBatchWithManyL1BlockHashesTxs() public {
+        bytes[] memory chunks = new bytes[](10);
+        bytes memory chunk;
+
+        for (uint256 i = 0; i < 10; i++) {
+            messageQueue.appendCrossDomainMessage(address(this), 1000000, new bytes(0));
+        }
+
+        rollup.addSequencer(address(0));
+
+        // import genesis batch first
+        bytes memory batchHeader0 = new bytes(129);
+        assembly {
+            mstore(add(batchHeader0, add(0x20, 25)), 1)
+        }
+        rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)));
+
+        // Chunk 1
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0xdab56d50585bbe62d62bcb914061a1efb11ec54d86549bbe950c081f7f5d0b69)
+            mstore(add(chunk, add(0x08, 681)), 0x79)
+            mstore(add(chunk, add(0x08, 673)), 0x79)
+            mstore(add(chunk, add(0x08, 605)), 0x79)
+            mstore(add(chunk, add(0x08, 537)), 0x79)
+            mstore(add(chunk, add(0x08, 469)), 0x79)
+            mstore(add(chunk, add(0x08, 401)), 0x78)
+            mstore(add(chunk, add(0x08, 333)), 0x78)
+            mstore(add(chunk, add(0x08, 265)), 0x78)
+            mstore(add(chunk, add(0x08, 197)), 0x77)
+            mstore(add(chunk, add(0x08, 129)), 0x77)
+            mstore(add(chunk, add(0x08, 61)), 0x77)
+        }
+        chunks[0] = chunk;
+
+        // Chunk 2
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0xf728ee46cf8d439a3e1a29a616dbc22adc899100c431020eee928abf5d3c4680)
+            mstore(add(chunk, add(0x08, 681)), 0x7C)
+            mstore(add(chunk, add(0x08, 673)), 0x7C)
+            mstore(add(chunk, add(0x08, 605)), 0x7C)
+            mstore(add(chunk, add(0x08, 537)), 0x7C)
+            mstore(add(chunk, add(0x08, 469)), 0x7C)
+            mstore(add(chunk, add(0x08, 401)), 0x7B)
+            mstore(add(chunk, add(0x08, 333)), 0x7B)
+            mstore(add(chunk, add(0x08, 265)), 0x7B)
+            mstore(add(chunk, add(0x08, 197)), 0x7A)
+            mstore(add(chunk, add(0x08, 129)), 0x7A)
+            mstore(add(chunk, add(0x08, 61)), 0x7A)
+        }
+        chunks[1] = chunk;
+
+        // Chunk 3
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0x14df5fa3672808bc122794cc77d8c1c58e334af28adfbeb464341e3e4aa2c5f7)
+            mstore(add(chunk, add(0x08, 681)), 0x7F)
+            mstore(add(chunk, add(0x08, 673)), 0x7F)
+            mstore(add(chunk, add(0x08, 605)), 0x7F)
+            mstore(add(chunk, add(0x08, 537)), 0x7F)
+            mstore(add(chunk, add(0x08, 469)), 0x7F)
+            mstore(add(chunk, add(0x08, 401)), 0x7E)
+            mstore(add(chunk, add(0x08, 333)), 0x7E)
+            mstore(add(chunk, add(0x08, 265)), 0x7E)
+            mstore(add(chunk, add(0x08, 197)), 0x7D)
+            mstore(add(chunk, add(0x08, 129)), 0x7D)
+            mstore(add(chunk, add(0x08, 61)), 0x7D)
+        }
+        chunks[2] = chunk;
+
+        // Chunk 4
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0x49cf7c8a8a6145fb39ddc498cc2397d27d4760fb055940495ac49012ee5874af)
+            mstore(add(chunk, add(0x08, 681)), 0x82)
+            mstore(add(chunk, add(0x08, 673)), 0x82)
+            mstore(add(chunk, add(0x08, 605)), 0x82)
+            mstore(add(chunk, add(0x08, 537)), 0x82)
+            mstore(add(chunk, add(0x08, 469)), 0x82)
+            mstore(add(chunk, add(0x08, 401)), 0x81)
+            mstore(add(chunk, add(0x08, 333)), 0x81)
+            mstore(add(chunk, add(0x08, 265)), 0x81)
+            mstore(add(chunk, add(0x08, 197)), 0x80)
+            mstore(add(chunk, add(0x08, 129)), 0x80)
+            mstore(add(chunk, add(0x08, 61)), 0x80)
+        }
+        chunks[3] = chunk;
+
+        // Chunk 5
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0x6b2ab6533745754097cef3c67000c06eddc2e0a640cb3f6c25e8be8b229abe21)
+            mstore(add(chunk, add(0x08, 681)), 0x85)
+            mstore(add(chunk, add(0x08, 673)), 0x85)
+            mstore(add(chunk, add(0x08, 605)), 0x85)
+            mstore(add(chunk, add(0x08, 537)), 0x85)
+            mstore(add(chunk, add(0x08, 469)), 0x85)
+            mstore(add(chunk, add(0x08, 401)), 0x84)
+            mstore(add(chunk, add(0x08, 333)), 0x84)
+            mstore(add(chunk, add(0x08, 265)), 0x84)
+            mstore(add(chunk, add(0x08, 197)), 0x83)
+            mstore(add(chunk, add(0x08, 129)), 0x83)
+            mstore(add(chunk, add(0x08, 61)), 0x83)
+        }
+        chunks[4] = chunk;
+
+        // Chunk 6
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0x4b3e0db23a327c1a25465bd90718d53aa171156c568ea29301b7af3cd88839fe)
+            mstore(add(chunk, add(0x08, 681)), 0x88)
+            mstore(add(chunk, add(0x08, 673)), 0x88)
+            mstore(add(chunk, add(0x08, 605)), 0x88)
+            mstore(add(chunk, add(0x08, 537)), 0x88)
+            mstore(add(chunk, add(0x08, 469)), 0x88)
+            mstore(add(chunk, add(0x08, 401)), 0x87)
+            mstore(add(chunk, add(0x08, 333)), 0x87)
+            mstore(add(chunk, add(0x08, 265)), 0x87)
+            mstore(add(chunk, add(0x08, 197)), 0x86)
+            mstore(add(chunk, add(0x08, 129)), 0x86)
+            mstore(add(chunk, add(0x08, 61)), 0x86)
+        }
+        chunks[5] = chunk;
+
+        // Chunk 7
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0x912c42617851778491ad05827e4436c0b19d1df5fb16295554f01600b5005300)
+            mstore(add(chunk, add(0x08, 681)), 0x8B)
+            mstore(add(chunk, add(0x08, 673)), 0x8B)
+            mstore(add(chunk, add(0x08, 605)), 0x8B)
+            mstore(add(chunk, add(0x08, 537)), 0x8B)
+            mstore(add(chunk, add(0x08, 469)), 0x8B)
+            mstore(add(chunk, add(0x08, 401)), 0x8A)
+            mstore(add(chunk, add(0x08, 333)), 0x8A)
+            mstore(add(chunk, add(0x08, 265)), 0x8A)
+            mstore(add(chunk, add(0x08, 197)), 0x89)
+            mstore(add(chunk, add(0x08, 129)), 0x89)
+            mstore(add(chunk, add(0x08, 61)), 0x89)
+        }
+        chunks[6] = chunk;
+
+        // Chunk 8
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0x7609178ce660a0599557566f8e76f57dfe98bbae3268752f3f03f153da817fc2)
+            mstore(add(chunk, add(0x08, 681)), 0x8F)
+            mstore(add(chunk, add(0x08, 673)), 0x8F)
+            mstore(add(chunk, add(0x08, 605)), 0x8F)
+            mstore(add(chunk, add(0x08, 537)), 0x8F)
+            mstore(add(chunk, add(0x08, 469)), 0x8F)
+            mstore(add(chunk, add(0x08, 401)), 0x8E)
+            mstore(add(chunk, add(0x08, 333)), 0x8E)
+            mstore(add(chunk, add(0x08, 265)), 0x8E)
+            mstore(add(chunk, add(0x08, 197)), 0x8D)
+            mstore(add(chunk, add(0x08, 129)), 0x8D)
+            mstore(add(chunk, add(0x08, 61)), 0x8D)
+        }
+        chunks[7] = chunk;
+
+        // Chunk 9
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0xa23ca349e8c64fdbff880e51ccdba5cf8a200426f30bb25b0e43d2592a444f00)
+            mstore(add(chunk, add(0x08, 681)), 0x92)
+            mstore(add(chunk, add(0x08, 673)), 0x92)
+            mstore(add(chunk, add(0x08, 605)), 0x92)
+            mstore(add(chunk, add(0x08, 537)), 0x92)
+            mstore(add(chunk, add(0x08, 469)), 0x92)
+            mstore(add(chunk, add(0x08, 401)), 0x91)
+            mstore(add(chunk, add(0x08, 333)), 0x91)
+            mstore(add(chunk, add(0x08, 265)), 0x91)
+            mstore(add(chunk, add(0x08, 197)), 0x90)
+            mstore(add(chunk, add(0x08, 129)), 0x90)
+            mstore(add(chunk, add(0x08, 61)), 0x90)
+        }
+        chunks[8] = chunk;
+
+        // Chunk 10
+        chunk = new bytes(1 + 40 + 680);
+        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
+        // Block 1
+        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 2
+        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 3
+        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 4
+        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 5
+        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 6
+        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 7
+        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
+        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 8
+        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 9
+        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
+        // Block 10
+        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
+        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+
+        assembly {
+            mstore(add(chunk, add(0x20, 689)), 0xae419b6fa346fcfe204bcae6d957ba39a40c04dd05f2104b47a83e1587f59bc7)
+            mstore(add(chunk, add(0x08, 681)), 0x95)
+            mstore(add(chunk, add(0x08, 673)), 0x95)
+            mstore(add(chunk, add(0x08, 605)), 0x95)
+            mstore(add(chunk, add(0x08, 537)), 0x95)
+            mstore(add(chunk, add(0x08, 469)), 0x95)
+            mstore(add(chunk, add(0x08, 401)), 0x94)
+            mstore(add(chunk, add(0x08, 333)), 0x94)
+            mstore(add(chunk, add(0x08, 265)), 0x94)
+            mstore(add(chunk, add(0x08, 197)), 0x93)
+            mstore(add(chunk, add(0x08, 129)), 0x93)
+            mstore(add(chunk, add(0x08, 61)), 0x93)
+        }
+        chunks[9] = chunk;
+
+        hevm.roll(150);
+        hevm.startPrank(address(0));
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0), 118);
+        hevm.stopPrank();
+        assertGt(uint256(rollup.committedBatches(1)), 0);
+    }
+
     // commit batch, one chunk with one block, 1 tx, 1 L1 message, no skip, 1 block hash range
     function testCommitBatchOneBlockHash() public {
         rollup.addSequencer(address(0));
