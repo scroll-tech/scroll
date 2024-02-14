@@ -38,8 +38,8 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
     /// @dev The parameters `_counterpart`, `_router` and `_messenger` are no longer used.
     ///
     /// @param _counterpart The address of L1ETHGateway in L1.
-    /// @param _router The address of L2GatewayRouter.
-    /// @param _messenger The address of L2ScrollMessenger.
+    /// @param _router The address of L2GatewayRouter in L2.
+    /// @param _messenger The address of L2ScrollMessenger in L2.
     function initialize(
         address _counterpart,
         address _router,
@@ -98,6 +98,11 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
      * Internal Functions *
      **********************/
 
+    /// @dev The internal ETH withdraw implementation.
+    /// @param _to The address of recipient's account on L1.
+    /// @param _amount The amount of ETH to be withdrawn.
+    /// @param _data Optional data to forward to recipient's account.
+    /// @param _gasLimit Optional gas limit to complete the deposit on L1.
     function _withdraw(
         address _to,
         uint256 _amount,
@@ -109,11 +114,9 @@ contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
         // 1. Extract real sender if this call is from L1GatewayRouter.
         address _from = _msgSender();
 
-        /* comment out since router won't use this contract anymore
         if (router == _from) {
             (_from, _data) = abi.decode(_data, (address, bytes));
         }
-        */
 
         // @note no rate limit here, since ETH is limited in messenger
 

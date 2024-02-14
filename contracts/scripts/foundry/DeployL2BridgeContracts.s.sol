@@ -141,7 +141,7 @@ contract DeployL2BridgeContracts is Script {
     }
 
     function deployL2GatewayRouter() internal {
-        L2GatewayRouter impl = new L2GatewayRouter(L2_SCROLL_MESSENGER_PROXY_ADDR);
+        L2GatewayRouter impl = new L2GatewayRouter();
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(impl),
             address(proxyAdmin),

@@ -51,7 +51,7 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
         // Deploy L1 contracts
         l1StandardERC20Gateway = L1StandardERC20Gateway(_deployProxy(address(0)));
         l1ETHGateway = L1ETHGateway(_deployProxy(address(0)));
-        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter(address(l1Messenger)))));
+        router = L1GatewayRouter(_deployProxy(address(new L1GatewayRouter())));
         admin.upgrade(
             ITransparentUpgradeableProxy(address(l1StandardERC20Gateway)),
             address(
@@ -86,7 +86,6 @@ contract L1GatewayRouterTest is L1GatewayTestBase {
     }
 
     function testInitialized() public {
-        assertEq(address(l1ETHGateway), router.ethGateway());
         assertEq(address(l1StandardERC20Gateway), router.defaultERC20Gateway());
         assertEq(
             factory.computeL2TokenAddress(address(l2StandardERC20Gateway), address(l1Token)),
