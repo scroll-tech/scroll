@@ -4,9 +4,14 @@
 
 > L1ScrollMessenger
 
-The `L1ScrollMessenger` contract can: 1. send messages from layer 1 to layer 2; 2. relay messages from layer 2 layer 1; 3. replay failed message by replacing the gas limit; 4. drop expired message due to sequencer problems.
+The `L1ScrollMessenger` contract serves multiple functions:
 
-*All deposited Ether (including `WETH` deposited throng `L1WETHGateway`) will locked in this contract.*
+1. Facilitates message transmission from Layer 1 to Layer 2.
+2. Relays messages from Layer 2 to Layer 1.
+3. Replays failed messages by adjusting the gas limit.
+4. Manages the removal of expired messages caused by sequencer issues.
+
+*Additionally, all deposited Ether, including that deposited via the `L1WETHGateway`, will be locked within this contract*
 
 ## Methods
 

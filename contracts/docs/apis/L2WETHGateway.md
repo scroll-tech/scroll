@@ -4,9 +4,9 @@
 
 > L2WETHGateway
 
-The `L2WETHGateway` contract is used to withdraw `WETH` token on layer 2 and finalize deposit `WETH` from layer 1.
+The `L2WETHGateway` contract facilitates the withdrawal of WETH tokens on Layer 2 and finalizes the deposit of WETH from Layer 1.
 
-*The WETH tokens are not held in the gateway. It will first be unwrapped as Ether and then the Ether will be sent to the `L2ScrollMessenger` contract. On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then wrapped as WETH and finally transfer to recipient.*
+*The WETH tokens are not held in the gateway. Initially, they will be unwrapped as Ether, after which the Ether will be sent to the `L2ScrollMessenger` contract. Upon finalizing the deposit, the Ether will be transferred from `L2ScrollMessenger`, then wrapped as WETH, and finally transferred to the recipient.*
 
 ## Methods
 

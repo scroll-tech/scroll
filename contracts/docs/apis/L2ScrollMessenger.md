@@ -4,9 +4,12 @@
 
 > L2ScrollMessenger
 
-The `L2ScrollMessenger` contract can: 1. send messages from layer 2 to layer 1; 2. relay messages from layer 1 layer 2; 3. drop expired message due to sequencer problems.
+The L2ScrollMessenger contract is capable of: 
+1. Sending messages from Layer 2 to Layer 1 
+2. Relaying messages from Layer 1 to Layer 2 
+3. Dropping expired messages due to sequencer problems.
 
-*It should be a predeployed contract on layer 2 and should hold infinite amount of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.*
+*It should be a predeployed contract on Layer 2 and should hold an infinite amount of Ether (Specifically, `uint256(-1)`), which can be initialized in the Genesis Block.*
 
 ## Methods
 

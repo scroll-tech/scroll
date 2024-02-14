@@ -4,9 +4,9 @@
 
 > L1ERC1155Gateway
 
-The `L1ERC1155Gateway` is used to deposit ERC1155 compatible NFT on layer 1 and finalize withdraw the NFTs from layer 2.
+The `L1ERC1155Gateway` facilitates the deposit of ERC1155 compatible NFTs onto Layer 1 and handles the finalization of withdrawals from Layer 2.
 
-*The deposited NFTs are held in this gateway. On finalizing withdraw, the corresponding NFT will be transfer to the recipient directly. This will be changed if we have more specific scenarios.*
+*Deposited NFTs are stored within this gateway. Upon finalizing a withdrawal, the corresponding NFT is transferred directly to the recipient. It's important to note that this process may vary based on specific scenarios.*
 
 ## Methods
 

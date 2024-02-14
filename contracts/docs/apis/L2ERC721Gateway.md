@@ -4,9 +4,9 @@
 
 > L2ERC721Gateway
 
-The `L2ERC721Gateway` is used to withdraw ERC721 compatible NFTs on layer 2 and finalize deposit the NFTs from layer 1.
+The `L2ERC721Gateway` is utilized for withdrawing ERC721 compatible NFTs on Layer 2 and finalizing the deposit of NFTs from Layer 1.
 
-*The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding NFT will be minted and transfered to the recipient. This will be changed if we have more specific scenarios.*
+*The withdrawn NFTs tokens will be burned directly. On finalizing the deposit, the corresponding NFT will be minted and transferred to the recipient. This will be updated if more specific scenarios arise.*
 
 ## Methods
 
