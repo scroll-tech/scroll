@@ -690,16 +690,17 @@ contract ScrollChainTest is DSTestPlus {
         assertBoolEq(rollup.isSequencer(_sequencer), false);
     }
 
-    // commit batch, 10 chunks with 10 blocks, 3 L1 Block Hashes in each chunk
+    // commit batch, 10 chunks, many txs, many L1 messages, many l1 block hashes
     function testCommitBatchWithManyL1BlockHashesTxs() public {
         bytes[] memory chunks = new bytes[](10);
         bytes memory chunk;
 
-        for (uint256 i = 0; i < 10; i++) {
+        for (uint256 i = 0; i < 300; i++) {
             messageQueue.appendCrossDomainMessage(address(this), 1000000, new bytes(0));
         }
 
         rollup.addSequencer(address(0));
+        rollup.addProver(address(0));
 
         // import genesis batch first
         bytes memory batchHeader0 = new bytes(129);
@@ -707,512 +708,831 @@ contract ScrollChainTest is DSTestPlus {
             mstore(add(batchHeader0, add(0x20, 25)), 1)
         }
         rollup.importGenesisBatch(batchHeader0, bytes32(uint256(1)));
+        bytes32 batchHash0 = rollup.committedBatches(0);
+
+        bytes memory batchHeader1 = new bytes(129 + 32);
+        assembly {
+            mstore(add(batchHeader1, 0x20), 0) // version
+            mstore(add(batchHeader1, add(0x20, 1)), shl(192, 1)) // batchIndex = 1
+            mstore(add(batchHeader1, add(0x20, 9)), shl(192, 162)) // l1MessagePopped = 162
+            mstore(add(batchHeader1, add(0x20, 17)), shl(192, 162)) // totalL1MessagePopped = 162
+            mstore(add(batchHeader1, add(0x20, 25)), 0x7b57de313b5f6add99c3c80246deb99fbdda3735a95e4fb2dded72c874d0c116) // dataHash
+            mstore(add(batchHeader1, add(0x20, 57)), batchHash0) // parentBatchHash
+            mstore(add(batchHeader1, add(0x20, 89)), 0) // bitmap0
+            mstore(add(batchHeader1, add(0x20, 121)), shl(192, 0x8A)) // lastAppliedL1Block
+            mstore(
+                add(batchHeader1, add(0x20, 129)),
+                0xa8cf448633ba639062b57859aec34b05e57c0f4774451fba0aba365865c785e2
+            ) // blockRangeHash
+        }
+
+        uint256 chunkPtr;
+        uint256 blockPtr;
+        uint256 offsetPtr;
 
         // Chunk 1
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                3 *
+                68 + // 3 blocks
+                19 *
+                4 +
+                19 *
+                512 // 19 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0xdab56d50585bbe62d62bcb914061a1efb11ec54d86549bbe950c081f7f5d0b69)
-            mstore(add(chunk, add(0x08, 681)), 0x79)
-            mstore(add(chunk, add(0x08, 673)), 0x79)
-            mstore(add(chunk, add(0x08, 605)), 0x79)
-            mstore(add(chunk, add(0x08, 537)), 0x79)
-            mstore(add(chunk, add(0x08, 469)), 0x79)
-            mstore(add(chunk, add(0x08, 401)), 0x78)
-            mstore(add(chunk, add(0x08, 333)), 0x78)
-            mstore(add(chunk, add(0x08, 265)), 0x78)
-            mstore(add(chunk, add(0x08, 197)), 0x77)
-            mstore(add(chunk, add(0x08, 129)), 0x77)
-            mstore(add(chunk, add(0x08, 61)), 0x77)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 3)) // numBlocks = 3
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 7)) // numTransactions = 7
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 3)) // numL1Messages = 3
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x77)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 9)) // numTransactions = 9
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x77)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 13)) // numTransactions = 13
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 5)) // numL1Messages = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x77)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 19) {
+
+            } {
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x77)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0xa8cf448633ba639062b57859aec34b05e57c0f4774451fba0aba365865c785e2) // l1 block range hash in chunk
+        }
+
         chunks[0] = chunk;
 
         // Chunk 2
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                8 *
+                68 + // 8 blocks
+                44 *
+                4 +
+                44 *
+                512 // 40 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0xf728ee46cf8d439a3e1a29a616dbc22adc899100c431020eee928abf5d3c4680)
-            mstore(add(chunk, add(0x08, 681)), 0x7C)
-            mstore(add(chunk, add(0x08, 673)), 0x7C)
-            mstore(add(chunk, add(0x08, 605)), 0x7C)
-            mstore(add(chunk, add(0x08, 537)), 0x7C)
-            mstore(add(chunk, add(0x08, 469)), 0x7C)
-            mstore(add(chunk, add(0x08, 401)), 0x7B)
-            mstore(add(chunk, add(0x08, 333)), 0x7B)
-            mstore(add(chunk, add(0x08, 265)), 0x7B)
-            mstore(add(chunk, add(0x08, 197)), 0x7A)
-            mstore(add(chunk, add(0x08, 129)), 0x7A)
-            mstore(add(chunk, add(0x08, 61)), 0x7A)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 8)) // numBlocks = 8
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 22)) // numTransactions = 22
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 10)) // numL1Messages = 10
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x78)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 5)) // numTransactions = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 1)) // numL1Messages = 1
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x78)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 15)) // numTransactions = 15
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 9)) // numL1Messages = 9
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x78)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 5)) // numTransactions = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 3)) // numL1Messages = 3
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x78)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 12)) // numTransactions = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 12)) // numL1Messages = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x78)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 11)) // numTransactions = 11
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 5)) // numL1Messages = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7A)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 12)) // numTransactions = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 5)) // numL1Messages = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7A)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 12)) // numTransactions = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 5)) // numL1Messages = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7B)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 44) {
+
+            } {
+                // 44 Txs
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x7B)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0x092406e276c3b811614283ada503db6bf86fe8e4771920d1691301213c60ad27) // l1 block range hash in chunk
+        }
+
         chunks[1] = chunk;
 
         // Chunk 3
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                2 *
+                68 + // 2 blocks
+                13 *
+                4 +
+                13 *
+                512 // 13 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0x14df5fa3672808bc122794cc77d8c1c58e334af28adfbeb464341e3e4aa2c5f7)
-            mstore(add(chunk, add(0x08, 681)), 0x7F)
-            mstore(add(chunk, add(0x08, 673)), 0x7F)
-            mstore(add(chunk, add(0x08, 605)), 0x7F)
-            mstore(add(chunk, add(0x08, 537)), 0x7F)
-            mstore(add(chunk, add(0x08, 469)), 0x7F)
-            mstore(add(chunk, add(0x08, 401)), 0x7E)
-            mstore(add(chunk, add(0x08, 333)), 0x7E)
-            mstore(add(chunk, add(0x08, 265)), 0x7E)
-            mstore(add(chunk, add(0x08, 197)), 0x7D)
-            mstore(add(chunk, add(0x08, 129)), 0x7D)
-            mstore(add(chunk, add(0x08, 61)), 0x7D)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 2)) // numBlocks = 2
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 19)) // numTransactions = 19
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 10)) // numL1Messages = 10
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7B)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 5)) // numTransactions = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 1)) // numL1Messages = 1
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7C)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 13) {
+
+            } {
+                // 13 Txs
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x7C)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0xfd65998deda42723bb9b4108c7a015c3ce1c178917dd7c235dec2d68de3e73dd) // l1 block range hash in chunk
+        }
+
         chunks[2] = chunk;
 
         // Chunk 4
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                3 *
+                68 + // 3 blocks
+                20 *
+                4 +
+                20 *
+                512 // 20 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0x49cf7c8a8a6145fb39ddc498cc2397d27d4760fb055940495ac49012ee5874af)
-            mstore(add(chunk, add(0x08, 681)), 0x82)
-            mstore(add(chunk, add(0x08, 673)), 0x82)
-            mstore(add(chunk, add(0x08, 605)), 0x82)
-            mstore(add(chunk, add(0x08, 537)), 0x82)
-            mstore(add(chunk, add(0x08, 469)), 0x82)
-            mstore(add(chunk, add(0x08, 401)), 0x81)
-            mstore(add(chunk, add(0x08, 333)), 0x81)
-            mstore(add(chunk, add(0x08, 265)), 0x81)
-            mstore(add(chunk, add(0x08, 197)), 0x80)
-            mstore(add(chunk, add(0x08, 129)), 0x80)
-            mstore(add(chunk, add(0x08, 61)), 0x80)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 3)) // numBlocks = 3
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 12)) // numTransactions = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7C)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 7)) // numTransactions = 7
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7D)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 7)) // numTransactions = 7
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7D)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 20) {
+
+            } {
+                // 20 Txs
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x7D)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0x39e5371562db15cae477e227498ea2b8caecdd60d087341449f8b46a102f0af7) // l1 block range hash in chunk
+        }
+
         chunks[3] = chunk;
 
         // Chunk 5
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                2 *
+                68 + // 2 blocks
+                12 *
+                4 +
+                12 *
+                512 // 12 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0x6b2ab6533745754097cef3c67000c06eddc2e0a640cb3f6c25e8be8b229abe21)
-            mstore(add(chunk, add(0x08, 681)), 0x85)
-            mstore(add(chunk, add(0x08, 673)), 0x85)
-            mstore(add(chunk, add(0x08, 605)), 0x85)
-            mstore(add(chunk, add(0x08, 537)), 0x85)
-            mstore(add(chunk, add(0x08, 469)), 0x85)
-            mstore(add(chunk, add(0x08, 401)), 0x84)
-            mstore(add(chunk, add(0x08, 333)), 0x84)
-            mstore(add(chunk, add(0x08, 265)), 0x84)
-            mstore(add(chunk, add(0x08, 197)), 0x83)
-            mstore(add(chunk, add(0x08, 129)), 0x83)
-            mstore(add(chunk, add(0x08, 61)), 0x83)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 2)) // numBlocks = 2
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 8)) // numTransactions = 8
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7E)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 8)) // numTransactions = 8
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7E)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 12) {
+
+            } {
+                // 20 Txs
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x7E)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0x3a20462b836d7e6b2754037a9f47405d03eb3e3c7af98c0b3b05c4d64542bb45) // l1 block range hash in chunk
+        }
+
         chunks[4] = chunk;
 
         // Chunk 6
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                3 *
+                68 + // 3 blocks
+                19 *
+                4 +
+                19 *
+                512 // 19 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0x4b3e0db23a327c1a25465bd90718d53aa171156c568ea29301b7af3cd88839fe)
-            mstore(add(chunk, add(0x08, 681)), 0x88)
-            mstore(add(chunk, add(0x08, 673)), 0x88)
-            mstore(add(chunk, add(0x08, 605)), 0x88)
-            mstore(add(chunk, add(0x08, 537)), 0x88)
-            mstore(add(chunk, add(0x08, 469)), 0x88)
-            mstore(add(chunk, add(0x08, 401)), 0x87)
-            mstore(add(chunk, add(0x08, 333)), 0x87)
-            mstore(add(chunk, add(0x08, 265)), 0x87)
-            mstore(add(chunk, add(0x08, 197)), 0x86)
-            mstore(add(chunk, add(0x08, 129)), 0x86)
-            mstore(add(chunk, add(0x08, 61)), 0x86)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 3)) // numBlocks = 3
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 7)) // numTransactions = 7
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 3)) // numL1Messages = 3
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7F)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 9)) // numTransactions = 9
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x7F)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 13)) // numTransactions = 13
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 5)) // numL1Messages = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x80)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 19) {
+
+            } {
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x80)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0xff733928d2850747c2af8eeda384b947ced90ba76058a78bec5f6966d34b263c) // l1 block range hash in chunk
+        }
+
         chunks[5] = chunk;
 
         // Chunk 7
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                8 *
+                68 + // 8 blocks
+                44 *
+                4 +
+                44 *
+                512 // 40 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0x912c42617851778491ad05827e4436c0b19d1df5fb16295554f01600b5005300)
-            mstore(add(chunk, add(0x08, 681)), 0x8B)
-            mstore(add(chunk, add(0x08, 673)), 0x8B)
-            mstore(add(chunk, add(0x08, 605)), 0x8B)
-            mstore(add(chunk, add(0x08, 537)), 0x8B)
-            mstore(add(chunk, add(0x08, 469)), 0x8B)
-            mstore(add(chunk, add(0x08, 401)), 0x8A)
-            mstore(add(chunk, add(0x08, 333)), 0x8A)
-            mstore(add(chunk, add(0x08, 265)), 0x8A)
-            mstore(add(chunk, add(0x08, 197)), 0x89)
-            mstore(add(chunk, add(0x08, 129)), 0x89)
-            mstore(add(chunk, add(0x08, 61)), 0x89)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 8)) // numBlocks = 8
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 22)) // numTransactions = 22
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 10)) // numL1Messages = 10
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x80)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 5)) // numTransactions = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 1)) // numL1Messages = 1
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x80)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 15)) // numTransactions = 15
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 9)) // numL1Messages = 9
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x82)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 5)) // numTransactions = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 3)) // numL1Messages = 3
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x82)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 12)) // numTransactions = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 12)) // numL1Messages = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x83)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 11)) // numTransactions = 11
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 5)) // numL1Messages = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x83)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 12)) // numTransactions = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 5)) // numL1Messages = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x83)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 12)) // numTransactions = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 5)) // numL1Messages = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x84)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 44) {
+
+            } {
+                // 44 Txs
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x84)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0xd499ae9fd9156c709dba0db48923020966a142d871cbe6c4844227783614d9a3) // l1 block range hash in chunk
+        }
+
         chunks[6] = chunk;
 
         // Chunk 8
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                2 *
+                68 + // 2 blocks
+                13 *
+                4 +
+                13 *
+                512 // 13 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0x7609178ce660a0599557566f8e76f57dfe98bbae3268752f3f03f153da817fc2)
-            mstore(add(chunk, add(0x08, 681)), 0x8F)
-            mstore(add(chunk, add(0x08, 673)), 0x8F)
-            mstore(add(chunk, add(0x08, 605)), 0x8F)
-            mstore(add(chunk, add(0x08, 537)), 0x8F)
-            mstore(add(chunk, add(0x08, 469)), 0x8F)
-            mstore(add(chunk, add(0x08, 401)), 0x8E)
-            mstore(add(chunk, add(0x08, 333)), 0x8E)
-            mstore(add(chunk, add(0x08, 265)), 0x8E)
-            mstore(add(chunk, add(0x08, 197)), 0x8D)
-            mstore(add(chunk, add(0x08, 129)), 0x8D)
-            mstore(add(chunk, add(0x08, 61)), 0x8D)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 2)) // numBlocks = 2
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 19)) // numTransactions = 19
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 10)) // numL1Messages = 10
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x85)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 5)) // numTransactions = 5
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 1)) // numL1Messages = 1
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x85)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 13) {
+
+            } {
+                // 13 Txs
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x85)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0x9cbf2ce36946ee52114304e2dc20af020d6c27d837e20277f1ce8a6e3019a75b) // l1 block range hash in chunk
+        }
+
         chunks[7] = chunk;
 
         // Chunk 9
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                3 *
+                68 + // 3 blocks
+                20 *
+                4 +
+                20 *
+                512 // 20 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0xa23ca349e8c64fdbff880e51ccdba5cf8a200426f30bb25b0e43d2592a444f00)
-            mstore(add(chunk, add(0x08, 681)), 0x92)
-            mstore(add(chunk, add(0x08, 673)), 0x92)
-            mstore(add(chunk, add(0x08, 605)), 0x92)
-            mstore(add(chunk, add(0x08, 537)), 0x92)
-            mstore(add(chunk, add(0x08, 469)), 0x92)
-            mstore(add(chunk, add(0x08, 401)), 0x91)
-            mstore(add(chunk, add(0x08, 333)), 0x91)
-            mstore(add(chunk, add(0x08, 265)), 0x91)
-            mstore(add(chunk, add(0x08, 197)), 0x90)
-            mstore(add(chunk, add(0x08, 129)), 0x90)
-            mstore(add(chunk, add(0x08, 61)), 0x90)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 3)) // numBlocks = 3
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 12)) // numTransactions = 12
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x85)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 7)) // numTransactions = 7
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x85)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 7)) // numTransactions = 7
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x86)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 20) {
+
+            } {
+                // 20 Txs
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x86)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0x638ec9231242321da81ceaa230e9df6e1f9fa53213076d45bf4b9ba16b1c5d22) // l1 block range hash in chunk
+        }
+
         chunks[8] = chunk;
 
         // Chunk 10
-        chunk = new bytes(1 + 40 + 680);
-        chunk[0] = bytes1(uint8(10)); // 10 blocks in this chunk
-        // Block 1
-        chunk[58] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[60] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 2
-        chunk[126] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[128] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 3
-        chunk[194] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[196] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 4
-        chunk[262] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[264] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 5
-        chunk[330] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[332] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 6
-        chunk[392] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[394] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 7
-        chunk[454] = bytes1(uint8(2)); // numTransactions = 2
-        chunk[456] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 8
-        chunk[516] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[518] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 9
-        chunk[576] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[578] = bytes1(uint8(1)); // numL1Messages = 1
-        // Block 10
-        chunk[640] = bytes1(uint8(1)); // numTransactions = 1
-        chunk[642] = bytes1(uint8(1)); // numL1Messages = 1
+        chunk = new bytes(
+            1 +
+                40 +
+                2 *
+                68 + // 2 blocks
+                12 *
+                4 +
+                12 *
+                512 // 12 not L1 Msg Tx
+        );
 
         assembly {
-            mstore(add(chunk, add(0x20, 689)), 0xae419b6fa346fcfe204bcae6d957ba39a40c04dd05f2104b47a83e1587f59bc7)
-            mstore(add(chunk, add(0x08, 681)), 0x95)
-            mstore(add(chunk, add(0x08, 673)), 0x95)
-            mstore(add(chunk, add(0x08, 605)), 0x95)
-            mstore(add(chunk, add(0x08, 537)), 0x95)
-            mstore(add(chunk, add(0x08, 469)), 0x95)
-            mstore(add(chunk, add(0x08, 401)), 0x94)
-            mstore(add(chunk, add(0x08, 333)), 0x94)
-            mstore(add(chunk, add(0x08, 265)), 0x94)
-            mstore(add(chunk, add(0x08, 197)), 0x93)
-            mstore(add(chunk, add(0x08, 129)), 0x93)
-            mstore(add(chunk, add(0x08, 61)), 0x93)
+            chunkPtr := add(chunk, 0x20)
+            blockPtr := add(chunk, add(0x20, 1))
+
+            mstore(chunkPtr, shl(248, 2)) // numBlocks = 2
         }
+
+        assembly {
+            offsetPtr := add(blockPtr, 56)
+            mstore(offsetPtr, shl(240, 8)) // numTransactions = 8
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x87)) // lastAppliedL1Block
+        }
+
+        assembly {
+            blockPtr := add(offsetPtr, 8)
+            offsetPtr := add(blockPtr, 56)
+
+            mstore(offsetPtr, shl(240, 8)) // numTransactions = 8
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(240, 2)) // numL1Messages = 2
+            offsetPtr := add(offsetPtr, 2)
+            mstore(offsetPtr, shl(192, 0x8A)) // lastAppliedL1Block
+        }
+
+        assembly {
+            offsetPtr := add(offsetPtr, 8)
+
+            let i := 0
+            for {
+
+            } lt(i, 12) {
+
+            } {
+                // 20 Txs
+                mstore(offsetPtr, shl(224, 512)) // 4 bites size of 512 bytes Tx Payload
+                offsetPtr := add(offsetPtr, 516) // 4 bytes size + 512 bytes Tx Payload
+                i := add(i, 1)
+            }
+
+            mstore(offsetPtr, shl(192, 0x8A)) // lastAppliedL1Block in chunk
+            offsetPtr := add(offsetPtr, 8)
+            mstore(offsetPtr, 0x9791787170769e70bc0ddac0baeb9991a547873255a58d4bb0223b7437ecb22b) // l1 block range hash in chunk
+        }
+
         chunks[9] = chunk;
 
-        hevm.roll(150);
+        hevm.roll(250);
         hevm.startPrank(address(0));
-        rollup.commitBatch(0, batchHeader0, chunks, new bytes(0), 118);
+        startMeasuringGas("commitBatch");
+        rollup.commitBatch(0, batchHeader0, chunks, new bytes(32), 118);
+        stopMeasuringGas();
         hevm.stopPrank();
         assertGt(uint256(rollup.committedBatches(1)), 0);
+
+        hevm.startPrank(address(0));
+        startMeasuringGas("finalizeBatchWithProof");
+        rollup.finalizeBatchWithProof(
+            batchHeader1,
+            bytes32(uint256(1)),
+            bytes32(uint256(2)),
+            bytes32(uint256(3)),
+            new bytes(0)
+        );
+        stopMeasuringGas();
+        hevm.stopPrank();
     }
 
     // commit batch, one chunk with one block, 1 tx, 1 L1 message, no skip, 1 block hash range
