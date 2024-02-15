@@ -4,12 +4,12 @@ pragma solidity =0.8.16;
 
 import {IL2ScrollMessenger} from "./IL2ScrollMessenger.sol";
 import {L2MessageQueue} from "./predeploys/L2MessageQueue.sol";
-
 import {PatriciaMerkleTrieVerifier} from "../libraries/verifier/PatriciaMerkleTrieVerifier.sol";
 import {ScrollConstants} from "../libraries/constants/ScrollConstants.sol";
 import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {IScrollMessenger} from "../libraries/IScrollMessenger.sol";
 import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 // solhint-disable reason-string
 // solhint-disable not-rely-on-time
@@ -23,7 +23,7 @@ import {ScrollMessengerBase} from "../libraries/ScrollMessengerBase.sol";
 ///
 /// @dev It should be a predeployed contract on layer 2 and should hold infinite amount
 /// of Ether (Specifically, `uint256(-1)`), which can be initialized in Genesis Block.
-contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
+contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger, Pausable {
     /*************
      * Constants *
      *************/
@@ -73,7 +73,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         bytes memory _message,
         uint256 _gasLimit
     ) external payable override whenNotPaused {
-        _sendMessage(_to, _value, _message, _gasLimit);
+                _sendMessage(_to, _value, _message, _gasLimit);
     }
 
     /// @inheritdoc IScrollMessenger
@@ -84,7 +84,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         uint256 _gasLimit,
         address
     ) external payable override whenNotPaused {
-        _sendMessage(_to, _value, _message, _gasLimit);
+                _sendMessage(_to, _value, _message, _gasLimit);
     }
 
     /// @inheritdoc IL2ScrollMessenger
@@ -132,6 +132,14 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
         emit SentMessage(_msgSender(), _to, _value, _nonce, _gasLimit, _message);
+    }
+
+    function setPauseState(bool state) external onlyOwner {
+        if (state) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 
     /// @dev Internal function to execute a L1 => L2 message.
