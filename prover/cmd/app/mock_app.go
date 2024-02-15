@@ -51,6 +51,8 @@ func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, htt
 	case utils.BatchProverApp:
 		proofType = message.ProofTypeBatch
 	default:
+		// Handle unexpected mockName values
+		log.Printf("Unexpected mockName value: %s", mockName)
 		return nil
 	}
 	name := string(mockName)
