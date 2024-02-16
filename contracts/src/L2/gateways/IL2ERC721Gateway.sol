@@ -8,7 +8,7 @@ interface IL2ERC721Gateway {
      * Events *
      **********/
 
-    /// @notice Emitted when the ERC721 NFT is transfered to recipient on layer 2.
+    /// @notice Emitted when the ERC721 NFT is transferred to recipient on layer 2.
     /// @param l1Token The address of ERC721 NFT on layer 1.
     /// @param l2Token The address of ERC721 NFT on layer 2.
     /// @param from The address of sender on layer 1.
@@ -22,7 +22,7 @@ interface IL2ERC721Gateway {
         uint256 tokenId
     );
 
-    /// @notice Emitted when the ERC721 NFT is batch transfered to recipient on layer 2.
+    /// @notice Emitted when the ERC721 NFT is batch transferred to recipient on layer 2.
     /// @param l1Token The address of ERC721 NFT on layer 1.
     /// @param l2Token The address of ERC721 NFT on layer 2.
     /// @param from The address of sender on layer 1.
@@ -36,7 +36,7 @@ interface IL2ERC721Gateway {
         uint256[] tokenIds
     );
 
-    /// @notice Emitted when the ERC721 NFT is transfered to gateway on layer 2.
+    /// @notice Emitted when the ERC721 NFT is transferred to gateway on layer 2.
     /// @param l1Token The address of ERC721 NFT on layer 1.
     /// @param l2Token The address of ERC721 NFT on layer 2.
     /// @param from The address of sender on layer 2.
@@ -50,7 +50,7 @@ interface IL2ERC721Gateway {
         uint256 tokenId
     );
 
-    /// @notice Emitted when the ERC721 NFT is batch transfered to gateway on layer 2.
+    /// @notice Emitted when the ERC721 NFT is batch transferred to gateway on layer 2.
     /// @param l1Token The address of ERC721 NFT on layer 1.
     /// @param l2Token The address of ERC721 NFT on layer 2.
     /// @param from The address of sender on layer 2.
