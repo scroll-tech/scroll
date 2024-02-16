@@ -49,6 +49,7 @@ async function main() {
   console.log(`✅ Deploy ScrollChainCommitmentVerifier contract at: ${verifier.address}, gas used: ${receipt.gasUsed}`);
 }
 
+// We recommend using this pattern to be able to use async/await everywhere and handle errors correctly.
 // Running the main function, handling errors
 main().catch((error) => {
   console.error(error);
