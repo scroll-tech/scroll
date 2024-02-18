@@ -17,6 +17,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/orm"
 )
