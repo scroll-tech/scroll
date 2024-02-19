@@ -27,7 +27,7 @@ type MockApp struct {
 	args []string
 }
 
-// NewRollupApp return a new rollupApp manager, name mush be one them.
+// NewRollupApp return a new rollupApp manager, name must be one of them.
 func NewRollupApp(base *docker.App, file string) *MockApp {
 
 	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", base.Timestamp)
@@ -50,12 +50,12 @@ func (b *MockApp) RunApp(t *testing.T, name utils.MockAppName, args ...string) {
 		name == utils.GasOracleApp ||
 		name == utils.MessageRelayerApp ||
 		name == utils.RollupRelayerApp) {
-		t.Errorf(fmt.Sprintf("Don't support the mock app, name: %s", name))
+		t.Errorf("Don't support the mock app, name: %s", name) // Corrected here
 		return
 	}
 
 	if app, ok := b.mockApps[name]; ok {
-		t.Logf(fmt.Sprintf("%s already exist, free the current and recreate again", string(name)))
+		t.Logf("%s already exist, free the current and recreate again", name) // Corrected for consistency
 		app.WaitExit()
 	}
 	appAPI := cmd.NewCmd(string(name), append(b.args, args...)...)
