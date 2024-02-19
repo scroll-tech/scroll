@@ -79,7 +79,7 @@ library ZkTrieVerifier {
 
                 // the first byte is the number of nodes + 1
                 let nodes := sub(byte(0, calldataload(ptr)), 1)
-                ptr := add(ptr, 1)
+                ptr := add(ptr, 0x01)
 
                 // treat the leaf node with different logic
                 for {
@@ -91,7 +91,7 @@ library ZkTrieVerifier {
                     let nodeType := byte(0, calldataload(ptr))
                     // 6 <= nodeType && nodeType < 10
                     require(lt(sub(nodeType, 6), 4), "InvalidBranchNodeType")
-                    ptr := add(ptr, 1)
+                    ptr := add(ptr, 0x01)
 
                     // load left/right child hash
                     let childHashL := calldataload(ptr)
