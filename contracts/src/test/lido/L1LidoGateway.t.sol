@@ -653,7 +653,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
             gasLimit,
             feePerGas
         );
-        assertEq(balance - feePerGas, address(this).balance); // extra value is transfered back
+        assertEq(balance - feePerGas, address(this).balance); // extra value is transferred back
         assertGt(l1Messenger.messageSendTimestamp(keccak256(xDomainCalldata)), 0);
         assertEq(thisBalance - amount, l1Token.balanceOf(address(this)));
         assertEq(feeVaultBalance + feePerGas, address(feeVault).balance);

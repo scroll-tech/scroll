@@ -16,7 +16,7 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 /// finalize deposit `WETH` from layer 1.
 /// @dev The WETH tokens are not held in the gateway. It will first be unwrapped as Ether and
 /// then the Ether will be sent to the `L2ScrollMessenger` contract.
-/// On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then
+/// On finalizing deposit, the Ether will be transferred from `L2ScrollMessenger`, then
 /// wrapped as WETH and finally transfer to recipient.
 contract L2WETHGateway is L2ERC20Gateway {
     using SafeERC20Upgradeable for IERC20Upgradeable;

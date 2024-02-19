@@ -12,7 +12,7 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 /// @notice The `L2ETHGateway` contract is used to withdraw ETH token on layer 2 and
 /// finalize deposit ETH from layer 1.
 /// @dev The ETH are not held in the gateway. The ETH will be sent to the `L2ScrollMessenger` contract.
-/// On finalizing deposit, the Ether will be transfered from `L2ScrollMessenger`, then transfer to recipient.
+/// On finalizing deposit, the Ether will be transferred from `L2ScrollMessenger`, then transfer to recipient.
 contract L2ETHGateway is ScrollGatewayBase, IL2ETHGateway {
     /***************
      * Constructor *
