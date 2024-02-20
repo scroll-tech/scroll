@@ -295,6 +295,9 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 		}
 		suggestGasPriceUint64 := uint64(suggestGasPrice.Int64())
 		expectedDelta := r.lastGasPrice * r.gasPriceDiff / gasPriceDiffPrecision
+		if r.lastGasPrice > 0 && expectedDelta == 0 {
+			expectedDelta = 1
+		}
 
 		// last is undefine or (suggestGasPriceUint64 >= minGasPrice && exceed diff)
 		if r.lastGasPrice == 0 || (suggestGasPriceUint64 >= r.minGasPrice && (suggestGasPriceUint64 >= r.lastGasPrice+expectedDelta || suggestGasPriceUint64 <= r.lastGasPrice-expectedDelta)) {
