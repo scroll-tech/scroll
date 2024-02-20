@@ -120,6 +120,9 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 
 	if types.GasOracleStatus(block.GasOracleStatus) == types.GasOraclePending {
 		expectedDelta := r.lastGasPrice * r.gasPriceDiff / gasPriceDiffPrecision
+		if r.lastGasPrice > 0 && expectedDelta == 0 {
+			expectedDelta = 1
+		}
 		// last is undefine or (block.BaseFee >= minGasPrice && exceed diff)
 		if r.lastGasPrice == 0 || (block.BaseFee >= r.minGasPrice && (block.BaseFee >= r.lastGasPrice+expectedDelta || block.BaseFee <= r.lastGasPrice-expectedDelta)) {
 			baseFee := big.NewInt(int64(block.BaseFee))
