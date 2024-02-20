@@ -8,15 +8,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
 	rollupTypes "github.com/scroll-tech/go-ethereum/rollup/types"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/orm"
