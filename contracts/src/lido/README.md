@@ -78,7 +78,7 @@ As an additional link in the tokens flow chain, the Scroll protocol and bridges 
 
 ### Minting of uncollateralized L2 token
 
-Such an attack might happen if an attacker obtains the right to call `L2LidoGateway.finalizeDepositERC20()` directly. In such a scenario, an attacker can mint uncollaterized tokens on L2 and initiate withdrawal later.
+Such an attack might happen if an attacker obtains the right to call `L2LidoGateway.finalizeDepositERC20()` directly. In such a scenario, an attacker can mint uncollateralized tokens on L2 and initiate withdrawal later.
 
 The best way to detect such an attack is an offchain monitoring of the minting and depositing/withdrawal events. Based on such events might be tracked following stats:
 
@@ -98,7 +98,7 @@ According to the Scroll documentation, `L1ScrollMessenger`:
 
 This contract is central in the L2-to-L1 communication process since all messages from L2 that verified by the zkevm proof are executed on behalf of this contract.
 
-In case of a vulnerability in the `L1ScrollMessenger`, which allows the attacker to send arbitrary messages bypassing the the zkevm proof, an attacker can immediately drain tokens from the L1 bridge.
+In case of a vulnerability in the `L1ScrollMessenger`, which allows the attacker to send arbitrary messages bypassing the zkevm proof, an attacker can immediately drain tokens from the L1 bridge.
 
 Additional risk creates the upgradeability of the `L1ScrollMessenger`. Exist a risk of an attack with the replacement of the implementation with some malicious functionality. Such an attack might be reduced to the above vulnerability and steal all locked tokens on the L1 bridge.
 
