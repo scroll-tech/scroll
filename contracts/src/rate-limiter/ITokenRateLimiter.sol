@@ -19,10 +19,6 @@ interface ITokenRateLimiter {
     /// @dev Thrown when the `periodDuration` is initialized to zero.
     error PeriodIsZero();
 
-    /// @dev Thrown when the `totalAmount` is initialized to zero.
-    /// @param token The address of the token.
-    error TotalLimitIsZero(address token);
-
     /// @dev Thrown when an amount breaches the total limit in the period.
     /// @param token The address of the token.
     error ExceedTotalLimit(address token);

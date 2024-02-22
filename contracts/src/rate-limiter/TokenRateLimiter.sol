@@ -77,7 +77,7 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
         } else {
             _currentTotalAmount = _currentPeriod.amount + _amount;
         }
-        if (_currentPeriod.limit != 0 && _currentTotalAmount > _currentPeriod.limit) {
+        if (_currentTotalAmount > _currentPeriod.limit) {
             revert ExceedTotalLimit(_token);
         }
 
@@ -94,10 +94,6 @@ contract TokenRateLimiter is AccessControlEnumerable, ITokenRateLimiter {
     /// @notice Update the total token amount limit.
     /// @param _newTotalLimit The new total limit.
     function updateTotalLimit(address _token, uint104 _newTotalLimit) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_newTotalLimit == 0) {
-            revert TotalLimitIsZero(_token);
-        }
-
         uint256 _oldTotalLimit = currentPeriod[_token].limit;
         currentPeriod[_token].limit = _newTotalLimit;
 

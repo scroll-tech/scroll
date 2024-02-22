@@ -19,9 +19,6 @@ interface IETHRateLimiter {
     /// @dev Thrown when the `periodDuration` is initialized to zero.
     error PeriodIsZero();
 
-    /// @dev Thrown when the `totalAmount` is initialized to zero.
-    error TotalLimitIsZero();
-
     /// @dev Thrown when an amount breaches the total limit in the period.
     error ExceedTotalLimit();
 

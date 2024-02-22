@@ -18,8 +18,6 @@ contract TokenRateLimiterTest is DSTestPlus {
     }
 
     function testUpdateTotalLimit(address _token, uint104 _newTotalLimit) external {
-        hevm.assume(_newTotalLimit > 0);
-
         // not admin, revert
         hevm.startPrank(address(1));
         hevm.expectRevert(
@@ -27,10 +25,6 @@ contract TokenRateLimiterTest is DSTestPlus {
         );
         limiter.updateTotalLimit(_token, _newTotalLimit);
         hevm.stopPrank();
-
-        // zero revert
-        hevm.expectRevert(abi.encodeWithSelector(ITokenRateLimiter.TotalLimitIsZero.selector, _token));
-        limiter.updateTotalLimit(_token, 0);
 
         // success
         hevm.expectEmit(true, false, false, true);

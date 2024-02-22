@@ -110,10 +110,6 @@ contract ETHRateLimiter is Ownable, IETHRateLimiter {
     /// @dev Internal function to update the total token amount limit.
     /// @param _newTotalLimit The new total limit.
     function _updateTotalLimit(uint104 _newTotalLimit) private {
-        if (_newTotalLimit == 0) {
-            revert TotalLimitIsZero();
-        }
-
         uint256 _oldTotalLimit = currentPeriod.limit;
         currentPeriod.limit = _newTotalLimit;
 

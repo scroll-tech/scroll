@@ -18,17 +18,11 @@ contract ETHRateLimiterTest is DSTestPlus {
     }
 
     function testUpdateTotalLimit(uint104 _newTotalLimit) external {
-        hevm.assume(_newTotalLimit > 0);
-
         // not owner, revert
         hevm.startPrank(address(1));
         hevm.expectRevert("Ownable: caller is not the owner");
         limiter.updateTotalLimit(_newTotalLimit);
         hevm.stopPrank();
-
-        // zero revert
-        hevm.expectRevert(IETHRateLimiter.TotalLimitIsZero.selector);
-        limiter.updateTotalLimit(0);
 
         // success
         hevm.expectEmit(false, false, false, true);
