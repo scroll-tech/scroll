@@ -38,11 +38,12 @@ var (
 
 	base *docker.App
 
-	db            *gorm.DB
-	l2BlockOrm    *orm.L2Block
-	chunkOrm      *orm.Chunk
-	batchOrm      *orm.Batch
-	proverTaskOrm *orm.ProverTask
+	db                 *gorm.DB
+	l2BlockOrm         *orm.L2Block
+	chunkOrm           *orm.Chunk
+	batchOrm           *orm.Batch
+	proverTaskOrm      *orm.ProverTask
+	proverBlockListOrm *orm.ProverBlockList
 
 	wrappedBlock1 *types.WrappedBlock
 	wrappedBlock2 *types.WrappedBlock
@@ -133,6 +134,7 @@ func setEnv(t *testing.T) {
 	chunkOrm = orm.NewChunk(db)
 	l2BlockOrm = orm.NewL2Block(db)
 	proverTaskOrm = orm.NewProverTask(db)
+	proverBlockListOrm = orm.NewProverBlockList(db)
 
 	templateBlockTrace, err := os.ReadFile("../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
@@ -157,6 +159,7 @@ func TestApis(t *testing.T) {
 
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestFailedHandshake", testFailedHandshake)
+	t.Run("TestGetTaskBlocked", testGetTaskBlocked)
 	t.Run("TestValidProof", testValidProof)
 	t.Run("TestInvalidProof", testInvalidProof)
 	t.Run("TestProofGeneratedFailed", testProofGeneratedFailed)
@@ -198,6 +201,50 @@ func testFailedHandshake(t *testing.T) {
 	time.Sleep(time.Second)
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
 	assert.True(t, batchProver.healthCheckFailure(t))
+}
+
+func testGetTaskBlocked(t *testing.T) {
+	coordinatorURL := randomURL()
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
+	defer func() {
+		collector.Stop()
+		assert.NoError(t, httpHandler.Shutdown(context.Background()))
+	}()
+
+	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
+	assert.True(t, chunkProver.healthCheckSuccess(t))
+
+	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
+	assert.True(t, chunkProver.healthCheckSuccess(t))
+
+	err := proverBlockListOrm.InsertProverPublicKey(context.Background(), chunkProver.proverName, chunkProver.publicKey())
+	assert.NoError(t, err)
+
+	expectedErr := fmt.Errorf("return prover task err:check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", chunkProver.publicKey(), chunkProver.proverName, chunkProver.proverVersion)
+	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
+	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
+	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
+
+	expectedErr = fmt.Errorf("get empty prover task")
+	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
+	assert.Equal(t, types.ErrCoordinatorEmptyProofData, code)
+	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
+
+	err = proverBlockListOrm.InsertProverPublicKey(context.Background(), batchProver.proverName, batchProver.publicKey())
+	assert.NoError(t, err)
+
+	err = proverBlockListOrm.DeleteProverPublicKey(context.Background(), chunkProver.publicKey())
+	assert.NoError(t, err)
+
+	expectedErr = fmt.Errorf("get empty prover task")
+	code, errMsg = chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
+	assert.Equal(t, types.ErrCoordinatorEmptyProofData, code)
+	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
+
+	expectedErr = fmt.Errorf("return prover task err:check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", batchProver.publicKey(), batchProver.proverName, batchProver.proverVersion)
+	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
+	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
+	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 }
 
 func testValidProof(t *testing.T) {
