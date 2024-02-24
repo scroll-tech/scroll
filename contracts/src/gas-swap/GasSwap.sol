@@ -187,6 +187,23 @@ contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
         return abi.encodePacked(a, b);
     }
 
+    /// @notice Check if an address is an approved target for swaps.
+    /// @param _target The address to check.
+    /// @return True if the address is approved, false otherwise.
+    function isApprovedTarget(address _target) external view returns (bool) {
+        return approvedTargets[_target];
+    }
+
+    /// @notice Calculate the maximum output amount of Ether for a given input token amount.
+    /// @param _inputAmount The amount of input tokens.
+    /// @return The maximum output amount of Ether.
+    function calculateMaxOutput(uint256 _inputAmount) external view returns (uint256) {
+        uint256 potentialOutput = (_inputAmount * address(this).balance) /
+            IERC20(_permit.token).balanceOf(address(this));
+        uint256 fee = (potentialOutput * feeRatio) / PRECISION;
+        return potentialOutput - fee;
+    }
+
     /// @dev Internal function decode revert message from return data.
     function getRevertMsg(bytes memory _returnData) internal pure returns (string memory) {
         if (_returnData.length < 68) return "Transaction reverted silently";
