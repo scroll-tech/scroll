@@ -37,50 +37,50 @@ var (
 	// empty, it will log to stdout.
 	LogFileFlag = cli.StringFlag{
 		Name:  "log.file",
-		Usage: "Tells the module where to write log entries",
+		Usage: "Tells the module where to write log entries.",
 	}
 	// LogJSONFormat decides the log format is json or not
 	LogJSONFormat = cli.BoolFlag{
 		Name:  "log.json",
-		Usage: "Tells the module whether log format is json or not",
+		Usage: "Tells the module whether log format is json or not.",
 		Value: true,
 	}
 	// LogDebugFlag make log messages with call-site location
 	LogDebugFlag = cli.BoolFlag{
 		Name:  "log.debug",
-		Usage: "Prepends log messages with call-site location (file and line number)",
+		Usage: "Prepends log messages with call-site location (file and line number).",
 	}
 	// MetricsEnabled enable metrics collection and reporting
 	MetricsEnabled = cli.BoolFlag{
 		Name:     "metrics",
-		Usage:    "Enable metrics collection and reporting",
+		Usage:    "Enable metrics collection and reporting.",
 		Category: "METRICS",
 		Value:    false,
 	}
 	// MetricsAddr is listening address of Metrics reporting server
 	MetricsAddr = cli.StringFlag{
 		Name:     "metrics.addr",
-		Usage:    "Metrics reporting server listening address",
+		Usage:    "Metrics reporting server listening address.",
 		Category: "METRICS",
 		Value:    "127.0.0.1",
 	}
 	// MetricsPort is listening port of Metrics reporting server
 	MetricsPort = cli.IntFlag{
 		Name:     "metrics.port",
-		Usage:    "Metrics reporting server listening port",
+		Usage:    "Metrics reporting server listening port.",
 		Category: "METRICS",
 		Value:    6060,
 	}
 	// ImportGenesisFlag import genesis batch during startup
 	ImportGenesisFlag = cli.BoolFlag{
 		Name:  "import-genesis",
-		Usage: "Import genesis batch into L1 contract during startup",
+		Usage: "Import genesis batch into L1 contract during startup.",
 		Value: false,
 	}
 	// ServicePortFlag is the port the service will listen on
 	ServicePortFlag = cli.IntFlag{
 		Name:  "service.port",
-		Usage: "Port that the service will listen on",
+		Usage: "Port that the service will listen on.",
 		Value: 8080,
 	}
 )
