@@ -21,7 +21,7 @@ contract L2GatewayRouter is OwnableUpgradeable, IL2GatewayRouter {
     /// @notice The address of L2ETHGateway.
     address public ethGateway;
 
-    /// @notice The addess of default L2 ERC20 gateway, normally the L2StandardERC20Gateway contract.
+    /// @notice The address of default L2 ERC20 gateway, normally the L2StandardERC20Gateway contract.
     address public defaultERC20Gateway;
 
     /// @notice Mapping from L2 ERC20 token address to corresponding L2ERC20Gateway.

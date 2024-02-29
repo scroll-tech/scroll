@@ -64,7 +64,7 @@ func NewDockerApp() *App {
 	return app
 }
 
-// RunImages runs all images togather
+// RunImages runs all images together
 func (b *App) RunImages(t *testing.T) {
 	b.RunDBImage(t)
 	b.RunL1Geth(t)

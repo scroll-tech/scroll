@@ -121,7 +121,7 @@ func prepareContracts(t *testing.T) {
 	var err error
 	var tx *types.Transaction
 
-	// L1 ScrolChain contract
+	// L1 ScrollChain contract
 	_, tx, scrollChainInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
 	assert.NoError(t, err)
 	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
