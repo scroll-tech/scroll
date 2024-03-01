@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
@@ -53,6 +54,10 @@ var (
 )
 
 func TestMain(m *testing.M) {
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
+
 	base = docker.NewDockerApp()
 	m.Run()
 	base.Free()
@@ -63,7 +68,7 @@ func randomURL() string {
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
 
-func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string) (*cron.Collector, *http.Server) {
+func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string, proverVersion string) (*cron.Collector, *http.Server) {
 	var err error
 	db, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
@@ -83,6 +88,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			ChunkCollectionTimeSec: 10,
 			MaxVerifierWorkers:     10,
 			SessionAttempts:        5,
+			MinProverVersion:       proverVersion,
 		},
 		Auth: &config.Auth{
 			ChallengeExpireDurationSec: tokenTimeout,
@@ -160,6 +166,7 @@ func TestApis(t *testing.T) {
 	t.Run("TestHandshake", testHandshake)
 	t.Run("TestFailedHandshake", testFailedHandshake)
 	t.Run("TestGetTaskBlocked", testGetTaskBlocked)
+	t.Run("TestOutdatedProverVersion", testOutdatedProverVersion)
 	t.Run("TestValidProof", testValidProof)
 	t.Run("TestInvalidProof", testInvalidProof)
 	t.Run("TestProofGeneratedFailed", testProofGeneratedFailed)
@@ -174,7 +181,7 @@ func TestApis(t *testing.T) {
 func testHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, version.Version)
 	defer func() {
 		proofCollector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -187,7 +194,7 @@ func testHandshake(t *testing.T) {
 func testFailedHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, version.Version)
 	defer func() {
 		proofCollector.Stop()
 	}()
@@ -205,7 +212,7 @@ func testFailedHandshake(t *testing.T) {
 
 func testGetTaskBlocked(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, version.Version)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -247,9 +254,34 @@ func testGetTaskBlocked(t *testing.T) {
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 }
 
+func testOutdatedProverVersion(t *testing.T) {
+	coordinatorURL := randomURL()
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, "v999.0.0")
+	defer func() {
+		collector.Stop()
+		assert.NoError(t, httpHandler.Shutdown(context.Background()))
+	}()
+
+	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk)
+	assert.True(t, chunkProver.healthCheckSuccess(t))
+
+	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch)
+	assert.True(t, chunkProver.healthCheckSuccess(t))
+
+	expectedErr := fmt.Errorf("return prover task err:check prover task parameter failed, error:incompatible prover version. please upgrade your prover, minimum allowed version: v999.0.0, actual version: %s", chunkProver.proverVersion)
+	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
+	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
+	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
+
+	expectedErr = fmt.Errorf("return prover task err:check prover task parameter failed, error:incompatible prover version. please upgrade your prover, minimum allowed version: v999.0.0, actual version: %s", batchProver.proverVersion)
+	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
+	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
+	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
+}
+
 func testValidProof(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, version.Version)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -333,7 +365,7 @@ func testValidProof(t *testing.T) {
 func testInvalidProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, version.Version)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -409,7 +441,7 @@ func testInvalidProof(t *testing.T) {
 func testProofGeneratedFailed(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL)
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, version.Version)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -496,7 +528,7 @@ func testProofGeneratedFailed(t *testing.T) {
 func testTimeoutProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 1, coordinatorURL)
+	collector, httpHandler := setupCoordinator(t, 1, coordinatorURL, version.Version)
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
