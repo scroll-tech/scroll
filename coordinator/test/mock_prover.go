@@ -15,7 +15,6 @@ import (
 
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/common/types/message"
-	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/types"
@@ -37,13 +36,13 @@ type mockProver struct {
 	coordinatorURL string
 }
 
-func newMockProver(t *testing.T, proverName string, coordinatorURL string, proofType message.ProofType) *mockProver {
+func newMockProver(t *testing.T, proverName string, coordinatorURL string, proofType message.ProofType, version string) *mockProver {
 	privKey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
 	prover := &mockProver{
 		proverName:     proverName,
-		proverVersion:  version.Version,
+		proverVersion:  version,
 		privKey:        privKey,
 		proofType:      proofType,
 		coordinatorURL: coordinatorURL,
