@@ -14,7 +14,7 @@ import {IScrollERC721} from "../../libraries/token/IScrollERC721.sol";
 /// @notice The `L2ERC721Gateway` is used to withdraw ERC721 compatible NFTs on layer 2 and
 /// finalize deposit the NFTs from layer 1.
 /// @dev The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding
-/// NFT will be minted and transfered to the recipient.
+/// NFT will be minted and transferred to the recipient.
 ///
 /// This will be changed if we have more specific scenarios.
 contract L2ERC721Gateway is ERC721HolderUpgradeable, ScrollGatewayBase, IL2ERC721Gateway {
