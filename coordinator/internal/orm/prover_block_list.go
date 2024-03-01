@@ -61,12 +61,10 @@ func (p *ProverBlockList) DeleteProverPublicKey(ctx context.Context, publicKey s
 
 // IsPublicKeyBlocked checks if the given public key is blocked.
 func (p *ProverBlockList) IsPublicKeyBlocked(ctx context.Context, publicKey string) (bool, error) {
-	var proverBlock ProverBlockList
-
 	db := p.db.WithContext(ctx)
 	db = db.Model(&ProverBlockList{})
 	db = db.Where("public_key = ?", publicKey)
-	if err := db.First(&proverBlock).Error; err != nil {
+	if err := db.First(&ProverBlockList{}).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return false, nil // Public key not found, hence it's not blocked.
 		}
