@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
-	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -21,7 +20,6 @@ import (
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/orm"
-	"scroll-tech/rollup/internal/utils"
 )
 
 // L2WatcherClient provide APIs which support others to subscribe to various event from l2geth
@@ -31,65 +29,33 @@ type L2WatcherClient struct {
 
 	*ethclient.Client
 
-	l2BlockOrm   *orm.L2Block
-	l1MessageOrm *orm.L1Message
+	l2BlockOrm *orm.L2Block
 
 	confirmations rpc.BlockNumber
-
-	messengerAddress common.Address
-	messengerABI     *abi.ABI
 
 	messageQueueAddress  common.Address
 	messageQueueABI      *abi.ABI
 	withdrawTrieRootSlot common.Hash
 
-	// The height of the block that the watcher has retrieved event logs
-	processedMsgHeight uint64
-
-	stopped uint64
-
 	metrics *l2WatcherMetrics
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messengerAddress, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, db *gorm.DB, reg prometheus.Registerer) *L2WatcherClient {
-	l1MessageOrm := orm.NewL1Message(db)
-	var savedHeight uint64
-	l1msg, err := l1MessageOrm.GetLayer1LatestMessageWithLayer2Hash()
-	if err != nil || l1msg == nil {
-		log.Warn("fetch height from db failed", "err", err)
-		savedHeight = 0
-	} else {
-		receipt, err := client.TransactionReceipt(ctx, common.HexToHash(l1msg.Layer2Hash))
-		if err != nil || receipt == nil {
-			log.Warn("get tx from l2 failed", "err", err)
-			savedHeight = 0
-		} else {
-			savedHeight = receipt.BlockNumber.Uint64()
-		}
-	}
-
-	w := L2WatcherClient{
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, db *gorm.DB, reg prometheus.Registerer) *L2WatcherClient {
+	return &L2WatcherClient{
 		ctx:    ctx,
 		Client: client,
 
-		l2BlockOrm:         orm.NewL2Block(db),
-		l1MessageOrm:       orm.NewL1Message(db),
-		processedMsgHeight: savedHeight,
-		confirmations:      confirmations,
+		l2BlockOrm: orm.NewL2Block(db),
 
-		messengerAddress: messengerAddress,
-		messengerABI:     bridgeAbi.L2ScrollMessengerABI,
+		confirmations: confirmations,
 
 		messageQueueAddress:  messageQueueAddress,
 		messageQueueABI:      bridgeAbi.L2MessageQueueABI,
 		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
-		stopped: 0,
 		metrics: initL2WatcherMetrics(reg),
 	}
-
-	return &w
 }
 
 const blockTracesFetchLimit = uint64(10)
@@ -189,125 +155,4 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 	}
 
 	return nil
-}
-
-// FetchContractEvent pull latest event logs from given contract address and save in DB
-func (w *L2WatcherClient) FetchContractEvent() {
-	defer func() {
-		log.Info("l2 watcher fetchContractEvent", "w.processedMsgHeight", w.processedMsgHeight)
-	}()
-
-	w.metrics.fetchContractEventTotal.Inc()
-	blockHeight, err := utils.GetLatestConfirmedBlockNumber(w.ctx, w.Client, w.confirmations)
-	if err != nil {
-		log.Error("failed to get block number", "err", err)
-		return
-	}
-
-	fromBlock := int64(w.processedMsgHeight) + 1
-	toBlock := int64(blockHeight)
-
-	for from := fromBlock; from <= toBlock; from += contractEventsBlocksFetchLimit {
-		to := from + contractEventsBlocksFetchLimit - 1
-
-		if to > toBlock {
-			to = toBlock
-		}
-
-		// warning: uint int conversion...
-		query := geth.FilterQuery{
-			FromBlock: big.NewInt(from), // inclusive
-			ToBlock:   big.NewInt(to),   // inclusive
-			Addresses: []common.Address{
-				w.messengerAddress,
-				w.messageQueueAddress,
-			},
-			Topics: make([][]common.Hash, 1),
-		}
-		query.Topics[0] = make([]common.Hash, 4)
-		query.Topics[0][0] = bridgeAbi.L2SentMessageEventSignature
-		query.Topics[0][1] = bridgeAbi.L2RelayedMessageEventSignature
-		query.Topics[0][2] = bridgeAbi.L2FailedRelayedMessageEventSignature
-		query.Topics[0][3] = bridgeAbi.L2AppendMessageEventSignature
-
-		logs, err := w.FilterLogs(w.ctx, query)
-		if err != nil {
-			log.Error("failed to get event logs", "err", err)
-			return
-		}
-		if len(logs) == 0 {
-			w.processedMsgHeight = uint64(to)
-			w.metrics.fetchContractEventHeight.Set(float64(to))
-			continue
-		}
-		log.Info("received new L2 messages", "fromBlock", from, "toBlock", to, "cnt", len(logs))
-
-		relayedMessageEvents, err := w.parseBridgeEventLogs(logs)
-		if err != nil {
-			log.Error("failed to parse emitted event log", "err", err)
-			return
-		}
-
-		relayedMessageCount := int64(len(relayedMessageEvents))
-		w.metrics.rollupL2MsgsRelayedEventsTotal.Add(float64(relayedMessageCount))
-		log.Info("L2 events types", "RelayedMessageCount", relayedMessageCount)
-
-		// Update relayed message first to make sure we don't forget to update submited message.
-		// Since, we always start sync from the latest unprocessed message.
-		for _, msg := range relayedMessageEvents {
-			var msgStatus types.MsgStatus
-			if msg.isSuccessful {
-				msgStatus = types.MsgConfirmed
-			} else {
-				msgStatus = types.MsgFailed
-			}
-			if err = w.l1MessageOrm.UpdateLayer1StatusAndLayer2Hash(w.ctx, msg.msgHash.String(), msgStatus, msg.txHash.String()); err != nil {
-				log.Error("Failed to update layer1 status and layer2 hash", "err", err)
-				return
-			}
-		}
-
-		w.processedMsgHeight = uint64(to)
-		w.metrics.fetchContractEventHeight.Set(float64(to))
-	}
-}
-
-func (w *L2WatcherClient) parseBridgeEventLogs(logs []gethTypes.Log) ([]relayedMessage, error) {
-	// Need use contract abi to parse event Log
-	// Can only be tested after we have our contracts set up
-
-	var relayedMessages []relayedMessage
-	for _, vLog := range logs {
-		switch vLog.Topics[0] {
-		case bridgeAbi.L2RelayedMessageEventSignature:
-			event := bridgeAbi.L2RelayedMessageEvent{}
-			err := utils.UnpackLog(w.messengerABI, &event, "RelayedMessage", vLog)
-			if err != nil {
-				log.Warn("Failed to unpack layer2 RelayedMessage event", "err", err)
-				return relayedMessages, err
-			}
-
-			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash:      event.MessageHash,
-				txHash:       vLog.TxHash,
-				isSuccessful: true,
-			})
-		case bridgeAbi.L2FailedRelayedMessageEventSignature:
-			event := bridgeAbi.L2FailedRelayedMessageEvent{}
-			err := utils.UnpackLog(w.messengerABI, &event, "FailedRelayedMessage", vLog)
-			if err != nil {
-				log.Warn("Failed to unpack layer2 FailedRelayedMessage event", "err", err)
-				return relayedMessages, err
-			}
-
-			relayedMessages = append(relayedMessages, relayedMessage{
-				msgHash:      event.MessageHash,
-				txHash:       vLog.TxHash,
-				isSuccessful: false,
-			})
-			log.Error("Unknown event", "topic", vLog.Topics[0], "txHash", vLog.TxHash)
-		}
-	}
-
-	return relayedMessages, nil
 }

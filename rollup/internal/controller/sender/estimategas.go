@@ -84,6 +84,9 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, gasPrice, gas
 		return gasLimitWithoutAccessList, nil, nil
 	}
 
+	// Explicitly set a gas limit to prevent the "insufficient funds for gas * price + value" error.
+	// Because if msg.Gas remains unset, CreateAccessList defaults to using RPCGasCap(), which can be excessively high.
+	msg.Gas = gasLimitWithoutAccessList * 3
 	accessList, gasLimitWithAccessList, errStr, rpcErr := s.gethClient.CreateAccessList(s.ctx, msg)
 	if rpcErr != nil {
 		log.Error("CreateAccessList RPC error", "error", rpcErr)

@@ -7,8 +7,6 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types"
 )
 
 // L1Message is structure of stored layer1 bridge message
@@ -58,48 +56,6 @@ func (m *L1Message) GetLayer1LatestWatchedHeight() (int64, error) {
 	return -1, nil
 }
 
-// GetLayer1LatestMessageWithLayer2Hash returns latest l1 message with layer2 hash
-func (m *L1Message) GetLayer1LatestMessageWithLayer2Hash() (*L1Message, error) {
-	var msg *L1Message
-	err := m.db.Where("layer2_hash IS NOT NULL").Order("queue_index DESC").First(&msg).Error
-	if err != nil {
-		return nil, err
-	}
-	return msg, nil
-}
-
-// GetL1MessagesByStatus fetch list of unprocessed messages given msg status
-func (m *L1Message) GetL1MessagesByStatus(status types.MsgStatus, limit uint64) ([]L1Message, error) {
-	var msgs []L1Message
-	err := m.db.Where("status", int(status)).Order("queue_index ASC").Limit(int(limit)).Find(&msgs).Error
-	if err != nil {
-		return nil, err
-	}
-	return msgs, nil
-}
-
-// GetL1MessageByQueueIndex fetch message by queue_index
-// for unit test
-func (m *L1Message) GetL1MessageByQueueIndex(queueIndex uint64) (*L1Message, error) {
-	var msg L1Message
-	err := m.db.Where("queue_index", queueIndex).First(&msg).Error
-	if err != nil {
-		return nil, err
-	}
-	return &msg, nil
-}
-
-// GetL1MessageByMsgHash fetch message by queue_index
-// for unit test
-func (m *L1Message) GetL1MessageByMsgHash(msgHash string) (*L1Message, error) {
-	var msg L1Message
-	err := m.db.Where("msg_hash", msgHash).First(&msg).Error
-	if err != nil {
-		return nil, err
-	}
-	return &msg, nil
-}
-
 // SaveL1Messages batch save a list of layer1 messages
 func (m *L1Message) SaveL1Messages(ctx context.Context, messages []*L1Message) error {
 	if len(messages) == 0 {
@@ -117,24 +73,4 @@ func (m *L1Message) SaveL1Messages(ctx context.Context, messages []*L1Message) e
 		log.Error("failed to insert l1Messages", "queueIndices", queueIndices, "heights", heights, "err", err)
 	}
 	return err
-}
-
-// UpdateLayer1Status updates message stauts, given message hash
-func (m *L1Message) UpdateLayer1Status(ctx context.Context, msgHash string, status types.MsgStatus) error {
-	if err := m.db.Model(&L1Message{}).WithContext(ctx).Where("msg_hash", msgHash).Update("status", int(status)).Error; err != nil {
-		return err
-	}
-	return nil
-}
-
-// UpdateLayer1StatusAndLayer2Hash updates message status and layer2 transaction hash, given message hash
-func (m *L1Message) UpdateLayer1StatusAndLayer2Hash(ctx context.Context, msgHash string, status types.MsgStatus, layer2Hash string) error {
-	updateFields := map[string]interface{}{
-		"status":      int(status),
-		"layer2_hash": layer2Hash,
-	}
-	if err := m.db.Model(&L1Message{}).WithContext(ctx).Where("msg_hash", msgHash).Updates(updateFields).Error; err != nil {
-		return err
-	}
-	return nil
 }
