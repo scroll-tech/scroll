@@ -17,6 +17,12 @@ contract L2WstETHToken is ScrollStandardERC20 {
     bytes32 private constant _PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
+    /*************
+     * Errors *
+     *************/
+    error ErrorExpiredDeadline();
+    error ErrorInvalidSignature();
+
     /*****************************
      * Public Mutating Functions *
      *****************************/
@@ -33,16 +39,17 @@ contract L2WstETHToken is ScrollStandardERC20 {
         bytes32 r,
         bytes32 s
     ) public virtual override(ERC20PermitUpgradeable, IERC20PermitUpgradeable) {
-        require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
+        if (block.timestamp > deadline) {
+            revert ErrorExpiredDeadline();
+        }
 
         bytes32 structHash = keccak256(abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline));
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
-        require(
-            SignatureCheckerUpgradeable.isValidSignatureNow(owner, hash, abi.encodePacked(r, s, v)),
-            "ERC20Permit: invalid signature"
-        );
+        if (!SignatureCheckerUpgradeable.isValidSignatureNow(owner, hash, abi.encodePacked(r, s, v))) {
+            revert InvalidSignatureError();
+        }
 
         _approve(owner, spender, value);
     }

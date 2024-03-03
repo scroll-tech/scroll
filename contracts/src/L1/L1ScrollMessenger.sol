@@ -32,10 +32,26 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
      *************/
 
     /// @notice The address of Rollup contract.
-    address public immutable rollup;
+    address public immutable ROLLUP;
 
     /// @notice The address of L1MessageQueue contract.
     address public immutable messageQueue;
+
+    /*************
+     * Errors *
+     *************/
+    error ErrorMessageAlreadyExecuted();
+    error ErrorBatchNotFinalized();
+    error ErrorInvalidProof();
+    error ErrorForbiddenCall();
+    error ErrorInvalidMessageSender();
+    error ErrorInsufficientValueForFee();
+    error ErrorFeeDeductionFailed();
+    error ErrorMessageNotEnqueued();
+    error ErrorMessageAlreadyDropped();
+    error ErrorExceedMaxReplayTimes();
+    error ErrorDuplicatedMessage();
+    error ErrorRefundFailed();
 
     /***********
      * Structs *
@@ -101,7 +117,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
 
         _disableInitializers();
 
-        rollup = _rollup;
+        ROLLUP = _rollup;
         messageQueue = _messageQueue;
     }
 
@@ -163,23 +179,33 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         L2MessageProof memory _proof
     ) external override whenNotPaused notInExecution {
         bytes32 _xDomainCalldataHash = keccak256(_encodeXDomainCalldata(_from, _to, _value, _nonce, _message));
-        require(!isL2MessageExecuted[_xDomainCalldataHash], "Message was already successfully executed");
+
+        if (isL2MessageExecuted[_xDomainCalldataHash]) {
+            revert ErrorMessageAlreadyExecuted();
+        }
 
         {
-            require(IScrollChain(rollup).isBatchFinalized(_proof.batchIndex), "Batch is not finalized");
-            bytes32 _messageRoot = IScrollChain(rollup).withdrawRoots(_proof.batchIndex);
-            require(
-                WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof),
-                "Invalid proof"
-            );
+            if (!IScrollChain(ROLLUP).isBatchFinalized(_proof.batchIndex)) {
+                revert ErrorBatchNotFinalized();
+            }
+            bytes32 _messageRoot = IScrollChain(ROLLUP).withdrawRoots(_proof.batchIndex);
+
+            if (!WithdrawTrieVerifier.verifyMerkleProof(_messageRoot, _xDomainCalldataHash, _nonce, _proof.merkleProof)){
+                revert ErrorInvalidProof();
+            }
         }
 
         // @note check more `_to` address to avoid attack in the future when we add more gateways.
-        require(_to != messageQueue, "Forbid to call message queue");
+        if (_to == messageQueue){
+            revert ErrorForbiddenCall();
+        }
+
         _validateTargetAddress(_to);
 
         // @note This usually will never happen, just in case.
-        require(_from != xDomainMessageSender, "Invalid message sender");
+        if (_from == xDomainMessageSender){
+            revert ErrorInvalidMessageSender();
+        }
 
         xDomainMessageSender = _from;
         (bool success, ) = _to.call{value: _value}(_message);
@@ -211,18 +237,29 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _messageNonce, _message);
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
 
-        require(messageSendTimestamp[_xDomainCalldataHash] > 0, "Provided message has not been enqueued");
+        if (messageSendTimestamp[_xDomainCalldataHash] <= 0) {
+            revert ErrorMessageNotEnqueued();
+        }
+
         // cannot replay dropped message
-        require(!isL1MessageDropped[_xDomainCalldataHash], "Message already dropped");
+
+        if (isL1MessageDropped[_xDomainCalldataHash]) {
+            revert ErrorMessageAlreadyDropped();
+        }
 
         // compute and deduct the messaging fee to fee vault.
         uint256 _fee = IL1MessageQueue(messageQueue).estimateCrossDomainMessageFee(_newGasLimit);
 
         // charge relayer fee
-        require(msg.value >= _fee, "Insufficient msg.value for fee");
+        if (msg.value < _fee) {
+            revert ErrorInsufficientValueForFee();
+        }
+
         if (_fee > 0) {
             (bool _success, ) = feeVault.call{value: _fee}("");
-            require(_success, "Failed to deduct the fee");
+            if (!_success) {
+                revert ErrorFeeDeductionFailed();
+            }
         }
 
         // enqueue the new transaction
@@ -242,7 +279,10 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         _replayState.lastIndex = uint128(_nextQueueIndex);
 
         // update replay times
-        require(_replayState.times < maxReplayTimes, "Exceed maximum replay times");
+        if (_replayState.times >= maxReplayTimes) {
+            revert ErrorExceedMaxReplayTimes();
+        }
+
         unchecked {
             _replayState.times += 1;
         }
@@ -253,7 +293,9 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
             uint256 _refund = msg.value - _fee;
             if (_refund > 0) {
                 (bool _success, ) = _refundAddress.call{value: _refund}("");
-                require(_success, "Failed to refund the fee");
+                if (!_success) {
+                    revert ErrorRefundFailed();
+                }
             }
         }
     }
@@ -281,10 +323,15 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         // check message exists
         bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _messageNonce, _message);
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
-        require(messageSendTimestamp[_xDomainCalldataHash] > 0, "Provided message has not been enqueued");
+
+        if (messageSendTimestamp[_xDomainCalldataHash] <= 0) {
+            revert ErrorMessageNotEnqueued();
+        }
 
         // check message not dropped
-        require(!isL1MessageDropped[_xDomainCalldataHash], "Message already dropped");
+        if (isL1MessageDropped[_xDomainCalldataHash]) {
+            revert ErrorMessageAlreadyDropped();
+        }
 
         // check message is finalized
         uint256 _lastIndex = replayStates[_xDomainCalldataHash].lastIndex;
@@ -341,10 +388,16 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
 
         // compute and deduct the messaging fee to fee vault.
         uint256 _fee = IL1MessageQueue(messageQueue).estimateCrossDomainMessageFee(_gasLimit);
-        require(msg.value >= _fee + _value, "Insufficient msg.value");
+
+        if (msg.value < _fee + _value) {
+            revert ErrorInsufficientValueForFee(); 
+        }
+        
         if (_fee > 0) {
             (bool _success, ) = feeVault.call{value: _fee}("");
-            require(_success, "Failed to deduct the fee");
+            if (!_success) {
+                revert ErrorFeeDeductionFailed();
+            }
         }
 
         // append message to L1MessageQueue
@@ -354,7 +407,9 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
 
         // normally this won't happen, since each message has different nonce, but just in case.
-        require(messageSendTimestamp[_xDomainCalldataHash] == 0, "Duplicated message");
+        if (messageSendTimestamp[_xDomainCalldataHash] != 0) {
+            revert ErrorDuplicatedMessage();
+        }
         messageSendTimestamp[_xDomainCalldataHash] = block.timestamp;
 
         emit SentMessage(_msgSender(), _to, _value, _messageNonce, _gasLimit, _message);
@@ -364,7 +419,9 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
             uint256 _refund = msg.value - _fee - _value;
             if (_refund > 0) {
                 (bool _success, ) = _refundAddress.call{value: _refund}("");
-                require(_success, "Failed to refund the fee");
+                if (!_success) {
+                    revert ErrorRefundFailed();
+                }
             }
         }
     }
