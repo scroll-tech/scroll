@@ -48,7 +48,7 @@ func TestCheckScrollRepoVersion(t *testing.T) {
 		{"v9.9.9", "v10.0.0-alpha", false},
 		{"v4.1.98-aaa-bbb-ccc", "v999.0.0", false},
 		{"v1.0.0", "v1.0.0", true},
-		{"v1.0.0-alpha", "v1.0.0-alpha", false},
+		{"v1.0.0-alpha", "v1.0.0-alpha", true},
 	}
 
 	for _, tt := range tests {
