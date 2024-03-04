@@ -3,7 +3,7 @@ package network
 import (
 	"fmt"
 	"math/big"
-	"slices"
+	"sort"
 
 	"github.com/scroll-tech/go-ethereum/params"
 )
@@ -40,8 +40,8 @@ func (n Network) GenesisConfig() *params.ChainConfig {
 }
 
 // CollectSortedForkHeights returns a sorted set of block numbers that one or more forks are activated on
-func CollectSortedForkHeights(config *params.ChainConfig) []uint64 {
-	var forkHeights []uint64
+func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]bool) {
+	forkHeightsMap := make(map[uint64]bool)
 	for _, fork := range []*big.Int{
 		config.HomesteadBlock,
 		config.DAOForkBlock,
@@ -62,9 +62,16 @@ func CollectSortedForkHeights(config *params.ChainConfig) []uint64 {
 		if fork == nil {
 			continue
 		} else if height := fork.Uint64(); height != 0 {
-			forkHeights = append(forkHeights, height)
+			forkHeightsMap[height] = true
 		}
 	}
-	slices.Sort(forkHeights)
-	return slices.Compact(forkHeights) // Remove duplicates
+
+	var forkHeights []uint64
+	for height := range forkHeightsMap {
+		forkHeights = append(forkHeights, height)
+	}
+	sort.Slice(forkHeights, func(i, j int) bool {
+		return forkHeights[i] < forkHeights[j]
+	})
+	return forkHeights, forkHeightsMap
 }

@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,7 +32,7 @@ type BatchProposer struct {
 	maxL1CommitCalldataSizePerBatch uint32
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
-	forkHeights                     []uint64
+	forkMap                         map[uint64]bool
 
 	batchProposerCircleTotal           prometheus.Counter
 	proposeBatchFailureTotal           prometheus.Counter
@@ -48,7 +47,7 @@ type BatchProposer struct {
 
 // NewBatchProposer creates a new BatchProposer instance.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
-	forkHeights := network.CollectSortedForkHeights(chainCfg)
+	forkHeights, forkMap := network.CollectSortedForkHeights(chainCfg)
 	log.Debug("new batch proposer",
 		"maxChunkNumPerBatch", cfg.MaxChunkNumPerBatch,
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
@@ -68,7 +67,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		maxL1CommitCalldataSizePerBatch: cfg.MaxL1CommitCalldataSizePerBatch,
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
-		forkHeights:                     forkHeights,
+		forkMap:                         forkMap,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_batch_circle_total",
@@ -203,7 +202,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 	maxChunksThisBatch := p.maxChunkNumPerBatch
 	for i, chunk := range dbChunks {
 		// if a chunk is starting at a fork boundary, only consider earlier chunks
-		if i != 0 && slices.Index(p.forkHeights, chunk.StartBlockNumber) != -1 {
+		if i != 0 && p.forkMap[chunk.StartBlockNumber] {
 			dbChunks = dbChunks[:i]
 			if uint64(len(dbChunks)) < maxChunksThisBatch {
 				maxChunksThisBatch = uint64(len(dbChunks))
