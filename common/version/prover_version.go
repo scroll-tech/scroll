@@ -37,11 +37,5 @@ func CheckScrollRepoVersion(proverVersion, minVersion string) bool {
 		return false
 	}
 
-	valid, msgs := c.Validate(v)
-	if !valid {
-		for _, m := range msgs {
-			log.Warn("failed to validate version", "message", m)
-		}
-	}
-	return valid
+	return c.Check(v)
 }
