@@ -89,7 +89,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create chunkProposer", "config file", cfgFile, "error", err)
 	}
 
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, db, registry)
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, network.GenesisConfig(), db, registry)
 	if err != nil {
 		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
 	}

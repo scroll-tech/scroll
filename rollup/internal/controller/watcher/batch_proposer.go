@@ -3,13 +3,16 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/network"
 	"scroll-tech/common/types"
 
 	"scroll-tech/rollup/internal/config"
@@ -30,6 +33,7 @@ type BatchProposer struct {
 	maxL1CommitCalldataSizePerBatch uint32
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
+	forkHeights                     []uint64
 
 	batchProposerCircleTotal           prometheus.Counter
 	proposeBatchFailureTotal           prometheus.Counter
@@ -43,13 +47,15 @@ type BatchProposer struct {
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
-func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
+	forkHeights := network.CollectSortedForkHeights(chainCfg)
 	log.Debug("new batch proposer",
 		"maxChunkNumPerBatch", cfg.MaxChunkNumPerBatch,
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
 		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
 		"batchTimeoutSec", cfg.BatchTimeoutSec,
-		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier)
+		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
+		"forkHeights", forkHeights)
 
 	return &BatchProposer{
 		ctx:                             ctx,
@@ -62,6 +68,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, db *
 		maxL1CommitCalldataSizePerBatch: cfg.MaxL1CommitCalldataSizePerBatch,
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
+		forkHeights:                     forkHeights,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_batch_circle_total",
@@ -193,6 +200,18 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 		totalL1CommitGas += types.CalldataNonZeroByteGas * uint64(len(parentBatch.BatchHeader)) // parent batch header in calldata
 	}
 
+	maxChunksThisBatch := p.maxChunkNumPerBatch
+	for i, chunk := range dbChunks {
+		// if a chunk is starting at a fork boundary, only consider earlier chunks
+		if i != 0 && slices.Index(p.forkHeights, chunk.StartBlockNumber) != -1 {
+			dbChunks = dbChunks[:i]
+			if uint64(len(dbChunks)) < maxChunksThisBatch {
+				maxChunksThisBatch = uint64(len(dbChunks))
+			}
+			break
+		}
+	}
+
 	for i, chunk := range dbChunks {
 		// metric values
 		batchMeta.TotalL1CommitGas = totalL1CommitGas
@@ -253,7 +272,7 @@ func (p *BatchProposer) proposeBatchChunks() ([]*orm.Chunk, *types.BatchMeta, er
 
 	currentTimeSec := uint64(time.Now().Unix())
 	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec ||
-		totalChunks == p.maxChunkNumPerBatch {
+		totalChunks == maxChunksThisBatch {
 		if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
 			log.Warn("first block timeout",
 				"start block number", dbChunks[0].StartBlockNumber,

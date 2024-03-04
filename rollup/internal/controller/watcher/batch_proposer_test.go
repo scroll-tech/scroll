@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/params"
@@ -21,6 +22,7 @@ func testBatchProposerLimits(t *testing.T) {
 		maxL1CommitGas             uint64
 		maxL1CommitCalldataSize    uint32
 		batchTimeoutSec            uint64
+		forkBlock                  *big.Int
 		expectedBatchesLen         int
 		expectedChunksInFirstBatch uint64 // only be checked when expectedBatchesLen > 0
 	}{
@@ -84,6 +86,16 @@ func testBatchProposerLimits(t *testing.T) {
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 1,
 		},
+		{
+			name:                       "ForkBlockReached",
+			maxChunkNum:                10,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			batchTimeoutSec:            1000000000000,
+			expectedBatchesLen:         1,
+			expectedChunksInFirstBatch: 1,
+			forkBlock:                  big.NewInt(3),
+		},
 	}
 
 	for _, tt := range tests {
@@ -103,7 +115,9 @@ func testBatchProposerLimits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       1000000,
 				ChunkTimeoutSec:                 300,
 				GasCostIncreaseMultiplier:       1.2,
-			}, &params.ChainConfig{}, db, nil)
+			}, &params.ChainConfig{
+				HomesteadBlock: tt.forkBlock,
+			}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
 
@@ -121,6 +135,8 @@ func testBatchProposerLimits(t *testing.T) {
 				MaxL1CommitCalldataSizePerBatch: tt.maxL1CommitCalldataSize,
 				BatchTimeoutSec:                 tt.batchTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
+			}, &params.ChainConfig{
+				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			bp.TryProposeBatch()
 
@@ -180,7 +196,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1.2,
-	}, db, nil)
+	}, &params.ChainConfig{}, db, nil)
 	bp.TryProposeBatch()
 
 	batchOrm := orm.NewBatch(db)

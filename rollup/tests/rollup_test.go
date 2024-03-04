@@ -109,7 +109,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 300,
-	}, db, nil)
+	}, &params.ChainConfig{}, db, nil)
 	bp.TryProposeBatch()
 
 	l2Relayer.ProcessPendingBatches()
