@@ -13,6 +13,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
+	"scroll-tech/common/network"
 	"scroll-tech/common/observability"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
@@ -78,7 +79,12 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db, registry)
+	network := network.Network(ctx.String(utils.NetworkFlag.Name))
+	if !network.IsKnown() {
+		log.Crit("failed to detect network", "config file", cfgFile, "network", network)
+	}
+
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, network.GenesisConfig(), db, registry)
 	if err != nil {
 		log.Crit("failed to create chunkProposer", "config file", cfgFile, "error", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
@@ -102,7 +103,7 @@ func testBatchProposerLimits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       1000000,
 				ChunkTimeoutSec:                 300,
 				GasCostIncreaseMultiplier:       1.2,
-			}, db, nil)
+			}, &params.ChainConfig{}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
 
@@ -161,7 +162,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		MaxRowConsumptionPerChunk:       1000000,
 		ChunkTimeoutSec:                 300,
 		GasCostIncreaseMultiplier:       1.2,
-	}, db, nil)
+	}, &params.ChainConfig{}, db, nil)
 	cp.TryProposeChunk() // chunk1 contains block1
 	cp.TryProposeChunk() // chunk2 contains block2
 

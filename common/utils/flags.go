@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"scroll-tech/common/network"
+
 	"github.com/urfave/cli/v2"
 )
 
@@ -16,6 +18,7 @@ var (
 		&MetricsAddr,
 		&MetricsPort,
 		&ServicePortFlag,
+		&NetworkFlag,
 	}
 	// RollupRelayerFlags contains flags only used in rollup-relayer
 	RollupRelayerFlags = []cli.Flag{
@@ -82,5 +85,11 @@ var (
 		Name:  "service.port",
 		Usage: "Port that the service will listen on",
 		Value: 8080,
+	}
+	// NetworkFlag is the network that we will operate on
+	NetworkFlag = cli.StringFlag{
+		Name:  "network",
+		Usage: "Network that we will operate on",
+		Value: string(network.Mainnet),
 	}
 )

@@ -2,9 +2,12 @@ package watcher
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
@@ -22,6 +25,7 @@ func testChunkProposerLimits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
+		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
@@ -141,6 +145,18 @@ func testChunkProposerLimits(t *testing.T) {
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
+		{
+			name:                       "ForkBlockReached",
+			maxBlockNum:                100,
+			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+			forkBlock:                  big.NewInt(2),
+		},
 	}
 
 	for _, tt := range tests {
@@ -160,6 +176,8 @@ func testChunkProposerLimits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
+			}, &params.ChainConfig{
+				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			cp.TryProposeChunk()
 
@@ -177,6 +195,46 @@ func testChunkProposerLimits(t *testing.T) {
 					assert.Equal(t, chunks[0].Hash, block.ChunkHash)
 				}
 			}
+		})
+	}
+}
+
+func TestBlocksUntilFork(t *testing.T) {
+	tests := map[string]struct {
+		block    uint64
+		forks    []uint64
+		expected uint64
+	}{
+		"NoFork": {
+			block:    44,
+			forks:    []uint64{},
+			expected: 0,
+		},
+		"BeforeFork": {
+			block:    0,
+			forks:    []uint64{1, 5},
+			expected: 1,
+		},
+		"OnFork": {
+			block:    1,
+			forks:    []uint64{1, 5},
+			expected: 4,
+		},
+		"OnLastFork": {
+			block:    5,
+			forks:    []uint64{1, 5},
+			expected: 0,
+		},
+		"AfterFork": {
+			block:    5,
+			forks:    []uint64{1, 5},
+			expected: 0,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			require.Equal(t, test.expected, blocksUntilFork(test.block, test.forks))
 		})
 	}
 }
