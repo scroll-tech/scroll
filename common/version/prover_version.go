@@ -1,9 +1,9 @@
 package version
 
 import (
-	"strconv"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
@@ -23,53 +23,27 @@ func CheckScrollProverVersion(proverVersion string) bool {
 	return remote[2] == local[2]
 }
 
-// parseVersion takes a version string and returns its major, minor, and patch numbers.
-func parseVersion(version string) (major, minor, patch int) {
-	trimVersion := strings.TrimPrefix(version, "v")
-	if trimVersion == version {
-		log.Error("version does not start with v", "vesion", version)
-		return 0, 0, 0
-	}
-
-	versionPart := strings.SplitN(trimVersion, "-", 2)[0]
-	parts := strings.Split(versionPart, ".")
-	if len(parts) != 3 {
-		log.Error("invalid version format", "expected format", "v<major>.<minor>.<patch>", "got", version)
-		return 0, 0, 0
-	}
-
-	var err error
-	major, err = strconv.Atoi(parts[0])
-	if err != nil {
-		log.Error("invalid major version", "value", parts[0], "error", err)
-		return 0, 0, 0
-	}
-
-	minor, err = strconv.Atoi(parts[1])
-	if err != nil {
-		log.Error("invalid minor version", "value", parts[1], "error", err)
-		return 0, 0, 0
-	}
-
-	patch, err = strconv.Atoi(parts[2])
-	if err != nil {
-		log.Error("invalid patch version", "value", parts[2], "error", err)
-		return 0, 0, 0
-	}
-
-	return major, minor, patch
-}
-
 // CheckScrollRepoVersion checks if the proverVersion is at least the minimum required version.
 func CheckScrollRepoVersion(proverVersion, minVersion string) bool {
-	major1, minor1, patch1 := parseVersion(proverVersion)
-	major2, minor2, patch2 := parseVersion(minVersion)
+	// The constraint is created with a '-patch' suffix to include prerelease versions in the validation.
+	// This is done because by default, Validate would consider all prerelease versions as not satisfying the specified version range constraint.
+	c, err := semver.NewConstraint(">= " + minVersion + "-patch")
+	if err != nil {
+		log.Error("failed to initialize constraint", "constraint", ">= "+minVersion+"-patch", "error", err)
+		return false
+	}
 
-	if major1 != major2 {
-		return major1 > major2
+	v, err := semver.NewVersion(proverVersion)
+	if err != nil {
+		log.Error("failed to parse version", "proverVersion", proverVersion, "error", err)
+		return false
 	}
-	if minor1 != minor2 {
-		return minor1 > minor2
+
+	valid, msgs := c.Validate(v)
+	if !valid {
+		for _, m := range msgs {
+			log.Warn("failed to validate version", "message", m)
+		}
 	}
-	return patch1 >= patch2
+	return valid
 }

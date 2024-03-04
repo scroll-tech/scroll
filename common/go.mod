@@ -3,6 +3,7 @@ module scroll-tech/common
 go 1.20
 
 require (
+	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/bits-and-blooms/bitset v1.12.0
 	github.com/docker/docker v24.0.7+incompatible
 	github.com/gin-contrib/pprof v1.4.0
