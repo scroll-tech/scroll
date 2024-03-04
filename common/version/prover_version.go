@@ -25,11 +25,11 @@ func CheckScrollProverVersion(proverVersion string) bool {
 
 // CheckScrollRepoVersion checks if the proverVersion is at least the minimum required version.
 func CheckScrollRepoVersion(proverVersion, minVersion string) bool {
-	// The constraint is created with a '-patch' suffix to include prerelease versions in the validation.
-	// This is done because by default, Validate would consider all prerelease versions as not satisfying the specified version range constraint.
-	c, err := semver.NewConstraint(">= " + minVersion + "-patch")
+	// The constraint is created with a '-0' suffix to include prerelease versions in the validation.
+	// This is done because by default, Check would consider all prerelease versions as not satisfying the specified version range constraint.
+	c, err := semver.NewConstraint(">= " + minVersion + "-0")
 	if err != nil {
-		log.Error("failed to initialize constraint", "constraint", ">= "+minVersion+"-patch", "error", err)
+		log.Error("failed to initialize constraint", "constraint", ">= "+minVersion+"-0", "error", err)
 		return false
 	}
 
@@ -39,11 +39,5 @@ func CheckScrollRepoVersion(proverVersion, minVersion string) bool {
 		return false
 	}
 
-	valid, msgs := c.Validate(v)
-	if !valid {
-		for _, m := range msgs {
-			log.Warn("failed to validate version", "message", m)
-		}
-	}
-	return valid
+	return c.Check(v)
 }
