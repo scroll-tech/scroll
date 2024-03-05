@@ -89,6 +89,7 @@ library ZkTrieVerifier {
 
                 // the first byte is the number of nodes + 1
                 let nodes := sub(byte(0, calldataload(ptr)), 1)
+                require(lt(nodes, 249), "InvalidNodeDepth")
                 ptr := add(ptr, 1)
 
                 // treat the leaf node with different logic
