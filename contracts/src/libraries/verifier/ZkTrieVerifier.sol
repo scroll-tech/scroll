@@ -22,6 +22,16 @@ library ZkTrieVerifier {
     /// |        1 byte        |      ...      |        1 byte        |      ...      |
     /// | account proof length | account proof | storage proof length | storage proof |
     /// ```
+    ///
+    /// Possible attack vector:
+    ///   + Malicious users can influence how many levels the proof must go through by predicting addresses
+    ///     (or storage slots) that would branch the Trie until a certain depth. Even though artificially 
+    ///     increasing the proof's depth of a certain account or storage will not cause a DoS scenario, since
+    ///     the depth can still reach the maximum depth size in the worst-case scenario, artificially increasing
+    ///     the proof's depth will increase the number of iterations the `walkTree` method has to perform in order
+    ///     to reach the respective leaf. If protocols that use this verifier limit the gas used on-chain to perform
+    ///     such a verification (to a reasonable value), then a malicious user might be able to increase it for a
+    ///     particular transaction by reaching a similar hashed key to a certain depth in the Trie.
     function verifyZkTrieProof(
         address poseidon,
         address account,
