@@ -16,7 +16,7 @@ import {ScrollGatewayBase} from "../../libraries/gateway/ScrollGatewayBase.sol";
 /// @notice The `L2StandardERC20Gateway` is used to withdraw standard ERC20 tokens on layer 2 and
 /// finalize deposit the tokens from layer 1.
 /// @dev The withdrawn ERC20 tokens will be burned directly. On finalizing deposit, the corresponding
-/// token will be minted and transfered to the recipient. Any ERC20 that requires non-standard functionality
+/// token will be minted and transferred to the recipient. Any ERC20 that requires non-standard functionality
 /// should use a separate gateway.
 contract L2StandardERC20Gateway is L2ERC20Gateway {
     using AddressUpgradeable for address;

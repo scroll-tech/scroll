@@ -442,7 +442,7 @@ Emitted when the ERC1155 NFT is deposited to gateway on layer 1.
 event FinalizeBatchWithdrawERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256[] _tokenIds, uint256[] _amounts)
 ```
 
-Emitted when the ERC1155 NFT is batch transfered to recipient on layer 1.
+Emitted when the ERC1155 NFT is batch transferred to recipient on layer 1.
 
 
 
@@ -463,7 +463,7 @@ Emitted when the ERC1155 NFT is batch transfered to recipient on layer 1.
 event FinalizeWithdrawERC1155(address indexed _l1Token, address indexed _l2Token, address indexed _from, address _to, uint256 _tokenId, uint256 _amount)
 ```
 
-Emitted when the ERC1155 NFT is transfered to recipient on layer 1.
+Emitted when the ERC1155 NFT is transferred to recipient on layer 1.
 
 
 
