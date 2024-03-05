@@ -166,21 +166,12 @@ func NewDABatch(batch *encoding.Batch, totalL1MessagePoppedBefore uint64) (*DABa
 	// the next queue index that we need to process
 	nextIndex := batch.TotalL1MessagePoppedBefore
 
-	blobPayload := make([]byte, 31)
-
 	// this encoding can only support up to 15 chunks per batch
 	if len(batch.Chunks) > 15 {
 		return nil, fmt.Errorf("too many chunks in batch")
 	}
 
-	// encode metadata
-	blobPayload[0] = byte(len(batch.Chunks))
-
 	for chunkID, chunk := range batch.Chunks {
-		// encode metadata
-		size := uint16(len(chunk.Blocks))
-		binary.BigEndian.PutUint16(blobPayload[1+2*chunkID:], size)
-
 		// build data hash
 		totalL1MessagePoppedBeforeChunk := nextIndex
 		daChunk, _ := NewDAChunk(chunk, totalL1MessagePoppedBeforeChunk)
@@ -193,16 +184,6 @@ func NewDABatch(batch *encoding.Batch, totalL1MessagePoppedBefore uint64) (*DABa
 		// build skip bitmap
 		for blockID, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
-				// encode L2 txs into blob payload
-				if tx.Type != types.L1MessageTxType {
-					rlpTxData, err := encoding.ConvertTxDataToRLPEncoding(tx)
-					if err != nil {
-						return nil, err
-					}
-					blobPayload = append(blobPayload, rlpTxData...)
-					continue
-				}
-
 				currentIndex := tx.Nonce
 
 				if currentIndex < nextIndex {
@@ -241,6 +222,36 @@ func NewDABatch(batch *encoding.Batch, totalL1MessagePoppedBefore uint64) (*DABa
 		bytes := num.Bytes()
 		padding := 32 - len(bytes)
 		copy(bitmapBytes[32*ii+padding:], bytes)
+	}
+
+	// encode blob payload
+	blobPayload := make([]byte, 31)
+
+	// metadata: n_chunks
+	blobPayload[0] = byte(len(batch.Chunks))
+
+	for chunkID, chunk := range batch.Chunks {
+		var chunkBlobPayload []byte
+
+		for _, block := range chunk.Blocks {
+			for _, tx := range block.Transactions {
+				// encode L2 txs into blob payload
+				if tx.Type != types.L1MessageTxType {
+					rlpTxData, err := encoding.ConvertTxDataToRLPEncoding(tx)
+					if err != nil {
+						return nil, err
+					}
+					chunkBlobPayload = append(chunkBlobPayload, rlpTxData...)
+					continue
+				}
+			}
+		}
+
+		blobPayload = append(blobPayload, chunkBlobPayload...)
+
+		// metadata: chunki_size
+		size := uint16(len(chunkBlobPayload)) // TODO: update to u32
+		binary.BigEndian.PutUint16(blobPayload[1+2*chunkID:], size)
 	}
 
 	// blob contains 131072 bytes but we can only utilize 31/32 of these
