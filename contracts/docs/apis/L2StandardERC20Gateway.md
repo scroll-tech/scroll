@@ -6,7 +6,7 @@
 
 The `L2StandardERC20Gateway` is used to withdraw standard ERC20 tokens on layer 2 and finalize deposit the tokens from layer 1.
 
-*The withdrawn ERC20 tokens will be burned directly. On finalizing deposit, the corresponding token will be minted and transfered to the recipient. Any ERC20 that requires non-standard functionality should use a separate gateway.*
+*The withdrawn ERC20 tokens will be burned directly. On finalizing deposit, the corresponding token will be minted and transferred to the recipient. Any ERC20 that requires non-standard functionality should use a separate gateway.*
 
 ## Methods
 

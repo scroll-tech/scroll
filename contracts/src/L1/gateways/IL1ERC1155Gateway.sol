@@ -8,7 +8,7 @@ interface IL1ERC1155Gateway {
      * Events *
      **********/
 
-    /// @notice Emitted when the ERC1155 NFT is transfered to recipient on layer 1.
+    /// @notice Emitted when the ERC1155 NFT is transferred to recipient on layer 1.
     /// @param _l1Token The address of ERC1155 NFT on layer 1.
     /// @param _l2Token The address of ERC1155 NFT on layer 2.
     /// @param _from The address of sender on layer 2.
@@ -24,7 +24,7 @@ interface IL1ERC1155Gateway {
         uint256 _amount
     );
 
-    /// @notice Emitted when the ERC1155 NFT is batch transfered to recipient on layer 1.
+    /// @notice Emitted when the ERC1155 NFT is batch transferred to recipient on layer 1.
     /// @param _l1Token The address of ERC1155 NFT on layer 1.
     /// @param _l2Token The address of ERC1155 NFT on layer 2.
     /// @param _from The address of sender on layer 2.

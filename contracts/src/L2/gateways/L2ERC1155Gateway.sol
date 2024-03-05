@@ -14,7 +14,7 @@ import {IScrollERC1155} from "../../libraries/token/IScrollERC1155.sol";
 /// @notice The `L2ERC1155Gateway` is used to withdraw ERC1155 compatible NFTs on layer 2 and
 /// finalize deposit the NFTs from layer 1.
 /// @dev The withdrawn NFTs tokens will be burned directly. On finalizing deposit, the corresponding
-/// NFT will be minted and transfered to the recipient.
+/// NFT will be minted and transferred to the recipient.
 ///
 /// This will be changed if we have more specific scenarios.
 contract L2ERC1155Gateway is ERC1155HolderUpgradeable, ScrollGatewayBase, IL2ERC1155Gateway {

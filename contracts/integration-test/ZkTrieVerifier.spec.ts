@@ -308,6 +308,28 @@ describe("ZkTrieVerifier", async () => {
     });
   }
 
+  it("should revert, when InvalidNodeDepth", async () => {
+    const test = testcases[0];
+    {
+      const proof = concat([
+        `0xfa`,
+        ...test.accountProof,
+        `0x${test.storageProof.length.toString(16).padStart(2, "0")}`,
+        ...test.storageProof,
+      ]);
+      await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).to.revertedWith("InvalidNodeDepth");
+    }
+    {
+      const proof = concat([
+        `0x${test.accountProof.length.toString(16).padStart(2, "0")}`,
+        ...test.accountProof,
+        `0xfa`,
+        ...test.storageProof,
+      ]);
+      await expect(verifier.verifyZkTrieProof(test.account, test.storage, proof)).to.revertedWith("InvalidNodeDepth");
+    }
+  });
+
   it("should revert, when InvalidBranchNodeType", async () => {
     const test = testcases[0];
     for (const i of [0, 1, test.accountProof.length - 3]) {

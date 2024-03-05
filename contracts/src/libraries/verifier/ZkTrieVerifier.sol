@@ -22,6 +22,16 @@ library ZkTrieVerifier {
     /// |        1 byte        |      ...      |        1 byte        |      ...      |
     /// | account proof length | account proof | storage proof length | storage proof |
     /// ```
+    ///
+    /// Possible attack vector:
+    ///   + Malicious users can influence how many levels the proof must go through by predicting addresses
+    ///     (or storage slots) that would branch the Trie until a certain depth. Even though artificially 
+    ///     increasing the proof's depth of a certain account or storage will not cause a DoS scenario, since
+    ///     the depth can still reach the maximum depth size in the worst-case scenario, artificially increasing
+    ///     the proof's depth will increase the number of iterations the `walkTree` method has to perform in order
+    ///     to reach the respective leaf. If protocols that use this verifier limit the gas used on-chain to perform
+    ///     such a verification (to a reasonable value), then a malicious user might be able to increase it for a
+    ///     particular transaction by reaching a similar hashed key to a certain depth in the Trie.
     function verifyZkTrieProof(
         address poseidon,
         address account,
@@ -56,7 +66,7 @@ library ZkTrieVerifier {
                 }
             }
             // compute poseidon hash of two uint256
-            function poseidon_hash(hasher, v0, v1, domain) -> r {
+            function poseidonHash(hasher, v0, v1, domain) -> r {
                 let x := mload(0x40)
                 // keccack256("poseidon(uint256[2],uint256)")
                 mstore(x, 0xa717016c00000000000000000000000000000000000000000000000000000000)
@@ -68,8 +78,8 @@ library ZkTrieVerifier {
                 r := mload(0x20)
             }
             // compute poseidon hash of 1 uint256
-            function hash_uint256(hasher, v) -> r {
-                r := poseidon_hash(hasher, shr(128, v), and(v, 0xffffffffffffffffffffffffffffffff), 512)
+            function hashUint256(hasher, v) -> r {
+                r := poseidonHash(hasher, shr(128, v), and(v, 0xffffffffffffffffffffffffffffffff), 512)
             }
 
             // traverses the tree from the root to the node before the leaf.
@@ -79,6 +89,7 @@ library ZkTrieVerifier {
 
                 // the first byte is the number of nodes + 1
                 let nodes := sub(byte(0, calldataload(ptr)), 1)
+                require(lt(nodes, 249), "InvalidNodeDepth")
                 ptr := add(ptr, 0x01)
 
                 // treat the leaf node with different logic
@@ -98,7 +109,7 @@ library ZkTrieVerifier {
                     ptr := add(ptr, 0x20)
                     let childHashR := calldataload(ptr)
                     ptr := add(ptr, 0x20)
-                    let hash := poseidon_hash(hasher, childHashL, childHashR, nodeType)
+                    let hash := poseidonHash(hasher, childHashL, childHashR, nodeType)
 
                     // first item is considered the root node.
                     // Otherwise verifies that the hash of the current node
@@ -139,7 +150,7 @@ library ZkTrieVerifier {
                 ptr := _ptr
 
                 let leafHash
-                let key := hash_uint256(hasher, shl(96, _account))
+                let key := hashUint256(hasher, shl(96, _account))
 
                 // `stateRoot` is a return value and must be checked by the caller
                 ptr, _stateRoot, leafHash := walkTree(hasher, key, ptr)
@@ -158,18 +169,18 @@ library ZkTrieVerifier {
                     // [nonce||codesize||0, balance, storage_root, keccak codehash, poseidon codehash]
                     mstore(0x00, calldataload(ptr))
                     ptr := add(ptr, 0x20) // skip nonce||codesize||0
-                    mstore(0x00, poseidon_hash(hasher, mload(0x00), calldataload(ptr), 1280))
+                    mstore(0x00, poseidonHash(hasher, mload(0x00), calldataload(ptr), 1280))
                     ptr := add(ptr, 0x20) // skip balance
                     storageRootHash := calldataload(ptr)
                     ptr := add(ptr, 0x20) // skip StorageRoot
-                    let tmpHash := hash_uint256(hasher, calldataload(ptr))
+                    let tmpHash := hashUint256(hasher, calldataload(ptr))
                     ptr := add(ptr, 0x20) // skip KeccakCodeHash
-                    tmpHash := poseidon_hash(hasher, storageRootHash, tmpHash, 1280)
-                    tmpHash := poseidon_hash(hasher, mload(0x00), tmpHash, 1280)
-                    tmpHash := poseidon_hash(hasher, tmpHash, calldataload(ptr), 1280)
+                    tmpHash := poseidonHash(hasher, storageRootHash, tmpHash, 1280)
+                    tmpHash := poseidonHash(hasher, mload(0x00), tmpHash, 1280)
+                    tmpHash := poseidonHash(hasher, tmpHash, calldataload(ptr), 1280)
                     ptr := add(ptr, 0x20) // skip PoseidonCodeHash
 
-                    tmpHash := poseidon_hash(hasher, key, tmpHash, 4)
+                    tmpHash := poseidonHash(hasher, key, tmpHash, 4)
                     require(eq(leafHash, tmpHash), "InvalidAccountLeafNodeHash")
 
                     require(eq(0x20, byte(0, calldataload(ptr))), "InvalidAccountKeyPreimageLength")
@@ -192,7 +203,7 @@ library ZkTrieVerifier {
                 ptr := _ptr
 
                 let leafHash
-                let key := hash_uint256(hasher, _storageKey)
+                let key := hashUint256(hasher, _storageKey)
                 let rootHash
                 ptr, rootHash, leafHash := walkTree(hasher, key, ptr)
 
@@ -220,8 +231,8 @@ library ZkTrieVerifier {
 
                     // compute leaf node hash and compare, details can be found in
                     // https://github.com/scroll-tech/mpt-circuit/blob/v0.7/spec/mpt-proof.md#storage-segmenttypes
-                    mstore(0x00, hash_uint256(hasher, _storageValue))
-                    mstore(0x00, poseidon_hash(hasher, key, mload(0x00), 4))
+                    mstore(0x00, hashUint256(hasher, _storageValue))
+                    mstore(0x00, poseidonHash(hasher, key, mload(0x00), 4))
                     require(eq(leafHash, mload(0x00)), "InvalidStorageLeafNodeHash")
 
                     require(eq(0x20, byte(0, calldataload(ptr))), "InvalidStorageKeyPreimageLength")
