@@ -2,18 +2,21 @@ package app
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum/core"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/network"
 	"scroll-tech/common/observability"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
@@ -79,17 +82,18 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
-	network := network.Network(ctx.String(utils.NetworkFlag.Name))
-	if !network.IsKnown() {
-		log.Crit("failed to detect network", "config file", cfgFile, "network", network)
+	genesisPath := ctx.String(utils.Genesis.Name)
+	genesis, err := readGenesis(genesisPath)
+	if err != nil {
+		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, network.GenesisConfig(), db, registry)
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, genesis.Config, db, registry)
 	if err != nil {
 		log.Crit("failed to create chunkProposer", "config file", cfgFile, "error", err)
 	}
 
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, network.GenesisConfig(), db, registry)
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, genesis.Config, db, registry)
 	if err != nil {
 		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
 	}
@@ -125,6 +129,19 @@ func action(ctx *cli.Context) error {
 	<-interrupt
 
 	return nil
+}
+
+func readGenesis(genesisPath string) (*core.Genesis, error) {
+	file, err := os.Open(filepath.Clean(genesisPath))
+	if err != nil {
+		return nil, err
+	}
+
+	genesis := new(core.Genesis)
+	if err := json.NewDecoder(file).Decode(genesis); err != nil {
+		return nil, errors.Join(err, file.Close())
+	}
+	return genesis, file.Close()
 }
 
 // Run rollup relayer cmd instance.

@@ -1,4 +1,4 @@
-package network
+package forks
 
 import (
 	"math/big"

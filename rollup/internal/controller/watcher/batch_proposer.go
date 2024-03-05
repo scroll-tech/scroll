@@ -11,7 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/network"
+	"scroll-tech/common/forks"
 	"scroll-tech/common/types"
 
 	"scroll-tech/rollup/internal/config"
@@ -47,7 +47,7 @@ type BatchProposer struct {
 
 // NewBatchProposer creates a new BatchProposer instance.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
-	forkHeights, forkMap := network.CollectSortedForkHeights(chainCfg)
+	forkHeights, forkMap := forks.CollectSortedForkHeights(chainCfg)
 	log.Debug("new batch proposer",
 		"maxChunkNumPerBatch", cfg.MaxChunkNumPerBatch,
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
