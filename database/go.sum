@@ -75,8 +75,8 @@ github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjR
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20231130005111-38a3a9c9198c h1:MnAdt80steCDli4SAD0J0spBGNY+gQvbdptNjWztHcw=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20231130005111-38a3a9c9198c/go.mod h1:4HrFcoStbViFVy/9l/rvKl1XmizVAaPdgqI8v0U8hOc=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20240305100111-872cb4a5b42c h1:zVoevJF+7zkLbJhYCTk5BlXyDHj6epuudpxcUOkbFMc=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20240305100111-872cb4a5b42c/go.mod h1:7Rz2bh9pn42rGuxjh51CG7HL9SKMG3ZugJkL3emdZx8=
 github.com/segmentio/asm v1.2.0 h1:9BQrFxC+YOHJlTlHGkTrFWf59nbL3XnCoFLTwDCI7ys=
 github.com/sethvargo/go-retry v0.2.4 h1:T+jHEQy/zKJf5s95UkguisicE0zuF9y7+/vgz08Ocec=
 github.com/sethvargo/go-retry v0.2.4/go.mod h1:1afjQuvh7s4gflMObvjLPaWgluLLyhA1wmVZ6KLpICw=

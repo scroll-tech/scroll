@@ -8,15 +8,14 @@ import (
 	"time"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 )
-
-const defaultBatchHeaderVersion = 0
 
 // Batch represents a batch of chunks.
 type Batch struct {
@@ -55,7 +54,7 @@ type Batch struct {
 
 	// metadata
 	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas;default:0"`
-	TotalL1CommitCalldataSize uint32         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size;default:0"`
+	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size;default:0"`
 	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt                 time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt                 gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
@@ -227,68 +226,36 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, chunks []*types.Chunk, batchMeta *types.BatchMeta, dbTX ...*gorm.DB) (*Batch, error) {
-	if len(chunks) == 0 {
-		return nil, errors.New("invalid args")
+func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...*gorm.DB) (*Batch, error) {
+	if batch == nil {
+		return nil, errors.New("invalid args: batch is nil")
 	}
 
-	parentBatch, err := o.GetLatestBatch(ctx)
+	daBatch, err := codecv0.NewDABatch(batch)
 	if err != nil {
-		log.Error("failed to get the latest batch", "err", err)
+		log.Error("failed to create new da batch",
+			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", len(batch.Chunks), "err", err)
 		return nil, err
 	}
-
-	var batchIndex uint64
-	var parentBatchHash common.Hash
-	var totalL1MessagePoppedBefore uint64
-	var version uint8 = defaultBatchHeaderVersion
-
-	// if parentBatch==nil then err==gorm.ErrRecordNotFound, which means there's
-	// not batch record in the db, we then use default empty values for the creating batch;
-	// if parentBatch!=nil then err=nil, then we fill the parentBatch-related data into the creating batch
-	if parentBatch != nil {
-		batchIndex = parentBatch.Index + 1
-		parentBatchHash = common.HexToHash(parentBatch.Hash)
-
-		var parentBatchHeader *types.BatchHeader
-		parentBatchHeader, err = types.DecodeBatchHeader(parentBatch.BatchHeader)
-		if err != nil {
-			log.Error("failed to decode parent batch header", "index", parentBatch.Index, "hash", parentBatch.Hash, "err", err)
-			return nil, err
-		}
-
-		totalL1MessagePoppedBefore = parentBatchHeader.TotalL1MessagePopped()
-		version = parentBatchHeader.Version()
-	}
-
-	batchHeader, err := types.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
-	if err != nil {
-		log.Error("failed to create batch header",
-			"index", batchIndex, "total l1 message popped before", totalL1MessagePoppedBefore,
-			"parent hash", parentBatchHash, "number of chunks", len(chunks), "err", err)
-		return nil, err
-	}
-
-	numChunks := len(chunks)
-	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 
 	newBatch := Batch{
-		Index:                     batchIndex,
-		Hash:                      batchHeader.Hash().Hex(),
-		StartChunkHash:            batchMeta.StartChunkHash,
-		StartChunkIndex:           batchMeta.StartChunkIndex,
-		EndChunkHash:              batchMeta.EndChunkHash,
-		EndChunkIndex:             batchMeta.EndChunkIndex,
-		StateRoot:                 chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:              chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawRoot.Hex(),
-		ParentBatchHash:           parentBatchHash.Hex(),
-		BatchHeader:               batchHeader.Encode(),
+		Index:                     batch.Index,
+		Hash:                      daBatch.Hash().Hex(),
+		StartChunkHash:            batch.StartChunkHash.Hex(),
+		StartChunkIndex:           batch.StartChunkIndex,
+		EndChunkHash:              batch.EndChunkHash.Hex(),
+		EndChunkIndex:             batch.EndChunkIndex,
+		StateRoot:                 batch.GetStateRoot().Hex(),
+		WithdrawRoot:              batch.GetWithdrawRoot().Hex(),
+		ParentBatchHash:           batch.ParentBatchHash.Hex(),
+		BatchHeader:               daBatch.Encode(),
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),
 		OracleStatus:              int16(types.GasOraclePending),
-		TotalL1CommitGas:          batchMeta.TotalL1CommitGas,
-		TotalL1CommitCalldataSize: batchMeta.TotalL1CommitCalldataSize,
+		TotalL1CommitGas:          codecv0.EstimateBatchL1CommitGas(batch),
+		TotalL1CommitCalldataSize: codecv0.EstimateBatchL1CommitCalldataSize(batch),
 	}
 
 	db := o.db

@@ -3,32 +3,43 @@ package encoding
 import (
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
+// Block represents an L2 block.
 type Block struct {
-	Header       *types.Header
-	Transactions []*types.TransactionData
+	Header         *types.Header
+	Transactions   []*types.TransactionData
+	WithdrawRoot   common.Hash           `json:"withdraw_trie_root,omitempty"`
+	RowConsumption *types.RowConsumption `json:"row_consumption,omitempty"`
 }
 
+// Chunk represents a group of blocks.
 type Chunk struct {
 	Blocks []*Block `json:"blocks"`
 }
 
+// Batch represents a batch of chunks.
 type Batch struct {
 	Index                      uint64
 	TotalL1MessagePoppedBefore uint64
 	ParentBatchHash            common.Hash
 	Chunks                     []*Chunk
+
+	// Only used in updating db info.
+	StartChunkIndex uint64
+	EndChunkIndex   uint64
+	StartChunkHash  common.Hash
+	EndChunkHash    common.Hash
 }
 
 // NumL1Messages returns the number of L1 messages in this block.
 // This number is the sum of included and skipped L1 messages.
-func (w *Block) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
+func (b *Block) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 	var lastQueueIndex *uint64
-	for _, txData := range w.Transactions {
+	for _, txData := range b.Transactions {
 		if txData.Type == types.L1MessageTxType {
 			lastQueueIndex = &txData.Nonce
 		}
@@ -42,9 +53,9 @@ func (w *Block) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 }
 
 // NumL2Transactions returns the number of L2 transactions in this block.
-func (w *Block) NumL2Transactions() uint64 {
+func (b *Block) NumL2Transactions() uint64 {
 	var count uint64
-	for _, txData := range w.Transactions {
+	for _, txData := range b.Transactions {
 		if txData.Type != types.L1MessageTxType {
 			count++
 		}
@@ -65,23 +76,63 @@ func (c *Chunk) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 	return numL1Messages
 }
 
+// ConvertTxDataToRLPEncoding transforms []*TransactionData into []*types.Transaction.
 func ConvertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
 	data, err := hexutil.Decode(txData.Data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode txData.Data: %s, err: %w", txData.Data, err)
 	}
 
-	tx := types.NewTx(&types.LegacyTx{
-		Nonce:    txData.Nonce,
-		To:       txData.To,
-		Value:    txData.Value.ToInt(),
-		Gas:      txData.Gas,
-		GasPrice: txData.GasPrice.ToInt(),
-		Data:     data,
-		V:        txData.V.ToInt(),
-		R:        txData.R.ToInt(),
-		S:        txData.S.ToInt(),
-	})
+	var tx *types.Transaction
+	switch txData.Type {
+	case types.LegacyTxType:
+		tx = types.NewTx(&types.LegacyTx{
+			Nonce:    txData.Nonce,
+			To:       txData.To,
+			Value:    txData.Value.ToInt(),
+			Gas:      txData.Gas,
+			GasPrice: txData.GasPrice.ToInt(),
+			Data:     data,
+			V:        txData.V.ToInt(),
+			R:        txData.R.ToInt(),
+			S:        txData.S.ToInt(),
+		})
+
+	case types.AccessListTxType:
+		tx = types.NewTx(&types.AccessListTx{
+			ChainID:    txData.ChainId.ToInt(),
+			Nonce:      txData.Nonce,
+			To:         txData.To,
+			Value:      txData.Value.ToInt(),
+			Gas:        txData.Gas,
+			GasPrice:   txData.GasPrice.ToInt(),
+			Data:       data,
+			AccessList: txData.AccessList,
+			V:          txData.V.ToInt(),
+			R:          txData.R.ToInt(),
+			S:          txData.S.ToInt(),
+		})
+
+	case types.DynamicFeeTxType:
+		tx = types.NewTx(&types.DynamicFeeTx{
+			ChainID:    txData.ChainId.ToInt(),
+			Nonce:      txData.Nonce,
+			To:         txData.To,
+			Value:      txData.Value.ToInt(),
+			Gas:        txData.Gas,
+			GasTipCap:  txData.GasTipCap.ToInt(),
+			GasFeeCap:  txData.GasFeeCap.ToInt(),
+			Data:       data,
+			AccessList: txData.AccessList,
+			V:          txData.V.ToInt(),
+			R:          txData.R.ToInt(),
+			S:          txData.S.ToInt(),
+		})
+
+	case types.L1MessageTxType:
+	default:
+		return nil, fmt.Errorf("unsupported tx type: %v", txData.Type)
+	}
 
 	rlpTxData, err := tx.MarshalBinary()
 	if err != nil {
@@ -89,4 +140,93 @@ func ConvertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
 	}
 
 	return rlpTxData, nil
+}
+
+// GetCrcMax calculates the maximum row consumption of crc.
+func (c *Chunk) GetCrcMax() uint64 {
+	// Map sub-circuit name to row count
+	crc := make(map[string]uint64)
+
+	// Function to accumulate row consumption
+	add := func(rowConsumption *types.RowConsumption) {
+		if rowConsumption == nil {
+			return
+		}
+		for _, subCircuit := range *rowConsumption {
+			crc[subCircuit.Name] += subCircuit.RowNumber
+		}
+	}
+
+	// Function to find maximum row consumption
+	max := func() uint64 {
+		var maxVal uint64
+		for _, value := range crc {
+			if value > maxVal {
+				maxVal = value
+			}
+		}
+		return maxVal
+	}
+
+	// Iterate over blocks, accumulate row consumption
+	for _, block := range c.Blocks {
+		if block.RowConsumption != nil {
+			add(block.RowConsumption)
+		}
+	}
+
+	// Return the maximum row consumption
+	return max()
+}
+
+// GetNumTransactions calculates the total number of transactions in a Chunk.
+func (c *Chunk) GetNumTransactions() uint64 {
+	var totalTxNum uint64
+	for _, block := range c.Blocks {
+		totalTxNum += uint64(len(block.Transactions))
+	}
+	return totalTxNum
+}
+
+// GetNumL2Transactions calculates the total number of L2 transactions in a Chunk.
+func (c *Chunk) GetNumL2Transactions() uint64 {
+	var totalTxNum uint64
+	for _, block := range c.Blocks {
+		totalTxNum += block.NumL2Transactions()
+	}
+	return totalTxNum
+}
+
+// GetNumL2GasUsed calculates the total gas of L2 transactions in a Chunk.
+func (c *Chunk) GetNumL2GasUsed() uint64 {
+	var totalTxNum uint64
+	for _, block := range c.Blocks {
+		totalTxNum += block.Header.GasUsed
+	}
+	return totalTxNum
+}
+
+// GetStateRoot gets the state root after committing/finalizing the batch.
+func (b *Batch) GetStateRoot() common.Hash {
+	numChunks := len(b.Chunks)
+	if len(b.Chunks) == 0 {
+		return common.Hash{}
+	}
+	lastChunkBlockNum := len(b.Chunks[numChunks-1].Blocks)
+	return b.Chunks[len(b.Chunks)-1].Blocks[lastChunkBlockNum-1].Header.Root
+}
+
+// GetWithdrawRoot gets the withdraw root after committing/finalizing the batch.
+func (b *Batch) GetWithdrawRoot() common.Hash {
+	numChunks := len(b.Chunks)
+	if len(b.Chunks) == 0 {
+		return common.Hash{}
+	}
+	lastChunkBlockNum := len(b.Chunks[numChunks-1].Blocks)
+	return b.Chunks[len(b.Chunks)-1].Blocks[lastChunkBlockNum-1].WithdrawRoot
+}
+
+// GetChunkNum gets the number of chunks of the batch.
+func (b *Batch) GetChunkNum() uint64 {
+	return uint64(len(b.Chunks))
 }

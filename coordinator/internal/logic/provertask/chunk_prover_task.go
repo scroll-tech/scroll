@@ -144,14 +144,14 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
-	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, task.TaskID)
-	if wrappedErr != nil || len(wrappedBlocks) == 0 {
-		return nil, fmt.Errorf("failed to fetch wrapped blocks, chunk hash:%s err:%w", task.TaskID, wrappedErr)
+	blocks, dbErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, task.TaskID)
+	if dbErr != nil || len(blocks) == 0 {
+		return nil, fmt.Errorf("failed to fetch blocks, chunk hash:%s err:%w", task.TaskID, dbErr)
 	}
 
-	blockHashes := make([]common.Hash, len(wrappedBlocks))
-	for i, wrappedBlock := range wrappedBlocks {
-		blockHashes[i] = wrappedBlock.Header.Hash()
+	blockHashes := make([]common.Hash, len(blocks))
+	for i, block := range blocks {
+		blockHashes[i] = block.Header.Hash()
 	}
 
 	taskDetail := message.ChunkTaskDetail{

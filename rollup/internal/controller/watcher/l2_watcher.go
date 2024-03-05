@@ -16,7 +16,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/orm"
@@ -77,7 +78,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 			to = blockHeight
 		}
 
-		if err = w.getAndStoreBlockTraces(w.ctx, from, to); err != nil {
+		if err = w.getAndStoreBlocks(w.ctx, from, to); err != nil {
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
@@ -101,26 +102,29 @@ func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
 		}
 
 		txsData[i] = &gethTypes.TransactionData{
-			Type:     tx.Type(),
-			TxHash:   tx.Hash().String(),
-			Nonce:    nonce,
-			ChainId:  (*hexutil.Big)(tx.ChainId()),
-			Gas:      tx.Gas(),
-			GasPrice: (*hexutil.Big)(tx.GasPrice()),
-			To:       tx.To(),
-			Value:    (*hexutil.Big)(tx.Value()),
-			Data:     hexutil.Encode(tx.Data()),
-			IsCreate: tx.To() == nil,
-			V:        (*hexutil.Big)(v),
-			R:        (*hexutil.Big)(r),
-			S:        (*hexutil.Big)(s),
+			Type:       tx.Type(),
+			TxHash:     tx.Hash().String(),
+			Nonce:      nonce,
+			ChainId:    (*hexutil.Big)(tx.ChainId()),
+			Gas:        tx.Gas(),
+			GasPrice:   (*hexutil.Big)(tx.GasPrice()),
+			GasTipCap:  (*hexutil.Big)(tx.GasTipCap()),
+			GasFeeCap:  (*hexutil.Big)(tx.GasFeeCap()),
+			To:         tx.To(),
+			Value:      (*hexutil.Big)(tx.Value()),
+			Data:       hexutil.Encode(tx.Data()),
+			IsCreate:   tx.To() == nil,
+			AccessList: tx.AccessList(),
+			V:          (*hexutil.Big)(v),
+			R:          (*hexutil.Big)(r),
+			S:          (*hexutil.Big)(s),
 		}
 	}
 	return txsData
 }
 
-func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to uint64) error {
-	var blocks []*types.WrappedBlock
+func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64) error {
+	var blocks []*encoding.Block
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)
 		block, err := w.GetBlockByNumberOrHash(ctx, rpc.BlockNumberOrHashWithNumber(rpc.BlockNumber(number)))
@@ -137,7 +141,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 		if err3 != nil {
 			return fmt.Errorf("failed to get withdrawRoot: %v. number: %v", err3, number)
 		}
-		blocks = append(blocks, &types.WrappedBlock{
+		blocks = append(blocks, &encoding.Block{
 			Header:         block.Header(),
 			Transactions:   txsToTxsData(block.Transactions()),
 			WithdrawRoot:   common.BytesToHash(withdrawRoot),
@@ -147,7 +151,7 @@ func (w *L2WatcherClient) getAndStoreBlockTraces(ctx context.Context, from, to u
 
 	if len(blocks) > 0 {
 		for _, block := range blocks {
-			w.metrics.rollupL2BlockL1CommitCalldataSize.Set(float64(block.EstimateL1CommitCalldataSize()))
+			w.metrics.rollupL2BlockL1CommitCalldataSize.Set(float64(codecv0.EstimateBlockL1CommitCalldataSize(block)))
 		}
 		if err := w.l2BlockOrm.InsertL2Blocks(w.ctx, blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)

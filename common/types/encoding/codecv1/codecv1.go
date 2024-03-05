@@ -18,8 +18,10 @@ import (
 	"scroll-tech/common/types/encoding"
 )
 
+// CodecV1Version denotes the version of the codec.
 const CodecV1Version = 1
 
+// DABlock represents a Data Availability Block.
 type DABlock struct {
 	BlockNumber     uint64
 	Timestamp       uint64
@@ -29,11 +31,13 @@ type DABlock struct {
 	NumL1Messages   uint16
 }
 
+// DAChunk groups consecutive DABlocks with their transactions.
 type DAChunk struct {
 	Blocks       []*DABlock
 	Transactions [][]*types.TransactionData
 }
 
+// DABatch contains metadata about a batch of DAChunks.
 type DABatch struct {
 	// header
 	Version                uint8
@@ -49,6 +53,7 @@ type DABatch struct {
 	sidecar *types.BlobTxSidecar
 }
 
+// NewDABlock creates a new DABlock from the given encoding.Block and the total number of L1 messages popped before.
 func NewDABlock(block *encoding.Block, totalL1MessagePoppedBefore uint64) (*DABlock, error) {
 	if !block.Header.Number.IsUint64() {
 		return nil, errors.New("block number is not uint64")
@@ -79,6 +84,7 @@ func NewDABlock(block *encoding.Block, totalL1MessagePoppedBefore uint64) (*DABl
 	return &daBlock, nil
 }
 
+// Encode serializes the DABlock into a slice of bytes.
 func (b *DABlock) Encode() ([]byte, error) {
 	bytes := make([]byte, 60)
 	binary.BigEndian.PutUint64(bytes[0:], b.BlockNumber)
@@ -90,6 +96,7 @@ func (b *DABlock) Encode() ([]byte, error) {
 	return bytes, nil
 }
 
+// NewDAChunk creates a new DAChunk from the given encoding.Chunk and the total number of L1 messages popped before.
 func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) (*DAChunk, error) {
 	var blocks []*DABlock
 	var txs [][]*types.TransactionData
@@ -109,6 +116,7 @@ func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) (*DACh
 	return &daChunk, nil
 }
 
+// Encode serializes the DAChunk into a slice of bytes.
 func (c *DAChunk) Encode() ([]byte, error) {
 	var chunkBytes []byte
 	chunkBytes = append(chunkBytes, byte(len(c.Blocks)))
@@ -121,6 +129,7 @@ func (c *DAChunk) Encode() ([]byte, error) {
 	return chunkBytes, nil
 }
 
+// Hash computes the hash of the DAChunk data.
 func (c *DAChunk) Hash() (common.Hash, error) {
 	chunkBytes, err := c.Encode()
 	if err != nil {
@@ -153,7 +162,8 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 	return hash, nil
 }
 
-func NewDABatch(batch *encoding.Batch, totalL1MessagePoppedBefore uint64) (*DABatch, error) {
+// NewDABatch creates a DABatch from the provided encoding.Batch.
+func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
 	// buffer for storing chunk hashes in order to compute the batch data hash
 	var dataBytes []byte
 
@@ -294,7 +304,7 @@ func NewDABatch(batch *encoding.Batch, totalL1MessagePoppedBefore uint64) (*DABa
 	daBatch := DABatch{
 		Version:                CodecV1Version,
 		BatchIndex:             batch.Index,
-		L1MessagePopped:        nextIndex - totalL1MessagePoppedBefore,
+		L1MessagePopped:        nextIndex - baseIndex,
 		TotalL1MessagePopped:   nextIndex,
 		DataHash:               dataHash,
 		BlobVersionedHash:      blobVersionedHash,
@@ -306,6 +316,7 @@ func NewDABatch(batch *encoding.Batch, totalL1MessagePoppedBefore uint64) (*DABa
 	return &daBatch, nil
 }
 
+// Encode serializes the DABatch into bytes.
 func (b *DABatch) Encode() ([]byte, error) {
 	batchBytes := make([]byte, 121+len(b.SkippedL1MessageBitmap))
 	batchBytes[0] = b.Version
@@ -319,11 +330,14 @@ func (b *DABatch) Encode() ([]byte, error) {
 	return batchBytes, nil
 }
 
+// Hash computes the hash of the serialized DABatch.
 func (b *DABatch) Hash() (common.Hash, error) {
 	bytes, _ := b.Encode()
 	return crypto.Keccak256Hash(bytes), nil
 }
 
+// DecodeFromCalldata attempts to decode a DABatch and an array of DAChunks from the provided calldata byte slice.
 func DecodeFromCalldata(data []byte) (*DABatch, []*DAChunk, error) {
+	// TODO: implement this function.
 	return nil, nil, nil
 }

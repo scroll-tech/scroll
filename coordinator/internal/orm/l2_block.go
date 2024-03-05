@@ -11,7 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
 )
 
 // L2Block represents a l2 block in the database.
@@ -52,7 +52,7 @@ func (*L2Block) TableName() string {
 
 // GetL2BlocksByChunkHash retrieves the L2 blocks associated with the specified chunk hash.
 // The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) ([]*types.WrappedBlock, error) {
+func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) ([]*encoding.Block, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("header, transactions, withdraw_root, row_consumption")
@@ -64,33 +64,33 @@ func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) 
 		return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 	}
 
-	var wrappedBlocks []*types.WrappedBlock
+	var blocks []*encoding.Block
 	for _, v := range l2Blocks {
-		var wrappedBlock types.WrappedBlock
+		var block encoding.Block
 
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
+		if err := json.Unmarshal([]byte(v.Transactions), &block.Transactions); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 		}
 
-		wrappedBlock.Header = &gethTypes.Header{}
-		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
+		block.Header = &gethTypes.Header{}
+		if err := json.Unmarshal([]byte(v.Header), block.Header); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 		}
 
-		wrappedBlock.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
-		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
+		block.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
+		if err := json.Unmarshal([]byte(v.RowConsumption), &block.RowConsumption); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 		}
 
-		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
+		blocks = append(blocks, &block)
 	}
 
-	return wrappedBlocks, nil
+	return blocks, nil
 }
 
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
 // for unit test
-func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlock) error {
+func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) error {
 	var l2Blocks []L2Block
 	for _, block := range blocks {
 		header, err := json.Marshal(block.Header)

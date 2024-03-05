@@ -11,7 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
 )
 
 // L2Block represents a l2 block in the database.
@@ -64,10 +64,10 @@ func (o *L2Block) GetL2BlocksLatestHeight(ctx context.Context) (uint64, error) {
 	return maxNumber, nil
 }
 
-// GetL2WrappedBlocksGEHeight retrieves L2 blocks that have a block number greater than or equal to the given height.
-// The blocks are converted into WrappedBlock format for output.
+// GetL2BlocksGEHeight retrieves L2 blocks that have a block number greater than or equal to the given height.
+// The blocks are converted into encoding.Block format for output.
 // The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64, limit int) ([]*types.WrappedBlock, error) {
+func (o *L2Block) GetL2BlocksGEHeight(ctx context.Context, height uint64, limit int) ([]*encoding.Block, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
 	db = db.Select("header, transactions, withdraw_root, row_consumption")
@@ -80,65 +80,64 @@ func (o *L2Block) GetL2WrappedBlocksGEHeight(ctx context.Context, height uint64,
 
 	var l2Blocks []L2Block
 	if err := db.Find(&l2Blocks).Error; err != nil {
-		return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
+		return nil, fmt.Errorf("L2Block.GetL2BlocksGEHeight error: %w", err)
 	}
 
-	var wrappedBlocks []*types.WrappedBlock
+	var blocks []*encoding.Block
 	for _, v := range l2Blocks {
-		var wrappedBlock types.WrappedBlock
+		var block encoding.Block
 
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
+		if err := json.Unmarshal([]byte(v.Transactions), &block.Transactions); err != nil {
+			return nil, fmt.Errorf("L2Block.GetL2BlocksGEHeight error: %w", err)
 		}
 
-		wrappedBlock.Header = &gethTypes.Header{}
-		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
+		block.Header = &gethTypes.Header{}
+		if err := json.Unmarshal([]byte(v.Header), block.Header); err != nil {
+			return nil, fmt.Errorf("L2Block.GetL2BlocksGEHeight error: %w", err)
 		}
 
-		wrappedBlock.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
+		block.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
 
-		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2WrappedBlocksGEHeight error: %w", err)
+		if err := json.Unmarshal([]byte(v.RowConsumption), &block.RowConsumption); err != nil {
+			return nil, fmt.Errorf("L2Block.GetL2BlocksGEHeight error: %w", err)
 		}
 
-		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
+		blocks = append(blocks, &block)
 	}
 
-	return wrappedBlocks, nil
+	return blocks, nil
 }
 
-// GetL2Blocks retrieves selected L2Blocks from the database.
-// The returned L2Blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetL2Blocks(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*L2Block, error) {
+// GetChunkHashes retrieves selected chunk hashes from the database.
+// The returned chunk hashes are sorted in ascending order by their block number.
+// For unit test
+func (o *L2Block) GetChunkHashes(ctx context.Context, limit int) ([]string, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-
-	for key, value := range fields {
-		db = db.Where(key, value)
-	}
-
-	for _, orderBy := range orderByList {
-		db = db.Order(orderBy)
-	}
+	db = db.Select("chunk_hash")
+	db = db.Order("number ASC")
 
 	if limit > 0 {
 		db = db.Limit(limit)
 	}
 
-	db = db.Order("number ASC")
-
-	var l2Blocks []*L2Block
+	var l2Blocks []L2Block
 	if err := db.Find(&l2Blocks).Error; err != nil {
-		return nil, fmt.Errorf("L2Block.GetL2Blocks error: %w, fields: %v, orderByList: %v", err, fields, orderByList)
+		return nil, fmt.Errorf("L2Block.GetChunkHashes error: %w, limit: %v", err, limit)
 	}
-	return l2Blocks, nil
+
+	chunkHashes := make([]string, len(l2Blocks))
+	for i, block := range l2Blocks {
+		chunkHashes[i] = block.ChunkHash
+	}
+
+	return chunkHashes, nil
 }
 
 // GetL2BlocksInRange retrieves the L2 blocks within the specified range (inclusive).
 // The range is closed, i.e., it includes both start and end block numbers.
 // The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*types.WrappedBlock, error) {
+func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*encoding.Block, error) {
 	if startBlockNumber > endBlockNumber {
 		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: start block number should be less than or equal to end block number, start block: %v, end block: %v", startBlockNumber, endBlockNumber)
 	}
@@ -159,33 +158,33 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: unexpected number of results, expected: %v, got: %v", endBlockNumber-startBlockNumber+1, len(l2Blocks))
 	}
 
-	var wrappedBlocks []*types.WrappedBlock
+	var blocks []*encoding.Block
 	for _, v := range l2Blocks {
-		var wrappedBlock types.WrappedBlock
+		var block encoding.Block
 
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
+		if err := json.Unmarshal([]byte(v.Transactions), &block.Transactions); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
 		}
 
-		wrappedBlock.Header = &gethTypes.Header{}
-		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
+		block.Header = &gethTypes.Header{}
+		if err := json.Unmarshal([]byte(v.Header), block.Header); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
 		}
 
-		wrappedBlock.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
+		block.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
 
-		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
+		if err := json.Unmarshal([]byte(v.RowConsumption), &block.RowConsumption); err != nil {
 			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
 		}
 
-		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
+		blocks = append(blocks, &block)
 	}
 
-	return wrappedBlocks, nil
+	return blocks, nil
 }
 
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
-func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlock) error {
+func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) error {
 	var l2Blocks []L2Block
 	for _, block := range blocks {
 		header, err := json.Marshal(block.Header)

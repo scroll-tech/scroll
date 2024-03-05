@@ -11,6 +11,7 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 
@@ -64,7 +65,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// add some blocks to db
-	var wrappedBlocks []*types.WrappedBlock
+	var blocks []*encoding.Block
 	for i := 0; i < 10; i++ {
 		header := gethTypes.Header{
 			Number:     big.NewInt(int64(i)),
@@ -72,7 +73,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 			Difficulty: big.NewInt(0),
 			BaseFee:    big.NewInt(0),
 		}
-		wrappedBlocks = append(wrappedBlocks, &types.WrappedBlock{
+		blocks = append(blocks, &encoding.Block{
 			Header:         &header,
 			Transactions:   nil,
 			WithdrawRoot:   common.Hash{},
@@ -81,7 +82,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	}
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), wrappedBlocks)
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks)
 	assert.NoError(t, err)
 
 	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
