@@ -36,7 +36,8 @@ var (
 	privateKey             *ecdsa.PrivateKey
 	cfg                    *config.Config
 	base                   *docker.App
-	txTypes                = []string{"LegacyTx", "AccessListTx", "DynamicFeeTx"}
+	txTypes                = []string{"LegacyTx", "DynamicFeeTx"}
+	txUint8Types           = []uint8{0, 2}
 	db                     *gorm.DB
 	mockL1ContractsAddress common.Address
 )
@@ -143,14 +144,14 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		hash, err := s.SendTransaction("0", &common.Address{}, big.NewInt(0), nil, 0)
+		hash, err := s.SendTransaction("0", &common.Address{}, nil, nil, 0)
 		assert.NoError(t, err)
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
 		assert.NoError(t, err)
 		assert.Len(t, txs, 1)
 		assert.Equal(t, "0", txs[0].ContextID)
 		assert.Equal(t, hash.String(), txs[0].Hash)
-		assert.Equal(t, uint8(i), txs[0].Type)
+		assert.Equal(t, txUint8Types[i], txs[0].Type)
 		assert.Equal(t, types.TxStatusPending, txs[0].Status)
 		assert.Equal(t, "0x1C5A77d9FA7eF466951B2F01F724BCa3A5820b63", txs[0].SenderAddress)
 		assert.Equal(t, types.SenderTypeUnknown, txs[0].SenderType)
@@ -176,7 +177,7 @@ func testFallbackGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 
 		// FallbackGasLimit = 0
-		txHash0, err := s.SendTransaction("0", &common.Address{}, big.NewInt(0), nil, 0)
+		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, nil, 0)
 		assert.NoError(t, err)
 		tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
 		assert.NoError(t, err)
@@ -184,12 +185,12 @@ func testFallbackGasLimit(t *testing.T) {
 
 		// FallbackGasLimit = 100000
 		patchGuard := gomonkey.ApplyPrivateMethod(s, "estimateGasLimit",
-			func(contract *common.Address, data []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, *gethTypes.AccessList, error) {
+			func(contract *common.Address, data []byte, sideCar *gethTypes.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobFeeCap *big.Int) (uint64, *gethTypes.AccessList, error) {
 				return 0, nil, errors.New("estimateGasLimit error")
 			},
 		)
 
-		txHash1, err := s.SendTransaction("1", &common.Address{}, big.NewInt(0), nil, 100000)
+		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, nil, 100000)
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
@@ -216,11 +217,11 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(0),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
-		_, err = s.resubmitTransaction(tx, 0)
+		_, err = s.resubmitTransaction(tx, 0, 0)
 		assert.NoError(t, err)
 		s.Stop()
 	}
@@ -243,15 +244,16 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(2333))
 		assert.NoError(t, err)
 
-		gasLimit, accessList, err := s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), true)
+		gasLimit, accessList, err := s.estimateGasLimit(&mockL1ContractsAddress, data, nil, nil, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0))
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(43472), gasLimit)
-		assert.NotNil(t, accessList)
 
-		gasLimit, accessList, err = s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), false)
-		assert.NoError(t, err)
-		assert.Equal(t, uint64(43949), gasLimit)
-		assert.Nil(t, accessList)
+		if txType == LegacyTxType {
+			assert.Equal(t, uint64(43949), gasLimit)
+			assert.Nil(t, accessList)
+		} else {
+			assert.Equal(t, uint64(43472), gasLimit)
+			assert.NotNil(t, accessList)
+		}
 
 		s.Stop()
 	}
@@ -276,10 +278,10 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(100000),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(tx, 0)
+		_, err = s.resubmitTransaction(tx, 0, 0)
 		assert.NoError(t, err)
 		s.Stop()
 	}
@@ -304,10 +306,10 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(100000),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(tx, 0)
+		_, err = s.resubmitTransaction(tx, 0, 0)
 		assert.Error(t, err, "replacement transaction underpriced")
 		s.Stop()
 	}
@@ -329,19 +331,11 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 	// bump the basefee by 10x
 	baseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.resubmitTransaction(tx, baseFeePerGas)
+	newTx, err := s.resubmitTransaction(tx, baseFeePerGas, 0)
 	assert.NoError(t, err)
 
-	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
-	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
-
-	adjBaseFee := new(big.Int)
-	adjBaseFee.SetUint64(baseFeePerGas)
-	adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
-	adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
-
-	expectedGasFeeCap := new(big.Int).Add(tx.GasTipCap(), adjBaseFee)
+	expectedGasFeeCap := getBaseFeeCap(new(big.Int).SetUint64(baseFeePerGas), tx.GasTipCap())
 	if expectedGasFeeCap.Cmp(maxGasPrice) > 0 {
 		expectedGasFeeCap = maxGasPrice
 	}
@@ -361,7 +355,7 @@ func testCheckPendingTransactionTxConfirmed(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeCommitBatch, db, nil)
 		assert.NoError(t, err)
 
-		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
+		_, err = s.SendTransaction("test", &common.Address{}, nil, nil, 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -398,7 +392,7 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeFinalizeBatch, db, nil)
 		assert.NoError(t, err)
 
-		originTxHash, err := s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
+		originTxHash, err := s.SendTransaction("test", &common.Address{}, nil, nil, 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -453,7 +447,7 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeL1GasOracle, db, nil)
 		assert.NoError(t, err)
 
-		txHash, err := s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
+		txHash, err := s.SendTransaction("test", &common.Address{}, nil, nil, 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -518,7 +512,7 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeCommitBatch, db, nil)
 		assert.NoError(t, err)
 
-		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
+		_, err = s.SendTransaction("test", &common.Address{}, nil, nil, 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)

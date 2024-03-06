@@ -242,7 +242,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 	}
 
 	// submit genesis batch to L1 rollup contract
-	txHash, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+	txHash, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, calldata, nil, 0)
 	if err != nil {
 		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
@@ -306,7 +306,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
+			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil, 0)
 			if err != nil {
 				log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
 				return
@@ -401,7 +401,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			fallbackGasLimit = 0
 			log.Warn("Batch commit previously failed, using eth_estimateGas for the re-submission", "hash", batch.Hash)
 		}
-		txHash, err := r.commitSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, fallbackGasLimit)
+		txHash, err := r.commitSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, calldata, nil, fallbackGasLimit)
 		if err != nil {
 			log.Error(
 				"Failed to send commitBatch tx to layer1",
@@ -566,7 +566,7 @@ func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
 	}
 
 	// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-	txHash, err := r.finalizeSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, big.NewInt(0), txCalldata, 0)
+	txHash, err := r.finalizeSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, txCalldata, nil, 0)
 	finalizeTxHash := &txHash
 	if err != nil {
 		log.Error(

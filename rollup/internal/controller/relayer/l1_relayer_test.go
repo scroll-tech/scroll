@@ -3,11 +3,11 @@ package relayer
 import (
 	"context"
 	"errors"
-	"math/big"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -151,13 +151,13 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("send transaction failure", t, func() {
 		targetErr := errors.New("send transaction failure")
-		patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, []byte, *kzg4844.Blob, uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
+	patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, []byte, *kzg4844.Blob, uint64) (hash common.Hash, err error) {
 		return common.Hash{}, nil
 	})
 
