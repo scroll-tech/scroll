@@ -45,6 +45,7 @@ func NewConfig(file string) (*Config, error) {
 	return cfg, nil
 }
 
+// ReadGenesis parses and returns the genesis file at the given path
 func ReadGenesis(genesisPath string) (*core.Genesis, error) {
 	file, err := os.Open(filepath.Clean(genesisPath))
 	if err != nil {
