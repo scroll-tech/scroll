@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/google/uuid v1.4.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240201173512-ae7cbae19c84
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240305121210-a807a41fd1e9
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
 	go.etcd.io/bbolt v1.3.7

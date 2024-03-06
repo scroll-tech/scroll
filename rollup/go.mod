@@ -7,7 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/prometheus/client_golang v1.14.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240201173512-ae7cbae19c84
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240305121210-a807a41fd1e9
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
