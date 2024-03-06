@@ -50,42 +50,29 @@ func (*L2Block) TableName() string {
 	return "l2_block"
 }
 
-// GetL2BlocksByChunkHash retrieves the L2 blocks associated with the specified chunk hash.
-// The returned blocks are sorted in ascending order by their block number.
-func (o *L2Block) GetL2BlocksByChunkHash(ctx context.Context, chunkHash string) ([]*types.WrappedBlock, error) {
+// GetL2BlockHashesByChunkHash retrieves the L2 block hashes associated with the specified chunk hash.
+// The returned block hashes are sorted in ascending order by their block number.
+func (o *L2Block) GetL2BlockHashesByChunkHash(ctx context.Context, chunkHash string) ([]common.Hash, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&L2Block{})
-	db = db.Select("header, transactions, withdraw_root, row_consumption")
+	db = db.Select("header")
 	db = db.Where("chunk_hash = ?", chunkHash)
 	db = db.Order("number ASC")
 
 	var l2Blocks []L2Block
 	if err := db.Find(&l2Blocks).Error; err != nil {
-		return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
+		return nil, fmt.Errorf("L2Block.GetL2BlockHashesByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 	}
 
-	var wrappedBlocks []*types.WrappedBlock
+	var blockHashes []common.Hash
 	for _, v := range l2Blocks {
-		var wrappedBlock types.WrappedBlock
-
-		if err := json.Unmarshal([]byte(v.Transactions), &wrappedBlock.Transactions); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
+		var header gethTypes.Header
+		if err := json.Unmarshal([]byte(v.Header), &header); err != nil {
+			return nil, fmt.Errorf("L2Block.GetL2BlockHashesByChunkHash error: %w, chunk hash: %v", err, chunkHash)
 		}
-
-		wrappedBlock.Header = &gethTypes.Header{}
-		if err := json.Unmarshal([]byte(v.Header), wrappedBlock.Header); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
-		}
-
-		wrappedBlock.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
-		if err := json.Unmarshal([]byte(v.RowConsumption), &wrappedBlock.RowConsumption); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksByChunkHash error: %w, chunk hash: %v", err, chunkHash)
-		}
-
-		wrappedBlocks = append(wrappedBlocks, &wrappedBlock)
+		blockHashes = append(blockHashes, header.Hash())
 	}
-
-	return wrappedBlocks, nil
+	return blockHashes, nil
 }
 
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
