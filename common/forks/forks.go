@@ -43,3 +43,14 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 	})
 	return forkHeights, forkHeightsMap
 }
+
+// BlocksUntilFork returns the number of blocks until the next fork
+// returns 0 if there is no fork scheduled for the future
+func BlocksUntilFork(blockHeight uint64, forkHeights []uint64) uint64 {
+	for _, forkHeight := range forkHeights {
+		if forkHeight > blockHeight {
+			return forkHeight - blockHeight
+		}
+	}
+	return 0
+}

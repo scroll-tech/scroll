@@ -190,17 +190,6 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	return err
 }
 
-// blocksUntilFork returns the number of blocks until the next fork
-// returns 0 if there is no fork scheduled for the future
-func blocksUntilFork(blockHeight uint64, forkHeights []uint64) uint64 {
-	for _, forkHeight := range forkHeights {
-		if forkHeight > blockHeight {
-			return forkHeight - blockHeight
-		}
-	}
-	return 0
-}
-
 func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
 	if err != nil {
@@ -208,7 +197,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	}
 
 	maxBlocksThisChunk := p.maxBlockNumPerChunk
-	blocksUntilFork := blocksUntilFork(unchunkedBlockHeight, p.forkHeights)
+	blocksUntilFork := forks.BlocksUntilFork(unchunkedBlockHeight, p.forkHeights)
 	if blocksUntilFork != 0 && blocksUntilFork < maxBlocksThisChunk {
 		maxBlocksThisChunk = blocksUntilFork
 	}
