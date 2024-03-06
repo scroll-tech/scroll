@@ -2,16 +2,12 @@ package app
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/scroll-tech/go-ethereum/core"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -83,7 +79,7 @@ func action(ctx *cli.Context) error {
 	}
 
 	genesisPath := ctx.String(utils.Genesis.Name)
-	genesis, err := readGenesis(genesisPath)
+	genesis, err := config.ReadGenesis(genesisPath)
 	if err != nil {
 		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
 	}
@@ -129,19 +125,6 @@ func action(ctx *cli.Context) error {
 	<-interrupt
 
 	return nil
-}
-
-func readGenesis(genesisPath string) (*core.Genesis, error) {
-	file, err := os.Open(filepath.Clean(genesisPath))
-	if err != nil {
-		return nil, err
-	}
-
-	genesis := new(core.Genesis)
-	if err := json.NewDecoder(file).Decode(genesis); err != nil {
-		return nil, errors.Join(err, file.Close())
-	}
-	return genesis, file.Close()
 }
 
 // Run rollup relayer cmd instance.
