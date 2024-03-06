@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-resty/resty/v2"
 	"github.com/mitchellh/mapstructure"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
