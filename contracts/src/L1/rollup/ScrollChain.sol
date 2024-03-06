@@ -8,7 +8,7 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
 import {IL1MessageQueue} from "./IL1MessageQueue.sol";
 import {IScrollChain} from "./IScrollChain.sol";
 import {BatchHeaderV0Codec} from "../../libraries/codec/BatchHeaderV0Codec.sol";
-import {ChunkCodec} from "../../libraries/codec/ChunkCodec.sol";
+import {ChunkCodecV0} from "../../libraries/codec/ChunkCodecV0.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 
 // solhint-disable no-inline-assembly
@@ -480,17 +480,17 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             blockPtr := add(chunkPtr, 1) // skip numBlocks
         }
 
-        uint256 _numBlocks = ChunkCodec.validateChunkLength(chunkPtr, _chunk.length);
+        uint256 _numBlocks = ChunkCodecV0.validateChunkLength(chunkPtr, _chunk.length);
 
         // concatenate block contexts, use scope to avoid stack too deep
         {
             uint256 _totalTransactionsInChunk;
             for (uint256 i = 0; i < _numBlocks; i++) {
-                dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
-                uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+                dataPtr = ChunkCodecV0.copyBlockContext(chunkPtr, dataPtr, i);
+                uint256 _numTransactionsInBlock = ChunkCodecV0.numTransactions(blockPtr);
                 unchecked {
                     _totalTransactionsInChunk += _numTransactionsInBlock;
-                    blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+                    blockPtr += ChunkCodecV0.BLOCK_CONTEXT_LENGTH;
                 }
             }
             assembly {
@@ -506,10 +506,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         }
 
         // concatenate tx hashes
-        uint256 l2TxPtr = ChunkCodec.l2TxPtr(chunkPtr, _numBlocks);
+        uint256 l2TxPtr = ChunkCodecV0.l2TxPtr(chunkPtr, _numBlocks);
         while (_numBlocks > 0) {
             // concatenate l1 message hashes
-            uint256 _numL1MessagesInBlock = ChunkCodec.numL1Messages(blockPtr);
+            uint256 _numL1MessagesInBlock = ChunkCodecV0.numL1Messages(blockPtr);
             dataPtr = _loadL1MessageHashes(
                 dataPtr,
                 _numL1MessagesInBlock,
@@ -519,11 +519,11 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             );
 
             // concatenate l2 transaction hashes
-            uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+            uint256 _numTransactionsInBlock = ChunkCodecV0.numTransactions(blockPtr);
             require(_numTransactionsInBlock >= _numL1MessagesInBlock, "num txs less than num L1 msgs");
             for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
                 bytes32 txHash;
-                (txHash, l2TxPtr) = ChunkCodec.loadL2TxHash(l2TxPtr);
+                (txHash, l2TxPtr) = ChunkCodecV0.loadL2TxHash(l2TxPtr);
                 assembly {
                     mstore(dataPtr, txHash)
                     dataPtr := add(dataPtr, 0x20)
@@ -536,7 +536,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedOverall += _numL1MessagesInBlock;
 
                 _numBlocks -= 1;
-                blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+                blockPtr += ChunkCodecV0.BLOCK_CONTEXT_LENGTH;
             }
         }
 
