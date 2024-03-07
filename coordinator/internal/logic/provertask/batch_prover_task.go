@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"scroll-tech/common/forks"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,6 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/forks"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
