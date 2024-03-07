@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/params"
 	"scroll-tech/common/forks"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
