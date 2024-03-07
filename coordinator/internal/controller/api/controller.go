@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
 	"scroll-tech/coordinator/internal/config"
@@ -22,7 +23,7 @@ var (
 )
 
 // InitController inits Controller with database
-func InitController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) {
+func InitController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) {
 	initControllerOnce.Do(func() {
 		vf, err := verifier.NewVerifier(cfg.ProverManager.Verifier)
 		if err != nil {
@@ -30,7 +31,7 @@ func InitController(cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) 
 		}
 
 		Auth = NewAuthController(db)
-		GetTask = NewGetTaskController(cfg, db, vf, reg)
+		GetTask = NewGetTaskController(cfg, chainCfg, db, vf, reg)
 		SubmitProof = NewSubmitProofController(cfg, db, vf, reg)
 	})
 }

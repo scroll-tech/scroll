@@ -191,18 +191,17 @@ func (o *Chunk) CheckIfBatchChunkProofsAreReady(ctx context.Context, batchHash s
 	return count == 0, nil
 }
 
-// GetChunkBatchHash retrieves the batchHash of a given chunk.
-func (o *Chunk) GetChunkBatchHash(ctx context.Context, chunkHash string) (string, error) {
+// GetChunkByHash retrieves the given chunk.
+func (o *Chunk) GetChunkByHash(ctx context.Context, chunkHash string) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash = ?", chunkHash)
-	db = db.Select("batch_hash")
 
 	var chunk Chunk
 	if err := db.First(&chunk).Error; err != nil {
-		return "", fmt.Errorf("Chunk.GetChunkBatchHash error: %w, chunk hash: %v", err, chunkHash)
+		return nil, fmt.Errorf("Chunk.GetChunkBatchHash error: %w, chunk hash: %v", err, chunkHash)
 	}
-	return chunk.BatchHash, nil
+	return &chunk, nil
 }
 
 // GetAttemptsByHash get chunk attempts by hash. Used by unit test

@@ -20,9 +20,10 @@ type ProverTask interface {
 
 // BaseProverTask a base prover task which contain series functions
 type BaseProverTask struct {
-	cfg *config.Config
-	db  *gorm.DB
-	vk  string
+	cfg     *config.Config
+	db      *gorm.DB
+	vk      string
+	forkMap map[uint64]bool
 
 	batchOrm           *orm.Batch
 	chunkOrm           *orm.Chunk
@@ -61,6 +62,14 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 
 	if !version.CheckScrollRepoVersion(proverVersion.(string), b.cfg.ProverManager.MinProverVersion) {
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", b.cfg.ProverManager.MinProverVersion, proverVersion.(string))
+	}
+
+	// if the prover than v4.3.41-144c7ed-8f17df8-6e1a5cd and param forkBlockNumber is empty, represents
+	// the prover use the wrong config. don't assign task to it.
+	if version.CheckScrollRepoVersion(proverVersion.(string), "v4.3.41-144c7ed-8f17df8-6e1a5cd") {
+		if getTaskParameter.ForkNumber == "" {
+			return nil, fmt.Errorf("prover version large than v4.3.41-144c7ed-8f17df8-6e1a5cd, but fork_number is empty, actual version: %s", proverVersion.(string))
+		}
 	}
 
 	// if the prover has a different vk

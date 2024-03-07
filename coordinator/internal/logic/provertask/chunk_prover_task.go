@@ -10,8 +10,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/forks"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -33,12 +35,15 @@ type ChunkProverTask struct {
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
+	forkHeights, forkMap := forks.CollectSortedForkHeights(chainCfg)
+	log.Info("new chunk prover task", "forkHeights", forkHeights)
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			vk:                 vk,
 			db:                 db,
 			cfg:                cfg,
+			forkMap:            forkMap,
 			chunkOrm:           orm.NewChunk(db),
 			blockOrm:           orm.NewL2Block(db),
 			proverTaskOrm:      orm.NewProverTask(db),
@@ -87,6 +92,20 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 		if tmpChunkTask == nil {
 			log.Debug("get empty chunk", "height", getTaskParameter.ProverHeight)
+			return nil, nil
+		}
+
+		// thanks to rollup relayer have tidied the chunk with the hard fork number, so coordinator
+		// only select the right version prover to assign task
+		if cp.forkMap[getTaskParameter.ForkNumber] && tmpChunkTask.StartBlockNumber < getTaskParameter.ForkNumber {
+			log.Debug("hard fork prover get empty chunk because of the start block number less than fork number",
+				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkNumber, "chunk start block number", tmpChunkTask.StartBlockNumber)
+			return nil, nil
+		}
+
+		if !cp.forkMap[getTaskParameter.ForkNumber] && tmpChunkTask.StartBlockNumber >= getTaskParameter.ForkNumber {
+			log.Debug("old hard fork prover get empty chunk because of the start block number large than fork number",
+				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkNumber, "chunk start block number", tmpChunkTask.StartBlockNumber)
 			return nil, nil
 		}
 

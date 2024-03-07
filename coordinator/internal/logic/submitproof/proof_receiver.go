@@ -203,17 +203,17 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 }
 
 func (m *ProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Context, chunkHash string) error {
-	batchHash, err := m.chunkOrm.GetChunkBatchHash(ctx, chunkHash)
+	batchHash, err := m.chunkOrm.GetChunkByHash(ctx, chunkHash)
 	if err != nil {
 		return err
 	}
 
-	allReady, err := m.chunkOrm.CheckIfBatchChunkProofsAreReady(ctx, batchHash)
+	allReady, err := m.chunkOrm.CheckIfBatchChunkProofsAreReady(ctx, batchHash.BatchHash)
 	if err != nil {
 		return err
 	}
 	if allReady {
-		err := m.batchOrm.UpdateChunkProofsStatusByBatchHash(ctx, batchHash, types.ChunkProofsStatusReady)
+		err := m.batchOrm.UpdateChunkProofsStatusByBatchHash(ctx, batchHash.BatchHash, types.ChunkProofsStatusReady)
 		if err != nil {
 			return err
 		}

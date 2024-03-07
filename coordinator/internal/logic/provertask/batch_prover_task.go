@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/params"
+	"scroll-tech/common/forks"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -31,12 +33,16 @@ type BatchProverTask struct {
 }
 
 // NewBatchProverTask new a batch collector
-func NewBatchProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
+func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
+	forkHeights, forkMap := forks.CollectSortedForkHeights(chainCfg)
+	log.Info("new batch prover task", "forkHeights", forkHeights)
+
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
 			vk:                 vk,
 			db:                 db,
 			cfg:                cfg,
+			forkMap:            forkMap,
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
 			proverTaskOrm:      orm.NewProverTask(db),
@@ -85,6 +91,26 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 		if tmpBatchTask == nil {
 			log.Debug("get empty batch", "height", getTaskParameter.ProverHeight)
+			return nil, nil
+		}
+
+		startChunk, getStartChunkErr := bp.chunkOrm.GetChunkByHash(ctx, tmpBatchTask.StartChunkHash)
+		if err != nil {
+			log.Error("failed to get start chunk", "startChunkHash", tmpBatchTask.StartChunkHash, "err", getStartChunkErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+
+		// thanks to rollup relayer have tidied the chunk with the hard fork number, so coordinator
+		// only select the right version prover to assign task
+		if bp.forkMap[getTaskParameter.ForkNumber] && startChunk.StartBlockNumber < getTaskParameter.ForkNumber {
+			log.Debug("hard fork prover get empty batch because of the start block number less than fork number",
+				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkNumber, "chunk start block number", startChunk.StartBlockNumber)
+			return nil, nil
+		}
+
+		if !bp.forkMap[getTaskParameter.ForkNumber] && startChunk.StartBlockNumber >= getTaskParameter.ForkNumber {
+			log.Debug("old hard fork prover get empty batch because of the start block number large than fork number",
+				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkNumber, "chunk start block number", startChunk.StartBlockNumber)
 			return nil, nil
 		}
 
