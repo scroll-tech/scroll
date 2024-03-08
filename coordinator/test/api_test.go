@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/params"
 	"math/big"
 	"net/http"
 	"os"
@@ -96,10 +97,14 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 		},
 	}
 
+	chainConf := &params.ChainConfig{
+		HomesteadBlock: big.NewInt(3),
+	}
+
 	proofCollector := cron.NewCollector(context.Background(), db, conf, nil)
 
 	router := gin.New()
-	api.InitController(conf, db, nil)
+	api.InitController(conf, chainConf, db, nil)
 	route.Route(router, conf, nil)
 	srv := &http.Server{
 		Addr:    coordinatorURL,
@@ -222,7 +227,7 @@ func testGetTaskBlocked(t *testing.T) {
 	assert.True(t, chunkProver.healthCheckSuccess(t))
 
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch, version.Version)
-	assert.True(t, chunkProver.healthCheckSuccess(t))
+	assert.True(t, batchProver.healthCheckSuccess(t))
 
 	err := proverBlockListOrm.InsertProverPublicKey(context.Background(), chunkProver.proverName, chunkProver.publicKey())
 	assert.NoError(t, err)
@@ -299,7 +304,7 @@ func testValidProof(t *testing.T) {
 	assert.NoError(t, err)
 
 	// create mock provers.
-	provers := make([]*mockProver, 2)
+	provers := make([]*mockProver, 4)
 	for i := 0; i < len(provers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
@@ -307,6 +312,12 @@ func testValidProof(t *testing.T) {
 		} else {
 			proofType = message.ProofTypeBatch
 		}
+
+		var forkNumber uint64
+		if i > 1 && i%2 == 0 {
+			forkNumber =
+		}
+
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
 
 		// only prover 0 & 1 submit valid proofs.
