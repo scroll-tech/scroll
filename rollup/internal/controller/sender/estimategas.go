@@ -69,16 +69,16 @@ func (s *Sender) estimateDynamicGas(to *common.Address, data []byte, baseFee uin
 	return feeData, nil
 }
 
-func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sideCar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64, fallbackGasLimit uint64) (*FeeData, error) {
+func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64, fallbackGasLimit uint64) (*FeeData, error) {
 	gasTipCap, err := s.client.SuggestGasTipCap(s.ctx)
 	if err != nil {
 		log.Error("estimateBlobGas SuggestGasTipCap failure", "error", err)
 		return nil, err
 	}
 
-	gasFeeCap := getBaseFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
-	blobFeeCap := getBlobBaseFeeCap(new(big.Int).SetUint64(blobBaseFee))
-	gasLimit, accessList, err := s.estimateGasLimit(to, data, sideCar, nil, gasTipCap, gasFeeCap, blobFeeCap)
+	gasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
+	blobGasFeeCap := getBlobGasFeeCap(new(big.Int).SetUint64(blobBaseFee))
+	gasLimit, accessList, err := s.estimateGasLimit(to, data, sidecar, nil, gasTipCap, gasFeeCap, blobGasFeeCap)
 	if err != nil {
 		log.Error("estimateBlobGas estimateGasLimit failure",
 			"from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "to address", to.String(),
@@ -101,7 +101,7 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sideCar *gethT
 	return feeData, nil
 }
 
-func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sideCar *gethTypes.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobFeeCap *big.Int) (uint64, *types.AccessList, error) {
+func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobGasFeeCap *big.Int) (uint64, *types.AccessList, error) {
 	msg := ethereum.CallMsg{
 		From:      s.auth.From,
 		To:        to,
@@ -111,9 +111,9 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sideCar *geth
 		Data:      data,
 	}
 
-	if sideCar != nil {
-		msg.BlobHashes = sideCar.BlobHashes()
-		msg.BlobGasFeeCap = blobFeeCap
+	if sidecar != nil {
+		msg.BlobHashes = sidecar.BlobHashes()
+		msg.BlobGasFeeCap = blobGasFeeCap
 	}
 
 	gasLimitWithoutAccessList, err := s.client.EstimateGas(s.ctx, msg)
@@ -173,14 +173,14 @@ func finetuneAccessList(accessList *types.AccessList, gasLimitWithAccessList uin
 	return &newAccessList, gasLimitWithAccessList
 }
 
-func getBaseFeeCap(baseFee, gasTipCap *big.Int) *big.Int {
+func getGasFeeCap(baseFee, gasTipCap *big.Int) *big.Int {
 	// gasFeeCap = baseFee * 2 + gasTipCap
 	gasFeeCap := new(big.Int).Mul(baseFee, big.NewInt(2))
 	gasFeeCap = new(big.Int).Add(gasFeeCap, gasTipCap)
 	return gasFeeCap
 }
 
-func getBlobBaseFeeCap(blobBaseFee *big.Int) *big.Int {
+func getBlobGasFeeCap(blobBaseFee *big.Int) *big.Int {
 	// blobGasFeeCap = blobBaseFee * 2
 	blobGasFeeCap := new(big.Int).Mul(blobBaseFee, big.NewInt(2))
 	return blobGasFeeCap

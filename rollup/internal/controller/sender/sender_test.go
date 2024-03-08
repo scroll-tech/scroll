@@ -3,6 +3,7 @@ package sender
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
@@ -10,10 +11,13 @@ import (
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	gokzg4844 "github.com/crate-crypto/go-kzg-4844"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
@@ -37,7 +41,7 @@ var (
 	cfg                    *config.Config
 	base                   *docker.App
 	txTypes                = []string{"LegacyTx", "DynamicFeeTx"}
-	txUint8Types           = []uint8{0, 2}
+	txUint8Types           = []uint8{0, 2, 3}
 	db                     *gorm.DB
 	mockL1ContractsAddress common.Address
 )
@@ -144,7 +148,12 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		hash, err := s.SendTransaction("0", &common.Address{}, nil, nil, 0)
+		var blob *kzg4844.Blob
+		if txType == BlobTxType {
+			blob = randBlob()
+		}
+
+		hash, err := s.SendTransaction("0", &common.Address{}, nil, blob, 0)
 		assert.NoError(t, err)
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
 		assert.NoError(t, err)
@@ -176,8 +185,13 @@ func testFallbackGasLimit(t *testing.T) {
 		client, err := ethclient.Dial(cfgCopy.Endpoint)
 		assert.NoError(t, err)
 
+		var blob *kzg4844.Blob
+		if txType == BlobTxType {
+			blob = randBlob()
+		}
+
 		// FallbackGasLimit = 0
-		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, nil, 0)
+		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, blob, 0)
 		assert.NoError(t, err)
 		tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
 		assert.NoError(t, err)
@@ -185,12 +199,12 @@ func testFallbackGasLimit(t *testing.T) {
 
 		// FallbackGasLimit = 100000
 		patchGuard := gomonkey.ApplyPrivateMethod(s, "estimateGasLimit",
-			func(contract *common.Address, data []byte, sideCar *gethTypes.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobFeeCap *big.Int) (uint64, *gethTypes.AccessList, error) {
+			func(contract *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobGasFeeCap *big.Int) (uint64, *gethTypes.AccessList, error) {
 				return 0, nil, errors.New("estimateGasLimit error")
 			},
 		)
 
-		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, nil, 100000)
+		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, blob, 100000)
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
@@ -335,7 +349,7 @@ func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
 	assert.NoError(t, err)
 
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
-	expectedGasFeeCap := getBaseFeeCap(new(big.Int).SetUint64(baseFeePerGas), tx.GasTipCap())
+	expectedGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFeePerGas), tx.GasTipCap())
 	if expectedGasFeeCap.Cmp(maxGasPrice) > 0 {
 		expectedGasFeeCap = maxGasPrice
 	}
@@ -541,4 +555,25 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		s.Stop()
 		patchGuard.Reset()
 	}
+}
+
+func randBlob() *kzg4844.Blob {
+	var blob kzg4844.Blob
+	for i := 0; i < len(blob); i += gokzg4844.SerializedScalarSize {
+		fieldElementBytes := randFieldElement()
+		copy(blob[i:i+gokzg4844.SerializedScalarSize], fieldElementBytes[:])
+	}
+	return &blob
+}
+
+func randFieldElement() [32]byte {
+	bytes := make([]byte, 32)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		panic("failed to get random field element")
+	}
+	var r fr.Element
+	r.SetBytes(bytes)
+
+	return gokzg4844.SerializeScalar(r)
 }

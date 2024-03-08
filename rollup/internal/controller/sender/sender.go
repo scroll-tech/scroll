@@ -56,7 +56,7 @@ type FeeData struct {
 	gasTipCap *big.Int
 	gasPrice  *big.Int
 
-	blobFeeCap *big.Int
+	blobGasFeeCap *big.Int
 
 	accessList gethTypes.AccessList
 
@@ -158,14 +158,14 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
-func (s *Sender) getFeeData(target *common.Address, data []byte, sideCar *gethTypes.BlobTxSidecar, fallbackGasLimit uint64, baseFee, blobBaseFee uint64) (*FeeData, error) {
+func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, fallbackGasLimit uint64, baseFee, blobBaseFee uint64) (*FeeData, error) {
 	switch s.config.TxType {
 	case LegacyTxType:
 		return s.estimateLegacyGas(target, data, fallbackGasLimit)
 	case DynamicFeeTxType:
 		return s.estimateDynamicGas(target, data, baseFee, fallbackGasLimit)
 	case BlobTxType:
-		return s.estimateBlobGas(target, data, sideCar, baseFee, blobBaseFee, fallbackGasLimit)
+		return s.estimateBlobGas(target, data, sidecar, baseFee, blobBaseFee, fallbackGasLimit)
 	default:
 		return nil, fmt.Errorf("unsupported transaction type: %s", s.config.TxType)
 	}
@@ -177,15 +177,15 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 	var (
 		feeData *FeeData
 		tx      *gethTypes.Transaction
-		sideCar *gethTypes.BlobTxSidecar
+		sidecar *gethTypes.BlobTxSidecar
 		err     error
 	)
 
 	if s.config.TxType == BlobTxType {
-		sideCar, err = makeSidecar(blob)
+		sidecar, err = makeSidecar(blob)
 		if err != nil {
-			log.Error("failed to make side car for blob transaction", "error", err)
-			return common.Hash{}, fmt.Errorf("failed to make side car for blob transaction, err: %w", err)
+			log.Error("failed to make sidecar for blob transaction", "error", err)
+			return common.Hash{}, fmt.Errorf("failed to make sidecar for blob transaction, err: %w", err)
 		}
 	}
 
@@ -195,13 +195,13 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		return common.Hash{}, fmt.Errorf("failed to get block number and base fee, err: %w", err)
 	}
 
-	if feeData, err = s.getFeeData(target, data, sideCar, fallbackGasLimit, baseFee, blobBaseFee); err != nil {
+	if feeData, err = s.getFeeData(target, data, sidecar, fallbackGasLimit, baseFee, blobBaseFee); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
 		log.Error("failed to get fee data", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "fallback gas limit", fallbackGasLimit, "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 
-	if tx, err = s.createAndSendTx(feeData, target, data, nil, nil); err != nil {
+	if tx, err = s.createAndSendTx(feeData, target, data, sidecar, nil); err != nil {
 		s.metrics.sendTransactionFailureSendTx.WithLabelValues(s.service, s.name).Inc()
 		log.Error("failed to create and send tx (non-resubmit case)", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "err", err)
 		return common.Hash{}, fmt.Errorf("failed to create and send transaction, err: %w", err)
@@ -214,7 +214,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 	return tx.Hash(), nil
 }
 
-func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data []byte, sideCar *gethTypes.BlobTxSidecar, overrideNonce *uint64) (*gethTypes.Transaction, error) {
+func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, overrideNonce *uint64) (*gethTypes.Transaction, error) {
 	var (
 		nonce  = s.auth.Nonce.Uint64()
 		txData gethTypes.TxData
@@ -251,9 +251,9 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 			return nil, errors.New("blob transaction to address cannot be nil")
 		}
 
-		if sideCar == nil {
-			log.Error("blob transaction sideCar cannot be nil", "address", s.auth.From.String(), "chainID", s.chainID.Uint64(), "nonce", s.auth.Nonce.Uint64())
-			return nil, errors.New("blob transaction sideCar cannot be nil")
+		if sidecar == nil {
+			log.Error("blob transaction sidecar cannot be nil", "address", s.auth.From.String(), "chainID", s.chainID.Uint64(), "nonce", s.auth.Nonce.Uint64())
+			return nil, errors.New("blob transaction sidecar cannot be nil")
 		}
 
 		txData = &gethTypes.BlobTx{
@@ -265,9 +265,9 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 			To:         *target,
 			Data:       data,
 			AccessList: feeData.accessList,
-			BlobFeeCap: uint256.MustFromBig(feeData.blobFeeCap),
-			BlobHashes: sideCar.BlobHashes(),
-			Sidecar:    sideCar,
+			BlobFeeCap: uint256.MustFromBig(feeData.blobGasFeeCap),
+			BlobHashes: sidecar.BlobHashes(),
+			Sidecar:    sidecar,
 		}
 	}
 
@@ -300,8 +300,8 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 		s.metrics.currentGasPrice.WithLabelValues(s.service, s.name).Set(float64(feeData.gasPrice.Uint64()))
 	}
 
-	if feeData.blobFeeCap != nil {
-		s.metrics.currentBlobGasFeeCap.WithLabelValues(s.service, s.name).Set(float64(feeData.blobFeeCap.Uint64()))
+	if feeData.blobGasFeeCap != nil {
+		s.metrics.currentBlobGasFeeCap.WithLabelValues(s.service, s.name).Set(float64(feeData.blobGasFeeCap.Uint64()))
 	}
 
 	s.metrics.currentGasLimit.WithLabelValues(s.service, s.name).Set(float64(feeData.gasLimit))
@@ -340,7 +340,7 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 	switch s.config.TxType {
 	case LegacyTxType:
 		originalGasPrice := tx.GasPrice()
-		gasPrice := new(big.Int).Mul(escalateMultipleNum, originalGasPrice)
+		gasPrice := new(big.Int).Mul(originalGasPrice, escalateMultipleNum)
 		gasPrice = new(big.Int).Div(gasPrice, escalateMultipleDen)
 		if gasPrice.Cmp(maxGasPrice) > 0 {
 			gasPrice = maxGasPrice
@@ -365,7 +365,7 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 		gasFeeCap = new(big.Int).Div(gasFeeCap, escalateMultipleDen)
 
 		// adjust for rising basefee
-		currentGasFeeCap := getBaseFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
+		currentGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
 		if gasFeeCap.Cmp(currentGasFeeCap) < 0 {
 			gasFeeCap = currentGasFeeCap
 		}
@@ -405,10 +405,10 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 		// bumping at least 100%
 		gasTipCap := new(big.Int).Mul(originalGasTipCap, big.NewInt(2))
 		gasFeeCap := new(big.Int).Mul(originalGasFeeCap, big.NewInt(2))
-		blobGasFeeCap := new(big.Int).Div(originalBlobGasFeeCap, big.NewInt(2))
+		blobGasFeeCap := new(big.Int).Mul(originalBlobGasFeeCap, big.NewInt(2))
 
 		// adjust for rising basefee
-		currentGasFeeCap := getBaseFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
+		currentGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
 		if gasFeeCap.Cmp(currentGasFeeCap) < 0 {
 			gasFeeCap = currentGasFeeCap
 		}
@@ -424,7 +424,7 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 		}
 
 		// adjust for rising blobbasefee
-		currentBlobGasFeeCap := getBlobBaseFeeCap(new(big.Int).SetUint64(baseFee))
+		currentBlobGasFeeCap := getBlobGasFeeCap(new(big.Int).SetUint64(blobBaseFee))
 		if blobGasFeeCap.Cmp(currentBlobGasFeeCap) < 0 {
 			blobGasFeeCap = currentBlobGasFeeCap
 		}
@@ -436,11 +436,13 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 
 		feeData.gasFeeCap = gasFeeCap
 		feeData.gasTipCap = gasTipCap
-		feeData.blobFeeCap = blobGasFeeCap
+		feeData.blobGasFeeCap = blobGasFeeCap
 		txInfo["original_gas_tip_cap"] = originalGasTipCap.Uint64()
 		txInfo["adjusted_gas_tip_cap"] = gasTipCap.Uint64()
 		txInfo["original_gas_fee_cap"] = originalGasFeeCap.Uint64()
 		txInfo["adjusted_gas_fee_cap"] = gasFeeCap.Uint64()
+		txInfo["original_blob_gas_fee_cap"] = originalBlobGasFeeCap.Uint64()
+		txInfo["adjusted_blob_gas_fee_cap"] = blobGasFeeCap.Uint64()
 
 	default:
 		return nil, fmt.Errorf("unsupported transaction type: %s", s.config.TxType)
@@ -602,12 +604,12 @@ func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64
 		baseFee = header.BaseFee.Uint64()
 	}
 
-	var blobFee uint64
+	var blobBaseFee uint64
 	if header.ExcessBlobGas != nil && header.BlobGasUsed != nil {
 		parentExcessBlobGas := misc.CalcExcessBlobGas(*header.ExcessBlobGas, *header.BlobGasUsed)
-		blobFee = misc.CalcBlobFee(parentExcessBlobGas).Uint64()
+		blobBaseFee = misc.CalcBlobFee(parentExcessBlobGas).Uint64()
 	}
-	return header.Number.Uint64(), baseFee, blobFee, nil
+	return header.Number.Uint64(), baseFee, blobBaseFee, nil
 }
 
 func makeSidecar(blob *kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
