@@ -14,7 +14,6 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
-    using SafeERC20 for IERC20Permit;
 
     /**********
      * Events *
@@ -92,15 +91,19 @@ contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
         address _sender = _msgSender();
 
         // do permit
-        IERC20Permit(_permit.token).safePermit(
-            _sender,
-            address(this),
-            _permit.value,
-            _permit.deadline,
-            _permit.v,
-            _permit.r,
-            _permit.s
-        );
+        try
+            IERC20Permit(_permit.token).permit(
+                _sender,
+                address(this),
+                _permit.value,
+                _permit.deadline,
+                _permit.v,
+                _permit.r,
+                _permit.s
+            )
+        {} catch {
+            require(IERC20(_permit.token).allowance(_sender, address(this)) >= _permit.value, "Permit failed");
+        }
 
         // record token balance in this contract
         uint256 _balance = IERC20(_permit.token).balanceOf(address(this));
