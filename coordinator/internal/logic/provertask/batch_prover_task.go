@@ -102,15 +102,15 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 		// thanks to rollup relayer have tidied the chunk with the hard fork number, so coordinator
 		// only select the right version prover to assign task
-		if bp.forkMap[getTaskParameter.ForkNumber] && startChunk.StartBlockNumber < getTaskParameter.ForkNumber {
+		if bp.forkMap[getTaskParameter.ForkBlockNumber] && startChunk.StartBlockNumber < getTaskParameter.ForkBlockNumber {
 			log.Debug("hard fork prover get empty batch because of the start block number less than fork number",
-				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkNumber, "chunk start block number", startChunk.StartBlockNumber)
+				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkBlockNumber, "chunk start block number", startChunk.StartBlockNumber)
 			return nil, nil
 		}
 
-		if !bp.forkMap[getTaskParameter.ForkNumber] && startChunk.StartBlockNumber >= getTaskParameter.ForkNumber {
+		if getTaskParameter.ForkBlockNumber == 0 && startChunk.StartBlockNumber >= DefaultForkBlock {
 			log.Debug("old hard fork prover get empty batch because of the start block number large than fork number",
-				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkNumber, "chunk start block number", startChunk.StartBlockNumber)
+				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkBlockNumber, "chunk start block number", startChunk.StartBlockNumber)
 			return nil, nil
 		}
 

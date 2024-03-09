@@ -13,6 +13,12 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
+// DefaultForkBlock the default fork block number. Regarding that for the first time hard fork,
+// the old version prover don't give the hard fork number with the request, so need set a default
+// hard fork number to check for the un-forded prover.
+// TODO change it when have the real hard fork number
+const DefaultForkBlock = 99999
+
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
@@ -67,7 +73,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 	// if the prover than v4.3.41-144c7ed-8f17df8-6e1a5cd and param forkBlockNumber is empty, represents
 	// the prover use the wrong config. don't assign task to it.
 	if version.CheckScrollRepoVersion(proverVersion.(string), "v4.3.41-144c7ed-8f17df8-6e1a5cd") {
-		if getTaskParameter.ForkNumber == 0 {
+		if getTaskParameter.ForkBlockNumber == 0 {
 			return nil, fmt.Errorf("prover version large than v4.3.41-144c7ed-8f17df8-6e1a5cd, but fork_number is empty, actual version: %s", proverVersion.(string))
 		}
 	}

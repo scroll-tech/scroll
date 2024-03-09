@@ -97,15 +97,15 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 		// thanks to rollup relayer have tidied the chunk with the hard fork number, so coordinator
 		// only select the right version prover to assign task
-		if cp.forkMap[getTaskParameter.ForkNumber] && tmpChunkTask.StartBlockNumber < getTaskParameter.ForkNumber {
+		if cp.forkMap[getTaskParameter.ForkBlockNumber] && tmpChunkTask.StartBlockNumber < getTaskParameter.ForkBlockNumber {
 			log.Debug("hard fork prover get empty chunk because of the start block number less than fork number",
-				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkNumber, "chunk start block number", tmpChunkTask.StartBlockNumber)
+				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkBlockNumber, "chunk start block number", tmpChunkTask.StartBlockNumber)
 			return nil, nil
 		}
 
-		if !cp.forkMap[getTaskParameter.ForkNumber] && tmpChunkTask.StartBlockNumber >= getTaskParameter.ForkNumber {
+		if getTaskParameter.ForkBlockNumber == 0 && tmpChunkTask.StartBlockNumber >= DefaultForkBlock {
 			log.Debug("old hard fork prover get empty chunk because of the start block number large than fork number",
-				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkNumber, "chunk start block number", tmpChunkTask.StartBlockNumber)
+				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkBlockNumber, "chunk start block number", tmpChunkTask.StartBlockNumber)
 			return nil, nil
 		}
 

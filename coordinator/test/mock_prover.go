@@ -135,7 +135,7 @@ func (r *mockProver) healthCheckFailure(t *testing.T) bool {
 	return true
 }
 
-func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, forkNumber uint64) *types.GetTaskSchema {
+func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, forkNumber int64) *types.GetTaskSchema {
 	// get task from coordinator
 	token := r.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
@@ -151,7 +151,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, fo
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
-		SetBody(map[string]interface{}{"prover_height": 100, "task_type": int(proofType), "fork_number": forkNumber}).
+		SetBody(map[string]interface{}{"prover_height": 100, "task_type": int(proofType), "fork_block_number": forkNumber}).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
 	assert.NoError(t, err)
