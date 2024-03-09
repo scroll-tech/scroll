@@ -197,6 +197,46 @@ describe("GasSwap.spec", async () => {
       ).to.revertedWith("insufficient output amount");
     });
 
+    it("should succeed, when attacker frontrun permit", async () => {
+      const amountIn = ethers.utils.parseEther("1");
+      const amountOut = ethers.utils.parseEther("2");
+      await token.mint(signer.address, amountIn);
+      await deployer.sendTransaction({ to: target.address, value: amountOut });
+      const signature = await permit(amountIn);
+
+      await token.permit(
+        signer.address,
+        swap.address,
+        amountIn,
+        constants.MaxUint256,
+        signature.v,
+        signature.r,
+        signature.s
+      );
+
+      await target.setToken(token.address);
+      await target.setAmountIn(amountIn);
+
+      await swap.updateApprovedTarget(target.address, true);
+      await expect(
+        swap.connect(signer).swap(
+          {
+            token: token.address,
+            value: amountIn,
+            deadline: constants.MaxUint256,
+            r: signature.r,
+            s: signature.s,
+            v: signature.v,
+          },
+          {
+            target: target.address,
+            data: "0x8119c065",
+            minOutput: 0,
+          }
+        )
+      );
+    });
+
     for (const refundRatio of ["0", "1", "5"]) {
       for (const feeRatio of ["0", "5", "50"]) {
         it(`should succeed, when swap by signer directly, with feeRatio[${feeRatio}%] refundRatio[${refundRatio}%]`, async () => {
