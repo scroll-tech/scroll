@@ -135,7 +135,7 @@ func (r *mockProver) healthCheckFailure(t *testing.T) bool {
 	return true
 }
 
-func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, forkNumber int64) *types.GetTaskSchema {
+func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, forkNumber int64) (*types.GetTaskSchema, int, string) {
 	// get task from coordinator
 	token := r.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
@@ -156,12 +156,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, fo
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	assert.Equal(t, ctypes.Success, result.ErrCode)
-
-	assert.NotEmpty(t, result.Data.TaskID)
-	assert.NotEmpty(t, result.Data.TaskType)
-	assert.NotEmpty(t, result.Data.TaskData)
-	return &result.Data
+	return &result.Data, result.ErrCode, result.ErrMsg
 }
 
 // Testing expected errors returned by coordinator.

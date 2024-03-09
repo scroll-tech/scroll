@@ -13,12 +13,6 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-// DefaultForkBlock the default fork block number. Regarding that for the first time hard fork,
-// the old version prover don't give the hard fork number with the request, so need set a default
-// hard fork number to check for the un-forded prover.
-// TODO change it when have the real hard fork number
-const DefaultForkBlock = 99999
-
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
@@ -26,10 +20,11 @@ type ProverTask interface {
 
 // BaseProverTask a base prover task which contain series functions
 type BaseProverTask struct {
-	cfg     *config.Config
-	db      *gorm.DB
-	vk      string
-	forkMap map[uint64]bool
+	cfg           *config.Config
+	db            *gorm.DB
+	vk            string
+	forkMap       map[uint64]bool
+	maxForkNumber uint64
 
 	batchOrm           *orm.Batch
 	chunkOrm           *orm.Chunk

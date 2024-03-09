@@ -73,12 +73,17 @@ func (*Batch) TableName() string {
 
 // GetUnassignedBatch retrieves unassigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
-func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
+func (o *Batch) GetUnassignedBatch(ctx context.Context, startChunkIndex uint64, isFork bool, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
+	if isFork {
+		db = db.Where("start_chunk_index >= ?", startChunkIndex)
+	} else {
+		db = db.Where("start_chunk_index < ?", startChunkIndex)
+	}
 
 	var batch Batch
 	err := db.First(&batch).Error
@@ -94,12 +99,17 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTo
 
 // GetAssignedBatch retrieves assigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
-func (o *Batch) GetAssignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
+func (o *Batch) GetAssignedBatch(ctx context.Context, startChunkIndex uint64, isFork bool, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
+	if isFork {
+		db = db.Where("start_chunk_index >= ?", startChunkIndex)
+	} else {
+		db = db.Where("start_chunk_index < ?", startChunkIndex)
+	}
 
 	var batch Batch
 	err := db.First(&batch).Error

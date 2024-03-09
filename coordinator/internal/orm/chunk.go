@@ -68,13 +68,18 @@ func (*Chunk) TableName() string {
 
 // GetUnassignedChunk retrieves unassigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, forkHeight uint64, hardFork bool, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("end_block_number <= ?", height)
+	if hardFork {
+		db = db.Where("start_block_number >= ?", forkHeight)
+	} else {
+		db = db.Where("start_block_number < ?", forkHeight)
+	}
 
 	var chunk Chunk
 	err := db.First(&chunk).Error
@@ -90,13 +95,18 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAtt
 
 // GetAssignedChunk retrieves assigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetAssignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+func (o *Chunk) GetAssignedChunk(ctx context.Context, height int, forkHeight uint64, hardFork bool, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("end_block_number <= ?", height)
+	if hardFork {
+		db = db.Where("start_block_number >= ?", forkHeight)
+	} else {
+		db = db.Where("start_block_number < ?", forkHeight)
+	}
 
 	var chunk Chunk
 	err := db.First(&chunk).Error
@@ -200,6 +210,22 @@ func (o *Chunk) GetChunkByHash(ctx context.Context, chunkHash string) (*Chunk, e
 	var chunk Chunk
 	if err := db.First(&chunk).Error; err != nil {
 		return nil, fmt.Errorf("Chunk.GetChunkBatchHash error: %w, chunk hash: %v", err, chunkHash)
+	}
+	return &chunk, nil
+}
+
+// GetChunkByStartBlockNumber retrieves the given chunk.
+func (o *Chunk) GetChunkByStartBlockNumber(ctx context.Context, startBlockNumber uint64) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("start_block_number = ?", startBlockNumber)
+
+	var chunk Chunk
+	if err := db.First(&chunk).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Chunk.GetChunkByStartBlockNumber error: %w, chunk start block number: %v", err, startBlockNumber)
 	}
 	return &chunk, nil
 }

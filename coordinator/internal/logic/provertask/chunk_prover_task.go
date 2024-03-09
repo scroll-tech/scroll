@@ -37,13 +37,15 @@ type ChunkProverTask struct {
 // NewChunkProverTask new a chunk prover task
 func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
 	forkHeights, forkMap := forks.CollectSortedForkHeights(chainCfg)
-	log.Info("new chunk prover task", "forkHeights", forkHeights)
+	maxForkNumber := forkHeights[len(forkHeights)-1]
+	log.Info("new chunk prover task", "forkHeights", forkHeights, "maxForkNumber", maxForkNumber)
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			vk:                 vk,
 			db:                 db,
 			cfg:                cfg,
 			forkMap:            forkMap,
+			maxForkNumber:      maxForkNumber,
 			chunkOrm:           orm.NewChunk(db),
 			blockOrm:           orm.NewL2Block(db),
 			proverTaskOrm:      orm.NewProverTask(db),
@@ -68,13 +70,27 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
+	if getTaskParameter.ForkBlockNumber != 0 && !cp.forkMap[getTaskParameter.ForkBlockNumber] {
+		log.Debug("hard fork prover get empty chunk because of the hard fork number don't exist", "height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkBlockNumber)
+		return nil, nil
+	}
+
+	if getTaskParameter.ForkBlockNumber == 0 {
+		getTaskParameter.ForkBlockNumber = cp.maxForkNumber - 1
+	}
+
+	var isFork bool
+	if getTaskParameter.ForkBlockNumber >= cp.maxForkNumber {
+		isFork = true
+	}
+
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := cp.cfg.ProverManager.SessionAttempts
 	var chunkTask *orm.Chunk
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
-		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
+		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx, getTaskParameter.ProverHeight, cp.maxForkNumber, isFork, maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
 			log.Error("failed to get assigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
@@ -83,7 +99,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpChunkTask == nil {
-			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx, getTaskParameter.ProverHeight, cp.maxForkNumber, isFork, maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
 				log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
@@ -92,20 +108,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 		if tmpChunkTask == nil {
 			log.Debug("get empty chunk", "height", getTaskParameter.ProverHeight)
-			return nil, nil
-		}
-
-		// thanks to rollup relayer have tidied the chunk with the hard fork number, so coordinator
-		// only select the right version prover to assign task
-		if cp.forkMap[getTaskParameter.ForkBlockNumber] && tmpChunkTask.StartBlockNumber < getTaskParameter.ForkBlockNumber {
-			log.Debug("hard fork prover get empty chunk because of the start block number less than fork number",
-				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkBlockNumber, "chunk start block number", tmpChunkTask.StartBlockNumber)
-			return nil, nil
-		}
-
-		if getTaskParameter.ForkBlockNumber == 0 && tmpChunkTask.StartBlockNumber >= DefaultForkBlock {
-			log.Debug("old hard fork prover get empty chunk because of the start block number large than fork number",
-				"height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkBlockNumber, "chunk start block number", tmpChunkTask.StartBlockNumber)
 			return nil, nil
 		}
 
