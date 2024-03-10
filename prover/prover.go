@@ -178,7 +178,8 @@ func (r *Prover) proveAndSubmit() error {
 func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 	// prepare the request
 	req := &client.GetTaskRequest{
-		TaskType: r.Type(),
+		ForkBlockNumber: r.cfg.ForkBlockNumber,
+		TaskType:        r.Type(),
 		// we may not be able to get the vk at the first time, so we should pass vk to the coordinator every time we getTask
 		// instead of passing vk when we login
 		VK: r.proverCore.VK,

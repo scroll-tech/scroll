@@ -41,9 +41,10 @@ type LoginResponse struct {
 
 // GetTaskRequest defines the request structure for GetTask API
 type GetTaskRequest struct {
-	TaskType     message.ProofType `json:"task_type"`
-	ProverHeight uint64            `json:"prover_height,omitempty"`
-	VK           string            `json:"vk"`
+	ForkBlockNumber uint64            `json:"fork_block_number"`
+	TaskType        message.ProofType `json:"task_type"`
+	ProverHeight    uint64            `json:"prover_height,omitempty"`
+	VK              string            `json:"vk"`
 }
 
 // GetTaskResponse defines the response structure for GetTask API
