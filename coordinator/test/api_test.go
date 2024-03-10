@@ -199,7 +199,7 @@ func TestApis(t *testing.T) {
 func testHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []int64{0})
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []int64{1})
 	defer func() {
 		proofCollector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -212,7 +212,7 @@ func testHandshake(t *testing.T) {
 func testFailedHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []int64{0})
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []int64{1})
 	defer func() {
 		proofCollector.Stop()
 	}()
@@ -230,7 +230,7 @@ func testFailedHandshake(t *testing.T) {
 
 func testGetTaskBlocked(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{0})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{1})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -274,7 +274,7 @@ func testGetTaskBlocked(t *testing.T) {
 
 func testOutdatedProverVersion(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{0})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{1})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -539,7 +539,7 @@ func testHardForkAssignTask(t *testing.T) {
 
 func testValidProof(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{0})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{2})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -568,12 +568,8 @@ func testValidProof(t *testing.T) {
 
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
 
-		// only prover 0 & 1 submit valid proofs.
-		proofStatus := generatedFailed
-		if i <= 1 {
-			proofStatus = verifiedSuccess
-		}
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, 0)
+		proofStatus := verifiedSuccess
+		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, 2)
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
 		assert.NotNil(t, proverTask)
@@ -626,7 +622,7 @@ func testValidProof(t *testing.T) {
 func testInvalidProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{0})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{2})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -653,7 +649,7 @@ func testInvalidProof(t *testing.T) {
 			proofType = message.ProofTypeBatch
 		}
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, 0)
+		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, 2)
 		assert.NotNil(t, proverTask)
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
@@ -704,7 +700,7 @@ func testInvalidProof(t *testing.T) {
 func testProofGeneratedFailed(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{0})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{2})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -731,7 +727,7 @@ func testProofGeneratedFailed(t *testing.T) {
 			proofType = message.ProofTypeBatch
 		}
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, 0)
+		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, 2)
 		assert.NotNil(t, proverTask)
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
@@ -793,7 +789,7 @@ func testProofGeneratedFailed(t *testing.T) {
 func testTimeoutProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []int64{0})
+	collector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []int64{2})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -819,13 +815,13 @@ func testTimeoutProof(t *testing.T) {
 
 	// create first chunk & batch mock prover, that will not send any proof.
 	chunkProver1 := newMockProver(t, "prover_test"+strconv.Itoa(0), coordinatorURL, message.ProofTypeChunk, version.Version)
-	proverChunkTask, errChunkCode, errChunkMsg := chunkProver1.getProverTask(t, message.ProofTypeChunk, 0)
+	proverChunkTask, errChunkCode, errChunkMsg := chunkProver1.getProverTask(t, message.ProofTypeChunk, 2)
 	assert.NotNil(t, proverChunkTask)
 	assert.Equal(t, errChunkCode, types.Success)
 	assert.Equal(t, errChunkMsg, "")
 
 	batchProver1 := newMockProver(t, "prover_test"+strconv.Itoa(1), coordinatorURL, message.ProofTypeBatch, version.Version)
-	proverBatchTask, errBatchCode, errBatchMsg := batchProver1.getProverTask(t, message.ProofTypeBatch, 0)
+	proverBatchTask, errBatchCode, errBatchMsg := batchProver1.getProverTask(t, message.ProofTypeBatch, 2)
 	assert.NotNil(t, proverBatchTask)
 	assert.Equal(t, errBatchCode, types.Success)
 	assert.Equal(t, errBatchMsg, "")
@@ -854,14 +850,14 @@ func testTimeoutProof(t *testing.T) {
 
 	// create second mock prover, that will send valid proof.
 	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), coordinatorURL, message.ProofTypeChunk, version.Version)
-	proverChunkTask2, chunkTask2ErrCode, chunkTask2ErrMsg := chunkProver2.getProverTask(t, message.ProofTypeChunk, 0)
+	proverChunkTask2, chunkTask2ErrCode, chunkTask2ErrMsg := chunkProver2.getProverTask(t, message.ProofTypeChunk, 2)
 	assert.NotNil(t, proverChunkTask2)
 	assert.Equal(t, chunkTask2ErrCode, types.Success)
 	assert.Equal(t, chunkTask2ErrMsg, "")
 	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess, types.Success)
 
 	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), coordinatorURL, message.ProofTypeBatch, version.Version)
-	proverBatchTask2, batchTask2ErrCode, batchTask2ErrMsg := batchProver2.getProverTask(t, message.ProofTypeBatch, 0)
+	proverBatchTask2, batchTask2ErrCode, batchTask2ErrMsg := batchProver2.getProverTask(t, message.ProofTypeBatch, 2)
 	assert.NotNil(t, proverBatchTask2)
 	assert.Equal(t, batchTask2ErrCode, types.Success)
 	assert.Equal(t, batchTask2ErrMsg, "")
