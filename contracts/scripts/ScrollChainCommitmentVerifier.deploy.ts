@@ -1,27 +1,27 @@
 /* eslint-disable node/no-missing-import */
 import * as dotenv from "dotenv";
-
 import { ethers } from "hardhat";
 import { generateABI, createCode } from "../scripts/poseidon";
 
 dotenv.config();
 
+async function deployPoseidonUnit2(deployer) {
+  const Poseidon2Elements = new ethers.ContractFactory(generateABI(2), createCode(2), deployer);
+  const poseidon = await Poseidon2Elements.deploy();
+  console.log("Deploy PoseidonUnit2 contract, hash:", poseidon.deployTransaction.hash);
+  const receipt = await poseidon.deployTransaction.wait();
+  console.log(`✅ Deploy PoseidonUnit2 contract at: ${poseidon.address}, gas used: ${receipt.gasUsed}`);
+  return poseidon.address;
+}
+
 async function main() {
   const [deployer] = await ethers.getSigners();
-
   const ScrollChainCommitmentVerifier = await ethers.getContractFactory("ScrollChainCommitmentVerifier", deployer);
-
   const L1ScrollChainAddress = process.env.L1_SCROLL_CHAIN_PROXY_ADDR!;
   let PoseidonUnit2Address = process.env.POSEIDON_UNIT2_ADDR;
 
   if (!PoseidonUnit2Address) {
-    const Poseidon2Elements = new ethers.ContractFactory(generateABI(2), createCode(2), deployer);
-
-    const poseidon = await Poseidon2Elements.deploy();
-    console.log("Deploy PoseidonUnit2 contract, hash:", poseidon.deployTransaction.hash);
-    const receipt = await poseidon.deployTransaction.wait();
-    console.log(`✅ Deploy PoseidonUnit2 contract at: ${poseidon.address}, gas used: ${receipt.gasUsed}`);
-    PoseidonUnit2Address = poseidon.address;
+    PoseidonUnit2Address = await deployPoseidonUnit2(deployer);
   }
 
   const verifier = await ScrollChainCommitmentVerifier.deploy(PoseidonUnit2Address, L1ScrollChainAddress, {
