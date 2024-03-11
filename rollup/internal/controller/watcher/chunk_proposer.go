@@ -8,8 +8,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/forks"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
 
@@ -32,6 +34,7 @@ type ChunkProposer struct {
 	maxRowConsumptionPerChunk       uint64
 	chunkTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
+	forkHeights                     []uint64
 
 	chunkProposerCircleTotal           prometheus.Counter
 	proposeChunkFailureTotal           prometheus.Counter
@@ -47,14 +50,16 @@ type ChunkProposer struct {
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
-func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
+func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
+	forkHeights, _ := forks.CollectSortedForkHeights(chainCfg)
 	log.Debug("new chunk proposer",
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
 		"maxL1CommitCalldataSizePerChunk", cfg.MaxL1CommitCalldataSizePerChunk,
 		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
 		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
-		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier)
+		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
+		"forkHeights", forkHeights)
 
 	return &ChunkProposer{
 		ctx:                             ctx,
@@ -68,6 +73,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, db *
 		maxRowConsumptionPerChunk:       cfg.MaxRowConsumptionPerChunk,
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
+		forkHeights:                     forkHeights,
 
 		chunkProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_chunk_circle_total",
@@ -159,8 +165,14 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 		return nil, err
 	}
 
-	// select at most p.maxBlockNumPerChunk blocks
-	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, int(p.maxBlockNumPerChunk))
+	maxBlocksThisChunk := p.maxBlockNumPerChunk
+	blocksUntilFork := forks.BlocksUntilFork(unchunkedBlockHeight, p.forkHeights)
+	if blocksUntilFork != 0 && blocksUntilFork < maxBlocksThisChunk {
+		maxBlocksThisChunk = blocksUntilFork
+	}
+
+	// select at most maxBlocksThisChunk blocks
+	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, int(maxBlocksThisChunk))
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +259,7 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 
 	currentTimeSec := uint64(time.Now().Unix())
 	if chunk.Blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec ||
-		uint64(len(chunk.Blocks)) == p.maxBlockNumPerChunk {
+		uint64(len(chunk.Blocks)) == maxBlocksThisChunk {
 		if chunk.Blocks[0].Header.Time+p.chunkTimeoutSec < currentTimeSec {
 			log.Warn("first block timeout",
 				"block number", chunk.Blocks[0].Header.Number,

@@ -56,11 +56,11 @@ contract LidoGatewayIntegrationTest is GatewayIntegrationBase {
         L2LidoGateway(L2_LIDO_GATEWAY).initializeV2(address(0), address(0), address(0), address(0));
     }
 
-    function testWithoutRouter() public {
+    function testWithoutRouter() private {
         depositAndWithdraw(false);
     }
 
-    function testWithRouter() public {
+    function testWithRouter() private {
         depositAndWithdraw(true);
     }
 

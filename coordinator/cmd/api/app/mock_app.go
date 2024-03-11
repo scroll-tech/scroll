@@ -87,6 +87,7 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		ChunkCollectionTimeSec: 60,
 		SessionAttempts:        10,
 		MaxVerifierWorkers:     4,
+		MinProverVersion:       "v1.0.0",
 	}
 	cfg.DB.DSN = base.DBImg.Endpoint()
 	cfg.L2.ChainID = 111

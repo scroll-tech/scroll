@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -37,12 +36,13 @@ type ChunkProverTask struct {
 func NewChunkProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
-			vk:            vk,
-			db:            db,
-			cfg:           cfg,
-			chunkOrm:      orm.NewChunk(db),
-			blockOrm:      orm.NewL2Block(db),
-			proverTaskOrm: orm.NewProverTask(db),
+			vk:                 vk,
+			db:                 db,
+			cfg:                cfg,
+			chunkOrm:           orm.NewChunk(db),
+			blockOrm:           orm.NewL2Block(db),
+			proverTaskOrm:      orm.NewProverTask(db),
+			proverBlockListOrm: orm.NewProverBlockList(db),
 		},
 		chunkAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_chunk_attempts_exceed_total",
@@ -144,14 +144,9 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
-	blocks, dbErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, task.TaskID)
-	if dbErr != nil || len(blocks) == 0 {
-		return nil, fmt.Errorf("failed to fetch blocks, chunk hash:%s err:%w", task.TaskID, dbErr)
-	}
-
-	blockHashes := make([]common.Hash, len(blocks))
-	for i, block := range blocks {
-		blockHashes[i] = block.Header.Hash()
+	blockHashes, dbErr := cp.blockOrm.GetL2BlockHashesByChunkHash(ctx, task.TaskID)
+	if dbErr != nil || len(blockHashes) == 0 {
+		return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s err:%w", task.TaskID, dbErr)
 	}
 
 	taskDetail := message.ChunkTaskDetail{

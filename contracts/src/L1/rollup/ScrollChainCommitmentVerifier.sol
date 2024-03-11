@@ -52,7 +52,7 @@ contract ScrollChainCommitmentVerifier {
         require(IScrollChain(rollup).isBatchFinalized(batchIndex), "Batch not finalized");
 
         bytes32 computedStateRoot;
-        (computedStateRoot, storageValue) = ZkTrieVerifier.verifyZkTrieProof(poseidon, account, storageKey, proof);
+        (computedStateRoot, storageValue) = verifyZkTrieProof(account, storageKey, proof);
         bytes32 expectedStateRoot = IScrollChain(rollup).finalizedStateRoots(batchIndex);
         require(computedStateRoot == expectedStateRoot, "Invalid inclusion proof");
     }

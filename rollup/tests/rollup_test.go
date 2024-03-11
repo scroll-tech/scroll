@@ -7,6 +7,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
@@ -92,7 +93,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
-	}, db, nil)
+	}, &params.ChainConfig{}, db, nil)
 	cp.TryProposeChunk()
 
 	batchOrm := orm.NewBatch(db)
@@ -109,7 +110,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 300,
-	}, db, nil)
+	}, &params.ChainConfig{}, db, nil)
 	bp.TryProposeBatch()
 
 	l2Relayer.ProcessPendingBatches()
