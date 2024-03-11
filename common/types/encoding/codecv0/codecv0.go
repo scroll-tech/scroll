@@ -81,6 +81,14 @@ func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) *DAChu
 	var blocks []*DABlock
 	var txs [][]*types.TransactionData
 
+	if chunk == nil {
+		log.Crit("failed to new da chunk, chunk is nil")
+	}
+
+	if len(chunk.Blocks) == 0 {
+		log.Crit("failed to new da chunk, chunk contains no block")
+	}
+
 	for _, block := range chunk.Blocks {
 		blocks = append(blocks, newDABlock(block, totalL1MessagePoppedBefore))
 		totalL1MessagePoppedBefore += block.NumL1Messages(totalL1MessagePoppedBefore)
