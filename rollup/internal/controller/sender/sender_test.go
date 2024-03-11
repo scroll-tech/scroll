@@ -26,6 +26,7 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
+	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
 
@@ -40,6 +41,7 @@ var (
 	privateKey             *ecdsa.PrivateKey
 	cfg                    *config.Config
 	base                   *docker.App
+	posL1TestEnv           *dockercompose.PoSL1TestEnv
 	txTypes                = []string{"LegacyTx", "DynamicFeeTx"}
 	txUint8Types           = []uint8{0, 2, 3}
 	db                     *gorm.DB
@@ -48,10 +50,17 @@ var (
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
+	defer base.Free()
+
+	posL1TestEnv = dockercompose.NewPoSL1TestEnv()
+	if err := posL1TestEnv.Start(); err != nil {
+		fmt.Printf("Failed to start PoS L1 test environment: %v\n", err)
+		os.Exit(1)
+	}
+
+	defer posL1TestEnv.Stop()
 
 	m.Run()
-
-	base.Free()
 }
 
 func setupEnv(t *testing.T) {
@@ -66,8 +75,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	privateKey = priv
 
-	base.RunL1Geth(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 
 	base.RunDBImage(t)
 	db, err = database.InitDB(
@@ -83,10 +91,13 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, base.L1gethImg.ChainID())
+	l1Client, err := posL1TestEnv.L1Client()
 	assert.NoError(t, err)
 
-	l1Client, err := base.L1Client()
+	chainID, err := l1Client.ChainID(context.Background())
+	assert.NoError(t, err)
+
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
 	assert.NoError(t, err)
 
 	_, tx, _, err := mock_bridge.DeployMockBridgeL1(auth, l1Client)
