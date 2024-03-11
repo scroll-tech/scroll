@@ -217,6 +217,6 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(chunk.ProvingStatus))
 	}
 
-	assert.Equal(t, uint64(256381), batches[0].TotalL1CommitGas)
+	assert.Equal(t, uint64(258383), batches[0].TotalL1CommitGas)
 	assert.Equal(t, uint64(6035), batches[0].TotalL1CommitCalldataSize)
 }
