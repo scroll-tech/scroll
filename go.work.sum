@@ -1128,8 +1128,8 @@ github.com/scroll-tech/go-ethereum v1.10.14-0.20230306131930-03b4de32b78b/go.mod
 github.com/scroll-tech/go-ethereum v1.10.14-0.20230321020420-127af384ed04/go.mod h1:jH8c08L9K8Hieaf0r/ur2P/cpesn4dFhmLm2Mmoi8kI=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20230802095950-4b2bbf6225e7/go.mod h1:DiN3p2inoXOxGffxSswDKqWjQ7bU+Mp0c9v0XQXKmaA=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20230829000527-f883dcdc21fc/go.mod h1:DiN3p2inoXOxGffxSswDKqWjQ7bU+Mp0c9v0XQXKmaA=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20240305174138-f128f349ba07 h1:6kYn90pznmxNdJl/unzmWoy06lYPggzScSJfHbA40Hs=
-github.com/scroll-tech/go-ethereum v1.10.14-0.20240305174138-f128f349ba07/go.mod h1:7Rz2bh9pn42rGuxjh51CG7HL9SKMG3ZugJkL3emdZx8=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20240311135752-ccec84ce63c8 h1:H7LzbJMrmkFkyPAl+F0NMMg0Wiq/qQv/iKKmuo/7/Yc=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20240311135752-ccec84ce63c8/go.mod h1:7Rz2bh9pn42rGuxjh51CG7HL9SKMG3ZugJkL3emdZx8=
 github.com/scroll-tech/zktrie v0.6.0/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/segmentio/asm v1.2.0/go.mod h1:BqMnlJP91P8d+4ibuonYZw9mfnzI9HfxselHZr5aAcs=
 github.com/segmentio/kafka-go v0.1.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=

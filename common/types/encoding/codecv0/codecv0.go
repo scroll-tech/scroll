@@ -79,15 +79,17 @@ func NewDABlock(block *encoding.Block, totalL1MessagePoppedBefore uint64) (*DABl
 }
 
 // Encode serializes the DABlock into a slice of bytes.
-func (b *DABlock) Encode() ([]byte, error) {
+func (b *DABlock) Encode() []byte {
 	bytes := make([]byte, 60)
 	binary.BigEndian.PutUint64(bytes[0:], b.BlockNumber)
 	binary.BigEndian.PutUint64(bytes[8:], b.Timestamp)
-	// TODO: [16:47] Currently, baseFee is 0, because we disable EIP-1559.
+	if b.BaseFee != nil {
+		binary.BigEndian.PutUint64(bytes[40:], b.BaseFee.Uint64())
+	}
 	binary.BigEndian.PutUint64(bytes[48:], b.GasLimit)
 	binary.BigEndian.PutUint16(bytes[56:], b.NumTransactions)
 	binary.BigEndian.PutUint16(bytes[58:], b.NumL1Messages)
-	return bytes, nil
+	return bytes
 }
 
 // NewDAChunk creates a new DAChunk from the given encoding.Chunk and the total number of L1 messages popped before.
@@ -96,7 +98,10 @@ func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) (*DACh
 	var txs [][]*types.TransactionData
 
 	for _, block := range chunk.Blocks {
-		b, _ := NewDABlock(block, totalL1MessagePoppedBefore)
+		b, err := NewDABlock(block, totalL1MessagePoppedBefore)
+		if err != nil {
+			return nil, err
+		}
 		blocks = append(blocks, b)
 		totalL1MessagePoppedBefore += block.NumL1Messages(totalL1MessagePoppedBefore)
 		txs = append(txs, block.Transactions)
@@ -118,8 +123,7 @@ func (c *DAChunk) Encode() ([]byte, error) {
 	var l2TxDataBytes []byte
 
 	for _, block := range c.Blocks {
-		blockBytes, _ := block.Encode()
-		chunkBytes = append(chunkBytes, blockBytes...)
+		chunkBytes = append(chunkBytes, block.Encode()...)
 	}
 
 	for _, blockTxs := range c.Transactions {
@@ -417,10 +421,8 @@ func EstimateBatchL1CommitGas(b *encoding.Batch) uint64 {
 	// add 1 time cold address access (2600 gas) for L1MessageQueue
 	// minus 1 time warm sload (100 gas) & 1 time warm address access (100 gas)
 	totalL1CommitGas += (2100 + 2600 - 100 - 100)
-
-	// TODO: handle parent batch
-	// totalL1CommitGas += GetKeccak256Gas(uint64(len(parentBatch.BatchHeader)))         // parent batch header hash
-	// totalL1CommitGas += CalldataNonZeroByteGas * uint64(len(parentBatch.BatchHeader)) // parent batch header in calldata
+	totalL1CommitGas += GetKeccak256Gas(89 + 32)           // parent batch header hash, length is estimated as 89 (constant part)+ 32 (1 skippedL1MessageBitmap)
+	totalL1CommitGas += CalldataNonZeroByteGas * (89 + 32) // parent batch header in calldata
 
 	// adjust batch data hash gas cost
 	totalL1CommitGas += GetKeccak256Gas(uint64(32 * len(b.Chunks)))

@@ -143,40 +143,30 @@ func ConvertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
 }
 
 // GetCrcMax calculates the maximum row consumption of crc.
-func (c *Chunk) GetCrcMax() uint64 {
+func (c *Chunk) GetCrcMax() (uint64, error) {
 	// Map sub-circuit name to row count
 	crc := make(map[string]uint64)
 
-	// Function to accumulate row consumption
-	add := func(rowConsumption *types.RowConsumption) {
-		if rowConsumption == nil {
-			return
+	// Iterate over blocks, accumulate row consumption
+	for _, block := range c.Blocks {
+		if block.RowConsumption == nil {
+			return 0, fmt.Errorf("block (%d, %v) has nil RowConsumption", block.Header.Number, block.Header.Hash().Hex())
 		}
-		for _, subCircuit := range *rowConsumption {
+		for _, subCircuit := range *block.RowConsumption {
 			crc[subCircuit.Name] += subCircuit.RowNumber
 		}
 	}
 
-	// Function to find maximum row consumption
-	max := func() uint64 {
-		var maxVal uint64
-		for _, value := range crc {
-			if value > maxVal {
-				maxVal = value
-			}
-		}
-		return maxVal
-	}
-
-	// Iterate over blocks, accumulate row consumption
-	for _, block := range c.Blocks {
-		if block.RowConsumption != nil {
-			add(block.RowConsumption)
+	// Find the maximum row consumption
+	var maxVal uint64
+	for _, value := range crc {
+		if value > maxVal {
+			maxVal = value
 		}
 	}
 
 	// Return the maximum row consumption
-	return max()
+	return maxVal, nil
 }
 
 // GetNumTransactions calculates the total number of transactions in a Chunk.
@@ -197,8 +187,8 @@ func (c *Chunk) GetNumL2Transactions() uint64 {
 	return totalTxNum
 }
 
-// GetNumL2GasUsed calculates the total gas of L2 transactions in a Chunk.
-func (c *Chunk) GetNumL2GasUsed() uint64 {
+// GetL2GasUsed calculates the total gas of L2 transactions in a Chunk.
+func (c *Chunk) GetL2GasUsed() uint64 {
 	var totalTxNum uint64
 	for _, block := range c.Blocks {
 		totalTxNum += block.Header.GasUsed
@@ -226,7 +216,7 @@ func (b *Batch) GetWithdrawRoot() common.Hash {
 	return b.Chunks[len(b.Chunks)-1].Blocks[lastChunkBlockNum-1].WithdrawRoot
 }
 
-// GetChunkNum gets the number of chunks of the batch.
-func (b *Batch) GetChunkNum() uint64 {
+// GetNumChunks gets the number of chunks of the batch.
+func (b *Batch) GetNumChunks() uint64 {
 	return uint64(len(b.Chunks))
 }
