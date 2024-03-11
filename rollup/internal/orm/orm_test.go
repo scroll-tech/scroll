@@ -241,8 +241,7 @@ func TestBatchOrm(t *testing.T) {
 
 	batch1, err = batchOrm.GetBatchByIndex(context.Background(), 0)
 	assert.NoError(t, err)
-	daBatch1, err := codecv0.NewDABatchFromBytes(batch1.BatchHeader)
-	assert.NoError(t, err)
+	daBatch1 := codecv0.MustNewDABatchFromBytes(batch1.BatchHeader)
 	batchHash1 := daBatch1.Hash().Hex()
 	assert.Equal(t, hash1, batchHash1)
 
@@ -262,7 +261,7 @@ func TestBatchOrm(t *testing.T) {
 
 	batch2, err = batchOrm.GetBatchByIndex(context.Background(), 1)
 	assert.NoError(t, err)
-	daBatch2, err := codecv0.NewDABatchFromBytes(batch2.BatchHeader)
+	daBatch2 := codecv0.MustNewDABatchFromBytes(batch2.BatchHeader)
 	assert.NoError(t, err)
 	batchHash2 := daBatch2.Hash().Hex()
 	assert.Equal(t, hash2, batchHash2)

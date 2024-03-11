@@ -3,7 +3,6 @@ package codecv0
 import (
 	"encoding/binary"
 	"encoding/hex"
-	"fmt"
 	"math/big"
 	"strings"
 
@@ -161,7 +160,7 @@ func (c *DAChunk) Hash() common.Hash {
 }
 
 // NewDABatch creates a DABatch from the provided encoding.Batch.
-func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
+func NewDABatch(batch *encoding.Batch) *DABatch {
 	// buffer for storing chunk hashes in order to compute the batch data hash
 	var dataBytes []byte
 
@@ -189,7 +188,7 @@ func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
 				currentIndex := tx.Nonce
 
 				if currentIndex < nextIndex {
-					return nil, fmt.Errorf("unexpected batch payload, expected queue index: %d, got: %d. Batch index: %d, chunk index in batch: %d, block index in chunk: %d, block hash: %v, transaction hash: %v", nextIndex, currentIndex, batch.Index, chunkID, blockID, block.Header.Hash(), tx.TxHash)
+					log.Crit("Unexpected batch payload", "expected index", nextIndex, "got index", currentIndex, "batch index", batch.Index, "chunk index in batch", chunkID, "block index in chunk", blockID, "block hash", block.Header.Hash(), "transaction hash", tx.TxHash)
 				}
 
 				// mark skipped messages
@@ -236,13 +235,13 @@ func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
 		SkippedL1MessageBitmap: bitmapBytes,
 	}
 
-	return &daBatch, nil
+	return &daBatch
 }
 
-// NewDABatchFromBytes attempts to decode the given byte slice into a DABatch.
-func NewDABatchFromBytes(data []byte) (*DABatch, error) {
+// MustNewDABatchFromBytes attempts to decode the given byte slice into a DABatch.
+func MustNewDABatchFromBytes(data []byte) *DABatch {
 	if len(data) < 89 {
-		return nil, fmt.Errorf("insufficient data for DABatch, expected at least 89 bytes but got %d", len(data))
+		log.Crit("insufficient data for DABatch", "expected bytes", 89, "got bytes", len(data))
 	}
 
 	b := &DABatch{
@@ -255,7 +254,7 @@ func NewDABatchFromBytes(data []byte) (*DABatch, error) {
 		SkippedL1MessageBitmap: data[89:],
 	}
 
-	return b, nil
+	return b
 }
 
 // Encode serializes the DABatch into bytes.
