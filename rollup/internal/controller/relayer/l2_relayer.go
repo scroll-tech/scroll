@@ -376,15 +376,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				log.Error("Failed to fetch blocks", "start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
 				return
 			}
-			chunk := &encoding.Chunk{
-				Blocks: blocks,
-			}
-			var daChunk *codecv0.DAChunk
-			daChunk, err = codecv0.NewDAChunk(chunk, c.TotalL1MessagesPoppedBefore)
-			if err != nil {
-				log.Error("Failed to initialize new da chunk", "start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
-				return
-			}
+			chunk := &encoding.Chunk{Blocks: blocks}
+			daChunk := codecv0.NewDAChunk(chunk, c.TotalL1MessagesPoppedBefore)
 			encodedChunks[i] = daChunk.Encode()
 		}
 
