@@ -90,8 +90,7 @@ func testImportL2GasPrice(t *testing.T) {
 	}
 	daChunk, err := codecv0.NewDAChunk(chunk, 0)
 	assert.NoError(t, err)
-	chunkHash, err := daChunk.Hash()
-	assert.NoError(t, err)
+	chunkHash := daChunk.Hash()
 
 	batch := &encoding.Batch{
 		Index:                      0,

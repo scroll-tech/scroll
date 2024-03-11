@@ -109,16 +109,10 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
-	hash, err := daChunk.Hash()
-	if err != nil {
-		log.Error("failed to get chunk hash", "err", err)
-		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
-	}
-
 	numBlocks := len(chunk.Blocks)
 	newChunk := Chunk{
 		Index:                        chunkIndex,
-		Hash:                         hash.Hex(),
+		Hash:                         daChunk.Hash().Hex(),
 		StartBlockNumber:             chunk.Blocks[0].Header.Number.Uint64(),
 		StartBlockHash:               chunk.Blocks[0].Header.Hash().Hex(),
 		EndBlockNumber:               chunk.Blocks[numBlocks-1].Header.Number.Uint64(),

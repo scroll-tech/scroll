@@ -116,7 +116,7 @@ func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) (*DACh
 }
 
 // Encode serializes the DAChunk into a slice of bytes.
-func (c *DAChunk) Encode() ([]byte, error) {
+func (c *DAChunk) Encode() []byte {
 	var chunkBytes []byte
 	chunkBytes = append(chunkBytes, byte(len(c.Blocks)))
 
@@ -131,11 +131,8 @@ func (c *DAChunk) Encode() ([]byte, error) {
 			if txData.Type == types.L1MessageTxType {
 				continue
 			}
-			rlpTxData, err := encoding.ConvertTxDataToRLPEncoding(txData)
-			if err != nil {
-				return nil, err
-			}
 			var txLen [4]byte
+			rlpTxData := encoding.MustConvertTxDataToRLPEncoding(txData)
 			binary.BigEndian.PutUint32(txLen[:], uint32(len(rlpTxData)))
 			l2TxDataBytes = append(l2TxDataBytes, txLen[:]...)
 			l2TxDataBytes = append(l2TxDataBytes, rlpTxData...)
@@ -143,15 +140,12 @@ func (c *DAChunk) Encode() ([]byte, error) {
 	}
 
 	chunkBytes = append(chunkBytes, l2TxDataBytes...)
-	return chunkBytes, nil
+	return chunkBytes
 }
 
 // Hash computes the hash of the DAChunk data.
-func (c *DAChunk) Hash() (common.Hash, error) {
-	chunkBytes, err := c.Encode()
-	if err != nil {
-		return common.Hash{}, err
-	}
+func (c *DAChunk) Hash() common.Hash {
+	chunkBytes := c.Encode()
 	numBlocks := chunkBytes[0]
 
 	// concatenate block contexts
@@ -169,7 +163,7 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 			txHash := strings.TrimPrefix(txData.TxHash, "0x")
 			hashBytes, err := hex.DecodeString(txHash)
 			if err != nil {
-				return common.Hash{}, err
+				log.Crit("failed to decode tx hash from TransactionData", "hash", txData.TxHash)
 			}
 			if txData.Type == types.L1MessageTxType {
 				l1TxHashes = append(l1TxHashes, hashBytes...)
@@ -182,7 +176,7 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 	}
 
 	hash := crypto.Keccak256Hash(dataBytes)
-	return hash, nil
+	return hash
 }
 
 // NewDABatch creates a DABatch from the provided encoding.Batch.
@@ -202,12 +196,11 @@ func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
 	for chunkID, chunk := range batch.Chunks {
 		// build data hash
 		totalL1MessagePoppedBeforeChunk := nextIndex
-		daChunk, _ := NewDAChunk(chunk, totalL1MessagePoppedBeforeChunk)
-		chunkHash, err := daChunk.Hash()
+		daChunk, err := NewDAChunk(chunk, totalL1MessagePoppedBeforeChunk)
 		if err != nil {
 			return nil, err
 		}
-		dataBytes = append(dataBytes, chunkHash.Bytes()...)
+		dataBytes = append(dataBytes, daChunk.Hash().Bytes()...)
 
 		// build skip bitmap
 		for blockID, block := range chunk.Blocks {
@@ -455,10 +448,6 @@ func EstimateBatchL1CommitCalldataSize(c *encoding.Batch) uint64 {
 }
 
 func getTxPayloadLength(txData *types.TransactionData) uint64 {
-	rlpTxData, err := encoding.ConvertTxDataToRLPEncoding(txData)
-	if err != nil {
-		log.Crit("convertTxDataToRLPEncoding failed, which should not happen", "hash", txData.TxHash, "err", err)
-		return 0
-	}
+	rlpTxData := encoding.MustConvertTxDataToRLPEncoding(txData)
 	return uint64(len(rlpTxData))
 }

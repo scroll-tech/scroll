@@ -385,13 +385,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				log.Error("Failed to initialize new da chunk", "start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
 				return
 			}
-			var chunkBytes []byte
-			chunkBytes, err = daChunk.Encode()
-			if err != nil {
-				log.Error("Failed to encode chunk", "error", err)
-				return
-			}
-			encodedChunks[i] = chunkBytes
+			encodedChunks[i] = daChunk.Encode()
 		}
 
 		calldata, err := r.l1RollupABI.Pack("commitBatch", daBatch.Version, parentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap)
