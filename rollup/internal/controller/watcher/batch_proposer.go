@@ -183,7 +183,10 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 	var batch encoding.Batch
 	if parentDBBatch != nil {
 		batch.Index = parentDBBatch.Index + 1
-		parentDABatch := codecv0.MustNewDABatchFromBytes(parentDBBatch.BatchHeader)
+		parentDABatch, err := codecv0.NewDABatchFromBytes(parentDBBatch.BatchHeader)
+		if err != nil {
+			return nil, err
+		}
 		batch.TotalL1MessagePoppedBefore = parentDABatch.TotalL1MessagePopped
 		batch.ParentBatchHash = common.HexToHash(parentDBBatch.Hash)
 	}

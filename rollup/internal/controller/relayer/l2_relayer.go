@@ -339,7 +339,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	for _, batch := range batches {
 		r.metrics.rollupL2RelayerProcessPendingBatchTotal.Inc()
 		// get current header and parent header.
-		daBatch := codecv0.MustNewDABatchFromBytes(batch.BatchHeader)
+		daBatch, err := codecv0.NewDABatchFromBytes(batch.BatchHeader)
+		if err != nil {
+			log.Error("Failed to initialize new da batch from bytes", "index", batch.Index, "hash", batch.Hash, "err", err)
+			return
+		}
 		parentBatch := &orm.Batch{}
 		if batch.Index > 0 {
 			parentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, batch.Index-1)
