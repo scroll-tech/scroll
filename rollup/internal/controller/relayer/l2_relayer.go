@@ -341,7 +341,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		// get current header and parent header.
 		daBatch, err := codecv0.NewDABatchFromBytes(batch.BatchHeader)
 		if err != nil {
-			log.Error("Failed to initialize new da batch from bytes", "index", batch.Index, "hash", batch.Hash, "err", err)
+			log.Error("Failed to initialize new DA batch from bytes", "index", batch.Index, "hash", batch.Hash, "err", err)
 			return
 		}
 		parentBatch := &orm.Batch{}
@@ -382,10 +382,16 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			var daChunk *codecv0.DAChunk
 			daChunk, err = codecv0.NewDAChunk(chunk, c.TotalL1MessagesPoppedBefore)
 			if err != nil {
-				log.Error("Failed to initialize new da chunk", "start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
+				log.Error("Failed to initialize new DA chunk", "start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
 				return
 			}
-			encodedChunks[i] = daChunk.Encode()
+			var daChunkBytes []byte
+			daChunkBytes, err = daChunk.Encode()
+			if err != nil {
+				log.Error("Failed to encode DA chunk", "start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
+				return
+			}
+			encodedChunks[i] = daChunkBytes
 		}
 
 		calldata, err := r.l1RollupABI.Pack("commitBatch", daBatch.Version, parentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap)

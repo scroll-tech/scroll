@@ -87,7 +87,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 
 	daBatch, err := codecv0.NewDABatch(batch)
 	if err != nil {
-		log.Error("failed to create new da batch",
+		log.Error("failed to create new DA batch",
 			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
 			"parent hash", batch.ParentBatchHash, "number of chunks", len(batch.Chunks), "err", err)
 		return nil, err

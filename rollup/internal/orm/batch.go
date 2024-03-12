@@ -233,10 +233,26 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 
 	daBatch, err := codecv0.NewDABatch(batch)
 	if err != nil {
-		log.Error("failed to create new da batch",
+		log.Error("failed to create new DA batch",
 			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
 			"parent hash", batch.ParentBatchHash, "number of chunks", len(batch.Chunks), "err", err)
 		return nil, err
+	}
+
+	totalL1CommitGas, err := codecv0.EstimateBatchL1CommitGas(batch)
+	if err != nil {
+		log.Error("failed to estimate batch L1 commit gas",
+			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", len(batch.Chunks), "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
+	}
+
+	totalL1CommitCalldataSize, err := codecv0.EstimateBatchL1CommitCalldataSize(batch)
+	if err != nil {
+		log.Error("failed to estimate batch L1 commit calldata size",
+			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", len(batch.Chunks), "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
 	newBatch := Batch{
@@ -254,8 +270,8 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),
 		OracleStatus:              int16(types.GasOraclePending),
-		TotalL1CommitGas:          codecv0.EstimateBatchL1CommitGas(batch),
-		TotalL1CommitCalldataSize: codecv0.EstimateBatchL1CommitCalldataSize(batch),
+		TotalL1CommitGas:          totalL1CommitGas,
+		TotalL1CommitCalldataSize: totalL1CommitCalldataSize,
 	}
 
 	db := o.db

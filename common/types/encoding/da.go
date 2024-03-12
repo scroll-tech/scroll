@@ -6,7 +6,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // Block represents an L2 block.
@@ -77,11 +76,11 @@ func (c *Chunk) NumL1Messages(totalL1MessagePoppedBefore uint64) uint64 {
 	return numL1Messages
 }
 
-// MustConvertTxDataToRLPEncoding transforms []*TransactionData into []*types.Transaction.
-func MustConvertTxDataToRLPEncoding(txData *types.TransactionData) []byte {
+// ConvertTxDataToRLPEncoding transforms []*TransactionData into []*types.Transaction.
+func ConvertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
 	data, err := hexutil.Decode(txData.Data)
 	if err != nil {
-		log.Crit("failed to decode txData.Data", "data", txData.Data, "err", err)
+		return nil, fmt.Errorf("failed to decode txData.Data: data=%v, err=%w", txData.Data, err)
 	}
 
 	var tx *types.Transaction
@@ -130,17 +129,17 @@ func MustConvertTxDataToRLPEncoding(txData *types.TransactionData) []byte {
 			S:          txData.S.ToInt(),
 		})
 
-	case types.L1MessageTxType:
+	case types.L1MessageTxType: // L1MessageTxType is not supported
 	default:
-		log.Crit("unsupported tx type", "type", txData.Type)
+		return nil, fmt.Errorf("unsupported tx type: %d", txData.Type)
 	}
 
 	rlpTxData, err := tx.MarshalBinary()
 	if err != nil {
-		log.Crit("failed to marshal binary of the tx", "tx", tx, "err", err)
+		return nil, fmt.Errorf("failed to marshal binary of the tx: tx=%v, err=%w", tx, err)
 	}
 
-	return rlpTxData
+	return rlpTxData, nil
 }
 
 // CrcMax calculates the maximum row consumption of crc.

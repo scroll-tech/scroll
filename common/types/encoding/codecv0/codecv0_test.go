@@ -25,32 +25,63 @@ func TestCodecV0(t *testing.T) {
 	block5 := readBlockFromJSON(t, "../../../testdata/blockTrace_06.json")
 	block6 := readBlockFromJSON(t, "../../../testdata/blockTrace_07.json")
 
-	assert.Equal(t, uint64(298), EstimateBlockL1CommitCalldataSize(block1))
-	assert.Equal(t, uint64(4900), EstimateBlockL1CommitGas(block1))
-	assert.Equal(t, uint64(5745), EstimateBlockL1CommitCalldataSize(block2))
-	assert.Equal(t, uint64(93613), EstimateBlockL1CommitGas(block2))
-	assert.Equal(t, uint64(96), EstimateBlockL1CommitCalldataSize(block3))
-	assert.Equal(t, uint64(4187), EstimateBlockL1CommitGas(block3))
-	assert.Equal(t, uint64(60), EstimateBlockL1CommitCalldataSize(block4))
-	assert.Equal(t, uint64(14020), EstimateBlockL1CommitGas(block4))
-	assert.Equal(t, uint64(60), EstimateBlockL1CommitCalldataSize(block5))
-	assert.Equal(t, uint64(8796), EstimateBlockL1CommitGas(block5))
-	assert.Equal(t, uint64(60), EstimateBlockL1CommitCalldataSize(block6))
-	assert.Equal(t, uint64(6184), EstimateBlockL1CommitGas(block6))
+	blockL1CommitCalldataSize, err := EstimateBlockL1CommitCalldataSize(block1)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(298), blockL1CommitCalldataSize)
+	blockL1CommitGas, err := EstimateBlockL1CommitGas(block1)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(4900), blockL1CommitGas)
+	blockL1CommitCalldataSize, err = EstimateBlockL1CommitCalldataSize(block2)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(5745), blockL1CommitCalldataSize)
+	blockL1CommitGas, err = EstimateBlockL1CommitGas(block2)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(93613), blockL1CommitGas)
+	blockL1CommitCalldataSize, err = EstimateBlockL1CommitCalldataSize(block3)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(96), blockL1CommitCalldataSize)
+	blockL1CommitGas, err = EstimateBlockL1CommitGas(block3)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(4187), blockL1CommitGas)
+	blockL1CommitCalldataSize, err = EstimateBlockL1CommitCalldataSize(block4)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), blockL1CommitCalldataSize)
+	blockL1CommitGas, err = EstimateBlockL1CommitGas(block4)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(14020), blockL1CommitGas)
+	blockL1CommitCalldataSize, err = EstimateBlockL1CommitCalldataSize(block5)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), blockL1CommitCalldataSize)
+	blockL1CommitGas, err = EstimateBlockL1CommitGas(block5)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(8796), blockL1CommitGas)
+	blockL1CommitCalldataSize, err = EstimateBlockL1CommitCalldataSize(block6)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), blockL1CommitCalldataSize)
+	blockL1CommitGas, err = EstimateBlockL1CommitGas(block6)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(6184), blockL1CommitGas)
 
 	// Test case: when the batch and chunk contains one block.
 	chunk := &encoding.Chunk{
 		Blocks: []*encoding.Block{block1},
 	}
-	assert.Equal(t, uint64(298), EstimateChunkL1CommitCalldataSize(chunk))
-	assert.Equal(t, uint64(6042), EstimateChunkL1CommitGas(chunk))
+	chunkL1CommitCalldataSize, err := EstimateChunkL1CommitCalldataSize(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(298), chunkL1CommitCalldataSize)
+	chunkL1CommitGas, err := EstimateChunkL1CommitGas(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(6042), chunkL1CommitGas)
 
 	daChunk, err := NewDAChunk(chunk, 0)
 	assert.NoError(t, err)
-	chunkBytes := daChunk.Encode()
+	chunkBytes, err := daChunk.Encode()
+	assert.NoError(t, err)
 	chunkHexString := hex.EncodeToString(chunkBytes)
 	assert.Equal(t, 299, len(chunkBytes))
 	assert.Equal(t, "0100000000000000020000000063807b2a0000000000000000000000000000000000000000000000000000000000001de9000355418d1e81840002000000000073f87180843b9aec2e8307a12094c0c4c8baea3f6acb49b6e1fb9e2adeceeacb0ca28a152d02c7e14af60000008083019ecea0ab07ae99c67aa78e7ba5cf6781e90cc32b219b1de102513d56548a41e86df514a034cbd19feacd73e8ce64d00c4d1996b9b5243c578fd7f51bfaec288bbaf42a8b00000073f87101843b9aec2e8307a1209401bae6bf68e9a03fb2bc0615b1bf0d69ce9411ed8a152d02c7e14af60000008083019ecea0f039985866d8256f10c1be4f7b2cace28d8f20bde27e2604393eb095b7f77316a05a3e6e81065f2b4604bcec5bd4aba684835996fc3f879380aac1c09c6eed32f1", chunkHexString)
+	daChunkHash, err := daChunk.Hash()
+	assert.NoError(t, err)
 
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -59,12 +90,16 @@ func TestCodecV0(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
-		StartChunkHash:             daChunk.Hash(),
-		EndChunkHash:               daChunk.Hash(),
+		StartChunkHash:             daChunkHash,
+		EndChunkHash:               daChunkHash,
 	}
 
-	assert.Equal(t, uint64(298), EstimateBatchL1CommitCalldataSize(batch))
-	assert.Equal(t, uint64(162591), EstimateBatchL1CommitGas(batch))
+	batchL1CommitCalldataSize, err := EstimateBatchL1CommitCalldataSize(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(298), batchL1CommitCalldataSize)
+	batchL1CommitGas, err := EstimateBatchL1CommitGas(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(162591), batchL1CommitGas)
 
 	daBatch, err := NewDABatch(batch)
 	assert.NoError(t, err)
@@ -87,13 +122,20 @@ func TestCodecV0(t *testing.T) {
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block1, block2},
 	}
-	assert.Equal(t, uint64(6043), EstimateChunkL1CommitCalldataSize(chunk))
-	assert.Equal(t, uint64(100742), EstimateChunkL1CommitGas(chunk))
+	chunkL1CommitCalldataSize, err = EstimateChunkL1CommitCalldataSize(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(6043), chunkL1CommitCalldataSize)
+	chunkL1CommitGas, err = EstimateChunkL1CommitGas(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(100742), chunkL1CommitGas)
 
 	daChunk, err = NewDAChunk(chunk, 0)
 	assert.NoError(t, err)
-	chunkBytes = daChunk.Encode()
+	chunkBytes, err = daChunk.Encode()
+	assert.NoError(t, err)
 	assert.Equal(t, 6044, len(chunkBytes))
+	daChunkHash, err = daChunk.Hash()
+	assert.NoError(t, err)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -102,12 +144,16 @@ func TestCodecV0(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
-		StartChunkHash:             daChunk.Hash(),
-		EndChunkHash:               daChunk.Hash(),
+		StartChunkHash:             daChunkHash,
+		EndChunkHash:               daChunkHash,
 	}
 
-	assert.Equal(t, uint64(6043), EstimateBatchL1CommitCalldataSize(batch))
-	assert.Equal(t, uint64(257897), EstimateBatchL1CommitGas(batch))
+	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(6043), batchL1CommitCalldataSize)
+	batchL1CommitGas, err = EstimateBatchL1CommitGas(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(257897), batchL1CommitGas)
 
 	daBatch, err = NewDABatch(batch)
 	assert.NoError(t, err)
@@ -130,15 +176,22 @@ func TestCodecV0(t *testing.T) {
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block3},
 	}
-	assert.Equal(t, uint64(96), EstimateChunkL1CommitCalldataSize(chunk))
-	assert.Equal(t, uint64(5329), EstimateChunkL1CommitGas(chunk))
+	chunkL1CommitCalldataSize, err = EstimateChunkL1CommitCalldataSize(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(96), chunkL1CommitCalldataSize)
+	chunkL1CommitGas, err = EstimateChunkL1CommitGas(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(5329), chunkL1CommitGas)
 
 	daChunk, err = NewDAChunk(chunk, 0)
 	assert.NoError(t, err)
-	chunkBytes = daChunk.Encode()
+	chunkBytes, err = daChunk.Encode()
+	assert.NoError(t, err)
 	chunkHexString = hex.EncodeToString(chunkBytes)
 	assert.Equal(t, 97, len(chunkBytes))
 	assert.Equal(t, "01000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a1200000c000b00000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", chunkHexString)
+	daChunkHash, err = daChunk.Hash()
+	assert.NoError(t, err)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -147,12 +200,16 @@ func TestCodecV0(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
-		StartChunkHash:             daChunk.Hash(),
-		EndChunkHash:               daChunk.Hash(),
+		StartChunkHash:             daChunkHash,
+		EndChunkHash:               daChunkHash,
 	}
 
-	assert.Equal(t, uint64(96), EstimateBatchL1CommitCalldataSize(batch))
-	assert.Equal(t, uint64(161889), EstimateBatchL1CommitGas(batch))
+	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(96), batchL1CommitCalldataSize)
+	batchL1CommitGas, err = EstimateBatchL1CommitGas(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(161889), batchL1CommitGas)
 
 	daBatch, err = NewDABatch(batch)
 	assert.NoError(t, err)
@@ -177,24 +234,39 @@ func TestCodecV0(t *testing.T) {
 	chunk1 := &encoding.Chunk{
 		Blocks: []*encoding.Block{block1, block2, block3},
 	}
-	assert.Equal(t, uint64(6139), EstimateChunkL1CommitCalldataSize(chunk1))
-	assert.Equal(t, uint64(106025), EstimateChunkL1CommitGas(chunk1))
+	chunk1L1CommitCalldataSize, err := EstimateChunkL1CommitCalldataSize(chunk1)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(6139), chunk1L1CommitCalldataSize)
+	chunk1L1CommitGas, err := EstimateChunkL1CommitGas(chunk1)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(106025), chunk1L1CommitGas)
 
 	daChunk1, err := NewDAChunk(chunk1, 0)
 	assert.NoError(t, err)
-	chunkBytes1 := daChunk1.Encode()
+	chunkBytes1, err := daChunk1.Encode()
+	assert.NoError(t, err)
 	assert.Equal(t, 6140, len(chunkBytes1))
 
 	chunk2 := &encoding.Chunk{
 		Blocks: []*encoding.Block{block4},
 	}
-	assert.Equal(t, uint64(60), EstimateChunkL1CommitCalldataSize(chunk2))
-	assert.Equal(t, uint64(15189), EstimateChunkL1CommitGas(chunk2))
+	chunk2L1CommitCalldataSize, err := EstimateChunkL1CommitCalldataSize(chunk2)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), chunk2L1CommitCalldataSize)
+	chunk2L1CommitGas, err := EstimateChunkL1CommitGas(chunk2)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(15189), chunk2L1CommitGas)
 
 	daChunk2, err := NewDAChunk(chunk2, 0)
 	assert.NoError(t, err)
-	chunkBytes2 := daChunk2.Encode()
+	chunkBytes2, err := daChunk2.Encode()
+	assert.NoError(t, err)
 	assert.Equal(t, 61, len(chunkBytes2))
+
+	daChunk1Hash, err := daChunk1.Hash()
+	assert.NoError(t, err)
+	daChunk2Hash, err := daChunk2.Hash()
+	assert.NoError(t, err)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -203,12 +275,16 @@ func TestCodecV0(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
 		StartChunkIndex:            0,
 		EndChunkIndex:              1,
-		StartChunkHash:             daChunk1.Hash(),
-		EndChunkHash:               daChunk2.Hash(),
+		StartChunkHash:             daChunk1Hash,
+		EndChunkHash:               daChunk2Hash,
 	}
 
-	assert.Equal(t, uint64(6199), EstimateBatchL1CommitCalldataSize(batch))
-	assert.Equal(t, uint64(279054), EstimateBatchL1CommitGas(batch))
+	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(6199), batchL1CommitCalldataSize)
+	batchL1CommitGas, err = EstimateBatchL1CommitGas(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(279054), batchL1CommitGas)
 
 	daBatch, err = NewDABatch(batch)
 	assert.NoError(t, err)
@@ -233,13 +309,20 @@ func TestCodecV0(t *testing.T) {
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block4},
 	}
-	assert.Equal(t, uint64(60), EstimateChunkL1CommitCalldataSize(chunk))
-	assert.Equal(t, uint64(15189), EstimateChunkL1CommitGas(chunk))
+	chunkL1CommitCalldataSize, err = EstimateChunkL1CommitCalldataSize(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), chunkL1CommitCalldataSize)
+	chunkL1CommitGas, err = EstimateChunkL1CommitGas(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(15189), chunkL1CommitGas)
 
 	daChunk, err = NewDAChunk(chunk, 0)
 	assert.NoError(t, err)
-	chunkBytes = daChunk.Encode()
+	chunkBytes, err = daChunk.Encode()
+	assert.NoError(t, err)
 	assert.Equal(t, 61, len(chunkBytes))
+	daChunkHash, err = daChunk.Hash()
+	assert.NoError(t, err)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -248,12 +331,16 @@ func TestCodecV0(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
-		StartChunkHash:             daChunk.Hash(),
-		EndChunkHash:               daChunk.Hash(),
+		StartChunkHash:             daChunkHash,
+		EndChunkHash:               daChunkHash,
 	}
 
-	assert.Equal(t, uint64(60), EstimateBatchL1CommitCalldataSize(batch))
-	assert.Equal(t, uint64(171730), EstimateBatchL1CommitGas(batch))
+	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), batchL1CommitCalldataSize)
+	batchL1CommitGas, err = EstimateBatchL1CommitGas(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(171730), batchL1CommitGas)
 
 	daBatch, err = NewDABatch(batch)
 	assert.NoError(t, err)
@@ -278,13 +365,20 @@ func TestCodecV0(t *testing.T) {
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block4},
 	}
-	assert.Equal(t, uint64(60), EstimateChunkL1CommitCalldataSize(chunk))
-	assert.Equal(t, uint64(15189), EstimateChunkL1CommitGas(chunk))
+	chunkL1CommitCalldataSize, err = EstimateChunkL1CommitCalldataSize(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), chunkL1CommitCalldataSize)
+	chunkL1CommitGas, err = EstimateChunkL1CommitGas(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(15189), chunkL1CommitGas)
 
 	daChunk, err = NewDAChunk(chunk, 0)
 	assert.NoError(t, err)
-	chunkBytes = daChunk.Encode()
+	chunkBytes, err = daChunk.Encode()
+	assert.NoError(t, err)
 	assert.Equal(t, 61, len(chunkBytes))
+	daChunkHash, err = daChunk.Hash()
+	assert.NoError(t, err)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -293,12 +387,16 @@ func TestCodecV0(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
-		StartChunkHash:             daChunk.Hash(),
-		EndChunkHash:               daChunk.Hash(),
+		StartChunkHash:             daChunkHash,
+		EndChunkHash:               daChunkHash,
 	}
 
-	assert.Equal(t, uint64(60), EstimateBatchL1CommitCalldataSize(batch))
-	assert.Equal(t, uint64(171810), EstimateBatchL1CommitGas(batch))
+	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), batchL1CommitCalldataSize)
+	batchL1CommitGas, err = EstimateBatchL1CommitGas(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(171810), batchL1CommitGas)
 
 	daBatch, err = NewDABatch(batch)
 	assert.NoError(t, err)
@@ -323,13 +421,20 @@ func TestCodecV0(t *testing.T) {
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block5},
 	}
-	assert.Equal(t, uint64(60), EstimateChunkL1CommitCalldataSize(chunk))
-	assert.Equal(t, uint64(9947), EstimateChunkL1CommitGas(chunk))
+	chunkL1CommitCalldataSize, err = EstimateChunkL1CommitCalldataSize(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), chunkL1CommitCalldataSize)
+	chunkL1CommitGas, err = EstimateChunkL1CommitGas(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(9947), chunkL1CommitGas)
 
 	daChunk, err = NewDAChunk(chunk, 0)
 	assert.NoError(t, err)
-	chunkBytes = daChunk.Encode()
+	chunkBytes, err = daChunk.Encode()
+	assert.NoError(t, err)
 	assert.Equal(t, 61, len(chunkBytes))
+	daChunkHash, err = daChunk.Hash()
+	assert.NoError(t, err)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -338,12 +443,16 @@ func TestCodecV0(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
-		StartChunkHash:             daChunk.Hash(),
-		EndChunkHash:               daChunk.Hash(),
+		StartChunkHash:             daChunkHash,
+		EndChunkHash:               daChunkHash,
 	}
 
-	assert.Equal(t, uint64(60), EstimateBatchL1CommitCalldataSize(batch))
-	assert.Equal(t, uint64(166504), EstimateBatchL1CommitGas(batch))
+	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), batchL1CommitCalldataSize)
+	batchL1CommitGas, err = EstimateBatchL1CommitGas(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(166504), batchL1CommitGas)
 
 	daBatch, err = NewDABatch(batch)
 	assert.NoError(t, err)
@@ -368,13 +477,20 @@ func TestCodecV0(t *testing.T) {
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block6},
 	}
-	assert.Equal(t, uint64(60), EstimateChunkL1CommitCalldataSize(chunk))
-	assert.Equal(t, uint64(7326), EstimateChunkL1CommitGas(chunk))
+	chunkL1CommitCalldataSize, err = EstimateChunkL1CommitCalldataSize(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), chunkL1CommitCalldataSize)
+	chunkL1CommitGas, err = EstimateChunkL1CommitGas(chunk)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(7326), chunkL1CommitGas)
 
 	daChunk, err = NewDAChunk(chunk, 0)
 	assert.NoError(t, err)
-	chunkBytes = daChunk.Encode()
+	chunkBytes, err = daChunk.Encode()
+	assert.NoError(t, err)
 	assert.Equal(t, 61, len(chunkBytes))
+	daChunkHash, err = daChunk.Hash()
+	assert.NoError(t, err)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -383,12 +499,16 @@ func TestCodecV0(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
-		StartChunkHash:             daChunk.Hash(),
-		EndChunkHash:               daChunk.Hash(),
+		StartChunkHash:             daChunkHash,
+		EndChunkHash:               daChunkHash,
 	}
 
-	assert.Equal(t, uint64(60), EstimateBatchL1CommitCalldataSize(batch))
-	assert.Equal(t, uint64(164388), EstimateBatchL1CommitGas(batch))
+	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(60), batchL1CommitCalldataSize)
+	batchL1CommitGas, err = EstimateBatchL1CommitGas(batch)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(164388), batchL1CommitGas)
 
 	daBatch, err = NewDABatch(batch)
 	assert.NoError(t, err)

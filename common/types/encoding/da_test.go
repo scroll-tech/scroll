@@ -80,7 +80,7 @@ func TestUtilFunctions(t *testing.T) {
 	assert.Equal(t, block6.WithdrawRoot, batch.WithdrawRoot())
 }
 
-func TestMustConvertTxDataToRLPEncoding(t *testing.T) {
+func TestConvertTxDataToRLPEncoding(t *testing.T) {
 	blocks := []*Block{
 		readBlockFromJSON(t, "../../testdata/blockTrace_02.json"),
 		readBlockFromJSON(t, "../../testdata/blockTrace_03.json"),
@@ -96,9 +96,10 @@ func TestMustConvertTxDataToRLPEncoding(t *testing.T) {
 				continue
 			}
 
-			rlpTxData := MustConvertTxDataToRLPEncoding(txData)
+			rlpTxData, err := ConvertTxDataToRLPEncoding(txData)
+			assert.NoError(t, err)
 			var tx types.Transaction
-			err := tx.UnmarshalBinary(rlpTxData)
+			err = tx.UnmarshalBinary(rlpTxData)
 			assert.NoError(t, err)
 			assert.Equal(t, txData.TxHash, tx.Hash().Hex())
 		}

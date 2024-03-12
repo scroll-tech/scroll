@@ -193,8 +193,14 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
-		totalL1CommitCalldataSize := codecv0.EstimateBatchL1CommitCalldataSize(&batch)
-		totalL1CommitGas := codecv0.EstimateBatchL1CommitGas(&batch)
+		totalL1CommitCalldataSize, err := codecv0.EstimateBatchL1CommitCalldataSize(&batch)
+		if err != nil {
+			return nil, err
+		}
+		totalL1CommitGas, err := codecv0.EstimateBatchL1CommitGas(&batch)
+		if err != nil {
+			return nil, err
+		}
 		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
 		if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {
@@ -233,8 +239,18 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 			batch.StartChunkHash = common.HexToHash(dbChunks[0].Hash)
 			batch.EndChunkHash = common.HexToHash(dbChunks[batch.NumChunks()-1].Hash)
 
-			p.totalL1CommitGas.Set(float64(codecv0.EstimateBatchL1CommitGas(&batch)))
-			p.totalL1CommitCalldataSize.Set(float64(codecv0.EstimateBatchL1CommitCalldataSize(&batch)))
+			totalL1CommitCalldataSize, err := codecv0.EstimateBatchL1CommitCalldataSize(&batch)
+			if err != nil {
+				return nil, err
+			}
+
+			totalL1CommitGas, err := codecv0.EstimateBatchL1CommitGas(&batch)
+			if err != nil {
+				return nil, err
+			}
+
+			p.totalL1CommitGas.Set(float64(totalL1CommitCalldataSize))
+			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
 			p.batchChunksNum.Set(float64(batch.NumChunks()))
 			return &batch, nil
 		}
@@ -255,9 +271,19 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 			)
 		}
 
+		totalL1CommitCalldataSize, err := codecv0.EstimateBatchL1CommitCalldataSize(&batch)
+		if err != nil {
+			return nil, err
+		}
+
+		totalL1CommitGas, err := codecv0.EstimateBatchL1CommitGas(&batch)
+		if err != nil {
+			return nil, err
+		}
+
 		p.batchFirstBlockTimeoutReached.Inc()
-		p.totalL1CommitGas.Set(float64(codecv0.EstimateBatchL1CommitGas(&batch)))
-		p.totalL1CommitCalldataSize.Set(float64(codecv0.EstimateBatchL1CommitCalldataSize(&batch)))
+		p.totalL1CommitGas.Set(float64(totalL1CommitCalldataSize))
+		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
 		p.batchChunksNum.Set(float64(batch.NumChunks()))
 
 		batch.StartChunkIndex = dbChunks[0].Index

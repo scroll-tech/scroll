@@ -81,12 +81,14 @@ func setupEnv(t *testing.T) {
 	chunk1 = &encoding.Chunk{Blocks: []*encoding.Block{block1}}
 	daChunk1, err := codecv0.NewDAChunk(chunk1, 0)
 	assert.NoError(t, err)
-	chunkHash1 = daChunk1.Hash()
+	chunkHash1, err = daChunk1.Hash()
+	assert.NoError(t, err)
 
 	chunk2 = &encoding.Chunk{Blocks: []*encoding.Block{block2}}
 	daChunk2, err := codecv0.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
-	chunkHash2 = daChunk2.Hash()
+	chunkHash2, err = daChunk2.Hash()
+	assert.NoError(t, err)
 }
 
 func tearDownEnv(t *testing.T) {

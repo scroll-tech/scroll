@@ -189,10 +189,19 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to get crc max: %w", err)
 		}
+
 		totalTxNum := chunk.NumTransactions()
 
-		totalL1CommitCalldataSize := codecv0.EstimateChunkL1CommitCalldataSize(&chunk)
-		totalL1CommitGas := codecv0.EstimateChunkL1CommitGas(&chunk)
+		totalL1CommitCalldataSize, err := codecv0.EstimateChunkL1CommitCalldataSize(&chunk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate chunk L1 commit calldata size: %w", err)
+		}
+
+		totalL1CommitGas, err := codecv0.EstimateChunkL1CommitGas(&chunk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate chunk L1 commit gas: %w", err)
+		}
+
 		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
 
 		if totalTxNum > p.maxTxNumPerChunk ||
@@ -256,9 +265,19 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 				return nil, fmt.Errorf("failed to get crc max: %w", err)
 			}
 
+			totalL1CommitCalldataSize, err := codecv0.EstimateChunkL1CommitCalldataSize(&chunk)
+			if err != nil {
+				return nil, fmt.Errorf("failed to estimate chunk L1 commit calldata size: %w", err)
+			}
+
+			totalL1CommitGas, err := codecv0.EstimateChunkL1CommitGas(&chunk)
+			if err != nil {
+				return nil, fmt.Errorf("failed to estimate chunk L1 commit gas: %w", err)
+			}
+
 			p.chunkTxNum.Set(float64(chunk.NumTransactions()))
-			p.chunkEstimateL1CommitGas.Set(float64(codecv0.EstimateChunkL1CommitGas(&chunk)))
-			p.totalL1CommitCalldataSize.Set(float64(codecv0.EstimateChunkL1CommitCalldataSize(&chunk)))
+			p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitCalldataSize))
+			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
 			p.maxTxConsumption.Set(float64(crcMax))
 			p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
 			return &chunk, nil
@@ -286,10 +305,20 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 			return nil, fmt.Errorf("failed to get crc max: %w", err)
 		}
 
+		totalL1CommitCalldataSize, err := codecv0.EstimateChunkL1CommitCalldataSize(&chunk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate chunk L1 commit calldata size: %w", err)
+		}
+
+		totalL1CommitGas, err := codecv0.EstimateChunkL1CommitGas(&chunk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate chunk L1 commit gas: %w", err)
+		}
+
 		p.chunkFirstBlockTimeoutReached.Inc()
 		p.chunkTxNum.Set(float64(chunk.NumTransactions()))
-		p.chunkEstimateL1CommitGas.Set(float64(codecv0.EstimateChunkL1CommitGas(&chunk)))
-		p.totalL1CommitCalldataSize.Set(float64(codecv0.EstimateChunkL1CommitCalldataSize(&chunk)))
+		p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitCalldataSize))
+		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
 		p.maxTxConsumption.Set(float64(crcMax))
 		p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
 		return &chunk, nil
