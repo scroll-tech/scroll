@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"testing"
 
@@ -102,11 +101,6 @@ func TestMustConvertTxDataToRLPEncoding(t *testing.T) {
 			err := tx.UnmarshalBinary(rlpTxData)
 			assert.NoError(t, err)
 			assert.Equal(t, txData.TxHash, tx.Hash().Hex())
-			if txData.TxHash != tx.Hash().Hex() {
-				fmt.Println(txData.GasPrice)
-				fmt.Println(txData.GasTipCap)
-				fmt.Println(txData.GasFeeCap)
-			}
 		}
 	}
 }
