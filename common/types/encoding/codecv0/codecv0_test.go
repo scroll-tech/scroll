@@ -599,6 +599,7 @@ func TestErrorPaths(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "hex string without 0x prefix")
 
+	// Test case: number of L1 messages exceeds max uint16.
 	block = readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
 	for i := 0; i < 65535; i++ {
 		tx := &block.Transactions[i]
@@ -606,7 +607,6 @@ func TestErrorPaths(t *testing.T) {
 		txCopy.Nonce = uint64(i + 1)
 		block.Transactions = append(block.Transactions, txCopy)
 	}
-
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block},
 	}
