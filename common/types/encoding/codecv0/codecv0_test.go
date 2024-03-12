@@ -19,6 +19,15 @@ func TestCodecV0(t *testing.T) {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
+	parentDABatch, err := NewDABatch(&encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     nil,
+	})
+	assert.NoError(t, err)
+	parentBatchHash := parentDABatch.Hash()
+
 	block1 := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
 	block2 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 	block3 := readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
@@ -86,9 +95,9 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, common.HexToHash("0xde642c68122634b33fa1e6e4243b17be3bfd0dc6f996f204ef6d7522516bd840"), daChunkHash)
 
 	batch := &encoding.Batch{
-		Index:                      0,
-		TotalL1MessagePoppedBefore: 1,
-		ParentBatchHash:            common.Hash{},
+		Index:                      1,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
@@ -108,11 +117,11 @@ func TestCodecV0(t *testing.T) {
 	batchBytes := daBatch.Encode()
 	batchHexString := hex.EncodeToString(batchBytes)
 	assert.Equal(t, 89, len(batchBytes))
-	assert.Equal(t, "000000000000000000000000000000000000000000000000018fbc5eecfefc5bd9d1618ecef1fed160a7838448383595a2257d4c9bd5c5fa3e0000000000000000000000000000000000000000000000000000000000000000", batchHexString)
+	assert.Equal(t, "000000000000000001000000000000000000000000000000008fbc5eecfefc5bd9d1618ecef1fed160a7838448383595a2257d4c9bd5c5fa3eb0a62a3048a2e6efb4e56e471eb826de86f8ccaa4af27c572b68db6f687b3ab0", batchHexString)
 	assert.Equal(t, 0, len(daBatch.SkippedL1MessageBitmap))
-	assert.Equal(t, uint64(1), daBatch.TotalL1MessagePopped)
+	assert.Equal(t, uint64(0), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(0), daBatch.L1MessagePopped)
-	assert.Equal(t, common.HexToHash("0x5c799a5938f7885c9476b5868c95b0d23caa7caf3b7d61dfd3449ca222fe2ea2"), daBatch.Hash())
+	assert.Equal(t, common.HexToHash("0xa906c7d2b6b68ea5fec3ff9d60d41858676e0d365e5d5ef07b2ce20fcf24ecd7"), daBatch.Hash())
 
 	decodedDABatch, err := NewDABatchFromBytes(batchBytes)
 	assert.NoError(t, err)
@@ -141,9 +150,9 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, common.HexToHash("0x014916a83eccdb0d01e814b4d4ab90eb9049ba9a3cb0994919b86ad873bcd028"), daChunkHash)
 
 	batch = &encoding.Batch{
-		Index:                      0,
+		Index:                      1,
 		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
+		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
@@ -163,11 +172,11 @@ func TestCodecV0(t *testing.T) {
 	batchBytes = daBatch.Encode()
 	batchHexString = hex.EncodeToString(batchBytes)
 	assert.Equal(t, 89, len(batchBytes))
-	assert.Equal(t, "0000000000000000000000000000000000000000000000000074dd561a36921590926bee01fd0d53747c5f3e48e48a2d5538b9ab0e1511cfd70000000000000000000000000000000000000000000000000000000000000000", batchHexString)
+	assert.Equal(t, "0000000000000000010000000000000000000000000000000074dd561a36921590926bee01fd0d53747c5f3e48e48a2d5538b9ab0e1511cfd7b0a62a3048a2e6efb4e56e471eb826de86f8ccaa4af27c572b68db6f687b3ab0", batchHexString)
 	assert.Equal(t, 0, len(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(0), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(0), daBatch.L1MessagePopped)
-	assert.Equal(t, common.HexToHash("0x926ffa923e6b5ea7311351cf6401b1ee3ef736faf7afd8e7d7f712cfd021a192"), daBatch.Hash())
+	assert.Equal(t, common.HexToHash("0xb02e39b740756824d20b2cac322ac365121411ced9d6e34de98a0b247c6e23e6"), daBatch.Hash())
 
 	decodedDABatch, err = NewDABatchFromBytes(batchBytes)
 	assert.NoError(t, err)
@@ -198,9 +207,9 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, common.HexToHash("0x9e643c8a9203df542e39d9bfdcb07c99575b3c3d557791329fef9d83cc4147d0"), daChunkHash)
 
 	batch = &encoding.Batch{
-		Index:                      0,
+		Index:                      1,
 		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
+		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
@@ -220,13 +229,13 @@ func TestCodecV0(t *testing.T) {
 	batchBytes = daBatch.Encode()
 	batchHexString = hex.EncodeToString(batchBytes)
 	assert.Equal(t, 121, len(batchBytes))
-	assert.Equal(t, "000000000000000000000000000000000b000000000000000b34f419ce7e882295bdb5aec6cce56ffa788a5fed4744d7fbd77e4acbf409f1ca000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003ff", batchHexString)
+	assert.Equal(t, "000000000000000001000000000000000b000000000000000b34f419ce7e882295bdb5aec6cce56ffa788a5fed4744d7fbd77e4acbf409f1cab0a62a3048a2e6efb4e56e471eb826de86f8ccaa4af27c572b68db6f687b3ab000000000000000000000000000000000000000000000000000000000000003ff", batchHexString)
 	assert.Equal(t, 32, len(daBatch.SkippedL1MessageBitmap))
 	expectedBitmap := "00000000000000000000000000000000000000000000000000000000000003ff"
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(11), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(11), daBatch.L1MessagePopped)
-	assert.Equal(t, common.HexToHash("0xfbb081f25d6d06aefd76f062eee50885faf5bb050c8f31d533fc8560e655b690"), daBatch.Hash())
+	assert.Equal(t, common.HexToHash("0xa18f07cb56ab4f2db5914d9b5699c5932bea4b5c73e71c8cec79151c11e9e986"), daBatch.Hash())
 
 	decodedDABatch, err = NewDABatchFromBytes(batchBytes)
 	assert.NoError(t, err)
@@ -273,9 +282,9 @@ func TestCodecV0(t *testing.T) {
 	assert.NoError(t, err)
 
 	batch = &encoding.Batch{
-		Index:                      0,
+		Index:                      1,
 		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
+		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
 		StartChunkIndex:            0,
 		EndChunkIndex:              1,
@@ -295,13 +304,13 @@ func TestCodecV0(t *testing.T) {
 	batchBytes = daBatch.Encode()
 	batchHexString = hex.EncodeToString(batchBytes)
 	assert.Equal(t, 121, len(batchBytes))
-	assert.Equal(t, "000000000000000000000000000000002a000000000000002a1f9b3d942a6ee14e7afc52225c91fa44faa0a7ec511df9a2d9348d33bcd142fc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001ffffffbff", batchHexString)
+	assert.Equal(t, "000000000000000001000000000000002a000000000000002a1f9b3d942a6ee14e7afc52225c91fa44faa0a7ec511df9a2d9348d33bcd142fcb0a62a3048a2e6efb4e56e471eb826de86f8ccaa4af27c572b68db6f687b3ab00000000000000000000000000000000000000000000000000000001ffffffbff", batchHexString)
 	assert.Equal(t, 32, len(daBatch.SkippedL1MessageBitmap))
 	expectedBitmap = "0000000000000000000000000000000000000000000000000000001ffffffbff"
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(42), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(42), daBatch.L1MessagePopped)
-	assert.Equal(t, common.HexToHash("0xc5e787fa6a83374135c3b95bd8325bcc0440cd5eb2d71bb31ddca67dd2d44f64"), daBatch.Hash())
+	assert.Equal(t, common.HexToHash("0xf7bd6afe02764e4e6df23a374d753182b57fa77be71aaf1cd8365e15a51872d1"), daBatch.Hash())
 
 	decodedDABatch, err = NewDABatchFromBytes(batchBytes)
 	assert.NoError(t, err)
@@ -330,9 +339,9 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, common.HexToHash("0x854fc3136f47ce482ec85ee3325adfa16a1a1d60126e1c119eaaf0c3a9e90f8e"), daChunkHash)
 
 	batch = &encoding.Batch{
-		Index:                      0,
+		Index:                      1,
 		TotalL1MessagePoppedBefore: 37,
-		ParentBatchHash:            common.Hash{},
+		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
@@ -352,13 +361,13 @@ func TestCodecV0(t *testing.T) {
 	batchBytes = daBatch.Encode()
 	batchHexString = hex.EncodeToString(batchBytes)
 	assert.Equal(t, 121, len(batchBytes))
-	assert.Equal(t, "0000000000000000000000000000000005000000000000002ac62fb58ec2d5393e00960f1cc23cab883b685296efa03d13ea2dd4c6de79cc5500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", batchHexString)
+	assert.Equal(t, "0000000000000000010000000000000005000000000000002ac62fb58ec2d5393e00960f1cc23cab883b685296efa03d13ea2dd4c6de79cc55b0a62a3048a2e6efb4e56e471eb826de86f8ccaa4af27c572b68db6f687b3ab00000000000000000000000000000000000000000000000000000000000000000", batchHexString)
 	assert.Equal(t, 32, len(daBatch.SkippedL1MessageBitmap))
 	expectedBitmap = "0000000000000000000000000000000000000000000000000000000000000000"
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(42), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(5), daBatch.L1MessagePopped)
-	assert.Equal(t, common.HexToHash("0x1b62133deff60768285538373754403ac4c792c371ff38c24151e8c0bcaecb41"), daBatch.Hash())
+	assert.Equal(t, common.HexToHash("0x841f4657b7eb723cae35377cf2963b51191edad6a3b182d4c8524cb928d2a413"), daBatch.Hash())
 
 	decodedDABatch, err = NewDABatchFromBytes(batchBytes)
 	assert.NoError(t, err)
@@ -387,9 +396,9 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, common.HexToHash("0x854fc3136f47ce482ec85ee3325adfa16a1a1d60126e1c119eaaf0c3a9e90f8e"), daChunkHash)
 
 	batch = &encoding.Batch{
-		Index:                      0,
+		Index:                      1,
 		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
+		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
@@ -409,13 +418,13 @@ func TestCodecV0(t *testing.T) {
 	batchBytes = daBatch.Encode()
 	batchHexString = hex.EncodeToString(batchBytes)
 	assert.Equal(t, 121, len(batchBytes))
-	assert.Equal(t, "000000000000000000000000000000002a000000000000002a93255aa24dd468c5645f1e6901b8131a7a78a0eeb2a17cbb09ba64688a8de6b400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001fffffffff", batchHexString)
+	assert.Equal(t, "000000000000000001000000000000002a000000000000002a93255aa24dd468c5645f1e6901b8131a7a78a0eeb2a17cbb09ba64688a8de6b4b0a62a3048a2e6efb4e56e471eb826de86f8ccaa4af27c572b68db6f687b3ab00000000000000000000000000000000000000000000000000000001fffffffff", batchHexString)
 	assert.Equal(t, 32, len(daBatch.SkippedL1MessageBitmap))
 	expectedBitmap = "0000000000000000000000000000000000000000000000000000001fffffffff"
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(42), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(42), daBatch.L1MessagePopped)
-	assert.Equal(t, common.HexToHash("0x99f9648e4d090f1222280bec95a3f1e39c6cbcd4bff21eb2ae94b1536bb23acc"), daBatch.Hash())
+	assert.Equal(t, common.HexToHash("0xa28766a3617cf244cc397fc4ce4c23022ec80f152b9f618807ac7e7c11486612"), daBatch.Hash())
 
 	decodedDABatch, err = NewDABatchFromBytes(batchBytes)
 	assert.NoError(t, err)
@@ -444,9 +453,9 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, common.HexToHash("0x2aa220ca7bd1368e59e8053eb3831e30854aa2ec8bd3af65cee350c1c0718ba6"), daChunkHash)
 
 	batch = &encoding.Batch{
-		Index:                      0,
+		Index:                      1,
 		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
+		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
@@ -466,13 +475,13 @@ func TestCodecV0(t *testing.T) {
 	batchBytes = daBatch.Encode()
 	batchHexString = hex.EncodeToString(batchBytes)
 	assert.Equal(t, 121, len(batchBytes))
-	assert.Equal(t, "000000000000000000000000000000000a000000000000000ac7bcc8da943dd83404e84d9ce7e894ab97ce4829df4eb51ebbbe13c90b5a3f4d000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001dd", batchHexString)
+	assert.Equal(t, "000000000000000001000000000000000a000000000000000ac7bcc8da943dd83404e84d9ce7e894ab97ce4829df4eb51ebbbe13c90b5a3f4db0a62a3048a2e6efb4e56e471eb826de86f8ccaa4af27c572b68db6f687b3ab000000000000000000000000000000000000000000000000000000000000001dd", batchHexString)
 	assert.Equal(t, 32, len(daBatch.SkippedL1MessageBitmap))
 	expectedBitmap = "00000000000000000000000000000000000000000000000000000000000001dd"
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(10), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(10), daBatch.L1MessagePopped)
-	assert.Equal(t, common.HexToHash("0xe0950d500d47df4e9c443978682bcccfc8d50983f99ec9232067333a7d32a9d2"), daBatch.Hash())
+	assert.Equal(t, common.HexToHash("0x2fee2073639eb9795007f7e765b3318f92658822de40b2134d34a478a0e9058a"), daBatch.Hash())
 
 	decodedDABatch, err = NewDABatchFromBytes(batchBytes)
 	assert.NoError(t, err)
@@ -501,9 +510,9 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, common.HexToHash("0xb65521bea7daff75838de07951c3c055966750fb5a270fead5e0e727c32455c3"), daChunkHash)
 
 	batch = &encoding.Batch{
-		Index:                      0,
+		Index:                      1,
 		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
+		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
 		StartChunkIndex:            0,
 		EndChunkIndex:              0,
@@ -523,13 +532,13 @@ func TestCodecV0(t *testing.T) {
 	batchBytes = daBatch.Encode()
 	batchHexString = hex.EncodeToString(batchBytes)
 	assert.Equal(t, 153, len(batchBytes))
-	assert.Equal(t, "00000000000000000000000000000001010000000000000101899a411a3309c6491701b7b955c7b1115ac015414bbb71b59a0ca561668d52080000000000000000000000000000000000000000000000000000000000000000fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd0000000000000000000000000000000000000000000000000000000000000000", batchHexString)
+	assert.Equal(t, "00000000000000000100000000000001010000000000000101899a411a3309c6491701b7b955c7b1115ac015414bbb71b59a0ca561668d5208b0a62a3048a2e6efb4e56e471eb826de86f8ccaa4af27c572b68db6f687b3ab0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd0000000000000000000000000000000000000000000000000000000000000000", batchHexString)
 	assert.Equal(t, 64, len(daBatch.SkippedL1MessageBitmap))
 	expectedBitmap = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd0000000000000000000000000000000000000000000000000000000000000000"
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(257), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(257), daBatch.L1MessagePopped)
-	assert.Equal(t, common.HexToHash("0x745a74773cdc7cd0b86b50305f6373c7efeaf051b38a71ea561333708e8a90d9"), daBatch.Hash())
+	assert.Equal(t, common.HexToHash("0x84206bc6d0076a233fc7120a0bec4e03bf2512207437768828384dddb335ba2e"), daBatch.Hash())
 
 	decodedDABatch, err = NewDABatchFromBytes(batchBytes)
 	assert.NoError(t, err)
