@@ -18,15 +18,27 @@ func TestCodecV0(t *testing.T) {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
-	// Test case: when the batch and chunk contains one block.
-	templateBlockTrace, err := os.ReadFile("../../../testdata/blockTrace_02.json")
-	assert.NoError(t, err)
+	block1 := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	block2 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
+	block3 := readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
+	block4 := readBlockFromJSON(t, "../../../testdata/blockTrace_05.json")
+	block5 := readBlockFromJSON(t, "../../../testdata/blockTrace_06.json")
+	block6 := readBlockFromJSON(t, "../../../testdata/blockTrace_07.json")
 
-	block1 := &encoding.Block{}
-	assert.NoError(t, json.Unmarshal(templateBlockTrace, block1))
 	assert.Equal(t, uint64(298), EstimateBlockL1CommitCalldataSize(block1))
 	assert.Equal(t, uint64(4900), EstimateBlockL1CommitGas(block1))
+	assert.Equal(t, uint64(5737), EstimateBlockL1CommitCalldataSize(block2))
+	assert.Equal(t, uint64(93485), EstimateBlockL1CommitGas(block2))
+	assert.Equal(t, uint64(96), EstimateBlockL1CommitCalldataSize(block3))
+	assert.Equal(t, uint64(4187), EstimateBlockL1CommitGas(block3))
+	assert.Equal(t, uint64(60), EstimateBlockL1CommitCalldataSize(block4))
+	assert.Equal(t, uint64(14020), EstimateBlockL1CommitGas(block4))
+	assert.Equal(t, uint64(60), EstimateBlockL1CommitCalldataSize(block5))
+	assert.Equal(t, uint64(8796), EstimateBlockL1CommitGas(block5))
+	assert.Equal(t, uint64(60), EstimateBlockL1CommitCalldataSize(block6))
+	assert.Equal(t, uint64(6184), EstimateBlockL1CommitGas(block6))
 
+	// Test case: when the batch and chunk contains one block.
 	chunk := &encoding.Chunk{
 		Blocks: []*encoding.Block{block1},
 	}
@@ -68,14 +80,6 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, batchHexString, decodedBatchHexString)
 
 	// Test case: when the batch and chunk contains two block.
-	templateBlockTrace, err = os.ReadFile("../../../testdata/blockTrace_03.json")
-	assert.NoError(t, err)
-
-	block2 := &encoding.Block{}
-	assert.NoError(t, json.Unmarshal(templateBlockTrace, block2))
-	assert.Equal(t, uint64(5737), EstimateBlockL1CommitCalldataSize(block2))
-	assert.Equal(t, uint64(93485), EstimateBlockL1CommitGas(block2))
-
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block1, block2},
 	}
@@ -115,14 +119,6 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, batchHexString, decodedBatchHexString)
 
 	// Test case: when the chunk contains one block with 1 L1MsgTx.
-	templateBlockTrace, err = os.ReadFile("../../../testdata/blockTrace_04.json")
-	assert.NoError(t, err)
-
-	block3 := &encoding.Block{}
-	assert.NoError(t, json.Unmarshal(templateBlockTrace, block3))
-	assert.Equal(t, uint64(96), EstimateBlockL1CommitCalldataSize(block3))
-	assert.Equal(t, uint64(4187), EstimateBlockL1CommitGas(block3))
-
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block3},
 	}
@@ -166,14 +162,6 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, batchHexString, decodedBatchHexString)
 
 	// Test case: batch contains multiple chunks, chunk contains multiple blocks.
-	templateBlockTrace, err = os.ReadFile("../../../testdata/blockTrace_05.json")
-	assert.NoError(t, err)
-
-	block4 := &encoding.Block{}
-	assert.NoError(t, json.Unmarshal(templateBlockTrace, block4))
-	assert.Equal(t, uint64(60), EstimateBlockL1CommitCalldataSize(block4))
-	assert.Equal(t, uint64(14020), EstimateBlockL1CommitGas(block4))
-
 	chunk1 := &encoding.Chunk{
 		Blocks: []*encoding.Block{block1, block2, block3},
 	}
@@ -256,14 +244,6 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, uint64(5), daBatch.L1MessagePopped)
 
 	// Test case: many sparse L1 Msgs in 1 bitmap.
-	templateBlockTrace, err = os.ReadFile("../../../testdata/blockTrace_06.json")
-	assert.NoError(t, err)
-
-	block5 := &encoding.Block{}
-	assert.NoError(t, json.Unmarshal(templateBlockTrace, block5))
-	assert.Equal(t, uint64(60), EstimateBlockL1CommitCalldataSize(block5))
-	assert.Equal(t, uint64(8796), EstimateBlockL1CommitGas(block5))
-
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block5},
 	}
@@ -300,14 +280,6 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, uint64(10), daBatch.L1MessagePopped)
 
 	// Test case: many L1 Msgs in each of 2 bitmaps.
-	templateBlockTrace, err = os.ReadFile("../../../testdata/blockTrace_07.json")
-	assert.NoError(t, err)
-
-	block6 := &encoding.Block{}
-	assert.NoError(t, json.Unmarshal(templateBlockTrace, block6))
-	assert.Equal(t, uint64(60), EstimateBlockL1CommitCalldataSize(block6))
-	assert.Equal(t, uint64(6184), EstimateBlockL1CommitGas(block6))
-
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block6},
 	}
@@ -342,4 +314,13 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(257), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(257), daBatch.L1MessagePopped)
+}
+
+func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {
+	data, err := os.ReadFile(filename)
+	assert.NoError(t, err)
+
+	block := &encoding.Block{}
+	assert.NoError(t, json.Unmarshal(data, block))
+	return block
 }
