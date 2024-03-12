@@ -97,11 +97,15 @@ func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) (*DACh
 	var txs [][]*types.TransactionData
 
 	if chunk == nil {
-		return nil, fmt.Errorf("failed to create new DA chunk, chunk is nil")
+		return nil, errors.New("chunk is nil")
 	}
 
 	if len(chunk.Blocks) == 0 {
-		return nil, fmt.Errorf("failed to create new DA chunk, chunk contains no block")
+		return nil, errors.New("number of blocks is 0")
+	}
+
+	if len(chunk.Blocks) > 255 {
+		return nil, errors.New("number of blocks exceeds 1 byte")
 	}
 
 	for _, block := range chunk.Blocks {

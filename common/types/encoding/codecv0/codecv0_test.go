@@ -3,6 +3,7 @@ package codecv0
 import (
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
 	"os"
 	"testing"
 
@@ -535,6 +536,83 @@ func TestCodecV0(t *testing.T) {
 	decodedBatchBytes = decodedDABatch.Encode()
 	decodedBatchHexString = hex.EncodeToString(decodedBatchBytes)
 	assert.Equal(t, batchHexString, decodedBatchHexString)
+}
+
+func TestErrorPaths(t *testing.T) {
+	// Test case: when the chunk is nil.
+	_, err := NewDAChunk(nil, 100)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "chunk is nil")
+
+	// Test case: when the chunk contains no blocks.
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{},
+	}
+	_, err = NewDAChunk(chunk, 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of blocks is 0")
+
+	// Test case: when the chunk contains more than 255 blocks.
+	chunk = &encoding.Chunk{
+		Blocks: []*encoding.Block{},
+	}
+	for i := 0; i < 256; i++ {
+		chunk.Blocks = append(chunk.Blocks, &encoding.Block{})
+	}
+	_, err = NewDAChunk(chunk, 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of blocks exceeds 1 byte")
+
+	// Test case: Header.Number is not a uint64.
+	block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	block.Header.Number = new(big.Int).Lsh(block.Header.Number, 64)
+	chunk = &encoding.Chunk{
+		Blocks: []*encoding.Block{block},
+	}
+	_, err = NewDAChunk(chunk, 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "block number is not uint64")
+
+	// Test case: number of transactions exceeds max uint16.
+	block = readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	for i := 0; i < 65537; i++ {
+		block.Transactions = append(block.Transactions, block.Transactions[0])
+	}
+	chunk = &encoding.Chunk{
+		Blocks: []*encoding.Block{block},
+	}
+	_, err = NewDAChunk(chunk, 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of transactions exceeds max uint16")
+
+	// Test case: decode transaction with hex string without 0x prefix error.
+	block = readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	block.Transactions = block.Transactions[:1]
+	block.Transactions[0].Data = "not-a-hex"
+	chunk = &encoding.Chunk{
+		Blocks: []*encoding.Block{block},
+	}
+	_, err = EstimateChunkL1CommitCalldataSize(chunk)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "hex string without 0x prefix")
+	_, err = EstimateChunkL1CommitGas(chunk)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "hex string without 0x prefix")
+
+	block = readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
+	for i := 0; i < 65535; i++ {
+		tx := &block.Transactions[i]
+		txCopy := *tx
+		txCopy.Nonce = uint64(i + 1)
+		block.Transactions = append(block.Transactions, txCopy)
+	}
+
+	chunk = &encoding.Chunk{
+		Blocks: []*encoding.Block{block},
+	}
+	_, err = NewDAChunk(chunk, 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "number of L1 messages exceeds max uint16")
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {
