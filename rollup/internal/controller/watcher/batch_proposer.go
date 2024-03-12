@@ -226,20 +226,20 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 			batch.StartChunkIndex = dbChunks[0].Index
-			batch.EndChunkIndex = dbChunks[batch.GetNumChunks()-1].Index
+			batch.EndChunkIndex = dbChunks[batch.NumChunks()-1].Index
 			batch.StartChunkHash = common.HexToHash(dbChunks[0].Hash)
-			batch.EndChunkHash = common.HexToHash(dbChunks[batch.GetNumChunks()-1].Hash)
+			batch.EndChunkHash = common.HexToHash(dbChunks[batch.NumChunks()-1].Hash)
 
 			p.totalL1CommitGas.Set(float64(codecv0.EstimateBatchL1CommitGas(&batch)))
 			p.totalL1CommitCalldataSize.Set(float64(codecv0.EstimateBatchL1CommitCalldataSize(&batch)))
-			p.batchChunksNum.Set(float64(batch.GetNumChunks()))
+			p.batchChunksNum.Set(float64(batch.NumChunks()))
 			return &batch, nil
 		}
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
 	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec ||
-		batch.GetNumChunks() == maxChunksThisBatch {
+		batch.NumChunks() == maxChunksThisBatch {
 		if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
 			log.Warn("first block timeout",
 				"start block number", dbChunks[0].StartBlockNumber,
@@ -248,19 +248,19 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 			)
 		} else {
 			log.Info("reached maximum number of chunks in batch",
-				"chunk count", batch.GetNumChunks(),
+				"chunk count", batch.NumChunks(),
 			)
 		}
 
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.totalL1CommitGas.Set(float64(codecv0.EstimateBatchL1CommitGas(&batch)))
 		p.totalL1CommitCalldataSize.Set(float64(codecv0.EstimateBatchL1CommitCalldataSize(&batch)))
-		p.batchChunksNum.Set(float64(batch.GetNumChunks()))
+		p.batchChunksNum.Set(float64(batch.NumChunks()))
 
 		batch.StartChunkIndex = dbChunks[0].Index
-		batch.EndChunkIndex = dbChunks[batch.GetNumChunks()-1].Index
+		batch.EndChunkIndex = dbChunks[batch.NumChunks()-1].Index
 		batch.StartChunkHash = common.HexToHash(dbChunks[0].Hash)
-		batch.EndChunkHash = common.HexToHash(dbChunks[batch.GetNumChunks()-1].Hash)
+		batch.EndChunkHash = common.HexToHash(dbChunks[batch.NumChunks()-1].Hash)
 
 		return &batch, nil
 	}

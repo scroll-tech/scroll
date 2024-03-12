@@ -179,8 +179,8 @@ func (c *Chunk) GetNumTransactions() uint64 {
 	return totalTxNum
 }
 
-// GetNumL2Transactions calculates the total number of L2 transactions in a Chunk.
-func (c *Chunk) GetNumL2Transactions() uint64 {
+// NumL2Transactions calculates the total number of L2 transactions in a Chunk.
+func (c *Chunk) NumL2Transactions() uint64 {
 	var totalTxNum uint64
 	for _, block := range c.Blocks {
 		totalTxNum += block.NumL2Transactions()
@@ -197,8 +197,8 @@ func (c *Chunk) GetL2GasUsed() uint64 {
 	return totalTxNum
 }
 
-// GetStateRoot gets the state root after committing/finalizing the batch.
-func (b *Batch) GetStateRoot() common.Hash {
+// StateRoot gets the state root after committing/finalizing the batch.
+func (b *Batch) StateRoot() common.Hash {
 	numChunks := len(b.Chunks)
 	if len(b.Chunks) == 0 {
 		return common.Hash{}
@@ -207,8 +207,8 @@ func (b *Batch) GetStateRoot() common.Hash {
 	return b.Chunks[len(b.Chunks)-1].Blocks[lastChunkBlockNum-1].Header.Root
 }
 
-// GetWithdrawRoot gets the withdraw root after committing/finalizing the batch.
-func (b *Batch) GetWithdrawRoot() common.Hash {
+// WithdrawRoot gets the withdraw root after committing/finalizing the batch.
+func (b *Batch) WithdrawRoot() common.Hash {
 	numChunks := len(b.Chunks)
 	if len(b.Chunks) == 0 {
 		return common.Hash{}
@@ -217,7 +217,7 @@ func (b *Batch) GetWithdrawRoot() common.Hash {
 	return b.Chunks[len(b.Chunks)-1].Blocks[lastChunkBlockNum-1].WithdrawRoot
 }
 
-// GetNumChunks gets the number of chunks of the batch.
-func (b *Batch) GetNumChunks() uint64 {
+// NumChunks gets the number of chunks of the batch.
+func (b *Batch) NumChunks() uint64 {
 	return uint64(len(b.Chunks))
 }
