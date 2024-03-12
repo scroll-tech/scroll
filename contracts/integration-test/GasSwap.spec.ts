@@ -1,7 +1,7 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
 import { ethers } from "hardhat";
-import { GasSwap, ERC2771Forwarder, MockERC20, MockGasSwapTarget } from "../typechain";
+import { GasSwap, ERC2771Forwarder, MockERC20, MockGasSwapTarget, MockGasSwapNormalPermit } from "../typechain";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { BigNumber, constants } from "ethers";
@@ -13,6 +13,7 @@ describe("GasSwap.spec", async () => {
 
   let forwarder: ERC2771Forwarder;
   let swap: GasSwap;
+  let mockSwap: MockGasSwapNormalPermit;
   let target: MockGasSwapTarget;
   let token: MockERC20;
 
@@ -30,6 +31,10 @@ describe("GasSwap.spec", async () => {
     const MockGasSwapTarget = await ethers.getContractFactory("MockGasSwapTarget", deployer);
     target = await MockGasSwapTarget.deploy();
     await target.deployed();
+
+    const MockGasSwapNormalPermit = await ethers.getContractFactory("MockGasSwapNormalPermit", deployer);
+    mockSwap = await MockGasSwapNormalPermit.deploy(forwarder.address);
+    await mockSwap.deployed();
 
     const MockERC20 = await ethers.getContractFactory("MockERC20", deployer);
     token = await MockERC20.deploy("x", "y", 18);
@@ -218,22 +223,58 @@ describe("GasSwap.spec", async () => {
       await target.setAmountIn(amountIn);
 
       await swap.updateApprovedTarget(target.address, true);
-      await expect(
-        swap.connect(signer).swap(
-          {
-            token: token.address,
-            value: amountIn,
-            deadline: constants.MaxUint256,
-            r: signature.r,
-            s: signature.s,
-            v: signature.v,
-          },
-          {
-            target: target.address,
-            data: "0x8119c065",
-            minOutput: 0,
-          }
-        )
+      await swap.connect(signer).swap(
+        {
+          token: token.address,
+          value: amountIn,
+          deadline: constants.MaxUint256,
+          r: signature.r,
+          s: signature.s,
+          v: signature.v,
+        },
+        {
+          target: target.address,
+          data: "0x8119c065",
+          minOutput: 0,
+        }
+      );
+    });
+
+    it("should failed, when attacker frontrun normal gasSwap permit", async () => {
+      const amountIn = ethers.utils.parseEther("1");
+      const amountOut = ethers.utils.parseEther("2");
+      await token.mint(signer.address, amountIn);
+      await deployer.sendTransaction({ to: target.address, value: amountOut });
+      const signature = await permit(amountIn);
+
+      await token.permit(
+        signer.address,
+        mockSwap.address,
+        amountIn,
+        constants.MaxUint256,
+        signature.v,
+        signature.r,
+        signature.s
+      );
+
+      await target.setToken(token.address);
+      await target.setAmountIn(amountIn);
+
+      await mockSwap.updateApprovedTarget(target.address, true);
+      await mockSwap.connect(signer).swap(
+        {
+          token: token.address,
+          value: amountIn,
+          deadline: constants.MaxUint256,
+          r: signature.r,
+          s: signature.s,
+          v: signature.v,
+        },
+        {
+          target: target.address,
+          data: "0x8119c065",
+          minOutput: 0,
+        }
       );
     });
 
