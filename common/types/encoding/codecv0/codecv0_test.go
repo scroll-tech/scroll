@@ -82,6 +82,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, "0100000000000000020000000063807b2a0000000000000000000000000000000000000000000000000000000000001de9000355418d1e81840002000000000073f87180843b9aec2e8307a12094c0c4c8baea3f6acb49b6e1fb9e2adeceeacb0ca28a152d02c7e14af60000008083019ecea0ab07ae99c67aa78e7ba5cf6781e90cc32b219b1de102513d56548a41e86df514a034cbd19feacd73e8ce64d00c4d1996b9b5243c578fd7f51bfaec288bbaf42a8b00000073f87101843b9aec2e8307a1209401bae6bf68e9a03fb2bc0615b1bf0d69ce9411ed8a152d02c7e14af60000008083019ecea0f039985866d8256f10c1be4f7b2cace28d8f20bde27e2604393eb095b7f77316a05a3e6e81065f2b4604bcec5bd4aba684835996fc3f879380aac1c09c6eed32f1", chunkHexString)
 	daChunkHash, err := daChunk.Hash()
 	assert.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0xde642c68122634b33fa1e6e4243b17be3bfd0dc6f996f204ef6d7522516bd840"), daChunkHash)
 
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -136,6 +137,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, 6044, len(chunkBytes))
 	daChunkHash, err = daChunk.Hash()
 	assert.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0x014916a83eccdb0d01e814b4d4ab90eb9049ba9a3cb0994919b86ad873bcd028"), daChunkHash)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -192,6 +194,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, "01000000000000000d00000000646b6e13000000000000000000000000000000000000000000000000000000000000000000000000007a1200000c000b00000020df0b80825dc0941a258d17bf244c4df02d40343a7626a9d321e1058080808080", chunkHexString)
 	daChunkHash, err = daChunk.Hash()
 	assert.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0x9e643c8a9203df542e39d9bfdcb07c99575b3c3d557791329fef9d83cc4147d0"), daChunkHash)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -323,6 +326,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, 61, len(chunkBytes))
 	daChunkHash, err = daChunk.Hash()
 	assert.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0x854fc3136f47ce482ec85ee3325adfa16a1a1d60126e1c119eaaf0c3a9e90f8e"), daChunkHash)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -379,6 +383,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, 61, len(chunkBytes))
 	daChunkHash, err = daChunk.Hash()
 	assert.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0x854fc3136f47ce482ec85ee3325adfa16a1a1d60126e1c119eaaf0c3a9e90f8e"), daChunkHash)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -435,6 +440,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, 61, len(chunkBytes))
 	daChunkHash, err = daChunk.Hash()
 	assert.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0x2aa220ca7bd1368e59e8053eb3831e30854aa2ec8bd3af65cee350c1c0718ba6"), daChunkHash)
 
 	batch = &encoding.Batch{
 		Index:                      0,
@@ -491,6 +497,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, 61, len(chunkBytes))
 	daChunkHash, err = daChunk.Hash()
 	assert.NoError(t, err)
+	assert.Equal(t, common.HexToHash("0xb65521bea7daff75838de07951c3c055966750fb5a270fead5e0e727c32455c3"), daChunkHash)
 
 	batch = &encoding.Batch{
 		Index:                      0,
