@@ -79,11 +79,13 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 
 	chunk1 = &encoding.Chunk{Blocks: []*encoding.Block{block1}}
-	daChunk1 := codecv0.NewDAChunk(chunk1, 0)
+	daChunk1, err := codecv0.NewDAChunk(chunk1, 0)
+	assert.NoError(t, err)
 	chunkHash1 = daChunk1.Hash()
 
 	chunk2 = &encoding.Chunk{Blocks: []*encoding.Block{block2}}
-	daChunk2 := codecv0.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
+	daChunk2, err := codecv0.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
+	assert.NoError(t, err)
 	chunkHash2 = daChunk2.Hash()
 }
 

@@ -3,6 +3,8 @@ package codecv0
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"errors"
+	"math"
 	"math/big"
 	"strings"
 
@@ -44,11 +46,24 @@ type DABatch struct {
 	SkippedL1MessageBitmap []byte
 }
 
-// newDABlock creates a new DABlock from the given encoding.Block and the total number of L1 messages popped before.
-func newDABlock(block *encoding.Block, totalL1MessagePoppedBefore uint64) *DABlock {
-	numL1Messages := block.NumL1Messages(totalL1MessagePoppedBefore) // numL1Messages includes skipped messages
-	numL2Transactions := block.NumL2Transactions()                   // numTransactions includes skipped messages
+// NewDABlock creates a new DABlock from the given encoding.Block and the total number of L1 messages popped before.
+func NewDABlock(block *encoding.Block, totalL1MessagePoppedBefore uint64) (*DABlock, error) {
+	if !block.Header.Number.IsUint64() {
+		return nil, errors.New("block number is not uint64")
+	}
+
+	// note: numL1Messages includes skipped messages
+	numL1Messages := block.NumL1Messages(totalL1MessagePoppedBefore)
+	if numL1Messages > math.MaxUint16 {
+		return nil, errors.New("number of L1 messages exceeds max uint16")
+	}
+
+	// note: numTransactions includes skipped messages
+	numL2Transactions := block.NumL2Transactions()
 	numTransactions := numL1Messages + numL2Transactions
+	if numTransactions > math.MaxUint16 {
+		return nil, errors.New("number of transactions exceeds max uint16")
+	}
 
 	daBlock := DABlock{
 		BlockNumber:     block.Header.Number.Uint64(),
@@ -59,7 +74,7 @@ func newDABlock(block *encoding.Block, totalL1MessagePoppedBefore uint64) *DABlo
 		NumL1Messages:   uint16(numL1Messages),
 	}
 
-	return &daBlock
+	return &daBlock, nil
 }
 
 // Encode serializes the DABlock into a slice of bytes.
@@ -77,7 +92,7 @@ func (b *DABlock) Encode() []byte {
 }
 
 // NewDAChunk creates a new DAChunk from the given encoding.Chunk and the total number of L1 messages popped before.
-func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) *DAChunk {
+func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) (*DAChunk, error) {
 	var blocks []*DABlock
 	var txs [][]*types.TransactionData
 
@@ -90,7 +105,11 @@ func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) *DAChu
 	}
 
 	for _, block := range chunk.Blocks {
-		blocks = append(blocks, newDABlock(block, totalL1MessagePoppedBefore))
+		b, err := NewDABlock(block, totalL1MessagePoppedBefore)
+		if err != nil {
+			return nil, err
+		}
+		blocks = append(blocks, b)
 		totalL1MessagePoppedBefore += block.NumL1Messages(totalL1MessagePoppedBefore)
 		txs = append(txs, block.Transactions)
 	}
@@ -100,7 +119,7 @@ func NewDAChunk(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64) *DAChu
 		Transactions: txs,
 	}
 
-	return &daChunk
+	return &daChunk, nil
 }
 
 // Encode serializes the DAChunk into a slice of bytes.
@@ -184,7 +203,10 @@ func NewDABatch(batch *encoding.Batch) *DABatch {
 	for chunkID, chunk := range batch.Chunks {
 		// build data hash
 		totalL1MessagePoppedBeforeChunk := nextIndex
-		daChunk := NewDAChunk(chunk, totalL1MessagePoppedBeforeChunk)
+		daChunk, err := NewDAChunk(chunk, totalL1MessagePoppedBeforeChunk)
+		if err != nil {
+			return nil, err
+		}
 		dataBytes = append(dataBytes, daChunk.Hash().Bytes()...)
 
 		// build skip bitmap
