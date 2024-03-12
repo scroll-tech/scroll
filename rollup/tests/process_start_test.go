@@ -22,7 +22,7 @@ func testProcessStart(t *testing.T) {
 
 	rollupApp.RunApp(t, cutils.EventWatcherApp)
 	rollupApp.RunApp(t, cutils.GasOracleApp)
-	rollupApp.RunApp(t, cutils.RollupRelayerApp)
+	rollupApp.RunApp(t, cutils.RollupRelayerApp, "--genesis", "../conf/genesis.json")
 
 	rollupApp.WaitExit()
 }
@@ -44,7 +44,7 @@ func testProcessStartEnableMetrics(t *testing.T) {
 	port, err = rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)
 	svrPort = strconv.FormatInt(port.Int64()+30000, 10)
-	rollupApp.RunApp(t, cutils.RollupRelayerApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort)
+	rollupApp.RunApp(t, cutils.RollupRelayerApp, "--metrics", "--metrics.addr", "localhost", "--metrics.port", svrPort, "--genesis", "../conf/genesis.json")
 
 	rollupApp.WaitExit()
 }

@@ -2,11 +2,14 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"scroll-tech/common/database"
+
+	"github.com/scroll-tech/go-ethereum/core"
 )
 
 // Config load configuration items.
@@ -40,4 +43,18 @@ func NewConfig(file string) (*Config, error) {
 		return nil, err
 	}
 	return cfg, nil
+}
+
+// ReadGenesis parses and returns the genesis file at the given path
+func ReadGenesis(genesisPath string) (*core.Genesis, error) {
+	file, err := os.Open(filepath.Clean(genesisPath))
+	if err != nil {
+		return nil, err
+	}
+
+	genesis := new(core.Genesis)
+	if err := json.NewDecoder(file).Decode(genesis); err != nil {
+		return nil, errors.Join(err, file.Close())
+	}
+	return genesis, file.Close()
 }
