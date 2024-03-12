@@ -258,6 +258,48 @@ func TestCodecV0(t *testing.T) {
 	decodedBatchHexString = hex.EncodeToString(decodedBatchBytes)
 	assert.Equal(t, batchHexString, decodedBatchHexString)
 
+	// Test case: many consecutive L1 Msgs in 1 bitmap, with leading skipped msgs.
+	chunk = &encoding.Chunk{
+		Blocks: []*encoding.Block{block4},
+	}
+	assert.Equal(t, uint64(60), EstimateChunkL1CommitCalldataSize(chunk))
+	assert.Equal(t, uint64(15189), EstimateChunkL1CommitGas(chunk))
+
+	daChunk = NewDAChunk(chunk, 0)
+	chunkBytes = daChunk.Encode()
+	assert.Equal(t, 61, len(chunkBytes))
+
+	batch = &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+		StartChunkIndex:            0,
+		EndChunkIndex:              0,
+		StartChunkHash:             daChunk.Hash(),
+		EndChunkHash:               daChunk.Hash(),
+	}
+
+	assert.Equal(t, uint64(60), EstimateBatchL1CommitCalldataSize(batch))
+	assert.Equal(t, uint64(171810), EstimateBatchL1CommitGas(batch))
+
+	daBatch = NewDABatch(batch)
+	batchBytes = daBatch.Encode()
+	batchHexString = hex.EncodeToString(batchBytes)
+	assert.Equal(t, 121, len(batchBytes))
+	assert.Equal(t, "000000000000000000000000000000002a000000000000002a93255aa24dd468c5645f1e6901b8131a7a78a0eeb2a17cbb09ba64688a8de6b400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001fffffffff", batchHexString)
+	assert.Equal(t, 32, len(daBatch.SkippedL1MessageBitmap))
+	expectedBitmap = "0000000000000000000000000000000000000000000000000000001fffffffff"
+	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
+	assert.Equal(t, uint64(42), daBatch.TotalL1MessagePopped)
+	assert.Equal(t, uint64(42), daBatch.L1MessagePopped)
+	assert.Equal(t, common.HexToHash("0x99f9648e4d090f1222280bec95a3f1e39c6cbcd4bff21eb2ae94b1536bb23acc"), daBatch.Hash())
+
+	decodedDABatch = MustNewDABatchFromBytes(batchBytes)
+	decodedBatchBytes = decodedDABatch.Encode()
+	decodedBatchHexString = hex.EncodeToString(decodedBatchBytes)
+	assert.Equal(t, batchHexString, decodedBatchHexString)
+
 	// Test case: many sparse L1 Msgs in 1 bitmap.
 	chunk = &encoding.Chunk{
 		Blocks: []*encoding.Block{block5},
