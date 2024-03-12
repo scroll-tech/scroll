@@ -218,22 +218,21 @@ describe("GasSwap.spec", async () => {
       await target.setAmountIn(amountIn);
 
       await swap.updateApprovedTarget(target.address, true);
-      await expect(
-        swap.connect(signer).swap(
-          {
-            token: token.address,
-            value: amountIn,
-            deadline: constants.MaxUint256,
-            r: signature.r,
-            s: signature.s,
-            v: signature.v,
-          },
-          {
-            target: target.address,
-            data: "0x8119c065",
-            minOutput: 0,
-          }
-        )
+
+      swap.connect(signer).swap(
+        {
+          token: token.address,
+          value: amountIn,
+          deadline: constants.MaxUint256,
+          r: signature.r,
+          s: signature.s,
+          v: signature.v,
+        },
+        {
+          target: target.address,
+          data: "0x8119c065",
+          minOutput: 0,
+        }
       );
     });
 
