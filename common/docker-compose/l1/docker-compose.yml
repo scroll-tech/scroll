@@ -15,8 +15,8 @@ services:
       - --geth-genesis-json-in=/execution/genesis.json
       - --geth-genesis-json-out=/execution/genesis.json
     volumes:
-      - ${HOST_PATH:-..}/common/docker-compose/l1/consensus:/consensus
-      - ${HOST_PATH:-..}/common/docker-compose/l1/execution:/execution
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
 
   # Removes the database of the go-ethereum execution client to ensure we start from a clean state.
   # (geth has a `removedb` option, but it asks for a keyboard confirmation, so we use this instead)
@@ -24,15 +24,15 @@ services:
     image: "alpine:3.19.0"
     command: rm -rf /execution/geth
     volumes:
-      - ${HOST_PATH:-..}/common/docker-compose/l1/execution:/execution
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
 
   # Sets up the genesis configuration for the go-ethereum client from a JSON file.
   geth-genesis:
     image: "ethereum/client-go:latest"
     command: --datadir=/execution init /execution/genesis.json
     volumes:
-      - ${HOST_PATH:-..}/common/docker-compose/l1/execution:/execution
-      - ${HOST_PATH:-..}/common/docker-compose/l1/execution/genesis.json:/execution/genesis.json
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/genesis.json:/execution/genesis.json
     depends_on:
       create-beacon-chain-genesis:
         condition: service_completed_successfully
@@ -76,9 +76,9 @@ services:
       - 6060:6060
       - 9090:9090
     volumes:
-      - ${HOST_PATH:-..}/common/docker-compose/l1/consensus:/consensus
-      - ${HOST_PATH:-..}/common/docker-compose/l1/execution:/execution
-      - ${HOST_PATH:-..}/common/docker-compose/l1/execution/jwtsecret:/execution/jwtsecret
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/jwtsecret:/execution/jwtsecret
 
   # Runs the go-ethereum execution client with the specified, unlocked account and necessary
   # APIs to allow for proof-of-stake consensus via Prysm.
@@ -107,9 +107,9 @@ services:
       beacon-chain:
         condition: service_started
     volumes:
-      - ${HOST_PATH:-..}/common/docker-compose/l1/execution:/execution
-      - ${HOST_PATH:-..}/common/docker-compose/l1/execution/jwtsecret:/execution/jwtsecret
-      - ${HOST_PATH:-..}/common/docker-compose/l1/execution/geth_password.txt:/execution/geth_password.txt
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/jwtsecret:/execution/jwtsecret
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/geth_password.txt:/execution/geth_password.txt
 
   # We run a validator client with 64, deterministically-generated keys that match
   # The validator keys present in the beacon chain genesis state generated a few steps above.
@@ -127,4 +127,4 @@ services:
       beacon-chain:
         condition: service_started
     volumes:
-      - ${HOST_PATH:-..}/common/docker-compose/l1/consensus:/consensus
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
