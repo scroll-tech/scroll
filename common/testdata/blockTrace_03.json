@@ -31,9 +31,11 @@
         {
             "type": 2,
             "nonce": 2,
-            "txHash": "0x6b50040f5f14bad253f202b0775d6742131bcaee6b992f05578386f00e53b7e4",
+            "txHash": "0xfc4325f39825616a241d0c52d536c892e21b6df32bb75d8bdc70de54ae175318",
             "gas": 1152994,
             "gasPrice": "0x3b9b0a17",
+            "gasTipCap": "0x3b9b0a17",
+            "gasFeeCap": "0x3b9b0a17",
             "from": "0x1c5a77d9fa7ef466951b2f01f724bca3a5820b63",
             "to": null,
             "chainId": "0xcf55",

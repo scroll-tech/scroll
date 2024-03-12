@@ -2,19 +2,25 @@ package encoding
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDA(t *testing.T) {
+func TestMain(m *testing.M) {
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
+	m.Run()
+}
+
+func TestUtilFunctions(t *testing.T) {
 	block1 := readBlockFromJSON(t, "../../testdata/blockTrace_02.json")
 	block2 := readBlockFromJSON(t, "../../testdata/blockTrace_03.json")
 	block3 := readBlockFromJSON(t, "../../testdata/blockTrace_04.json")
@@ -75,7 +81,37 @@ func TestDA(t *testing.T) {
 	assert.Equal(t, block6.WithdrawRoot, batch.WithdrawRoot())
 }
 
-func TestDAEmptyBatch(t *testing.T) {
+func TestMustConvertTxDataToRLPEncoding(t *testing.T) {
+	blocks := []*Block{
+		readBlockFromJSON(t, "../../testdata/blockTrace_02.json"),
+		readBlockFromJSON(t, "../../testdata/blockTrace_03.json"),
+		readBlockFromJSON(t, "../../testdata/blockTrace_04.json"),
+		readBlockFromJSON(t, "../../testdata/blockTrace_05.json"),
+		readBlockFromJSON(t, "../../testdata/blockTrace_06.json"),
+		readBlockFromJSON(t, "../../testdata/blockTrace_07.json"),
+	}
+
+	for _, block := range blocks {
+		for _, txData := range block.Transactions {
+			if txData.Type == types.L1MessageTxType {
+				continue
+			}
+
+			rlpTxData := MustConvertTxDataToRLPEncoding(txData)
+			var tx types.Transaction
+			err := tx.UnmarshalBinary(rlpTxData)
+			assert.NoError(t, err)
+			assert.Equal(t, txData.TxHash, tx.Hash().Hex())
+			if txData.TxHash != tx.Hash().Hex() {
+				fmt.Println(txData.GasPrice)
+				fmt.Println(txData.GasTipCap)
+				fmt.Println(txData.GasFeeCap)
+			}
+		}
+	}
+}
+
+func TestEmptyBatchRoots(t *testing.T) {
 	emptyBatch := &Batch{Chunks: []*Chunk{}}
 	assert.Equal(t, common.Hash{}, emptyBatch.StateRoot())
 	assert.Equal(t, common.Hash{}, emptyBatch.WithdrawRoot())
