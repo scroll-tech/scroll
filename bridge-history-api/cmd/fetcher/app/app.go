@@ -22,13 +22,9 @@ var app *cli.App
 
 func init() {
 	app = cli.NewApp()
-
-	app.Action = action
 	app.Name = "Scroll Bridge History API Message Fetcher"
 	app.Usage = "The Scroll Bridge History API Message Fetcher"
 	app.Flags = append(app.Flags, utils.CommonFlags...)
-	app.Commands = []*cli.Command{}
-
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
 	}
@@ -38,33 +34,31 @@ func action(ctx *cli.Context) error {
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
 	if err != nil {
-		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
+		return fmt.Errorf("failed to load config file %s: %w", cfgFile, err)
 	}
+
 	subCtx, cancel := context.WithCancel(ctx.Context)
 	defer cancel()
 
 	l1Client, err := ethclient.Dial(cfg.L1.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect to L1 geth", "endpoint", cfg.L1.Endpoint, "err", err)
+		return fmt.Errorf("failed to connect to L1 geth endpoint %s: %w", cfg.L1.Endpoint, err)
 	}
 
 	l2Client, err := ethclient.Dial(cfg.L2.Endpoint)
 	if err != nil {
-		log.Crit("failed to connect to L2 geth", "endpoint", cfg.L2.Endpoint, "err", err)
+		return fmt.Errorf("failed to connect to L2 geth endpoint %s: %w", cfg.L2.Endpoint, err)
 	}
 
 	db, err := database.InitDB(cfg.DB)
 	if err != nil {
-		log.Crit("failed to init db", "err", err)
+		return fmt.Errorf("failed to init db: %w", err)
 	}
 	defer func() {
 		if deferErr := database.CloseDB(db); deferErr != nil {
-			log.Error("failed to close db", "err", err)
+			log.Error("failed to close db", "err", deferErr)
 		}
 	}()
-	if err != nil {
-		log.Crit("failed to connect to db", "config file", cfgFile, "error", err)
-	}
 
 	observability.Server(ctx, db)
 
@@ -86,6 +80,7 @@ func action(ctx *cli.Context) error {
 
 // Run event watcher cmd instance.
 func Run() {
+	app.Action = action
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
