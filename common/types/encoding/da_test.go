@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 )
@@ -44,26 +45,40 @@ func TestDA(t *testing.T) {
 	// Test Chunk methods
 	assert.Equal(t, uint64(0), chunk1.NumL1Messages(0))
 	assert.Equal(t, uint64(3), chunk1.NumL2Transactions())
-	crc1Max, err := chunk1.GetCrcMax()
+	crc1Max, err := chunk1.CrcMax()
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(11), crc1Max)
+	assert.Equal(t, uint64(3), chunk1.NumTransactions())
+	assert.Equal(t, uint64(1194994), chunk1.L2GasUsed())
 
 	assert.Equal(t, uint64(42), chunk2.NumL1Messages(0))
 	assert.Equal(t, uint64(1), chunk2.NumL2Transactions())
-	crc2Max, err := chunk2.GetCrcMax()
+	crc2Max, err := chunk2.CrcMax()
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(0), crc2Max)
+	assert.Equal(t, uint64(7), chunk2.NumTransactions())
+	assert.Equal(t, uint64(144000), chunk2.L2GasUsed())
 
 	assert.Equal(t, uint64(257), chunk3.NumL1Messages(0))
 	assert.Equal(t, uint64(0), chunk3.NumL2Transactions())
-	crc3Max, err := chunk3.GetCrcMax()
-	assert.NoError(t, err)
+	chunk3.Blocks[0].RowConsumption = nil
+	crc3Max, err := chunk3.CrcMax()
+	assert.Error(t, err)
+	assert.EqualError(t, err, "block (17, 0x003fee335455c0c293dda17ea9365fe0caa94071ed7216baf61f7aeb808e8a28) has nil RowConsumption")
 	assert.Equal(t, uint64(0), crc3Max)
+	assert.Equal(t, uint64(5), chunk3.NumTransactions())
+	assert.Equal(t, uint64(240000), chunk3.L2GasUsed())
 
 	// Test Batch methods
 	assert.Equal(t, uint64(3), batch.NumChunks())
 	assert.Equal(t, block6.Header.Root, batch.StateRoot())
 	assert.Equal(t, block6.WithdrawRoot, batch.WithdrawRoot())
+}
+
+func TestDAEmptyBatch(t *testing.T) {
+	emptyBatch := &Batch{Chunks: []*Chunk{}}
+	assert.Equal(t, common.Hash{}, emptyBatch.StateRoot())
+	assert.Equal(t, common.Hash{}, emptyBatch.WithdrawRoot())
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *Block {

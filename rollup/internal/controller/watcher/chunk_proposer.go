@@ -185,11 +185,11 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)
 
-		crcMax, err := chunk.GetCrcMax()
+		crcMax, err := chunk.CrcMax()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get crc max: %w", err)
 		}
-		totalTxNum := chunk.GetNumTransactions()
+		totalTxNum := chunk.NumTransactions()
 
 		totalL1CommitCalldataSize := codecv0.EstimateChunkL1CommitCalldataSize(&chunk)
 		totalL1CommitGas := codecv0.EstimateChunkL1CommitGas(&chunk)
@@ -251,12 +251,12 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
 
-			crcMax, err := chunk.GetCrcMax()
+			crcMax, err := chunk.CrcMax()
 			if err != nil {
 				return nil, fmt.Errorf("failed to get crc max: %w", err)
 			}
 
-			p.chunkTxNum.Set(float64(chunk.GetNumTransactions()))
+			p.chunkTxNum.Set(float64(chunk.NumTransactions()))
 			p.chunkEstimateL1CommitGas.Set(float64(codecv0.EstimateChunkL1CommitGas(&chunk)))
 			p.totalL1CommitCalldataSize.Set(float64(codecv0.EstimateChunkL1CommitCalldataSize(&chunk)))
 			p.maxTxConsumption.Set(float64(crcMax))
@@ -281,13 +281,13 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 			)
 		}
 
-		crcMax, err := chunk.GetCrcMax()
+		crcMax, err := chunk.CrcMax()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get crc max: %w", err)
 		}
 
 		p.chunkFirstBlockTimeoutReached.Inc()
-		p.chunkTxNum.Set(float64(chunk.GetNumTransactions()))
+		p.chunkTxNum.Set(float64(chunk.NumTransactions()))
 		p.chunkEstimateL1CommitGas.Set(float64(codecv0.EstimateChunkL1CommitGas(&chunk)))
 		p.totalL1CommitCalldataSize.Set(float64(codecv0.EstimateChunkL1CommitCalldataSize(&chunk)))
 		p.maxTxConsumption.Set(float64(crcMax))

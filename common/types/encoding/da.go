@@ -143,8 +143,8 @@ func MustConvertTxDataToRLPEncoding(txData *types.TransactionData) []byte {
 	return rlpTxData
 }
 
-// GetCrcMax calculates the maximum row consumption of crc.
-func (c *Chunk) GetCrcMax() (uint64, error) {
+// CrcMax calculates the maximum row consumption of crc.
+func (c *Chunk) CrcMax() (uint64, error) {
 	// Map sub-circuit name to row count
 	crc := make(map[string]uint64)
 
@@ -170,8 +170,8 @@ func (c *Chunk) GetCrcMax() (uint64, error) {
 	return maxVal, nil
 }
 
-// GetNumTransactions calculates the total number of transactions in a Chunk.
-func (c *Chunk) GetNumTransactions() uint64 {
+// NumTransactions calculates the total number of transactions in a Chunk.
+func (c *Chunk) NumTransactions() uint64 {
 	var totalTxNum uint64
 	for _, block := range c.Blocks {
 		totalTxNum += uint64(len(block.Transactions))
@@ -188,8 +188,8 @@ func (c *Chunk) NumL2Transactions() uint64 {
 	return totalTxNum
 }
 
-// GetL2GasUsed calculates the total gas of L2 transactions in a Chunk.
-func (c *Chunk) GetL2GasUsed() uint64 {
+// L2GasUsed calculates the total gas of L2 transactions in a Chunk.
+func (c *Chunk) L2GasUsed() uint64 {
 	var totalTxNum uint64
 	for _, block := range c.Blocks {
 		totalTxNum += block.Header.GasUsed

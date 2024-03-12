@@ -73,6 +73,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, 0, len(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(1), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(0), daBatch.L1MessagePopped)
+	assert.Equal(t, common.HexToHash("0x5c799a5938f7885c9476b5868c95b0d23caa7caf3b7d61dfd3449ca222fe2ea2"), daBatch.Hash())
 
 	decodedDABatch := MustNewDABatchFromBytes(batchBytes)
 	decodedBatchBytes := decodedDABatch.Encode()
@@ -112,6 +113,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, 0, len(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(0), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(0), daBatch.L1MessagePopped)
+	assert.Equal(t, common.HexToHash("0x50cc4b36f4df206843e8c70ee1bf5bd2aea4bddc6e57b52de7ed68d86e911e37"), daBatch.Hash())
 
 	decodedDABatch = MustNewDABatchFromBytes(batchBytes)
 	decodedBatchBytes = decodedDABatch.Encode()
@@ -155,6 +157,7 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(11), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(11), daBatch.L1MessagePopped)
+	assert.Equal(t, common.HexToHash("0xfbb081f25d6d06aefd76f062eee50885faf5bb050c8f31d533fc8560e655b690"), daBatch.Hash())
 
 	decodedDABatch = MustNewDABatchFromBytes(batchBytes)
 	decodedBatchBytes = decodedDABatch.Encode()
@@ -206,6 +209,12 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(42), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(42), daBatch.L1MessagePopped)
+	assert.Equal(t, common.HexToHash("0x16606da138ce4e0cb82d22008bce0c1b2d4ea59ce09166612581a93f2807f02e"), daBatch.Hash())
+
+	decodedDABatch = MustNewDABatchFromBytes(batchBytes)
+	decodedBatchBytes = decodedDABatch.Encode()
+	decodedBatchHexString = hex.EncodeToString(decodedBatchBytes)
+	assert.Equal(t, batchHexString, decodedBatchHexString)
 
 	// Test case: many consecutive L1 Msgs in 1 bitmap, no leading skipped msgs.
 	chunk = &encoding.Chunk{
@@ -242,6 +251,12 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(42), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(5), daBatch.L1MessagePopped)
+	assert.Equal(t, common.HexToHash("0x1b62133deff60768285538373754403ac4c792c371ff38c24151e8c0bcaecb41"), daBatch.Hash())
+
+	decodedDABatch = MustNewDABatchFromBytes(batchBytes)
+	decodedBatchBytes = decodedDABatch.Encode()
+	decodedBatchHexString = hex.EncodeToString(decodedBatchBytes)
+	assert.Equal(t, batchHexString, decodedBatchHexString)
 
 	// Test case: many sparse L1 Msgs in 1 bitmap.
 	chunk = &encoding.Chunk{
@@ -278,6 +293,12 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(10), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(10), daBatch.L1MessagePopped)
+	assert.Equal(t, common.HexToHash("0xe0950d500d47df4e9c443978682bcccfc8d50983f99ec9232067333a7d32a9d2"), daBatch.Hash())
+
+	decodedDABatch = MustNewDABatchFromBytes(batchBytes)
+	decodedBatchBytes = decodedDABatch.Encode()
+	decodedBatchHexString = hex.EncodeToString(decodedBatchBytes)
+	assert.Equal(t, batchHexString, decodedBatchHexString)
 
 	// Test case: many L1 Msgs in each of 2 bitmaps.
 	chunk = &encoding.Chunk{
@@ -314,6 +335,12 @@ func TestCodecV0(t *testing.T) {
 	assert.Equal(t, expectedBitmap, common.Bytes2Hex(daBatch.SkippedL1MessageBitmap))
 	assert.Equal(t, uint64(257), daBatch.TotalL1MessagePopped)
 	assert.Equal(t, uint64(257), daBatch.L1MessagePopped)
+	assert.Equal(t, common.HexToHash("0x745a74773cdc7cd0b86b50305f6373c7efeaf051b38a71ea561333708e8a90d9"), daBatch.Hash())
+
+	decodedDABatch = MustNewDABatchFromBytes(batchBytes)
+	decodedBatchBytes = decodedDABatch.Encode()
+	decodedBatchHexString = hex.EncodeToString(decodedBatchBytes)
+	assert.Equal(t, batchHexString, decodedBatchHexString)
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {
