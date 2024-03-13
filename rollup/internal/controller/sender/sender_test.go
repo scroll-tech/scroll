@@ -9,7 +9,6 @@ import (
 	"math/big"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -40,11 +39,12 @@ const TXBatch = 50
 
 var (
 	privateKey             *ecdsa.PrivateKey
+	blobSenderPrivateKey   *ecdsa.PrivateKey
 	cfg                    *config.Config
 	base                   *docker.App
 	posL1TestEnv           *dockercompose.PoSL1TestEnv
-	txTypes                = []string{"LegacyTx", "DynamicFeeTx", "BlobTx"}
-	txUint8Types           = []uint8{0, 2, 3}
+	txTypes                = []string{"LegacyTx", "DynamicFeeTx"}
+	txUint8Types           = []uint8{0, 2}
 	db                     *gorm.DB
 	mockL1ContractsAddress common.Address
 )
@@ -76,6 +76,10 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	privateKey = priv
 
+	priv, err = crypto.HexToECDSA("2121212121212121212121212121212121212121212121212121212121212121")
+	assert.NoError(t, err)
+	blobSenderPrivateKey = priv
+
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 
 	base.RunDBImage(t)
@@ -106,8 +110,6 @@ func setupEnv(t *testing.T) {
 
 	mockL1ContractsAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
-
-	time.Sleep(10 * time.Second)
 }
 
 func TestSender(t *testing.T) {
@@ -126,6 +128,10 @@ func TestSender(t *testing.T) {
 	t.Run("test check pending transaction resubmit tx confirmed", testCheckPendingTransactionResubmitTxConfirmed)
 	t.Run("test check pending transaction replaced tx confirmed", testCheckPendingTransactionReplacedTxConfirmed)
 	t.Run("test check pending transaction multiple times with only one transaction pending", testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending)
+
+	// blob transactions
+	t.Run("test new blob sender", testNewBlobSender)
+	t.Run("test send and retrieve blob transaction", testSendAndRetrieveBlobTransaction)
 }
 
 func testNewSender(t *testing.T) {
@@ -162,12 +168,7 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		var blob *kzg4844.Blob
-		if txType == BlobTxType {
-			blob = randBlob()
-		}
-
-		hash, err := s.SendTransaction("0", &common.Address{}, nil, blob, 0)
+		hash, err := s.SendTransaction("0", &common.Address{}, nil, nil, 0)
 		assert.NoError(t, err)
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
 		assert.NoError(t, err)
@@ -199,13 +200,8 @@ func testFallbackGasLimit(t *testing.T) {
 		client, err := ethclient.Dial(cfgCopy.Endpoint)
 		assert.NoError(t, err)
 
-		var blob *kzg4844.Blob
-		if txType == BlobTxType {
-			blob = randBlob()
-		}
-
 		// FallbackGasLimit = 0
-		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, blob, 0)
+		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, nil, 0)
 		assert.NoError(t, err)
 		tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
 		assert.NoError(t, err)
@@ -218,7 +214,7 @@ func testFallbackGasLimit(t *testing.T) {
 			},
 		)
 
-		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, blob, 100000)
+		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, nil, 100000)
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
@@ -569,6 +565,53 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		s.Stop()
 		patchGuard.Reset()
 	}
+}
+
+func testNewBlobSender(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	// exit by Stop()
+	cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
+	cfgCopy1.TxType = BlobTxType
+	newSender1, err := NewSender(context.Background(), &cfgCopy1, blobSenderPrivateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+	assert.NoError(t, err)
+	newSender1.Stop()
+
+	// exit by ctx.Done()
+	cfgCopy2 := *cfg.L1Config.RelayerConfig.SenderConfig
+	cfgCopy2.TxType = BlobTxType
+	subCtx, cancel := context.WithCancel(context.Background())
+	_, err = NewSender(subCtx, &cfgCopy2, blobSenderPrivateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+	assert.NoError(t, err)
+	cancel()
+}
+
+func testSendAndRetrieveBlobTransaction(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+	cfgCopy.TxType = BlobTxType
+	s, err := NewSender(context.Background(), &cfgCopy, blobSenderPrivateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+	assert.NoError(t, err)
+
+	hash, err := s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
+	assert.NoError(t, err)
+	txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
+	assert.NoError(t, err)
+	assert.Len(t, txs, 1)
+	assert.Equal(t, "0", txs[0].ContextID)
+	assert.Equal(t, hash.String(), txs[0].Hash)
+	assert.Equal(t, uint8(3), txs[0].Type)
+	assert.Equal(t, types.TxStatusPending, txs[0].Status)
+	assert.Equal(t, "0x2BD0C9FE079c8FcA0E3352eb3D02839c371E5c41", txs[0].SenderAddress)
+	assert.Equal(t, types.SenderTypeUnknown, txs[0].SenderType)
+	assert.Equal(t, "test", txs[0].SenderService)
+	assert.Equal(t, "test", txs[0].SenderName)
+	s.Stop()
 }
 
 func randBlob() *kzg4844.Blob {

@@ -272,31 +272,14 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 	}
 
 	// sign and send
-	tx, err := s.auth.Signer(s.auth.From, gethTypes.NewTx(txData))
+	signedTx, err := s.auth.Signer(s.auth.From, gethTypes.NewTx(txData))
 	if err != nil {
 		log.Error("failed to sign tx", "address", s.auth.From.String(), "err", err)
 		return nil, err
 	}
 
-	data, _ = tx.MarshalBinary()
-
-	decodedTx := &gethTypes.Transaction{}
-	rlp.DecodeBytes(data, &decodedTx)
-
-	fmt.Println("ChainID:   ", decodedTx.ChainId())
-	fmt.Println("Nonce:     ", decodedTx.Nonce())
-	fmt.Println("GasTipCap: ", decodedTx.GasTipCap())
-	fmt.Println("GasFeeCap: ", decodedTx.GasFeeCap())
-	fmt.Println("Gas:       ", decodedTx.Gas())
-	fmt.Println("To:        ", decodedTx.To())
-	fmt.Println("Data:      ", decodedTx.Data())
-	fmt.Println("AccessList:", decodedTx.AccessList())
-	fmt.Println("BlobGasFeeCap:", decodedTx.BlobGasFeeCap())
-	fmt.Println("BlobHashes: ", decodedTx.BlobHashes())
-	fmt.Println("Sidecar:", decodedTx.BlobTxSidecar())
-
-	if err = s.client.SendTransaction(s.ctx, tx); err != nil {
-		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)
+	if err = s.client.SendTransaction(s.ctx, signedTx); err != nil {
+		log.Error("failed to send tx", "tx hash", signedTx.Hash().String(), "from", s.auth.From.String(), "nonce", signedTx.Nonce(), "err", err)
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
 		if strings.Contains(err.Error(), "nonce") && overrideNonce == nil {
@@ -327,7 +310,7 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 	if overrideNonce == nil {
 		s.auth.Nonce = big.NewInt(int64(nonce + 1))
 	}
-	return tx, nil
+	return signedTx, nil
 }
 
 // resetNonce reset nonce if send signed tx failed.
