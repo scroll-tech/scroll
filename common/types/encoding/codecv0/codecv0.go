@@ -160,8 +160,12 @@ func (c *DAChunk) Encode() ([]byte, error) {
 // Hash computes the hash of the DAChunk data.
 func (c *DAChunk) Hash() (common.Hash, error) {
 	chunkBytes, err := c.Encode()
-	if err != nil && len(chunkBytes) == 0 {
+	if err != nil {
 		return common.Hash{}, err
+	}
+
+	if len(chunkBytes) == 0 {
+		return common.Hash{}, errors.New("chunkBytes is empty")
 	}
 	numBlocks := chunkBytes[0]
 
