@@ -95,7 +95,7 @@ Return the corresponding l2 token address given l1 token address.
 ### initialize
 
 ```solidity
-function initialize(address _counterpart, address _router, address _messenger, address _tokenFactory) external nonpayable
+function initialize(address _counterpart, address _router, address _messenger, address) external nonpayable
 ```
 
 Initialize the storage of L2StandardERC20Gateway.
@@ -106,10 +106,10 @@ Initialize the storage of L2StandardERC20Gateway.
 
 | Name | Type | Description |
 |---|---|---|
-| _counterpart | address | The address of L1ETHGateway in L1. |
-| _router | address | The address of L2GatewayRouter. |
-| _messenger | address | The address of L2ScrollMessenger. |
-| _tokenFactory | address | The address of ScrollStandardERC20Factory. |
+| _counterpart | address | The address of `L1StandardERC20Gateway` contract in L1. |
+| _router | address | The address of `L2GatewayRouter` contract in L2. |
+| _messenger | address | The address of `L2ScrollMessenger` contract in L2. |
+| _3 | address | undefined |
 
 ### messenger
 
@@ -281,12 +281,12 @@ Emitted when ERC20 token is deposited from L1 to L2 and transfer to recipient.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| l1Token `indexed` | address | The address of the token in L1. |
+| l2Token `indexed` | address | The address of the token in L2. |
+| from `indexed` | address | The address of sender in L1. |
+| to  | address | The address of recipient in L2. |
+| amount  | uint256 | The amount of token withdrawn from L1 to L2. |
+| data  | bytes | The optional calldata passed to recipient in L2. |
 
 ### Initialized
 
@@ -296,7 +296,7 @@ event Initialized(uint8 version)
 
 
 
-
+*Triggered when the contract has been initialized or reinitialized.*
 
 #### Parameters
 
@@ -335,12 +335,12 @@ Emitted when someone withdraw ERC20 token from L2 to L1.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| l1Token `indexed` | address | The address of the token in L1. |
+| l2Token `indexed` | address | The address of the token in L2. |
+| from `indexed` | address | The address of sender in L2. |
+| to  | address | The address of recipient in L1. |
+| amount  | uint256 | The amount of token will be deposited from L2 to L1. |
+| data  | bytes | The optional calldata passed to recipient in L1. |
 
 
 

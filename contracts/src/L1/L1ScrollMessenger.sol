@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 import {IScrollChain} from "./rollup/IScrollChain.sol";
 import {IL1MessageQueue} from "./rollup/IL1MessageQueue.sol";

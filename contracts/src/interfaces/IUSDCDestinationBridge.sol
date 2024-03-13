@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.24;
 
 /// @title IUSDCDestinationBridge
 /// @notice The interface required for USDC bridge in the destination chain (Scroll).

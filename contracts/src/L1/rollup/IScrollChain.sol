@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.24;
 
 interface IScrollChain {
     /**********
@@ -24,12 +24,20 @@ interface IScrollChain {
     /// @param withdrawRoot The merkle root on layer2 after this batch.
     event FinalizeBatch(uint256 indexed batchIndex, bytes32 indexed batchHash, bytes32 stateRoot, bytes32 withdrawRoot);
 
-    /**********
-     * Errors *
-     **********/
+    /// @notice Emitted when owner updates the status of sequencer.
+    /// @param account The address of account updated.
+    /// @param status The status of the account updated.
+    event UpdateSequencer(address indexed account, bool status);
 
-    /// @dev Thrown when the given address is `address(0)`.
-    error ErrorZeroAddress();
+    /// @notice Emitted when owner updates the status of prover.
+    /// @param account The address of account updated.
+    /// @param status The status of the account updated.
+    event UpdateProver(address indexed account, bool status);
+
+    /// @notice Emitted when the value of `maxNumTxInChunk` is updated.
+    /// @param oldMaxNumTxInChunk The old value of `maxNumTxInChunk`.
+    /// @param newMaxNumTxInChunk The new value of `maxNumTxInChunk`.
+    event UpdateMaxNumTxInChunk(uint256 oldMaxNumTxInChunk, uint256 newMaxNumTxInChunk);
 
     /*************************
      * Public View Functions *
@@ -88,6 +96,28 @@ interface IScrollChain {
         bytes32 prevStateRoot,
         bytes32 postStateRoot,
         bytes32 withdrawRoot,
+        bytes calldata aggrProof
+    ) external;
+
+    /// @notice Finalize a committed batch (with blob) on layer 1.
+    ///
+    /// @dev Memory layout of `blobDataProof`:
+    /// |    z    |    y    | kzg_commitment | kzg_proof |
+    /// |---------|---------|----------------|-----------|
+    /// | bytes32 | bytes32 |    bytes48     |  bytes48  |
+    ///
+    /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch.
+    /// @param prevStateRoot The state root of parent batch.
+    /// @param postStateRoot The state root of current batch.
+    /// @param withdrawRoot The withdraw trie root of current batch.
+    /// @param blobDataProof The proof for blob data.
+    /// @param aggrProof The aggregation proof for current batch.
+    function finalizeBatchWithProof4844(
+        bytes calldata batchHeader,
+        bytes32 prevStateRoot,
+        bytes32 postStateRoot,
+        bytes32 withdrawRoot,
+        bytes calldata blobDataProof,
         bytes calldata aggrProof
     ) external;
 }

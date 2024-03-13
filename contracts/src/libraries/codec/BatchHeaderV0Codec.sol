@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.24;
 
 // solhint-disable no-inline-assembly
 
@@ -16,13 +16,15 @@ pragma solidity ^0.8.16;
 ///   * skippedL1MessageBitmap  dynamic     uint256[]   89      A bitmap to indicate which L1 messages are skipped in the batch
 /// ```
 library BatchHeaderV0Codec {
+    uint256 internal constant BATCH_HEADER_FIXED_LENGTH = 89;
+
     /// @notice Load batch header in calldata to memory.
     /// @param _batchHeader The encoded batch header bytes in calldata.
     /// @return batchPtr The start memory offset of the batch header in memory.
     /// @return length The length in bytes of the batch header.
     function loadAndValidate(bytes calldata _batchHeader) internal pure returns (uint256 batchPtr, uint256 length) {
         length = _batchHeader.length;
-        require(length >= 89, "batch header length too small");
+        require(length >= BATCH_HEADER_FIXED_LENGTH, "batch header length too small");
 
         // copy batch header to memory.
         assembly {
@@ -35,7 +37,7 @@ library BatchHeaderV0Codec {
         uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(batchPtr);
 
         unchecked {
-            require(length == 89 + ((_l1MessagePopped + 255) / 256) * 32, "wrong bitmap length");
+            require(length == BATCH_HEADER_FIXED_LENGTH + ((_l1MessagePopped + 255) / 256) * 32, "wrong bitmap length");
         }
     }
 
@@ -93,13 +95,22 @@ library BatchHeaderV0Codec {
         }
     }
 
+    /// @notice Get the start memory offset for skipped L1 messages bitmap.
+    /// @param batchPtr The start memory offset of the batch header in memory.
+    /// @return _bitmapPtr the start memory offset for skipped L1 messages bitmap.
+    function skippedBitmapPtr(uint256 batchPtr) internal pure returns (uint256 _bitmapPtr) {
+        assembly {
+            _bitmapPtr := add(batchPtr, BATCH_HEADER_FIXED_LENGTH)
+        }
+    }
+
     /// @notice Get the skipped L1 messages bitmap.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param index The index of bitmap to load.
     /// @return _bitmap The bitmap from bits `index * 256` to `index * 256 + 255`.
     function skippedBitmap(uint256 batchPtr, uint256 index) internal pure returns (uint256 _bitmap) {
         assembly {
-            batchPtr := add(batchPtr, 89)
+            batchPtr := add(batchPtr, BATCH_HEADER_FIXED_LENGTH)
             _bitmap := mload(add(batchPtr, mul(index, 32)))
         }
     }

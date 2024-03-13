@@ -91,7 +91,7 @@ function finalizeBatchWithProof(bytes _batchHeader, bytes32 _prevStateRoot, byte
 
 Finalize a committed batch on layer 1.
 
-
+*We keep this function to upgrade to 4844 more smoothly.*
 
 #### Parameters
 
@@ -101,6 +101,27 @@ Finalize a committed batch on layer 1.
 | _prevStateRoot | bytes32 | undefined |
 | _postStateRoot | bytes32 | undefined |
 | _withdrawRoot | bytes32 | undefined |
+| _aggrProof | bytes | undefined |
+
+### finalizeBatchWithProof4844
+
+```solidity
+function finalizeBatchWithProof4844(bytes _batchHeader, bytes32 _prevStateRoot, bytes32 _postStateRoot, bytes32 _withdrawRoot, bytes _blobDataProof, bytes _aggrProof) external nonpayable
+```
+
+Finalize a committed batch (with blob) on layer 1.
+
+*Memory layout of `_blobDataProof`: ```text | z       | y       | kzg_commitment | kzg_proof | |---------|---------|----------------|-----------| | bytes32 | bytes32 | bytes48        | bytes48   | ```*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _batchHeader | bytes | undefined |
+| _prevStateRoot | bytes32 | undefined |
+| _postStateRoot | bytes32 | undefined |
+| _withdrawRoot | bytes32 | undefined |
+| _blobDataProof | bytes | undefined |
 | _aggrProof | bytes | undefined |
 
 ### finalizedStateRoots
@@ -493,8 +514,8 @@ Emitted when a new batch is committed.
 
 | Name | Type | Description |
 |---|---|---|
-| batchIndex `indexed` | uint256 | undefined |
-| batchHash `indexed` | bytes32 | undefined |
+| batchIndex `indexed` | uint256 | The index of the batch. |
+| batchHash `indexed` | bytes32 | The hash of the batch. |
 
 ### FinalizeBatch
 
@@ -510,10 +531,10 @@ Emitted when a batch is finalized.
 
 | Name | Type | Description |
 |---|---|---|
-| batchIndex `indexed` | uint256 | undefined |
-| batchHash `indexed` | bytes32 | undefined |
-| stateRoot  | bytes32 | undefined |
-| withdrawRoot  | bytes32 | undefined |
+| batchIndex `indexed` | uint256 | The index of the batch. |
+| batchHash `indexed` | bytes32 | The hash of the batch |
+| stateRoot  | bytes32 | The state root on layer 2 after this batch. |
+| withdrawRoot  | bytes32 | The merkle root on layer2 after this batch. |
 
 ### Initialized
 
@@ -523,7 +544,7 @@ event Initialized(uint8 version)
 
 
 
-
+*Triggered when the contract has been initialized or reinitialized.*
 
 #### Parameters
 
@@ -556,7 +577,7 @@ event Paused(address account)
 
 
 
-
+*Emitted when the pause is triggered by `account`.*
 
 #### Parameters
 
@@ -578,8 +599,8 @@ revert a pending batch.
 
 | Name | Type | Description |
 |---|---|---|
-| batchIndex `indexed` | uint256 | undefined |
-| batchHash `indexed` | bytes32 | undefined |
+| batchIndex `indexed` | uint256 | The index of the batch. |
+| batchHash `indexed` | bytes32 | The hash of the batch |
 
 ### Unpaused
 
@@ -589,7 +610,7 @@ event Unpaused(address account)
 
 
 
-
+*Emitted when the pause is lifted by `account`.*
 
 #### Parameters
 
@@ -651,6 +672,325 @@ Emitted when owner updates the status of sequencer.
 
 
 ## Errors
+
+### ErrorAccountIsNotEOA
+
+```solidity
+error ErrorAccountIsNotEOA()
+```
+
+
+
+
+
+
+### ErrorBatchHeaderLengthTooSmall
+
+```solidity
+error ErrorBatchHeaderLengthTooSmall()
+```
+
+
+
+*Thrown when the length of batch header is smaller than 121*
+
+
+### ErrorBatchIsAlreadyCommitted
+
+```solidity
+error ErrorBatchIsAlreadyCommitted()
+```
+
+
+
+
+
+
+### ErrorBatchIsAlreadyVerified
+
+```solidity
+error ErrorBatchIsAlreadyVerified()
+```
+
+
+
+
+
+
+### ErrorBatchIsEmpty
+
+```solidity
+error ErrorBatchIsEmpty()
+```
+
+
+
+
+
+
+### ErrorCallerIsNotProver
+
+```solidity
+error ErrorCallerIsNotProver()
+```
+
+
+
+*Thrown when the caller is not prover.*
+
+
+### ErrorCallerIsNotSequencer
+
+```solidity
+error ErrorCallerIsNotSequencer()
+```
+
+
+
+*Thrown when the caller is not sequencer.*
+
+
+### ErrorFoundMultipleBlob
+
+```solidity
+error ErrorFoundMultipleBlob()
+```
+
+
+
+
+
+
+### ErrorGenesisBatchHasNonZeroField
+
+```solidity
+error ErrorGenesisBatchHasNonZeroField()
+```
+
+
+
+
+
+
+### ErrorGenesisBatchImported
+
+```solidity
+error ErrorGenesisBatchImported()
+```
+
+
+
+
+
+
+### ErrorGenesisDataHashIsZero
+
+```solidity
+error ErrorGenesisDataHashIsZero()
+```
+
+
+
+
+
+
+### ErrorGenesisParentBatchHashIsNonZero
+
+```solidity
+error ErrorGenesisParentBatchHashIsNonZero()
+```
+
+
+
+
+
+
+### ErrorIncompleteL2TransactionData
+
+```solidity
+error ErrorIncompleteL2TransactionData()
+```
+
+
+
+
+
+
+### ErrorIncorrectBatchHash
+
+```solidity
+error ErrorIncorrectBatchHash()
+```
+
+
+
+
+
+
+### ErrorIncorrectBatchIndex
+
+```solidity
+error ErrorIncorrectBatchIndex()
+```
+
+
+
+
+
+
+### ErrorIncorrectBitmapLength
+
+```solidity
+error ErrorIncorrectBitmapLength()
+```
+
+
+
+*Thrown when the length of skippedL1MessageBitmap is incorret.*
+
+
+### ErrorIncorrectChunkLength
+
+```solidity
+error ErrorIncorrectChunkLength()
+```
+
+
+
+
+
+
+### ErrorIncorrectPreviousStateRoot
+
+```solidity
+error ErrorIncorrectPreviousStateRoot()
+```
+
+
+
+
+
+
+### ErrorInvalidBatchHeaderVersion
+
+```solidity
+error ErrorInvalidBatchHeaderVersion()
+```
+
+
+
+
+
+
+### ErrorLastL1MessageSkipped
+
+```solidity
+error ErrorLastL1MessageSkipped()
+```
+
+
+
+
+
+
+### ErrorNoBlobFound
+
+```solidity
+error ErrorNoBlobFound()
+```
+
+
+
+
+
+
+### ErrorNoBlockInChunk
+
+```solidity
+error ErrorNoBlockInChunk()
+```
+
+
+
+
+
+
+### ErrorNumTxsLessThanNumL1Msgs
+
+```solidity
+error ErrorNumTxsLessThanNumL1Msgs()
+```
+
+
+
+
+
+
+### ErrorPreviousStateRootIsZero
+
+```solidity
+error ErrorPreviousStateRootIsZero()
+```
+
+
+
+
+
+
+### ErrorRevertFinalizedBatch
+
+```solidity
+error ErrorRevertFinalizedBatch()
+```
+
+
+
+
+
+
+### ErrorRevertNotStartFromEnd
+
+```solidity
+error ErrorRevertNotStartFromEnd()
+```
+
+
+
+
+
+
+### ErrorRevertZeroBatches
+
+```solidity
+error ErrorRevertZeroBatches()
+```
+
+
+
+
+
+
+### ErrorStateRootIsZero
+
+```solidity
+error ErrorStateRootIsZero()
+```
+
+
+
+
+
+
+### ErrorTooManyTxsInOneChunk
+
+```solidity
+error ErrorTooManyTxsInOneChunk()
+```
+
+
+
+
+
 
 ### ErrorZeroAddress
 

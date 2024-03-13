@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
 import {IL1MessageQueue} from "./IL1MessageQueue.sol";
