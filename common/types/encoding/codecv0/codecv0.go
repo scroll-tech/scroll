@@ -160,7 +160,7 @@ func (c *DAChunk) Encode() ([]byte, error) {
 // Hash computes the hash of the DAChunk data.
 func (c *DAChunk) Hash() (common.Hash, error) {
 	chunkBytes, err := c.Encode()
-	if err != nil {
+	if err != nil && len(chunkBytes) == 0 {
 		return common.Hash{}, err
 	}
 	numBlocks := chunkBytes[0]
@@ -198,7 +198,7 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 
 // NewDABatch creates a DABatch from the provided encoding.Batch.
 func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
-	// buffer for storing chunk hashes in order to compute the batch data hash
+	// storing chunk hashes in order to compute the batch data hash
 	var dataBytes []byte
 
 	// skipped L1 message bitmap, an array of 256-bit bitmaps
