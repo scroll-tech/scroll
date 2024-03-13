@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
@@ -42,7 +43,7 @@ var (
 	cfg                    *config.Config
 	base                   *docker.App
 	posL1TestEnv           *dockercompose.PoSL1TestEnv
-	txTypes                = []string{"LegacyTx", "DynamicFeeTx"}
+	txTypes                = []string{"LegacyTx", "DynamicFeeTx", "BlobTx"}
 	txUint8Types           = []uint8{0, 2, 3}
 	db                     *gorm.DB
 	mockL1ContractsAddress common.Address
@@ -105,6 +106,8 @@ func setupEnv(t *testing.T) {
 
 	mockL1ContractsAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
 	assert.NoError(t, err)
+
+	time.Sleep(10 * time.Second)
 }
 
 func TestSender(t *testing.T) {

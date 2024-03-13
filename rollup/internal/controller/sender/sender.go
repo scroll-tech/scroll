@@ -158,7 +158,7 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
-func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, fallbackGasLimit uint64, baseFee, blobBaseFee uint64) (*FeeData, error) {
+func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64, fallbackGasLimit uint64) (*FeeData, error) {
 	switch s.config.TxType {
 	case LegacyTxType:
 		return s.estimateLegacyGas(target, data, fallbackGasLimit)
@@ -195,7 +195,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		return common.Hash{}, fmt.Errorf("failed to get block number and base fee, err: %w", err)
 	}
 
-	if feeData, err = s.getFeeData(target, data, sidecar, fallbackGasLimit, baseFee, blobBaseFee); err != nil {
+	if feeData, err = s.getFeeData(target, data, sidecar, baseFee, blobBaseFee, fallbackGasLimit); err != nil {
 		s.metrics.sendTransactionFailureGetFee.WithLabelValues(s.service, s.name).Inc()
 		log.Error("failed to get fee data", "from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "fallback gas limit", fallbackGasLimit, "err", err)
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
@@ -277,6 +277,23 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 		log.Error("failed to sign tx", "address", s.auth.From.String(), "err", err)
 		return nil, err
 	}
+
+	data, _ = tx.MarshalBinary()
+
+	decodedTx := &gethTypes.Transaction{}
+	rlp.DecodeBytes(data, &decodedTx)
+
+	fmt.Println("ChainID:   ", decodedTx.ChainId())
+	fmt.Println("Nonce:     ", decodedTx.Nonce())
+	fmt.Println("GasTipCap: ", decodedTx.GasTipCap())
+	fmt.Println("GasFeeCap: ", decodedTx.GasFeeCap())
+	fmt.Println("Gas:       ", decodedTx.Gas())
+	fmt.Println("To:        ", decodedTx.To())
+	fmt.Println("Data:      ", decodedTx.Data())
+	fmt.Println("AccessList:", decodedTx.AccessList())
+	fmt.Println("BlobGasFeeCap:", decodedTx.BlobGasFeeCap())
+	fmt.Println("BlobHashes: ", decodedTx.BlobHashes())
+	fmt.Println("Sidecar:", decodedTx.BlobTxSidecar())
 
 	if err = s.client.SendTransaction(s.ctx, tx); err != nil {
 		log.Error("failed to send tx", "tx hash", tx.Hash().String(), "from", s.auth.From.String(), "nonce", tx.Nonce(), "err", err)

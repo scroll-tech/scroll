@@ -91,10 +91,12 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *gethT
 		gasLimit = gasLimit * 12 / 10 // 20% extra gas to avoid out of gas error
 	}
 	feeData := &FeeData{
-		gasLimit:  gasLimit,
-		gasTipCap: gasTipCap,
-		gasFeeCap: gasFeeCap,
+		gasLimit:      gasLimit,
+		gasTipCap:     gasTipCap,
+		gasFeeCap:     gasFeeCap,
+		blobGasFeeCap: blobGasFeeCap,
 	}
+
 	if accessList != nil {
 		feeData.accessList = *accessList
 	}
