@@ -38,7 +38,7 @@ Mapping from ERC20 token address to corresponding L1ERC20Gateway.
 function defaultERC20Gateway() external view returns (address)
 ```
 
-The addess of default ERC20 gateway, normally the L1StandardERC20Gateway contract.
+The address of default ERC20 gateway, normally the L1StandardERC20Gateway contract.
 
 
 

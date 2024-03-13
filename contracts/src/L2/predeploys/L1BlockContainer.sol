@@ -242,7 +242,7 @@ contract L1BlockContainer is OwnableBase, IL1BlockContainer {
             let _computedBlockHash := keccak256(memPtr, headerPayloadLength)
             require(eq(_blockHash, _computedBlockHash), "Block hash mismatch")
 
-            // load 16 vaules
+            // load 16 values
             for {
                 let i := 0
             } lt(i, 16) {

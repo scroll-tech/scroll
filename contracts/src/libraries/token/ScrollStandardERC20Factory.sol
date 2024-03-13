@@ -23,7 +23,7 @@ contract ScrollStandardERC20Factory is Ownable, IScrollStandardERC20Factory {
 
     /// @inheritdoc IScrollStandardERC20Factory
     function computeL2TokenAddress(address _gateway, address _l1Token) external view returns (address) {
-        // In StandardERC20Gateway, all corresponding l2 tokens are depoyed by Create2 with salt,
+        // In StandardERC20Gateway, all corresponding l2 tokens are deployed by Create2 with salt,
         // we can calculate the l2 address directly.
         bytes32 _salt = _getSalt(_gateway, _l1Token);
 

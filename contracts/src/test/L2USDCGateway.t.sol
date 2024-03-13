@@ -301,7 +301,7 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
             message
         );
 
-        // conterpart is not L1USDCGateway
+        // counterpart is not L1USDCGateway
         // emit FailedRelayedMessage from L2ScrollMessenger
         hevm.expectEmit(true, false, false, true);
         emit FailedRelayedMessage(keccak256(xDomainCalldata));

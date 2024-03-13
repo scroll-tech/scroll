@@ -199,7 +199,7 @@ library PatriciaMerkleTrieVerifier {
             }
 
             // decodes all RLP encoded data and stores their DATA items
-            // [length - 128 bits | calldata offset - 128 bits] in a continous memory region.
+            // [length - 128 bits | calldata offset - 128 bits] in a continuous memory region.
             // Expects that the RLP starts with a list that defines the length
             // of the whole RLP region.
             function decodeFlat(_ptr) -> ptr, memStart, nItems, hash {
@@ -369,7 +369,7 @@ library PatriciaMerkleTrieVerifier {
 
                     // first item is considered the root node.
                     // Otherwise verifies that the hash of the current node
-                    // is the same as the previous choosen one.
+                    // is the same as the previous chosen one.
                     switch i
                     case 1 {
                         rootHash := hash
@@ -425,7 +425,7 @@ library PatriciaMerkleTrieVerifier {
                     }
                 }
 
-                // lastly, derive the path of the choosen one (TM)
+                // lastly, derive the path of the chosen one (TM)
                 path := derivePath(key, depth)
             }
 
@@ -505,7 +505,7 @@ library PatriciaMerkleTrieVerifier {
             }
 
             // the one and only boundary check
-            // in case an attacker crafted a malicous payload
+            // in case an attacker crafted a malicious payload
             // and succeeds in the prior verification steps
             // then this should catch any bogus accesses
             if iszero(eq(ptr, add(proof.offset, proof.length))) {

@@ -161,7 +161,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
-        // only call by conterpart
+        // only call by counterpart
         hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
@@ -279,7 +279,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         IL1ScrollMessenger.L2MessageProof memory proof;
         proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
-        // conterpart is not L2USDCGateway
+        // counterpart is not L2USDCGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
         hevm.expectEmit(true, false, false, true);
         emit FailedRelayedMessage(keccak256(xDomainCalldata));

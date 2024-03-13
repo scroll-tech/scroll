@@ -481,7 +481,7 @@ contract L1LidoGatewayTest is L1GatewayTestBase {
         hevm.expectRevert(ErrorNonZeroMsgValue.selector);
         mockMessenger.callTarget{value: 1}(address(mockGateway), message);
 
-        // succeed when finialize
+        // succeed when finalize
         bytes memory xDomainCalldata = abi.encodeCall(
             l2Messenger.relayMessage,
             (address(counterpartGateway), address(gateway), 0, 0, message)
