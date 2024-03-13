@@ -6,32 +6,34 @@ const versionFilePath = new URL(
   import.meta.url
 ).pathname;
 
-const versionFileContent = readFileSync(versionFilePath, { encoding: "utf-8" });
-
-const currentVersion = versionFileContent.match(
-  /var tag = "(?<version>v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+))"/
-);
-
 try {
-  parseInt(currentVersion.groups.major);
-  parseInt(currentVersion.groups.minor);
-  parseInt(currentVersion.groups.patch);
-} catch (err) {
-  console.error(new Error("Failed to parse version in version.go file"));
-  throw err;
-}
+  const versionFileContent = readFileSync(versionFilePath, { encoding: "utf-8" });
 
-// prettier-ignore
-const newVersion = `v${currentVersion.groups.major}.${currentVersion.groups.minor}.${parseInt(currentVersion.groups.patch) + 1}`;
+  const currentVersion = versionFileContent.match(
+    /var tag = "(?<version>v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+))"/
+  );
 
-console.log(
-  `Bump version from ${currentVersion.groups.version} to ${newVersion}`
-);
+  if (!currentVersion) {
+    throw new Error("Failed to parse version in version.go file");
+  }
 
-writeFileSync(
-  versionFilePath,
-  versionFileContent.replace(
+  const major = parseInt(currentVersion.groups.major, 10);
+  const minor = parseInt(currentVersion.groups.minor, 10);
+  const patch = parseInt(currentVersion.groups.patch, 10);
+
+  // Increment the patch version
+  const newPatch = patch + 1;
+  const newVersion = `v${major}.${minor}.${newPatch}`;
+
+  console.log(`Bump version from ${currentVersion.groups.version} to ${newVersion}`);
+
+  const updatedContent = versionFileContent.replace(
     `var tag = "${currentVersion.groups.version}"`,
     `var tag = "${newVersion}"`
-  )
-);
+  );
+
+  writeFileSync(versionFilePath, updatedContent);
+} catch (err) {
+  console.error(err.message);
+  process.exit(1);
+}

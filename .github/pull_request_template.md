@@ -1,7 +1,16 @@
 ### Purpose or design rationale of this PR
 
-*Describe your change. Make sure to answer these three questions: What does this PR do? Why does it do it? How does it do it?*
+This PR updates the version information in the common/version/version.go file.
+Specifically, it increments the patch version by 1 to reflect a new release.
 
+Why does it do it?
+Keeping track of version changes is essential for maintaining consistency and ensuring that consumers of our software can identify the latest release.
+By updating the version, we signal that there have been changes or improvements in the codebase.
+
+How does it do it?
+The PR parses the existing version from the version.go file.
+It increments the patch version by 1.
+The updated version is then written back to the same file.
 
 ### PR title
 
@@ -10,7 +19,7 @@ Your PR title must follow [conventional commits](https://www.conventionalcommits
 - [ ] build: Changes that affect the build system or external dependencies (example scopes: yarn, eslint, typescript)
 - [ ] ci: Changes to our CI configuration files and scripts (example scopes: vercel, github, cypress)
 - [ ] docs: Documentation-only changes
-- [ ] feat: A new feature
+- [X] feat: A new feature --Increment version in common/version/version.go
 - [ ] fix: A bug fix
 - [ ] perf: A code change that improves performance
 - [ ] refactor: A code change that doesn't fix a bug, or add a feature, or improves performance
@@ -22,7 +31,7 @@ Your PR title must follow [conventional commits](https://www.conventionalcommits
 
 Has `tag` in `common/version.go` been updated or have you added `bump-version` label to this PR?
 
-- [ ] No, this PR doesn't involve a new deployment, git tag, docker image tag
+- [X] No, this PR doesn't involve a new deployment, git tag, docker image tag
 - [ ] Yes
 
 
@@ -31,4 +40,4 @@ Has `tag` in `common/version.go` been updated or have you added `bump-version` l
 Does this PR have the `breaking-change` label?
 
 - [ ] No, this PR is not a breaking change
-- [ ] Yes
+- [X] Yes
