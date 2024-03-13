@@ -165,7 +165,7 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 	}
 
 	if len(chunkBytes) == 0 {
-		return common.Hash{}, errors.New("chunkBytes is empty")
+		return common.Hash{}, errors.New("chunk data is empty and cannot be processed")
 	}
 	numBlocks := chunkBytes[0]
 
