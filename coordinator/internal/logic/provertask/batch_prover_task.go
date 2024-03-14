@@ -34,7 +34,7 @@ type BatchProverTask struct {
 
 // NewBatchProverTask new a batch collector
 func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
-	forkHeights, forkMap := forks.CollectSortedForkHeights(chainCfg)
+	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
 	maxForkNumber := forkHeights[len(forkHeights)-1]
 	log.Info("new batch prover task", "forkHeights", forkHeights, "maxForkNumber", maxForkNumber)
 
@@ -43,7 +43,7 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			vk:                 vk,
 			db:                 db,
 			cfg:                cfg,
-			forkMap:            forkMap,
+			nameForkMap:        nameForkMap,
 			maxForkNumber:      maxForkNumber,
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
@@ -69,15 +69,19 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	// TODO Only happen when the first time hard fork, the ForkBlockNumber = 0.
-	// TODO need check fork block number whether equal 0 after the first hard fork
-	if getTaskParameter.ForkBlockNumber != 0 && !bp.forkMap[getTaskParameter.ForkBlockNumber] {
-		log.Debug("hard fork prover get empty batch because of the hard fork number don't exist", "height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkBlockNumber)
-		return nil, nil
+	var hardForkNumber uint64
+	if getTaskParameter.HardForkName != "" {
+		var exist bool
+		hardForkNumber, exist = bp.nameForkMap[getTaskParameter.HardForkName]
+		if !exist {
+			log.Debug("hard fork prover get empty batch because of the hard fork name don't exist", "height",
+				getTaskParameter.ProverHeight, "fork name", getTaskParameter.HardForkName)
+			return nil, nil
+		}
 	}
 
-	if getTaskParameter.ForkBlockNumber == 0 {
-		getTaskParameter.ForkBlockNumber = bp.maxForkNumber - 1
+	if getTaskParameter.HardForkName == "" {
+		hardForkNumber = bp.maxForkNumber - 1
 	}
 
 	// if the hard fork number set, rollup relayer must generate the chunk from hard fork number,
@@ -89,7 +93,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	var isFork bool
-	if getTaskParameter.ForkBlockNumber >= bp.maxForkNumber {
+	if hardForkNumber == bp.maxForkNumber {
 		isFork = true
 	}
 

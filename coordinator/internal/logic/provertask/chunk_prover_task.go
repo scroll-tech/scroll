@@ -36,7 +36,7 @@ type ChunkProverTask struct {
 
 // NewChunkProverTask new a chunk prover task
 func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
-	forkHeights, forkMap := forks.CollectSortedForkHeights(chainCfg)
+	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
 	maxForkNumber := forkHeights[len(forkHeights)-1]
 	log.Info("new chunk prover task", "forkHeights", forkHeights, "maxForkNumber", maxForkNumber)
 	cp := &ChunkProverTask{
@@ -44,7 +44,7 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			vk:                 vk,
 			db:                 db,
 			cfg:                cfg,
-			forkMap:            forkMap,
+			nameForkMap:        nameForkMap,
 			maxForkNumber:      maxForkNumber,
 			chunkOrm:           orm.NewChunk(db),
 			blockOrm:           orm.NewL2Block(db),
@@ -70,17 +70,22 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	if getTaskParameter.ForkBlockNumber != 0 && !cp.forkMap[getTaskParameter.ForkBlockNumber] {
-		log.Debug("hard fork prover get empty chunk because of the hard fork number don't exist", "height", getTaskParameter.ProverHeight, "fork number", getTaskParameter.ForkBlockNumber)
-		return nil, nil
+	var hardForkNumber uint64
+	if getTaskParameter.HardForkName != "" {
+		var exist bool
+		hardForkNumber, exist = cp.nameForkMap[getTaskParameter.HardForkName]
+		if !exist {
+			log.Debug("hard fork prover get empty chunk because of the hard fork number don't exist", "height", getTaskParameter.ProverHeight, "fork name", getTaskParameter.HardForkName)
+			return nil, nil
+		}
 	}
 
-	if getTaskParameter.ForkBlockNumber == 0 {
-		getTaskParameter.ForkBlockNumber = cp.maxForkNumber - 1
+	if getTaskParameter.HardForkName == "" {
+		hardForkNumber = cp.maxForkNumber - 1
 	}
 
 	var isFork bool
-	if getTaskParameter.ForkBlockNumber >= cp.maxForkNumber {
+	if hardForkNumber == cp.maxForkNumber {
 		isFork = true
 	}
 

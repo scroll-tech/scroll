@@ -35,6 +35,14 @@ import (
 	"scroll-tech/coordinator/internal/route"
 )
 
+const (
+	forkNumberFour  = 4
+	forkNumberThree = 3
+	forkNumberTwo   = 2
+	forkNumberOne   = 1
+	forkNumberZero  = 0
+)
+
 var (
 	dbCfg *database.Config
 	conf  *config.Config
@@ -60,6 +68,8 @@ var (
 	hardForkBatch2 *encoding.Batch
 
 	tokenTimeout int
+
+	hardForkNameMap map[int64]string
 )
 
 func TestMain(m *testing.M) {
@@ -77,7 +87,7 @@ func randomURL() string {
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
 
-func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string, forkNumbers []int64) (*cron.Collector, *http.Server) {
+func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string, forkNameNumber map[string]int64) (*cron.Collector, *http.Server) {
 	var err error
 	db, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
@@ -106,12 +116,18 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	}
 
 	var chainConf params.ChainConfig
-	for idx, forkNumber := range forkNumbers {
-		if idx == 0 {
-			chainConf.HomesteadBlock = big.NewInt(forkNumber)
-		}
-		if idx == 1 {
+	for forkName, forkNumber := range forkNameNumber {
+		switch forkName {
+		case "banach":
+			chainConf.BanachBlock = big.NewInt(forkNumber)
+		case "london":
 			chainConf.LondonBlock = big.NewInt(forkNumber)
+		case "istanbul":
+			chainConf.IstanbulBlock = big.NewInt(forkNumber)
+		case "homestead":
+			chainConf.HomesteadBlock = big.NewInt(forkNumber)
+		case "eip155":
+			chainConf.EIP155Block = big.NewInt(forkNumber)
 		}
 	}
 
@@ -180,8 +196,8 @@ func setEnv(t *testing.T) {
 	assert.NoError(t, err)
 
 	batch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk}}
-	hardForkBatch1 = &encoding.Batch{Chunks: []*encoding.Chunk{hardForkChunk1}}
-	hardForkBatch2 = &encoding.Batch{Chunks: []*encoding.Chunk{hardForkChunk2}}
+	hardForkBatch1 = &encoding.Batch{Index: 0, StartChunkIndex: 0, EndChunkIndex: 0, Chunks: []*encoding.Chunk{hardForkChunk1}}
+	hardForkBatch2 = &encoding.Batch{Index: 1, StartChunkIndex: 1, EndChunkIndex: 1, Chunks: []*encoding.Chunk{hardForkChunk2}}
 }
 
 func TestApis(t *testing.T) {
@@ -208,7 +224,7 @@ func TestApis(t *testing.T) {
 func testHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []int64{1})
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, map[string]int64{"homestead": forkNumberOne})
 	defer func() {
 		proofCollector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -221,7 +237,7 @@ func testHandshake(t *testing.T) {
 func testFailedHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []int64{1})
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, map[string]int64{"homestead": forkNumberOne})
 	defer func() {
 		proofCollector.Stop()
 	}()
@@ -239,7 +255,7 @@ func testFailedHandshake(t *testing.T) {
 
 func testGetTaskBlocked(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{1})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"homestead": forkNumberOne})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -283,7 +299,7 @@ func testGetTaskBlocked(t *testing.T) {
 
 func testOutdatedProverVersion(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{1})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"homestead": forkNumberOne})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -307,19 +323,11 @@ func testOutdatedProverVersion(t *testing.T) {
 }
 
 func testHardForkAssignTask(t *testing.T) {
-	const (
-		forkNumberFour  = 4
-		forkNumberThree = 3
-		forkNumberTwo   = 2
-		forkNumberOne   = 1
-		forkNumberZero  = 0
-	)
-
 	tests := []struct {
 		name                  string
 		proofType             message.ProofType
-		forkNumbers           []int64
-		proverForkNumbers     []int64
+		forkNumbers           map[string]int64
+		proverForkNames       []string
 		exceptTaskNumber      int
 		exceptGetTaskErrCodes []int
 		exceptGetTaskErrMsgs  []string
@@ -327,153 +335,153 @@ func testHardForkAssignTask(t *testing.T) {
 		{ // hard fork 4, prover 4  block [2-3]
 			name:                  "noTaskForkChunkProverVersionLargeOrEqualThanHardFork",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           []int64{forkNumberFour},
+			forkNumbers:           map[string]int64{"banach": forkNumberFour},
 			exceptTaskNumber:      0,
-			proverForkNumbers:     []int64{forkNumberFour, forkNumberFour},
+			proverForkNames:       []string{"banach", "banach"},
 			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
 		{
 			name:                  "noTaskForkBatchProverVersionLargeOrEqualThanHardFork",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           []int64{forkNumberFour},
+			forkNumbers:           map[string]int64{"banach": forkNumberFour},
 			exceptTaskNumber:      0,
-			proverForkNumbers:     []int64{forkNumberFour, forkNumberFour},
+			proverForkNames:       []string{"banach", "banach"},
 			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
 		{ // hard fork 1, prover 1 block [2-3]
 			name:                  "noTaskForkChunkProverVersionLessThanHardFork",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           []int64{forkNumberTwo},
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo},
 			exceptTaskNumber:      0,
-			proverForkNumbers:     []int64{forkNumberOne, forkNumberOne},
+			proverForkNames:       []string{"homestead", "homestead"},
 			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
 		{
 			name:                  "noTaskForkBatchProverVersionLessThanHardFork",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           []int64{forkNumberTwo},
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo},
 			exceptTaskNumber:      0,
-			proverForkNumbers:     []int64{forkNumberOne, forkNumberOne},
+			proverForkNames:       []string{"homestead", "homestead"},
 			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
 		{ // hard fork 3, prover 3 block [2-3]
 			name:                  "oneTaskForkChunkProverVersionLargeOrEqualThanHardFork",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           []int64{forkNumberThree},
+			forkNumbers:           map[string]int64{"london": forkNumberThree},
 			exceptTaskNumber:      1,
-			proverForkNumbers:     []int64{forkNumberThree, forkNumberThree},
+			proverForkNames:       []string{"london", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
 		},
 		{
 			name:                  "oneTaskForkBatchProverVersionLargeOrEqualThanHardFork",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           []int64{forkNumberThree},
+			forkNumbers:           map[string]int64{"london": forkNumberThree},
 			exceptTaskNumber:      1,
-			proverForkNumbers:     []int64{forkNumberThree, forkNumberThree},
+			proverForkNames:       []string{"london", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
 		},
 		{ // hard fork 2, prover 2 block [2-3]
 			name:                  "oneTaskForkChunkProverVersionLessThanHardFork",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           []int64{forkNumberTwo, forkNumberThree},
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
 			exceptTaskNumber:      1,
-			proverForkNumbers:     []int64{forkNumberTwo, forkNumberTwo},
+			proverForkNames:       []string{"istanbul", "istanbul"},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
 		},
 		{
 			name:                  "oneTaskForkBatchProverVersionLessThanHardFork",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           []int64{forkNumberTwo, forkNumberThree},
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
 			exceptTaskNumber:      1,
-			proverForkNumbers:     []int64{forkNumberTwo, forkNumberTwo},
+			proverForkNames:       []string{"istanbul", "istanbul"},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
 		},
 		{ // hard fork 2, prover 2 block [2-3]
 			name:                  "twoTaskForkChunkProverVersionLargeOrEqualThanHardFork",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           []int64{forkNumberTwo},
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo},
 			exceptTaskNumber:      2,
-			proverForkNumbers:     []int64{forkNumberTwo, forkNumberTwo},
+			proverForkNames:       []string{"istanbul", "istanbul"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
 			exceptGetTaskErrMsgs:  []string{"", ""},
 		},
 		{
 			name:                  "twoTaskForkBatchProverVersionLargeOrEqualThanHardFork",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           []int64{forkNumberTwo},
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo},
 			exceptTaskNumber:      2,
-			proverForkNumbers:     []int64{forkNumberTwo, forkNumberTwo},
+			proverForkNames:       []string{"istanbul", "istanbul"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
 			exceptGetTaskErrMsgs:  []string{"", ""},
 		},
 		{ // hard fork 4, prover 3 block [2-3]
 			name:                  "twoTaskForkChunkProverVersionLessThanHardFork",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           []int64{forkNumberThree, forkNumberFour},
+			forkNumbers:           map[string]int64{"london": forkNumberThree, "banach": forkNumberFour},
 			exceptTaskNumber:      2,
-			proverForkNumbers:     []int64{forkNumberThree, forkNumberThree},
+			proverForkNames:       []string{"london", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
 			exceptGetTaskErrMsgs:  []string{"", ""},
 		},
 		{ // hard fork 3, prover1:2 prover2:3 block [2-3]
 			name:                  "twoTaskForkChunkProverVersionMiddleHardFork",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           []int64{forkNumberTwo, forkNumberThree},
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
 			exceptTaskNumber:      2,
-			proverForkNumbers:     []int64{forkNumberTwo, forkNumberThree},
+			proverForkNames:       []string{"istanbul", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
 			exceptGetTaskErrMsgs:  []string{"", ""},
 		},
 		{
 			name:                  "twoTaskForkBatchProverVersionMiddleHardFork",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           []int64{forkNumberTwo, forkNumberThree},
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
 			exceptTaskNumber:      2,
-			proverForkNumbers:     []int64{forkNumberTwo, forkNumberThree},
+			proverForkNames:       []string{"istanbul", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
 			exceptGetTaskErrMsgs:  []string{"", ""},
 		},
 		{ // hard fork 3, prover1:2 prover2:3 block [2-3]
 			name:                  "twoTaskForkChunkProverVersionMiddleHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           []int64{forkNumberThree},
+			forkNumbers:           map[string]int64{"london": forkNumberThree},
 			exceptTaskNumber:      2,
-			proverForkNumbers:     []int64{forkNumberZero, forkNumberThree},
+			proverForkNames:       []string{"", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
 			exceptGetTaskErrMsgs:  []string{"", ""},
 		},
 		{
 			name:                  "twoTaskForkBatchProverVersionMiddleHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           []int64{forkNumberThree},
+			forkNumbers:           map[string]int64{"london": forkNumberThree},
 			exceptTaskNumber:      2,
-			proverForkNumbers:     []int64{forkNumberZero, forkNumberThree},
+			proverForkNames:       []string{"", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
 			exceptGetTaskErrMsgs:  []string{"", ""},
 		},
 		{ // hard fork 2, prover 2 block [2-3]
 			name:                  "oneTaskForkChunkProverVersionLessThanHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           []int64{forkNumberThree},
+			forkNumbers:           map[string]int64{"london": forkNumberThree},
 			exceptTaskNumber:      1,
-			proverForkNumbers:     []int64{forkNumberZero, forkNumberZero},
+			proverForkNames:       []string{"", ""},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
 		},
 		{
 			name:                  "oneTaskForkBatchProverVersionLessThanHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           []int64{forkNumberTwo, forkNumberThree},
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
 			exceptTaskNumber:      1,
-			proverForkNumbers:     []int64{forkNumberZero, forkNumberZero},
+			proverForkNames:       []string{"", ""},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
 		},
@@ -532,7 +540,7 @@ func testHardForkAssignTask(t *testing.T) {
 			getTaskNumber := 0
 			for i := 0; i < 2; i++ {
 				mockProver := newMockProver(t, fmt.Sprintf("mock_prover_%d", i), coordinatorURL, tt.proofType, version.Version)
-				proverTask, errCode, errMsg := mockProver.getProverTask(t, tt.proofType, tt.proverForkNumbers[i])
+				proverTask, errCode, errMsg := mockProver.getProverTask(t, tt.proofType, tt.proverForkNames[i])
 				assert.Equal(t, tt.exceptGetTaskErrCodes[i], errCode)
 				assert.Equal(t, tt.exceptGetTaskErrMsgs[i], errMsg)
 				if errCode != types.Success {
@@ -548,7 +556,7 @@ func testHardForkAssignTask(t *testing.T) {
 
 func testValidProof(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{2})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"istanbul": forkNumberTwo})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -578,7 +586,7 @@ func testValidProof(t *testing.T) {
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
 
 		proofStatus := verifiedSuccess
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, 2)
+		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, "istanbul")
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
 		assert.NotNil(t, proverTask)
@@ -631,7 +639,7 @@ func testValidProof(t *testing.T) {
 func testInvalidProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{2})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"istanbul": forkNumberTwo})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -658,7 +666,7 @@ func testInvalidProof(t *testing.T) {
 			proofType = message.ProofTypeBatch
 		}
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, 2)
+		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, "istanbul")
 		assert.NotNil(t, proverTask)
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
@@ -709,7 +717,7 @@ func testInvalidProof(t *testing.T) {
 func testProofGeneratedFailed(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []int64{2})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"istanbul": forkNumberTwo})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -736,7 +744,7 @@ func testProofGeneratedFailed(t *testing.T) {
 			proofType = message.ProofTypeBatch
 		}
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, 2)
+		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, "istanbul")
 		assert.NotNil(t, proverTask)
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
@@ -798,7 +806,7 @@ func testProofGeneratedFailed(t *testing.T) {
 func testTimeoutProof(t *testing.T) {
 	// Setup coordinator and ws server.
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []int64{2})
+	collector, httpHandler := setupCoordinator(t, 1, coordinatorURL, map[string]int64{"istanbul": forkNumberTwo})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -824,13 +832,13 @@ func testTimeoutProof(t *testing.T) {
 
 	// create first chunk & batch mock prover, that will not send any proof.
 	chunkProver1 := newMockProver(t, "prover_test"+strconv.Itoa(0), coordinatorURL, message.ProofTypeChunk, version.Version)
-	proverChunkTask, errChunkCode, errChunkMsg := chunkProver1.getProverTask(t, message.ProofTypeChunk, 2)
+	proverChunkTask, errChunkCode, errChunkMsg := chunkProver1.getProverTask(t, message.ProofTypeChunk, "istanbul")
 	assert.NotNil(t, proverChunkTask)
 	assert.Equal(t, errChunkCode, types.Success)
 	assert.Equal(t, errChunkMsg, "")
 
 	batchProver1 := newMockProver(t, "prover_test"+strconv.Itoa(1), coordinatorURL, message.ProofTypeBatch, version.Version)
-	proverBatchTask, errBatchCode, errBatchMsg := batchProver1.getProverTask(t, message.ProofTypeBatch, 2)
+	proverBatchTask, errBatchCode, errBatchMsg := batchProver1.getProverTask(t, message.ProofTypeBatch, "istanbul")
 	assert.NotNil(t, proverBatchTask)
 	assert.Equal(t, errBatchCode, types.Success)
 	assert.Equal(t, errBatchMsg, "")
@@ -859,14 +867,14 @@ func testTimeoutProof(t *testing.T) {
 
 	// create second mock prover, that will send valid proof.
 	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), coordinatorURL, message.ProofTypeChunk, version.Version)
-	proverChunkTask2, chunkTask2ErrCode, chunkTask2ErrMsg := chunkProver2.getProverTask(t, message.ProofTypeChunk, 2)
+	proverChunkTask2, chunkTask2ErrCode, chunkTask2ErrMsg := chunkProver2.getProverTask(t, message.ProofTypeChunk, "istanbul")
 	assert.NotNil(t, proverChunkTask2)
 	assert.Equal(t, chunkTask2ErrCode, types.Success)
 	assert.Equal(t, chunkTask2ErrMsg, "")
 	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess, types.Success)
 
 	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), coordinatorURL, message.ProofTypeBatch, version.Version)
-	proverBatchTask2, batchTask2ErrCode, batchTask2ErrMsg := batchProver2.getProverTask(t, message.ProofTypeBatch, 2)
+	proverBatchTask2, batchTask2ErrCode, batchTask2ErrMsg := batchProver2.getProverTask(t, message.ProofTypeBatch, "istanbul")
 	assert.NotNil(t, proverBatchTask2)
 	assert.Equal(t, batchTask2ErrCode, types.Success)
 	assert.Equal(t, batchTask2ErrMsg, "")

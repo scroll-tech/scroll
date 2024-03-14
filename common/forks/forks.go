@@ -8,30 +8,46 @@ import (
 )
 
 // CollectSortedForkHeights returns a sorted set of block numbers that one or more forks are activated on
-func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]bool) {
+func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]bool, map[string]uint64) {
 	forkHeightsMap := make(map[uint64]bool)
-	for _, fork := range []*big.Int{
-		config.HomesteadBlock,
-		config.DAOForkBlock,
-		config.EIP150Block,
-		config.EIP155Block,
-		config.EIP158Block,
-		config.ByzantiumBlock,
-		config.ConstantinopleBlock,
-		config.PetersburgBlock,
-		config.IstanbulBlock,
-		config.MuirGlacierBlock,
-		config.BerlinBlock,
-		config.LondonBlock,
-		config.ArrowGlacierBlock,
-		config.ArchimedesBlock,
-		config.ShanghaiBlock,
+	forkNameHeightMap := make(map[string]uint64)
+	type nameFork struct {
+		name  string
+		block *big.Int
+	}
+	for _, fork := range []nameFork{
+		{name: "homestead", block: config.HomesteadBlock},
+		{name: "daoFork", block: config.DAOForkBlock},
+		{name: "eip150", block: config.EIP150Block},
+		{name: "eip155", block: config.EIP155Block},
+		{name: "eip158", block: config.EIP158Block},
+		{name: "byzantium", block: config.ByzantiumBlock},
+		{name: "constantinople", block: config.ConstantinopleBlock},
+		{name: "petersburg", block: config.PetersburgBlock},
+		{name: "istanbul", block: config.IstanbulBlock},
+		{name: "muirGlacier", block: config.MuirGlacierBlock},
+		{name: "berlin", block: config.BerlinBlock},
+		{name: "london", block: config.LondonBlock},
+		{name: "arrowGlacier", block: config.ArrowGlacierBlock},
+		{name: "archimedes", block: config.ArchimedesBlock},
+		{name: "shanghai", block: config.ShanghaiBlock},
+		{name: "banach", block: config.BanachBlock},
 	} {
-		if fork == nil {
+		if fork.block == nil {
 			continue
-		} else if height := fork.Uint64(); height != 0 {
-			forkHeightsMap[height] = true
 		}
+
+		height := fork.block.Uint64()
+		if height == 0 {
+			continue
+		}
+
+		if _, ok := forkHeightsMap[height]; ok {
+			continue
+		}
+
+		forkHeightsMap[height] = true
+		forkNameHeightMap[fork.name] = height
 	}
 
 	var forkHeights []uint64
@@ -41,7 +57,7 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 	sort.Slice(forkHeights, func(i, j int) bool {
 		return forkHeights[i] < forkHeights[j]
 	})
-	return forkHeights, forkHeightsMap
+	return forkHeights, forkHeightsMap, forkNameHeightMap
 }
 
 // BlocksUntilFork returns the number of blocks until the next fork

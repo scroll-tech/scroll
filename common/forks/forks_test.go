@@ -9,7 +9,7 @@ import (
 )
 
 func TestCollectSortedForkBlocks(t *testing.T) {
-	l, m := CollectSortedForkHeights(&params.ChainConfig{
+	l, m, n := CollectSortedForkHeights(&params.ChainConfig{
 		EIP155Block:         big.NewInt(4),
 		EIP158Block:         big.NewInt(3),
 		ByzantiumBlock:      big.NewInt(3),
@@ -23,6 +23,10 @@ func TestCollectSortedForkBlocks(t *testing.T) {
 		3: true,
 		4: true,
 	}, m)
+	require.Equal(t, map[string]uint64{
+		"eip155": 4,
+		"eip158": 3,
+	}, n)
 }
 
 func TestBlocksUntilFork(t *testing.T) {
