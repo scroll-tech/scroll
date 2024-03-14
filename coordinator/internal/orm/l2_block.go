@@ -11,7 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
 )
 
 // L2Block represents a l2 block in the database.
@@ -77,7 +77,7 @@ func (o *L2Block) GetL2BlockHashesByChunkHash(ctx context.Context, chunkHash str
 
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
 // for unit test
-func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*types.WrappedBlock) error {
+func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) error {
 	var l2Blocks []L2Block
 	for _, block := range blocks {
 		header, err := json.Marshal(block.Header)

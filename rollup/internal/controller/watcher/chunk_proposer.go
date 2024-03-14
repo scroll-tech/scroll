@@ -2,48 +2,22 @@ package watcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/forks"
-	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 )
-
-// chunkRowConsumption is map(sub-circuit name => sub-circuit row count)
-type chunkRowConsumption map[string]uint64
-
-// add accumulates row consumption per sub-circuit
-func (crc *chunkRowConsumption) add(rowConsumption *gethTypes.RowConsumption) error {
-	if rowConsumption == nil {
-		return errors.New("rowConsumption is <nil>")
-	}
-	for _, subCircuit := range *rowConsumption {
-		(*crc)[subCircuit.Name] += subCircuit.RowNumber
-	}
-	return nil
-}
-
-// max finds the maximum row consumption among all sub-circuits
-func (crc *chunkRowConsumption) max() uint64 {
-	var max uint64
-	for _, value := range *crc {
-		if value > max {
-			max = value
-		}
-	}
-	return max
-}
 
 // ChunkProposer proposes chunks based on available unchunked blocks.
 type ChunkProposer struct {
@@ -69,7 +43,6 @@ type ChunkProposer struct {
 	chunkTxNum                         prometheus.Gauge
 	chunkEstimateL1CommitGas           prometheus.Gauge
 	totalL1CommitCalldataSize          prometheus.Gauge
-	totalTxGasUsed                     prometheus.Gauge
 	maxTxConsumption                   prometheus.Gauge
 	chunkBlocksNum                     prometheus.Gauge
 	chunkFirstBlockTimeoutReached      prometheus.Counter
@@ -130,10 +103,6 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 			Name: "rollup_propose_chunk_total_l1_commit_call_data_size",
 			Help: "The total l1 commit call data size",
 		}),
-		totalTxGasUsed: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-			Name: "rollup_propose_chunk_total_tx_gas_used",
-			Help: "The total tx gas used",
-		}),
 		maxTxConsumption: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "rollup_propose_chunk_max_tx_consumption",
 			Help: "The max tx consumption",
@@ -169,7 +138,7 @@ func (p *ChunkProposer) TryProposeChunk() {
 	}
 }
 
-func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
+func (p *ChunkProposer) updateChunkInfoInDB(chunk *encoding.Chunk) error {
 	if chunk == nil {
 		return nil
 	}
@@ -178,11 +147,11 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
 		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, dbTX)
 		if err != nil {
-			log.Warn("ChunkProposer.InsertChunk failed", "chunk hash", chunk.Hash)
+			log.Warn("ChunkProposer.InsertChunk failed", "err", err)
 			return err
 		}
 		if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber, dbChunk.Hash, dbTX); err != nil {
-			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", chunk.Hash, "start block", 0, "end block", 0, "err", err)
+			log.Error("failed to update chunk_hash for l2_blocks", "chunk hash", dbChunk.Hash, "start block", dbChunk.StartBlockNumber, "end block", dbChunk.EndBlockNumber, "err", err)
 			return err
 		}
 		return nil
@@ -190,7 +159,7 @@ func (p *ChunkProposer) updateChunkInfoInDB(chunk *types.Chunk) error {
 	return err
 }
 
-func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
+func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
 	if err != nil {
 		return nil, err
@@ -203,7 +172,7 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 	}
 
 	// select at most maxBlocksThisChunk blocks
-	blocks, err := p.l2BlockOrm.GetL2WrappedBlocksGEHeight(p.ctx, unchunkedBlockHeight, int(maxBlocksThisChunk))
+	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, int(maxBlocksThisChunk))
 	if err != nil {
 		return nil, err
 	}
@@ -212,30 +181,28 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 		return nil, nil
 	}
 
-	var chunk types.Chunk
-	var totalTxGasUsed uint64
-	var totalTxNum uint64
-	var totalL1CommitCalldataSize uint64
-	var totalL1CommitGas uint64
-	crc := chunkRowConsumption{}
-
+	var chunk encoding.Chunk
 	for i, block := range blocks {
-		// metric values
-		lastTotalTxNum := totalTxNum
-		lastTotalL1CommitGas := totalL1CommitGas
-		lastCrcMax := crc.max()
-		lastTotalL1CommitCalldataSize := totalL1CommitCalldataSize
-		lastTotalTxGasUsed := totalTxGasUsed
+		chunk.Blocks = append(chunk.Blocks, block)
 
-		totalTxGasUsed += block.Header.GasUsed
-		totalTxNum += uint64(len(block.Transactions))
-		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
-		totalL1CommitGas = chunk.EstimateL1CommitGas()
-		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
-		if err := crc.add(block.RowConsumption); err != nil {
-			return nil, fmt.Errorf("chunk-proposer failed to update chunk row consumption: %v", err)
+		crcMax, err := chunk.CrcMax()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get crc max: %w", err)
 		}
-		crcMax := crc.max()
+
+		totalTxNum := chunk.NumTransactions()
+
+		totalL1CommitCalldataSize, err := codecv0.EstimateChunkL1CommitCalldataSize(&chunk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate chunk L1 commit calldata size: %w", err)
+		}
+
+		totalL1CommitGas, err := codecv0.EstimateChunkL1CommitGas(&chunk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate chunk L1 commit gas: %w", err)
+		}
+
+		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
 
 		if totalTxNum > p.maxTxNumPerChunk ||
 			totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
@@ -273,9 +240,8 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 
 				if crcMax > p.maxRowConsumptionPerChunk {
 					return nil, fmt.Errorf(
-						"the first block exceeds row consumption limit; block number: %v, row consumption: %v, max: %v, limit: %v",
+						"the first block exceeds row consumption limit; block number: %v, crc max: %v, limit: %v",
 						block.Header.Number,
-						crc,
 						crcMax,
 						p.maxRowConsumptionPerChunk,
 					)
@@ -290,18 +256,32 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
 				"maxL1CommitGasPerChunk", p.maxL1CommitGasPerChunk,
 				"chunkRowConsumptionMax", crcMax,
-				"chunkRowConsumption", crc,
 				"p.maxRowConsumptionPerChunk", p.maxRowConsumptionPerChunk)
 
-			p.chunkTxNum.Set(float64(lastTotalTxNum))
-			p.chunkEstimateL1CommitGas.Set(float64(lastTotalL1CommitGas))
-			p.totalL1CommitCalldataSize.Set(float64(lastTotalL1CommitCalldataSize))
-			p.maxTxConsumption.Set(float64(lastCrcMax))
-			p.totalTxGasUsed.Set(float64(lastTotalTxGasUsed))
+			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
+
+			crcMax, err := chunk.CrcMax()
+			if err != nil {
+				return nil, fmt.Errorf("failed to get crc max: %w", err)
+			}
+
+			totalL1CommitCalldataSize, err := codecv0.EstimateChunkL1CommitCalldataSize(&chunk)
+			if err != nil {
+				return nil, fmt.Errorf("failed to estimate chunk L1 commit calldata size: %w", err)
+			}
+
+			totalL1CommitGas, err := codecv0.EstimateChunkL1CommitGas(&chunk)
+			if err != nil {
+				return nil, fmt.Errorf("failed to estimate chunk L1 commit gas: %w", err)
+			}
+
+			p.chunkTxNum.Set(float64(chunk.NumTransactions()))
+			p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitCalldataSize))
+			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
+			p.maxTxConsumption.Set(float64(crcMax))
 			p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
 			return &chunk, nil
 		}
-		chunk.Blocks = append(chunk.Blocks, block)
 	}
 
 	currentTimeSec := uint64(time.Now().Unix())
@@ -320,12 +300,26 @@ func (p *ChunkProposer) proposeChunk() (*types.Chunk, error) {
 			)
 		}
 
+		crcMax, err := chunk.CrcMax()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get crc max: %w", err)
+		}
+
+		totalL1CommitCalldataSize, err := codecv0.EstimateChunkL1CommitCalldataSize(&chunk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate chunk L1 commit calldata size: %w", err)
+		}
+
+		totalL1CommitGas, err := codecv0.EstimateChunkL1CommitGas(&chunk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate chunk L1 commit gas: %w", err)
+		}
+
 		p.chunkFirstBlockTimeoutReached.Inc()
-		p.chunkTxNum.Set(float64(totalTxNum))
-		p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))
-		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
-		p.maxTxConsumption.Set(float64(crc.max()))
-		p.totalTxGasUsed.Set(float64(totalTxGasUsed))
+		p.chunkTxNum.Set(float64(chunk.NumTransactions()))
+		p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitCalldataSize))
+		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
+		p.maxTxConsumption.Set(float64(crcMax))
 		p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
 		return &chunk, nil
 	}
