@@ -213,12 +213,14 @@ func testFallbackGasLimit(t *testing.T) {
 		assert.Greater(t, tx0.Gas(), uint64(0))
 
 		assert.Eventually(t, func() bool {
-			_, isPending, err := s.client.TransactionByHash(s.ctx, txHash0)
+			var isPending bool
+			_, isPending, err = s.client.TransactionByHash(s.ctx, txHash0)
 			return err == nil && !isPending
 		}, time.Minute, time.Second)
 
 		assert.Eventually(t, func() bool {
-			receipt, err := s.client.TransactionReceipt(s.ctx, txHash0)
+			var receipt *gethTypes.Receipt
+			receipt, err = s.client.TransactionReceipt(s.ctx, txHash0)
 			return err == nil && receipt != nil
 		}, time.Minute, time.Second)
 
