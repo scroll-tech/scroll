@@ -115,7 +115,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 
 	startDAChunk, err := codecv0.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
 	if err != nil {
-		log.Error("failed to new start DA chunk", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+		log.Error("failed to create start DA chunk", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
 			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
@@ -127,16 +127,20 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
-	endDAChunk, err := codecv0.NewDAChunk(batch.Chunks[numChunks-1], batch.TotalL1MessagePoppedBefore)
+	totalL1MessagePoppedBeforeEndDAChunk := batch.TotalL1MessagePoppedBefore
+	for i := uint64(0); i < numChunks-1; i++ {
+		totalL1MessagePoppedBeforeEndDAChunk += batch.Chunks[i].NumL1Messages(totalL1MessagePoppedBeforeEndDAChunk)
+	}
+	endDAChunk, err := codecv0.NewDAChunk(batch.Chunks[numChunks-1], totalL1MessagePoppedBeforeEndDAChunk)
 	if err != nil {
-		log.Error("failed to new end DA chunk", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+		log.Error("failed to create end DA chunk", "index", batch.Index, "total l1 message popped before", totalL1MessagePoppedBeforeEndDAChunk,
 			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
 	endDAChunkHash, err := endDAChunk.Hash()
 	if err != nil {
-		log.Error("failed to get end DA chunk hash", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+		log.Error("failed to get end DA chunk hash", "index", batch.Index, "total l1 message popped before", totalL1MessagePoppedBeforeEndDAChunk,
 			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
