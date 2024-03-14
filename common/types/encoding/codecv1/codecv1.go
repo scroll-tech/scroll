@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -19,14 +20,33 @@ import (
 	"scroll-tech/common/types/encoding"
 )
 
+// The BLS modulus defined in EIP-4844.
 var BLS_MODULUS *big.Int
 
+// Argument types for `_verifyBlobData` in `finalizeBatchWithProof`.
+var VERIFY_BLOB_DATA_ARGS abi.Arguments
+
 func init() {
+	// initialize modulus
 	modulus, success := new(big.Int).SetString("52435875175126190479447740508185965837690552500527637822603658699938581184513", 10)
 	if !success {
 		log.Crit("BLS_MODULUS conversion failed")
 	}
 	BLS_MODULUS = modulus
+
+	// initialize arguments
+	bytes32Type, err1 := abi.NewType("bytes32", "bytes32", nil)
+	bytes48Type, err2 := abi.NewType("bytes48", "bytes48", nil)
+	if err1 != nil || err2 != nil {
+		log.Crit("Failed to initialize abi types", "err1", err1, "err2", err2)
+	}
+
+	VERIFY_BLOB_DATA_ARGS = abi.Arguments{
+		{Type: bytes32Type, Name: "z"},
+		{Type: bytes32Type, Name: "y"},
+		{Type: bytes48Type, Name: "commitment"},
+		{Type: bytes48Type, Name: "proof"},
+	}
 }
 
 // CodecV0Version denotes the version of the codec.
@@ -440,6 +460,34 @@ func (b *DABatch) Encode() []byte {
 func (b *DABatch) Hash() common.Hash {
 	bytes := b.Encode()
 	return crypto.Keccak256Hash(bytes)
+}
+
+// Hash computes the hash of the serialized DABatch.
+func (b *DABatch) VerifyBlobData() ([]byte, error) {
+	if b.blob == nil {
+		return nil, errors.New("called VerifyBlobData with empty blob")
+	}
+	if b.z == nil {
+		return nil, errors.New("called VerifyBlobData with empty z")
+	}
+
+	commitment, err := kzg4844.BlobToCommitment(*b.blob)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create blob commitment")
+	}
+
+	proof, y, err := kzg4844.ComputeProof(*b.blob, *b.z)
+	if err != nil {
+		log.Crit("failed to create KZG proof at point", "err", err, "z", hex.EncodeToString(b.z[:]))
+	}
+
+	// Memory layout of ``_verifyBlobData``:
+	// | z       | y       | kzg_commitment | kzg_proof |
+	// |---------|---------|----------------|-----------|
+	// | bytes32 | bytes32 | bytes48        | bytes48   |
+
+	values := []interface{}{*b.z, y, commitment, proof}
+	return abi.Arguments(VERIFY_BLOB_DATA_ARGS).Pack(values...)
 }
 
 // DecodeFromCalldata attempts to decode a DABatch and an array of DAChunks from the provided calldata byte slice.
