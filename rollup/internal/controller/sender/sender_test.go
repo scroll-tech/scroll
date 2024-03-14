@@ -34,32 +34,35 @@ import (
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/mock_bridge"
 )
 
 const TXBatch = 50
 
 var (
-	privateKey             *ecdsa.PrivateKey
-	cfg                    *config.Config
-	base                   *docker.App
-	posL1TestEnv           *dockercompose.PoSL1TestEnv
-	txTypes                = []string{"LegacyTx", "DynamicFeeTx", "BlobTx"}
-	txUint8Types           = []uint8{0, 2, 3}
-	db                     *gorm.DB
-	mockL1ContractsAddress common.Address
+	privateKey           *ecdsa.PrivateKey
+	cfg                  *config.Config
+	base                 *docker.App
+	posL1TestEnv         *dockercompose.PoSL1TestEnv
+	txTypes              = []string{"LegacyTx", "DynamicFeeTx", "BlobTx"}
+	txUint8Types         = []uint8{0, 2, 3}
+	db                   *gorm.DB
+	testContractsAddress common.Address
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
 	defer base.Free()
 
-	posL1TestEnv = dockercompose.NewPoSL1TestEnv()
-	if err := posL1TestEnv.Start(); err != nil {
-		fmt.Printf("Failed to start PoS L1 test environment: %v\n", err)
-		os.Exit(1)
+	var err error
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
+	if err != nil {
+		log.Crit("failed to new PoS L1 test environment", "err", err)
 	}
-
+	if err := posL1TestEnv.Start(); err != nil {
+		log.Crit("failed to start PoS L1 test environment", "err", err)
+	}
 	defer posL1TestEnv.Stop()
 
 	m.Run()
@@ -102,20 +105,39 @@ func setupEnv(t *testing.T) {
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
 	assert.NoError(t, err)
 
-	_, tx, _, err := mock_bridge.DeployMockBridgeL1(auth, l1Client)
+	nonce, err := l1Client.PendingNonceAt(context.Background(), auth.From)
 	assert.NoError(t, err)
 
-	mockL1ContractsAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	testContractsAddress = crypto.CreateAddress(auth.From, nonce)
+
+	tx := gethTypes.NewContractCreation(nonce, big.NewInt(0), 1000000, big.NewInt(1000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
+	signedTx, err := auth.Signer(auth.From, tx)
 	assert.NoError(t, err)
+	err = l1Client.SendTransaction(context.Background(), signedTx)
+	assert.NoError(t, err)
+
+	assert.Eventually(t, func() bool {
+		_, isPending, err := l1Client.TransactionByHash(context.Background(), signedTx.Hash())
+		return err == nil && !isPending
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		receipt, err := l1Client.TransactionReceipt(context.Background(), signedTx.Hash())
+		return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		code, err := l1Client.CodeAt(context.Background(), testContractsAddress, nil)
+		return err == nil && len(code) > 0
+	}, 30*time.Second, time.Second)
 }
 
 func TestSender(t *testing.T) {
-	// Setup
 	setupEnv(t)
 
 	t.Run("test new sender", testNewSender)
-	t.Run("test fallback gas limit", testFallbackGasLimit)
 	t.Run("test send and retrieve transaction", testSendAndRetrieveTransaction)
+	t.Run("test fallback gas limit", testFallbackGasLimit)
 	t.Run("test access list transaction gas limit", testAccessListTransactionGasLimit)
 	t.Run("test resubmit zero gas price transaction", testResubmitZeroGasPriceTransaction)
 	t.Run("test resubmit non-zero gas price transaction", testResubmitNonZeroGasPriceTransaction)
@@ -126,6 +148,7 @@ func TestSender(t *testing.T) {
 	t.Run("test check pending transaction resubmit tx confirmed", testCheckPendingTransactionResubmitTxConfirmed)
 	t.Run("test check pending transaction replaced tx confirmed", testCheckPendingTransactionReplacedTxConfirmed)
 	t.Run("test check pending transaction multiple times with only one transaction pending", testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending)
+	t.Run("test blob transaction with blobhash op contract call", testBlobTransactionWithBlobhashOpContractCall)
 }
 
 func testNewSender(t *testing.T) {
@@ -177,14 +200,10 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		assert.Equal(t, "test", txs[0].SenderName)
 
 		assert.Eventually(t, func() bool {
-			_, isPending, err := s.client.TransactionByHash(s.ctx, hash)
-			return err == nil && !isPending
-		}, time.Minute, time.Second)
-
-		assert.Eventually(t, func() bool {
-			receipt, err := s.client.TransactionReceipt(s.ctx, hash)
-			return err == nil && receipt != nil
-		}, time.Minute, time.Second)
+			txs, err = s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 100)
+			assert.NoError(t, err)
+			return len(txs) == 0
+		}, 30*time.Second, time.Second)
 
 		s.Stop()
 	}
@@ -213,16 +232,11 @@ func testFallbackGasLimit(t *testing.T) {
 		assert.Greater(t, tx0.Gas(), uint64(0))
 
 		assert.Eventually(t, func() bool {
-			var isPending bool
-			_, isPending, err = s.client.TransactionByHash(s.ctx, txHash0)
-			return err == nil && !isPending
-		}, time.Minute, time.Second)
-
-		assert.Eventually(t, func() bool {
-			var receipt *gethTypes.Receipt
-			receipt, err = s.client.TransactionReceipt(s.ctx, txHash0)
-			return err == nil && receipt != nil
-		}, time.Minute, time.Second)
+			var txs []orm.PendingTransaction
+			txs, err = s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 100)
+			assert.NoError(t, err)
+			return len(txs) == 0
+		}, 30*time.Second, time.Second)
 
 		// FallbackGasLimit = 100000
 		patchGuard := gomonkey.ApplyPrivateMethod(s, "estimateGasLimit",
@@ -238,14 +252,10 @@ func testFallbackGasLimit(t *testing.T) {
 		assert.Equal(t, uint64(100000), tx1.Gas())
 
 		assert.Eventually(t, func() bool {
-			_, isPending, err := s.client.TransactionByHash(s.ctx, txHash1)
-			return err == nil && !isPending
-		}, time.Minute, time.Second)
-
-		assert.Eventually(t, func() bool {
-			receipt, err := s.client.TransactionReceipt(s.ctx, txHash1)
-			return err == nil && receipt != nil
-		}, time.Minute, time.Second)
+			txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 100)
+			assert.NoError(t, err)
+			return len(txs) == 0
+		}, 30*time.Second, time.Second)
 
 		s.Stop()
 		patchGuard.Reset()
@@ -263,8 +273,6 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
 		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
-		cfgCopy.EscalateMultipleNum = 200
-		cfgCopy.EscalateMultipleDen = 100
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
@@ -278,20 +286,21 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
+		// Bumping the fees enough times to let the transaction be included in a block.
 		for i := 0; i < 30; i++ {
 			tx, err = s.resubmitTransaction(tx, 0, 0)
 			assert.NoError(t, err)
 		}
 
 		assert.Eventually(t, func() bool {
-			_, isPending, err := s.client.TransactionByHash(s.ctx, tx.Hash())
+			_, isPending, err := s.client.TransactionByHash(context.Background(), tx.Hash())
 			return err == nil && !isPending
-		}, time.Minute, time.Second)
+		}, 30*time.Second, time.Second)
 
 		assert.Eventually(t, func() bool {
-			receipt, err := s.client.TransactionReceipt(s.ctx, tx.Hash())
+			receipt, err := s.client.TransactionReceipt(context.Background(), tx.Hash())
 			return err == nil && receipt != nil
-		}, time.Minute, time.Second)
+		}, 30*time.Second, time.Second)
 
 		s.Stop()
 	}
@@ -316,14 +325,14 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 
 		sidecar, err := makeSidecar(randBlob())
 		assert.NoError(t, err)
-		gasLimit, accessList, err := s.estimateGasLimit(&mockL1ContractsAddress, data, sidecar, nil, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000))
+		gasLimit, accessList, err := s.estimateGasLimit(&testContractsAddress, data, sidecar, nil, big.NewInt(1000000000), big.NewInt(1000000000), big.NewInt(1000000000))
 		assert.NoError(t, err)
 
 		if txType == LegacyTxType { // Legacy transactions can not have an access list.
-			assert.Equal(t, uint64(43937), gasLimit)
+			assert.Equal(t, uint64(43935), gasLimit)
 			assert.Nil(t, accessList)
 		} else { // Dynamic fee and blob transactions can have an access list.
-			assert.Equal(t, uint64(43460), gasLimit)
+			assert.Equal(t, uint64(43458), gasLimit)
 			assert.NotNil(t, accessList)
 		}
 
@@ -360,14 +369,14 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Eventually(t, func() bool {
-			_, isPending, err := s.client.TransactionByHash(s.ctx, resubmittedTx.Hash())
+			_, isPending, err := s.client.TransactionByHash(context.Background(), resubmittedTx.Hash())
 			return err == nil && !isPending
-		}, time.Minute, time.Second)
+		}, 30*time.Second, time.Second)
 
 		assert.Eventually(t, func() bool {
-			receipt, err := s.client.TransactionReceipt(s.ctx, resubmittedTx.Hash())
+			receipt, err := s.client.TransactionReceipt(context.Background(), resubmittedTx.Hash())
 			return err == nil && receipt != nil
-		}, time.Minute, time.Second)
+		}, 30*time.Second, time.Second)
 
 		s.Stop()
 	}
@@ -403,14 +412,14 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 		assert.Error(t, err, "replacement transaction underpriced")
 
 		assert.Eventually(t, func() bool {
-			_, isPending, err := s.client.TransactionByHash(s.ctx, tx.Hash())
+			_, isPending, err := s.client.TransactionByHash(context.Background(), tx.Hash())
 			return err == nil && !isPending
-		}, time.Minute, time.Second)
+		}, 30*time.Second, time.Second)
 
 		assert.Eventually(t, func() bool {
-			receipt, err := s.client.TransactionReceipt(s.ctx, tx.Hash())
+			receipt, err := s.client.TransactionReceipt(context.Background(), tx.Hash())
 			return err == nil && receipt != nil
-		}, time.Minute, time.Second)
+		}, 30*time.Second, time.Second)
 
 		s.Stop()
 	}
@@ -733,6 +742,65 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		patchGuard1.Reset()
 		patchGuard2.Reset()
 	}
+}
+
+func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	blob := randBlob()
+	sideCar, err := makeSidecar(blob)
+	assert.NoError(t, err)
+	versionedHash := sideCar.BlobHashes()[0]
+	blsModulo, ok := new(big.Int).SetString("52435875175126190479447740508185965837690552500527637822603658699938581184513", 10)
+	assert.True(t, ok)
+	pointHash := crypto.Keccak256Hash(versionedHash.Bytes())
+	pointBigInt := new(big.Int).SetBytes(pointHash.Bytes())
+	point := kzg4844.Point(new(big.Int).Mod(pointBigInt, blsModulo).Bytes())
+	commitment := sideCar.Commitments[0]
+	proof, claim, err := kzg4844.ComputeProof(*blob, point)
+	assert.NoError(t, err)
+
+	var claimArray [32]byte
+	copy(claimArray[:], claim[:])
+
+	demoContractMetaData := &bind.MetaData{ABI: "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"claim\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"commitment\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"proof\",\"type\":\"bytes\"}],\"name\":\"verifyProof\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"}
+	demoContractABI, err := demoContractMetaData.GetAbi()
+	assert.NoError(t, err)
+
+	data, err := demoContractABI.Pack(
+		"verifyProof",
+		claimArray,
+		commitment[:],
+		proof[:],
+	)
+	assert.NoError(t, err)
+
+	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+	cfgCopy.TxType = BlobTxType
+	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeL1GasOracle, db, nil)
+	assert.NoError(t, err)
+	defer s.Stop()
+
+	_, err = s.SendTransaction("0", &testContractsAddress, data, blob, 0)
+	assert.NoError(t, err)
+
+	var txHash common.Hash
+	assert.Eventually(t, func() bool {
+		txs, err := s.pendingTransactionOrm.GetConfirmedTransactionsBySenderType(context.Background(), s.senderType, 100)
+		assert.NoError(t, err)
+		if len(txs) == 1 {
+			txHash = common.HexToHash(txs[0].Hash)
+			return true
+		}
+		return false
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		receipt, err := s.client.TransactionReceipt(context.Background(), txHash)
+		return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
+	}, 30*time.Second, time.Second)
 }
 
 func randBlob() *kzg4844.Blob {

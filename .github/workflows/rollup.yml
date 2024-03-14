@@ -42,7 +42,7 @@ jobs:
       with:
         uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.16/solc-static-linux'
         name: 'solc'
-        version: '0.8.16'
+        version: '0.8.24'
     - name: Install Geth Tools
       uses: gacts/install-geth-tools@v1
     - name: Lint

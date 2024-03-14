@@ -491,7 +491,7 @@ func (s *Sender) checkPendingTransaction() {
 		}
 
 		receipt, err := s.client.TransactionReceipt(s.ctx, tx.Hash())
-		if err == nil && receipt != nil { // tx confirmed.
+		if err == nil { // tx confirmed.
 			if receipt.BlockNumber.Uint64() <= confirmed {
 				err := s.db.Transaction(func(dbTX *gorm.DB) error {
 					// Update the status of the transaction to TxStatusConfirmed.

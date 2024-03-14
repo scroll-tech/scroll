@@ -9,13 +9,13 @@
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://rpc.scroll.io",
-        "escalate_blocks": 100,
+        "escalate_blocks": 1,
         "confirmations": "0x1",
-        "escalate_multiple_num": 11,
-        "escalate_multiple_den": 10,
+        "escalate_multiple_num": 2,
+        "escalate_multiple_den": 1,
         "max_gas_price": 1000000000000,
         "tx_type": "LegacyTx",
-        "check_pending_time": 3
+        "check_pending_time": 1
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
@@ -33,13 +33,13 @@
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://rpc.ankr.com/eth",
-        "escalate_blocks": 100,
+        "escalate_blocks": 1,
         "confirmations": "0x6",
-        "escalate_multiple_num": 11,
-        "escalate_multiple_den": 10,
+        "escalate_multiple_num": 2,
+        "escalate_multiple_den": 1,
         "max_gas_price": 1000000000000,
         "tx_type": "DynamicFeeTx",
-        "check_pending_time": 12
+        "check_pending_time": 1
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
@@ -54,7 +54,7 @@
       "enable_test_env_bypass_features": true,
       "finalize_batch_without_proof_timeout_sec": 7200,
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
-      "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
+      "commit_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
       "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",
       "l1_commit_gas_limit_multiplier": 1.2
     },

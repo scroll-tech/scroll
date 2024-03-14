@@ -10,15 +10,13 @@ import (
 	_ "scroll-tech/rollup/cmd/gas_oracle/app"
 	_ "scroll-tech/rollup/cmd/rollup_relayer/app"
 
-	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func testProcessStart(t *testing.T) {
-	db := setupDB(t)
-	defer database.CloseDB(db)
+	setupDB(t)
 
 	rollupApp.RunApp(t, cutils.EventWatcherApp)
 	rollupApp.RunApp(t, cutils.GasOracleApp)
@@ -28,8 +26,7 @@ func testProcessStart(t *testing.T) {
 }
 
 func testProcessStartEnableMetrics(t *testing.T) {
-	db := setupDB(t)
-	defer database.CloseDB(db)
+	setupDB(t)
 
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)

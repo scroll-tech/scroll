@@ -10,7 +10,7 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/holiman/uint256 v1.2.4
 	github.com/prometheus/client_golang v1.14.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240313115705-5bd1affaeb50
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240314095130-4553f5f26935
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
