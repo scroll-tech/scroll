@@ -40,7 +40,6 @@ const (
 	forkNumberThree = 3
 	forkNumberTwo   = 2
 	forkNumberOne   = 1
-	forkNumberZero  = 0
 )
 
 var (
@@ -68,8 +67,6 @@ var (
 	hardForkBatch2 *encoding.Batch
 
 	tokenTimeout int
-
-	hardForkNameMap map[int64]string
 )
 
 func TestMain(m *testing.M) {
