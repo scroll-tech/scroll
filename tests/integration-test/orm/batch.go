@@ -85,21 +85,69 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		return nil, errors.New("invalid args: batch is nil")
 	}
 
+	numChunks := uint64(len(batch.Chunks))
+	if numChunks == 0 {
+		return nil, errors.New("invalid args: batch contains 0 chunk")
+	}
+
 	daBatch, err := codecv0.NewDABatch(batch)
 	if err != nil {
 		log.Error("failed to create new DA batch",
 			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-			"parent hash", batch.ParentBatchHash, "number of chunks", len(batch.Chunks), "err", err)
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
 		return nil, err
+	}
+
+	var startChunkIndex uint64
+	parentBatch, err := o.GetLatestBatch(ctx)
+	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+		log.Error("failed to get latest batch", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
+	}
+
+	// if parentBatch==nil then err==gorm.ErrRecordNotFound, which means there's
+	// no batch record in the db, we then use default empty values for the creating batch;
+	// if parentBatch!=nil then err==nil, then we fill the parentBatch-related data into the creating batch
+	if parentBatch != nil {
+		startChunkIndex = parentBatch.EndChunkIndex + 1
+	}
+
+	startDAChunk, err := codecv0.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
+	if err != nil {
+		log.Error("failed to new start DA chunk", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
+	}
+
+	startDAChunkHash, err := startDAChunk.Hash()
+	if err != nil {
+		log.Error("failed to get start DA chunk hash", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
+	}
+
+	endDAChunk, err := codecv0.NewDAChunk(batch.Chunks[numChunks-1], batch.TotalL1MessagePoppedBefore)
+	if err != nil {
+		log.Error("failed to new end DA chunk", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
+	}
+
+	endDAChunkHash, err := endDAChunk.Hash()
+	if err != nil {
+		log.Error("failed to get end DA chunk hash", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
 	newBatch := Batch{
 		Index:             batch.Index,
 		Hash:              daBatch.Hash().Hex(),
-		StartChunkHash:    batch.StartChunkHash.Hex(),
-		StartChunkIndex:   batch.StartChunkIndex,
-		EndChunkHash:      batch.EndChunkHash.Hex(),
-		EndChunkIndex:     batch.EndChunkIndex,
+		StartChunkHash:    startDAChunkHash.Hex(),
+		StartChunkIndex:   startChunkIndex,
+		EndChunkHash:      endDAChunkHash.Hex(),
+		EndChunkIndex:     startChunkIndex + numChunks - 1,
 		StateRoot:         batch.StateRoot().Hex(),
 		WithdrawRoot:      batch.WithdrawRoot().Hex(),
 		ParentBatchHash:   batch.ParentBatchHash.Hex(),
