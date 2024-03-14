@@ -166,6 +166,9 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 				if err != nil {
 					return common.Hash{}, err
 				}
+				if len(hashBytes) != 32 {
+					return common.Hash{}, fmt.Errorf("unexpected hash: %s", txData.TxHash)
+				}
 				dataBytes = append(dataBytes, hashBytes...)
 			}
 		}
@@ -309,9 +312,6 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 	// the raw (un-padded) blob payload
 	blobBytes := make([]byte, 2*31)
 
-	// the canonical (padded) blob payload
-	var blob kzg4844.Blob
-
 	// the number of chunks that contain at least one L2 transaction
 	numNonEmptyChunks := 0
 
@@ -363,10 +363,28 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 	hash := crypto.Keccak256Hash(blobBytes[0:62])
 	copy(challengePreimage[0:], hash[:])
 
+	// convert raw data to BLSFieldElements
+	blob, err := makeBlobCanonical(blobBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// compute z = challenge_digest % BLS_MODULUS
+	challengeDigest := crypto.Keccak256Hash(challengePreimage[:])
+	point := new(big.Int).Mod(new(big.Int).SetBytes(challengeDigest[:]), BLS_MODULUS)
+	copy(z[:], point.Bytes()[0:32])
+
+	return blob, &z, nil
+}
+
+func makeBlobCanonical(blobBytes []byte) (*kzg4844.Blob, error) {
 	// blob contains 131072 bytes but we can only utilize 31/32 of these
 	if len(blobBytes) > 126976 {
-		return nil, nil, fmt.Errorf("oversized batch payload")
+		return nil, fmt.Errorf("oversized batch payload")
 	}
+
+	// the canonical (padded) blob payload
+	var blob kzg4844.Blob
 
 	// encode blob payload by prepending every 31 bytes with 1 zero byte
 	index := 0
@@ -380,19 +398,14 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 		index += 32
 	}
 
-	// compute z = challenge_digest % BLS_MODULUS
-	challengeDigest := crypto.Keccak256Hash(challengePreimage[:])
-	point := new(big.Int).Mod(new(big.Int).SetBytes(challengeDigest[:]), BLS_MODULUS)
-	copy(z[:], point.Bytes()[0:32])
-
-	return &blob, &z, nil
+	return &blob, nil
 }
 
 // NewDABatchFromBytes attempts to decode the given byte slice into a DABatch.
 // Note: This function only populates the batch header, it leaves the blob-related fields empty.
 func NewDABatchFromBytes(data []byte) (*DABatch, error) {
-	if len(data) < 89 {
-		return nil, fmt.Errorf("insufficient data for DABatch, expected at least 89 bytes but got %d", len(data))
+	if len(data) < 121 {
+		return nil, fmt.Errorf("insufficient data for DABatch, expected at least 121 bytes but got %d", len(data))
 	}
 
 	b := &DABatch{
