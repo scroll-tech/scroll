@@ -857,7 +857,7 @@ error ErrorIncorrectChunkLength()
 
 
 
-
+*Thrown when the length of chunk is incorrect.*
 
 
 ### ErrorIncorrectPreviousStateRoot
@@ -912,7 +912,7 @@ error ErrorNoBlockInChunk()
 
 
 
-
+*Thrown when no blocks in chunk.*
 
 
 ### ErrorNumTxsLessThanNumL1Msgs

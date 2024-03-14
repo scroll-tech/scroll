@@ -16,6 +16,13 @@ pragma solidity ^0.8.24;
 ///   * skippedL1MessageBitmap  dynamic     uint256[]   89      A bitmap to indicate which L1 messages are skipped in the batch
 /// ```
 library BatchHeaderV0Codec {
+    /// @dev Thrown when the length of batch header is smaller than 121
+    error ErrorBatchHeaderLengthTooSmall();
+
+    /// @dev Thrown when the length of skippedL1MessageBitmap is incorret.
+    error ErrorIncorrectBitmapLength();
+
+    /// @dev The length of fixed parts of the batch header.
     uint256 internal constant BATCH_HEADER_FIXED_LENGTH = 89;
 
     /// @notice Load batch header in calldata to memory.
@@ -24,7 +31,7 @@ library BatchHeaderV0Codec {
     /// @return length The length in bytes of the batch header.
     function loadAndValidate(bytes calldata _batchHeader) internal pure returns (uint256 batchPtr, uint256 length) {
         length = _batchHeader.length;
-        require(length >= BATCH_HEADER_FIXED_LENGTH, "batch header length too small");
+        if (length < BATCH_HEADER_FIXED_LENGTH) revert ErrorBatchHeaderLengthTooSmall();
 
         // copy batch header to memory.
         assembly {
@@ -37,7 +44,9 @@ library BatchHeaderV0Codec {
         uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(batchPtr);
 
         unchecked {
-            require(length == BATCH_HEADER_FIXED_LENGTH + ((_l1MessagePopped + 255) / 256) * 32, "wrong bitmap length");
+            if (length != BATCH_HEADER_FIXED_LENGTH + ((_l1MessagePopped + 255) / 256) * 32) {
+                revert ErrorIncorrectBitmapLength();
+            }
         }
     }
 

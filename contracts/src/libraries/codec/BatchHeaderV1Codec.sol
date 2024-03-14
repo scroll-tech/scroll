@@ -17,13 +17,14 @@ pragma solidity ^0.8.24;
 ///   * skippedL1MessageBitmap  dynamic     uint256[]   121      A bitmap to indicate which L1 messages are skipped in the batch
 /// ```
 library BatchHeaderV1Codec {
-    uint256 internal constant BATCH_HEADER_FIXED_LENGTH = 121;
-
     /// @dev Thrown when the length of batch header is smaller than 121
     error ErrorBatchHeaderLengthTooSmall();
 
     /// @dev Thrown when the length of skippedL1MessageBitmap is incorret.
     error ErrorIncorrectBitmapLength();
+
+    /// @dev The length of fixed parts of the batch header.
+    uint256 internal constant BATCH_HEADER_FIXED_LENGTH = 121;
 
     /// @notice Load batch header in calldata to memory.
     /// @param _batchHeader The encoded batch header bytes in calldata.

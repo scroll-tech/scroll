@@ -2,8 +2,9 @@ import * as dotenv from "dotenv";
 
 import { HardhatUserConfig, subtask } from "hardhat/config";
 import * as toml from "toml";
-import "@nomiclabs/hardhat-etherscan";
-import "@nomiclabs/hardhat-waffle";
+import "@nomicfoundation/hardhat-verify";
+import "@nomicfoundation/hardhat-ethers";
+import "@nomicfoundation/hardhat-chai-matchers";
 import "@typechain/hardhat";
 import "@primitivefi/hardhat-dodoc";
 import "hardhat-gas-reporter";
@@ -13,12 +14,6 @@ import { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } from "hardhat/builtin-tasks/ta
 
 dotenv.config();
 
-// default values here to avoid failures when running hardhat
-const RINKEBY_RPC = process.env.RINKEBY_RPC || "1".repeat(32);
-const SCROLL_L1_RPC = process.env.SCROLL_L1_RPC || "1".repeat(32);
-const SCROLL_L2_RPC = process.env.SCROLL_L2_RPC || "1".repeat(32);
-
-const RINKEBY_PRIVATE_KEY = process.env.RINKEBY_PRIVATE_KEY || "1".repeat(64);
 const L1_DEPLOYER_PRIVATE_KEY = process.env.L1_DEPLOYER_PRIVATE_KEY || "1".repeat(64);
 const L2_DEPLOYER_PRIVATE_KEY = process.env.L2_DEPLOYER_PRIVATE_KEY || "1".repeat(64);
 
@@ -45,7 +40,7 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(async (_, __, runSuper
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: foundry.default?.solc || SOLC_DEFAULT,
+    version: foundry.default?.solc_version || SOLC_DEFAULT,
     settings: {
       optimizer: {
         enabled: foundry.default?.optimizer || true,
@@ -55,20 +50,20 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    rinkeby: {
-      url: RINKEBY_RPC,
-      accounts: [RINKEBY_PRIVATE_KEY],
-    },
-    l1geth: {
-      url: SCROLL_L1_RPC,
-      gasPrice: 20000000000,
-      gasMultiplier: 1.1,
+    ethereum: {
+      url: "https://1rpc.io/eth",
       accounts: [L1_DEPLOYER_PRIVATE_KEY],
     },
-    l2geth: {
-      url: SCROLL_L2_RPC,
-      gasPrice: 20000000000,
-      gasMultiplier: 1.1,
+    sepolia: {
+      url: "https://1rpc.io/sepolia",
+      accounts: [L1_DEPLOYER_PRIVATE_KEY],
+    },
+    scroll: {
+      url: "https://rpc.scroll.io",
+      accounts: [L2_DEPLOYER_PRIVATE_KEY],
+    },
+    scroll_sepolia: {
+      url: "https://sepolia-rpc.scroll.io",
       accounts: [L2_DEPLOYER_PRIVATE_KEY],
     },
   },
@@ -77,13 +72,40 @@ const config: HardhatUserConfig = {
     sources: "./src",
     tests: "./integration-test",
   },
+  typechain: {
+    outDir: "./typechain",
+    target: "ethers-v6",
+  },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
     excludeContracts: ["src/test"],
     currency: "USD",
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: {
+      ethereum: process.env.ETHERSCAN_API_KEY || "",
+      sepolia: process.env.ETHERSCAN_API_KEY || "",
+      scroll: process.env.SCROLLSCAN_API_KEY || "",
+      scroll_sepolia: process.env.SCROLLSCAN_API_KEY || "",
+    },
+    customChains: [
+      {
+        network: "scroll",
+        chainId: 534352,
+        urls: {
+          apiURL: "https://api.scrollscan.com/api",
+          browserURL: "https://www.scrollscan.com/",
+        },
+      },
+      {
+        network: "scroll_sepolia",
+        chainId: 534351,
+        urls: {
+          apiURL: "https://api-sepolia.scrollscan.com/api",
+          browserURL: "https://sepolia.scrollscan.com/",
+        },
+      },
+    ],
   },
   mocha: {
     timeout: 10000000,

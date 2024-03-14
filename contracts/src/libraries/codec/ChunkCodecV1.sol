@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 import {ChunkCodecV0} from "./ChunkCodecV0.sol";
 
 /// @dev Below is the encoding for `Chunk`, total 60*n+1 bytes.
+/// The only difference between `ChunkCodecV0` is we remove `l2Transactions` from chunk encoding.
 /// ```text
 ///   * Field           Bytes       Type            Index       Comments
 ///   * numBlocks       1           uint8           0           The number of blocks in this chunk
@@ -26,9 +27,13 @@ import {ChunkCodecV0} from "./ChunkCodecV0.sol";
 ///   * numL1Messages           2          uint16       58     The number of l1 messages in this block.
 /// ```
 library ChunkCodecV1 {
+    /// @dev Thrown when no blocks in chunk.
     error ErrorNoBlockInChunk();
+
+    /// @dev Thrown when the length of chunk is incorrect.
     error ErrorIncorrectChunkLength();
 
+    /// @dev The length of one block context.
     uint256 internal constant BLOCK_CONTEXT_LENGTH = 60;
 
     /// @notice Validate the length of chunk.

@@ -25,6 +25,13 @@ pragma solidity ^0.8.24;
 ///   * numL1Messages           2          uint16       58     The number of l1 messages in this block.
 /// ```
 library ChunkCodecV0 {
+    /// @dev Thrown when no blocks in chunk.
+    error ErrorNoBlockInChunk();
+
+    /// @dev Thrown when the length of chunk is incorrect.
+    error ErrorIncorrectChunkLength();
+
+    /// @dev The length of one block context.
     uint256 internal constant BLOCK_CONTEXT_LENGTH = 60;
 
     /// @notice Validate the length of chunk.
@@ -35,10 +42,10 @@ library ChunkCodecV0 {
         _numBlocks = numBlocks(chunkPtr);
 
         // should contain at least one block
-        require(_numBlocks > 0, "no block in chunk");
+        if (_numBlocks == 0) revert ErrorNoBlockInChunk();
 
         // should contain at least the number of the blocks and block contexts
-        require(_length >= 1 + _numBlocks * BLOCK_CONTEXT_LENGTH, "invalid chunk length");
+        if (_length < 1 + _numBlocks * BLOCK_CONTEXT_LENGTH) revert ErrorIncorrectChunkLength();
     }
 
     /// @notice Return the start memory offset of `l2Transactions`.

@@ -1,11 +1,11 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
 import { expect } from "chai";
-import { concat } from "ethers/lib/utils";
 import { ethers } from "hardhat";
-import { MockZkTrieVerifier } from "../typechain";
 
 import { generateABI, createCode } from "../scripts/poseidon";
+import { MockZkTrieVerifier } from "../typechain";
+import { concat } from "ethers";
 
 const chars = "0123456789abcdef";
 
@@ -273,13 +273,10 @@ describe("ZkTrieVerifier", async () => {
     const [deployer] = await ethers.getSigners();
 
     const PoseidonHashWithDomainFactory = new ethers.ContractFactory(generateABI(2), createCode(2), deployer);
-
     const poseidon = await PoseidonHashWithDomainFactory.deploy();
-    await poseidon.deployed();
 
     const MockZkTrieVerifier = await ethers.getContractFactory("MockZkTrieVerifier", deployer);
-    verifier = await MockZkTrieVerifier.deploy(poseidon.address);
-    await verifier.deployed();
+    verifier = await MockZkTrieVerifier.deploy(poseidon.getAddress());
   });
 
   const shouldRevert = async (test: ITestConfig, reason: string, extra?: string) => {

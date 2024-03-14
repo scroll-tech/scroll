@@ -263,6 +263,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             );
             assembly {
                 batchPtr := mload(0x40)
+                _totalL1MessagesPoppedOverall := add(_totalL1MessagesPoppedOverall, _totalL1MessagesPoppedInBatch)
             }
             // store entries, the order matters
             BatchHeaderV0Codec.storeVersion(batchPtr, 0);
@@ -286,6 +287,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             );
             assembly {
                 batchPtr := mload(0x40)
+                _totalL1MessagesPoppedOverall := add(_totalL1MessagesPoppedOverall, _totalL1MessagesPoppedInBatch)
             }
             // store entries, the order matters
             BatchHeaderV1Codec.storeVersion(batchPtr, 1);
@@ -649,7 +651,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             version := shr(248, calldataload(_batchHeader.offset))
         }
 
-        // version is always 0 or 1 in current code
+        // version should be always 0 or 1 in current code
         uint256 _length;
         if (version == 0) {
             (batchPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
@@ -659,8 +661,13 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             (batchPtr, _length) = BatchHeaderV1Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV1Codec.computeBatchHash(batchPtr, _length);
             _batchIndex = BatchHeaderV1Codec.batchIndex(batchPtr);
+        } else {
+            revert ErrorInvalidBatchHeaderVersion();
         }
-        if (committedBatches[_batchIndex] != _batchHash) revert ErrorIncorrectBatchHash();
+        // only check when genesis is imported
+        if (committedBatches[_batchIndex] != _batchHash && finalizedStateRoots[0] != bytes32(0)) {
+            revert ErrorIncorrectBatchHash();
+        }
         _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
     }
 
@@ -710,11 +717,11 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         uint256 txHashStartDataPtr;
         assembly {
             txHashStartDataPtr := dataPtr
-            chunkPtr := add(_chunk, 0x21)
+            chunkPtr := add(_chunk, 0x20)
         }
-
         // concatenate tx hashes
         uint256 l2TxPtr = ChunkCodecV0.l2TxPtr(chunkPtr, _numBlocks);
+        chunkPtr += 1;
         while (_numBlocks > 0) {
             // concatenate l1 message hashes
             uint256 _numL1MessagesInBlock = ChunkCodecV0.numL1Messages(chunkPtr);
