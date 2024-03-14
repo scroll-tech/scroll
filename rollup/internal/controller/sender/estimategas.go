@@ -41,11 +41,7 @@ func (s *Sender) estimateDynamicGas(to *common.Address, data []byte, baseFee uin
 		return nil, err
 	}
 
-	// gasFeeCap = baseFee * 2 + gasTipCap
-	gasFeeCap := new(big.Int).SetUint64(baseFee)
-	gasFeeCap = new(big.Int).Mul(gasFeeCap, big.NewInt(2))
-	gasFeeCap = new(big.Int).Add(gasFeeCap, gasTipCap)
-
+	gasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
 	gasLimit, accessList, err := s.estimateGasLimit(to, data, nil, nil, gasTipCap, gasFeeCap, nil)
 	if err != nil {
 		log.Error("estimateDynamicGas estimateGasLimit failure",
