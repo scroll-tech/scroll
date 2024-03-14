@@ -8,7 +8,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/pressly/goose/v3 v3.16.0
 	github.com/prometheus/client_golang v1.14.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240308080002-4b91455e76fd
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240313115705-5bd1affaeb50
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/sync v0.5.0
