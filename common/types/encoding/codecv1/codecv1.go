@@ -21,18 +21,18 @@ import (
 )
 
 // The BLS modulus defined in EIP-4844.
-var BLS_MODULUS *big.Int
+var BLSModulus *big.Int
 
 // Argument types for `_verifyBlobData` in `finalizeBatchWithProof`.
-var VERIFY_BLOB_DATA_ARGS abi.Arguments
+var VerifyBlobDataArgs abi.Arguments
 
 func init() {
 	// initialize modulus
 	modulus, success := new(big.Int).SetString("52435875175126190479447740508185965837690552500527637822603658699938581184513", 10)
 	if !success {
-		log.Crit("BLS_MODULUS conversion failed")
+		log.Crit("BLSModulus conversion failed")
 	}
-	BLS_MODULUS = modulus
+	BLSModulus = modulus
 
 	// initialize arguments
 	bytes32Type, err1 := abi.NewType("bytes32", "bytes32", nil)
@@ -41,7 +41,7 @@ func init() {
 		log.Crit("Failed to initialize abi types", "err1", err1, "err2", err2)
 	}
 
-	VERIFY_BLOB_DATA_ARGS = abi.Arguments{
+	VerifyBlobDataArgs = abi.Arguments{
 		{Type: bytes32Type, Name: "z"},
 		{Type: bytes32Type, Name: "y"},
 		{Type: bytes48Type, Name: "commitment"},
@@ -391,7 +391,7 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 
 	// compute z = challenge_digest % BLS_MODULUS
 	challengeDigest := crypto.Keccak256Hash(challengePreimage[:])
-	point := new(big.Int).Mod(new(big.Int).SetBytes(challengeDigest[:]), BLS_MODULUS)
+	point := new(big.Int).Mod(new(big.Int).SetBytes(challengeDigest[:]), BLSModulus)
 	copy(z[:], point.Bytes()[0:32])
 
 	return blob, &z, nil
@@ -487,7 +487,7 @@ func (b *DABatch) VerifyBlobData() ([]byte, error) {
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
 
 	values := []interface{}{*b.z, y, commitment, proof}
-	return abi.Arguments(VERIFY_BLOB_DATA_ARGS).Pack(values...)
+	return abi.Arguments(VerifyBlobDataArgs).Pack(values...)
 }
 
 // DecodeFromCalldata attempts to decode a DABatch and an array of DAChunks from the provided calldata byte slice.
