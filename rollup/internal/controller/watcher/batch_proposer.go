@@ -249,8 +249,8 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 				return nil, err
 			}
 
-			p.totalL1CommitGas.Set(float64(totalL1CommitCalldataSize))
-			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
+			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
+			p.totalL1CommitGas.Set(float64(totalL1CommitGas))
 			p.batchChunksNum.Set(float64(batch.NumChunks()))
 			return &batch, nil
 		}
@@ -282,8 +282,8 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 		}
 
 		p.batchFirstBlockTimeoutReached.Inc()
-		p.totalL1CommitGas.Set(float64(totalL1CommitCalldataSize))
-		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
+		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
+		p.totalL1CommitGas.Set(float64(totalL1CommitGas))
 		p.batchChunksNum.Set(float64(batch.NumChunks()))
 
 		batch.StartChunkIndex = dbChunks[0].Index
