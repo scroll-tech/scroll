@@ -266,7 +266,6 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 		cfgCopy.EscalateMultipleNum = 200
 		cfgCopy.EscalateMultipleDen = 100
 		cfgCopy.TxType = txType
-
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		feeData := &FeeData{
@@ -299,7 +298,7 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 }
 
 func testAccessListTransactionGasLimit(t *testing.T) {
-	for _, txType := range txTypes {
+	for i, txType := range txTypes {
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
@@ -312,7 +311,7 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		l2GasOracleABI, err := bridgeAbi.L2GasPriceOracleMetaData.GetAbi()
 		assert.NoError(t, err)
 
-		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(2333))
+		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(int64(i+1)))
 		assert.NoError(t, err)
 
 		sidecar, err := makeSidecar(randBlob())
@@ -320,13 +319,14 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		gasLimit, accessList, err := s.estimateGasLimit(&mockL1ContractsAddress, data, sidecar, nil, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000))
 		assert.NoError(t, err)
 
-		if txType == LegacyTxType {
-			assert.Equal(t, uint64(43949), gasLimit)
+		if txType == LegacyTxType { // Legacy transactions can not have an access list.
+			assert.Equal(t, uint64(43937), gasLimit)
 			assert.Nil(t, accessList)
-		} else {
-			assert.Equal(t, uint64(43472), gasLimit)
+		} else { // Dynamic fee and blob transactions can have an access list.
+			assert.Equal(t, uint64(43460), gasLimit)
 			assert.NotNil(t, accessList)
 		}
+
 		s.Stop()
 	}
 }
@@ -433,7 +433,7 @@ func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 	})
 	defer patchGuard.Reset()
 
-	tx1 := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+	tx := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
 		Nonce:     s.auth.Nonce.Uint64(),
 		To:        &common.Address{},
 		Data:      nil,
@@ -446,16 +446,16 @@ func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 	// bump the basefee by 10x
 	baseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx1, err := s.resubmitTransaction(tx1, baseFeePerGas, 0)
+	newTx, err := s.resubmitTransaction(tx, baseFeePerGas, 0)
 	assert.NoError(t, err)
 
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
-	expectedGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFeePerGas), tx1.GasTipCap())
+	expectedGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFeePerGas), tx.GasTipCap())
 	if expectedGasFeeCap.Cmp(maxGasPrice) > 0 {
 		expectedGasFeeCap = maxGasPrice
 	}
 
-	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx1.GasFeeCap().Uint64())
+	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())
 	s.Stop()
 }
 
