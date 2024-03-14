@@ -34,7 +34,6 @@ func setupL1RelayerDB(t *testing.T) *gorm.DB {
 // testCreateNewRelayer test create new relayer instance and stop
 func testCreateNewL1Relayer(t *testing.T) {
 	db := setupL1RelayerDB(t)
-	defer database.CloseDB(db)
 	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
@@ -42,7 +41,6 @@ func testCreateNewL1Relayer(t *testing.T) {
 
 func testL1RelayerGasOracleConfirm(t *testing.T) {
 	db := setupL1RelayerDB(t)
-	defer database.CloseDB(db)
 	l1BlockOrm := orm.NewL1Block(db)
 
 	l1Block := []orm.L1Block{
@@ -83,7 +81,6 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 
 func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	db := setupL1RelayerDB(t)
-	defer database.CloseDB(db)
 
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())

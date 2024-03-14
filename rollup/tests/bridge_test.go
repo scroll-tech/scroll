@@ -73,11 +73,9 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Crit("failed to new PoS L1 test environment", "err", err)
 	}
-
 	if err := posL1TestEnv.Start(); err != nil {
 		log.Crit("failed to start PoS L1 test environment", "err", err)
 	}
-
 	defer posL1TestEnv.Stop()
 
 	m.Run()

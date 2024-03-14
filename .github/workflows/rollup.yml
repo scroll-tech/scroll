@@ -40,7 +40,7 @@ jobs:
     - name: Install Solc
       uses: supplypike/setup-bin@v3
       with:
-        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.16/solc-static-linux'
+        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.24/solc-static-linux'
         name: 'solc'
         version: '0.8.24'
     - name: Install Geth Tools
@@ -89,9 +89,9 @@ jobs:
     - name: Install Solc
       uses: supplypike/setup-bin@v3
       with:
-        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.16/solc-static-linux'
+        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.24/solc-static-linux'
         name: 'solc'
-        version: '0.8.16'
+        version: '0.8.24'
     - name: Install Geth Tools
       uses: gacts/install-geth-tools@v1
     - name: Build prerequisites
@@ -105,6 +105,7 @@ jobs:
     - name: Test rollup packages
       working-directory: 'rollup'
       run: |
+        ../common/docker-compose/l1/clean.sh
         go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3

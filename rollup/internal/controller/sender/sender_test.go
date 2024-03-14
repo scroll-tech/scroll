@@ -110,7 +110,7 @@ func setupEnv(t *testing.T) {
 
 	testContractsAddress = crypto.CreateAddress(auth.From, nonce)
 
-	tx := gethTypes.NewContractCreation(nonce, big.NewInt(0), 1000000, big.NewInt(1000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
+	tx := gethTypes.NewContractCreation(nonce, big.NewInt(0), 1000000, big.NewInt(10000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
 	signedTx, err := auth.Signer(auth.From, tx)
 	assert.NoError(t, err)
 	err = l1Client.SendTransaction(context.Background(), signedTx)

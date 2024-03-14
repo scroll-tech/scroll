@@ -28,7 +28,7 @@ jobs:
     - name: Install Solc
       uses: supplypike/setup-bin@v3
       with:
-        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.16/solc-static-linux'
+        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.24/solc-static-linux'
         name: 'solc'
         version: '0.8.24'
     - name: Install Geth Tools
