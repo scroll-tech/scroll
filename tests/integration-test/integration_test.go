@@ -21,7 +21,8 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -85,23 +86,40 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 		log.Fatalf("Failed to retrieve L2 genesis header after multiple attempts: %v", err)
 	}
 
-	wrappedBlock := &types.WrappedBlock{
+	block := &encoding.Block{
 		Header:         header,
 		Transactions:   nil,
 		WithdrawRoot:   common.Hash{},
 		RowConsumption: &gethTypes.RowConsumption{},
 	}
-	chunk := &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock}}
+	chunk := &encoding.Chunk{Blocks: []*encoding.Block{block}}
 
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock})
+	daChunk, err := codecv0.NewDAChunk(chunk, 0)
+	assert.NoError(t, err)
+
+	daChunkHash, err := daChunk.Hash()
+	assert.NoError(t, err)
+
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+		StartChunkIndex:            0,
+		EndChunkIndex:              0,
+		StartChunkHash:             daChunkHash,
+		EndChunkHash:               daChunkHash,
+	}
+
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
 	assert.NoError(t, err)
 	dbChunk, err := chunkOrm.InsertChunk(context.Background(), chunk)
 	assert.NoError(t, err)
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 100, dbChunk.Hash)
 	assert.NoError(t, err)
-	batch, err := batchOrm.InsertBatch(context.Background(), 0, 0, dbChunk.Hash, dbChunk.Hash, []*types.Chunk{chunk})
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
 	assert.NoError(t, err)
-	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
+	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, dbBatch.Hash)
 	assert.NoError(t, err)
 	t.Log(version.Version)
 
