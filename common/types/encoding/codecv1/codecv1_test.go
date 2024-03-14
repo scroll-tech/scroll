@@ -4,10 +4,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"os"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
 	"strings"
 	"testing"
+
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
