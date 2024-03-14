@@ -276,8 +276,8 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 			}
 
 			p.chunkTxNum.Set(float64(chunk.NumTransactions()))
-			p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitCalldataSize))
-			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
+			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
+			p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))
 			p.maxTxConsumption.Set(float64(crcMax))
 			p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
 			return &chunk, nil
@@ -317,8 +317,8 @@ func (p *ChunkProposer) proposeChunk() (*encoding.Chunk, error) {
 
 		p.chunkFirstBlockTimeoutReached.Inc()
 		p.chunkTxNum.Set(float64(chunk.NumTransactions()))
-		p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitCalldataSize))
-		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitGas))
+		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
+		p.chunkEstimateL1CommitGas.Set(float64(totalL1CommitGas))
 		p.maxTxConsumption.Set(float64(crcMax))
 		p.chunkBlocksNum.Set(float64(len(chunk.Blocks)))
 		return &chunk, nil
