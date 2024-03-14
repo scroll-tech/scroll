@@ -452,7 +452,7 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
-	tx, err := s.createAndSendTx(&feeData, tx.To(), tx.Data(), nil, &nonce)
+	tx, err := s.createAndSendTx(&feeData, tx.To(), tx.Data(), tx.BlobTxSidecar(), &nonce)
 	if err != nil {
 		log.Error("failed to create and send tx (resubmit case)", "from", s.auth.From.String(), "nonce", nonce, "err", err)
 		return nil, err
@@ -491,7 +491,7 @@ func (s *Sender) checkPendingTransaction() {
 		}
 
 		receipt, err := s.client.TransactionReceipt(s.ctx, tx.Hash())
-		if (err == nil) && (receipt != nil) { // tx confirmed.
+		if err == nil && receipt != nil { // tx confirmed.
 			if receipt.BlockNumber.Uint64() <= confirmed {
 				err := s.db.Transaction(func(dbTX *gorm.DB) error {
 					// Update the status of the transaction to TxStatusConfirmed.

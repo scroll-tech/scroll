@@ -13,7 +13,7 @@
         "confirmations": "0x1",
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
-        "max_gas_price": 10000000000,
+        "max_gas_price": 1000000000000,
         "tx_type": "LegacyTx",
         "check_pending_time": 3
       },
@@ -37,7 +37,7 @@
         "confirmations": "0x6",
         "escalate_multiple_num": 11,
         "escalate_multiple_den": 10,
-        "max_gas_price": 10000000000,
+        "max_gas_price": 1000000000000,
         "tx_type": "DynamicFeeTx",
         "check_pending_time": 12
       },
