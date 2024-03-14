@@ -20,10 +20,10 @@ import (
 	"scroll-tech/common/types/encoding"
 )
 
-// The BLS modulus defined in EIP-4844.
+// BLSModulus is the BLS modulus defined in EIP-4844.
 var BLSModulus *big.Int
 
-// Argument types for `_verifyBlobData` in `finalizeBatchWithProof`.
+// VerifyBlobDataArgs defines the argument types for `_verifyBlobData` in `finalizeBatchWithProof`.
 var VerifyBlobDataArgs abi.Arguments
 
 func init() {
@@ -49,7 +49,7 @@ func init() {
 	}
 }
 
-// CodecV0Version denotes the version of the codec.
+// CodecV1Version denotes the version of the codec.
 const CodecV1Version = 1
 
 // DABlock represents a Data Availability Block.
@@ -368,7 +368,7 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 		binary.BigEndian.PutUint32(blobBytes[2+4*chunkID:], uint32(chunkSize))
 
 		if hasL2Tx {
-			numNonEmptyChunks += 1
+			numNonEmptyChunks++
 		}
 
 		// challenge: compute chunk data hash
@@ -462,7 +462,7 @@ func (b *DABatch) Hash() common.Hash {
 	return crypto.Keccak256Hash(bytes)
 }
 
-// Hash computes the hash of the serialized DABatch.
+// VerifyBlobData computes the abi-encoded blob verification data.
 func (b *DABatch) VerifyBlobData() ([]byte, error) {
 	if b.blob == nil {
 		return nil, errors.New("called VerifyBlobData with empty blob")
@@ -487,7 +487,7 @@ func (b *DABatch) VerifyBlobData() ([]byte, error) {
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
 
 	values := []interface{}{*b.z, y, commitment, proof}
-	return abi.Arguments(VerifyBlobDataArgs).Pack(values...)
+	return VerifyBlobDataArgs.Pack(values...)
 }
 
 // DecodeFromCalldata attempts to decode a DABatch and an array of DAChunks from the provided calldata byte slice.
