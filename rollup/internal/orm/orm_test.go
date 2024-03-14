@@ -15,6 +15,8 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 	"scroll-tech/database/migrate"
 )
 
@@ -27,12 +29,12 @@ var (
 	batchOrm              *Batch
 	pendingTransactionOrm *PendingTransaction
 
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
-	chunk1        *types.Chunk
-	chunk2        *types.Chunk
-	chunkHash1    common.Hash
-	chunkHash2    common.Hash
+	block1     *encoding.Block
+	block2     *encoding.Block
+	chunk1     *encoding.Chunk
+	chunk2     *encoding.Chunk
+	chunkHash1 common.Hash
+	chunkHash2 common.Hash
 )
 
 func TestMain(m *testing.M) {
@@ -66,22 +68,26 @@ func setupEnv(t *testing.T) {
 
 	templateBlockTrace, err := os.ReadFile("../../../common/testdata/blockTrace_02.json")
 	assert.NoError(t, err)
-	wrappedBlock1 = &types.WrappedBlock{}
-	err = json.Unmarshal(templateBlockTrace, wrappedBlock1)
+	block1 = &encoding.Block{}
+	err = json.Unmarshal(templateBlockTrace, block1)
 	assert.NoError(t, err)
 
 	templateBlockTrace, err = os.ReadFile("../../../common/testdata/blockTrace_03.json")
 	assert.NoError(t, err)
-	wrappedBlock2 = &types.WrappedBlock{}
-	err = json.Unmarshal(templateBlockTrace, wrappedBlock2)
+	block2 = &encoding.Block{}
+	err = json.Unmarshal(templateBlockTrace, block2)
 	assert.NoError(t, err)
 
-	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
-	chunkHash1, err = chunk1.Hash(0)
+	chunk1 = &encoding.Chunk{Blocks: []*encoding.Block{block1}}
+	daChunk1, err := codecv0.NewDAChunk(chunk1, 0)
+	assert.NoError(t, err)
+	chunkHash1, err = daChunk1.Hash()
 	assert.NoError(t, err)
 
-	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
-	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
+	chunk2 = &encoding.Chunk{Blocks: []*encoding.Block{block2}}
+	daChunk2, err := codecv0.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
+	assert.NoError(t, err)
+	chunkHash2, err = daChunk2.Hash()
 	assert.NoError(t, err)
 }
 
@@ -144,33 +150,33 @@ func TestL2BlockOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 	assert.NoError(t, err)
 
 	height, err := l2BlockOrm.GetL2BlocksLatestHeight(context.Background())
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(3), height)
 
-	blocks, err := l2BlockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{}, 0)
+	chunkHashes, err := l2BlockOrm.GetChunkHashes(context.Background(), 0)
 	assert.NoError(t, err)
-	assert.Len(t, blocks, 2)
-	assert.Equal(t, "", blocks[0].ChunkHash)
-	assert.Equal(t, "", blocks[1].ChunkHash)
+	assert.Len(t, chunkHashes, 2)
+	assert.Equal(t, "", chunkHashes[0])
+	assert.Equal(t, "", chunkHashes[1])
 
-	wrappedBlocks, err := l2BlockOrm.GetL2BlocksInRange(context.Background(), 2, 3)
+	blocks, err := l2BlockOrm.GetL2BlocksInRange(context.Background(), 2, 3)
 	assert.NoError(t, err)
 	assert.Len(t, blocks, 2)
-	assert.Equal(t, wrappedBlock1, wrappedBlocks[0])
-	assert.Equal(t, wrappedBlock2, wrappedBlocks[1])
+	assert.Equal(t, block1, blocks[0])
+	assert.Equal(t, block2, blocks[1])
 
 	err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 2, 2, "test hash")
 	assert.NoError(t, err)
 
-	blocks, err = l2BlockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{}, 0)
+	chunkHashes, err = l2BlockOrm.GetChunkHashes(context.Background(), 0)
 	assert.NoError(t, err)
-	assert.Len(t, blocks, 2)
-	assert.Equal(t, "test hash", blocks[0].ChunkHash)
-	assert.Equal(t, "", blocks[1].ChunkHash)
+	assert.Len(t, chunkHashes, 2)
+	assert.Equal(t, "test hash", chunkHashes[0])
+	assert.Equal(t, "", chunkHashes[1])
 }
 
 func TestChunkOrm(t *testing.T) {
@@ -223,38 +229,46 @@ func TestBatchOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	batchMeta1 := &types.BatchMeta{
-		StartChunkIndex: 0,
-		StartChunkHash:  chunkHash1.Hex(),
-		EndChunkIndex:   0,
-		EndChunkHash:    chunkHash1.Hex(),
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk1},
+		StartChunkIndex:            0,
+		StartChunkHash:             chunkHash1,
+		EndChunkIndex:              0,
+		EndChunkHash:               chunkHash1,
 	}
-	batch1, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk1}, batchMeta1)
+	batch1, err := batchOrm.InsertBatch(context.Background(), batch)
 	assert.NoError(t, err)
 	hash1 := batch1.Hash
 
 	batch1, err = batchOrm.GetBatchByIndex(context.Background(), 0)
 	assert.NoError(t, err)
-	batchHeader1, err := types.DecodeBatchHeader(batch1.BatchHeader)
+	daBatch1, err := codecv0.NewDABatchFromBytes(batch1.BatchHeader)
 	assert.NoError(t, err)
-	batchHash1 := batchHeader1.Hash().Hex()
+	batchHash1 := daBatch1.Hash().Hex()
 	assert.Equal(t, hash1, batchHash1)
 
-	batchMeta2 := &types.BatchMeta{
-		StartChunkIndex: 1,
-		StartChunkHash:  chunkHash2.Hex(),
-		EndChunkIndex:   1,
-		EndChunkHash:    chunkHash2.Hex(),
+	batch = &encoding.Batch{
+		Index:                      1,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk1},
+		StartChunkIndex:            1,
+		StartChunkHash:             chunkHash2,
+		EndChunkIndex:              1,
+		EndChunkHash:               chunkHash2,
 	}
-	batch2, err := batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk2}, batchMeta2)
+	batch2, err := batchOrm.InsertBatch(context.Background(), batch)
 	assert.NoError(t, err)
 	hash2 := batch2.Hash
 
 	batch2, err = batchOrm.GetBatchByIndex(context.Background(), 1)
 	assert.NoError(t, err)
-	batchHeader2, err := types.DecodeBatchHeader(batch2.BatchHeader)
+	daBatch2, err := codecv0.NewDABatchFromBytes(batch2.BatchHeader)
 	assert.NoError(t, err)
-	batchHash2 := batchHeader2.Hash().Hex()
+	batchHash2 := daBatch2.Hash().Hex()
 	assert.Equal(t, hash2, batchHash2)
 
 	count, err := batchOrm.GetBatchCount(context.Background())
