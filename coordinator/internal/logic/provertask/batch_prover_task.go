@@ -74,9 +74,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		var exist bool
 		hardForkNumber, exist = bp.nameForkMap[getTaskParameter.HardForkName]
 		if !exist {
-			log.Debug("hard fork prover get empty batch because of the hard fork name don't exist", "height",
+			log.Error("hard fork prover get empty batch because of the hard fork name don't exist", "height",
 				getTaskParameter.ProverHeight, "fork name", getTaskParameter.HardForkName)
-			return nil, nil
+			return nil, ErrHardForkName
 		}
 	}
 

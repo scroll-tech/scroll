@@ -23,9 +23,6 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-// ErrCoordinatorInternalFailure coordinator internal db failure
-var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
-
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
 	BaseProverTask
@@ -75,8 +72,8 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		var exist bool
 		hardForkNumber, exist = cp.nameForkMap[getTaskParameter.HardForkName]
 		if !exist {
-			log.Debug("hard fork prover get empty chunk because of the hard fork number don't exist", "height", getTaskParameter.ProverHeight, "fork name", getTaskParameter.HardForkName)
-			return nil, nil
+			log.Error("hard fork prover get empty chunk because of the hard fork number don't exist", "height", getTaskParameter.ProverHeight, "fork name", getTaskParameter.HardForkName)
+			return nil, ErrHardForkName
 		}
 	}
 

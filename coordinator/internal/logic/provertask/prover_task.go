@@ -13,6 +13,10 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
+// ErrCoordinatorInternalFailure coordinator internal db failure
+var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+var ErrHardForkName = fmt.Errorf("wrong hard fork name")
+
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
