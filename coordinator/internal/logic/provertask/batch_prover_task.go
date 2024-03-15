@@ -29,7 +29,7 @@ type BatchProverTask struct {
 	BaseProverTask
 
 	batchAttemptsExceedTotal prometheus.Counter
-	batchTaskGetTaskTotal    prometheus.Counter
+	batchTaskGetTaskTotal    *prometheus.CounterVec
 }
 
 // NewBatchProverTask new a batch collector
@@ -54,10 +54,10 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			Name: "coordinator_batch_attempts_exceed_total",
 			Help: "Total number of batch attempts exceed.",
 		}),
-		batchTaskGetTaskTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		batchTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_batch_get_task_total",
 			Help: "Total number of batch get task.",
-		}),
+		}, []string{"fork_name"}),
 	}
 	return bp
 }
@@ -82,6 +82,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if getTaskParameter.HardForkName == "" {
 		hardForkNumber = bp.maxForkNumber - 1
+		getTaskParameter.HardForkName = "base"
 	}
 
 	// if the hard fork number set, rollup relayer must generate the chunk from hard fork number,
@@ -177,7 +178,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	bp.batchTaskGetTaskTotal.Inc()
+	bp.batchTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
 
 	return taskMsg, nil
 }

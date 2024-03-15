@@ -28,7 +28,7 @@ type ChunkProverTask struct {
 	BaseProverTask
 
 	chunkAttemptsExceedTotal prometheus.Counter
-	chunkTaskGetTaskTotal    prometheus.Counter
+	chunkTaskGetTaskTotal    *prometheus.CounterVec
 }
 
 // NewChunkProverTask new a chunk prover task
@@ -52,10 +52,10 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			Name: "coordinator_chunk_attempts_exceed_total",
 			Help: "Total number of chunk attempts exceed.",
 		}),
-		chunkTaskGetTaskTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		chunkTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_chunk_get_task_total",
 			Help: "Total number of chunk get task.",
-		}),
+		}, []string{"fork_name"}),
 	}
 	return cp
 }
@@ -79,6 +79,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	if getTaskParameter.HardForkName == "" {
 		hardForkNumber = cp.maxForkNumber - 1
+		getTaskParameter.HardForkName = "base"
 	}
 
 	var isFork bool
@@ -160,7 +161,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	cp.chunkTaskGetTaskTotal.Inc()
+	cp.chunkTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
 
 	return taskMsg, nil
 }
