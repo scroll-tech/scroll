@@ -14,13 +14,13 @@ pragma solidity ^0.8.24;
 ///   * dataHash                32          bytes32     25      The data hash of the batch
 ///   * blobVersionedHash       32          bytes32     57      The versioned hash of the blob with this batch’s data
 ///   * parentBatchHash         32          bytes32     89      The parent batch hash
-///   * skippedL1MessageBitmap  dynamic     uint256[]   121      A bitmap to indicate which L1 messages are skipped in the batch
+///   * skippedL1MessageBitmap  dynamic     uint256[]   121     A bitmap to indicate which L1 messages are skipped in the batch
 /// ```
 library BatchHeaderV1Codec {
-    /// @dev Thrown when the length of batch header is smaller than 121
+    /// @dev Thrown when the length of batch header is smaller than 121.
     error ErrorBatchHeaderLengthTooSmall();
 
-    /// @dev Thrown when the length of skippedL1MessageBitmap is incorret.
+    /// @dev Thrown when the length of skippedL1MessageBitmap is incorrect.
     error ErrorIncorrectBitmapLength();
 
     /// @dev The length of fixed parts of the batch header.

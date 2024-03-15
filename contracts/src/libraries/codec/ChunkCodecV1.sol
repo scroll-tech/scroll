@@ -21,7 +21,7 @@ import {ChunkCodecV0} from "./ChunkCodecV0.sol";
 ///   * Field                   Bytes      Type         Index  Comments
 ///   * blockNumber             8          uint64       0      The height of this block.
 ///   * timestamp               8          uint64       8      The timestamp of this block.
-///   * baseFee                 32         uint256      16     The base fee of this block. Currently, it is always 0, because we disable EIP-1559.
+///   * baseFee                 32         uint256      16     The base fee of this block.
 ///   * gasLimit                8          uint64       48     The gas limit of this block.
 ///   * numTransactions         2          uint16       56     The number of transactions in this block, both L1 & L2 txs.
 ///   * numL1Messages           2          uint16       58     The number of l1 messages in this block.
@@ -46,7 +46,7 @@ library ChunkCodecV1 {
         // should contain at least one block
         if (_numBlocks == 0) revert ErrorNoBlockInChunk();
 
-        // should contain at least the number of the blocks and block contexts
+        // should contain the number of the blocks and block contexts
         if (_length != 1 + _numBlocks * BLOCK_CONTEXT_LENGTH) revert ErrorIncorrectChunkLength();
     }
 

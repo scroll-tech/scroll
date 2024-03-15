@@ -19,7 +19,7 @@ pragma solidity ^0.8.24;
 ///   * Field                   Bytes      Type         Index  Comments
 ///   * blockNumber             8          uint64       0      The height of this block.
 ///   * timestamp               8          uint64       8      The timestamp of this block.
-///   * baseFee                 32         uint256      16     The base fee of this block. Currently, it is always 0, because we disable EIP-1559.
+///   * baseFee                 32         uint256      16     The base fee of this block.
 ///   * gasLimit                8          uint64       48     The gas limit of this block.
 ///   * numTransactions         2          uint16       56     The number of transactions in this block, both L1 & L2 txs.
 ///   * numL1Messages           2          uint16       58     The number of l1 messages in this block.

@@ -16,10 +16,10 @@ pragma solidity ^0.8.24;
 ///   * skippedL1MessageBitmap  dynamic     uint256[]   89      A bitmap to indicate which L1 messages are skipped in the batch
 /// ```
 library BatchHeaderV0Codec {
-    /// @dev Thrown when the length of batch header is smaller than 121
+    /// @dev Thrown when the length of batch header is smaller than 89
     error ErrorBatchHeaderLengthTooSmall();
 
-    /// @dev Thrown when the length of skippedL1MessageBitmap is incorret.
+    /// @dev Thrown when the length of skippedL1MessageBitmap is incorrect.
     error ErrorIncorrectBitmapLength();
 
     /// @dev The length of fixed parts of the batch header.
@@ -189,7 +189,11 @@ library BatchHeaderV0Codec {
     /// @param _skippedL1MessageBitmap The skipped L1 message bitmap.
     function storeSkippedBitmap(uint256 batchPtr, bytes calldata _skippedL1MessageBitmap) internal pure {
         assembly {
-            calldatacopy(add(batchPtr, 89), _skippedL1MessageBitmap.offset, _skippedL1MessageBitmap.length)
+            calldatacopy(
+                add(batchPtr, BATCH_HEADER_FIXED_LENGTH),
+                _skippedL1MessageBitmap.offset,
+                _skippedL1MessageBitmap.length
+            )
         }
     }
 
