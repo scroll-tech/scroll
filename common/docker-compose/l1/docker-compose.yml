@@ -70,11 +70,7 @@ services:
       create-beacon-chain-genesis:
         condition: service_completed_successfully
     ports:
-      - 4000:4000
-      - 3500:3500
-      - 8080:8080
-      - 6060:6060
-      - 9090:9090
+      - 12345:4000
     volumes:
       - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
       - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
@@ -100,7 +96,7 @@ services:
       - --syncmode=full
     ports:
       - 8551:8551
-      - ${HTTP_PORT:-8545}:8545
+      - 8545:8545
     depends_on:
       geth-genesis:
         condition: service_completed_successfully
@@ -116,7 +112,7 @@ services:
   validator:
     image: "gcr.io/prysmaticlabs/prysm/validator:v5.0.0"
     command:
-      - --beacon-rpc-provider=beacon-chain:4000
+      - --beacon-rpc-provider=beacon-chain:12345
       - --datadir=/consensus/validatordata
       - --accept-terms-of-use
       - --interop-num-validators=64

@@ -29,7 +29,7 @@
 We welcome community contributions to this repository. Before you submit any issues or PRs, please read the [Code of Conduct](CODE_OF_CONDUCT.md) and the [Contribution Guideline](CONTRIBUTING.md).
 
 ## Prerequisites
-+ Go 1.20
++ Go 1.21
 + Rust (for version, see [rust-toolchain](./common/libzkp/impl/rust-toolchain))
 + Hardhat / Foundry
 + Docker
@@ -48,7 +48,6 @@ make dev_docker
 Run the tests using the following commands:
 
 ```bash
-./common/docker-compose/l1/clean.sh
 go test -v -race -covermode=atomic scroll-tech/rollup/...
 go test -tags="mock_verifier" -v -race -covermode=atomic scroll-tech/coordinator/...
 go test -v -race -covermode=atomic scroll-tech/database/...
@@ -82,7 +81,6 @@ This command runs a Docker container named `scroll_test_container` from the `scr
 Once the Docker container is running, execute the tests using the following commands:
 
 ```bash
-./common/docker-compose/l1/clean.sh
 go test -v -race -covermode=atomic scroll-tech/rollup/...
 go test -tags="mock_verifier" -v -race -covermode=atomic scroll-tech/coordinator/...
 go test -v -race -covermode=atomic scroll-tech/database/...
