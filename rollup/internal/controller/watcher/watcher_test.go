@@ -12,7 +12,7 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/database/migrate"
 
@@ -29,8 +29,8 @@ var (
 	l2Cli *ethclient.Client
 
 	// block trace
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
+	block1 *encoding.Block
+	block2 *encoding.Block
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -62,8 +62,8 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock1 = &types.WrappedBlock{}
-	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
+	block1 = &encoding.Block{}
+	if err = json.Unmarshal(templateBlockTrace1, block1); err != nil {
 		return err
 	}
 
@@ -72,8 +72,8 @@ func setupEnv(t *testing.T) (err error) {
 		return err
 	}
 	// unmarshal blockTrace
-	wrappedBlock2 = &types.WrappedBlock{}
-	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
+	block2 = &encoding.Block{}
+	if err = json.Unmarshal(templateBlockTrace2, block2); err != nil {
 		return err
 	}
 	return err

@@ -11,6 +11,8 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"
@@ -71,8 +73,8 @@ func testImportL2GasPrice(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add fake chunk
-	chunk := &types.Chunk{
-		Blocks: []*types.WrappedBlock{
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{
 			{
 				Header: &gethTypes.Header{
 					Number:     big.NewInt(1),
@@ -86,31 +88,38 @@ func testImportL2GasPrice(t *testing.T) {
 			},
 		},
 	}
-	chunkHash, err := chunk.Hash(0)
+	daChunk, err := codecv0.NewDAChunk(chunk, 0)
+	assert.NoError(t, err)
+	chunkHash, err := daChunk.Hash()
 	assert.NoError(t, err)
 
-	batchMeta := &types.BatchMeta{
-		StartChunkIndex: 0,
-		StartChunkHash:  chunkHash.Hex(),
-		EndChunkIndex:   0,
-		EndChunkHash:    chunkHash.Hex(),
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+		StartChunkIndex:            0,
+		StartChunkHash:             chunkHash,
+		EndChunkIndex:              0,
+		EndChunkHash:               chunkHash,
 	}
+
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk}, batchMeta)
+	_, err = batchOrm.InsertBatch(context.Background(), batch)
 	assert.NoError(t, err)
 
 	// check db status
-	batch, err := batchOrm.GetLatestBatch(context.Background())
+	dbBatch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, batch)
-	assert.Empty(t, batch.OracleTxHash)
-	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOraclePending)
+	assert.Empty(t, dbBatch.OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(dbBatch.OracleStatus), types.GasOraclePending)
 
 	// relay gas price
 	l2Relayer.ProcessGasPriceOracle()
-	batch, err = batchOrm.GetLatestBatch(context.Background())
+	dbBatch, err = batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, batch)
-	assert.NotEmpty(t, batch.OracleTxHash)
-	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOracleImporting)
+	assert.NotEmpty(t, dbBatch.OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(dbBatch.OracleStatus), types.GasOracleImporting)
 }
