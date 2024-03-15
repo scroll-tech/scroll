@@ -353,8 +353,8 @@ func testHardForkAssignTask(t *testing.T) {
 			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo},
 			exceptTaskNumber:      0,
 			proverForkNames:       []string{"homestead", "homestead"},
-			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
-			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
+			exceptGetTaskErrCodes: []int{types.ErrCoordinatorGetTaskFailure, types.ErrCoordinatorGetTaskFailure},
+			exceptGetTaskErrMsgs:  []string{"return prover task err:wrong hard fork name", "return prover task err:wrong hard fork name"},
 		},
 		{
 			name:                  "noTaskForkBatchProverVersionLessThanHardFork",
@@ -362,8 +362,8 @@ func testHardForkAssignTask(t *testing.T) {
 			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo},
 			exceptTaskNumber:      0,
 			proverForkNames:       []string{"homestead", "homestead"},
-			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
-			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
+			exceptGetTaskErrCodes: []int{types.ErrCoordinatorGetTaskFailure, types.ErrCoordinatorGetTaskFailure},
+			exceptGetTaskErrMsgs:  []string{"return prover task err:wrong hard fork name", "return prover task err:wrong hard fork name"},
 		},
 		{ // hard fork 3, prover 3 block [2-3]
 			name:                  "oneTaskForkChunkProverVersionLargeOrEqualThanHardFork",
