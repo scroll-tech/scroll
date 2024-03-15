@@ -453,7 +453,7 @@ describe("ZkTrieVerifier", async () => {
   it("should revert, when InvalidAccountKeyPreimage", async () => {
     const test = testcases[0];
     const index = test.accountProof.length - 2;
-    const correct = test.accountProof[index];
+    const correct = test.accountProof[index].slice();
     for (const p of [398, 438]) {
       const v = correct[p];
       for (let b = 0; b < 3; ++b) {
@@ -468,7 +468,7 @@ describe("ZkTrieVerifier", async () => {
   it("should revert, when InvalidProofMagicBytes", async () => {
     const test = testcases[0];
     let index = test.accountProof.length - 1;
-    let correct = test.accountProof[index];
+    let correct = test.accountProof[index].slice();
     for (const p of [2, 32, 91]) {
       const v = correct[p];
       for (let b = 0; b < 3; ++b) {
@@ -480,7 +480,7 @@ describe("ZkTrieVerifier", async () => {
     }
 
     index = test.storageProof.length - 1;
-    correct = test.storageProof[index];
+    correct = test.storageProof[index].slice();
     for (const p of [2, 32, 91]) {
       const v = correct[p];
       for (let b = 0; b < 3; ++b) {
@@ -494,13 +494,14 @@ describe("ZkTrieVerifier", async () => {
 
   it("should revert, when InvalidAccountLeafNodeHash", async () => {
     const test = testcases[0];
-    const correct = test.storageProof.slice();
-    test.storageProof = [
-      "0x05",
-      "0x5448495320495320534f4d45204d4147494320425954455320464f5220534d54206d3172525867503278704449",
-    ];
+    const correct = test.accountProof[test.accountProof.length - 2];
+    // change nonce
+    test.accountProof[test.accountProof.length - 2] = correct.replace(
+      "0x0420e9fb498ff9c35246d527da24aa1710d2cc9b055ecf9a95a8a2a11d3d836cdf050800000",
+      "0x0420e9fb498ff9c35246d527da24aa1710d2cc9b055ecf9a95a8a2a11d3d836cdf050800001"
+    );
     await shouldRevert(test, "InvalidAccountLeafNodeHash");
-    test.storageProof = correct;
+    test.accountProof[test.accountProof.length - 2] = correct;
   });
 
   it("should revert, when InvalidStorageLeafNodeType", async () => {

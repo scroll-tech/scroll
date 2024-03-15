@@ -23,62 +23,92 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
      * Errors *
      **********/
 
-    /// @dev Thrown when the given address is `address(0)`.
-    error ErrorZeroAddress();
+    /// @dev Thrown when the given account is not EOA account.
+    error ErrorAccountIsNotEOA();
 
-    /// @dev Thrown when the caller is not sequencer.
-    error ErrorCallerIsNotSequencer();
+    /// @dev Thrown when committing a committed batch.
+    error ErrorBatchIsAlreadyCommitted();
+
+    /// @dev Thrown when finalizing a verified batch.
+    error ErrorBatchIsAlreadyVerified();
+
+    /// @dev Thrown when committing empty batch (batch without chunks)
+    error ErrorBatchIsEmpty();
+
+    /// @dev Thrown when call precompile failed.
+    error ErrorCallPointEvaluationPrecompileFailed();
 
     /// @dev Thrown when the caller is not prover.
     error ErrorCallerIsNotProver();
 
-    error ErrorStateRootIsZero();
+    /// @dev Thrown when the caller is not sequencer.
+    error ErrorCallerIsNotSequencer();
 
-    error ErrorGenesisBatchImported();
-
-    error ErrorGenesisBatchHasNonZeroField();
-
-    error ErrorGenesisDataHashIsZero();
-
-    error ErrorGenesisParentBatchHashIsNonZero();
-
-    error ErrorBatchIsEmpty();
-
-    error ErrorBatchIsAlreadyCommitted();
-
-    error ErrorInvalidBatchHeaderVersion();
-
-    error ErrorRevertZeroBatches();
-
-    error ErrorRevertNotStartFromEnd();
-
-    error ErrorRevertFinalizedBatch();
-
-    error ErrorPreviousStateRootIsZero();
-
-    error ErrorIncorrectPreviousStateRoot();
-
-    error ErrorBatchIsAlreadyVerified();
-
-    error ErrorIncorrectBatchIndex();
-
-    error ErrorAccountIsNotEOA();
-
-    error ErrorIncorrectBitmapLength();
-
-    error ErrorNoBlobFound();
-
+    /// @dev Thrown when the transaction has multiple blobs.
     error ErrorFoundMultipleBlob();
 
-    error ErrorIncorrectBatchHash();
+    /// @dev Thrown when some fields are not zero in genesis batch.
+    error ErrorGenesisBatchHasNonZeroField();
 
-    error ErrorNumTxsLessThanNumL1Msgs();
+    /// @dev Thrown when importing genesis batch twice.
+    error ErrorGenesisBatchImported();
 
-    error ErrorTooManyTxsInOneChunk();
+    /// @dev Thrown when data hash in genesis batch is zero.
+    error ErrorGenesisDataHashIsZero();
 
+    /// @dev Thrown when the parent batch hash in genesis batch is zero.
+    error ErrorGenesisParentBatchHashIsNonZero();
+
+    /// @dev Thrown when the l2 transaction is incomplete.
     error ErrorIncompleteL2TransactionData();
 
+    /// @dev Thrown when the batch hash is incorrect.
+    error ErrorIncorrectBatchHash();
+
+    /// @dev Thrown when the batch index is incorrect.
+    error ErrorIncorrectBatchIndex();
+
+    /// @dev Thrown when the bitmap length is incorrect.
+    error ErrorIncorrectBitmapLength();
+
+    /// @dev Thrown when the previous state root doesn't match stored one.
+    error ErrorIncorrectPreviousStateRoot();
+
+    /// @dev Thrown when the batch header version is invalid.
+    error ErrorInvalidBatchHeaderVersion();
+
+    /// @dev Thrown when the last message is skipped.
     error ErrorLastL1MessageSkipped();
+
+    /// @dev Thrown when no blob found in the transaction.
+    error ErrorNoBlobFound();
+
+    /// @dev Thrown when the number of transactions is less than number of L1 message in one block.
+    error ErrorNumTxsLessThanNumL1Msgs();
+
+    /// @dev Thrown when the given previous state is zero.
+    error ErrorPreviousStateRootIsZero();
+
+    /// @dev Thrown when the number of batches to revert is zero.
+    error ErrorRevertZeroBatches();
+
+    /// @dev Thrown when the reverted batches are not in the ending of commited batch chain.
+    error ErrorRevertNotStartFromEnd();
+
+    /// @dev Thrown when revert finialzed batch.
+    error ErrorRevertFinalizedBatch();
+
+    /// @dev Thrown when the given state root is zero.
+    error ErrorStateRootIsZero();
+
+    /// @dev Thrown when the number of transactions in on chunk is too many.
+    error ErrorTooManyTxsInOneChunk();
+
+    /// @dev Thrown when the precompile outpout is incorrect.
+    error ErrorUnexpectedPointEvaluationPrecompileOutput();
+
+    /// @dev Thrown when the given address is `address(0)`.
+    error ErrorZeroAddress();
 
     /*************
      * Constants *
@@ -426,9 +456,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             );
             // We verify that the point evaluation precompile call was successful by testing the latter 32 bytes of the
             // response is equal to BLS_MODULUS as defined in https://eips.ethereum.org/EIPS/eip-4844#point-evaluation-precompile
-            require(success, "failed to call point evaluation precompile");
+            if (!success) revert ErrorCallPointEvaluationPrecompileFailed();
             (, uint256 result) = abi.decode(data, (uint256, uint256));
-            require(result == BLS_MODULUS, "precompile unexpected output");
+            if (result != BLS_MODULUS) revert ErrorUnexpectedPointEvaluationPrecompileOutput();
         }
 
         // verify previous state root.
@@ -439,7 +469,14 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // compute public input hash
         bytes32 _publicInputHash = keccak256(
-            abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
+            abi.encodePacked(
+                layer2ChainId,
+                _prevStateRoot,
+                _postStateRoot,
+                _withdrawRoot,
+                _dataHash,
+                _blobDataProof[0:64]
+            )
         );
 
         // verify batch

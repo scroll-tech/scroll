@@ -681,7 +681,7 @@ error ErrorAccountIsNotEOA()
 
 
 
-
+*Thrown when the given account is not EOA account.*
 
 
 ### ErrorBatchHeaderLengthTooSmall
@@ -703,7 +703,7 @@ error ErrorBatchIsAlreadyCommitted()
 
 
 
-
+*Thrown when committing a committed batch.*
 
 
 ### ErrorBatchIsAlreadyVerified
@@ -714,7 +714,7 @@ error ErrorBatchIsAlreadyVerified()
 
 
 
-
+*Thrown when finalizing a verified batch.*
 
 
 ### ErrorBatchIsEmpty
@@ -725,7 +725,18 @@ error ErrorBatchIsEmpty()
 
 
 
+*Thrown when committing empty batch (batch without chunks)*
 
+
+### ErrorCallPointEvaluationPrecompileFailed
+
+```solidity
+error ErrorCallPointEvaluationPrecompileFailed()
+```
+
+
+
+*Thrown when call precompile failed.*
 
 
 ### ErrorCallerIsNotProver
@@ -758,7 +769,7 @@ error ErrorFoundMultipleBlob()
 
 
 
-
+*Thrown when the transaction has multiple blobs.*
 
 
 ### ErrorGenesisBatchHasNonZeroField
@@ -769,7 +780,7 @@ error ErrorGenesisBatchHasNonZeroField()
 
 
 
-
+*Thrown when some fields are not zero in genesis batch.*
 
 
 ### ErrorGenesisBatchImported
@@ -780,7 +791,7 @@ error ErrorGenesisBatchImported()
 
 
 
-
+*Thrown when importing genesis batch twice.*
 
 
 ### ErrorGenesisDataHashIsZero
@@ -791,7 +802,7 @@ error ErrorGenesisDataHashIsZero()
 
 
 
-
+*Thrown when data hash in genesis batch is zero.*
 
 
 ### ErrorGenesisParentBatchHashIsNonZero
@@ -802,7 +813,7 @@ error ErrorGenesisParentBatchHashIsNonZero()
 
 
 
-
+*Thrown when the parent batch hash in genesis batch is zero.*
 
 
 ### ErrorIncompleteL2TransactionData
@@ -813,7 +824,7 @@ error ErrorIncompleteL2TransactionData()
 
 
 
-
+*Thrown when the l2 transaction is incomplete.*
 
 
 ### ErrorIncorrectBatchHash
@@ -824,7 +835,7 @@ error ErrorIncorrectBatchHash()
 
 
 
-
+*Thrown when the batch hash is incorrect.*
 
 
 ### ErrorIncorrectBatchIndex
@@ -835,7 +846,7 @@ error ErrorIncorrectBatchIndex()
 
 
 
-
+*Thrown when the batch index is incorrect.*
 
 
 ### ErrorIncorrectBitmapLength
@@ -846,7 +857,7 @@ error ErrorIncorrectBitmapLength()
 
 
 
-*Thrown when the length of skippedL1MessageBitmap is incorret.*
+*Thrown when the bitmap length is incorrect.*
 
 
 ### ErrorIncorrectChunkLength
@@ -868,7 +879,7 @@ error ErrorIncorrectPreviousStateRoot()
 
 
 
-
+*Thrown when the previous state root doesn&#39;t match stored one.*
 
 
 ### ErrorInvalidBatchHeaderVersion
@@ -879,7 +890,7 @@ error ErrorInvalidBatchHeaderVersion()
 
 
 
-
+*Thrown when the batch header version is invalid.*
 
 
 ### ErrorLastL1MessageSkipped
@@ -890,7 +901,7 @@ error ErrorLastL1MessageSkipped()
 
 
 
-
+*Thrown when the last message is skipped.*
 
 
 ### ErrorNoBlobFound
@@ -901,7 +912,7 @@ error ErrorNoBlobFound()
 
 
 
-
+*Thrown when no blob found in the transaction.*
 
 
 ### ErrorNoBlockInChunk
@@ -923,7 +934,7 @@ error ErrorNumTxsLessThanNumL1Msgs()
 
 
 
-
+*Thrown when the number of transactions is less than number of L1 message in one block.*
 
 
 ### ErrorPreviousStateRootIsZero
@@ -934,7 +945,7 @@ error ErrorPreviousStateRootIsZero()
 
 
 
-
+*Thrown when the given previous state is zero.*
 
 
 ### ErrorRevertFinalizedBatch
@@ -945,7 +956,7 @@ error ErrorRevertFinalizedBatch()
 
 
 
-
+*Thrown when revert finialzed batch.*
 
 
 ### ErrorRevertNotStartFromEnd
@@ -956,7 +967,7 @@ error ErrorRevertNotStartFromEnd()
 
 
 
-
+*Thrown when the reverted batches are not in the ending of commited batch chain.*
 
 
 ### ErrorRevertZeroBatches
@@ -967,7 +978,7 @@ error ErrorRevertZeroBatches()
 
 
 
-
+*Thrown when the number of batches to revert is zero.*
 
 
 ### ErrorStateRootIsZero
@@ -978,7 +989,7 @@ error ErrorStateRootIsZero()
 
 
 
-
+*Thrown when the given state root is zero.*
 
 
 ### ErrorTooManyTxsInOneChunk
@@ -989,7 +1000,18 @@ error ErrorTooManyTxsInOneChunk()
 
 
 
+*Thrown when the number of transactions in on chunk is too many.*
 
+
+### ErrorUnexpectedPointEvaluationPrecompileOutput
+
+```solidity
+error ErrorUnexpectedPointEvaluationPrecompileOutput()
+```
+
+
+
+*Thrown when the precompile outpout is incorrect.*
 
 
 ### ErrorZeroAddress
