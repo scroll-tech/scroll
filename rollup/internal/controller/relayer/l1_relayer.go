@@ -185,3 +185,11 @@ func (r *Layer1Relayer) handleL1GasOracleConfirmLoop(ctx context.Context) {
 		}
 	}
 }
+
+// StopSenders stops the senders of the rollup-relayer to prevent querying the removed pending_transaction table in unit tests.
+// for unit test
+func (r *Layer1Relayer) StopSenders() {
+	if r.gasOracleSender != nil {
+		r.gasOracleSender.Stop()
+	}
+}

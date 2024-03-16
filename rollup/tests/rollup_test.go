@@ -32,6 +32,7 @@ func testCommitAndFinalizeGenesisBatch(t *testing.T) {
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, l2Relayer)
+	defer l2Relayer.StopSenders()
 
 	genesisChunkHash := common.HexToHash("0x00e076380b00a3749816fcc9a2a576b529952ef463222a54544d21b7d434dfe1")
 	chunkOrm := orm.NewChunk(db)
@@ -60,6 +61,7 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	l2Cfg := rollupApp.Config.L2Config
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, relayer.ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Create L1Watcher
 	l1Cfg := rollupApp.Config.L1Config

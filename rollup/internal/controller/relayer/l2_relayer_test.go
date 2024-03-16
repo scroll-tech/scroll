@@ -43,6 +43,7 @@ func testCreateNewRelayer(t *testing.T) {
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
 }
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
@@ -52,6 +53,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer relayer.StopSenders()
 
 	l2BlockOrm := orm.NewL2Block(db)
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
@@ -92,6 +94,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer relayer.StopSenders()
 
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -144,6 +147,7 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer relayer.StopSenders()
 
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -182,6 +186,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	defer cancel()
 	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	isSuccessful := []bool{true, false}
@@ -241,6 +246,7 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	defer cancel()
 	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	isSuccessful := []bool{true, false}
@@ -329,6 +335,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	defer cancel()
 	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	type BatchConfirmation struct {
@@ -369,6 +376,7 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
 
 	var batchOrm *orm.Batch
 	convey.Convey("Failed to GetLatestBatch", t, func() {
@@ -488,6 +496,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
 
 	status, err := relayer.getBatchStatusByIndex(dbBatch)
 	assert.NoError(t, err)

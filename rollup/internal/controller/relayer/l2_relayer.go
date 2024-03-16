@@ -732,3 +732,19 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 		}
 	}
 }
+
+// StopSenders stops the senders of the rollup-relayer to prevent querying the removed pending_transaction table in unit tests.
+// for unit test
+func (r *Layer2Relayer) StopSenders() {
+	if r.gasOracleSender != nil {
+		r.gasOracleSender.Stop()
+	}
+
+	if r.commitSender != nil {
+		r.commitSender.Stop()
+	}
+
+	if r.finalizeSender != nil {
+		r.finalizeSender.Stop()
+	}
+}

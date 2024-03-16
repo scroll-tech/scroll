@@ -500,7 +500,7 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 		Sidecar:    sidecar,
 	})
 	baseFeePerGas := uint64(1000)
-	blobBaseFeePerGas := uint64(1000)
+	blobBaseFeePerGas := uint64(10000000000000) // bounded by max blob base fee.
 	// bump the basefee and blobbasefee by 10x
 	baseFeePerGas *= 10
 	blobBaseFeePerGas *= 10
@@ -514,10 +514,10 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 		expectedGasFeeCap = maxGasPrice
 	}
 
-	maxGasPrice = new(big.Int).SetUint64(s.config.MaxGasPrice)
-	expectedBlobGasFeeCap := getBlobGasFeeCap(new(big.Int).SetUint64(baseFeePerGas))
-	if expectedBlobGasFeeCap.Cmp(maxGasPrice) > 0 {
-		expectedBlobGasFeeCap = maxGasPrice
+	maxBlobGasPrice := new(big.Int).SetUint64(s.config.MaxBlobGasPrice)
+	expectedBlobGasFeeCap := getBlobGasFeeCap(new(big.Int).SetUint64(blobBaseFeePerGas))
+	if expectedBlobGasFeeCap.Cmp(maxBlobGasPrice) > 0 {
+		expectedBlobGasFeeCap = maxBlobGasPrice
 	}
 
 	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())

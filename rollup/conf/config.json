@@ -14,6 +14,7 @@
         "escalate_multiple_num": 2,
         "escalate_multiple_den": 1,
         "max_gas_price": 1000000000000,
+        "max_blob_gas_price": 10000000000000,
         "tx_type": "LegacyTx",
         "check_pending_time": 1
       },
@@ -38,6 +39,7 @@
         "escalate_multiple_num": 2,
         "escalate_multiple_den": 1,
         "max_gas_price": 1000000000000,
+        "max_blob_gas_price": 10000000000000,
         "tx_type": "DynamicFeeTx",
         "check_pending_time": 1
       },

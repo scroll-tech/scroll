@@ -327,6 +327,7 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
+	maxBlobGasPrice := new(big.Int).SetUint64(s.config.MaxBlobGasPrice)
 
 	txInfo := map[string]interface{}{
 		"tx_hash": tx.Hash().String(),
@@ -429,9 +430,9 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 			blobGasFeeCap = currentBlobGasFeeCap
 		}
 
-		// but don't exceed maxGasPrice
-		if blobGasFeeCap.Cmp(maxGasPrice) > 0 {
-			blobGasFeeCap = maxGasPrice
+		// but don't exceed maxBlobGasPrice
+		if blobGasFeeCap.Cmp(maxBlobGasPrice) > 0 {
+			blobGasFeeCap = maxBlobGasPrice
 		}
 
 		feeData.gasFeeCap = gasFeeCap
