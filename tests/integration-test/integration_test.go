@@ -49,10 +49,12 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 
 	// Init data
 	dbCfg := &database.Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
+		DSN:         base.DBConfig.DSN,
+		DriverName:  base.DBConfig.DriverName,
+		MaxOpenNum:  base.DBConfig.MaxOpenNum,
+		MaxIdleNum:  base.DBConfig.MaxIdleNum,
+		MaxLifetime: base.DBConfig.MaxLifetime,
+		MaxIdleTime: base.DBConfig.MaxIdleTime,
 	}
 
 	db, err := database.InitDB(dbCfg)

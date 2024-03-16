@@ -167,6 +167,8 @@ func (b *App) mockDBConfig() error {
 		DriverName: "postgres",
 		MaxOpenNum: 200,
 		MaxIdleNum: 20,
+		MaxLifetime: 600,
+		MaxIdleTime: 300
 	}
 
 	if b.DBImg != nil {

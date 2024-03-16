@@ -29,7 +29,9 @@ func TestConfig(t *testing.T) {
 			"driver_name": "postgres",
 			"dsn": "postgres://admin:123456@localhost/test?sslmode=disable",
 			"maxOpenNum": 200,
-			"maxIdleNum": 20
+			"maxIdleNum": 20,
+			"maxLifetime": 600,
+			"maxIdleTime": 300
 		},
 		"l2": {
 			"chain_id": 111

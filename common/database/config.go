@@ -8,4 +8,6 @@ type Config struct {
 
 	MaxOpenNum int `json:"maxOpenNum"`
 	MaxIdleNum int `json:"maxIdleNum"`
+	MaxLifetime int `json:"maxLifetime"`
+	MaxIdleTime int `json:"maxIdleTime"`
 }
