@@ -95,7 +95,6 @@ services:
       - --password=/data/execution/geth_password.txt
       - --nodiscover
       - --syncmode=full
-      - --ipcdisable
     ports:
       - ${GETH_HTTP_PORT:-8545}:8545
     depends_on:
