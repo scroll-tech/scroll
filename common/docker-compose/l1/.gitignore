@@ -3,4 +3,3 @@ consensus/genesis.ssz
 consensus/validatordata
 execution/geth
 execution/geth.ipc
-.idea/
