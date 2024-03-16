@@ -23,18 +23,4 @@ while : ; do
   echo "$networks" | xargs -r docker network rm || echo "Warning: Failed to remove some networks."
 done
 
-# Remove consensus data directories if they exist
-if [ -d "./consensus/beacondata" ] || [ -d "./consensus/validatordata" ] || [ -d "./consensus/genesis.ssz" ]; then
-  rm -rf ./consensus/beacondata ./consensus/validatordata ./consensus/genesis.ssz
-  echo "Consensus data removed."
-else
-  echo "No consensus data to remove."
-fi
-
-# Remove execution data directory if it exists
-if [ -d "./execution/geth" ]; then
-  rm -rf ./execution/geth
-  echo "Execution data removed."
-else
-  echo "No execution data to remove."
-fi
+rm -rf ./consensus/data* ./execution/data*

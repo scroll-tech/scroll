@@ -9,17 +9,19 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cloudflare/cfssl/log"
 	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 // PoSL1TestEnv represents the config needed to test in PoS Layer 1.
 type PoSL1TestEnv struct {
-	rootDir      string
-	compose      tc.ComposeStack
-	gethHTTPPort int
+	workDir        string
+	compose        tc.ComposeStack
+	gethHTTPPort   int
+	hostPath       string
+	dataPathRandom string
 }
 
 // NewPoSL1TestEnv creates and initializes a new instance of PoSL1TestEnv with a random HTTP port.
@@ -29,40 +31,47 @@ func NewPoSL1TestEnv() (*PoSL1TestEnv, error) {
 		return nil, fmt.Errorf("failed to find project root directory: %v", err)
 	}
 
-	getRandomPort := func(min, max int) (int, error) {
-		maxInt := big.NewInt(int64(max - min))
-		var randInt *big.Int
-		randInt, err = rand.Int(rand.Reader, maxInt)
-		if err != nil {
-			return 0, err
-		}
-		return int(randInt.Int64()) + min, nil
+	hostPath, found := os.LookupEnv("HOST_PATH")
+	if !found {
+		hostPath = ""
 	}
 
-	gethHTTPPort, err := getRandomPort(1024, 65535)
+	rnd, err := rand.Int(rand.Reader, big.NewInt(65536-1024))
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate a secure random port for Geth HTTP: %v", err)
+		return nil, fmt.Errorf("failed to generate a random: %v", err)
 	}
+	gethHTTPPort := int(rnd.Int64()) + 1024
 
 	if err := os.Setenv("GETH_HTTP_PORT", fmt.Sprintf("%d", gethHTTPPort)); err != nil {
 		return nil, fmt.Errorf("failed to set GETH_HTTP_PORT: %v", err)
 	}
 
 	return &PoSL1TestEnv{
-		rootDir:      filepath.Join(rootDir, "common", "docker-compose", "l1"),
-		gethHTTPPort: gethHTTPPort,
+		workDir:        filepath.Join(rootDir, "common", "docker-compose", "l1"),
+		gethHTTPPort:   gethHTTPPort,
+		hostPath:       hostPath,
+		dataPathRandom: fmt.Sprintf("data_%d", time.Now().UnixNano()),
 	}, nil
 }
 
 // Start starts the PoS L1 test environment by running the associated Docker Compose configuration.
 func (e *PoSL1TestEnv) Start() error {
 	var err error
-	e.compose, err = tc.NewDockerCompose([]string{filepath.Join(e.rootDir, "docker-compose.yml")}...)
+	e.compose, err = tc.NewDockerCompose([]string{filepath.Join(e.workDir, "docker-compose.yml")}...)
 	if err != nil {
 		return fmt.Errorf("failed to create docker compose: %w", err)
 	}
 
-	if err = e.compose.WaitForService("geth", wait.NewHTTPStrategy("/").WithPort("8545/tcp").WithStartupTimeout(180*time.Second)).WithOsEnv().Up(context.Background()); err != nil {
+	env := map[string]string{
+		"GETH_HTTP_PORT":   fmt.Sprintf("%d", e.gethHTTPPort),
+		"DATA_PATH_RANDOM": e.dataPathRandom,
+	}
+
+	if e.hostPath != "" {
+		env["HOST_PATH"] = e.hostPath
+	}
+
+	if err = e.compose.WaitForService("geth", wait.NewHTTPStrategy("/").WithPort("8545/tcp").WithStartupTimeout(15*time.Second)).WithEnv(env).Up(context.Background()); err != nil {
 		if errStop := e.Stop(); errStop != nil {
 			log.Error("failed to stop PoS L1 test environment", "err", errStop)
 		}
@@ -81,10 +90,8 @@ func (e *PoSL1TestEnv) Stop() error {
 	}
 
 	dirsToRemove := []string{
-		filepath.Join(e.rootDir, "consensus", "beacondata"),
-		filepath.Join(e.rootDir, "consensus", "validatordata"),
-		filepath.Join(e.rootDir, "consensus", "genesis.ssz"),
-		filepath.Join(e.rootDir, "execution", "geth"),
+		filepath.Join(e.workDir, "consensus", e.dataPathRandom),
+		filepath.Join(e.workDir, "execution", e.dataPathRandom),
 	}
 
 	for _, dir := range dirsToRemove {
@@ -92,7 +99,6 @@ func (e *PoSL1TestEnv) Stop() error {
 			return fmt.Errorf("failed to remove data directory %s: %w", dir, err)
 		}
 	}
-
 	return nil
 }
 

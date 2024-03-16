@@ -1,5 +1,17 @@
 version: "3.9"
 services:
+  initialize-env:
+    image: "alpine:3.19.0"
+    command:
+      /bin/sh -c "apk add --no-cache rsync &&
+              mkdir -p /consensus/${DATA_PATH_RANDOM:-data} &&
+              rsync -a --exclude '${DATA_PATH_RANDOM:-data}' /consensus/ /consensus/${DATA_PATH_RANDOM:-data}/ &&
+              mkdir -p /execution/${DATA_PATH_RANDOM:-data} &&
+              rsync -a --exclude '${DATA_PATH_RANDOM:-data}' /execution/ /execution/${DATA_PATH_RANDOM:-data}/"
+    volumes:
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
+
   # Creates a genesis state for the beacon chain using a YAML configuration file and
   # a deterministic set of 64 validators.
   create-beacon-chain-genesis:
@@ -15,28 +27,23 @@ services:
       - --geth-genesis-json-in=/execution/genesis.json
       - --geth-genesis-json-out=/execution/genesis.json
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
-
-  # Removes the database of the go-ethereum execution client to ensure we start from a clean state.
-  # (geth has a `removedb` option, but it asks for a keyboard confirmation, so we use this instead)
-  geth-remove-db:
-    image: "alpine:3.19.0"
-    command: rm -rf /execution/geth
-    volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus/${DATA_PATH_RANDOM:-data}:/consensus
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}:/execution
+    depends_on:
+      initialize-env:
+        condition: service_completed_successfully
 
   # Sets up the genesis configuration for the go-ethereum client from a JSON file.
   geth-genesis:
     image: "ethereum/client-go:v1.13.14"
     command: --datadir=/execution init /execution/genesis.json
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/genesis.json:/execution/genesis.json
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}:/execution
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}/genesis.json:/execution/genesis.json
     depends_on:
       create-beacon-chain-genesis:
         condition: service_completed_successfully
-      geth-remove-db:
+      initialize-env:
         condition: service_completed_successfully
 
   # Runs a Prysm beacon chain from a specified genesis state created in the previous step
@@ -70,9 +77,9 @@ services:
       create-beacon-chain-genesis:
         condition: service_completed_successfully
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/jwtsecret:/execution/jwtsecret
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus/${DATA_PATH_RANDOM:-data}:/consensus
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}:/execution
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}/jwtsecret:/execution/jwtsecret
 
   # Runs the go-ethereum execution client with the specified, unlocked account and necessary
   # APIs to allow for proof-of-stake consensus via Prysm.
@@ -92,6 +99,7 @@ services:
       - --password=/execution/geth_password.txt
       - --nodiscover
       - --syncmode=full
+      - --ipcdisable
     ports:
       - ${GETH_HTTP_PORT:-8545}:8545
     depends_on:
@@ -100,9 +108,9 @@ services:
       beacon-chain:
         condition: service_started
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/jwtsecret:/execution/jwtsecret
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/geth_password.txt:/execution/geth_password.txt
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}:/execution
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}/jwtsecret:/execution/jwtsecret
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}/geth_password.txt:/execution/geth_password.txt
 
   # We run a validator client with 64, deterministically-generated keys that match
   # The validator keys present in the beacon chain genesis state generated a few steps above.
@@ -120,4 +128,4 @@ services:
       beacon-chain:
         condition: service_started
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
+      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus/${DATA_PATH_RANDOM:-data}:/consensus

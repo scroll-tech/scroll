@@ -5,6 +5,7 @@ go 1.21
 require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/bits-and-blooms/bitset v1.12.0
+	github.com/cloudflare/cfssl v0.0.0-20180223231731-4e2dcbde5004
 	github.com/docker/docker v25.0.3+incompatible
 	github.com/gin-contrib/pprof v1.4.0
 	github.com/gin-gonic/gin v1.9.1

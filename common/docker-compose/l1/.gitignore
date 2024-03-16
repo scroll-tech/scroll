@@ -1,5 +1,7 @@
-consensus/beacondata
+consensus/beacondata*
 consensus/genesis.ssz
-consensus/validatordata
+consensus/validatordata*
+consensus/data*
 execution/geth
 execution/geth.ipc
+execution/data*
