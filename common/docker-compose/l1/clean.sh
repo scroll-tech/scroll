@@ -22,5 +22,3 @@ while : ; do
   echo "$networks"
   echo "$networks" | xargs -r docker network rm || echo "Warning: Failed to remove some networks."
 done
-
-rm -rf ./consensus/data* ./execution/data*

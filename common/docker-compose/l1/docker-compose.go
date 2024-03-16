@@ -17,11 +17,10 @@ import (
 
 // PoSL1TestEnv represents the config needed to test in PoS Layer 1.
 type PoSL1TestEnv struct {
-	workDir        string
-	compose        tc.ComposeStack
-	gethHTTPPort   int
-	hostPath       string
-	dataPathRandom string
+	dockerComposeFile string
+	compose           tc.ComposeStack
+	gethHTTPPort      int
+	hostPath          string
 }
 
 // NewPoSL1TestEnv creates and initializes a new instance of PoSL1TestEnv with a random HTTP port.
@@ -47,24 +46,22 @@ func NewPoSL1TestEnv() (*PoSL1TestEnv, error) {
 	}
 
 	return &PoSL1TestEnv{
-		workDir:        filepath.Join(rootDir, "common", "docker-compose", "l1"),
-		gethHTTPPort:   gethHTTPPort,
-		hostPath:       hostPath,
-		dataPathRandom: fmt.Sprintf("data_%d", time.Now().UnixNano()),
+		dockerComposeFile: filepath.Join(rootDir, "common", "docker-compose", "l1", "docker-compose.yml"),
+		gethHTTPPort:      gethHTTPPort,
+		hostPath:          hostPath,
 	}, nil
 }
 
 // Start starts the PoS L1 test environment by running the associated Docker Compose configuration.
 func (e *PoSL1TestEnv) Start() error {
 	var err error
-	e.compose, err = tc.NewDockerCompose([]string{filepath.Join(e.workDir, "docker-compose.yml")}...)
+	e.compose, err = tc.NewDockerCompose([]string{e.dockerComposeFile}...)
 	if err != nil {
 		return fmt.Errorf("failed to create docker compose: %w", err)
 	}
 
 	env := map[string]string{
-		"GETH_HTTP_PORT":   fmt.Sprintf("%d", e.gethHTTPPort),
-		"DATA_PATH_RANDOM": e.dataPathRandom,
+		"GETH_HTTP_PORT": fmt.Sprintf("%d", e.gethHTTPPort),
 	}
 
 	if e.hostPath != "" {
@@ -77,7 +74,6 @@ func (e *PoSL1TestEnv) Start() error {
 		}
 		return fmt.Errorf("failed to start PoS L1 test environment: %w", err)
 	}
-
 	return nil
 }
 
@@ -86,17 +82,6 @@ func (e *PoSL1TestEnv) Stop() error {
 	if e.compose != nil {
 		if err := e.compose.Down(context.Background(), tc.RemoveOrphans(true), tc.RemoveVolumes(true), tc.RemoveImagesLocal); err != nil {
 			return fmt.Errorf("failed to stop PoS L1 test environment: %w", err)
-		}
-	}
-
-	dirsToRemove := []string{
-		filepath.Join(e.workDir, "consensus", e.dataPathRandom),
-		filepath.Join(e.workDir, "execution", e.dataPathRandom),
-	}
-
-	for _, dir := range dirsToRemove {
-		if err := os.RemoveAll(dir); err != nil {
-			return fmt.Errorf("failed to remove data directory %s: %w", dir, err)
 		}
 	}
 	return nil

@@ -3,14 +3,14 @@ services:
   initialize-env:
     image: "alpine:3.19.0"
     command:
-      /bin/sh -c "apk add --no-cache rsync &&
-              mkdir -p /consensus/${DATA_PATH_RANDOM:-data} &&
-              rsync -a --exclude '${DATA_PATH_RANDOM:-data}' /consensus/ /consensus/${DATA_PATH_RANDOM:-data}/ &&
-              mkdir -p /execution/${DATA_PATH_RANDOM:-data} &&
-              rsync -a --exclude '${DATA_PATH_RANDOM:-data}' /execution/ /execution/${DATA_PATH_RANDOM:-data}/"
+      /bin/sh -c "mkdir -p /data/consensus &&
+              cp -a /consensus/* /data/consensus/ &&
+              mkdir -p /data/execution &&
+              cp -a /execution/* /data/execution/"
     volumes:
       - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
       - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
+      - data:/data
 
   # Creates a genesis state for the beacon chain using a YAML configuration file and
   # a deterministic set of 64 validators.
@@ -22,13 +22,12 @@ services:
       - --fork=capella
       - --num-validators=64
       - --genesis-time-delay=3
-      - --output-ssz=/consensus/genesis.ssz
-      - --chain-config-file=/consensus/config.yml
-      - --geth-genesis-json-in=/execution/genesis.json
-      - --geth-genesis-json-out=/execution/genesis.json
+      - --output-ssz=/data/consensus/genesis.ssz
+      - --chain-config-file=/data/consensus/config.yml
+      - --geth-genesis-json-in=/data/execution/genesis.json
+      - --geth-genesis-json-out=/data/execution/genesis.json
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus/${DATA_PATH_RANDOM:-data}:/consensus
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}:/execution
+      - data:/data
     depends_on:
       initialize-env:
         condition: service_completed_successfully
@@ -36,10 +35,9 @@ services:
   # Sets up the genesis configuration for the go-ethereum client from a JSON file.
   geth-genesis:
     image: "ethereum/client-go:v1.13.14"
-    command: --datadir=/execution init /execution/genesis.json
+    command: --datadir=/data/execution init /data/execution/genesis.json
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}:/execution
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}/genesis.json:/execution/genesis.json
+      - data:/data
     depends_on:
       create-beacon-chain-genesis:
         condition: service_completed_successfully
@@ -53,14 +51,14 @@ services:
   beacon-chain:
     image: "gcr.io/prysmaticlabs/prysm/beacon-chain:v5.0.0"
     command:
-      - --datadir=/consensus/beacondata
+      - --datadir=/data/consensus/beacondata
       # No peers to sync with in this testnet, so setting to 0
       - --min-sync-peers=0
-      - --genesis-state=/consensus/genesis.ssz
+      - --genesis-state=/data/consensus/genesis.ssz
       - --bootstrap-node=
       - --interop-eth1data-votes
       # The chain configuration file used for setting up Prysm
-      - --chain-config-file=/consensus/config.yml
+      - --chain-config-file=/data/consensus/config.yml
       # We specify the chain id used by our execution client
       - --contract-deployment-block=0
       - --chain-id=${CHAIN_ID:-32382}
@@ -68,7 +66,7 @@ services:
       - --grpc-gateway-host=0.0.0.0
       - --execution-endpoint=http://geth:8551
       - --accept-terms-of-use
-      - --jwt-secret=/execution/jwtsecret
+      - --jwt-secret=/data/execution/jwtsecret
       - --suggested-fee-recipient=0x123463a4b065722e99115d6c222f267d9cabb524
       - --minimum-peers-per-subnet=0
       - --enable-debug-rpc-endpoints
@@ -77,9 +75,7 @@ services:
       create-beacon-chain-genesis:
         condition: service_completed_successfully
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus/${DATA_PATH_RANDOM:-data}:/consensus
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}:/execution
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}/jwtsecret:/execution/jwtsecret
+      - data:/data
 
   # Runs the go-ethereum execution client with the specified, unlocked account and necessary
   # APIs to allow for proof-of-stake consensus via Prysm.
@@ -92,11 +88,11 @@ services:
       - --http.corsdomain=*
       - --authrpc.vhosts=*
       - --authrpc.addr=0.0.0.0
-      - --authrpc.jwtsecret=/execution/jwtsecret
-      - --datadir=/execution
+      - --authrpc.jwtsecret=/data/execution/jwtsecret
+      - --datadir=/data/execution
       - --allow-insecure-unlock
       - --unlock=0x123463a4b065722e99115d6c222f267d9cabb524
-      - --password=/execution/geth_password.txt
+      - --password=/data/execution/geth_password.txt
       - --nodiscover
       - --syncmode=full
       - --ipcdisable
@@ -108,9 +104,7 @@ services:
       beacon-chain:
         condition: service_started
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}:/execution
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}/jwtsecret:/execution/jwtsecret
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution/${DATA_PATH_RANDOM:-data}/geth_password.txt:/execution/geth_password.txt
+      - data:/data
 
   # We run a validator client with 64, deterministically-generated keys that match
   # The validator keys present in the beacon chain genesis state generated a few steps above.
@@ -118,14 +112,17 @@ services:
     image: "gcr.io/prysmaticlabs/prysm/validator:v5.0.0"
     command:
       - --beacon-rpc-provider=beacon-chain:4000
-      - --datadir=/consensus/validatordata
+      - --datadir=/data/consensus/validatordata
       - --accept-terms-of-use
       - --interop-num-validators=64
       - --interop-start-index=0
-      - --chain-config-file=/consensus/config.yml
+      - --chain-config-file=/data/consensus/config.yml
       - --force-clear-db
     depends_on:
       beacon-chain:
         condition: service_started
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus/${DATA_PATH_RANDOM:-data}:/consensus
+      - data:/data
+
+volumes:
+  data:
