@@ -75,7 +75,7 @@ func (e *PoSL1TestEnv) Start() error {
 // Stop stops the PoS L1 test environment by stopping and removing the associated Docker Compose services.
 func (e *PoSL1TestEnv) Stop() error {
 	if e.compose != nil {
-		if err := e.compose.Down(context.Background(), tc.RemoveOrphans(true), tc.RemoveVolumes(true), tc.RemoveImagesAll); err != nil {
+		if err := e.compose.Down(context.Background(), tc.RemoveOrphans(true), tc.RemoveVolumes(true), tc.RemoveImagesLocal); err != nil {
 			return fmt.Errorf("failed to stop PoS L1 test environment: %w", err)
 		}
 	}
