@@ -10,6 +10,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
@@ -23,6 +24,7 @@ import (
 
 func testCommitAndFinalizeGenesisBatch(t *testing.T) {
 	db := setupDB(t)
+	defer database.CloseDB(db)
 
 	prepareContracts(t)
 
@@ -50,6 +52,7 @@ func testCommitAndFinalizeGenesisBatch(t *testing.T) {
 
 func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	db := setupDB(t)
+	defer database.CloseDB(db)
 
 	prepareContracts(t)
 

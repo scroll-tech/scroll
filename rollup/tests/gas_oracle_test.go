@@ -9,6 +9,7 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
@@ -20,6 +21,7 @@ import (
 
 func testImportL1GasPrice(t *testing.T) {
 	db := setupDB(t)
+	defer database.CloseDB(db)
 
 	prepareContracts(t)
 
@@ -63,6 +65,7 @@ func testImportL1GasPrice(t *testing.T) {
 
 func testImportL2GasPrice(t *testing.T) {
 	db := setupDB(t)
+	defer database.CloseDB(db)
 	prepareContracts(t)
 
 	l2Cfg := rollupApp.Config.L2Config

@@ -8,6 +8,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 
@@ -101,6 +102,7 @@ func testBatchProposerLimits(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			db := setupDB(t)
+			defer database.CloseDB(db)
 
 			l2BlockOrm := orm.NewL2Block(db)
 			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
@@ -163,6 +165,7 @@ func testBatchProposerLimits(t *testing.T) {
 
 func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	db := setupDB(t)
+	defer database.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})

@@ -39,6 +39,7 @@ func setupL2RelayerDB(t *testing.T) *gorm.DB {
 
 func testCreateNewRelayer(t *testing.T) {
 	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
@@ -46,6 +47,7 @@ func testCreateNewRelayer(t *testing.T) {
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
 	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
@@ -85,6 +87,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
@@ -134,6 +137,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 
 func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
 	l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
@@ -170,6 +174,7 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 
 func testL2RelayerCommitConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
 	// Create and set up the Layer2 Relayer.
 	l2Cfg := cfg.L2Config
@@ -228,6 +233,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 
 func testL2RelayerFinalizeConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
 	// Create and set up the Layer2 Relayer.
 	l2Cfg := cfg.L2Config
@@ -286,6 +292,7 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 
 func testL2RelayerGasOracleConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
 	batch1 := &encoding.Batch{
 		Index:                      0,
@@ -357,6 +364,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 
 func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
@@ -450,6 +458,7 @@ func mockChainMonitorServer(baseURL string) (*http.Server, error) {
 
 func testGetBatchStatusByIndex(t *testing.T) {
 	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})

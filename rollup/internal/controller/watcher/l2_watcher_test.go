@@ -11,6 +11,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/common/database"
 	cutils "scroll-tech/common/utils"
 
 	"scroll-tech/rollup/internal/orm"
@@ -25,6 +26,7 @@ func setupL2Watcher(t *testing.T) (*L2WatcherClient, *gorm.DB) {
 
 func testFetchRunningMissingBlocks(t *testing.T) {
 	_, db := setupL2Watcher(t)
+	defer database.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
 	ok := cutils.TryTimes(10, func() bool {
