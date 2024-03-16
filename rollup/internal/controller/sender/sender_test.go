@@ -58,7 +58,7 @@ func TestMain(m *testing.M) {
 	var err error
 	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
 	if err != nil {
-		log.Crit("failed to new PoS L1 test environment", "err", err)
+		log.Crit("failed to create PoS L1 test environment", "err", err)
 	}
 	if err := posL1TestEnv.Start(); err != nil {
 		log.Crit("failed to start PoS L1 test environment", "err", err)

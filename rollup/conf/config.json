@@ -54,7 +54,7 @@
       "enable_test_env_bypass_features": true,
       "finalize_batch_without_proof_timeout_sec": 7200,
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
-      "commit_sender_private_key": "1212121212121212121212121212121212121212121212121212121212121212",
+      "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
       "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",
       "l1_commit_gas_limit_multiplier": 1.2
     },

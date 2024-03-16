@@ -105,7 +105,6 @@ jobs:
     - name: Test rollup packages
       working-directory: 'rollup'
       run: |
-        ../common/docker-compose/l1/clean.sh
         go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
