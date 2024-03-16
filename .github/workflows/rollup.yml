@@ -102,6 +102,12 @@ jobs:
       working-directory: 'rollup'
       run: |
         make rollup_bins
+    - name: Set permissions for consensus and execution directories
+      run: |
+        sudo chown -R runner:runner ./common/docker-compose/l1/consensus
+        sudo chmod -R 755 ./common/docker-compose/l1/consensus
+        sudo chown -R runner:runner ./common/docker-compose/l1/execution
+        sudo chmod -R 755 ./common/docker-compose/l1/execution
     - name: Test rollup packages
       working-directory: 'rollup'
       run: |
