@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -14,7 +15,6 @@ import (
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
-	"scroll-tech/common/utils"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/relayer"
@@ -119,14 +119,23 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NotNil(t, batch)
 
 	// fetch rollup events
-	success := utils.TryTimes(30, func() bool {
+	assert.Eventually(t, func() bool {
 		err = l1Watcher.FetchContractEvent()
 		assert.NoError(t, err)
 		var statuses []types.RollupStatus
 		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 		return err == nil && len(statuses) == 1 && types.RollupCommitted == statuses[0]
-	})
-	assert.True(t, success)
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		batch, err = batchOrm.GetLatestBatch(context.Background())
+		assert.NoError(t, err)
+		assert.NotNil(t, batch)
+		assert.NotEmpty(t, batch.CommitTxHash)
+		var receipt *gethTypes.Receipt
+		receipt, err = l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.CommitTxHash))
+		return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
+	}, 30*time.Second, time.Second)
 
 	// add dummy proof
 	proof := &message.BatchProof{
@@ -146,12 +155,21 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.Equal(t, types.RollupFinalizing, statuses[0])
 
 	// fetch rollup events
-	success = utils.TryTimes(30, func() bool {
+	assert.Eventually(t, func() bool {
 		err = l1Watcher.FetchContractEvent()
 		assert.NoError(t, err)
 		var statuses []types.RollupStatus
 		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 		return err == nil && len(statuses) == 1 && types.RollupFinalized == statuses[0]
-	})
-	assert.True(t, success)
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		batch, err = batchOrm.GetLatestBatch(context.Background())
+		assert.NoError(t, err)
+		assert.NotNil(t, batch)
+		assert.NotEmpty(t, batch.FinalizeTxHash)
+		var receipt *gethTypes.Receipt
+		receipt, err = l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.FinalizeTxHash))
+		return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
+	}, 30*time.Second, time.Second)
 }

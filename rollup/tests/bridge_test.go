@@ -93,6 +93,8 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, chainID)
 	assert.NoError(t, err)
+	rollupApp.Config.L1Config.Endpoint = posL1TestEnv.Endpoint()
+	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 
 	base.RunImages(t)
 
