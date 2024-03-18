@@ -24,8 +24,8 @@ var (
 	// BLSModulus is the BLS modulus defined in EIP-4844.
 	BLSModulus *big.Int
 
-	// VerifyBlobDataArgs defines the argument types for `_verifyBlobData` in `finalizeBatchWithProof`.
-	VerifyBlobDataArgs abi.Arguments
+	// BlobDataProofArgs defines the argument types for `_blobDataProof` in `finalizeBatchWithProof4844`.
+	BlobDataProofArgs abi.Arguments
 
 	// MAX_NUM_CHUNKS is the maximum number of chunks that a batch can contain.
 	MAX_NUM_CHUNKS int = 15
@@ -46,7 +46,7 @@ func init() {
 		log.Crit("Failed to initialize abi types", "err1", err1, "err2", err2)
 	}
 
-	VerifyBlobDataArgs = abi.Arguments{
+	BlobDataProofArgs = abi.Arguments{
 		{Type: bytes32Type, Name: "z"},
 		{Type: bytes32Type, Name: "y"},
 		{Type: bytes48Type, Name: "commitment"},
@@ -470,13 +470,13 @@ func (b *DABatch) Hash() common.Hash {
 	return crypto.Keccak256Hash(bytes)
 }
 
-// VerifyBlobData computes the abi-encoded blob verification data.
-func (b *DABatch) VerifyBlobData() ([]byte, error) {
+// BlobDataProof computes the abi-encoded blob verification data.
+func (b *DABatch) BlobDataProof() ([]byte, error) {
 	if b.blob == nil {
-		return nil, errors.New("called VerifyBlobData with empty blob")
+		return nil, errors.New("called BlobDataProof with empty blob")
 	}
 	if b.z == nil {
-		return nil, errors.New("called VerifyBlobData with empty z")
+		return nil, errors.New("called BlobDataProof with empty z")
 	}
 
 	commitment, err := kzg4844.BlobToCommitment(*b.blob)
@@ -489,13 +489,13 @@ func (b *DABatch) VerifyBlobData() ([]byte, error) {
 		log.Crit("failed to create KZG proof at point", "err", err, "z", hex.EncodeToString(b.z[:]))
 	}
 
-	// Memory layout of ``_verifyBlobData``:
+	// Memory layout of ``_blobDataProof``:
 	// | z       | y       | kzg_commitment | kzg_proof |
 	// |---------|---------|----------------|-----------|
 	// | bytes32 | bytes32 | bytes48        | bytes48   |
 
 	values := []interface{}{*b.z, y, commitment, proof}
-	return VerifyBlobDataArgs.Pack(values...)
+	return BlobDataProofArgs.Pack(values...)
 }
 
 // DecodeFromCalldata attempts to decode a DABatch and an array of DAChunks from the provided calldata byte slice.
