@@ -20,14 +20,16 @@ import (
 	"scroll-tech/common/types/encoding"
 )
 
-// BLSModulus is the BLS modulus defined in EIP-4844.
-var BLSModulus *big.Int
+var (
+	// BLSModulus is the BLS modulus defined in EIP-4844.
+	BLSModulus *big.Int
 
-// VerifyBlobDataArgs defines the argument types for `_verifyBlobData` in `finalizeBatchWithProof`.
-var VerifyBlobDataArgs abi.Arguments
+	// VerifyBlobDataArgs defines the argument types for `_verifyBlobData` in `finalizeBatchWithProof`.
+	VerifyBlobDataArgs abi.Arguments
 
-// MAX_NUM_CHUNKS is the maximum number of chunks that a batch can contain.
-var MAX_NUM_CHUNKS int = 15
+	// MAX_NUM_CHUNKS is the maximum number of chunks that a batch can contain.
+	MAX_NUM_CHUNKS int = 15
+)
 
 func init() {
 	// initialize modulus
@@ -330,7 +332,7 @@ func constructSkippedBitmap(batchIndex uint64, chunks []*encoding.Chunk, totalL1
 	return bitmapBytes, nextIndex, nil
 }
 
-// constructSkippedBitmap constructs the 4844 blob payload.
+// constructBlobPayload constructs the 4844 blob payload.
 func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Point, error) {
 	metadataLength := MAX_NUM_CHUNKS*4 + 2
 
@@ -402,6 +404,7 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 	return blob, &z, nil
 }
 
+// makeBlobCanonical converts the raw blob data into the canonical blob representation of 4096 BLSFieldElements.
 func makeBlobCanonical(blobBytes []byte) (*kzg4844.Blob, error) {
 	// blob contains 131072 bytes but we can only utilize 31/32 of these
 	if len(blobBytes) > 126976 {
