@@ -27,8 +27,8 @@ var (
 	// BlobDataProofArgs defines the argument types for `_blobDataProof` in `finalizeBatchWithProof4844`.
 	BlobDataProofArgs abi.Arguments
 
-	// MAX_NUM_CHUNKS is the maximum number of chunks that a batch can contain.
-	MAX_NUM_CHUNKS int = 15
+	// MaxNumChunks is the maximum number of chunks that a batch can contain.
+	MaxNumChunks int = 15
 )
 
 func init() {
@@ -205,8 +205,8 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 
 // NewDABatch creates a DABatch from the provided encoding.Batch.
 func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
-	// this encoding can only support up to 15 chunks per batch
-	if len(batch.Chunks) > MAX_NUM_CHUNKS {
+	// this encoding can only support a fixed number of chunks per batch
+	if len(batch.Chunks) > MaxNumChunks {
 		return nil, fmt.Errorf("too many chunks in batch")
 	}
 
@@ -278,7 +278,8 @@ func computeBatchDataHash(chunks []*encoding.Chunk, totalL1MessagePoppedBefore u
 
 // constructBlobPayload constructs the 4844 blob payload.
 func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Point, error) {
-	metadataLength := MAX_NUM_CHUNKS*4 + 2
+	// metadata consists of num_chunks (2 bytes) and chunki_size (4 bytes per chunk)
+	metadataLength := 2 + MaxNumChunks*4
 
 	// the raw (un-padded) blob payload
 	blobBytes := make([]byte, metadataLength)
@@ -288,7 +289,7 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 
 	// challenge digest preimage
 	// 1 hash for metadata and 1 for each chunk
-	challengePreimage := make([]byte, (1+MAX_NUM_CHUNKS)*32)
+	challengePreimage := make([]byte, (1+MaxNumChunks)*32)
 
 	// the challenge point z
 	var z kzg4844.Point
