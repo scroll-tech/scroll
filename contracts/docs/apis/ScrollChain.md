@@ -692,7 +692,7 @@ error ErrorBatchHeaderLengthTooSmall()
 
 
 
-*Thrown when the length of batch header is smaller than 121*
+*Thrown when the length of batch header is smaller than 89*
 
 
 ### ErrorBatchIsAlreadyCommitted
@@ -956,7 +956,7 @@ error ErrorRevertFinalizedBatch()
 
 
 
-*Thrown when revert finialzed batch.*
+*Thrown when reverting a finialized batch.*
 
 
 ### ErrorRevertNotStartFromEnd
@@ -1000,7 +1000,7 @@ error ErrorTooManyTxsInOneChunk()
 
 
 
-*Thrown when the number of transactions in on chunk is too many.*
+*Thrown when a chunk contains too many transactions.*
 
 
 ### ErrorUnexpectedPointEvaluationPrecompileOutput
@@ -1011,7 +1011,7 @@ error ErrorUnexpectedPointEvaluationPrecompileOutput()
 
 
 
-*Thrown when the precompile outpout is incorrect.*
+*Thrown when the precompile output is incorrect.*
 
 
 ### ErrorZeroAddress

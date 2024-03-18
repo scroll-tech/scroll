@@ -113,6 +113,15 @@ library BatchHeaderV1Codec {
         }
     }
 
+    /// @notice Get the start memory offset for skipped L1 messages bitmap.
+    /// @param batchPtr The start memory offset of the batch header in memory.
+    /// @return _bitmapPtr the start memory offset for skipped L1 messages bitmap.
+    function skippedBitmapPtr(uint256 batchPtr) internal pure returns (uint256 _bitmapPtr) {
+        assembly {
+            _bitmapPtr := add(batchPtr, BATCH_HEADER_FIXED_LENGTH)
+        }
+    }
+
     /// @notice Get the skipped L1 messages bitmap.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param index The index of bitmap to load.

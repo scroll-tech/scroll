@@ -95,16 +95,16 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @dev Thrown when the reverted batches are not in the ending of commited batch chain.
     error ErrorRevertNotStartFromEnd();
 
-    /// @dev Thrown when revert finialzed batch.
+    /// @dev Thrown when reverting a finialized batch.
     error ErrorRevertFinalizedBatch();
 
     /// @dev Thrown when the given state root is zero.
     error ErrorStateRootIsZero();
 
-    /// @dev Thrown when the number of transactions in on chunk is too many.
+    /// @dev Thrown when a chunk contains too many transactions.
     error ErrorTooManyTxsInOneChunk();
 
-    /// @dev Thrown when the precompile outpout is incorrect.
+    /// @dev Thrown when the precompile output is incorrect.
     error ErrorUnexpectedPointEvaluationPrecompileOutput();
 
     /// @dev Thrown when the given address is `address(0)`.
@@ -494,9 +494,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // Pop finalized and non-skipped message from L1MessageQueue.
         _popL1Messages(
-            BatchHeaderV0Codec.skippedBitmapPtr(memPtr),
-            BatchHeaderV0Codec.totalL1MessagePopped(memPtr),
-            BatchHeaderV0Codec.l1MessagePopped(memPtr)
+            BatchHeaderV1Codec.skippedBitmapPtr(memPtr),
+            BatchHeaderV1Codec.totalL1MessagePopped(memPtr),
+            BatchHeaderV1Codec.l1MessagePopped(memPtr)
         );
 
         emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
@@ -568,24 +568,31 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
      * Internal Functions *
      **********************/
 
+    /// @dev Internal function to commit chunks with version 0
+    /// @param _totalL1MessagesPoppedOverall The number of L1 messages popped before the list of chunks.
+    /// @param _chunks The list of chunks to commit.
+    /// @param _skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
+    /// @return _batchDataHash The computed data hash for the list of chunks.
+    /// @return _totalL1MessagesPoppedInBatch The total number of L1 messages poped in this batch, including skipped one.
     function _commitChunksV0(
         uint256 _totalL1MessagesPoppedOverall,
         bytes[] memory _chunks,
         bytes calldata _skippedL1MessageBitmap
-    ) internal view returns (bytes32 _dataHash, uint256 _totalL1MessagesPoppedInBatch) {
+    ) internal view returns (bytes32 _batchDataHash, uint256 _totalL1MessagesPoppedInBatch) {
         uint256 _chunksLength = _chunks.length;
 
-        // load `dataPtr` and reserve the memory region for chunk data hashes
-        uint256 dataPtr;
+        // load `batchDataHashPtr` and reserve the memory region for chunk data hashes
+        uint256 batchDataHashPtr;
         assembly {
-            dataPtr := mload(0x40)
-            mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
+            batchDataHashPtr := mload(0x40)
+            mstore(0x40, add(batchDataHashPtr, mul(_chunksLength, 32)))
         }
 
         // compute the data hash for each chunk
         for (uint256 i = 0; i < _chunksLength; i++) {
             uint256 _totalNumL1MessagesInChunk;
-            (_dataHash, _totalNumL1MessagesInChunk) = _commitChunkV0(
+            bytes32 _chunkDataHash;
+            (_chunkDataHash, _totalNumL1MessagesInChunk) = _commitChunkV0(
                 _chunks[i],
                 _totalL1MessagesPoppedInBatch,
                 _totalL1MessagesPoppedOverall,
@@ -596,17 +603,24 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedOverall += _totalNumL1MessagesInChunk;
             }
             assembly {
-                mstore(dataPtr, _dataHash)
-                dataPtr := add(dataPtr, 0x20)
+                mstore(batchDataHashPtr, _chunkDataHash)
+                batchDataHashPtr := add(batchDataHashPtr, 0x20)
             }
         }
 
         assembly {
             let dataLen := mul(_chunksLength, 0x20)
-            _dataHash := keccak256(sub(dataPtr, dataLen), dataLen)
+            _batchDataHash := keccak256(sub(batchDataHashPtr, dataLen), dataLen)
         }
     }
 
+    /// @dev Internal function to commit chunks with version 1
+    /// @param _totalL1MessagesPoppedOverall The number of L1 messages popped before the list of chunks.
+    /// @param _chunks The list of chunks to commit.
+    /// @param _skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
+    /// @return _blobVersionedHash The blob versioned hash for the blob carried in this transaction.
+    /// @return _batchDataHash The computed data hash for the list of chunks.
+    /// @return _totalL1MessagesPoppedInBatch The total number of L1 messages poped in this batch, including skipped one.
     function _commitChunksV1(
         uint256 _totalL1MessagesPoppedOverall,
         bytes[] memory _chunks,
@@ -615,35 +629,36 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         internal
         view
         returns (
-            bytes32 blobVersionedHash,
-            bytes32 _dataHash,
+            bytes32 _blobVersionedHash,
+            bytes32 _batchDataHash,
             uint256 _totalL1MessagesPoppedInBatch
         )
     {
         {
-            bytes32 secondBlob;
+            bytes32 _secondBlob;
             // Get blob's versioned hash
             assembly {
-                blobVersionedHash := blobhash(0)
-                secondBlob := blobhash(1)
+                _blobVersionedHash := blobhash(0)
+                _secondBlob := blobhash(1)
             }
-            if (blobVersionedHash == bytes32(0)) revert ErrorNoBlobFound();
-            if (secondBlob != bytes32(0)) revert ErrorFoundMultipleBlob();
+            if (_blobVersionedHash == bytes32(0)) revert ErrorNoBlobFound();
+            if (_secondBlob != bytes32(0)) revert ErrorFoundMultipleBlob();
         }
 
         uint256 _chunksLength = _chunks.length;
 
-        // load `dataPtr` and reserve the memory region for chunk data hashes
-        uint256 dataPtr;
+        // load `batchDataHashPtr` and reserve the memory region for chunk data hashes
+        uint256 batchDataHashPtr;
         assembly {
-            dataPtr := mload(0x40)
-            mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
+            batchDataHashPtr := mload(0x40)
+            mstore(0x40, add(batchDataHashPtr, mul(_chunksLength, 32)))
         }
 
         // compute the data hash for each chunk
         for (uint256 i = 0; i < _chunksLength; i++) {
             uint256 _totalNumL1MessagesInChunk;
-            (_dataHash, _totalNumL1MessagesInChunk) = _commitChunkV1(
+            bytes32 _chunkDataHash;
+            (_chunkDataHash, _totalNumL1MessagesInChunk) = _commitChunkV1(
                 _chunks[i],
                 _totalL1MessagesPoppedInBatch,
                 _totalL1MessagesPoppedOverall,
@@ -654,15 +669,15 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedOverall += _totalNumL1MessagesInChunk;
             }
             assembly {
-                mstore(dataPtr, _dataHash)
-                dataPtr := add(dataPtr, 0x20)
+                mstore(batchDataHashPtr, _chunkDataHash)
+                batchDataHashPtr := add(batchDataHashPtr, 0x20)
             }
         }
 
         // compute the data hash for current batch
         assembly {
             let dataLen := mul(_chunksLength, 0x20)
-            _dataHash := keccak256(sub(dataPtr, dataLen), dataLen)
+            _batchDataHash := keccak256(sub(batchDataHashPtr, dataLen), dataLen)
         }
     }
 
@@ -671,7 +686,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @return batchPtr The start memory offset of loaded batch header.
     /// @return _batchHash The hash of the loaded batch header.
     /// @return _batchIndex The index of this batch.
-    /// @param _totalL1MessagesPoppedOverall The the number of L1 messages popped before this batch.
+    /// @param _totalL1MessagesPoppedOverall The number of L1 messages popped after this batch.
     function _loadBatchHeader(bytes calldata _batchHeader)
         internal
         view
@@ -710,8 +725,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
     /// @dev Internal function to commit a chunk with version 0.
     /// @param _chunk The encoded chunk to commit.
-    /// @param _totalL1MessagesPoppedInBatch The total number of L1 messages popped in current batch.
-    /// @param _totalL1MessagesPoppedOverall The total number of L1 messages popped in all batches including current batch.
+    /// @param _totalL1MessagesPoppedInBatch The total number of L1 messages popped in the current batch before this chunk.
+    /// @param _totalL1MessagesPoppedOverall The total number of L1 messages popped in all batches including the current batch, before this chunk.
     /// @param _skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
     /// @return _dataHash The computed data hash for this chunk.
     /// @return _totalNumL1MessagesInChunk The total number of L1 message popped in current chunk
@@ -738,9 +753,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             uint256 _totalTransactionsInChunk;
             for (uint256 i = 0; i < _numBlocks; i++) {
                 dataPtr = ChunkCodecV0.copyBlockContext(chunkPtr, dataPtr, i);
-                uint256 _numTransactionsInBlock = ChunkCodecV0.numTransactions(
-                    chunkPtr + 1 + i * ChunkCodecV0.BLOCK_CONTEXT_LENGTH
-                );
+                uint256 blockPtr = chunkPtr + 1 + i * ChunkCodecV0.BLOCK_CONTEXT_LENGTH;
+                uint256 _numTransactionsInBlock = ChunkCodecV0.numTransactions(blockPtr);
                 unchecked {
                     _totalTransactionsInChunk += _numTransactionsInBlock;
                 }
@@ -751,11 +765,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         }
 
         // It is used to compute the actual number of transactions in chunk.
-        uint256 txHashStartDataPtr;
-        assembly {
-            txHashStartDataPtr := dataPtr
-            chunkPtr := add(_chunk, 0x20)
-        }
+        uint256 txHashStartDataPtr = dataPtr;
         // concatenate tx hashes
         uint256 l2TxPtr = ChunkCodecV0.l2TxPtr(chunkPtr, _numBlocks);
         chunkPtr += 1;
@@ -834,9 +844,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // concatenate block contexts, use scope to avoid stack too deep
         for (uint256 i = 0; i < _numBlocks; i++) {
             dataPtr = ChunkCodecV1.copyBlockContext(chunkPtr, dataPtr, i);
-            uint256 _numL1MessagesInBlock = ChunkCodecV1.numL1Messages(
-                chunkPtr + 1 + i * ChunkCodecV1.BLOCK_CONTEXT_LENGTH
-            );
+            uint256 blockPtr = chunkPtr + 1 + i * ChunkCodecV1.BLOCK_CONTEXT_LENGTH;
+            uint256 _numL1MessagesInBlock = ChunkCodecV1.numL1Messages(blockPtr);
             unchecked {
                 _totalNumL1MessagesInChunk += _numL1MessagesInBlock;
             }
@@ -935,6 +944,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         return _ptr;
     }
 
+    /// @dev Internal function to pop finalized l1 messages.
+    /// @param bitmapPtr The memory offset of `skippedL1MessageBitmap`.
+    /// @param totalL1MessagePopped The total number of L1 messages poped in all batches including current batch.
+    /// @param l1MessagePopped The number of L1 messages popped in current batch.
     function _popL1Messages(
         uint256 bitmapPtr,
         uint256 totalL1MessagePopped,
