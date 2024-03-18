@@ -404,7 +404,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         );
 
         // verify batch
-        IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash);
+        IRollupVerifier(verifier).verifyAggregateProof(0, _batchIndex, _aggrProof, _publicInputHash);
 
         // check and update lastFinalizedBatchIndex
         unchecked {
@@ -479,8 +479,13 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             )
         );
 
+        // load version from batch header, it is always the first byte.
+        uint256 batchVersion;
+        assembly {
+            batchVersion := shr(248, calldataload(_batchHeader.offset))
+        }
         // verify batch
-        IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash);
+        IRollupVerifier(verifier).verifyAggregateProof(batchVersion, _batchIndex, _aggrProof, _publicInputHash);
 
         // check and update lastFinalizedBatchIndex
         unchecked {
