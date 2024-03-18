@@ -26,6 +26,9 @@ var BLSModulus *big.Int
 // VerifyBlobDataArgs defines the argument types for `_verifyBlobData` in `finalizeBatchWithProof`.
 var VerifyBlobDataArgs abi.Arguments
 
+// MAX_NUM_CHUNKS is the maximum number of chunks that a batch can contain.
+var MAX_NUM_CHUNKS int = 15
+
 func init() {
 	// initialize modulus
 	modulus, success := new(big.Int).SetString("52435875175126190479447740508185965837690552500527637822603658699938581184513", 10)
@@ -201,7 +204,7 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 // NewDABatch creates a DABatch from the provided encoding.Batch.
 func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
 	// this encoding can only support up to 15 chunks per batch
-	if len(batch.Chunks) > 15 {
+	if len(batch.Chunks) > MAX_NUM_CHUNKS {
 		return nil, fmt.Errorf("too many chunks in batch")
 	}
 
@@ -329,15 +332,17 @@ func constructSkippedBitmap(batchIndex uint64, chunks []*encoding.Chunk, totalL1
 
 // constructSkippedBitmap constructs the 4844 blob payload.
 func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Point, error) {
+	metadataLength := MAX_NUM_CHUNKS*4 + 2
+
 	// the raw (un-padded) blob payload
-	blobBytes := make([]byte, 2*31)
+	blobBytes := make([]byte, metadataLength)
 
 	// the number of chunks that contain at least one L2 transaction
 	numNonEmptyChunks := 0
 
 	// challenge digest preimage
 	// 1 hash for metadata and 1 for each chunk
-	challengePreimage := make([]byte, 16*32)
+	challengePreimage := make([]byte, (1+MAX_NUM_CHUNKS)*32)
 
 	// the challenge point z
 	var z kzg4844.Point
@@ -380,7 +385,7 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 	binary.BigEndian.PutUint16(blobBytes[0:], uint16(numNonEmptyChunks))
 
 	// challenge: compute metadata hash
-	hash := crypto.Keccak256Hash(blobBytes[0:62])
+	hash := crypto.Keccak256Hash(blobBytes[0:metadataLength])
 	copy(challengePreimage[0:], hash[:])
 
 	// convert raw data to BLSFieldElements
