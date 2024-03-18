@@ -110,12 +110,12 @@ func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 	// Get the latest chunk
 	latestChunk, err := o.getLatestChunk(ctx)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// if there is no chunk, return block number 1,
-			// because no need to chunk genesis block number
-			return 1, nil
-		}
 		return 0, fmt.Errorf("Chunk.GetChunkedBlockHeight error: %w", err)
+	}
+	if latestChunk == nil {
+		// if there is no chunk, return block number 1,
+		// because no need to chunk genesis block number
+		return 1, nil
 	}
 	return latestChunk.EndBlockNumber + 1, nil
 }
