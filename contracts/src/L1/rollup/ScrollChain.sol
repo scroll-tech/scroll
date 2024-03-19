@@ -10,6 +10,7 @@ import {IScrollChain} from "./IScrollChain.sol";
 import {BatchHeaderV0Codec} from "../../libraries/codec/BatchHeaderV0Codec.sol";
 import {ChunkCodec} from "../../libraries/codec/ChunkCodec.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
+import {IZkTrieVerifier} from "../../libraries/verifier/IZkTrieVerifier.sol";
 
 // solhint-disable no-inline-assembly
 // solhint-disable reason-string
@@ -36,6 +37,16 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @param newMaxNumTxInChunk The new value of `maxNumTxInChunk`.
     event UpdateMaxNumTxInChunk(uint256 oldMaxNumTxInChunk, uint256 newMaxNumTxInChunk);
 
+    /// @notice Emitted when the value of `zkTrieVerifier` is updated.
+    /// @param oldZkTrieVerifier The old value of `zkTrieVerifier`.
+    /// @param newZkTrieVerifier The new value of `zkTrieVerifier`.
+    event UpdateZkTrieVerifier(address indexed oldZkTrieVerifier, address indexed newZkTrieVerifier);
+
+    /// @notice Emitted when the value of `maxFinalizationDelay` is updated.
+    /// @param oldMaxFinalizationDelay The old value of `maxFinalizationDelay`.
+    /// @param newMaxFinalizationDelay The new value of `maxFinalizationDelay`.
+    event UpdateMaxFinalizationDelay(uint256 oldMaxFinalizationDelay, uint256 newMaxFinalizationDelay);
+
     /*************
      * Constants *
      *************/
@@ -48,6 +59,19 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
     /// @notice The address of RollupVerifier.
     address public immutable verifier;
+
+    /***********
+     * Structs *
+     ***********/
+
+    /// @param lastIndex The index of latest finalized batch
+    /// @param timestamp The block timestamp of last finalization
+    /// @param mode The current status, 1 means enforced mode, 0 means not.
+    struct FinalizationState {
+        uint128 lastIndex;
+        uint64 timestamp;
+        uint8 mode;
+    }
 
     /*************
      * Variables *
@@ -68,8 +92,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @notice Whether an account is a prover.
     mapping(address => bool) public isProver;
 
-    /// @inheritdoc IScrollChain
-    uint256 public override lastFinalizedBatchIndex;
+    /// @dev The storage slot used as lastFinalizedBatchIndex, which is deprecated now.
+    uint256 private __lastFinalizedBatchIndex;
 
     /// @inheritdoc IScrollChain
     mapping(uint256 => bytes32) public override committedBatches;
@@ -79,6 +103,14 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
     /// @inheritdoc IScrollChain
     mapping(uint256 => bytes32) public override withdrawRoots;
+
+    FinalizationState internal finalizationState;
+
+    /// @notice The maximum finalization delay in seconds before entering the enforced mode.
+    uint256 public maxFinalizationDelay;
+
+    /// @notice The address of zk trie verifier.
+    address public zkTrieVerifier;
 
     /**********************
      * Function Modifiers *
@@ -141,13 +173,25 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         emit UpdateMaxNumTxInChunk(0, _maxNumTxInChunk);
     }
 
+    function initializeV2(address _zkTrieVerifier) external reinitializer(2) {
+        finalizationState = FinalizationState(uint128(__lastFinalizedBatchIndex), uint64(block.timestamp), 0);
+
+        _updateZkTrieVerifier(_zkTrieVerifier);
+        _updateMaxFinalizationDelay(1 weeks);
+    }
+
     /*************************
      * Public View Functions *
      *************************/
 
     /// @inheritdoc IScrollChain
+    function lastFinalizedBatchIndex() public view override returns (uint256) {
+        return finalizationState.lastIndex;
+    }
+
+    /// @inheritdoc IScrollChain
     function isBatchFinalized(uint256 _batchIndex) external view override returns (bool) {
-        return _batchIndex <= lastFinalizedBatchIndex;
+        return _batchIndex <= lastFinalizedBatchIndex();
     }
 
     /*****************************
@@ -162,7 +206,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // check whether the genesis batch is imported
         require(finalizedStateRoots[0] == bytes32(0), "Genesis batch imported");
 
-        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
+        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeaderCalldata(_batchHeader);
 
         // check all fields except `dataHash` and `lastBlockHash` are zero
         unchecked {
@@ -189,100 +233,25 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         bytes[] memory _chunks,
         bytes calldata _skippedL1MessageBitmap
     ) external override OnlySequencer whenNotPaused {
+        // if we are in enforced mode, exit from it.
+        if (finalizationState.mode == 1) finalizationState.mode = 0;
+
         require(_version == 0, "invalid version");
 
-        // check whether the batch is empty
-        uint256 _chunksLength = _chunks.length;
-        require(_chunksLength > 0, "batch is empty");
-
-        // The overall memory layout in this function is organized as follows
-        // +---------------------+-------------------+------------------+
-        // | parent batch header | chunk data hashes | new batch header |
-        // +---------------------+-------------------+------------------+
-        // ^                     ^                   ^
-        // batchPtr              dataPtr             newBatchPtr (re-use var batchPtr)
-        //
-        // 1. We copy the parent batch header from calldata to memory starting at batchPtr
-        // 2. We store `_chunksLength` number of Keccak hashes starting at `dataPtr`. Each Keccak
-        //    hash corresponds to the data hash of a chunk. So we reserve the memory region from
-        //    `dataPtr` to `dataPtr + _chunkLength * 32` for the chunk data hashes.
-        // 3. The memory starting at `newBatchPtr` is used to store the new batch header and compute
-        //    the batch hash.
-
-        // the variable `batchPtr` will be reused later for the current batch
-        (uint256 batchPtr, bytes32 _parentBatchHash) = _loadBatchHeader(_parentBatchHeader);
-
-        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(batchPtr);
-        uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
-        require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch hash");
-        require(committedBatches[_batchIndex + 1] == 0, "batch already committed");
-
-        // load `dataPtr` and reserve the memory region for chunk data hashes
-        uint256 dataPtr;
-        assembly {
-            dataPtr := mload(0x40)
-            mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
-        }
-
-        // compute the data hash for each chunk
-        uint256 _totalL1MessagesPoppedInBatch;
-        for (uint256 i = 0; i < _chunksLength; i++) {
-            uint256 _totalNumL1MessagesInChunk = _commitChunk(
-                dataPtr,
-                _chunks[i],
-                _totalL1MessagesPoppedInBatch,
-                _totalL1MessagesPoppedOverall,
-                _skippedL1MessageBitmap
-            );
-
-            unchecked {
-                _totalL1MessagesPoppedInBatch += _totalNumL1MessagesInChunk;
-                _totalL1MessagesPoppedOverall += _totalNumL1MessagesInChunk;
-                dataPtr += 32;
-            }
-        }
-
-        // check the length of bitmap
-        unchecked {
-            require(
-                ((_totalL1MessagesPoppedInBatch + 255) / 256) * 32 == _skippedL1MessageBitmap.length,
-                "wrong bitmap length"
-            );
-        }
-
-        // compute the data hash for current batch
-        bytes32 _dataHash;
-        assembly {
-            let dataLen := mul(_chunksLength, 0x20)
-            _dataHash := keccak256(sub(dataPtr, dataLen), dataLen)
-
-            batchPtr := mload(0x40) // reset batchPtr
-            _batchIndex := add(_batchIndex, 1) // increase batch index
-        }
-
-        // store entries, the order matters
-        BatchHeaderV0Codec.storeVersion(batchPtr, _version);
-        BatchHeaderV0Codec.storeBatchIndex(batchPtr, _batchIndex);
-        BatchHeaderV0Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
-        BatchHeaderV0Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
-        BatchHeaderV0Codec.storeDataHash(batchPtr, _dataHash);
-        BatchHeaderV0Codec.storeParentBatchHash(batchPtr, _parentBatchHash);
-        BatchHeaderV0Codec.storeSkippedBitmap(batchPtr, _skippedL1MessageBitmap);
-
-        // compute batch hash
-        bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89 + _skippedL1MessageBitmap.length);
-
-        committedBatches[_batchIndex] = _batchHash;
-        emit CommitBatch(_batchIndex, _batchHash);
+        _commitBatch(_parentBatchHeader, _chunks, _skippedL1MessageBitmap);
     }
 
     /// @inheritdoc IScrollChain
     /// @dev If the owner want to revert a sequence of batches by sending multiple transactions,
     ///      make sure to revert recent batches first.
-    function revertBatch(bytes calldata _batchHeader, uint256 _count) external onlyOwner {
+    function revertBatch(bytes calldata _batchHeader, uint256 _count) external {
+        // if we are not in enforced mode, only owner can revert batches.
+        // if we are in enforced mode, allow any users to revert batches.
+        if (finalizationState.mode == 0) _checkOwner();
+
         require(_count > 0, "count must be nonzero");
 
-        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
+        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeaderCalldata(_batchHeader);
 
         // check batch hash
         uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
@@ -291,7 +260,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         require(committedBatches[_batchIndex + _count] == bytes32(0), "reverting must start from the ending");
 
         // check finalization
-        require(_batchIndex > lastFinalizedBatchIndex, "can only revert unfinalized batch");
+        require(_batchIndex > lastFinalizedBatchIndex(), "can only revert unfinalized batch");
 
         while (_count > 0) {
             committedBatches[_batchIndex] = bytes32(0);
@@ -311,68 +280,57 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @inheritdoc IScrollChain
     function finalizeBatchWithProof(
         bytes calldata _batchHeader,
-        bytes32 _prevStateRoot,
+        bytes32,
         bytes32 _postStateRoot,
         bytes32 _withdrawRoot,
         bytes calldata _aggrProof
     ) external override OnlyProver whenNotPaused {
-        require(_prevStateRoot != bytes32(0), "previous state root is zero");
-        require(_postStateRoot != bytes32(0), "new state root is zero");
-
         // compute batch hash and verify
-        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeader(_batchHeader);
+        (uint256 memPtr, bytes32 _batchHash) = _loadBatchHeaderCalldata(_batchHeader);
 
-        bytes32 _dataHash = BatchHeaderV0Codec.dataHash(memPtr);
-        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
-        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
+        // finalize batch
+        _finalizeBatch(memPtr, _batchHash, _postStateRoot, _withdrawRoot, _aggrProof);
+    }
 
-        // verify previous state root.
-        require(finalizedStateRoots[_batchIndex - 1] == _prevStateRoot, "incorrect previous state root");
-
-        // avoid duplicated verification
-        require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
-
-        // compute public input hash
-        bytes32 _publicInputHash = keccak256(
-            abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
-        );
-
-        // verify batch
-        IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash);
-
-        // check and update lastFinalizedBatchIndex
-        unchecked {
-            require(lastFinalizedBatchIndex + 1 == _batchIndex, "incorrect batch index");
-            lastFinalizedBatchIndex = _batchIndex;
-        }
-
-        // record state root and withdraw root
-        finalizedStateRoots[_batchIndex] = _postStateRoot;
-        withdrawRoots[_batchIndex] = _withdrawRoot;
-
-        // Pop finalized and non-skipped message from L1MessageQueue.
-        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
-        if (_l1MessagePopped > 0) {
-            IL1MessageQueue _queue = IL1MessageQueue(messageQueue);
-
-            unchecked {
-                uint256 _startIndex = BatchHeaderV0Codec.totalL1MessagePopped(memPtr) - _l1MessagePopped;
-
-                for (uint256 i = 0; i < _l1MessagePopped; i += 256) {
-                    uint256 _count = 256;
-                    if (_l1MessagePopped - i < _count) {
-                        _count = _l1MessagePopped - i;
-                    }
-                    uint256 _skippedBitmap = BatchHeaderV0Codec.skippedBitmap(memPtr, i / 256);
-
-                    _queue.popCrossDomainMessage(_startIndex, _count, _skippedBitmap);
-
-                    _startIndex += 256;
-                }
+    /// @inheritdoc IScrollChain
+    ///
+    /// @dev This function can by used to commit and finalize a new batch in a
+    /// single step if all previous batches are finalized. It can also be used
+    /// to finalize the earliest pending batch. In this case, the provided batch
+    /// should match the pending batch.
+    ///
+    /// If user choose to finalize a pending batch, the batch hash of current
+    /// header should match with `committedBatches[currentIndex]`.
+    /// Otherwise, `committedBatches[currentIndex]` should be `bytes32(0)`.
+    function commitAndFinalizeBatchEnforced(
+        bytes calldata _parentBatchHeader,
+        bytes[] memory _chunks,
+        bytes calldata _skippedL1MessageBitmap,
+        bytes32 _postStateRoot,
+        bytes32 _withdrawRoot,
+        bytes calldata _withdrawRootProof,
+        bytes calldata _aggrProof
+    ) external {
+        // check and enable enforced mode.
+        if (finalizationState.mode == 0) {
+            if (finalizationState.timestamp + maxFinalizationDelay < block.timestamp) {
+                finalizationState.mode = 1;
+            } else {
+                revert("not allowed");
             }
         }
 
-        emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
+        (uint256 memPtr, bytes32 _batchHash) = _commitBatch(_parentBatchHeader, _chunks, _skippedL1MessageBitmap);
+
+        (bytes32 stateRoot, bytes32 storageValue) = IZkTrieVerifier(zkTrieVerifier).verifyZkTrieProof(
+            0x5300000000000000000000000000000000000000,
+            bytes32(0),
+            _withdrawRootProof
+        );
+        require(stateRoot == _postStateRoot, "state root mismatch");
+        require(storageValue == _withdrawRoot, "withdraw root mismatch");
+
+        _finalizeBatch(memPtr, _batchHash, _postStateRoot, _withdrawRoot, _aggrProof);
     }
 
     /************************
@@ -437,15 +395,41 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         }
     }
 
+    function updateZkTrieVerifier(address _newZkTrieVerifier) external onlyOwner {
+        _updateZkTrieVerifier(_newZkTrieVerifier);
+    }
+
+    function updateMaxFinalizationDelay(uint256 _newMaxFinalizationDelay) external onlyOwner {
+        _updateMaxFinalizationDelay(_newMaxFinalizationDelay);
+    }
+
     /**********************
      * Internal Functions *
      **********************/
+
+    function _updateZkTrieVerifier(address _newZkTrieVerifier) internal {
+        address _oldZkTrieVerifier = zkTrieVerifier;
+        zkTrieVerifier = _newZkTrieVerifier;
+
+        emit UpdateZkTrieVerifier(_oldZkTrieVerifier, _newZkTrieVerifier);
+    }
+
+    function _updateMaxFinalizationDelay(uint256 _newMaxFinalizationDelay) internal {
+        uint256 _oldMaxFinalizationDelay = maxFinalizationDelay;
+        maxFinalizationDelay = _newMaxFinalizationDelay;
+
+        emit UpdateMaxFinalizationDelay(_oldMaxFinalizationDelay, _newMaxFinalizationDelay);
+    }
 
     /// @dev Internal function to load batch header from calldata to memory.
     /// @param _batchHeader The batch header in calldata.
     /// @return memPtr The start memory offset of loaded batch header.
     /// @return _batchHash The hash of the loaded batch header.
-    function _loadBatchHeader(bytes calldata _batchHeader) internal pure returns (uint256 memPtr, bytes32 _batchHash) {
+    function _loadBatchHeaderCalldata(bytes calldata _batchHeader)
+        internal
+        pure
+        returns (uint256 memPtr, bytes32 _batchHash)
+    {
         // load to memory
         uint256 _length;
         (memPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
@@ -604,5 +588,186 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         }
 
         return _ptr;
+    }
+
+    function _commitBatch(
+        bytes calldata _parentBatchHeader,
+        bytes[] memory _chunks,
+        bytes calldata _skippedL1MessageBitmap
+    ) internal returns (uint256 batchPtr, bytes32 batchHash) {
+        // check whether the batch is empty
+        require(_chunks.length > 0, "batch is empty");
+
+        // The overall memory layout in this function is organized as follows
+        // +---------------------+-------------------+------------------+
+        // | parent batch header | chunk data hashes | new batch header |
+        // +---------------------+-------------------+------------------+
+        // ^                     ^                   ^
+        // batchPtr              dataPtr             newBatchPtr (re-use var batchPtr)
+        //
+        // 1. We copy the parent batch header from calldata to memory starting at batchPtr
+        // 2. We store `_chunks.length` number of Keccak hashes starting at `dataPtr`. Each Keccak
+        //    hash corresponds to the data hash of a chunk. So we reserve the memory region from
+        //    `dataPtr` to `dataPtr + _chunkLength * 32` for the chunk data hashes.
+        // 3. The memory starting at `newBatchPtr` is used to store the new batch header and compute
+        //    the batch hash.
+
+        // the variable `batchPtr` will be reused later for the current batch
+        bytes32 _parentBatchHash;
+        (batchPtr, _parentBatchHash) = _loadBatchHeaderCalldata(_parentBatchHeader);
+
+        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(batchPtr);
+        uint256 _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
+        require(committedBatches[_batchIndex] == _parentBatchHash, "incorrect parent batch hash");
+        require(committedBatches[_batchIndex + 1] == 0, "batch already committed");
+
+        // compute the data hash for chunks
+        (bytes32 _dataHash, uint256 _totalL1MessagesPoppedInBatch) = _commitChunks(
+            _chunks,
+            _totalL1MessagesPoppedOverall,
+            _skippedL1MessageBitmap
+        );
+        _totalL1MessagesPoppedOverall += _totalL1MessagesPoppedInBatch;
+
+        // reset `batchPtr` for current batch and reserve memory
+        assembly {
+            batchPtr := mload(0x40) // reset batchPtr
+            mstore(0x40, add(batchPtr, add(89, _skippedL1MessageBitmap.length)))
+            _batchIndex := add(_batchIndex, 1) // increase batch index
+        }
+
+        // store entries, the order matters
+        BatchHeaderV0Codec.storeVersion(batchPtr, 0);
+        BatchHeaderV0Codec.storeBatchIndex(batchPtr, _batchIndex);
+        BatchHeaderV0Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
+        BatchHeaderV0Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
+        BatchHeaderV0Codec.storeDataHash(batchPtr, _dataHash);
+        BatchHeaderV0Codec.storeParentBatchHash(batchPtr, _parentBatchHash);
+        BatchHeaderV0Codec.storeSkippedBitmap(batchPtr, _skippedL1MessageBitmap);
+
+        // compute batch hash
+        batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89 + _skippedL1MessageBitmap.length);
+
+        bytes32 storedBatchHash = committedBatches[_batchIndex];
+        if (finalizationState.mode == 1) {
+            require(storedBatchHash == bytes32(0) || storedBatchHash == batchHash, "batch hash mismatch");
+        } else {
+            require(storedBatchHash == bytes32(0), "batch already committed");
+        }
+        if (storedBatchHash == bytes32(0)) {
+            committedBatches[_batchIndex] = batchHash;
+            emit CommitBatch(_batchIndex, batchHash);
+        }
+    }
+
+    function _commitChunks(
+        bytes[] memory _chunks,
+        uint256 _totalL1MessagesPoppedOverall,
+        bytes calldata _skippedL1MessageBitmap
+    ) internal view returns (bytes32 dataHash, uint256 _totalL1MessagesPoppedInBatch) {
+        uint256 _chunksLength = _chunks.length;
+        // load `dataPtr` and reserve the memory region for chunk data hashes
+        uint256 dataPtr;
+        assembly {
+            dataPtr := mload(0x40)
+            mstore(0x40, add(dataPtr, mul(_chunksLength, 32)))
+        }
+
+        // compute the data hash for each chunk
+
+        unchecked {
+            for (uint256 i = 0; i < _chunksLength; i++) {
+                uint256 _totalNumL1MessagesInChunk = _commitChunk(
+                    dataPtr,
+                    _chunks[i],
+                    _totalL1MessagesPoppedInBatch,
+                    _totalL1MessagesPoppedOverall,
+                    _skippedL1MessageBitmap
+                );
+                _totalL1MessagesPoppedInBatch += _totalNumL1MessagesInChunk;
+                _totalL1MessagesPoppedOverall += _totalNumL1MessagesInChunk;
+                dataPtr += 32;
+            }
+
+            // check the length of bitmap
+            require(
+                ((_totalL1MessagesPoppedInBatch + 255) / 256) * 32 == _skippedL1MessageBitmap.length,
+                "wrong bitmap length"
+            );
+        }
+
+        assembly {
+            let dataLen := mul(_chunksLength, 0x20)
+            dataHash := keccak256(sub(dataPtr, dataLen), dataLen)
+        }
+    }
+
+    function _finalizeBatch(
+        uint256 memPtr,
+        bytes32 _batchHash,
+        bytes32 _postStateRoot,
+        bytes32 _withdrawRoot,
+        bytes calldata _aggrProof
+    ) internal {
+        require(_postStateRoot != bytes32(0), "new state root is zero");
+
+        bytes32 _dataHash = BatchHeaderV0Codec.dataHash(memPtr);
+        uint256 _batchIndex = BatchHeaderV0Codec.batchIndex(memPtr);
+        require(committedBatches[_batchIndex] == _batchHash, "incorrect batch hash");
+
+        // fetch previous state root from storage.
+        bytes32 _prevStateRoot = finalizedStateRoots[_batchIndex - 1];
+
+        // avoid duplicated verification
+        require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
+
+        // compute public input hash
+        bytes32 _publicInputHash = keccak256(
+            abi.encodePacked(layer2ChainId, _prevStateRoot, _postStateRoot, _withdrawRoot, _dataHash)
+        );
+
+        // verify batch
+        IRollupVerifier(verifier).verifyAggregateProof(_batchIndex, _aggrProof, _publicInputHash);
+
+        // check and update lastFinalizedBatchIndex
+        unchecked {
+            FinalizationState memory cachedFinalizationState = finalizationState;
+            require(uint256(cachedFinalizationState.lastIndex + 1) == _batchIndex, "incorrect batch index");
+            cachedFinalizationState.lastIndex = uint128(_batchIndex);
+            cachedFinalizationState.timestamp = uint64(block.timestamp);
+            finalizationState = cachedFinalizationState;
+        }
+
+        // record state root and withdraw root
+        finalizedStateRoots[_batchIndex] = _postStateRoot;
+        withdrawRoots[_batchIndex] = _withdrawRoot;
+
+        // Pop finalized and non-skipped message from L1MessageQueue.
+        _popL1Messages(memPtr);
+
+        emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
+    }
+
+    function _popL1Messages(uint256 memPtr) internal {
+        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(memPtr);
+        if (_l1MessagePopped > 0) {
+            IL1MessageQueue _queue = IL1MessageQueue(messageQueue);
+
+            unchecked {
+                uint256 _startIndex = BatchHeaderV0Codec.totalL1MessagePopped(memPtr) - _l1MessagePopped;
+
+                for (uint256 i = 0; i < _l1MessagePopped; i += 256) {
+                    uint256 _count = 256;
+                    if (_l1MessagePopped - i < _count) {
+                        _count = _l1MessagePopped - i;
+                    }
+                    uint256 _skippedBitmap = BatchHeaderV0Codec.skippedBitmap(memPtr, i / 256);
+
+                    _queue.popCrossDomainMessage(_startIndex, _count, _skippedBitmap);
+
+                    _startIndex += 256;
+                }
+            }
+        }
     }
 }

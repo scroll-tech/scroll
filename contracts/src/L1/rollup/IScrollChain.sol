@@ -90,4 +90,23 @@ interface IScrollChain {
         bytes32 withdrawRoot,
         bytes calldata aggrProof
     ) external;
+
+    /// @notice Commit and finalize enforced batch.
+    ///
+    /// @param parentBatchHeader The header of parent batch, see the comments of `BatchHeaderV0Codec`.
+    /// @param chunks The list of encoded chunks, see the comments of `ChunkCodec`.
+    /// @param skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
+    /// @param postStateRoot The state root of current batch.
+    /// @param withdrawRoot The withdraw trie root of current batch.
+    /// @param withdrawRootProof The proof used to verify the correctness of `withdrawRoot`.
+    /// @param aggrProof The aggregation proof for current batch.
+    function commitAndFinalizeBatchEnforced(
+        bytes calldata parentBatchHeader,
+        bytes[] memory chunks,
+        bytes calldata skippedL1MessageBitmap,
+        bytes32 postStateRoot,
+        bytes32 withdrawRoot,
+        bytes calldata withdrawRootProof,
+        bytes calldata aggrProof
+    ) external;
 }
