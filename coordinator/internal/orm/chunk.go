@@ -70,18 +70,14 @@ func (*Chunk) TableName() string {
 
 // GetUnassignedChunk retrieves unassigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, forkHeight uint64, hardFork bool, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+func (o *Chunk) GetUnassignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("end_block_number <= ?", height)
-	if hardFork {
-		db = db.Where("start_block_number >= ?", forkHeight)
-	} else {
-		db = db.Where("start_block_number < ?", forkHeight)
-	}
+	db = db.Where("start_block_number >= ?", fromBlockNum)
+	db = db.Where("end_block_number < ?", toBlockNum)
 
 	var chunk Chunk
 	err := db.First(&chunk).Error
@@ -97,18 +93,14 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, forkHeight u
 
 // GetAssignedChunk retrieves assigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetAssignedChunk(ctx context.Context, height int, forkHeight uint64, hardFork bool, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+func (o *Chunk) GetAssignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("end_block_number <= ?", height)
-	if hardFork {
-		db = db.Where("start_block_number >= ?", forkHeight)
-	} else {
-		db = db.Where("start_block_number < ?", forkHeight)
-	}
+	db = db.Where("start_block_number >= ?", fromBlockNum)
+	db = db.Where("end_block_number < ?", toBlockNum)
 
 	var chunk Chunk
 	err := db.First(&chunk).Error

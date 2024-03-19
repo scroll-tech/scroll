@@ -2,7 +2,6 @@ package provertask
 
 import (
 	"fmt"
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
@@ -26,11 +25,12 @@ type ProverTask interface {
 
 // BaseProverTask a base prover task which contain series functions
 type BaseProverTask struct {
-	cfg           *config.Config
-	db            *gorm.DB
-	vk            string
-	nameForkMap   map[string]uint64
-	maxForkNumber uint64
+	cfg *config.Config
+	db  *gorm.DB
+	vk  string
+
+	nameForkMap map[string]uint64
+	forkHeights []uint64
 
 	batchOrm           *orm.Batch
 	chunkOrm           *orm.Chunk
@@ -106,4 +106,19 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
 	}
 	return &ptc, nil
+}
+
+func (b *BaseProverTask) getHardForkNumberByName(forkName string) (uint64, error) {
+	// when the first hard fork upgrade, the prover don't pass the fork_name to coordinator.
+	// so coordinator need to be compatible.
+	if forkName == "" {
+		return 0, nil
+	}
+
+	hardForkNumber, exist := b.nameForkMap[forkName]
+	if !exist {
+		return 0, ErrHardForkName
+	}
+
+	return hardForkNumber, nil
 }

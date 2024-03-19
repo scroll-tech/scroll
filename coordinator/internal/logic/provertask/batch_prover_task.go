@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/common/math"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -35,8 +36,7 @@ type BatchProverTask struct {
 // NewBatchProverTask new a batch collector
 func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
 	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
-	maxForkNumber := forkHeights[len(forkHeights)-1]
-	log.Info("new batch prover task", "forkHeights", forkHeights, "maxForkNumber", maxForkNumber)
+	log.Info("new batch prover task", "forkHeights", forkHeights)
 
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
@@ -44,7 +44,7 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			db:                 db,
 			cfg:                cfg,
 			nameForkMap:        nameForkMap,
-			maxForkNumber:      maxForkNumber,
+			forkHeights:        forkHeights,
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
 			proverTaskOrm:      orm.NewProverTask(db),
@@ -69,38 +69,38 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	var hardForkNumber uint64
-	if getTaskParameter.HardForkName != "" {
-		var exist bool
-		hardForkNumber, exist = bp.nameForkMap[getTaskParameter.HardForkName]
-		if !exist {
-			log.Error("hard fork prover get empty batch because of the hard fork name don't exist", "height",
-				getTaskParameter.ProverHeight, "fork name", getTaskParameter.HardForkName)
-			return nil, ErrHardForkName
-		}
-	}
-
-	if getTaskParameter.HardForkName == "" {
-		hardForkNumber = bp.maxForkNumber - 1
-		getTaskParameter.HardForkName = "base"
+	hardForkNumber, err := bp.getHardForkNumberByName(getTaskParameter.HardForkName)
+	if err != nil {
+		log.Error("hard fork get empty batch because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		return nil, err
 	}
 
 	// if the hard fork number set, rollup relayer must generate the chunk from hard fork number,
 	// so the hard fork chunk's start_block_number must be ForkBlockNumber
-	hardForkStartChunk, getStartChunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, bp.maxForkNumber)
-	if err != nil {
-		log.Error("failed to get fork start chunk failure", "fork height", bp.maxForkNumber, "err", getStartChunkErr)
-		return nil, ErrCoordinatorInternalFailure
+	var startChunkIndex uint64 = 0
+	var endChunkIndex uint64 = math.MaxInt64
+	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, bp.forkHeights)
+	if fromBlockNum != 0 {
+		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, fromBlockNum)
+		if chunkErr != nil {
+			log.Error("failed to get fork start chunk failure", "forkName", getTaskParameter.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		if startChunk == nil {
+			return nil, nil
+		}
+		startChunkIndex = startChunk.Index
 	}
-
-	var isFork bool
-	if hardForkNumber == bp.maxForkNumber {
-		isFork = true
-	}
-
-	if hardForkStartChunk == nil {
-		log.Debug("the hard fork chunk haven't be packed")
-		return nil, nil
+	if toBlockNum != math.MaxUint64 {
+		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, toBlockNum)
+		if err != nil {
+			log.Error("failed to get fork start chunk failure", "forkName", getTaskParameter.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		if toChunk == nil {
+			return nil, nil
+		}
+		endChunkIndex = toChunk.Index
 	}
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
@@ -109,7 +109,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBatchTask *orm.Batch
-		tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx, hardForkStartChunk.Index, isFork, maxActiveAttempts, maxTotalAttempts)
+		tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx, startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
 			log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
@@ -118,7 +118,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// batch to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpBatchTask == nil {
-			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx, hardForkStartChunk.Index, isFork, maxActiveAttempts, maxTotalAttempts)
+			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx, startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
 				log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure

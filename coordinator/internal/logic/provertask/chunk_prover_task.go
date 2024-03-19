@@ -34,15 +34,14 @@ type ChunkProverTask struct {
 // NewChunkProverTask new a chunk prover task
 func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
 	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
-	maxForkNumber := forkHeights[len(forkHeights)-1]
-	log.Info("new chunk prover task", "forkHeights", forkHeights, "maxForkNumber", maxForkNumber)
+	log.Info("new chunk prover task", "forkHeights", forkHeights)
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			vk:                 vk,
 			db:                 db,
 			cfg:                cfg,
 			nameForkMap:        nameForkMap,
-			maxForkNumber:      maxForkNumber,
+			forkHeights:        forkHeights,
 			chunkOrm:           orm.NewChunk(db),
 			blockOrm:           orm.NewL2Block(db),
 			proverTaskOrm:      orm.NewProverTask(db),
@@ -67,24 +66,15 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	var hardForkNumber uint64
-	if getTaskParameter.HardForkName != "" {
-		var exist bool
-		hardForkNumber, exist = cp.nameForkMap[getTaskParameter.HardForkName]
-		if !exist {
-			log.Error("hard fork prover get empty chunk because of the hard fork number don't exist", "height", getTaskParameter.ProverHeight, "fork name", getTaskParameter.HardForkName)
-			return nil, ErrHardForkName
-		}
+	hardForkNumber, err := cp.getHardForkNumberByName(getTaskParameter.HardForkName)
+	if err != nil {
+		log.Error("hard fork get empty chunk because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		return nil, err
 	}
 
-	if getTaskParameter.HardForkName == "" {
-		hardForkNumber = cp.maxForkNumber - 1
-		getTaskParameter.HardForkName = "base"
-	}
-
-	var isFork bool
-	if hardForkNumber == cp.maxForkNumber {
-		isFork = true
+	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, cp.forkHeights)
+	if toBlockNum > getTaskParameter.ProverHeight {
+		toBlockNum = getTaskParameter.ProverHeight
 	}
 
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
@@ -93,7 +83,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
-		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx, getTaskParameter.ProverHeight, cp.maxForkNumber, isFork, maxActiveAttempts, maxTotalAttempts)
+		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx, fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
 			log.Error("failed to get assigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
@@ -102,7 +92,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpChunkTask == nil {
-			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx, getTaskParameter.ProverHeight, cp.maxForkNumber, isFork, maxActiveAttempts, maxTotalAttempts)
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx, fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
 				log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure

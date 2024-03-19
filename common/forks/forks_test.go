@@ -1,6 +1,7 @@
 package forks
 
 import (
+	"math"
 	"math/big"
 	"testing"
 
@@ -65,6 +66,53 @@ func TestBlocksUntilFork(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			require.Equal(t, test.expected, BlocksUntilFork(test.block, test.forks))
+		})
+	}
+}
+
+func TestBlockRange(t *testing.T) {
+	tests := []struct {
+		name         string
+		forkHeight   uint64
+		forkHeights  []uint64
+		expectedFrom uint64
+		expectedTo   uint64
+	}{
+		{
+			name:         "ToInfinite",
+			forkHeight:   300,
+			forkHeights:  []uint64{100, 200, 300},
+			expectedFrom: 300,
+			expectedTo:   math.MaxUint64,
+		},
+		{
+			name:         "To300",
+			forkHeight:   200,
+			forkHeights:  []uint64{100, 200, 300},
+			expectedFrom: 200,
+			expectedTo:   300,
+		},
+		{
+			name:         "To200",
+			forkHeight:   100,
+			forkHeights:  []uint64{100, 200, 300},
+			expectedFrom: 100,
+			expectedTo:   200,
+		},
+		{
+			name:         "To100",
+			forkHeight:   0,
+			forkHeights:  []uint64{100, 200, 300},
+			expectedFrom: 0,
+			expectedTo:   100,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			from, to := BlockRange(test.forkHeight, test.forkHeights)
+			require.Equal(t, test.expectedFrom, from)
+			require.Equal(t, test.expectedTo, to)
 		})
 	}
 }

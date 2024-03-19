@@ -1,6 +1,7 @@
 package forks
 
 import (
+	"math"
 	"math/big"
 	"sort"
 
@@ -69,4 +70,21 @@ func BlocksUntilFork(blockHeight uint64, forkHeights []uint64) uint64 {
 		}
 	}
 	return 0
+}
+
+// BlockRange return the block range of the hard fork
+func BlockRange(forkHeight uint64, forkHeights []uint64) (from, to uint64) {
+	to = math.MaxUint64
+
+	for i, height := range forkHeights {
+		if forkHeight < height {
+			to = height
+			if i != 0 {
+				from = forkHeights[i-1]
+			}
+			return
+		}
+		from = height
+	}
+	return
 }
