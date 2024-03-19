@@ -59,7 +59,7 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 	}
 }
 
-const blockTracesFetchLimit = uint64(10)
+const blocksFetchLimit = uint64(10)
 
 // TryFetchRunningMissingBlocks attempts to fetch and store block traces for any missing blocks.
 func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
@@ -71,8 +71,8 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 	}
 
 	// Fetch and store block traces for missing blocks
-	for from := heightInDB + 1; from <= blockHeight; from += blockTracesFetchLimit {
-		to := from + blockTracesFetchLimit - 1
+	for from := heightInDB + 1; from <= blockHeight; from += blocksFetchLimit {
+		to := from + blocksFetchLimit - 1
 
 		if to > blockHeight {
 			to = blockHeight

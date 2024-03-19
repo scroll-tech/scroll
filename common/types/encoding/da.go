@@ -209,8 +209,3 @@ func (b *Batch) WithdrawRoot() common.Hash {
 	lastChunkBlockNum := len(b.Chunks[numChunks-1].Blocks)
 	return b.Chunks[len(b.Chunks)-1].Blocks[lastChunkBlockNum-1].WithdrawRoot
 }
-
-// NumChunks gets the number of chunks of the batch.
-func (b *Batch) NumChunks() uint64 {
-	return uint64(len(b.Chunks))
-}

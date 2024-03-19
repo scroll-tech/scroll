@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -40,7 +41,7 @@ func setupL2RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewRelayer(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 	defer relayer.StopSenders()
@@ -51,7 +52,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer relayer.StopSenders()
 
@@ -88,9 +89,18 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer relayer.StopSenders()
+
+	l2BlockOrm := orm.NewL2Block(db)
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+	assert.NoError(t, err)
+	chunkOrm := orm.NewChunk(db)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk1)
+	assert.NoError(t, err)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk2)
+	assert.NoError(t, err)
 
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -137,9 +147,18 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
 	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer relayer.StopSenders()
+
+	l2BlockOrm := orm.NewL2Block(db)
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+	assert.NoError(t, err)
+	chunkOrm := orm.NewChunk(db)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk1)
+	assert.NoError(t, err)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk2)
+	assert.NoError(t, err)
 
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -172,7 +191,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
 
@@ -228,7 +247,7 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
 
@@ -305,7 +324,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
 
@@ -345,7 +364,7 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 	defer relayer.StopSenders()
@@ -461,7 +480,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	assert.NoError(t, err)
 
 	cfg.L2Config.RelayerConfig.ChainMonitor.Enabled = true
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 	defer relayer.StopSenders()

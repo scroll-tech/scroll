@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -15,6 +16,7 @@ import (
 	"scroll-tech/common/forks"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
+	"scroll-tech/common/types/encoding/codecv1"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -35,6 +37,7 @@ type BatchProposer struct {
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	forkMap                         map[uint64]bool
+	banachForkHeight                uint64
 
 	batchProposerCircleTotal           prometheus.Counter
 	proposeBatchFailureTotal           prometheus.Counter
@@ -42,9 +45,23 @@ type BatchProposer struct {
 	proposeBatchUpdateInfoFailureTotal prometheus.Counter
 	totalL1CommitGas                   prometheus.Gauge
 	totalL1CommitCalldataSize          prometheus.Gauge
+	totalL1CommitBlobSize              prometheus.Gauge
 	batchChunksNum                     prometheus.Gauge
 	batchFirstBlockTimeoutReached      prometheus.Counter
 	batchChunksProposeNotEnoughTotal   prometheus.Counter
+}
+
+type batchMetrics struct {
+	// common metrics
+	numChunks           uint64
+	firstBlockTimestamp uint64
+
+	// codecv0 metrics, default 0 for codecv1
+	l1CommitCalldataSize uint64
+	l1CommitGas          uint64
+
+	// codecv1 metrics, default 0 for codecv0
+	l1CommitBlobSize uint64
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
@@ -58,7 +75,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
 		"forkHeights", forkHeights)
 
-	return &BatchProposer{
+	p := &BatchProposer{
 		ctx:                             ctx,
 		db:                              db,
 		batchOrm:                        orm.NewBatch(db),
@@ -95,6 +112,10 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 			Name: "rollup_propose_batch_total_l1_call_data_size",
 			Help: "The total l1 call data size",
 		}),
+		totalL1CommitBlobSize: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_propose_batch_total_l1_commit_blob_size",
+			Help: "The total l1 commit blob size",
+		}),
 		batchChunksNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "rollup_propose_batch_chunks_number",
 			Help: "The number of chunks in the batch",
@@ -108,6 +129,16 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 			Help: "Total number of batch chunk propose not enough",
 		}),
 	}
+
+	// If BanachBlock is not set in chain's genesis config, banachForkHeight is inf,
+	// which means chunk proposer uses the codecv0 version by default.
+	// TODO: Must change it to real fork name.
+	if chainCfg.BanachBlock != nil {
+		p.banachForkHeight = chainCfg.BanachBlock.Uint64()
+	} else {
+		p.banachForkHeight = math.MaxUint64
+	}
+	return p
 }
 
 // TryProposeBatch tries to propose a new batches.
@@ -181,9 +212,10 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 	}
 
 	var batch encoding.Batch
-	if parentDBBatch != nil {
+	if parentDBBatch != nil { // TODO: remove this check, return error when nil.
 		batch.Index = parentDBBatch.Index + 1
-		parentDABatch, err := codecv0.NewDABatchFromBytes(parentDBBatch.BatchHeader)
+		var parentDABatch *codecv0.DABatch
+		parentDABatch, err = codecv0.NewDABatchFromBytes(parentDBBatch.BatchHeader)
 		if err != nil {
 			return nil, err
 		}
@@ -193,95 +225,53 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
-		totalL1CommitCalldataSize, err := codecv0.EstimateBatchL1CommitCalldataSize(&batch)
-		if err != nil {
-			return nil, err
+		metrics, calcErr := p.calculateBatchMetrics(&batch)
+		if calcErr != nil {
+			return nil, fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
-		totalL1CommitGas, err := codecv0.EstimateBatchL1CommitGas(&batch)
-		if err != nil {
-			return nil, err
-		}
-		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(totalL1CommitGas))
-		if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
-			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {
-			// Check if the first chunk breaks hard limits.
-			// If so, it indicates there are bugs in chunk-proposer, manual fix is needed.
+		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(metrics.l1CommitGas))
+		if metrics.l1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
+			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch ||
+			metrics.l1CommitBlobSize > maxBlobSize {
 			if i == 0 {
-				if totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch {
-					return nil, fmt.Errorf(
-						"the first chunk exceeds l1 commit gas limit; start block number: %v, end block number: %v, commit gas: %v, max commit gas limit: %v",
-						dbChunks[0].StartBlockNumber,
-						dbChunks[0].EndBlockNumber,
-						totalL1CommitGas,
-						p.maxL1CommitGasPerBatch,
-					)
-				}
-				if totalL1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch {
-					return nil, fmt.Errorf(
-						"the first chunk exceeds l1 commit calldata size limit; start block number: %v, end block number %v, calldata size: %v, max calldata size limit: %v",
-						dbChunks[0].StartBlockNumber,
-						dbChunks[0].EndBlockNumber,
-						totalL1CommitCalldataSize,
-						p.maxL1CommitCalldataSizePerBatch,
-					)
-				}
+				// The first chunk exceeds hard limits, which indicates a bug in the chunk-proposer, manual fix is needed.
+				return nil, fmt.Errorf(
+					"the first chunk exceeds limits; start block number: %v, end block number: %v, limits: %+v, maxChunkNum: %v, maxL1CommitCalldataSize: %v, maxL1CommitGas: %v, maxBlobSize: %v",
+					dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber, metrics, p.maxChunkNumPerBatch, p.maxL1CommitCalldataSizePerBatch, p.maxL1CommitGasPerBatch, maxBlobSize)
 			}
 
 			log.Debug("breaking limit condition in batching",
-				"currentL1CommitCalldataSize", totalL1CommitCalldataSize,
+				"currentL1CommitCalldataSize", metrics.l1CommitCalldataSize,
 				"maxL1CommitCalldataSizePerBatch", p.maxL1CommitCalldataSizePerBatch,
 				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
 				"maxL1CommitGasPerBatch", p.maxL1CommitGasPerBatch)
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 
-			totalL1CommitCalldataSize, err := codecv0.EstimateBatchL1CommitCalldataSize(&batch)
+			metrics, err := p.calculateBatchMetrics(&batch)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
 
-			totalL1CommitGas, err := codecv0.EstimateBatchL1CommitGas(&batch)
-			if err != nil {
-				return nil, err
-			}
-
-			p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
-			p.totalL1CommitGas.Set(float64(totalL1CommitGas))
-			p.batchChunksNum.Set(float64(batch.NumChunks()))
+			p.recordBatchMetrics(metrics)
 			return &batch, nil
 		}
 	}
 
+	metrics, calcErr := p.calculateBatchMetrics(&batch)
+	if calcErr != nil {
+		return nil, fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
+	}
 	currentTimeSec := uint64(time.Now().Unix())
-	if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec ||
-		batch.NumChunks() == maxChunksThisBatch {
-		if dbChunks[0].StartBlockTime+p.batchTimeoutSec < currentTimeSec {
-			log.Warn("first block timeout",
-				"start block number", dbChunks[0].StartBlockNumber,
-				"start block timestamp", dbChunks[0].StartBlockTime,
-				"current time", currentTimeSec,
-			)
-		} else {
-			log.Info("reached maximum number of chunks in batch",
-				"chunk count", batch.NumChunks(),
-			)
-		}
-
-		totalL1CommitCalldataSize, err := codecv0.EstimateBatchL1CommitCalldataSize(&batch)
-		if err != nil {
-			return nil, err
-		}
-
-		totalL1CommitGas, err := codecv0.EstimateBatchL1CommitGas(&batch)
-		if err != nil {
-			return nil, err
-		}
+	if metrics.firstBlockTimestamp+p.batchTimeoutSec < currentTimeSec || metrics.numChunks == maxChunksThisBatch {
+		log.Info("reached maximum number of chunks in batch or first block timeout",
+			"chunk count", metrics.numChunks,
+			"start block number", dbChunks[0].StartBlockNumber,
+			"start block timestamp", dbChunks[0].StartBlockTime,
+			"current time", currentTimeSec)
 
 		p.batchFirstBlockTimeoutReached.Inc()
-		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
-		p.totalL1CommitGas.Set(float64(totalL1CommitGas))
-		p.batchChunksNum.Set(float64(batch.NumChunks()))
-
+		p.recordBatchMetrics(metrics)
 		return &batch, nil
 	}
 
@@ -303,4 +293,35 @@ func (p *BatchProposer) getDAChunks(dbChunks []*orm.Chunk) ([]*encoding.Chunk, e
 		}
 	}
 	return chunks, nil
+}
+
+func (p *BatchProposer) recordBatchMetrics(metrics *batchMetrics) {
+	p.totalL1CommitGas.Set(float64(metrics.l1CommitGas))
+	p.totalL1CommitCalldataSize.Set(float64(metrics.l1CommitCalldataSize))
+	p.batchChunksNum.Set(float64(metrics.numChunks))
+	p.totalL1CommitBlobSize.Set(float64(metrics.l1CommitBlobSize))
+}
+
+func (p *BatchProposer) calculateBatchMetrics(batch *encoding.Batch) (*batchMetrics, error) {
+	var err error
+	metrics := &batchMetrics{}
+	metrics.numChunks = uint64(len(batch.Chunks))
+	metrics.firstBlockTimestamp = batch.Chunks[0].Blocks[0].Header.Time
+	firstBlockNum := batch.Chunks[0].Blocks[0].Header.Number.Uint64()
+	if firstBlockNum >= p.banachForkHeight { // codecv1
+		metrics.l1CommitBlobSize, err = codecv1.EstimateBatchL1CommitBlobSize(batch)
+		if err != nil {
+			return metrics, fmt.Errorf("failed to estimate chunk L1 commit blob size: %w", err)
+		}
+	} else { // codecv0
+		metrics.l1CommitGas, err = codecv0.EstimateBatchL1CommitGas(batch)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate batch L1 commit gas: %w", err)
+		}
+		metrics.l1CommitCalldataSize, err = codecv0.EstimateBatchL1CommitCalldataSize(batch)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate batch L1 commit calldata size: %w", err)
+		}
+	}
+	return metrics, nil
 }
