@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity =0.8.24;
 
 import {BatchHeaderV0Codec} from "../../contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
 import {ChunkCodecV0} from "../../contracts/src/libraries/codec/ChunkCodecV0.sol";
 import {IL1MessageQueue} from "../../contracts/src/L1/rollup/IL1MessageQueue.sol";
 
-contract MockBridgeL1 {
+contract MockBridge {
   /******************************
    * Events from L1MessageQueue *
    ******************************/
@@ -310,6 +310,37 @@ contract MockBridgeL1 {
     assembly {
       let dataHash := keccak256(startDataPtr, sub(dataPtr, startDataPtr))
       mstore(memPtr, dataHash)
+    }
+  }
+
+  address private constant POINT_EVALUATION_PRECOMPILE_ADDRESS = 0x000000000000000000000000000000000000000A;
+  uint256 private constant BLS_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513;
+
+  function verifyProof(
+    bytes32 claim,
+    bytes memory commitment,
+    bytes memory proof
+  ) external view {
+    require(commitment.length == 48, "Commitment must be 48 bytes");
+    require(proof.length == 48, "Proof must be 48 bytes");
+
+    bytes32 versionedHash = blobhash(0);
+
+    // Compute random challenge point.
+    uint256 point = uint256(keccak256(abi.encodePacked(versionedHash))) % BLS_MODULUS;
+
+    bytes memory pointEvaluationCalldata = abi.encodePacked(
+      versionedHash,
+      point,
+      claim,
+      commitment,
+      proof
+    );
+
+    (bool success,) = POINT_EVALUATION_PRECOMPILE_ADDRESS.staticcall(pointEvaluationCalldata);
+
+    if (!success) {
+      revert("Proof verification failed");
     }
   }
 }
