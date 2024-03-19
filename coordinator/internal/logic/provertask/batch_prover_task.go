@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/scroll-tech/go-ethereum/common/math"
+	"math"
 	"time"
 
 	"github.com/gin-gonic/gin"
