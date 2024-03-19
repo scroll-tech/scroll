@@ -193,8 +193,8 @@ func setEnv(t *testing.T) {
 	assert.NoError(t, err)
 
 	batch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk}}
-	hardForkBatch1 = &encoding.Batch{Index: 0, StartChunkIndex: 0, EndChunkIndex: 0, Chunks: []*encoding.Chunk{hardForkChunk1}}
-	hardForkBatch2 = &encoding.Batch{Index: 1, StartChunkIndex: 1, EndChunkIndex: 1, Chunks: []*encoding.Chunk{hardForkChunk2}}
+	hardForkBatch1 = &encoding.Batch{Index: 1, Chunks: []*encoding.Chunk{hardForkChunk1}}
+	hardForkBatch2 = &encoding.Batch{Index: 2, Chunks: []*encoding.Chunk{hardForkChunk2}}
 }
 
 func TestApis(t *testing.T) {
@@ -474,13 +474,13 @@ func testHardForkAssignTask(t *testing.T) {
 			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
 		},
 		{
-			name:                  "oneTaskForkBatchProverVersionLessThanHardForkProverNumberEqual0",
+			name:                  "noTaskForkBatchProverVersionLessThanHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeBatch,
 			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
-			exceptTaskNumber:      1,
+			exceptTaskNumber:      0,
 			proverForkNames:       []string{"", ""},
-			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
-			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
+			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
+			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
 	}
 
