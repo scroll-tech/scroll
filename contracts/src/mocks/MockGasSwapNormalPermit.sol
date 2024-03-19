@@ -12,7 +12,7 @@ import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 // solhint-disable no-empty-blocks
 
-contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
+contract MockGasSwapNormalPermit is ERC2771Context, Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /**********
@@ -91,19 +91,15 @@ contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
         address _sender = _msgSender();
 
         // do permit
-        try
-            IERC20Permit(_permit.token).permit(
-                _sender,
-                address(this),
-                _permit.value,
-                _permit.deadline,
-                _permit.v,
-                _permit.r,
-                _permit.s
-            )
-        {} catch {
-            require(IERC20(_permit.token).allowance(_sender, address(this)) >= _permit.value, "Permit failed");
-        }
+        IERC20Permit(_permit.token).permit(
+            _sender,
+            address(this),
+            _permit.value,
+            _permit.deadline,
+            _permit.v,
+            _permit.r,
+            _permit.s
+        );
 
         // record token balance in this contract
         uint256 _balance = IERC20(_permit.token).balanceOf(address(this));
