@@ -234,10 +234,6 @@ func TestBatchOrm(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              0,
-		EndChunkHash:               chunkHash1,
 	}
 	batch1, err := batchOrm.InsertBatch(context.Background(), batch)
 	assert.NoError(t, err)
@@ -255,10 +251,6 @@ func TestBatchOrm(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1},
-		StartChunkIndex:            1,
-		StartChunkHash:             chunkHash2,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 	batch2, err := batchOrm.InsertBatch(context.Background(), batch)
 	assert.NoError(t, err)

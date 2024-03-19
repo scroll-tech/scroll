@@ -89,15 +89,18 @@ func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endInde
 	return chunks, nil
 }
 
-// GetLatestChunk retrieves the latest chunk from the database.
-func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
+// getLatestChunk retrieves the latest chunk from the database.
+func (o *Chunk) getLatestChunk(ctx context.Context) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Order("index desc")
 
 	var latestChunk Chunk
 	if err := db.First(&latestChunk).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.GetLatestChunk error: %w", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Chunk.getLatestChunk error: %w", err)
 	}
 	return &latestChunk, nil
 }
@@ -105,14 +108,14 @@ func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 // GetUnchunkedBlockHeight retrieves the first unchunked block number.
 func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 	// Get the latest chunk
-	latestChunk, err := o.GetLatestChunk(ctx)
+	latestChunk, err := o.getLatestChunk(ctx)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			// if there is no chunk, return block number 1,
-			// because no need to chunk genesis block number
-			return 1, nil
-		}
 		return 0, fmt.Errorf("Chunk.GetChunkedBlockHeight error: %w", err)
+	}
+	if latestChunk == nil {
+		// if there is no chunk, return block number 1,
+		// because no need to chunk genesis block number
+		return 1, nil
 	}
 	return latestChunk.EndBlockNumber + 1, nil
 }
@@ -146,15 +149,15 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
-	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+	parentChunk, err := o.getLatestChunk(ctx)
+	if err != nil {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
 	// if parentChunk==nil then err==gorm.ErrRecordNotFound, which means there's
-	// not chunk record in the db, we then use default empty values for the creating chunk;
-	// if parentChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
+	// no chunk record in the db, we then use default empty values for the creating chunk;
+	// if parentChunk!=nil then err==nil, then we fill the parentChunk-related data into the creating chunk
 	if parentChunk != nil {
 		chunkIndex = parentChunk.Index + 1
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
