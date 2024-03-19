@@ -106,6 +106,20 @@ func TestBlockRange(t *testing.T) {
 			expectedFrom: 0,
 			expectedTo:   100,
 		},
+		{
+			name:         "To200-1",
+			forkHeight:   100,
+			forkHeights:  []uint64{100, 200},
+			expectedFrom: 100,
+			expectedTo:   200,
+		},
+		{
+			name:         "to2",
+			forkHeight:   1,
+			forkHeights:  []uint64{1, 2},
+			expectedFrom: 1,
+			expectedTo:   2,
+		},
 	}
 
 	for _, test := range tests {

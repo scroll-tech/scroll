@@ -108,7 +108,6 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		return err
 	}
 	chainConf := genesis.Config
-	chainConf.HomesteadBlock = big.NewInt(1)
 	c.ChainConfig = chainConf
 
 	if !store {

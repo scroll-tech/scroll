@@ -97,10 +97,10 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			log.Error("failed to get fork start chunk failure", "forkName", getTaskParameter.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
 			return nil, ErrCoordinatorInternalFailure
 		}
-		if toChunk == nil {
-			return nil, nil
+		if toChunk != nil {
+			// if toChunk is empty, so the startChunk is the last chunk, don't need change the endChunkIndex of math.MaxInt64
+			endChunkIndex = toChunk.Index
 		}
-		endChunkIndex = toChunk.Index
 	}
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession

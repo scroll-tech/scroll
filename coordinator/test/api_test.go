@@ -365,6 +365,15 @@ func testHardForkAssignTask(t *testing.T) {
 			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
+		{
+			name:                  "noTaskForkBatchProverVersionLessThanHardForkProverNumberEqual0",
+			proofType:             message.ProofTypeBatch,
+			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
+			exceptTaskNumber:      0,
+			proverForkNames:       []string{"", ""},
+			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
+			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
+		},
 		{ // hard fork 3, prover 3 block [2-3]
 			name:                  "oneTaskForkChunkProverVersionLargeOrEqualThanHardFork",
 			proofType:             message.ProofTypeChunk,
@@ -472,15 +481,6 @@ func testHardForkAssignTask(t *testing.T) {
 			proverForkNames:       []string{"", ""},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
-		},
-		{
-			name:                  "noTaskForkBatchProverVersionLessThanHardForkProverNumberEqual0",
-			proofType:             message.ProofTypeBatch,
-			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
-			exceptTaskNumber:      0,
-			proverForkNames:       []string{"", ""},
-			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
-			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
 	}
 

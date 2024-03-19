@@ -74,7 +74,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, cp.forkHeights)
 	if toBlockNum > getTaskParameter.ProverHeight {
-		toBlockNum = getTaskParameter.ProverHeight
+		toBlockNum = getTaskParameter.ProverHeight + 1
 	}
 
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
