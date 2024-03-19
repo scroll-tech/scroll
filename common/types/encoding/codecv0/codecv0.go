@@ -202,82 +202,38 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 
 // NewDABatch creates a DABatch from the provided encoding.Batch.
 func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
-	// storing chunk hashes in order to compute the batch data hash
+	// compute batch data hash
 	var dataBytes []byte
+	totalL1MessagePoppedBeforeChunk := batch.TotalL1MessagePoppedBefore
 
-	// skipped L1 message bitmap, an array of 256-bit bitmaps
-	var skippedBitmap []*big.Int
-
-	// the first queue index that belongs to this batch
-	baseIndex := batch.TotalL1MessagePoppedBefore
-
-	// the next queue index that we need to process
-	nextIndex := batch.TotalL1MessagePoppedBefore
-
-	for chunkID, chunk := range batch.Chunks {
+	for _, chunk := range batch.Chunks {
 		// build data hash
-		totalL1MessagePoppedBeforeChunk := nextIndex
 		daChunk, err := NewDAChunk(chunk, totalL1MessagePoppedBeforeChunk)
 		if err != nil {
 			return nil, err
 		}
+		totalL1MessagePoppedBeforeChunk += chunk.NumL1Messages(totalL1MessagePoppedBeforeChunk)
 		daChunkHash, err := daChunk.Hash()
 		if err != nil {
 			return nil, err
 		}
 		dataBytes = append(dataBytes, daChunkHash.Bytes()...)
-
-		// build skip bitmap
-		for blockID, block := range chunk.Blocks {
-			for _, tx := range block.Transactions {
-				if tx.Type != types.L1MessageTxType {
-					continue
-				}
-				currentIndex := tx.Nonce
-
-				if currentIndex < nextIndex {
-					return nil, fmt.Errorf("unexpected batch payload, expected queue index: %d, got: %d. Batch index: %d, chunk index in batch: %d, block index in chunk: %d, block hash: %v, transaction hash: %v", nextIndex, currentIndex, batch.Index, chunkID, blockID, block.Header.Hash(), tx.TxHash)
-				}
-
-				// mark skipped messages
-				for skippedIndex := nextIndex; skippedIndex < currentIndex; skippedIndex++ {
-					quo := int((skippedIndex - baseIndex) / 256)
-					rem := int((skippedIndex - baseIndex) % 256)
-					for len(skippedBitmap) <= quo {
-						bitmap := big.NewInt(0)
-						skippedBitmap = append(skippedBitmap, bitmap)
-					}
-					skippedBitmap[quo].SetBit(skippedBitmap[quo], rem, 1)
-				}
-
-				// process included message
-				quo := int((currentIndex - baseIndex) / 256)
-				for len(skippedBitmap) <= quo {
-					bitmap := big.NewInt(0)
-					skippedBitmap = append(skippedBitmap, bitmap)
-				}
-
-				nextIndex = currentIndex + 1
-			}
-		}
 	}
 
 	// compute data hash
 	dataHash := crypto.Keccak256Hash(dataBytes)
 
-	// compute skipped bitmap
-	bitmapBytes := make([]byte, len(skippedBitmap)*32)
-	for ii, num := range skippedBitmap {
-		bytes := num.Bytes()
-		padding := 32 - len(bytes)
-		copy(bitmapBytes[32*ii+padding:], bytes)
+	// skipped L1 messages bitmap
+	bitmapBytes, totalL1MessagePoppedAfter, err := encoding.ConstructSkippedBitmap(batch.Index, batch.Chunks, batch.TotalL1MessagePoppedBefore)
+	if err != nil {
+		return nil, err
 	}
 
 	daBatch := DABatch{
 		Version:                CodecV0Version,
 		BatchIndex:             batch.Index,
-		L1MessagePopped:        nextIndex - baseIndex,
-		TotalL1MessagePopped:   nextIndex,
+		L1MessagePopped:        totalL1MessagePoppedAfter - batch.TotalL1MessagePoppedBefore,
+		TotalL1MessagePopped:   totalL1MessagePoppedAfter,
 		DataHash:               dataHash,
 		ParentBatchHash:        batch.ParentBatchHash,
 		SkippedL1MessageBitmap: bitmapBytes,
