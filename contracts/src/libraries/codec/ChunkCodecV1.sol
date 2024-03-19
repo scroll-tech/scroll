@@ -41,7 +41,7 @@ library ChunkCodecV1 {
     /// @param _length The length of the chunk.
     /// @return _numBlocks The number of blocks in current chunk.
     function validateChunkLength(uint256 chunkPtr, uint256 _length) internal pure returns (uint256 _numBlocks) {
-        _numBlocks = numBlocks(chunkPtr);
+        _numBlocks = getNumBlocks(chunkPtr);
 
         // should contain at least one block
         if (_numBlocks == 0) revert ErrorNoBlockInChunk();
@@ -53,8 +53,8 @@ library ChunkCodecV1 {
     /// @notice Return the number of blocks in current chunk.
     /// @param chunkPtr The start memory offset of the chunk in memory.
     /// @return _numBlocks The number of blocks in current chunk.
-    function numBlocks(uint256 chunkPtr) internal pure returns (uint256 _numBlocks) {
-        return ChunkCodecV0.numBlocks(chunkPtr);
+    function getNumBlocks(uint256 chunkPtr) internal pure returns (uint256 _numBlocks) {
+        return ChunkCodecV0.getNumBlocks(chunkPtr);
     }
 
     /// @notice Copy the block context to another memory.
@@ -73,14 +73,14 @@ library ChunkCodecV1 {
     /// @notice Return the number of transactions in current block.
     /// @param blockPtr The start memory offset of the block context in memory.
     /// @return _numTransactions The number of transactions in current block.
-    function numTransactions(uint256 blockPtr) internal pure returns (uint256 _numTransactions) {
-        return ChunkCodecV0.numTransactions(blockPtr);
+    function getNumTransactions(uint256 blockPtr) internal pure returns (uint256 _numTransactions) {
+        return ChunkCodecV0.getNumTransactions(blockPtr);
     }
 
     /// @notice Return the number of L1 messages in current block.
     /// @param blockPtr The start memory offset of the block context in memory.
     /// @return _numL1Messages The number of L1 messages in current block.
-    function numL1Messages(uint256 blockPtr) internal pure returns (uint256 _numL1Messages) {
-        return ChunkCodecV0.numL1Messages(blockPtr);
+    function getNumL1Messages(uint256 blockPtr) internal pure returns (uint256 _numL1Messages) {
+        return ChunkCodecV0.getNumL1Messages(blockPtr);
     }
 }

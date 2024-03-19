@@ -247,14 +247,14 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // check all fields except `dataHash` and `lastBlockHash` are zero
         unchecked {
-            uint256 sum = BatchHeaderV0Codec.version(memPtr) +
-                BatchHeaderV0Codec.batchIndex(memPtr) +
-                BatchHeaderV0Codec.l1MessagePopped(memPtr) +
-                BatchHeaderV0Codec.totalL1MessagePopped(memPtr);
+            uint256 sum = BatchHeaderV0Codec.getVersion(memPtr) +
+                BatchHeaderV0Codec.getBatchIndex(memPtr) +
+                BatchHeaderV0Codec.getL1MessagePopped(memPtr) +
+                BatchHeaderV0Codec.getTotalL1MessagePopped(memPtr);
             if (sum != 0) revert ErrorGenesisBatchHasNonZeroField();
         }
-        if (BatchHeaderV0Codec.dataHash(memPtr) == bytes32(0)) revert ErrorGenesisDataHashIsZero();
-        if (BatchHeaderV0Codec.parentBatchHash(memPtr) != bytes32(0)) revert ErrorGenesisParentBatchHashIsNonZero();
+        if (BatchHeaderV0Codec.getDataHash(memPtr) == bytes32(0)) revert ErrorGenesisDataHashIsZero();
+        if (BatchHeaderV0Codec.getParentBatchHash(memPtr) != bytes32(0)) revert ErrorGenesisParentBatchHashIsNonZero();
 
         committedBatches[0] = _batchHash;
         finalizedStateRoots[0] = _stateRoot;
@@ -390,7 +390,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // compute batch hash and verify
         (uint256 memPtr, bytes32 _batchHash, uint256 _batchIndex, ) = _loadBatchHeader(_batchHeader);
-        bytes32 _dataHash = BatchHeaderV0Codec.dataHash(memPtr);
+        bytes32 _dataHash = BatchHeaderV0Codec.getDataHash(memPtr);
 
         // verify previous state root.
         if (finalizedStateRoots[_batchIndex - 1] != _prevStateRoot) revert ErrorIncorrectPreviousStateRoot();
@@ -418,9 +418,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // Pop finalized and non-skipped message from L1MessageQueue.
         _popL1Messages(
-            BatchHeaderV0Codec.skippedBitmapPtr(memPtr),
-            BatchHeaderV0Codec.totalL1MessagePopped(memPtr),
-            BatchHeaderV0Codec.l1MessagePopped(memPtr)
+            BatchHeaderV0Codec.getSkippedBitmapPtr(memPtr),
+            BatchHeaderV0Codec.getTotalL1MessagePopped(memPtr),
+            BatchHeaderV0Codec.getL1MessagePopped(memPtr)
         );
 
         emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
@@ -446,8 +446,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // compute batch hash and verify
         (uint256 memPtr, bytes32 _batchHash, uint256 _batchIndex, ) = _loadBatchHeader(_batchHeader);
-        bytes32 _dataHash = BatchHeaderV1Codec.dataHash(memPtr);
-        bytes32 _blobVersionedHash = BatchHeaderV1Codec.blobVersionedHash(memPtr);
+        bytes32 _dataHash = BatchHeaderV1Codec.getDataHash(memPtr);
+        bytes32 _blobVersionedHash = BatchHeaderV1Codec.getBlobVersionedHash(memPtr);
 
         // Calls the point evaluation precompile and verifies the output
         {
@@ -499,9 +499,9 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // Pop finalized and non-skipped message from L1MessageQueue.
         _popL1Messages(
-            BatchHeaderV1Codec.skippedBitmapPtr(memPtr),
-            BatchHeaderV1Codec.totalL1MessagePopped(memPtr),
-            BatchHeaderV1Codec.l1MessagePopped(memPtr)
+            BatchHeaderV1Codec.getSkippedBitmapPtr(memPtr),
+            BatchHeaderV1Codec.getTotalL1MessagePopped(memPtr),
+            BatchHeaderV1Codec.getL1MessagePopped(memPtr)
         );
 
         emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
@@ -713,11 +713,11 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         if (version == 0) {
             (batchPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, _length);
-            _batchIndex = BatchHeaderV0Codec.batchIndex(batchPtr);
+            _batchIndex = BatchHeaderV0Codec.getBatchIndex(batchPtr);
         } else if (version == 1) {
             (batchPtr, _length) = BatchHeaderV1Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV1Codec.computeBatchHash(batchPtr, _length);
-            _batchIndex = BatchHeaderV1Codec.batchIndex(batchPtr);
+            _batchIndex = BatchHeaderV1Codec.getBatchIndex(batchPtr);
         } else {
             revert ErrorInvalidBatchHeaderVersion();
         }
@@ -725,7 +725,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         if (committedBatches[_batchIndex] != _batchHash && finalizedStateRoots[0] != bytes32(0)) {
             revert ErrorIncorrectBatchHash();
         }
-        _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.totalL1MessagePopped(batchPtr);
+        _totalL1MessagesPoppedOverall = BatchHeaderV0Codec.getTotalL1MessagePopped(batchPtr);
     }
 
     /// @dev Internal function to commit a chunk with version 0.
@@ -759,7 +759,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             for (uint256 i = 0; i < _numBlocks; i++) {
                 dataPtr = ChunkCodecV0.copyBlockContext(chunkPtr, dataPtr, i);
                 uint256 blockPtr = chunkPtr + 1 + i * ChunkCodecV0.BLOCK_CONTEXT_LENGTH;
-                uint256 _numTransactionsInBlock = ChunkCodecV0.numTransactions(blockPtr);
+                uint256 _numTransactionsInBlock = ChunkCodecV0.getNumTransactions(blockPtr);
                 unchecked {
                     _totalTransactionsInChunk += _numTransactionsInBlock;
                 }
@@ -772,11 +772,11 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // It is used to compute the actual number of transactions in chunk.
         uint256 txHashStartDataPtr = dataPtr;
         // concatenate tx hashes
-        uint256 l2TxPtr = ChunkCodecV0.l2TxPtr(chunkPtr, _numBlocks);
+        uint256 l2TxPtr = ChunkCodecV0.getL2TxPtr(chunkPtr, _numBlocks);
         chunkPtr += 1;
         while (_numBlocks > 0) {
             // concatenate l1 message hashes
-            uint256 _numL1MessagesInBlock = ChunkCodecV0.numL1Messages(chunkPtr);
+            uint256 _numL1MessagesInBlock = ChunkCodecV0.getNumL1Messages(chunkPtr);
             dataPtr = _loadL1MessageHashes(
                 dataPtr,
                 _numL1MessagesInBlock,
@@ -786,7 +786,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             );
 
             // concatenate l2 transaction hashes
-            uint256 _numTransactionsInBlock = ChunkCodecV0.numTransactions(chunkPtr);
+            uint256 _numTransactionsInBlock = ChunkCodecV0.getNumTransactions(chunkPtr);
             if (_numTransactionsInBlock < _numL1MessagesInBlock) revert ErrorNumTxsLessThanNumL1Msgs();
             for (uint256 j = _numL1MessagesInBlock; j < _numTransactionsInBlock; j++) {
                 bytes32 txHash;
@@ -850,7 +850,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         for (uint256 i = 0; i < _numBlocks; i++) {
             dataPtr = ChunkCodecV1.copyBlockContext(chunkPtr, dataPtr, i);
             uint256 blockPtr = chunkPtr + 1 + i * ChunkCodecV1.BLOCK_CONTEXT_LENGTH;
-            uint256 _numL1MessagesInBlock = ChunkCodecV1.numL1Messages(blockPtr);
+            uint256 _numL1MessagesInBlock = ChunkCodecV1.getNumL1Messages(blockPtr);
             unchecked {
                 _totalNumL1MessagesInChunk += _numL1MessagesInBlock;
             }
@@ -865,7 +865,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // concatenate tx hashes
         while (_numBlocks > 0) {
             // concatenate l1 message hashes
-            uint256 _numL1MessagesInBlock = ChunkCodecV1.numL1Messages(chunkPtr);
+            uint256 _numL1MessagesInBlock = ChunkCodecV1.getNumL1Messages(chunkPtr);
             uint256 startPtr = dataPtr;
             dataPtr = _loadL1MessageHashes(
                 dataPtr,
@@ -874,7 +874,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedOverall,
                 _skippedL1MessageBitmap
             );
-            uint256 _numTransactionsInBlock = ChunkCodecV1.numTransactions(chunkPtr);
+            uint256 _numTransactionsInBlock = ChunkCodecV1.getNumTransactions(chunkPtr);
             if (_numTransactionsInBlock < _numL1MessagesInBlock) revert ErrorNumTxsLessThanNumL1Msgs();
             unchecked {
                 _totalTransactionsInChunk += dataPtr - startPtr; // number of non-skipped l1 messages
