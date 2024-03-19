@@ -66,10 +66,6 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	batchOrm := orm.NewBatch(db)
@@ -97,10 +93,6 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	batchOrm := orm.NewBatch(db)
@@ -149,10 +141,6 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	batchOrm := orm.NewBatch(db)
@@ -192,10 +180,6 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-			StartChunkIndex:            0,
-			StartChunkHash:             chunkHash1,
-			EndChunkIndex:              1,
-			EndChunkHash:               chunkHash2,
 		}
 
 		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
@@ -251,10 +235,6 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-			StartChunkIndex:            0,
-			StartChunkHash:             chunkHash1,
-			EndChunkIndex:              1,
-			EndChunkHash:               chunkHash2,
 		}
 
 		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
@@ -298,10 +278,6 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              0,
-		EndChunkHash:               chunkHash1,
 	}
 
 	batchOrm := orm.NewBatch(db)
@@ -313,10 +289,6 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		TotalL1MessagePoppedBefore: batch1.TotalL1MessagePoppedBefore,
 		ParentBatchHash:            common.HexToHash(dbBatch1.Hash),
 		Chunks:                     []*encoding.Chunk{chunk2},
-		StartChunkIndex:            1,
-		StartChunkHash:             chunkHash2,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2)
@@ -473,10 +445,6 @@ func testGetBatchStatusByIndex(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	batchOrm := orm.NewBatch(db)

@@ -234,10 +234,6 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 				"maxL1CommitGasPerBatch", p.maxL1CommitGasPerBatch)
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
-			batch.StartChunkIndex = dbChunks[0].Index
-			batch.EndChunkIndex = dbChunks[batch.NumChunks()-1].Index
-			batch.StartChunkHash = common.HexToHash(dbChunks[0].Hash)
-			batch.EndChunkHash = common.HexToHash(dbChunks[batch.NumChunks()-1].Hash)
 
 			totalL1CommitCalldataSize, err := codecv0.EstimateBatchL1CommitCalldataSize(&batch)
 			if err != nil {
@@ -285,11 +281,6 @@ func (p *BatchProposer) proposeBatch() (*encoding.Batch, error) {
 		p.totalL1CommitCalldataSize.Set(float64(totalL1CommitCalldataSize))
 		p.totalL1CommitGas.Set(float64(totalL1CommitGas))
 		p.batchChunksNum.Set(float64(batch.NumChunks()))
-
-		batch.StartChunkIndex = dbChunks[0].Index
-		batch.EndChunkIndex = dbChunks[batch.NumChunks()-1].Index
-		batch.StartChunkHash = common.HexToHash(dbChunks[0].Hash)
-		batch.EndChunkHash = common.HexToHash(dbChunks[batch.NumChunks()-1].Hash)
 
 		return &batch, nil
 	}
