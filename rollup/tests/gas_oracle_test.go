@@ -12,7 +12,6 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
 
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"
@@ -90,20 +89,11 @@ func testImportL2GasPrice(t *testing.T) {
 			},
 		},
 	}
-	daChunk, err := codecv0.NewDAChunk(chunk, 0)
-	assert.NoError(t, err)
-	chunkHash, err := daChunk.Hash()
-	assert.NoError(t, err)
-
 	batch := &encoding.Batch{
 		Index:                      0,
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash,
-		EndChunkIndex:              0,
-		EndChunkHash:               chunkHash,
 	}
 
 	batchOrm := orm.NewBatch(db)

@@ -27,12 +27,6 @@ type Batch struct {
 	TotalL1MessagePoppedBefore uint64
 	ParentBatchHash            common.Hash
 	Chunks                     []*Chunk
-
-	// Only used in updating db info.
-	StartChunkIndex uint64
-	EndChunkIndex   uint64
-	StartChunkHash  common.Hash
-	EndChunkHash    common.Hash
 }
 
 // NumL1Messages returns the number of L1 messages in this block.

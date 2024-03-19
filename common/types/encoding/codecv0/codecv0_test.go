@@ -99,10 +99,6 @@ func TestCodecV0(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		EndChunkIndex:              0,
-		StartChunkHash:             daChunkHash,
-		EndChunkHash:               daChunkHash,
 	}
 
 	batchL1CommitCalldataSize, err := EstimateBatchL1CommitCalldataSize(batch)
@@ -154,10 +150,6 @@ func TestCodecV0(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		EndChunkIndex:              0,
-		StartChunkHash:             daChunkHash,
-		EndChunkHash:               daChunkHash,
 	}
 
 	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
@@ -211,10 +203,6 @@ func TestCodecV0(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		EndChunkIndex:              0,
-		StartChunkHash:             daChunkHash,
-		EndChunkHash:               daChunkHash,
 	}
 
 	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
@@ -276,20 +264,11 @@ func TestCodecV0(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 61, len(chunkBytes2))
 
-	daChunk1Hash, err := daChunk1.Hash()
-	assert.NoError(t, err)
-	daChunk2Hash, err := daChunk2.Hash()
-	assert.NoError(t, err)
-
 	batch = &encoding.Batch{
 		Index:                      1,
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		EndChunkIndex:              1,
-		StartChunkHash:             daChunk1Hash,
-		EndChunkHash:               daChunk2Hash,
 	}
 
 	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
@@ -343,10 +322,6 @@ func TestCodecV0(t *testing.T) {
 		TotalL1MessagePoppedBefore: 37,
 		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		EndChunkIndex:              0,
-		StartChunkHash:             daChunkHash,
-		EndChunkHash:               daChunkHash,
 	}
 
 	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
@@ -400,10 +375,6 @@ func TestCodecV0(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		EndChunkIndex:              0,
-		StartChunkHash:             daChunkHash,
-		EndChunkHash:               daChunkHash,
 	}
 
 	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
@@ -457,10 +428,6 @@ func TestCodecV0(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		EndChunkIndex:              0,
-		StartChunkHash:             daChunkHash,
-		EndChunkHash:               daChunkHash,
 	}
 
 	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
@@ -514,10 +481,6 @@ func TestCodecV0(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            parentBatchHash,
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		EndChunkIndex:              0,
-		StartChunkHash:             daChunkHash,
-		EndChunkHash:               daChunkHash,
 	}
 
 	batchL1CommitCalldataSize, err = EstimateBatchL1CommitCalldataSize(batch)
