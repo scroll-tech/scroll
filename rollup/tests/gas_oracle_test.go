@@ -11,6 +11,7 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"
@@ -28,6 +29,7 @@ func testImportL1GasPrice(t *testing.T) {
 	// Create L1Relayer
 	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, relayer.ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
+	defer l1Relayer.StopSenders()
 
 	// Create L1Watcher
 	startHeight, err := l1Client.BlockNumber(context.Background())
@@ -69,10 +71,11 @@ func testImportL2GasPrice(t *testing.T) {
 	l2Cfg := rollupApp.Config.L2Config
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, relayer.ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// add fake chunk
-	chunk := &types.Chunk{
-		Blocks: []*types.WrappedBlock{
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{
 			{
 				Header: &gethTypes.Header{
 					Number:     big.NewInt(1),
@@ -86,31 +89,29 @@ func testImportL2GasPrice(t *testing.T) {
 			},
 		},
 	}
-	chunkHash, err := chunk.Hash(0)
-	assert.NoError(t, err)
-
-	batchMeta := &types.BatchMeta{
-		StartChunkIndex: 0,
-		StartChunkHash:  chunkHash.Hex(),
-		EndChunkIndex:   0,
-		EndChunkHash:    chunkHash.Hex(),
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
 	}
+
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), []*types.Chunk{chunk}, batchMeta)
+	_, err = batchOrm.InsertBatch(context.Background(), batch)
 	assert.NoError(t, err)
 
 	// check db status
-	batch, err := batchOrm.GetLatestBatch(context.Background())
+	dbBatch, err := batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, batch)
-	assert.Empty(t, batch.OracleTxHash)
-	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOraclePending)
+	assert.Empty(t, dbBatch.OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(dbBatch.OracleStatus), types.GasOraclePending)
 
 	// relay gas price
 	l2Relayer.ProcessGasPriceOracle()
-	batch, err = batchOrm.GetLatestBatch(context.Background())
+	dbBatch, err = batchOrm.GetLatestBatch(context.Background())
 	assert.NoError(t, err)
 	assert.NotNil(t, batch)
-	assert.NotEmpty(t, batch.OracleTxHash)
-	assert.Equal(t, types.GasOracleStatus(batch.OracleStatus), types.GasOracleImporting)
+	assert.NotEmpty(t, dbBatch.OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(dbBatch.OracleStatus), types.GasOracleImporting)
 }

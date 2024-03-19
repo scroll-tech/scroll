@@ -2,12 +2,15 @@ package watcher
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -18,8 +21,9 @@ func testBatchProposerLimits(t *testing.T) {
 		name                       string
 		maxChunkNum                uint64
 		maxL1CommitGas             uint64
-		maxL1CommitCalldataSize    uint32
+		maxL1CommitCalldataSize    uint64
 		batchTimeoutSec            uint64
+		forkBlock                  *big.Int
 		expectedBatchesLen         int
 		expectedChunksInFirstBatch uint64 // only be checked when expectedBatchesLen > 0
 	}{
@@ -83,6 +87,16 @@ func testBatchProposerLimits(t *testing.T) {
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 1,
 		},
+		{
+			name:                       "ForkBlockReached",
+			maxChunkNum:                10,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			batchTimeoutSec:            1000000000000,
+			expectedBatchesLen:         1,
+			expectedChunksInFirstBatch: 1,
+			forkBlock:                  big.NewInt(3),
+		},
 	}
 
 	for _, tt := range tests {
@@ -91,7 +105,7 @@ func testBatchProposerLimits(t *testing.T) {
 			defer database.CloseDB(db)
 
 			l2BlockOrm := orm.NewL2Block(db)
-			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 			assert.NoError(t, err)
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
@@ -102,6 +116,8 @@ func testBatchProposerLimits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       1000000,
 				ChunkTimeoutSec:                 300,
 				GasCostIncreaseMultiplier:       1.2,
+			}, &params.ChainConfig{
+				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
@@ -110,9 +126,9 @@ func testBatchProposerLimits(t *testing.T) {
 			chunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 1)
 			assert.NoError(t, err)
 			assert.Equal(t, uint64(6042), chunks[0].TotalL1CommitGas)
-			assert.Equal(t, uint32(298), chunks[0].TotalL1CommitCalldataSize)
-			assert.Equal(t, uint64(94586), chunks[1].TotalL1CommitGas)
-			assert.Equal(t, uint32(5735), chunks[1].TotalL1CommitCalldataSize)
+			assert.Equal(t, uint64(298), chunks[0].TotalL1CommitCalldataSize)
+			assert.Equal(t, uint64(94618), chunks[1].TotalL1CommitGas)
+			assert.Equal(t, uint64(5737), chunks[1].TotalL1CommitCalldataSize)
 
 			bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 				MaxChunkNumPerBatch:             tt.maxChunkNum,
@@ -120,6 +136,8 @@ func testBatchProposerLimits(t *testing.T) {
 				MaxL1CommitCalldataSizePerBatch: tt.maxL1CommitCalldataSize,
 				BatchTimeoutSec:                 tt.batchTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
+			}, &params.ChainConfig{
+				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			bp.TryProposeBatch()
 
@@ -150,7 +168,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	defer database.CloseDB(db)
 
 	l2BlockOrm := orm.NewL2Block(db)
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
@@ -161,7 +179,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		MaxRowConsumptionPerChunk:       1000000,
 		ChunkTimeoutSec:                 300,
 		GasCostIncreaseMultiplier:       1.2,
-	}, db, nil)
+	}, &params.ChainConfig{}, db, nil)
 	cp.TryProposeChunk() // chunk1 contains block1
 	cp.TryProposeChunk() // chunk2 contains block2
 
@@ -169,9 +187,9 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	chunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(6042), chunks[0].TotalL1CommitGas)
-	assert.Equal(t, uint32(298), chunks[0].TotalL1CommitCalldataSize)
-	assert.Equal(t, uint64(94586), chunks[1].TotalL1CommitGas)
-	assert.Equal(t, uint32(5735), chunks[1].TotalL1CommitCalldataSize)
+	assert.Equal(t, uint64(298), chunks[0].TotalL1CommitCalldataSize)
+	assert.Equal(t, uint64(94618), chunks[1].TotalL1CommitGas)
+	assert.Equal(t, uint64(5737), chunks[1].TotalL1CommitCalldataSize)
 
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		MaxChunkNumPerBatch:             10,
@@ -179,7 +197,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1.2,
-	}, db, nil)
+	}, &params.ChainConfig{}, db, nil)
 	bp.TryProposeBatch()
 
 	batchOrm := orm.NewBatch(db)
@@ -199,6 +217,6 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(chunk.ProvingStatus))
 	}
 
-	assert.Equal(t, uint64(254562), batches[0].TotalL1CommitGas)
-	assert.Equal(t, uint32(6033), batches[0].TotalL1CommitCalldataSize)
+	assert.Equal(t, uint64(258383), batches[0].TotalL1CommitGas)
+	assert.Equal(t, uint64(6035), batches[0].TotalL1CommitCalldataSize)
 }

@@ -11,6 +11,8 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
@@ -28,7 +30,7 @@ type Chunk struct {
 	EndBlockHash                 string `json:"end_block_hash" gorm:"column:end_block_hash"`
 	StartBlockTime               uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
-	TotalL1MessagesPoppedInChunk uint32 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
+	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
 	ParentChunkHash              string `json:"parent_chunk_hash" gorm:"column:parent_chunk_hash"`
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
@@ -48,8 +50,8 @@ type Chunk struct {
 
 	// metadata
 	TotalL2TxGas              uint64         `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
-	TotalL2TxNum              uint32         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
-	TotalL1CommitCalldataSize uint32         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
+	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
+	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size"`
 	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas"`
 	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt                 time.Time      `json:"updated_at" gorm:"column:updated_at"`
@@ -151,15 +153,18 @@ func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*
 	return proofs, nil
 }
 
-// GetLatestChunk retrieves the latest chunk from the database.
-func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
+// getLatestChunk retrieves the latest chunk from the database.
+func (o *Chunk) getLatestChunk(ctx context.Context) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Order("index desc")
 
 	var latestChunk Chunk
 	if err := db.First(&latestChunk).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.GetLatestChunk error: %w", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Chunk.getLatestChunk error: %w", err)
 	}
 	return &latestChunk, nil
 }
@@ -219,7 +224,7 @@ func (o *Chunk) GetAttemptsByHash(ctx context.Context, hash string) (int16, int1
 
 // InsertChunk inserts a new chunk into the database.
 // for unit test
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -228,54 +233,61 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *types.Chunk, dbTX ...*go
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
-	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+	parentChunk, err := o.getLatestChunk(ctx)
+	if err != nil {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
 	// if parentChunk==nil then err==gorm.ErrRecordNotFound, which means there's
-	// not chunk record in the db, we then use default empty values for the creating chunk;
-	// if parentChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
+	// no chunk record in the db, we then use default empty values for the creating chunk;
+	// if parentChunk!=nil then err==nil, then we fill the parentChunk-related data into the creating chunk
 	if parentChunk != nil {
 		chunkIndex = parentChunk.Index + 1
-		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + uint64(parentChunk.TotalL1MessagesPoppedInChunk)
+		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
 		parentChunkHash = parentChunk.Hash
 		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
-	hash, err := chunk.Hash(totalL1MessagePoppedBefore)
+	daChunk, err := codecv0.NewDAChunk(chunk, totalL1MessagePoppedBefore)
 	if err != nil {
-		log.Error("failed to get chunk hash", "err", err)
+		log.Error("failed to initialize new DA chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
-	var totalL2TxGas uint64
-	var totalL2TxNum uint64
-	var totalL1CommitCalldataSize uint64
-	var totalL1CommitGas uint64
-	for _, block := range chunk.Blocks {
-		totalL2TxGas += block.Header.GasUsed
-		totalL2TxNum += block.NumL2Transactions()
-		totalL1CommitCalldataSize += block.EstimateL1CommitCalldataSize()
-		totalL1CommitGas += block.EstimateL1CommitGas()
+	daChunkHash, err := daChunk.Hash()
+	if err != nil {
+		log.Error("failed to get DA chunk hash", "err", err)
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
+	}
+
+	totalL1CommitCalldataSize, err := codecv0.EstimateChunkL1CommitCalldataSize(chunk)
+	if err != nil {
+		log.Error("failed to estimate chunk L1 commit calldata size", "err", err)
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
+	}
+
+	totalL1CommitGas, err := codecv0.EstimateChunkL1CommitGas(chunk)
+	if err != nil {
+		log.Error("failed to estimate chunk L1 commit gas", "err", err)
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
 	numBlocks := len(chunk.Blocks)
 	newChunk := Chunk{
 		Index:                        chunkIndex,
-		Hash:                         hash.Hex(),
+		Hash:                         daChunkHash.Hex(),
 		StartBlockNumber:             chunk.Blocks[0].Header.Number.Uint64(),
 		StartBlockHash:               chunk.Blocks[0].Header.Hash().Hex(),
 		EndBlockNumber:               chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
 		EndBlockHash:                 chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
-		TotalL2TxGas:                 totalL2TxGas,
-		TotalL2TxNum:                 uint32(totalL2TxNum),
-		TotalL1CommitCalldataSize:    uint32(totalL1CommitCalldataSize),
+		TotalL2TxGas:                 chunk.L2GasUsed(),
+		TotalL2TxNum:                 chunk.NumL2Transactions(),
+		TotalL1CommitCalldataSize:    totalL1CommitCalldataSize,
 		TotalL1CommitGas:             totalL1CommitGas,
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
-		TotalL1MessagesPoppedInChunk: uint32(chunk.NumL1Messages(totalL1MessagePoppedBefore)),
+		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),
 		ParentChunkHash:              parentChunkHash,
 		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
 		ParentChunkStateRoot:         parentChunkStateRoot,

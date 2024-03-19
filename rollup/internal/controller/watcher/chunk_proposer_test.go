@@ -2,12 +2,14 @@ package watcher
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -22,6 +24,7 @@ func testChunkProposerLimits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
+		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
@@ -112,7 +115,7 @@ func testChunkProposerLimits(t *testing.T) {
 			name:                       "MaxL1CommitGasPerChunkIsFirstBlock",
 			maxBlockNum:                10,
 			maxTxNum:                   10000,
-			maxL1CommitGas:             60,
+			maxL1CommitGas:             7250,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
 			chunkTimeoutSec:            1000000000000,
@@ -141,6 +144,18 @@ func testChunkProposerLimits(t *testing.T) {
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
+		{
+			name:                       "ForkBlockReached",
+			maxBlockNum:                100,
+			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+			forkBlock:                  big.NewInt(2),
+		},
 	}
 
 	for _, tt := range tests {
@@ -149,7 +164,7 @@ func testChunkProposerLimits(t *testing.T) {
 			defer database.CloseDB(db)
 
 			l2BlockOrm := orm.NewL2Block(db)
-			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*types.WrappedBlock{wrappedBlock1, wrappedBlock2})
+			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 			assert.NoError(t, err)
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
@@ -160,6 +175,8 @@ func testChunkProposerLimits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
+			}, &params.ChainConfig{
+				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			cp.TryProposeChunk()
 
@@ -170,11 +187,12 @@ func testChunkProposerLimits(t *testing.T) {
 
 			if len(chunks) > 0 {
 				blockOrm := orm.NewL2Block(db)
-				blocks, err := blockOrm.GetL2Blocks(context.Background(), map[string]interface{}{}, []string{"number ASC"}, tt.expectedBlocksInFirstChunk)
+				chunkHashes, err := blockOrm.GetChunkHashes(context.Background(), tt.expectedBlocksInFirstChunk)
 				assert.NoError(t, err)
-				assert.Len(t, blocks, tt.expectedBlocksInFirstChunk)
-				for _, block := range blocks {
-					assert.Equal(t, chunks[0].Hash, block.ChunkHash)
+				assert.Len(t, chunkHashes, tt.expectedBlocksInFirstChunk)
+				firstChunkHash := chunks[0].Hash
+				for _, chunkHash := range chunkHashes {
+					assert.Equal(t, firstChunkHash, chunkHash)
 				}
 			}
 		})

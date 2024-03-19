@@ -78,12 +78,18 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, db, registry)
+	genesisPath := ctx.String(utils.Genesis.Name)
+	genesis, err := config.ReadGenesis(genesisPath)
+	if err != nil {
+		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
+	}
+
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, genesis.Config, db, registry)
 	if err != nil {
 		log.Crit("failed to create chunkProposer", "config file", cfgFile, "error", err)
 	}
 
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, db, registry)
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, genesis.Config, db, registry)
 	if err != nil {
 		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
 	}

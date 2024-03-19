@@ -34,12 +34,13 @@ type BatchProverTask struct {
 func NewBatchProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
-			vk:            vk,
-			db:            db,
-			cfg:           cfg,
-			chunkOrm:      orm.NewChunk(db),
-			batchOrm:      orm.NewBatch(db),
-			proverTaskOrm: orm.NewProverTask(db),
+			vk:                 vk,
+			db:                 db,
+			cfg:                cfg,
+			chunkOrm:           orm.NewChunk(db),
+			batchOrm:           orm.NewBatch(db),
+			proverTaskOrm:      orm.NewProverTask(db),
+			proverBlockListOrm: orm.NewProverBlockList(db),
 		},
 		batchAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_batch_attempts_exceed_total",

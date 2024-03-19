@@ -3,11 +3,11 @@ package relayer
 import (
 	"context"
 	"errors"
-	"math/big"
 	"testing"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -38,6 +38,7 @@ func testCreateNewL1Relayer(t *testing.T) {
 	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
 }
 
 func testL1RelayerGasOracleConfirm(t *testing.T) {
@@ -58,6 +59,7 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	defer cancel()
 	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
+	defer l1Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	l1Relayer.gasOracleSender.SendConfirmation(&sender.Confirmation{
@@ -91,6 +93,7 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, l1Relayer)
+	defer l1Relayer.StopSenders()
 
 	var l1BlockOrm *orm.L1Block
 	convey.Convey("GetLatestL1BlockHeight failure", t, func() {
@@ -151,13 +154,13 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("send transaction failure", t, func() {
 		targetErr := errors.New("send transaction failure")
-		patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, []byte, *kzg4844.Blob, uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
 		l1Relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, *big.Int, []byte, uint64) (hash common.Hash, err error) {
+	patchGuard.ApplyMethodFunc(l1Relayer.gasOracleSender, "SendTransaction", func(string, *common.Address, []byte, *kzg4844.Blob, uint64) (hash common.Hash, err error) {
 		return common.Hash{}, nil
 	})
 

@@ -18,6 +18,8 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 	"scroll-tech/common/utils"
 
 	bridgeAbi "scroll-tech/rollup/abi"
@@ -176,8 +178,8 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
 
-	chunk := &types.Chunk{
-		Blocks: []*types.WrappedBlock{{
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{{
 			Header:         genesis,
 			Transactions:   nil,
 			WithdrawRoot:   common.Hash{},
@@ -196,33 +198,34 @@ func (r *Layer2Relayer) initializeGenesis() error {
 			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
 		}
 
-		batchMeta := &types.BatchMeta{
-			StartChunkIndex: 0,
-			StartChunkHash:  dbChunk.Hash,
-			EndChunkIndex:   0,
-			EndChunkHash:    dbChunk.Hash,
+		batch := &encoding.Batch{
+			Index:                      0,
+			TotalL1MessagePoppedBefore: 0,
+			ParentBatchHash:            common.Hash{},
+			Chunks:                     []*encoding.Chunk{chunk},
 		}
-		var batch *orm.Batch
-		batch, err = r.batchOrm.InsertBatch(r.ctx, []*types.Chunk{chunk}, batchMeta, dbTX)
+
+		var dbBatch *orm.Batch
+		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
 
-		if err = r.chunkOrm.UpdateBatchHashInRange(r.ctx, 0, 0, batch.Hash, dbTX); err != nil {
+		if err = r.chunkOrm.UpdateBatchHashInRange(r.ctx, 0, 0, dbBatch.Hash, dbTX); err != nil {
 			return fmt.Errorf("failed to update batch hash for chunks: %v", err)
 		}
 
-		if err = r.batchOrm.UpdateProvingStatus(r.ctx, batch.Hash, types.ProvingTaskVerified, dbTX); err != nil {
+		if err = r.batchOrm.UpdateProvingStatus(r.ctx, dbBatch.Hash, types.ProvingTaskVerified, dbTX); err != nil {
 			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
 		}
 
-		if err = r.batchOrm.UpdateRollupStatus(r.ctx, batch.Hash, types.RollupFinalized, dbTX); err != nil {
+		if err = r.batchOrm.UpdateRollupStatus(r.ctx, dbBatch.Hash, types.RollupFinalized, dbTX); err != nil {
 			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
 		}
 
 		// commit genesis batch on L1
 		// note: we do this inside the DB transaction so that we can revert all DB changes if this step fails
-		return r.commitGenesisBatch(batch.Hash, batch.BatchHeader, common.HexToHash(batch.StateRoot))
+		return r.commitGenesisBatch(dbBatch.Hash, dbBatch.BatchHeader, common.HexToHash(dbBatch.StateRoot))
 	})
 
 	if err != nil {
@@ -242,7 +245,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 	}
 
 	// submit genesis batch to L1 rollup contract
-	txHash, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, 0)
+	txHash, err := r.commitSender.SendTransaction(batchHash, &r.cfg.RollupContractAddress, calldata, nil, 0)
 	if err != nil {
 		return fmt.Errorf("failed to send import genesis batch tx to L1, error: %v", err)
 	}
@@ -306,7 +309,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
+			hash, err := r.gasOracleSender.SendTransaction(batch.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil, 0)
 			if err != nil {
 				log.Error("Failed to send setL2BaseFee tx to layer2 ", "batch.Hash", batch.Hash, "err", err)
 				return
@@ -335,9 +338,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	for _, batch := range batches {
 		r.metrics.rollupL2RelayerProcessPendingBatchTotal.Inc()
 		// get current header and parent header.
-		currentBatchHeader, err := types.DecodeBatchHeader(batch.BatchHeader)
+		daBatch, err := codecv0.NewDABatchFromBytes(batch.BatchHeader)
 		if err != nil {
-			log.Error("Failed to decode batch header", "index", batch.Index, "error", err)
+			log.Error("Failed to initialize new DA batch from bytes", "index", batch.Index, "hash", batch.Hash, "err", err)
 			return
 		}
 		parentBatch := &orm.Batch{}
@@ -355,40 +358,42 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			}
 		}
 
-		// get the chunks for the batch
-		startChunkIndex := batch.StartChunkIndex
-		endChunkIndex := batch.EndChunkIndex
-		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, startChunkIndex, endChunkIndex)
+		// get the metadata of chunks for the batch
+		dbChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, batch.StartChunkIndex, batch.EndChunkIndex)
 		if err != nil {
 			log.Error("Failed to fetch chunks",
-				"start index", startChunkIndex,
-				"end index", endChunkIndex, "error", err)
+				"start index", batch.StartChunkIndex,
+				"end index", batch.EndChunkIndex, "error", err)
 			return
 		}
 
 		encodedChunks := make([][]byte, len(dbChunks))
 		for i, c := range dbChunks {
-			var wrappedBlocks []*types.WrappedBlock
-			wrappedBlocks, err = r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+			var blocks []*encoding.Block
+			blocks, err = r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
-				log.Error("Failed to fetch wrapped blocks",
-					"start number", c.StartBlockNumber,
-					"end number", c.EndBlockNumber, "error", err)
+				log.Error("Failed to fetch blocks", "start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
 				return
 			}
-			chunk := &types.Chunk{
-				Blocks: wrappedBlocks,
+			chunk := &encoding.Chunk{
+				Blocks: blocks,
 			}
-			var chunkBytes []byte
-			chunkBytes, err = chunk.Encode(c.TotalL1MessagesPoppedBefore)
+			var daChunk *codecv0.DAChunk
+			daChunk, err = codecv0.NewDAChunk(chunk, c.TotalL1MessagesPoppedBefore)
 			if err != nil {
-				log.Error("Failed to encode chunk", "error", err)
+				log.Error("Failed to initialize new DA chunk", "start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
 				return
 			}
-			encodedChunks[i] = chunkBytes
+			var daChunkBytes []byte
+			daChunkBytes, err = daChunk.Encode()
+			if err != nil {
+				log.Error("Failed to encode DA chunk", "start number", c.StartBlockNumber, "end number", c.EndBlockNumber, "error", err)
+				return
+			}
+			encodedChunks[i] = daChunkBytes
 		}
 
-		calldata, err := r.l1RollupABI.Pack("commitBatch", currentBatchHeader.Version(), parentBatch.BatchHeader, encodedChunks, currentBatchHeader.SkippedL1MessageBitmap())
+		calldata, err := r.l1RollupABI.Pack("commitBatch", daBatch.Version, parentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap)
 		if err != nil {
 			log.Error("Failed to pack commitBatch", "index", batch.Index, "error", err)
 			return
@@ -401,7 +406,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			fallbackGasLimit = 0
 			log.Warn("Batch commit previously failed, using eth_estimateGas for the re-submission", "hash", batch.Hash)
 		}
-		txHash, err := r.commitSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, big.NewInt(0), calldata, fallbackGasLimit)
+		txHash, err := r.commitSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, calldata, nil, fallbackGasLimit)
 		if err != nil {
 			log.Error(
 				"Failed to send commitBatch tx to layer1",
@@ -566,7 +571,7 @@ func (r *Layer2Relayer) finalizeBatch(batch *orm.Batch, withProof bool) error {
 	}
 
 	// add suffix `-finalize` to avoid duplication with commit tx in unit tests
-	txHash, err := r.finalizeSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, big.NewInt(0), txCalldata, 0)
+	txHash, err := r.finalizeSender.SendTransaction(batch.Hash, &r.cfg.RollupContractAddress, txCalldata, nil, 0)
 	finalizeTxHash := &txHash
 	if err != nil {
 		log.Error(
@@ -721,5 +726,21 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 		case cfm := <-r.finalizeSender.ConfirmChan():
 			r.handleConfirmation(cfm)
 		}
+	}
+}
+
+// StopSenders stops the senders of the rollup-relayer to prevent querying the removed pending_transaction table in unit tests.
+// for unit test
+func (r *Layer2Relayer) StopSenders() {
+	if r.gasOracleSender != nil {
+		r.gasOracleSender.Stop()
+	}
+
+	if r.commitSender != nil {
+		r.commitSender.Stop()
+	}
+
+	if r.finalizeSender != nil {
+		r.finalizeSender.Stop()
 	}
 }

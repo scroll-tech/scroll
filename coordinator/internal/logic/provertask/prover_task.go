@@ -24,10 +24,11 @@ type BaseProverTask struct {
 	db  *gorm.DB
 	vk  string
 
-	batchOrm      *orm.Batch
-	chunkOrm      *orm.Chunk
-	blockOrm      *orm.L2Block
-	proverTaskOrm *orm.ProverTask
+	batchOrm           *orm.Batch
+	chunkOrm           *orm.Chunk
+	blockOrm           *orm.L2Block
+	proverTaskOrm      *orm.ProverTask
+	proverBlockListOrm *orm.ProverBlockList
 }
 
 type proverTaskContext struct {
@@ -58,6 +59,10 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 	}
 	ptc.ProverVersion = proverVersion.(string)
 
+	if !version.CheckScrollRepoVersion(proverVersion.(string), b.cfg.ProverManager.MinProverVersion) {
+		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", b.cfg.ProverManager.MinProverVersion, proverVersion.(string))
+	}
+
 	// if the prover has a different vk
 	if getTaskParameter.VK != b.vk {
 		// if the prover reports a different prover version
@@ -68,13 +73,21 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
 	}
 
+	isBlocked, err := b.proverBlockListOrm.IsPublicKeyBlocked(ctx, publicKey.(string))
+	if err != nil {
+		return nil, fmt.Errorf("failed to check whether the public key %s is blocked before assigning a chunk task, err: %w, proverName: %s, proverVersion: %s", publicKey, err, proverName, proverVersion)
+	}
+	if isBlocked {
+		return nil, fmt.Errorf("public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
+	}
+
 	isAssigned, err := b.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if prover is assigned a task: %w", err)
+		return nil, fmt.Errorf("failed to check if prover %s is assigned a task, err: %w", publicKey.(string), err)
 	}
 
 	if isAssigned {
-		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task", publicKey)
+		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
 	}
 	return &ptc, nil
 }
