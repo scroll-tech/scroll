@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 
@@ -146,7 +145,7 @@ func (i *ImgGeth) Stop() error {
 		i.id = id
 	}
 	// remove the stopped container.
-	return cli.ContainerRemove(ctx, i.id, types.ContainerRemoveOptions{})
+	return cli.ContainerRemove(ctx, i.id, container.RemoveOptions{})
 }
 
 func (i *ImgGeth) params() []string {

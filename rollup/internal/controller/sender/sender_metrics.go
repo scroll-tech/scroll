@@ -17,6 +17,7 @@ type senderMetrics struct {
 	currentGasFeeCap                   *prometheus.GaugeVec
 	currentGasTipCap                   *prometheus.GaugeVec
 	currentGasPrice                    *prometheus.GaugeVec
+	currentBlobGasFeeCap               *prometheus.GaugeVec
 	currentGasLimit                    *prometheus.GaugeVec
 }
 
@@ -59,6 +60,10 @@ func initSenderMetrics(reg prometheus.Registerer) *senderMetrics {
 			currentGasPrice: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 				Name: "rollup_sender_gas_price_cap",
 				Help: "The gas price of current transaction.",
+			}, []string{"service", "name"}),
+			currentBlobGasFeeCap: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
+				Name: "rollup_sender_blob_gas_fee_cap",
+				Help: "The blob gas fee cap of current transaction.",
 			}, []string{"service", "name"}),
 			currentGasLimit: promauto.With(reg).NewGaugeVec(prometheus.GaugeOpts{
 				Name: "rollup_sender_gas_limit",
