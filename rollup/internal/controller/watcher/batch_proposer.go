@@ -118,7 +118,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 	}
 
 	// If BanachBlock is not set in chain's genesis config, banachForkHeight is inf,
-	// which means chunk proposer uses the codecv0 version by default.
+	// which means batch-proposer uses codecv0 by default.
 	// TODO: Must change it to real fork name.
 	if chainCfg.BanachBlock != nil {
 		p.banachForkHeight = chainCfg.BanachBlock.Uint64()
@@ -201,16 +201,14 @@ func (p *BatchProposer) proposeBatch() error {
 	}
 
 	var batch encoding.Batch
-	if parentDBBatch != nil { // TODO: remove this check, return error when nil.
-		batch.Index = parentDBBatch.Index + 1
-		var parentDABatch *codecv0.DABatch
-		parentDABatch, err = codecv0.NewDABatchFromBytes(parentDBBatch.BatchHeader)
-		if err != nil {
-			return err
-		}
-		batch.TotalL1MessagePoppedBefore = parentDABatch.TotalL1MessagePopped
-		batch.ParentBatchHash = common.HexToHash(parentDBBatch.Hash)
+	batch.Index = parentDBBatch.Index + 1
+	var parentDABatch *codecv0.DABatch
+	parentDABatch, err = codecv0.NewDABatchFromBytes(parentDBBatch.BatchHeader)
+	if err != nil {
+		return err
 	}
+	batch.TotalL1MessagePoppedBefore = parentDABatch.TotalL1MessagePopped
+	batch.ParentBatchHash = common.HexToHash(parentDBBatch.Hash)
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)

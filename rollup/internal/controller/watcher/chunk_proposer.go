@@ -131,7 +131,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 	}
 
 	// If BanachBlock is not set in chain's genesis config, banachForkHeight is inf,
-	// which means chunk proposer uses the codecv0 version by default.
+	// which means chunk-proposer uses codecv0 by default.
 	// TODO: Must change it to real fork name.
 	if chainCfg.BanachBlock != nil {
 		p.banachForkHeight = chainCfg.BanachBlock.Uint64()

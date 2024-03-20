@@ -38,18 +38,8 @@
         "escalate_multiple_num": 2,
         "escalate_multiple_den": 1,
         "max_gas_price": 1000000000000,
-        "tx_type": "DynamicFeeTx",
-        "check_pending_time": 1
-      },
-      "blob_sender_config": {
-        "endpoint": "https://rpc.ankr.com/eth",
-        "escalate_blocks": 1,
-        "confirmations": "0x6",
-        "escalate_multiple_num": 2,
-        "escalate_multiple_den": 1,
-        "max_gas_price": 1000000000000,
         "max_blob_gas_price": 10000000000000,
-        "tx_type": "BlobTx",
+        "tx_type": "DynamicFeeTx",
         "check_pending_time": 1
       },
       "gas_oracle_config": {
@@ -67,7 +57,6 @@
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
       "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
       "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",
-      "blob_commit_sender_private_key": "1616161616161616161616161616161616161616161616161616161616161616",
       "l1_commit_gas_limit_multiplier": 1.2
     },
     "chunk_proposer_config": {

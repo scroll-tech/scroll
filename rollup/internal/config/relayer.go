@@ -49,8 +49,6 @@ type RelayerConfig struct {
 	GasPriceOracleContractAddress common.Address `json:"gas_price_oracle_contract_address"`
 	// sender config
 	SenderConfig *SenderConfig `json:"sender_config"`
-	// blob sender config
-	BlobSenderConfig *SenderConfig `json:"blob_sender_config"`
 	// gas oracle config
 	GasOracleConfig *GasOracleConfig `json:"gas_oracle_config"`
 	// ChainMonitor config of monitoring service
@@ -58,10 +56,9 @@ type RelayerConfig struct {
 	// L1CommitGasLimitMultiplier multiplier for fallback gas limit in commitBatch txs
 	L1CommitGasLimitMultiplier float64 `json:"l1_commit_gas_limit_multiplier,omitempty"`
 	// The private key of the relayer
-	GasOracleSenderPrivateKey  *ecdsa.PrivateKey `json:"-"`
-	CommitSenderPrivateKey     *ecdsa.PrivateKey `json:"-"`
-	FinalizeSenderPrivateKey   *ecdsa.PrivateKey `json:"-"`
-	BlobCommitSenderPrivateKey *ecdsa.PrivateKey `json:"-"`
+	GasOracleSenderPrivateKey *ecdsa.PrivateKey `json:"-"`
+	CommitSenderPrivateKey    *ecdsa.PrivateKey `json:"-"`
+	FinalizeSenderPrivateKey  *ecdsa.PrivateKey `json:"-"`
 
 	// Indicates if bypass features specific to testing environments are enabled.
 	EnableTestEnvBypassFeatures bool `json:"enable_test_env_bypass_features"`
@@ -103,10 +100,9 @@ func convertAndCheck(key string, uniqueAddressesSet map[string]struct{}) (*ecdsa
 func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 	var privateKeysConfig struct {
 		relayerConfigAlias
-		GasOracleSenderPrivateKey  string `json:"gas_oracle_sender_private_key"`
-		CommitSenderPrivateKey     string `json:"commit_sender_private_key"`
-		FinalizeSenderPrivateKey   string `json:"finalize_sender_private_key"`
-		BlobCommitSenderPrivateKey string `json:"blob_commit_sender_private_key"`
+		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
+		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
+		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
 	}
 	var err error
 	if err = json.Unmarshal(input, &privateKeysConfig); err != nil {
@@ -132,11 +128,6 @@ func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
 		return fmt.Errorf("error converting and checking finalize sender private key: %w", err)
 	}
 
-	r.BlobCommitSenderPrivateKey, err = convertAndCheck(privateKeysConfig.BlobCommitSenderPrivateKey, uniqueAddressesSet)
-	if err != nil {
-		return fmt.Errorf("error converting and checking blob commit sender private key: %w", err)
-	}
-
 	return nil
 }
 
@@ -145,17 +136,15 @@ func (r *RelayerConfig) MarshalJSON() ([]byte, error) {
 	privateKeysConfig := struct {
 		relayerConfigAlias
 		// The private key of the relayer
-		GasOracleSenderPrivateKey  string `json:"gas_oracle_sender_private_key"`
-		CommitSenderPrivateKey     string `json:"commit_sender_private_key"`
-		FinalizeSenderPrivateKey   string `json:"finalize_sender_private_key"`
-		BlobCommitSenderPrivateKey string `json:"blob_commit_sender_private_key"`
+		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
+		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
+		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
 	}{}
 
 	privateKeysConfig.relayerConfigAlias = relayerConfigAlias(*r)
 	privateKeysConfig.GasOracleSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.GasOracleSenderPrivateKey))
 	privateKeysConfig.CommitSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.CommitSenderPrivateKey))
 	privateKeysConfig.FinalizeSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.FinalizeSenderPrivateKey))
-	privateKeysConfig.BlobCommitSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.BlobCommitSenderPrivateKey))
 
 	return json.Marshal(&privateKeysConfig)
 }

@@ -245,8 +245,6 @@ const (
 	SenderTypeL1GasOracle
 	// SenderTypeL2GasOracle indicates a sender from L1 responsible for updating L2 gas prices.
 	SenderTypeL2GasOracle
-	// SenderTypeCommitBlobBatch indicates the sender is responsible for committing blob batches.
-	SenderTypeCommitBlobBatch
 )
 
 // String returns a string representation of the SenderType.
