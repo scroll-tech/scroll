@@ -114,7 +114,7 @@ func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 	// Get the latest chunk
 	latestChunk, err := o.getLatestChunk(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("Chunk.GetChunkedBlockHeight error: %w", err)
+		return 0, fmt.Errorf("Chunk.GetUnchunkedBlockHeight error: %w", err)
 	}
 	if latestChunk == nil {
 		// if there is no chunk, return block number 1,

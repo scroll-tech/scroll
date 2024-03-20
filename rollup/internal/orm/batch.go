@@ -150,7 +150,7 @@ func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error)
 	// Get the latest batch
 	latestBatch, err := o.GetLatestBatch(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("Chunk.GetChunkedBlockHeight error: %w", err)
+		return 0, fmt.Errorf("Batch.GetFirstUnbatchedChunkIndex error: %w", err)
 	}
 	return latestBatch.EndChunkIndex + 1, nil
 }

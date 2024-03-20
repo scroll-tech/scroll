@@ -456,7 +456,7 @@ func DecodeFromCalldata(data []byte) (*DABatch, []*DAChunk, error) {
 
 // EstimateChunkL1CommitBlobSize estimates the size of the L1 commit blob for a single chunk.
 func EstimateChunkL1CommitBlobSize(c *encoding.Chunk) (uint64, error) {
-	var dataSize uint64
+	var dataSize uint64 = uint64(2 + 4*MaxNumChunks) // over-estimate: adding metadata length
 	for _, block := range c.Blocks {
 		for _, tx := range block.Transactions {
 			if tx.Type != types.L1MessageTxType {
@@ -469,8 +469,7 @@ func EstimateChunkL1CommitBlobSize(c *encoding.Chunk) (uint64, error) {
 		}
 	}
 	paddedSize := ((dataSize + 30) / 31) * 32
-	totalSize := paddedSize + uint64(2+4*MaxNumChunks) // over-estimate: adding metadata length
-	return totalSize, nil
+	return paddedSize, nil
 }
 
 // EstimateBatchL1CommitBlobSize estimates the total size of the L1 commit blob for a batch.

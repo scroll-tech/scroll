@@ -20,7 +20,7 @@ import (
 	"scroll-tech/rollup/internal/utils"
 )
 
-var maxBlobSize = uint64(131072)
+const maxBlobSize = uint64(131072)
 
 // ChunkProposer proposes chunks based on available unchunked blocks.
 type ChunkProposer struct {

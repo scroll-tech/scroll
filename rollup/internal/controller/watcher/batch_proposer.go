@@ -16,6 +16,7 @@ import (
 	"scroll-tech/common/forks"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
+	"scroll-tech/common/types/encoding/codecv1"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -202,13 +203,20 @@ func (p *BatchProposer) proposeBatch() error {
 
 	var batch encoding.Batch
 	batch.Index = parentDBBatch.Index + 1
-	var parentDABatch *codecv0.DABatch
-	parentDABatch, err = codecv0.NewDABatchFromBytes(parentDBBatch.BatchHeader)
-	if err != nil {
-		return err
-	}
-	batch.TotalL1MessagePoppedBefore = parentDABatch.TotalL1MessagePopped
 	batch.ParentBatchHash = common.HexToHash(parentDBBatch.Hash)
+	if useCodecv0 {
+		parentDABatch, err := codecv0.NewDABatchFromBytes(parentDBBatch.BatchHeader)
+		if err != nil {
+			return err
+		}
+		batch.TotalL1MessagePoppedBefore = parentDABatch.TotalL1MessagePopped
+	} else {
+		parentDABatch, err := codecv1.NewDABatchFromBytes(parentDBBatch.BatchHeader)
+		if err != nil {
+			return err
+		}
+		batch.TotalL1MessagePoppedBefore = parentDABatch.TotalL1MessagePopped
+	}
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)

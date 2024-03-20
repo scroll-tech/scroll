@@ -13,7 +13,7 @@
     "berlinBlock": 0,
     "londonBlock": 0,
     "clique": {
-      "period": 1,
+      "period": 3,
       "epoch": 30000
     },
     "zktrie": true
