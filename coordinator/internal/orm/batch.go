@@ -159,22 +159,6 @@ func (o *Batch) GetProvingStatusByHash(ctx context.Context, hash string) (types.
 	return types.ProvingStatus(batch.ProvingStatus), nil
 }
 
-// GetLatestBatch retrieves the latest batch from the database.
-func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Order("index desc")
-
-	var latestBatch Batch
-	if err := db.First(&latestBatch).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("Batch.GetLatestBatch error: %w", err)
-	}
-	return &latestBatch, nil
-}
-
 // GetAttemptsByHash get batch attempts by hash. Used by unit test
 func (o *Batch) GetAttemptsByHash(ctx context.Context, hash string) (int16, int16, error) {
 	db := o.db.WithContext(ctx)
@@ -185,6 +169,19 @@ func (o *Batch) GetAttemptsByHash(ctx context.Context, hash string) (int16, int1
 		return 0, 0, fmt.Errorf("Batch.GetAttemptsByHash error: %w, batch hash: %v", err, hash)
 	}
 	return batch.ActiveAttempts, batch.TotalAttempts, nil
+}
+
+// GetBatchByIndex retrieves the batch by the given index.
+func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("index = ?", index)
+
+	var batch Batch
+	if err := db.First(&batch).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetBatchByIndex error: %w, index: %v", err, index)
+	}
+	return &batch, nil
 }
 
 // InsertBatch inserts a new batch into the database.
@@ -207,17 +204,13 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	}
 
 	var startChunkIndex uint64
-	parentBatch, err := o.GetLatestBatch(ctx)
-	if err != nil {
-		log.Error("failed to get latest batch", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
-		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
-	}
-
-	// if parentBatch==nil then err==gorm.ErrRecordNotFound, which means there's
-	// no batch record in the db, we then use default empty values for the creating batch;
-	// if parentBatch!=nil then err==nil, then we fill the parentBatch-related data into the creating batch
-	if parentBatch != nil {
+	if batch.Index > 0 {
+		parentBatch, getErr := o.GetBatchByIndex(ctx, batch.Index-1)
+		if getErr != nil {
+			log.Error("failed to get batch by index", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+				"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", getErr)
+			return nil, fmt.Errorf("Batch.InsertBatch error: %w", getErr)
+		}
 		startChunkIndex = parentBatch.EndChunkIndex + 1
 	}
 

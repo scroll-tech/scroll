@@ -3,57 +3,8 @@ pragma solidity =0.8.24;
 
 import {BatchHeaderV0Codec} from "../../../contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
 import {ChunkCodec} from "../../../contracts/src/libraries/codec/ChunkCodec.sol";
-import {IL1MessageQueue} from "../../../contracts/src/L1/rollup/IL1MessageQueue.sol";
 
 contract MockBridge {
-  /******************************
-   * Events from L1MessageQueue *
-   ******************************/
-
-  /// @notice Emitted when a new L1 => L2 transaction is appended to the queue.
-  /// @param sender The address of account who initiates the transaction.
-  /// @param target The address of account who will recieve the transaction.
-  /// @param value The value passed with the transaction.
-  /// @param queueIndex The index of this transaction in the queue.
-  /// @param gasLimit Gas limit required to complete the message relay on L2.
-  /// @param data The calldata of the transaction.
-  event QueueTransaction(
-    address indexed sender,
-    address indexed target,
-    uint256 value,
-    uint64 queueIndex,
-    uint256 gasLimit,
-    bytes data
-  );
-
-  /*********************************
-   * Events from L1ScrollMessenger *
-   *********************************/
-
-  /// @notice Emitted when a cross domain message is sent.
-  /// @param sender The address of the sender who initiates the message.
-  /// @param target The address of target contract to call.
-  /// @param value The amount of value passed to the target contract.
-  /// @param messageNonce The nonce of the message.
-  /// @param gasLimit The optional gas limit passed to L1 or L2.
-  /// @param message The calldata passed to the target contract.
-  event SentMessage(
-    address indexed sender,
-    address indexed target,
-    uint256 value,
-    uint256 messageNonce,
-    uint256 gasLimit,
-    bytes message
-  );
-
-  /// @notice Emitted when a cross domain message is relayed successfully.
-  /// @param messageHash The hash of the message.
-  event RelayedMessage(bytes32 indexed messageHash);
-
-  /***************************
-   * Events from ScrollChain *
-   ***************************/
-
   /// @notice Emitted when a new batch is committed.
   /// @param batchHash The hash of the batch.
   event CommitBatch(uint256 indexed batchIndex, bytes32 indexed batchHash);
@@ -80,57 +31,14 @@ contract MockBridge {
    *************/
 
   uint256 public messageNonce;
-  mapping(uint256 => bytes32) public committedBatches;
+  bytes32 public committedBatchHash;
   uint256 public l2BaseFee;
-
-  /***********************************
-   * Functions from L2GasPriceOracle *
-   ***********************************/
 
   function setL2BaseFee(uint256 _newL2BaseFee) external {
     l2BaseFee = _newL2BaseFee;
   }
 
-  /************************************
-   * Functions from L1ScrollMessenger *
-   ************************************/
-
-  function sendMessage(
-    address target,
-    uint256 value,
-    bytes calldata message,
-    uint256 gasLimit
-  ) external payable {
-    bytes memory _xDomainCalldata = _encodeXDomainCalldata(msg.sender, target, value, messageNonce, message);
-    {
-      address _sender = applyL1ToL2Alias(address(this));
-      emit QueueTransaction(_sender, target, 0, uint64(messageNonce), gasLimit, _xDomainCalldata);
-    }
-
-    emit SentMessage(msg.sender, target, value, messageNonce, gasLimit, message);
-    messageNonce += 1;
-  }
-
-  function relayMessageWithProof(
-    address _from,
-    address _to,
-    uint256 _value,
-    uint256 _nonce,
-    bytes memory _message,
-    L2MessageProof memory
-  ) external {
-    bytes memory _xDomainCalldata = _encodeXDomainCalldata(_from, _to, _value, _nonce, _message);
-    bytes32 _xDomainCalldataHash = keccak256(_xDomainCalldata);
-    emit RelayedMessage(_xDomainCalldataHash);
-  }
-
-  /******************************
-   * Functions from ScrollChain *
-   ******************************/
-
-  /// @notice Import layer 2 genesis block
-  function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
-  }
+  function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {}
 
   function commitBatch(
     uint8 /*version*/,
@@ -141,6 +49,8 @@ contract MockBridge {
     // check whether the batch is empty
     uint256 _chunksLength = chunks.length;
     require(_chunksLength > 0, "batch is empty");
+
+    (, bytes32 _parentBatchHash) = _loadBatchHeader(_parentBatchHeader);
 
     // decode batch index
     uint256 headerLength = _parentBatchHeader.length;
@@ -161,29 +71,25 @@ contract MockBridge {
 
     for (uint256 i = 0; i < _chunksLength; i++) {
       _commitChunk(dataPtr, chunks[i]);
-
       unchecked {
         dataPtr += 32;
       }
     }
 
     bytes32 _dataHash;
+    uint256 batchPtr;
     assembly {
       let dataLen := mul(_chunksLength, 0x20)
       _dataHash := keccak256(sub(dataPtr, dataLen), dataLen)
+      batchPtr := mload(0x40) // reset batchPtr
     }
 
-    bytes memory paddedData = new bytes(89);
-    assembly {
-      mstore(add(paddedData, 57), _dataHash)
-    }
-
-    uint256 batchPtr;
-    assembly {
-      batchPtr := add(paddedData, 32)
-    }
+    BatchHeaderV0Codec.storeVersion(batchPtr, 0);
+    BatchHeaderV0Codec.storeBatchIndex(batchPtr, 1);
+    BatchHeaderV0Codec.storeDataHash(batchPtr, _dataHash);
+    BatchHeaderV0Codec.storeParentBatchHash(batchPtr, _parentBatchHash);
     bytes32 _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, 89);
-    committedBatches[0] = _batchHash;
+    committedBatchHash = _batchHash;
     emit CommitBatch(parentBatchIndex + 1, _batchHash);
   }
 
@@ -205,48 +111,14 @@ contract MockBridge {
       batchIndex := shr(192, mload(add(batchPtr, 1)))
     }
 
-    bytes32 _batchHash = committedBatches[0];
+    bytes32 _batchHash = committedBatchHash;
     emit FinalizeBatch(batchIndex, _batchHash, postStateRoot, withdrawRoot);
   }
 
-  /**********************
-   * Internal Functions *
-   **********************/
-
-  /// @dev Internal function to generate the correct cross domain calldata for a message.
-  /// @param _sender Message sender address.
-  /// @param _target Target contract address.
-  /// @param _value The amount of ETH pass to the target.
-  /// @param _messageNonce Nonce for the provided message.
-  /// @param _message Message to send to the target.
-  /// @return ABI encoded cross domain calldata.
-  function _encodeXDomainCalldata(
-    address _sender,
-    address _target,
-    uint256 _value,
-    uint256 _messageNonce,
-    bytes memory _message
-  ) internal pure returns (bytes memory) {
-    return
-      abi.encodeWithSignature(
-        "relayMessage(address,address,uint256,uint256,bytes)",
-        _sender,
-        _target,
-        _value,
-        _messageNonce,
-        _message
-      );
-  }
-
-  /// @notice Utility function that converts the address in the L1 that submitted a tx to
-  /// the inbox to the msg.sender viewed in the L2
-  /// @param l1Address the address in the L1 that triggered the tx to L2
-  /// @return l2Address L2 address as viewed in msg.sender
-  function applyL1ToL2Alias(address l1Address) internal pure returns (address l2Address) {
-    uint160 offset = uint160(0x1111000000000000000000000000000000001111);
-    unchecked {
-      l2Address = address(uint160(l1Address) + offset);
-    }
+  function _loadBatchHeader(bytes calldata _batchHeader) internal pure returns (uint256 memPtr, bytes32 _batchHash) {
+    uint256 _length;
+    (memPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
+    _batchHash = BatchHeaderV0Codec.computeBatchHash(memPtr, _length);
   }
 
   function _commitChunk(

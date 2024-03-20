@@ -118,18 +118,6 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
-	totalL1CommitCalldataSize, err := codecv0.EstimateChunkL1CommitCalldataSize(chunk)
-	if err != nil {
-		log.Error("failed to estimate chunk L1 commit calldata size", "err", err)
-		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
-	}
-
-	totalL1CommitGas, err := codecv0.EstimateChunkL1CommitGas(chunk)
-	if err != nil {
-		log.Error("failed to estimate chunk L1 commit gas", "err", err)
-		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
-	}
-
 	numBlocks := len(chunk.Blocks)
 	newChunk := Chunk{
 		Index:                        chunkIndex,
@@ -138,10 +126,6 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		StartBlockHash:               chunk.Blocks[0].Header.Hash().Hex(),
 		EndBlockNumber:               chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
 		EndBlockHash:                 chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
-		TotalL2TxGas:                 chunk.L2GasUsed(),
-		TotalL2TxNum:                 chunk.NumL2Transactions(),
-		TotalL1CommitCalldataSize:    totalL1CommitCalldataSize,
-		TotalL1CommitGas:             totalL1CommitGas,
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
 		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),

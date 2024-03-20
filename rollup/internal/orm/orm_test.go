@@ -184,11 +184,11 @@ func TestChunkOrm(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1)
+	dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, true)
 	assert.NoError(t, err)
 	assert.Equal(t, dbChunk1.Hash, chunkHash1.Hex())
 
-	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2)
+	dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2, true)
 	assert.NoError(t, err)
 	assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
@@ -235,7 +235,7 @@ func TestBatchOrm(t *testing.T) {
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1},
 	}
-	batch1, err := batchOrm.InsertBatch(context.Background(), batch)
+	batch1, err := batchOrm.InsertBatch(context.Background(), batch, true)
 	assert.NoError(t, err)
 	hash1 := batch1.Hash
 
@@ -252,7 +252,7 @@ func TestBatchOrm(t *testing.T) {
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1},
 	}
-	batch2, err := batchOrm.InsertBatch(context.Background(), batch)
+	batch2, err := batchOrm.InsertBatch(context.Background(), batch, true)
 	assert.NoError(t, err)
 	hash2 := batch2.Hash
 

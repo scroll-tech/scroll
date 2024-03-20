@@ -5,6 +5,8 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
@@ -104,8 +106,31 @@ func testBatchProposerLimits(t *testing.T) {
 			db := setupDB(t)
 			defer database.CloseDB(db)
 
+			// Add genesis batch.
+			block := &encoding.Block{
+				Header: &gethTypes.Header{
+					Number: big.NewInt(0),
+				},
+				RowConsumption: &gethTypes.RowConsumption{},
+			}
+			chunk := &encoding.Chunk{
+				Blocks: []*encoding.Block{block},
+			}
+			chunkOrm := orm.NewChunk(db)
+			_, err := chunkOrm.InsertChunk(context.Background(), chunk, true)
+			assert.NoError(t, err)
+			batch := &encoding.Batch{
+				Index:                      0,
+				TotalL1MessagePoppedBefore: 0,
+				ParentBatchHash:            common.Hash{},
+				Chunks:                     []*encoding.Chunk{chunk},
+			}
+			batchOrm := orm.NewBatch(db)
+			_, err = batchOrm.InsertBatch(context.Background(), batch, true)
+			assert.NoError(t, err)
+
 			l2BlockOrm := orm.NewL2Block(db)
-			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+			err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 			assert.NoError(t, err)
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
@@ -122,8 +147,7 @@ func testBatchProposerLimits(t *testing.T) {
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
 
-			chunkOrm := orm.NewChunk(db)
-			chunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 1)
+			chunks, err := chunkOrm.GetChunksInRange(context.Background(), 1, 2)
 			assert.NoError(t, err)
 			assert.Equal(t, uint64(6042), chunks[0].TotalL1CommitGas)
 			assert.Equal(t, uint64(298), chunks[0].TotalL1CommitCalldataSize)
@@ -141,17 +165,17 @@ func testBatchProposerLimits(t *testing.T) {
 			}, db, nil)
 			bp.TryProposeBatch()
 
-			batchOrm := orm.NewBatch(db)
 			batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
 			assert.NoError(t, err)
-			assert.Len(t, batches, tt.expectedBatchesLen)
+			assert.Len(t, batches, tt.expectedBatchesLen+1)
+			batches = batches[1:]
 			if tt.expectedBatchesLen > 0 {
-				assert.Equal(t, uint64(0), batches[0].StartChunkIndex)
-				assert.Equal(t, tt.expectedChunksInFirstBatch-1, batches[0].EndChunkIndex)
+				assert.Equal(t, uint64(1), batches[0].StartChunkIndex)
+				assert.Equal(t, tt.expectedChunksInFirstBatch, batches[0].EndChunkIndex)
 				assert.Equal(t, types.RollupPending, types.RollupStatus(batches[0].RollupStatus))
 				assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(batches[0].ProvingStatus))
 
-				dbChunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, tt.expectedChunksInFirstBatch-1)
+				dbChunks, err := chunkOrm.GetChunksInRange(context.Background(), 1, tt.expectedChunksInFirstBatch)
 				assert.NoError(t, err)
 				assert.Len(t, dbChunks, int(tt.expectedChunksInFirstBatch))
 				for _, chunk := range dbChunks {
@@ -167,8 +191,31 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	db := setupDB(t)
 	defer database.CloseDB(db)
 
+	// Add genesis batch.
+	block := &encoding.Block{
+		Header: &gethTypes.Header{
+			Number: big.NewInt(0),
+		},
+		RowConsumption: &gethTypes.RowConsumption{},
+	}
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{block},
+	}
+	chunkOrm := orm.NewChunk(db)
+	_, err := chunkOrm.InsertChunk(context.Background(), chunk, true)
+	assert.NoError(t, err)
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+	}
+	batchOrm := orm.NewBatch(db)
+	_, err = batchOrm.InsertBatch(context.Background(), batch, true)
+	assert.NoError(t, err)
+
 	l2BlockOrm := orm.NewL2Block(db)
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
@@ -183,8 +230,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	cp.TryProposeChunk() // chunk1 contains block1
 	cp.TryProposeChunk() // chunk2 contains block2
 
-	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 1)
+	chunks, err := chunkOrm.GetChunksInRange(context.Background(), 1, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(6042), chunks[0].TotalL1CommitGas)
 	assert.Equal(t, uint64(298), chunks[0].TotalL1CommitCalldataSize)
@@ -200,16 +246,16 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 	}, &params.ChainConfig{}, db, nil)
 	bp.TryProposeBatch()
 
-	batchOrm := orm.NewBatch(db)
 	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
 	assert.NoError(t, err)
-	assert.Len(t, batches, 1)
-	assert.Equal(t, uint64(0), batches[0].StartChunkIndex)
-	assert.Equal(t, uint64(1), batches[0].EndChunkIndex)
+	assert.Len(t, batches, 2)
+	batches = batches[1:]
+	assert.Equal(t, uint64(1), batches[0].StartChunkIndex)
+	assert.Equal(t, uint64(2), batches[0].EndChunkIndex)
 	assert.Equal(t, types.RollupPending, types.RollupStatus(batches[0].RollupStatus))
 	assert.Equal(t, types.ProvingTaskUnassigned, types.ProvingStatus(batches[0].ProvingStatus))
 
-	dbChunks, err := chunkOrm.GetChunksInRange(context.Background(), 0, 1)
+	dbChunks, err := chunkOrm.GetChunksInRange(context.Background(), 1, 2)
 	assert.NoError(t, err)
 	assert.Len(t, dbChunks, 2)
 	for _, chunk := range dbChunks {
