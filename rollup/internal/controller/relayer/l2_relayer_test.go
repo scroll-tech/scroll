@@ -11,6 +11,7 @@ import (
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -42,6 +43,7 @@ func testCreateNewRelayer(t *testing.T) {
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
 }
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
@@ -51,6 +53,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer relayer.StopSenders()
 
 	l2BlockOrm := orm.NewL2Block(db)
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
@@ -66,10 +69,6 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	batchOrm := orm.NewBatch(db)
@@ -91,16 +90,13 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer relayer.StopSenders()
 
 	batch := &encoding.Batch{
 		Index:                      0,
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	batchOrm := orm.NewBatch(db)
@@ -143,16 +139,13 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer relayer.StopSenders()
 
 	batch := &encoding.Batch{
 		Index:                      0,
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	batchOrm := orm.NewBatch(db)
@@ -181,6 +174,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	defer cancel()
 	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	isSuccessful := []bool{true, false}
@@ -192,10 +186,6 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-			StartChunkIndex:            0,
-			StartChunkHash:             chunkHash1,
-			EndChunkIndex:              1,
-			EndChunkHash:               chunkHash2,
 		}
 
 		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
@@ -240,6 +230,7 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	defer cancel()
 	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	isSuccessful := []bool{true, false}
@@ -251,10 +242,6 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-			StartChunkIndex:            0,
-			StartChunkHash:             chunkHash1,
-			EndChunkIndex:              1,
-			EndChunkHash:               chunkHash2,
 		}
 
 		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
@@ -298,10 +285,6 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              0,
-		EndChunkHash:               chunkHash1,
 	}
 
 	batchOrm := orm.NewBatch(db)
@@ -313,10 +296,6 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		TotalL1MessagePoppedBefore: batch1.TotalL1MessagePoppedBefore,
 		ParentBatchHash:            common.HexToHash(dbBatch1.Hash),
 		Chunks:                     []*encoding.Chunk{chunk2},
-		StartChunkIndex:            1,
-		StartChunkHash:             chunkHash2,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2)
@@ -328,6 +307,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	defer cancel()
 	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	type BatchConfirmation struct {
@@ -368,6 +348,7 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
 
 	var batchOrm *orm.Batch
 	convey.Convey("Failed to GetLatestBatch", t, func() {
@@ -414,13 +395,13 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("Failed to send setL2BaseFee tx to layer2", t, func() {
 		targetErr := errors.New("failed to send setL2BaseFee tx to layer2 error")
-		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
 		relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
+	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (hash common.Hash, err error) {
 		return common.HexToHash("0x56789abcdef1234"), nil
 	})
 
@@ -473,10 +454,6 @@ func testGetBatchStatusByIndex(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	batchOrm := orm.NewBatch(db)
@@ -487,6 +464,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
 
 	status, err := relayer.getBatchStatusByIndex(dbBatch)
 	assert.NoError(t, err)
