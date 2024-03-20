@@ -14,8 +14,8 @@ type DBConfig struct {
 
 	MaxOpenNum int `json:"maxOpenNum"`
 	MaxIdleNum int `json:"maxIdleNum"`
-	MaxLifetime int `json:"maxLifetime"`
-	MaxIdleTime int `json:"maxIdleTime"`
+	MaxLifetime int `json:"maxLifetime,omitempty"`
+	MaxIdleTime int `json:"maxIdleTime,omitempty"`
 }
 
 // NewConfig returns a new instance of Config.
