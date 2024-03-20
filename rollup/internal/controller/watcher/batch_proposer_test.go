@@ -435,7 +435,7 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 		for i := int64(0); i < 10; i++ {
 			l2BlockOrm := orm.NewL2Block(db)
 			block.Header.Number = big.NewInt(total*10 + i + 1)
-			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
+			err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
 			assert.NoError(t, err)
 		}
 		cp.TryProposeChunk()
