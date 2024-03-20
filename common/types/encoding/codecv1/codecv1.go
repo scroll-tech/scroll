@@ -374,6 +374,27 @@ func makeBlobCanonical(blobBytes []byte) (*kzg4844.Blob, error) {
 	return &blob, nil
 }
 
+// NewDABatchFromBytes attempts to decode the given byte slice into a DABatch.
+// Note: This function only populates the batch header, it leaves the blob-related fields empty.
+func NewDABatchFromBytes(data []byte) (*DABatch, error) {
+	if len(data) < 121 {
+		return nil, fmt.Errorf("insufficient data for DABatch, expected at least 121 bytes but got %d", len(data))
+	}
+
+	b := &DABatch{
+		Version:                data[0],
+		BatchIndex:             binary.BigEndian.Uint64(data[1:9]),
+		L1MessagePopped:        binary.BigEndian.Uint64(data[9:17]),
+		TotalL1MessagePopped:   binary.BigEndian.Uint64(data[17:25]),
+		DataHash:               common.BytesToHash(data[25:57]),
+		BlobVersionedHash:      common.BytesToHash(data[57:89]),
+		ParentBatchHash:        common.BytesToHash(data[89:121]),
+		SkippedL1MessageBitmap: data[121:],
+	}
+
+	return b, nil
+}
+
 // Encode serializes the DABatch into bytes.
 func (b *DABatch) Encode() []byte {
 	batchBytes := make([]byte, 121+len(b.SkippedL1MessageBitmap))
