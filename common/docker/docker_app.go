@@ -168,7 +168,7 @@ func (b *App) mockDBConfig() error {
 		MaxOpenNum: 200,
 		MaxIdleNum: 20,
 		MaxLifetime: 600,
-		MaxIdleTime: 300
+		MaxIdleTime: 300,
 	}
 
 	if b.DBImg != nil {
