@@ -99,6 +99,18 @@ interface IScrollChain {
         bytes calldata aggrProof
     ) external;
 
+    /// @notice Finalize a committed batch on layer 1 without providing proof.
+    /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch.
+    /// @param prevStateRoot The state root of parent batch.
+    /// @param postStateRoot The state root of current batch.
+    /// @param withdrawRoot The withdraw trie root of current batch.
+    function finalizeBatch(
+        bytes calldata batchHeader,
+        bytes32 prevStateRoot,
+        bytes32 postStateRoot,
+        bytes32 withdrawRoot
+    ) external;
+
     /// @notice Finalize a committed batch (with blob) on layer 1.
     ///
     /// @dev Memory layout of `blobDataProof`:
@@ -119,5 +131,19 @@ interface IScrollChain {
         bytes32 withdrawRoot,
         bytes calldata blobDataProof,
         bytes calldata aggrProof
+    ) external;
+
+    /// @notice Finalize a committed batch (with blob) on layer 1 without providing proof.
+    /// @param batchHeader The header of current batch, see the encoding in comments of `commitBatch`.
+    /// @param prevStateRoot The state root of parent batch.
+    /// @param postStateRoot The state root of current batch.
+    /// @param withdrawRoot The withdraw trie root of current batch.
+    /// @param blobDataProof The proof for blob data.
+    function finalizeBatch4844(
+        bytes calldata batchHeader,
+        bytes32 prevStateRoot,
+        bytes32 postStateRoot,
+        bytes32 withdrawRoot,
+        bytes calldata blobDataProof
     ) external;
 }
