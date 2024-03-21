@@ -83,7 +83,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if fromBlockNum != 0 {
 		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, fromBlockNum)
 		if chunkErr != nil {
-			log.Error("failed to get fork start chunk failure", "forkName", getTaskParameter.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
+			log.Error("failed to get fork start chunk index", "forkName", getTaskParameter.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if startChunk == nil {
@@ -94,7 +94,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if toBlockNum != math.MaxUint64 {
 		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, toBlockNum)
 		if err != nil {
-			log.Error("failed to get fork start chunk failure", "forkName", getTaskParameter.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
+			log.Error("failed to get fork end chunk index", "forkName", getTaskParameter.HardForkName, "toBlockNumber", toBlockNum, "err", chunkErr)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if toChunk != nil {
