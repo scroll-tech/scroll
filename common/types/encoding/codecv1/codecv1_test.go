@@ -687,6 +687,51 @@ func TestCodecV1BatchSkipBitmap(t *testing.T) {
 	assert.Equal(t, 42, int(batch.TotalL1MessagePopped))
 }
 
+func TestCodecV1ChunkBlobSizeEstimation(t *testing.T) {
+	trace2 := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	chunk2 := &encoding.Chunk{Blocks: []*encoding.Block{trace2}}
+	chunk2BlobSize, err := EstimateChunkL1CommitBlobSize(chunk2)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(320), chunk2BlobSize)
+	batch2 := &encoding.Batch{Chunks: []*encoding.Chunk{chunk2}}
+	batch2BlobSize, err := EstimateBatchL1CommitBlobSize(batch2)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(320), batch2BlobSize)
+
+	trace3 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
+	chunk3 := &encoding.Chunk{Blocks: []*encoding.Block{trace3}}
+	chunk3BlobSize, err := EstimateChunkL1CommitBlobSize(chunk3)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(5952), chunk3BlobSize)
+	batch3 := &encoding.Batch{Chunks: []*encoding.Chunk{chunk3}}
+	batch3BlobSize, err := EstimateBatchL1CommitBlobSize(batch3)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(5952), batch3BlobSize)
+
+	trace4 := readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
+	chunk4 := &encoding.Chunk{Blocks: []*encoding.Block{trace4}}
+	chunk4BlobSize, err := EstimateChunkL1CommitBlobSize(chunk4)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(128), chunk4BlobSize)
+	batch4 := &encoding.Batch{Chunks: []*encoding.Chunk{chunk4}}
+	batch4BlobSize, err := EstimateBatchL1CommitBlobSize(batch4)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(128), batch4BlobSize)
+
+	chunk5 := &encoding.Chunk{Blocks: []*encoding.Block{trace2, trace3}}
+	chunk5BlobSize, err := EstimateChunkL1CommitBlobSize(chunk5)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(6176), chunk5BlobSize)
+	chunk6 := &encoding.Chunk{Blocks: []*encoding.Block{trace4}}
+	chunk6BlobSize, err := EstimateChunkL1CommitBlobSize(chunk6)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(128), chunk6BlobSize)
+	batch5 := &encoding.Batch{Chunks: []*encoding.Chunk{chunk5, chunk6}}
+	batch5BlobSize, err := EstimateBatchL1CommitBlobSize(batch5)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(6208), batch5BlobSize)
+}
+
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {
 	data, err := os.ReadFile(filename)
 	assert.NoError(t, err)
