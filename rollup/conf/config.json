@@ -10,7 +10,7 @@
       "sender_config": {
         "endpoint": "https://rpc.scroll.io",
         "escalate_blocks": 1,
-        "confirmations": "0x1",
+        "confirmations": "0x0",
         "escalate_multiple_num": 2,
         "escalate_multiple_den": 1,
         "max_gas_price": 1000000000000,
@@ -34,7 +34,7 @@
       "sender_config": {
         "endpoint": "https://rpc.ankr.com/eth",
         "escalate_blocks": 1,
-        "confirmations": "0x6",
+        "confirmations": "0x0",
         "escalate_multiple_num": 2,
         "escalate_multiple_den": 1,
         "max_gas_price": 1000000000000,
