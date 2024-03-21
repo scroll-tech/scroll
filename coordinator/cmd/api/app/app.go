@@ -61,7 +61,7 @@ func action(ctx *cli.Context) error {
 	}()
 
 	genesisPath := ctx.String(utils.Genesis.Name)
-	genesis, err := config.ReadGenesis(genesisPath)
+	genesis, err := utils.ReadGenesis(genesisPath)
 	if err != nil {
 		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
 	}
