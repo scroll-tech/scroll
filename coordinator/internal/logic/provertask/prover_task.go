@@ -72,14 +72,6 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", b.cfg.ProverManager.MinProverVersion, proverVersion.(string))
 	}
 
-	// if the prover than v4.3.41-144c7ed-8f17df8-6e1a5cd and param forkBlockNumber is empty, represents
-	// the prover use the wrong config. don't assign task to it.
-	if version.CheckScrollRepoVersion(proverVersion.(string), "v4.3.41-144c7ed-8f17df8-6e1a5cd") {
-		if getTaskParameter.HardForkName == "" {
-			return nil, fmt.Errorf("prover version large than v4.3.41-144c7ed-8f17df8-6e1a5cd, but fork_number is empty, actual version: %s", proverVersion.(string))
-		}
-	}
-
 	// if the prover has a different vk
 	if getTaskParameter.VK != b.vk {
 		// if the prover reports a different prover version
