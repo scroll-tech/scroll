@@ -71,7 +71,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	hardForkNumber, err := bp.getHardForkNumberByName(getTaskParameter.HardForkName)
 	if err != nil {
-		log.Error("hard fork get empty batch because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		log.Error("batch assign failure because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
 		return nil, err
 	}
 
@@ -79,7 +79,12 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	// so the hard fork chunk's start_block_number must be ForkBlockNumber
 	var startChunkIndex uint64 = 0
 	var endChunkIndex uint64 = math.MaxInt64
-	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, bp.forkHeights)
+	fromBlockNum, toBlockNum, err := forks.BlockRange(hardForkNumber, bp.forkHeights)
+	if err != nil {
+		log.Error("batch assign failure because get BlockRange failure", "err", err)
+		return nil, ErrCoordinatorInternalFailure
+	}
+
 	if fromBlockNum != 0 {
 		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, fromBlockNum)
 		if chunkErr != nil {

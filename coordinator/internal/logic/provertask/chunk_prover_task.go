@@ -68,11 +68,16 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	hardForkNumber, err := cp.getHardForkNumberByName(getTaskParameter.HardForkName)
 	if err != nil {
-		log.Error("hard fork get empty chunk because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
 		return nil, err
 	}
 
-	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, cp.forkHeights)
+	fromBlockNum, toBlockNum, err := forks.BlockRange(hardForkNumber, cp.forkHeights)
+	if err != nil {
+		log.Error("chunk assign failure because get BlockRange failure", "err", err)
+		return nil, ErrCoordinatorInternalFailure
+	}
+
 	if toBlockNum > getTaskParameter.ProverHeight {
 		toBlockNum = getTaskParameter.ProverHeight + 1
 	}
