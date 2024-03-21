@@ -151,7 +151,9 @@ func TestBlockRange(t *testing.T) {
 			from, to, err := BlockRange(test.forkHeight, test.forkHeights)
 			require.Equal(t, test.expectedFrom, from)
 			require.Equal(t, test.expectedTo, to)
-			require.Equal(t, err.Error(), test.err.Error())
+			if err != nil {
+				require.Equal(t, err.Error(), test.err.Error())
+			}
 		})
 	}
 }
