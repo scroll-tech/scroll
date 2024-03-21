@@ -197,20 +197,20 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	parentDBBatch, err := p.batchOrm.GetLatestBatch(p.ctx)
+	dbParentBatch, err := p.batchOrm.GetLatestBatch(p.ctx)
 	if err != nil {
 		return err
 	}
 
 	var batch encoding.Batch
-	batch.Index = parentDBBatch.Index + 1
-	batch.ParentBatchHash = common.HexToHash(parentDBBatch.Hash)
+	batch.Index = dbParentBatch.Index + 1
+	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
 	parentBatchEndBlockNumber := daChunks[0].Blocks[0].Header.Number.Uint64() - 1
 	parentBatchCodecVersion := encoding.CodecV0
-	if parentDBBatch.Index > 0 && parentBatchEndBlockNumber >= p.banachForkHeight {
+	if dbParentBatch.Index > 0 && parentBatchEndBlockNumber >= p.banachForkHeight {
 		parentBatchCodecVersion = encoding.CodecV1
 	}
-	batch.TotalL1MessagePoppedBefore, err = utils.GetTotalL1MessagePoppedBeforeBatch(parentDBBatch.BatchHeader, parentBatchCodecVersion)
+	batch.TotalL1MessagePoppedBefore, err = utils.GetTotalL1MessagePoppedBeforeBatch(dbParentBatch.BatchHeader, parentBatchCodecVersion)
 	if err != nil {
 		return err
 	}

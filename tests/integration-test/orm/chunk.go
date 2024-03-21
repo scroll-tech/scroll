@@ -108,7 +108,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 
 	daChunk, err := codecv0.NewDAChunk(chunk, totalL1MessagePoppedBefore)
 	if err != nil {
-		log.Error("failed to initialize new DA chunk", "err", err)
+		log.Error("failed to create DA chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
