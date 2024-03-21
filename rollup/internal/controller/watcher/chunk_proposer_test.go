@@ -344,7 +344,7 @@ func testChunkProposerCodecv1BlobSizeLimit(t *testing.T) {
 		GasCostIncreaseMultiplier:       1,
 	}, &params.ChainConfig{BanachBlock: big.NewInt(0)}, db, nil)
 
-	for i := 0; i <= 10; i++ {
+	for i := 0; i < 10; i++ {
 		cp.TryProposeChunk()
 	}
 

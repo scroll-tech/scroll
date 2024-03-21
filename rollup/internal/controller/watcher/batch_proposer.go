@@ -204,7 +204,9 @@ func (p *BatchProposer) proposeBatch() error {
 	var batch encoding.Batch
 	batch.Index = parentDBBatch.Index + 1
 	batch.ParentBatchHash = common.HexToHash(parentDBBatch.Hash)
-	if useCodecv0 {
+
+	parentBatchEndBlockNumber := daChunks[0].Blocks[0].Header.Number.Uint64() - 1
+	if parentDBBatch.Index == 0 || parentBatchEndBlockNumber < p.banachForkHeight {
 		parentDABatch, err := codecv0.NewDABatchFromBytes(parentDBBatch.BatchHeader)
 		if err != nil {
 			return err

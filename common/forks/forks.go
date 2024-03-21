@@ -26,6 +26,7 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 		config.ArrowGlacierBlock,
 		config.ArchimedesBlock,
 		config.ShanghaiBlock,
+		config.BanachBlock,
 	} {
 		if fork == nil {
 			continue

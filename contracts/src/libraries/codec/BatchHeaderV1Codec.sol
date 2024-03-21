@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 // solhint-disable no-inline-assembly
 
-/// @dev Below is the encoding for `BatchHeader` V0, total 89 + ceil(l1MessagePopped / 256) * 32 bytes.
+/// @dev Below is the encoding for `BatchHeader` V1, total 121 + ceil(l1MessagePopped / 256) * 32 bytes.
 /// ```text
 ///   * Field                   Bytes       Type        Index   Comments
 ///   * version                 1           uint8       0       The batch version
@@ -12,18 +12,19 @@ pragma solidity ^0.8.24;
 ///   * l1MessagePopped         8           uint64      9       Number of L1 messages popped in the batch
 ///   * totalL1MessagePopped    8           uint64      17      Number of total L1 messages popped after the batch
 ///   * dataHash                32          bytes32     25      The data hash of the batch
-///   * parentBatchHash         32          bytes32     57      The parent batch hash
-///   * skippedL1MessageBitmap  dynamic     uint256[]   89      A bitmap to indicate which L1 messages are skipped in the batch
+///   * blobVersionedHash       32          bytes32     57      The versioned hash of the blob with this batch’s data
+///   * parentBatchHash         32          bytes32     89      The parent batch hash
+///   * skippedL1MessageBitmap  dynamic     uint256[]   121     A bitmap to indicate which L1 messages are skipped in the batch
 /// ```
-library BatchHeaderV0Codec {
-    /// @dev Thrown when the length of batch header is smaller than 89
+library BatchHeaderV1Codec {
+    /// @dev Thrown when the length of batch header is smaller than 121.
     error ErrorBatchHeaderLengthTooSmall();
 
     /// @dev Thrown when the length of skippedL1MessageBitmap is incorrect.
     error ErrorIncorrectBitmapLength();
 
     /// @dev The length of fixed parts of the batch header.
-    uint256 internal constant BATCH_HEADER_FIXED_LENGTH = 89;
+    uint256 internal constant BATCH_HEADER_FIXED_LENGTH = 121;
 
     /// @notice Load batch header in calldata to memory.
     /// @param _batchHeader The encoded batch header bytes in calldata.
@@ -44,9 +45,8 @@ library BatchHeaderV0Codec {
         uint256 _l1MessagePopped = getL1MessagePopped(batchPtr);
 
         unchecked {
-            if (length != BATCH_HEADER_FIXED_LENGTH + ((_l1MessagePopped + 255) / 256) * 32) {
+            if (length != BATCH_HEADER_FIXED_LENGTH + ((_l1MessagePopped + 255) / 256) * 32)
                 revert ErrorIncorrectBitmapLength();
-            }
         }
     }
 
@@ -95,12 +95,21 @@ library BatchHeaderV0Codec {
         }
     }
 
+    /// @notice Get the blob versioned hash of the batch header.
+    /// @param batchPtr The start memory offset of the batch header in memory.
+    /// @return _blobVersionedHash The blob versioned hash of the batch header.
+    function getBlobVersionedHash(uint256 batchPtr) internal pure returns (bytes32 _blobVersionedHash) {
+        assembly {
+            _blobVersionedHash := mload(add(batchPtr, 57))
+        }
+    }
+
     /// @notice Get the parent batch hash of the batch header.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @return _parentBatchHash The parent batch hash of the batch header.
     function getParentBatchHash(uint256 batchPtr) internal pure returns (bytes32 _parentBatchHash) {
         assembly {
-            _parentBatchHash := mload(add(batchPtr, 57))
+            _parentBatchHash := mload(add(batchPtr, 89))
         }
     }
 
@@ -177,10 +186,19 @@ library BatchHeaderV0Codec {
 
     /// @notice Store the parent batch hash of batch header.
     /// @param batchPtr The start memory offset of the batch header in memory.
+    /// @param _blobVersionedHash The versioned hash of the blob with this batch’s data.
+    function storeBlobVersionedHash(uint256 batchPtr, bytes32 _blobVersionedHash) internal pure {
+        assembly {
+            mstore(add(batchPtr, 57), _blobVersionedHash)
+        }
+    }
+
+    /// @notice Store the parent batch hash of batch header.
+    /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param _parentBatchHash The parent batch hash.
     function storeParentBatchHash(uint256 batchPtr, bytes32 _parentBatchHash) internal pure {
         assembly {
-            mstore(add(batchPtr, 57), _parentBatchHash)
+            mstore(add(batchPtr, 89), _parentBatchHash)
         }
     }
 

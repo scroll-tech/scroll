@@ -135,7 +135,7 @@ func prepareContracts(t *testing.T) {
 	nonce, err := l1Client.PendingNonceAt(context.Background(), l1Auth.From)
 	assert.NoError(t, err)
 	scrollChainAddress := crypto.CreateAddress(l1Auth.From, nonce)
-	tx := types.NewContractCreation(nonce, big.NewInt(0), 1000000, big.NewInt(1000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
+	tx := types.NewContractCreation(nonce, big.NewInt(0), 10000000, big.NewInt(1000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
 	signedTx, err := l1Auth.Signer(l1Auth.From, tx)
 	assert.NoError(t, err)
 	err = l1Client.SendTransaction(context.Background(), signedTx)
@@ -174,6 +174,8 @@ func TestFunction(t *testing.T) {
 	// l1 rollup and watch rollup events
 	t.Run("TestCommitAndFinalizeGenesisBatch", testCommitAndFinalizeGenesisBatch)
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
+	t.Run("TestCommitBatchAndFinalizeBatch4844", testCommitBatchAndFinalizeBatch4844)
+	t.Run("TestCommitBatchAndFinalizeBatchBeforeAndPost4844", testCommitBatchAndFinalizeBatchBeforeAndPost4844)
 
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
