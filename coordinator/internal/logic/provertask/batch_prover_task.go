@@ -98,7 +98,8 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if toChunk != nil {
-			// if toChunk is empty, so the startChunk is the last chunk, don't need change the endChunkIndex of math.MaxInt64
+			// toChunk being nil only indicates that we haven't yet reached the fork boundary
+			// don't need change the endChunkIndex of math.MaxInt64
 			endChunkIndex = toChunk.Index
 		}
 	}

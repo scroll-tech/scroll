@@ -103,7 +103,7 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	cfg.Auth.LoginExpireDurationSec = 1
 	c.Config = cfg
 
-	genesis, err := coordinatorConfig.ReadGenesis(c.chainConfigOriginFile)
+	genesis, err := utils.ReadGenesis(c.chainConfigOriginFile)
 	if err != nil {
 		return err
 	}
