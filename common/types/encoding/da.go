@@ -12,7 +12,10 @@ import (
 type CodecVersion int
 
 const (
+	// CodecV0 represents the version 0 of the encoder and decoder.
 	CodecV0 CodecVersion = iota
+
+	// CodecV1 represents the version 1 of the encoder and decoder.
 	CodecV1
 )
 
