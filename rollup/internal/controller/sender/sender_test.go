@@ -111,7 +111,7 @@ func setupEnv(t *testing.T) {
 
 	testContractsAddress = crypto.CreateAddress(auth.From, nonce)
 
-	tx := gethTypes.NewContractCreation(nonce, big.NewInt(0), 1000000, big.NewInt(10000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
+	tx := gethTypes.NewContractCreation(nonce, big.NewInt(0), 10000000, big.NewInt(10000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
 	signedTx, err := auth.Signer(auth.From, tx)
 	assert.NoError(t, err)
 	err = l1Client.SendTransaction(context.Background(), signedTx)
@@ -334,10 +334,10 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 
 		if txType == LegacyTxType { // Legacy transactions can not have an access list.
-			assert.Equal(t, uint64(43913), gasLimit)
+			assert.Equal(t, uint64(43956), gasLimit)
 			assert.Nil(t, accessList)
 		} else { // Dynamic fee and blob transactions can have an access list.
-			assert.Equal(t, uint64(43436), gasLimit)
+			assert.Equal(t, uint64(43479), gasLimit)
 			assert.NotNil(t, accessList)
 		}
 

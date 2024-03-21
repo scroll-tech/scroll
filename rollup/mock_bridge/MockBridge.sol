@@ -576,4 +576,32 @@ contract MockBridge {
             _dataHash := keccak256(startDataPtr, sub(dataPtr, startDataPtr))
         }
     }
+
+    function verifyProof(
+        bytes32 claim,
+        bytes memory commitment,
+        bytes memory proof
+    ) external view {
+        require(commitment.length == 48, "Commitment must be 48 bytes");
+        require(proof.length == 48, "Proof must be 48 bytes");
+
+        bytes32 versionedHash = blobhash(0);
+
+        // Compute random challenge point.
+        uint256 point = uint256(keccak256(abi.encodePacked(versionedHash))) % BLS_MODULUS;
+
+        bytes memory pointEvaluationCalldata = abi.encodePacked(
+            versionedHash,
+            point,
+            claim,
+            commitment,
+            proof
+        );
+
+        (bool success,) = POINT_EVALUATION_PRECOMPILE_ADDR.staticcall(pointEvaluationCalldata);
+
+        if (!success) {
+            revert("Proof verification failed");
+        }
+    }
 }

@@ -385,7 +385,7 @@ func testCommitBatchAndFinalizeBatchBeforeAndPost4844(t *testing.T) {
 		}, 30*time.Second, time.Second)
 
 		assert.Eventually(t, func() bool {
-			batch, err := batchOrm.GetBatchByIndex(context.Background(), i+1)
+			batch, err = batchOrm.GetBatchByIndex(context.Background(), i+1)
 			assert.NoError(t, err)
 			assert.NotNil(t, batch)
 			assert.NotEmpty(t, batch.CommitTxHash)
@@ -421,7 +421,7 @@ func testCommitBatchAndFinalizeBatchBeforeAndPost4844(t *testing.T) {
 		}, 30*time.Second, time.Second)
 
 		assert.Eventually(t, func() bool {
-			batch, err := batchOrm.GetBatchByIndex(context.Background(), i+1)
+			batch, err = batchOrm.GetBatchByIndex(context.Background(), i+1)
 			assert.NoError(t, err)
 			assert.NotNil(t, batch)
 			assert.NotEmpty(t, batch.FinalizeTxHash)
