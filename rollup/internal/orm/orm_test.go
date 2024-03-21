@@ -165,16 +165,16 @@ func TestL2BlockOrm(t *testing.T) {
 }
 
 func TestChunkOrm(t *testing.T) {
-	useCodecv0 := []bool{true, false}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
 	chunk1 := &encoding.Chunk{Blocks: []*encoding.Block{block1}}
 	chunk2 := &encoding.Chunk{Blocks: []*encoding.Block{block2}}
-	for _, v0 := range useCodecv0 {
+	for _, codecVersion := range codecVersions {
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 		var chunkHash1 common.Hash
 		var chunkHash2 common.Hash
-		if v0 {
+		if codecVersion == encoding.CodecV0 {
 			daChunk1, createErr := codecv0.NewDAChunk(chunk1, 0)
 			assert.NoError(t, createErr)
 			chunkHash1, err = daChunk1.Hash()
@@ -196,11 +196,11 @@ func TestChunkOrm(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, v0)
+		dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
 		assert.NoError(t, err)
 		assert.Equal(t, dbChunk1.Hash, chunkHash1.Hex())
 
-		dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2, v0)
+		dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
 		assert.NoError(t, err)
 		assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
@@ -238,10 +238,10 @@ func TestChunkOrm(t *testing.T) {
 }
 
 func TestBatchOrm(t *testing.T) {
-	useCodecv0 := []bool{true, false}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
 	chunk1 := &encoding.Chunk{Blocks: []*encoding.Block{block1}}
 	chunk2 := &encoding.Chunk{Blocks: []*encoding.Block{block2}}
-	for _, v0 := range useCodecv0 {
+	for _, codecVersion := range codecVersions {
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
@@ -252,7 +252,7 @@ func TestBatchOrm(t *testing.T) {
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1},
 		}
-		batch1, err := batchOrm.InsertBatch(context.Background(), batch, v0)
+		batch1, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
 		assert.NoError(t, err)
 		hash1 := batch1.Hash
 
@@ -260,7 +260,7 @@ func TestBatchOrm(t *testing.T) {
 		assert.NoError(t, err)
 
 		var batchHash1 string
-		if v0 {
+		if codecVersion == encoding.CodecV0 {
 			daBatch1, createErr := codecv0.NewDABatchFromBytes(batch1.BatchHeader)
 			assert.NoError(t, createErr)
 			batchHash1 = daBatch1.Hash().Hex()
@@ -277,7 +277,7 @@ func TestBatchOrm(t *testing.T) {
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk2},
 		}
-		batch2, err := batchOrm.InsertBatch(context.Background(), batch, v0)
+		batch2, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
 		assert.NoError(t, err)
 		hash2 := batch2.Hash
 
@@ -285,7 +285,7 @@ func TestBatchOrm(t *testing.T) {
 		assert.NoError(t, err)
 
 		var batchHash2 string
-		if v0 {
+		if codecVersion == encoding.CodecV0 {
 			daBatch2, createErr := codecv0.NewDABatchFromBytes(batch2.BatchHeader)
 			assert.NoError(t, createErr)
 			batchHash2 = daBatch2.Hash().Hex()

@@ -8,6 +8,14 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
+// CodecVersion defines the version of encoder and decoder.
+type CodecVersion int
+
+const (
+	CodecV0 CodecVersion = iota
+	CodecV1
+)
+
 // Block represents an L2 block.
 type Block struct {
 	Header         *types.Header

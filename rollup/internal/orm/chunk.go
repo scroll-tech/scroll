@@ -8,12 +8,9 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
-	"scroll-tech/common/types/encoding/codecv1"
 
 	"scroll-tech/rollup/internal/utils"
 
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 )
@@ -144,7 +141,7 @@ func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) (
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, useCodecv0 bool, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -169,37 +166,16 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, useCodec
 		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
-	metrics, err := utils.CalculateChunkMetrics(chunk, useCodecv0)
+	metrics, err := utils.CalculateChunkMetrics(chunk, codecVersion)
 	if err != nil {
 		log.Error("failed to calculate chunk metrics", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
-	var chunkHash common.Hash
-	if useCodecv0 {
-		daChunk, err := codecv0.NewDAChunk(chunk, totalL1MessagePoppedBefore)
-		if err != nil {
-			log.Error("failed to initialize new DA chunk", "err", err)
-			return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
-		}
-
-		chunkHash, err = daChunk.Hash()
-		if err != nil {
-			log.Error("failed to get DA chunk hash", "err", err)
-			return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
-		}
-	} else {
-		daChunk, err := codecv1.NewDAChunk(chunk, totalL1MessagePoppedBefore)
-		if err != nil {
-			log.Error("failed to initialize new DA chunk", "err", err)
-			return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
-		}
-
-		chunkHash, err = daChunk.Hash()
-		if err != nil {
-			log.Error("failed to get DA chunk hash", "err", err)
-			return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
-		}
+	chunkHash, err := utils.GetChunkHash(chunk, totalL1MessagePoppedBefore, codecVersion)
+	if err != nil {
+		log.Error("failed to get chunk hash", "err", err)
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
 	numBlocks := len(chunk.Blocks)

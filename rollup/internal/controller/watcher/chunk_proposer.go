@@ -151,14 +151,14 @@ func (p *ChunkProposer) TryProposeChunk() {
 	}
 }
 
-func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, useCodecv0 bool) error {
+func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) error {
 	if chunk == nil {
 		return nil
 	}
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, useCodecv0, dbTX)
+		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, dbTX)
 		if err != nil {
 			log.Warn("ChunkProposer.InsertChunk failed", "err", err)
 			return err
@@ -199,13 +199,16 @@ func (p *ChunkProposer) proposeChunk() error {
 		return nil
 	}
 
-	useCodecv0 := blocks[0].Header.Number.Uint64() < p.banachForkHeight
+	codecVersion := encoding.CodecV0
+	if blocks[0].Header.Number.Uint64() >= p.banachForkHeight {
+		codecVersion = encoding.CodecV1
+	}
 
 	var chunk encoding.Chunk
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)
 
-		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, useCodecv0)
+		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 		}
@@ -235,19 +238,21 @@ func (p *ChunkProposer) proposeChunk() error {
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
 
-			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, useCodecv0)
+			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 			if calcErr != nil {
 				return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 			}
+
 			p.recordChunkMetrics(metrics)
-			return p.updateDBChunkInfo(&chunk, useCodecv0)
+			return p.updateDBChunkInfo(&chunk, codecVersion)
 		}
 	}
 
-	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, useCodecv0)
+	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 	}
+
 	currentTimeSec := uint64(time.Now().Unix())
 	if metrics.FirstBlockTimestamp+p.chunkTimeoutSec < currentTimeSec || metrics.NumBlocks == maxBlocksThisChunk {
 		log.Info("reached maximum number of blocks in chunk or first block timeout",
@@ -259,7 +264,7 @@ func (p *ChunkProposer) proposeChunk() error {
 
 		p.chunkFirstBlockTimeoutReached.Inc()
 		p.recordChunkMetrics(metrics)
-		return p.updateDBChunkInfo(&chunk, useCodecv0)
+		return p.updateDBChunkInfo(&chunk, codecVersion)
 	}
 
 	log.Debug("pending blocks do not reach one of the constraints or contain a timeout block")

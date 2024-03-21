@@ -687,7 +687,7 @@ func TestCodecV1BatchSkipBitmap(t *testing.T) {
 	assert.Equal(t, 42, int(batch.TotalL1MessagePopped))
 }
 
-func TestCodecV1ChunkBlobSizeEstimation(t *testing.T) {
+func TestCodecV1ChunkAndBatchBlobSizeEstimation(t *testing.T) {
 	trace2 := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
 	chunk2 := &encoding.Chunk{Blocks: []*encoding.Block{trace2}}
 	chunk2BlobSize, err := EstimateChunkL1CommitBlobSize(chunk2)

@@ -204,7 +204,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		var dbChunk *orm.Chunk
-		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, true /* use codecv0 in genesis chunk */, dbTX)
+		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, encoding.CodecV0, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
@@ -221,7 +221,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		}
 
 		var dbBatch *orm.Batch
-		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, true /* use codecv0 in genesis batch */, dbTX)
+		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}

@@ -15,8 +15,6 @@ import (
 
 	"scroll-tech/common/forks"
 	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
-	"scroll-tech/common/types/encoding/codecv1"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -139,9 +137,9 @@ func (p *BatchProposer) TryProposeBatch() {
 	}
 }
 
-func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, useCodecv0 bool) error {
+func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion) error {
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		batch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, useCodecv0, dbTX)
+		batch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, dbTX)
 		if dbErr != nil {
 			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure",
 				"start chunk index", batch.StartChunkIndex, "end chunk index", batch.EndChunkIndex, "error", dbErr)
@@ -189,7 +187,10 @@ func (p *BatchProposer) proposeBatch() error {
 		}
 	}
 
-	useCodecv0 := dbChunks[0].StartBlockNumber < p.banachForkHeight
+	codecVersion := encoding.CodecV0
+	if dbChunks[0].StartBlockNumber >= p.banachForkHeight {
+		codecVersion = encoding.CodecV1
+	}
 
 	daChunks, err := p.getDAChunks(dbChunks)
 	if err != nil {
@@ -204,25 +205,19 @@ func (p *BatchProposer) proposeBatch() error {
 	var batch encoding.Batch
 	batch.Index = parentDBBatch.Index + 1
 	batch.ParentBatchHash = common.HexToHash(parentDBBatch.Hash)
-
 	parentBatchEndBlockNumber := daChunks[0].Blocks[0].Header.Number.Uint64() - 1
-	if parentDBBatch.Index == 0 || parentBatchEndBlockNumber < p.banachForkHeight {
-		parentDABatch, err := codecv0.NewDABatchFromBytes(parentDBBatch.BatchHeader)
-		if err != nil {
-			return err
-		}
-		batch.TotalL1MessagePoppedBefore = parentDABatch.TotalL1MessagePopped
-	} else {
-		parentDABatch, err := codecv1.NewDABatchFromBytes(parentDBBatch.BatchHeader)
-		if err != nil {
-			return err
-		}
-		batch.TotalL1MessagePoppedBefore = parentDABatch.TotalL1MessagePopped
+	parentBatchCodecVersion := encoding.CodecV0
+	if parentDBBatch.Index > 0 && parentBatchEndBlockNumber >= p.banachForkHeight {
+		parentBatchCodecVersion = encoding.CodecV1
+	}
+	batch.TotalL1MessagePoppedBefore, err = utils.GetTotalL1MessagePoppedBeforeBatch(parentDBBatch.BatchHeader, parentBatchCodecVersion)
+	if err != nil {
+		return err
 	}
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
-		metrics, calcErr := utils.CalculateBatchMetrics(&batch, useCodecv0)
+		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
@@ -244,17 +239,17 @@ func (p *BatchProposer) proposeBatch() error {
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 
-			metrics, err := utils.CalculateBatchMetrics(&batch, useCodecv0)
+			metrics, err := utils.CalculateBatchMetrics(&batch, codecVersion)
 			if err != nil {
 				return fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
 
 			p.recordBatchMetrics(metrics)
-			return p.updateDBBatchInfo(&batch, useCodecv0)
+			return p.updateDBBatchInfo(&batch, codecVersion)
 		}
 	}
 
-	metrics, calcErr := utils.CalculateBatchMetrics(&batch, useCodecv0)
+	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 	}
@@ -268,7 +263,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.recordBatchMetrics(metrics)
-		return p.updateDBBatchInfo(&batch, useCodecv0)
+		return p.updateDBBatchInfo(&batch, codecVersion)
 	}
 
 	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")
