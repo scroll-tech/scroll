@@ -477,42 +477,42 @@ func TestCodecV1BatchChallenge(t *testing.T) {
 	originalBatch := &encoding.Batch{Chunks: []*encoding.Chunk{chunk2}}
 	batch, err := NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "68e2c261c2966a7db9511e4d218355fdb437a870c29f29f1a06d5dbbcec1985f", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "3eb91733dcffb1951528ab272342ae45ed56e17df0decd4ed9584445d981a922", hex.EncodeToString(batch.z[:]))
 
 	trace3 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 	chunk3 := &encoding.Chunk{Blocks: []*encoding.Block{trace3}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk3}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "6ff1c0f0d1dffecc5ec29809689e137d69804b374b0dd77e5c5e13a843ebbe26", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "6c94bcb5733d39e3eb489317a9791bf470d4d8262b3c0e353dd50673bdeb52dc", hex.EncodeToString(batch.z[:]))
 
 	trace4 := readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
 	chunk4 := &encoding.Chunk{Blocks: []*encoding.Block{trace4}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk4}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "151b0647c2081daa71b10ceb7e025e19e262481f910f1223c591850fbb6d8e99", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "5ebbf1cd775eabcceb7ee7fad9675fc47bc7a96baef0e2d8d3a7311d87cbb8ee", hex.EncodeToString(batch.z[:]))
 
 	trace5 := readBlockFromJSON(t, "../../../testdata/blockTrace_05.json")
 	chunk5 := &encoding.Chunk{Blocks: []*encoding.Block{trace5}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk5}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "4eb667749f11a287c4432dc4f4a459502c30cf640b3b8508ceaa72743f63802b", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "099f933910ce3c20091f81c52c61e273aca7a537b27b80da79775ee2477e6b4b", hex.EncodeToString(batch.z[:]))
 
 	trace6 := readBlockFromJSON(t, "../../../testdata/blockTrace_06.json")
 	chunk6 := &encoding.Chunk{Blocks: []*encoding.Block{trace6}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk6}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "4eb667749f11a287c4432dc4f4a459502c30cf640b3b8508ceaa72743f63802b", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "099f933910ce3c20091f81c52c61e273aca7a537b27b80da79775ee2477e6b4b", hex.EncodeToString(batch.z[:]))
 
 	trace7 := readBlockFromJSON(t, "../../../testdata/blockTrace_07.json")
 	chunk7 := &encoding.Chunk{Blocks: []*encoding.Block{trace7}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk7}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "4eb667749f11a287c4432dc4f4a459502c30cf640b3b8508ceaa72743f63802b", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "099f933910ce3c20091f81c52c61e273aca7a537b27b80da79775ee2477e6b4b", hex.EncodeToString(batch.z[:]))
 
 	// 15 chunks
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2}}
@@ -525,7 +525,7 @@ func TestCodecV1BatchChallenge(t *testing.T) {
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk8, chunk9}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "0b81d9c34c2af79ca7a4cf616123a8e7b19e6cedb5bc0b971fa25fddb4e45074", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "607f57e9c37918e146fdaae228e7c7cacd7dc2b639ea7eeeed0498f9d07883a1", hex.EncodeToString(batch.z[:]))
 }
 
 func TestCodecV1BatchBlobDataProof(t *testing.T) {
@@ -536,7 +536,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err := batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "68e2c261c2966a7db9511e4d218355fdb437a870c29f29f1a06d5dbbcec1985f6f15289f256d27694fae6248b0c5a036fe6080cb56152be5038af613bc0cf11fb44a38af1f9a6c70cd3ccfbf71968f447aa566bbafb0bbc566fc9eeb42973484802635a1bbd8305d34a46693331bf607b9b929593767038c5d283881db804493a56c3a642eef9e8e22ce07e06251e169d7cc717e87afaff79defe0c8611975a8", hex.EncodeToString(verifyData))
+	assert.Equal(t, "3eb91733dcffb1951528ab272342ae45ed56e17df0decd4ed9584445d981a9226682c8157fdabdcefe9b94cfe0e19115d7a3199568e8fde056f83cc5ac833292b44a38af1f9a6c70cd3ccfbf71968f447aa566bbafb0bbc566fc9eeb42973484802635a1bbd8305d34a46693331bf607b19858df6e24e9e1eb02167752c8038651e838f4096713790ab504bedfd659de369dec673a72d17e10d363106f0b8cd2", hex.EncodeToString(verifyData))
 
 	trace3 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 	chunk3 := &encoding.Chunk{Blocks: []*encoding.Block{trace3}}
@@ -545,7 +545,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "6ff1c0f0d1dffecc5ec29809689e137d69804b374b0dd77e5c5e13a843ebbe2660c6d347d1f8bb33904c864a4f540cd36f11f75fc377c97b0b7b5347bbcaa367b8aab265dc352e352807a298f7bb99d432c7cd543e63158cbdb8fbf99f3182a71af35ccbed2693c5e0bc5be38d565e868925b3c6bd79c590bbc5d9fbf17bfec8f68543c22e5d98d7342fbcf0b962d021dc6991fa98663d68acb2cc63bbcb372a", hex.EncodeToString(verifyData))
+	assert.Equal(t, "6c94bcb5733d39e3eb489317a9791bf470d4d8262b3c0e353dd50673bdeb52dc1927aad93e5397e4b9e02396c6a29f215ee86d3d869aef5227e77a2e005c65edb8aab265dc352e352807a298f7bb99d432c7cd543e63158cbdb8fbf99f3182a71af35ccbed2693c5e0bc5be38d565e8687154d0290645c7ebbead90bec57bb16c57a2009293db6ebac96b26bfb4d6d9d608713ea4b12d5e83dfe86e57e9dd727", hex.EncodeToString(verifyData))
 
 	trace4 := readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
 	chunk4 := &encoding.Chunk{Blocks: []*encoding.Block{trace4}}
@@ -554,7 +554,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "151b0647c2081daa71b10ceb7e025e19e262481f910f1223c591850fbb6d8e995d7d0efec873a1199ee9f41396fa84d76ae6d8f19f265ff00128b432f8a1f825afd4e1c55a17dbdf8390b5736158afe238d82f8b696669ba47015fcdfd4d1becd0ff7a47f8f379a4ac8d1741e2d67624885a2718020209c64c839d2065ea52afa90099317e3a7ec1ccd0197ffffcf7cb1dd5307b4ea6ce8bd09d80f2ef109b51", hex.EncodeToString(verifyData))
+	assert.Equal(t, "5ebbf1cd775eabcceb7ee7fad9675fc47bc7a96baef0e2d8d3a7311d87cbb8ee16a968ea8309463e01f426ee1cfa07d38fc4db7039f8bc959170a4bc69733799afd4e1c55a17dbdf8390b5736158afe238d82f8b696669ba47015fcdfd4d1becd0ff7a47f8f379a4ac8d1741e2d67624a652915aee98dab659331a41d84aace68be512d1b8c92504c9aac6b84e0be6b7555bd148d47f69b9e3cee14483474d02", hex.EncodeToString(verifyData))
 
 	trace5 := readBlockFromJSON(t, "../../../testdata/blockTrace_05.json")
 	chunk5 := &encoding.Chunk{Blocks: []*encoding.Block{trace5}}
@@ -563,7 +563,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "4eb667749f11a287c4432dc4f4a459502c30cf640b3b8508ceaa72743f63802b0000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", hex.EncodeToString(verifyData))
+	assert.Equal(t, "099f933910ce3c20091f81c52c61e273aca7a537b27b80da79775ee2477e6b4b0000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", hex.EncodeToString(verifyData))
 
 	trace6 := readBlockFromJSON(t, "../../../testdata/blockTrace_06.json")
 	chunk6 := &encoding.Chunk{Blocks: []*encoding.Block{trace6}}
@@ -572,7 +572,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "4eb667749f11a287c4432dc4f4a459502c30cf640b3b8508ceaa72743f63802b0000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", hex.EncodeToString(verifyData))
+	assert.Equal(t, "099f933910ce3c20091f81c52c61e273aca7a537b27b80da79775ee2477e6b4b0000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", hex.EncodeToString(verifyData))
 
 	trace7 := readBlockFromJSON(t, "../../../testdata/blockTrace_07.json")
 	chunk7 := &encoding.Chunk{Blocks: []*encoding.Block{trace7}}
@@ -581,7 +581,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "4eb667749f11a287c4432dc4f4a459502c30cf640b3b8508ceaa72743f63802b0000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", hex.EncodeToString(verifyData))
+	assert.Equal(t, "099f933910ce3c20091f81c52c61e273aca7a537b27b80da79775ee2477e6b4b0000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", hex.EncodeToString(verifyData))
 
 	// 15 chunks
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2}}
@@ -598,7 +598,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "0b81d9c34c2af79ca7a4cf616123a8e7b19e6cedb5bc0b971fa25fddb4e4507446db97b4881626a36a44872c1cea86a12bcfd7ec0083517d0d4ed5d49bfeb93eadbb1944e9a0b2a67e279af454e99d70b7d141347ea0f33e243a1000c1398465cba27f0fccf7a0f72b21289b05b940998e795a34fd26305fa4d059589387f76e7dec669ae28573170fd76e75adb4e756626d9efae7b9e14d9f6c0f69368d03fc", hex.EncodeToString(verifyData))
+	assert.Equal(t, "607f57e9c37918e146fdaae228e7c7cacd7dc2b639ea7eeeed0498f9d07883a145a4cd42f620d6c437b327d4656061ac0c838fd9db81e6f45b451ac798668e90adbb1944e9a0b2a67e279af454e99d70b7d141347ea0f33e243a1000c1398465cba27f0fccf7a0f72b21289b05b94099a6333a0421b9fa1a1b374f809d48e9b62eb4140a223ce6b029f61fffc0af8bf680c6ef62b0ee0798dc1cef27d758319e", hex.EncodeToString(verifyData))
 }
 
 func TestCodecV1BatchSkipBitmap(t *testing.T) {
