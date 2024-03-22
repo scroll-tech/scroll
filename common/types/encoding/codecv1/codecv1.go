@@ -298,12 +298,10 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 	// and simultaneously also build challenge preimage
 	for chunkID, chunk := range chunks {
 		currentChunkStartIndex := len(blobBytes)
-		hasL2Tx := false
 
 		for _, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
 				if tx.Type != types.L1MessageTxType {
-					hasL2Tx = true
 					// encode L2 txs into blob payload
 					rlpTxData, err := encoding.ConvertTxDataToRLPEncoding(tx)
 					if err != nil {
@@ -319,7 +317,7 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 		chunkSize := len(blobBytes) - currentChunkStartIndex
 		binary.BigEndian.PutUint32(blobBytes[2+4*chunkID:], uint32(chunkSize))
 
-		if hasL2Tx {
+		if chunkSize != 0 {
 			numNonEmptyChunks++
 		}
 
