@@ -135,9 +135,10 @@ type BatchMetrics struct {
 // CalculateBatchMetrics calculates batch metrics.
 func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetrics, error) {
 	var err error
-	metrics := &BatchMetrics{}
-	metrics.NumChunks = uint64(len(batch.Chunks))
-	metrics.FirstBlockTimestamp = batch.Chunks[0].Blocks[0].Header.Time
+	metrics := &BatchMetrics{
+		NumChunks:           uint64(len(batch.Chunks)),
+		FirstBlockTimestamp: batch.Chunks[0].Blocks[0].Header.Time,
+	}
 	switch codecVersion {
 	case encoding.CodecV0:
 		metrics.L1CommitGas, err = codecv0.EstimateBatchL1CommitGas(batch)
@@ -198,75 +199,73 @@ type BatchMetadata struct {
 
 // GetBatchMetadata retrieves the metadata of a batch.
 func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetadata, error) {
-	batchMeta := &BatchMetadata{}
 	numChunks := len(batch.Chunks)
 	totalL1MessagePoppedBeforeEndDAChunk := batch.TotalL1MessagePoppedBefore
 	for i := 0; i < numChunks-1; i++ {
 		totalL1MessagePoppedBeforeEndDAChunk += batch.Chunks[i].NumL1Messages(totalL1MessagePoppedBeforeEndDAChunk)
 	}
+
 	switch codecVersion {
 	case encoding.CodecV0:
 		daBatch, err := codecv0.NewDABatch(batch)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create codecv0 DA batch, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, batch.TotalL1MessagePoppedBefore, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to create codecv0 DA batch: %w", err)
 		}
-		batchMeta.BatchHash = daBatch.Hash()
-		batchMeta.BatchBytes = daBatch.Encode()
+
+		batchMeta := &BatchMetadata{
+			BatchHash:  daBatch.Hash(),
+			BatchBytes: daBatch.Encode(),
+		}
+
 		startDAChunk, err := codecv0.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create codecv0 start DA chunk, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, batch.TotalL1MessagePoppedBefore, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to create codecv0 start DA chunk: %w", err)
 		}
 
 		batchMeta.StartChunkHash, err = startDAChunk.Hash()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get codecv0 start DA chunk hash, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, batch.TotalL1MessagePoppedBefore, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to get codecv0 start DA chunk hash: %w", err)
 		}
 
 		endDAChunk, err := codecv0.NewDAChunk(batch.Chunks[numChunks-1], totalL1MessagePoppedBeforeEndDAChunk)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create codecv0 end DA chunk, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, totalL1MessagePoppedBeforeEndDAChunk, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to create codecv0 end DA chunk: %w", err)
 		}
 
 		batchMeta.EndChunkHash, err = endDAChunk.Hash()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get codecv0 end DA chunk hash, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, totalL1MessagePoppedBeforeEndDAChunk, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to get codecv0 end DA chunk hash: %w", err)
 		}
 		return batchMeta, nil
 	case encoding.CodecV1:
 		daBatch, err := codecv1.NewDABatch(batch)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create codecv1 DA batch, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, batch.TotalL1MessagePoppedBefore, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to create codecv1 DA batch: %w", err)
 		}
-		batchMeta.BatchHash = daBatch.Hash()
-		batchMeta.BatchBytes = daBatch.Encode()
+
+		batchMeta := &BatchMetadata{
+			BatchHash:  daBatch.Hash(),
+			BatchBytes: daBatch.Encode(),
+		}
+
 		startDAChunk, err := codecv1.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create codecv1 start DA chunk, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, batch.TotalL1MessagePoppedBefore, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to create codecv1 start DA chunk: %w", err)
 		}
 
 		batchMeta.StartChunkHash, err = startDAChunk.Hash()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get codecv1 start DA chunk hash, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, batch.TotalL1MessagePoppedBefore, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to get codecv1 start DA chunk hash: %w", err)
 		}
 
 		endDAChunk, err := codecv1.NewDAChunk(batch.Chunks[numChunks-1], totalL1MessagePoppedBeforeEndDAChunk)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create codecv1 end DA chunk, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, totalL1MessagePoppedBeforeEndDAChunk, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to create codecv1 end DA chunk: %w", err)
 		}
 
 		batchMeta.EndChunkHash, err = endDAChunk.Hash()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get codecv1 end DA chunk hash, index: %d, total l1 message popped before: %d, parent hash: %s, number of chunks: %d, err: %w",
-				batch.Index, totalL1MessagePoppedBeforeEndDAChunk, batch.ParentBatchHash.Hex(), numChunks, err)
+			return nil, fmt.Errorf("failed to get codecv1 end DA chunk hash: %w", err)
 		}
 		return batchMeta, nil
 	default:

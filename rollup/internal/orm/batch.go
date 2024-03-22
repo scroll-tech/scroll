@@ -249,8 +249,9 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 
 	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion)
 	if err != nil {
-		log.Error("failed to get batch metadata", "err", err)
-		return nil, err
+		log.Error("failed to get batch metadata", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
 	newBatch := Batch{
