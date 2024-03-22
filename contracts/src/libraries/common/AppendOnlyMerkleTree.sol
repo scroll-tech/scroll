@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.24;
 
 abstract contract AppendOnlyMerkleTree {
     /// @dev The maximum height of the withdraw merkle tree.

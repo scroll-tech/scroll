@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity =0.8.24;
 
-import {BatchHeaderV0Codec} from "../../../contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
-import {ChunkCodec} from "../../../contracts/src/libraries/codec/ChunkCodec.sol";
-import {IL1MessageQueue} from "../../../contracts/src/L1/rollup/IL1MessageQueue.sol";
+import {BatchHeaderV0Codec} from "../../contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
+import {ChunkCodecV0} from "../../contracts/src/libraries/codec/ChunkCodecV0.sol";
+import {IL1MessageQueue} from "../../contracts/src/L1/rollup/IL1MessageQueue.sol";
 
 contract MockBridge {
   /******************************
@@ -265,16 +265,16 @@ contract MockBridge {
       blockPtr := add(chunkPtr, 1) // skip numBlocks
     }
 
-    uint256 _numBlocks = ChunkCodec.validateChunkLength(chunkPtr, _chunk.length);
+    uint256 _numBlocks = ChunkCodecV0.validateChunkLength(chunkPtr, _chunk.length);
 
     // concatenate block contexts
     uint256 _totalTransactionsInChunk;
     for (uint256 i = 0; i < _numBlocks; i++) {
-      dataPtr = ChunkCodec.copyBlockContext(chunkPtr, dataPtr, i);
-      uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+      dataPtr = ChunkCodecV0.copyBlockContext(chunkPtr, dataPtr, i);
+      uint256 _numTransactionsInBlock = ChunkCodecV0.getNumTransactions(blockPtr);
       unchecked {
         _totalTransactionsInChunk += _numTransactionsInBlock;
-        blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+        blockPtr += ChunkCodecV0.BLOCK_CONTEXT_LENGTH;
       }
     }
 
@@ -284,13 +284,13 @@ contract MockBridge {
     }
 
     // concatenate tx hashes
-    uint256 l2TxPtr = ChunkCodec.l2TxPtr(chunkPtr, _numBlocks);
+    uint256 l2TxPtr = ChunkCodecV0.getL2TxPtr(chunkPtr, _numBlocks);
     while (_numBlocks > 0) {
       // concatenate l2 transaction hashes
-      uint256 _numTransactionsInBlock = ChunkCodec.numTransactions(blockPtr);
+      uint256 _numTransactionsInBlock = ChunkCodecV0.getNumTransactions(blockPtr);
       for (uint256 j = 0; j < _numTransactionsInBlock; j++) {
         bytes32 txHash;
-        (txHash, l2TxPtr) = ChunkCodec.loadL2TxHash(l2TxPtr);
+        (txHash, l2TxPtr) = ChunkCodecV0.loadL2TxHash(l2TxPtr);
         assembly {
           mstore(dataPtr, txHash)
           dataPtr := add(dataPtr, 0x20)
@@ -299,7 +299,7 @@ contract MockBridge {
 
       unchecked {
         _numBlocks -= 1;
-        blockPtr += ChunkCodec.BLOCK_CONTEXT_LENGTH;
+        blockPtr += ChunkCodecV0.BLOCK_CONTEXT_LENGTH;
       }
     }
 

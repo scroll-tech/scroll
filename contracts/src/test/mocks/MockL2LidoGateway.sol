@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 import {L2LidoGateway} from "../../lido/L2LidoGateway.sol";
 
