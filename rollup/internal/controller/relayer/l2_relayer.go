@@ -816,17 +816,17 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch,
 		Chunks:                     chunks,
 	}
 
+	daBatch, createErr := codecv1.NewDABatch(batch)
+	if createErr != nil {
+		return nil, fmt.Errorf("failed to create DA batch: %w", createErr)
+	}
+
+	blobDataProof, getErr := daBatch.BlobDataProof()
+	if getErr != nil {
+		return nil, fmt.Errorf("failed to get blob data proof: %w", getErr)
+	}
+
 	if aggProof != nil { // finalizeBatch4844 with proof.
-		daBatch, createErr := codecv1.NewDABatch(batch)
-		if createErr != nil {
-			return nil, fmt.Errorf("failed to create DA batch: %w", createErr)
-		}
-
-		blobDataProof, getErr := daBatch.BlobDataProof()
-		if getErr != nil {
-			return nil, fmt.Errorf("failed to get blob data proof: %w", getErr)
-		}
-
 		calldata, packErr := r.l1RollupABI.Pack(
 			"finalizeBatchWithProof4844",
 			dbBatch.BatchHeader,
@@ -843,16 +843,6 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch,
 	}
 
 	// finalizeBatch4844 without proof.
-	daBatch, createErr := codecv1.NewDABatch(batch)
-	if createErr != nil {
-		return nil, fmt.Errorf("failed to create DA batch: %w", createErr)
-	}
-
-	blobDataProof, getErr := daBatch.BlobDataProof()
-	if getErr != nil {
-		return nil, fmt.Errorf("failed to get blob data proof: %w", getErr)
-	}
-
 	calldata, packErr := r.l1RollupABI.Pack(
 		"finalizeBatch4844", // Assuming the "to be implemented" bypass function name is finalizeBatch4844.
 		dbBatch.BatchHeader,
