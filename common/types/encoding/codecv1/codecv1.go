@@ -30,7 +30,7 @@ var (
 	// MaxNumChunks is the maximum number of chunks that a batch can contain.
 	MaxNumChunks int = 15
 
-	//
+	// EmptyKeccakHash is the keccak hash of the empty byte array.
 	EmptyKeccakHash = crypto.Keccak256Hash([]byte{})
 )
 
