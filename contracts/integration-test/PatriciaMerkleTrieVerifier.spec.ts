@@ -1,8 +1,9 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
 import { expect } from "chai";
-import { concat } from "ethers/lib/utils";
+import { concat } from "ethers";
 import { ethers } from "hardhat";
+
 import { MockPatriciaMerkleTrieVerifier } from "../typechain";
 
 interface ITestConfig {
@@ -121,7 +122,6 @@ describe("PatriciaMerkleTrieVerifier", async () => {
 
     const MockPatriciaMerkleTrieVerifier = await ethers.getContractFactory("MockPatriciaMerkleTrieVerifier", deployer);
     verifier = await MockPatriciaMerkleTrieVerifier.deploy();
-    await verifier.deployed();
   });
 
   for (const test of testcases) {

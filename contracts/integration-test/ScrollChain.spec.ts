@@ -1,8 +1,8 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
-import { concat } from "ethers/lib/utils";
-import { constants } from "ethers";
+import { ZeroAddress, concat, getBytes } from "ethers";
 import { ethers } from "hardhat";
+
 import { ScrollChain, L1MessageQueue } from "../typechain";
 
 describe("ScrollChain", async () => {
@@ -14,40 +14,28 @@ describe("ScrollChain", async () => {
 
     const EmptyContract = await ethers.getContractFactory("EmptyContract", deployer);
     const empty = await EmptyContract.deploy();
-    await empty.deployed();
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin", deployer);
     const admin = await ProxyAdmin.deploy();
-    await admin.deployed();
 
     const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
-    const queueProxy = await TransparentUpgradeableProxy.deploy(empty.address, admin.address, "0x");
-    await queueProxy.deployed();
-    const chainProxy = await TransparentUpgradeableProxy.deploy(empty.address, admin.address, "0x");
-    await chainProxy.deployed();
+    const queueProxy = await TransparentUpgradeableProxy.deploy(empty.getAddress(), admin.getAddress(), "0x");
+    const chainProxy = await TransparentUpgradeableProxy.deploy(empty.getAddress(), admin.getAddress(), "0x");
 
     const L1MessageQueue = await ethers.getContractFactory("L1MessageQueue", deployer);
-    const queueImpl = await L1MessageQueue.deploy(constants.AddressZero, chainProxy.address, deployer.address);
-    await queueImpl.deployed();
-    await admin.upgrade(queueProxy.address, queueImpl.address);
+    const queueImpl = await L1MessageQueue.deploy(ZeroAddress, chainProxy.getAddress(), deployer.address);
+    await admin.upgrade(queueProxy.getAddress(), queueImpl.getAddress());
 
     const ScrollChain = await ethers.getContractFactory("ScrollChain", deployer);
-    const chainImpl = await ScrollChain.deploy(0, queueProxy.address, deployer.address);
-    await chainImpl.deployed();
-    await admin.upgrade(chainProxy.address, chainImpl.address);
+    const chainImpl = await ScrollChain.deploy(0, queueProxy.getAddress(), deployer.address);
+    await admin.upgrade(chainProxy.getAddress(), chainImpl.getAddress());
 
-    queue = await ethers.getContractAt("L1MessageQueue", queueProxy.address, deployer);
-    chain = await ethers.getContractAt("ScrollChain", chainProxy.address, deployer);
+    queue = await ethers.getContractAt("L1MessageQueue", await queueProxy.getAddress(), deployer);
+    chain = await ethers.getContractAt("ScrollChain", await chainProxy.getAddress(), deployer);
 
-    await chain.initialize(queue.address, constants.AddressZero, 100);
+    await chain.initialize(queue.getAddress(), ZeroAddress, 100);
     await chain.addSequencer(deployer.address);
-    await queue.initialize(
-      constants.AddressZero,
-      chain.address,
-      constants.AddressZero,
-      constants.AddressZero,
-      10000000
-    );
+    await queue.initialize(ZeroAddress, chain.getAddress(), ZeroAddress, ZeroAddress, 10000000);
   });
 
   // @note skip this benchmark tests
@@ -82,12 +70,12 @@ describe("ScrollChain", async () => {
             for (let i = 0; i < numChunks; i++) {
               const txsInChunk: Array<Uint8Array> = [];
               for (let j = 0; j < numBlocks; j++) {
-                txsInChunk.push(concat(txs));
+                txsInChunk.push(getBytes(concat(txs)));
               }
-              chunks.push(concat([chunk, concat(txsInChunk)]));
+              chunks.push(getBytes(concat([chunk, concat(txsInChunk)])));
             }
 
-            const estimateGas = await chain.estimateGas.commitBatch(0, batchHeader0, chunks, "0x");
+            const estimateGas = await chain.commitBatch.estimateGas(0, batchHeader0, chunks, "0x");
             console.log(
               `${numChunks}`,
               `${numBlocks}`,

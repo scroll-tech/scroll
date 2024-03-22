@@ -1,9 +1,9 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
 import { expect } from "chai";
-import { BigNumber, BigNumberish, constants } from "ethers";
-import { concat, RLP } from "ethers/lib/utils";
+import { BigNumberish, ZeroHash, concat, encodeRlp, toBeHex, toBigInt } from "ethers";
 import { ethers } from "hardhat";
+
 import { L1BlockContainer } from "../typechain";
 
 interface IImportTestConfig {
@@ -90,7 +90,7 @@ const testcases: Array<IImportTestConfig> = [
 ];
 
 function encodeHeader(test: IImportTestConfig): string {
-  return RLP.encode([
+  return encodeRlp([
     test.parentHash,
     test.uncleHash,
     test.coinbase,
@@ -98,15 +98,15 @@ function encodeHeader(test: IImportTestConfig): string {
     test.transactionsRoot,
     test.receiptsRoot,
     test.logsBloom,
-    BigNumber.from(test.difficulty).isZero() ? "0x" : BigNumber.from(test.difficulty).toHexString(),
-    BigNumber.from(test.blockHeight).toHexString(),
-    BigNumber.from(test.gasLimit).toHexString(),
-    BigNumber.from(test.gasUsed).toHexString(),
-    BigNumber.from(test.blockTimestamp).toHexString(),
+    toBigInt(test.difficulty) === 0n ? "0x" : toBeHex(test.difficulty),
+    toBeHex(test.blockHeight),
+    toBeHex(test.gasLimit),
+    toBeHex(test.gasUsed),
+    toBeHex(test.blockTimestamp),
     test.extraData,
     test.mixHash,
     test.blockNonce,
-    BigNumber.from(test.baseFee).toHexString(),
+    toBeHex(test.baseFee),
   ]);
 }
 
@@ -124,7 +124,7 @@ describe("L1BlockContainer", async () => {
         const whitelist = await Whitelist.deploy(deployer.address);
         await whitelist.updateWhitelistStatus([deployer.address], true);
 
-        await container.updateWhitelist(whitelist.address);
+        await container.updateWhitelist(whitelist.getAddress());
       });
 
       it("should revert, when sender not allowed", async () => {
@@ -137,7 +137,7 @@ describe("L1BlockContainer", async () => {
           test.stateRoot
         );
 
-        await expect(container.connect(signer).importBlockHeader(constants.HashZero, [], false)).to.revertedWith(
+        await expect(container.connect(signer).importBlockHeader(ZeroHash, "0x", false)).to.revertedWith(
           "Not whitelisted sender"
         );
       });
@@ -172,7 +172,7 @@ describe("L1BlockContainer", async () => {
 
       it("should revert, when parent not imported", async () => {
         await container.initialize(
-          constants.HashZero,
+          ZeroHash,
           test.blockHeight - 1,
           test.blockTimestamp - 1,
           test.baseFee,

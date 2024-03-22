@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.24;
 
 /// @title IUSDCBurnableSourceBridge
 /// @notice The interface of `USDCBurnableSourceBridge` of Circle's upgrader in L1 (Ethereum).
