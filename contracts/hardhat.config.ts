@@ -66,6 +66,10 @@ const config: HardhatUserConfig = {
       url: "https://sepolia-rpc.scroll.io",
       accounts: [L2_DEPLOYER_PRIVATE_KEY],
     },
+    local: {
+      url: "http://localhost:8543/l1",
+      accounts: ["0x0000000000000000000000000000000000000000000000000000000000000002", "0x0000000000000000000000000000000000000000000000000000000000000003"],
+    },
   },
   paths: {
     cache: "./cache-hardhat",
