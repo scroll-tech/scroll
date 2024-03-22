@@ -17,16 +17,19 @@ func TestCollectSortedForkBlocks(t *testing.T) {
 		ConstantinopleBlock: big.NewInt(0),
 	})
 	require.Equal(t, l, []uint64{
+		0,
 		3,
 		4,
 	})
 	require.Equal(t, map[uint64]bool{
 		3: true,
 		4: true,
+		0: true,
 	}, m)
 	require.Equal(t, map[string]uint64{
-		"eip155": 4,
-		"eip158": 3,
+		"eip155":         4,
+		"eip158":         3,
+		"constantinople": 0,
 	}, n)
 }
 
@@ -119,6 +122,13 @@ func TestBlockRange(t *testing.T) {
 			forkHeights:  []uint64{1, 2},
 			expectedFrom: 1,
 			expectedTo:   2,
+		},
+		{
+			name:         "to0",
+			forkHeight:   0,
+			forkHeights:  []uint64{0},
+			expectedFrom: 0,
+			expectedTo:   math.MaxInt64,
 		},
 	}
 

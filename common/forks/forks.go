@@ -12,10 +12,14 @@ import (
 func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]bool, map[string]uint64) {
 	forkHeightsMap := make(map[uint64]bool)
 	forkNameHeightMap := make(map[string]uint64)
+
 	type nameFork struct {
 		name  string
 		block *big.Int
 	}
+
+	var lastGenesisForkName string
+	var lastGenesisForkHeight uint64
 	for _, fork := range []nameFork{
 		{name: "homestead", block: config.HomesteadBlock},
 		{name: "daoFork", block: config.DAOForkBlock},
@@ -40,6 +44,11 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 
 		height := fork.block.Uint64()
 		if height == 0 {
+			lastGenesisForkName = fork.name
+			lastGenesisForkHeight = 0
+		}
+
+		if height == 0 {
 			continue
 		}
 
@@ -49,6 +58,12 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 
 		forkHeightsMap[height] = true
 		forkNameHeightMap[fork.name] = height
+	}
+
+	// store the genesis hard fork
+	if lastGenesisForkName != "" {
+		forkNameHeightMap[lastGenesisForkName] = 0
+		forkHeightsMap[lastGenesisForkHeight] = true
 	}
 
 	var forkHeights []uint64
