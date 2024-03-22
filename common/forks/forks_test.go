@@ -28,7 +28,7 @@ func TestCollectSortedForkBlocks(t *testing.T) {
 	}, m)
 	require.Equal(t, map[string]uint64{
 		"eip155":         4,
-		"eip158":         3,
+		"byzantium":      3,
 		"constantinople": 0,
 	}, n)
 }
