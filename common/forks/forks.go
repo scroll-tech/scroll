@@ -74,7 +74,7 @@ func BlocksUntilFork(blockHeight uint64, forkHeights []uint64) uint64 {
 
 // BlockRange return the block range of the hard fork
 func BlockRange(forkHeight uint64, forkHeights []uint64) (from, to uint64) {
-	to = math.MaxUint64
+	to = math.MaxInt64
 	for i, height := range forkHeights {
 		if forkHeight < height {
 			to = height

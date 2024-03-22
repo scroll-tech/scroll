@@ -83,7 +83,7 @@ func TestBlockRange(t *testing.T) {
 			forkHeight:   300,
 			forkHeights:  []uint64{100, 200, 300},
 			expectedFrom: 300,
-			expectedTo:   math.MaxUint64,
+			expectedTo:   math.MaxInt64,
 		},
 		{
 			name:         "To300",
