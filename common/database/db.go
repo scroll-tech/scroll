@@ -70,8 +70,17 @@ func InitDB(config *Config) (*gorm.DB, error) {
 		return nil, pingErr
 	}
 
-	sqlDB.SetConnMaxLifetime(config.MaxLifetime != 0 ? config.MaxLifetime : time.Minute * 10)
-	sqlDB.SetConnMaxIdleTime(config.MaxIdleTime != 0 ? config.MaxIdleTime : time.Minute * 5)
+	if (config.MaxLifetime != 0) {
+		sqlDB.SetConnMaxLifetime(config.MaxLifetime)
+	} else {
+		sqlDB.SetConnMaxLifetime(time.Minute * 10)
+	}
+
+	if (config.MaxIdleTime != 0) {
+		sqlDB.SetConnMaxIdleTime(config.MaxIdleTime)
+	} else {
+		sqlDB.SetConnMaxIdleTime(time.Minute * 5)
+	}
 
 	sqlDB.SetMaxOpenConns(config.MaxOpenNum)
 	sqlDB.SetMaxIdleConns(config.MaxIdleNum)
