@@ -1,7 +1,6 @@
 package forks
 
 import (
-	"errors"
 	"math"
 	"math/big"
 	"testing"
@@ -78,7 +77,6 @@ func TestBlockRange(t *testing.T) {
 		forkHeights  []uint64
 		expectedFrom uint64
 		expectedTo   uint64
-		err          error
 	}{
 		{
 			name:         "ToInfinite",
@@ -86,7 +84,6 @@ func TestBlockRange(t *testing.T) {
 			forkHeights:  []uint64{100, 200, 300},
 			expectedFrom: 300,
 			expectedTo:   math.MaxUint64,
-			err:          nil,
 		},
 		{
 			name:         "To300",
@@ -94,7 +91,6 @@ func TestBlockRange(t *testing.T) {
 			forkHeights:  []uint64{100, 200, 300},
 			expectedFrom: 200,
 			expectedTo:   300,
-			err:          nil,
 		},
 		{
 			name:         "To200",
@@ -102,7 +98,6 @@ func TestBlockRange(t *testing.T) {
 			forkHeights:  []uint64{100, 200, 300},
 			expectedFrom: 100,
 			expectedTo:   200,
-			err:          nil,
 		},
 		{
 			name:         "To100",
@@ -110,7 +105,6 @@ func TestBlockRange(t *testing.T) {
 			forkHeights:  []uint64{100, 200, 300},
 			expectedFrom: 0,
 			expectedTo:   100,
-			err:          nil,
 		},
 		{
 			name:         "To200-1",
@@ -118,7 +112,6 @@ func TestBlockRange(t *testing.T) {
 			forkHeights:  []uint64{100, 200},
 			expectedFrom: 100,
 			expectedTo:   200,
-			err:          nil,
 		},
 		{
 			name:         "to2",
@@ -126,34 +119,14 @@ func TestBlockRange(t *testing.T) {
 			forkHeights:  []uint64{1, 2},
 			expectedFrom: 1,
 			expectedTo:   2,
-			err:          nil,
-		},
-		{
-			name:         "to0",
-			forkHeight:   0,
-			forkHeights:  []uint64{0, 0},
-			expectedFrom: 0,
-			expectedTo:   0,
-			err:          errors.New("forkHeights contains duplicated number, forkHeights:[0 0]"),
-		},
-		{
-			name:         "100NotInside",
-			forkHeight:   100,
-			forkHeights:  []uint64{200, 300},
-			expectedFrom: 0,
-			expectedTo:   0,
-			err:          errors.New("forkHeights:[200 300] don't contains forkHeight:100"),
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			from, to, err := BlockRange(test.forkHeight, test.forkHeights)
+			from, to := BlockRange(test.forkHeight, test.forkHeights)
 			require.Equal(t, test.expectedFrom, from)
 			require.Equal(t, test.expectedTo, to)
-			if err != nil {
-				require.Equal(t, err.Error(), test.err.Error())
-			}
 		})
 	}
 }

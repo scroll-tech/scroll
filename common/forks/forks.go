@@ -1,8 +1,6 @@
 package forks
 
 import (
-	"errors"
-	"fmt"
 	"math"
 	"math/big"
 	"sort"
@@ -75,27 +73,7 @@ func BlocksUntilFork(blockHeight uint64, forkHeights []uint64) uint64 {
 }
 
 // BlockRange return the block range of the hard fork
-func BlockRange(forkHeight uint64, forkHeights []uint64) (from, to uint64, err error) {
-	length := len(forkHeights)
-	if length == 0 {
-		return 0, 0, errors.New("forkHeights empty")
-	}
-
-	m := make(map[uint64]bool)
-	for _, value := range forkHeights {
-		if m[value] {
-			return 0, 0, fmt.Errorf("forkHeights contains duplicated number, forkHeights:%v", forkHeights)
-		}
-		m[value] = true
-	}
-
-	// just for special case: the first time hard fork, prover parameter don't have forkHeight.
-	if forkHeight != 0 {
-		if _, ok := m[forkHeight]; !ok {
-			return 0, 0, fmt.Errorf("forkHeights:%v don't contains forkHeight:%v", forkHeights, forkHeight)
-		}
-	}
-
+func BlockRange(forkHeight uint64, forkHeights []uint64) (from, to uint64) {
 	to = math.MaxUint64
 	for i, height := range forkHeights {
 		if forkHeight < height {

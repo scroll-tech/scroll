@@ -79,12 +79,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	// so the hard fork chunk's start_block_number must be ForkBlockNumber
 	var startChunkIndex uint64 = 0
 	var endChunkIndex uint64 = math.MaxInt64
-	fromBlockNum, toBlockNum, err := forks.BlockRange(hardForkNumber, bp.forkHeights)
-	if err != nil {
-		log.Error("batch assign failure because get BlockRange failure", "err", err)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
+	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, bp.forkHeights)
 	if fromBlockNum != 0 {
 		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, fromBlockNum)
 		if chunkErr != nil {

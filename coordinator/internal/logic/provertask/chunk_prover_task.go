@@ -72,12 +72,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, err
 	}
 
-	fromBlockNum, toBlockNum, err := forks.BlockRange(hardForkNumber, cp.forkHeights)
-	if err != nil {
-		log.Error("chunk assign failure because get BlockRange failure", "err", err)
-		return nil, ErrCoordinatorInternalFailure
-	}
-
+	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, cp.forkHeights)
 	if toBlockNum > getTaskParameter.ProverHeight {
 		toBlockNum = getTaskParameter.ProverHeight + 1
 	}
