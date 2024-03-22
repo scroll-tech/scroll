@@ -29,9 +29,6 @@ var (
 
 	// MaxNumChunks is the maximum number of chunks that a batch can contain.
 	MaxNumChunks int = 15
-
-	// EmptyKeccakHash is the keccak hash of the empty byte array.
-	EmptyKeccakHash = crypto.Keccak256Hash([]byte{})
 )
 
 func init() {
@@ -213,6 +210,10 @@ func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
 		return nil, fmt.Errorf("too many chunks in batch")
 	}
 
+	if len(batch.Chunks) == 0 {
+		return nil, fmt.Errorf("too few chunks in batch")
+	}
+
 	// batch data hash
 	dataHash, err := computeBatchDataHash(batch.Chunks, batch.TotalL1MessagePoppedBefore)
 	if err != nil {
@@ -297,6 +298,9 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 	// the challenge point z
 	var z kzg4844.Point
 
+	// the chunk data hash used for calculating the challenge preimage
+	var chunkDataHash common.Hash
+
 	// encode blob metadata and L2 transactions,
 	// and simultaneously also build challenge preimage
 	for chunkID, chunk := range chunks {
@@ -316,24 +320,23 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 			}
 		}
 
-		// blob metadata: chunki_size
-		chunkSize := len(blobBytes) - currentChunkStartIndex
-		binary.BigEndian.PutUint32(blobBytes[2+4*chunkID:], uint32(chunkSize))
-
-		if chunkSize != 0 {
+		if chunkSize := len(blobBytes) - currentChunkStartIndex; chunkSize != 0 {
+			// blob metadata: chunki_size
+			binary.BigEndian.PutUint32(blobBytes[2+4*chunkID:], uint32(chunkSize))
 			numNonEmptyChunks++
 		}
 
 		// challenge: compute chunk data hash
-		hash := crypto.Keccak256Hash(blobBytes[currentChunkStartIndex:])
-		copy(challengePreimage[32+chunkID*32:], hash[:])
+		chunkDataHash = crypto.Keccak256Hash(blobBytes[currentChunkStartIndex:])
+		copy(challengePreimage[32+chunkID*32:], chunkDataHash[:])
 	}
 
 	// if we have fewer than MaxNumChunks chunks, the rest
 	// of the blob metadata is correctly initialized to 0,
 	// but we need to add padding to the challenge preimage
 	for chunkID := len(chunks); chunkID < MaxNumChunks; chunkID++ {
-		copy(challengePreimage[32+chunkID*32:], EmptyKeccakHash[:])
+		// use the last chunk's data hash as padding
+		copy(challengePreimage[32+chunkID*32:], chunkDataHash[:])
 	}
 
 	// blob metadata: num_chunks
