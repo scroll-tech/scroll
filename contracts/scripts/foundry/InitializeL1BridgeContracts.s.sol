@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 import {Script} from "forge-std/Script.sol";
 
@@ -95,9 +95,6 @@ contract InitializeL1BridgeContracts is Script {
 
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addSequencer(L1_COMMIT_SENDER_ADDRESS);
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addProver(L1_FINALIZE_SENDER_ADDRESS);
-
-        // initialize MultipleVersionRollupVerifier
-        MultipleVersionRollupVerifier(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR).initialize(L1_SCROLL_CHAIN_PROXY_ADDR);
 
         // initialize L2GasPriceOracle
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize(
