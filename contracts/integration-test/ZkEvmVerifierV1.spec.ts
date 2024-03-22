@@ -1,14 +1,15 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { hexlify } from "ethers/lib/utils";
-import { ethers } from "hardhat";
-import { ZkEvmVerifierV1 } from "../typechain";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { hexlify } from "ethers";
 import fs from "fs";
+import { ethers } from "hardhat";
+
+import { ZkEvmVerifierV1 } from "../typechain";
 
 describe("ZkEvmVerifierV1", async () => {
-  let deployer: SignerWithAddress;
+  let deployer: HardhatEthersSigner;
 
   let zkEvmVerifier: ZkEvmVerifierV1;
 
@@ -20,8 +21,7 @@ describe("ZkEvmVerifierV1", async () => {
     const receipt = await tx.wait();
 
     const ZkEvmVerifierV1 = await ethers.getContractFactory("ZkEvmVerifierV1", deployer);
-    zkEvmVerifier = await ZkEvmVerifierV1.deploy(receipt.contractAddress);
-    await zkEvmVerifier.deployed();
+    zkEvmVerifier = await ZkEvmVerifierV1.deploy(receipt!.contractAddress!);
   });
 
   it("should succeed", async () => {
@@ -37,7 +37,7 @@ describe("ZkEvmVerifierV1", async () => {
 
     // verify ok
     await zkEvmVerifier.verify(proof, publicInputHash);
-    console.log("Gas Usage:", (await zkEvmVerifier.estimateGas.verify(proof, publicInputHash)).toString());
+    console.log("Gas Usage:", (await zkEvmVerifier.verify.estimateGas(proof, publicInputHash)).toString());
 
     // verify failed
     await expect(zkEvmVerifier.verify(proof, publicInputHash.reverse())).to.reverted;

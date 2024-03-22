@@ -4,7 +4,7 @@
 // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/metatx/ERC2771Forwarder.sol
 // Modifications are made to make it compatible with solidity 0.8.16.
 
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 import {ERC2771Context} from "@openzeppelin/contracts/metatx/ERC2771Context.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
