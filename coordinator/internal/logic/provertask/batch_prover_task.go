@@ -91,7 +91,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 		startChunkIndex = startChunk.Index
 	}
-	if toBlockNum != math.MaxUint64 {
+	if toBlockNum != math.MaxInt64 {
 		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, toBlockNum)
 		if err != nil {
 			log.Error("failed to get fork end chunk index", "forkName", getTaskParameter.HardForkName, "toBlockNumber", toBlockNum, "err", chunkErr)
