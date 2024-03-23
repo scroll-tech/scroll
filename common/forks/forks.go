@@ -10,15 +10,13 @@ import (
 
 // CollectSortedForkHeights returns a sorted set of block numbers that one or more forks are activated on
 func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]bool, map[string]uint64) {
-	forkHeightsMap := make(map[uint64]bool)
-	forkNameHeightMap := make(map[string]uint64)
-
 	type nameFork struct {
 		name  string
 		block *big.Int
 	}
 
-	var lastGenesisForkName string
+	forkHeightNameMap := make(map[uint64]string)
+
 	for _, fork := range []nameFork{
 		{name: "homestead", block: config.HomesteadBlock},
 		{name: "daoFork", block: config.DAOForkBlock},
@@ -40,28 +38,18 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 		if fork.block == nil {
 			continue
 		}
-
 		height := fork.block.Uint64()
-		if height == 0 {
-			lastGenesisForkName = fork.name
-		}
 
-		if height == 0 {
-			continue
-		}
-
-		if _, ok := forkHeightsMap[height]; ok {
-			continue
-		}
-
-		forkHeightsMap[height] = true
-		forkNameHeightMap[fork.name] = height
+		// only keep latest fork for at each height, discard the rest
+		forkHeightNameMap[height] = fork.name
 	}
 
-	// store the genesis hard fork
-	if lastGenesisForkName != "" {
-		forkNameHeightMap[lastGenesisForkName] = 0
-		forkHeightsMap[0] = true
+	forkHeightsMap := make(map[uint64]bool)
+	forkNameHeightMap := make(map[string]uint64)
+
+	for height, name := range forkHeightNameMap {
+		forkHeightsMap[height] = true
+		forkNameHeightMap[name] = height
 	}
 
 	var forkHeights []uint64
@@ -85,7 +73,7 @@ func BlocksUntilFork(blockHeight uint64, forkHeights []uint64) uint64 {
 	return 0
 }
 
-// BlockRange return the block range of the hard fork
+// BlockRange returns the block range of the hard fork
 func BlockRange(forkHeight uint64, forkHeights []uint64) (from, to uint64) {
 	to = math.MaxInt64
 	for i, height := range forkHeights {
