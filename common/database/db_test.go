@@ -44,10 +44,12 @@ func TestDB(t *testing.T) {
 	base.RunDBImage(t)
 
 	dbCfg := &Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
+		DSN:         base.DBConfig.DSN,
+		DriverName:  base.DBConfig.DriverName,
+		MaxOpenNum:  base.DBConfig.MaxOpenNum,
+		MaxIdleNum:  base.DBConfig.MaxIdleNum,
+		MaxLifetime: base.DBConfig.MaxLifetime,
+		MaxIdleTime: base.DBConfig.MaxIdleTime,
 	}
 
 	var err error
