@@ -71,13 +71,13 @@ func InitDB(config *Config) (*gorm.DB, error) {
 	}
 
 	if (config.MaxLifetime != 0) {
-		sqlDB.SetConnMaxLifetime(time.second * config.MaxLifetime)
+		sqlDB.SetConnMaxLifetime(time.Second * config.MaxLifetime)
 	} else {
 		sqlDB.SetConnMaxLifetime(time.Minute * 10)
 	}
 
 	if (config.MaxIdleTime != 0) {
-		sqlDB.SetConnMaxIdleTime(time.second * config.MaxIdleTime)
+		sqlDB.SetConnMaxIdleTime(time.Second * config.MaxIdleTime)
 	} else {
 		sqlDB.SetConnMaxIdleTime(time.Minute * 5)
 	}
