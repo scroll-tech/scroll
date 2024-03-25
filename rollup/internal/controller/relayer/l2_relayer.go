@@ -3,7 +3,6 @@ package relayer
 import (
 	"context"
 	"fmt"
-	"math"
 	"math/big"
 	"sort"
 	"time"
@@ -67,7 +66,7 @@ type Layer2Relayer struct {
 
 	metrics *l2RelayerMetrics
 
-	banachForkHeight uint64
+	chainCfg *params.ChainConfig
 }
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
@@ -140,16 +139,8 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		minGasPrice:  minGasPrice,
 		gasPriceDiff: gasPriceDiff,
 
-		cfg: cfg,
-	}
-
-	// If BanachBlock is not set in chain's genesis config, banachForkHeight is inf,
-	// which means rollup-relayer uses codecv0 by default.
-	// TODO: Must change it to real fork name.
-	if chainCfg.BanachBlock != nil {
-		layer2Relayer.banachForkHeight = chainCfg.BanachBlock.Uint64()
-	} else {
-		layer2Relayer.banachForkHeight = math.MaxUint64
+		cfg:      cfg,
+		chainCfg: chainCfg,
 	}
 
 	// chain_monitor client
@@ -383,7 +374,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		var calldata []byte
 		var blob *kzg4844.Blob
-		if dbChunks[0].StartBlockNumber < r.banachForkHeight { // codecv0
+		if !r.chainCfg.IsBanach(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv0
 			calldata, err = r.constructCommitBatchPayloadCodecV0(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
 				log.Error("failed to construct commitBatch payload codecv0", "index", dbBatch.Index, "err", err)
@@ -544,7 +535,7 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 	}
 
 	var calldata []byte
-	if dbChunks[0].StartBlockNumber < r.banachForkHeight { // codecv0
+	if !r.chainCfg.IsBanach(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv0
 		calldata, err = r.constructFinalizeBatchPayloadCodecV0(dbBatch, dbParentBatch, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct commitBatch payload codecv0, index: %v, err: %w", dbBatch.Index, err)

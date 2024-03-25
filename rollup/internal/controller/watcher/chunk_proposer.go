@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -38,7 +37,8 @@ type ChunkProposer struct {
 	chunkTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	forkHeights                     []uint64
-	banachForkHeight                uint64
+
+	chainCfg *params.ChainConfig
 
 	chunkProposerCircleTotal           prometheus.Counter
 	proposeChunkFailureTotal           prometheus.Counter
@@ -79,6 +79,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		forkHeights:                     forkHeights,
+		chainCfg:                        chainCfg,
 
 		chunkProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_chunk_circle_total",
@@ -130,14 +131,6 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		}),
 	}
 
-	// If BanachBlock is not set in chain's genesis config, banachForkHeight is inf,
-	// which means chunk-proposer uses codecv0 by default.
-	// TODO: Must change it to real fork name.
-	if chainCfg.BanachBlock != nil {
-		p.banachForkHeight = chainCfg.BanachBlock.Uint64()
-	} else {
-		p.banachForkHeight = math.MaxUint64
-	}
 	return p
 }
 
@@ -200,7 +193,7 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	codecVersion := encoding.CodecV0
-	if blocks[0].Header.Number.Uint64() >= p.banachForkHeight {
+	if p.chainCfg.IsBanach(blocks[0].Header.Number) {
 		codecVersion = encoding.CodecV1
 	}
 

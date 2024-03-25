@@ -3,7 +3,7 @@ package watcher
 import (
 	"context"
 	"fmt"
-	"math"
+	"math/big"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,7 +36,8 @@ type BatchProposer struct {
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	forkMap                         map[uint64]bool
-	banachForkHeight                uint64
+
+	chainCfg *params.ChainConfig
 
 	batchProposerCircleTotal           prometheus.Counter
 	proposeBatchFailureTotal           prometheus.Counter
@@ -73,6 +74,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		forkMap:                         forkMap,
+		chainCfg:                        chainCfg,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_batch_circle_total",
@@ -116,14 +118,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		}),
 	}
 
-	// If BanachBlock is not set in chain's genesis config, banachForkHeight is inf,
-	// which means batch-proposer uses codecv0 by default.
-	// TODO: Must change it to real fork name.
-	if chainCfg.BanachBlock != nil {
-		p.banachForkHeight = chainCfg.BanachBlock.Uint64()
-	} else {
-		p.banachForkHeight = math.MaxUint64
-	}
 	return p
 }
 
@@ -188,7 +182,7 @@ func (p *BatchProposer) proposeBatch() error {
 	}
 
 	codecVersion := encoding.CodecV0
-	if dbChunks[0].StartBlockNumber >= p.banachForkHeight {
+	if p.chainCfg.IsBanach(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) {
 		codecVersion = encoding.CodecV1
 	}
 
@@ -207,7 +201,8 @@ func (p *BatchProposer) proposeBatch() error {
 	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
 	parentBatchEndBlockNumber := daChunks[0].Blocks[0].Header.Number.Uint64() - 1
 	parentBatchCodecVersion := encoding.CodecV0
-	if dbParentBatch.Index > 0 && parentBatchEndBlockNumber >= p.banachForkHeight {
+	// Genesis batch uses codecv0 encoding, otherwise using banach fork to choose codec version.
+	if dbParentBatch.Index > 0 && p.chainCfg.IsBanach(new(big.Int).SetUint64(parentBatchEndBlockNumber)) {
 		parentBatchCodecVersion = encoding.CodecV1
 	}
 	batch.TotalL1MessagePoppedBefore, err = utils.GetTotalL1MessagePoppedBeforeBatch(dbParentBatch.BatchHeader, parentBatchCodecVersion)
