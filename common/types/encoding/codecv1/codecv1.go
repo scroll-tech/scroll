@@ -315,7 +315,6 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 						return nil, nil, err
 					}
 					blobBytes = append(blobBytes, rlpTxData...)
-					continue
 				}
 			}
 		}
