@@ -743,7 +743,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV0(dbBatch *orm.Batch, d
 func (r *Layer2Relayer) constructCommitBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
 	batch := &encoding.Batch{
 		Index:                      dbBatch.Index,
-		TotalL1MessagePoppedBefore: dbChunks[len(dbChunks)-1].TotalL1MessagesPoppedBefore + dbChunks[len(dbChunks)-1].TotalL1MessagesPoppedInChunk,
+		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
 		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
 		Chunks:                     chunks,
 	}
@@ -802,7 +802,7 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV0(dbBatch *orm.Batch,
 func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk, aggProof *message.BatchProof) ([]byte, error) {
 	batch := &encoding.Batch{
 		Index:                      dbBatch.Index,
-		TotalL1MessagePoppedBefore: dbChunks[len(dbChunks)-1].TotalL1MessagesPoppedBefore + dbChunks[len(dbChunks)-1].TotalL1MessagesPoppedInChunk,
+		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
 		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
 		Chunks:                     chunks,
 	}
