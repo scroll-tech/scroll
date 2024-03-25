@@ -36,7 +36,7 @@ type BatchProverTask struct {
 // NewBatchProverTask new a batch collector
 func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
 	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
-	log.Info("new batch prover task", "forkHeights", forkHeights)
+	log.Info("new batch prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
 
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{

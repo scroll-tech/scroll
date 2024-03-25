@@ -34,7 +34,7 @@ type ChunkProverTask struct {
 // NewChunkProverTask new a chunk prover task
 func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
 	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
-	log.Info("new chunk prover task", "forkHeights", forkHeights)
+	log.Info("new chunk prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			vk:                 vk,
