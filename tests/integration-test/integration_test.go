@@ -114,7 +114,7 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	t.Log(version.Version)
 
 	base.Timestamp = time.Now().Nanosecond()
-	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
+	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json", "./genesis.json")
 	chunkProverApp := rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	batchProverApp := rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	defer coordinatorApp.Free()
@@ -149,7 +149,7 @@ func TestProverReLogin(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	base.Timestamp = time.Now().Nanosecond()
-	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
+	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json", "./genesis.json")
 	chunkProverApp := rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	batchProverApp := rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	defer coordinatorApp.Free()

@@ -1,6 +1,7 @@
 package forks
 
 import (
+	"math"
 	"math/big"
 	"testing"
 
@@ -9,20 +10,27 @@ import (
 )
 
 func TestCollectSortedForkBlocks(t *testing.T) {
-	l, m := CollectSortedForkHeights(&params.ChainConfig{
+	l, m, n := CollectSortedForkHeights(&params.ChainConfig{
 		EIP155Block:         big.NewInt(4),
 		EIP158Block:         big.NewInt(3),
 		ByzantiumBlock:      big.NewInt(3),
 		ConstantinopleBlock: big.NewInt(0),
 	})
 	require.Equal(t, l, []uint64{
+		0,
 		3,
 		4,
 	})
 	require.Equal(t, map[uint64]bool{
 		3: true,
 		4: true,
+		0: true,
 	}, m)
+	require.Equal(t, map[string]uint64{
+		"eip155":         4,
+		"byzantium":      3,
+		"constantinople": 0,
+	}, n)
 }
 
 func TestBlocksUntilFork(t *testing.T) {
@@ -61,6 +69,74 @@ func TestBlocksUntilFork(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			require.Equal(t, test.expected, BlocksUntilFork(test.block, test.forks))
+		})
+	}
+}
+
+func TestBlockRange(t *testing.T) {
+	tests := []struct {
+		name         string
+		forkHeight   uint64
+		forkHeights  []uint64
+		expectedFrom uint64
+		expectedTo   uint64
+	}{
+		{
+			name:         "ToInfinite",
+			forkHeight:   300,
+			forkHeights:  []uint64{100, 200, 300},
+			expectedFrom: 300,
+			expectedTo:   math.MaxInt64,
+		},
+		{
+			name:         "To300",
+			forkHeight:   200,
+			forkHeights:  []uint64{100, 200, 300},
+			expectedFrom: 200,
+			expectedTo:   300,
+		},
+		{
+			name:         "To200",
+			forkHeight:   100,
+			forkHeights:  []uint64{100, 200, 300},
+			expectedFrom: 100,
+			expectedTo:   200,
+		},
+		{
+			name:         "To100",
+			forkHeight:   0,
+			forkHeights:  []uint64{100, 200, 300},
+			expectedFrom: 0,
+			expectedTo:   100,
+		},
+		{
+			name:         "To200-1",
+			forkHeight:   100,
+			forkHeights:  []uint64{100, 200},
+			expectedFrom: 100,
+			expectedTo:   200,
+		},
+		{
+			name:         "To2",
+			forkHeight:   1,
+			forkHeights:  []uint64{1, 2},
+			expectedFrom: 1,
+			expectedTo:   2,
+		},
+		{
+			name:         "ToInfinite-1",
+			forkHeight:   0,
+			forkHeights:  []uint64{0},
+			expectedFrom: 0,
+			expectedTo:   math.MaxInt64,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			from, to := BlockRange(test.forkHeight, test.forkHeights)
+			require.Equal(t, test.expectedFrom, from)
+			require.Equal(t, test.expectedTo, to)
 		})
 	}
 }

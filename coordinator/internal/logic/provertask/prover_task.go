@@ -13,6 +13,12 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
+// ErrCoordinatorInternalFailure coordinator internal db failure
+var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+
+// ErrHardForkName indicates client request with the wrong hard fork name
+var ErrHardForkName = fmt.Errorf("wrong hard fork name")
+
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
@@ -23,6 +29,9 @@ type BaseProverTask struct {
 	cfg *config.Config
 	db  *gorm.DB
 	vk  string
+
+	nameForkMap map[string]uint64
+	forkHeights []uint64
 
 	batchOrm           *orm.Batch
 	chunkOrm           *orm.Chunk
@@ -90,4 +99,19 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
 	}
 	return &ptc, nil
+}
+
+func (b *BaseProverTask) getHardForkNumberByName(forkName string) (uint64, error) {
+	// when the first hard fork upgrade, the prover don't pass the fork_name to coordinator.
+	// so coordinator need to be compatible.
+	if forkName == "" {
+		return 0, nil
+	}
+
+	hardForkNumber, exist := b.nameForkMap[forkName]
+	if !exist {
+		return 0, ErrHardForkName
+	}
+
+	return hardForkNumber, nil
 }

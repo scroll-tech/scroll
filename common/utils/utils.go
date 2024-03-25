@@ -3,11 +3,16 @@ package utils
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/modern-go/reflect2"
+	"github.com/scroll-tech/go-ethereum/core"
 )
 
 // TryTimes try run several times until the function return true.
@@ -58,4 +63,18 @@ func IsNil(i interface{}) bool {
 func RandomURL() string {
 	id, _ := rand.Int(rand.Reader, big.NewInt(5000-1))
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
+}
+
+// ReadGenesis parses and returns the genesis file at the given path
+func ReadGenesis(genesisPath string) (*core.Genesis, error) {
+	file, err := os.Open(filepath.Clean(genesisPath))
+	if err != nil {
+		return nil, err
+	}
+
+	genesis := new(core.Genesis)
+	if err := json.NewDecoder(file).Decode(genesis); err != nil {
+		return nil, errors.Join(err, file.Close())
+	}
+	return genesis, file.Close()
 }

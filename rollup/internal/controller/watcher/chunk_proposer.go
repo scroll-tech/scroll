@@ -51,7 +51,7 @@ type ChunkProposer struct {
 
 // NewChunkProposer creates a new ChunkProposer instance.
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
-	forkHeights, _ := forks.CollectSortedForkHeights(chainCfg)
+	forkHeights, _, _ := forks.CollectSortedForkHeights(chainCfg)
 	log.Debug("new chunk proposer",
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
