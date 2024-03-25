@@ -835,7 +835,7 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch,
 
 	// finalizeBatch4844 without proof.
 	calldata, packErr := r.l1RollupABI.Pack(
-		"finalizeBatch4844", // Assuming the "to be implemented" bypass function name is finalizeBatch4844.
+		"finalizeBatch4844",
 		dbBatch.BatchHeader,
 		common.HexToHash(dbParentBatch.StateRoot),
 		common.HexToHash(dbBatch.StateRoot),
