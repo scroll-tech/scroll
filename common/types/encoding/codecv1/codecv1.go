@@ -449,8 +449,55 @@ func (b *DABatch) BlobDataProof() ([]byte, error) {
 	return BlobDataProofArgs.Pack(values...)
 }
 
+// Blob returns the blob of the batch.
+func (b *DABatch) Blob() *kzg4844.Blob {
+	return b.blob
+}
+
 // DecodeFromCalldata attempts to decode a DABatch and an array of DAChunks from the provided calldata byte slice.
 func DecodeFromCalldata(data []byte) (*DABatch, []*DAChunk, error) {
 	// TODO: implement this function.
 	return nil, nil, nil
+}
+
+// EstimateChunkL1CommitBlobSize estimates the size of the L1 commit blob for a single chunk.
+func EstimateChunkL1CommitBlobSize(c *encoding.Chunk) (uint64, error) {
+	metadataSize := uint64(2 + 4*MaxNumChunks) // over-estimate: adding metadata length
+	chunkDataSize, err := chunkL1CommitBlobDataSize(c)
+	if err != nil {
+		return 0, err
+	}
+	paddedSize := ((metadataSize + chunkDataSize + 30) / 31) * 32
+	return paddedSize, nil
+}
+
+// EstimateBatchL1CommitBlobSize estimates the total size of the L1 commit blob for a batch.
+func EstimateBatchL1CommitBlobSize(b *encoding.Batch) (uint64, error) {
+	metadataSize := uint64(2 + 4*MaxNumChunks)
+	var batchDataSize uint64
+	for _, c := range b.Chunks {
+		chunkDataSize, err := chunkL1CommitBlobDataSize(c)
+		if err != nil {
+			return 0, err
+		}
+		batchDataSize += chunkDataSize
+	}
+	paddedSize := ((metadataSize + batchDataSize + 30) / 31) * 32
+	return paddedSize, nil
+}
+
+func chunkL1CommitBlobDataSize(c *encoding.Chunk) (uint64, error) {
+	var dataSize uint64
+	for _, block := range c.Blocks {
+		for _, tx := range block.Transactions {
+			if tx.Type != types.L1MessageTxType {
+				rlpTxData, err := encoding.ConvertTxDataToRLPEncoding(tx)
+				if err != nil {
+					return 0, err
+				}
+				dataSize += uint64(len(rlpTxData))
+			}
+		}
+	}
+	return dataSize, nil
 }
