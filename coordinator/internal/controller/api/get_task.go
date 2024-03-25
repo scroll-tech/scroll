@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -23,9 +24,9 @@ type GetTaskController struct {
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.Config, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, db, vf.ChunkVK, reg)
-	batchProverTask := provertask.NewBatchProverTask(cfg, db, vf.BatchVK, reg)
+func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
+	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, vf.ChunkVK, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, vf.BatchVK, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),

@@ -53,7 +53,7 @@ type BatchProposer struct {
 
 // NewBatchProposer creates a new BatchProposer instance.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
-	forkHeights, forkMap := forks.CollectSortedForkHeights(chainCfg)
+	forkHeights, forkMap, _ := forks.CollectSortedForkHeights(chainCfg)
 	log.Debug("new batch proposer",
 		"maxChunkNumPerBatch", cfg.MaxChunkNumPerBatch,
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
