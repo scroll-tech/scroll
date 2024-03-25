@@ -84,7 +84,7 @@ func randomURL() string {
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
 }
 
-func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string, forkNameNumber map[string]int64) (*cron.Collector, *http.Server) {
+func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string, nameForkMap map[string]int64) (*cron.Collector, *http.Server) {
 	var err error
 	db, err = database.InitDB(dbCfg)
 	assert.NoError(t, err)
@@ -113,7 +113,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	}
 
 	var chainConf params.ChainConfig
-	for forkName, forkNumber := range forkNameNumber {
+	for forkName, forkNumber := range nameForkMap {
 		switch forkName {
 		case "banach":
 			chainConf.BanachBlock = big.NewInt(forkNumber)
