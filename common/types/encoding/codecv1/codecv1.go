@@ -288,9 +288,6 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 	// the raw (un-padded) blob payload
 	blobBytes := make([]byte, metadataLength)
 
-	// the number of chunks that contain at least one L2 transaction
-	numNonEmptyChunks := 0
-
 	// challenge digest preimage
 	// 1 hash for metadata and 1 for each chunk
 	challengePreimage := make([]byte, (1+MaxNumChunks)*32)
@@ -300,6 +297,9 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 
 	// the chunk data hash used for calculating the challenge preimage
 	var chunkDataHash common.Hash
+
+	// blob metadata: num_chunks
+	binary.BigEndian.PutUint16(blobBytes[0:], uint16(len(chunks)))
 
 	// encode blob metadata and L2 transactions,
 	// and simultaneously also build challenge preimage
@@ -320,10 +320,9 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 			}
 		}
 
+		// blob metadata: chunki_size
 		if chunkSize := len(blobBytes) - currentChunkStartIndex; chunkSize != 0 {
-			// blob metadata: chunki_size
 			binary.BigEndian.PutUint32(blobBytes[2+4*chunkID:], uint32(chunkSize))
-			numNonEmptyChunks++
 		}
 
 		// challenge: compute chunk data hash
@@ -338,9 +337,6 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 		// use the last chunk's data hash as padding
 		copy(challengePreimage[32+chunkID*32:], chunkDataHash[:])
 	}
-
-	// blob metadata: num_chunks
-	binary.BigEndian.PutUint16(blobBytes[0:], uint16(numNonEmptyChunks))
 
 	// challenge: compute metadata hash
 	hash := crypto.Keccak256Hash(blobBytes[0:metadataLength])
