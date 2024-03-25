@@ -206,7 +206,7 @@ func (o *Chunk) GetChunkByHash(ctx context.Context, chunkHash string) (*Chunk, e
 
 	var chunk Chunk
 	if err := db.First(&chunk).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.GetChunkBatchHash error: %w, chunk hash: %v", err, chunkHash)
+		return nil, fmt.Errorf("Chunk.GetChunkByHash error: %w, chunk hash: %v", err, chunkHash)
 	}
 	return &chunk, nil
 }

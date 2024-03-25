@@ -16,7 +16,7 @@ import (
 // ErrCoordinatorInternalFailure coordinator internal db failure
 var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
 
-// ErrHardForkName client request with the wrong hard fork name
+// ErrHardForkName indicates client request with the wrong hard fork name
 var ErrHardForkName = fmt.Errorf("wrong hard fork name")
 
 // ProverTask the interface of a collector who send data to prover

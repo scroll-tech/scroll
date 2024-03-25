@@ -117,14 +117,14 @@ func TestBlockRange(t *testing.T) {
 			expectedTo:   200,
 		},
 		{
-			name:         "to2",
+			name:         "To2",
 			forkHeight:   1,
 			forkHeights:  []uint64{1, 2},
 			expectedFrom: 1,
 			expectedTo:   2,
 		},
 		{
-			name:         "to0",
+			name:         "ToInfinite-1",
 			forkHeight:   0,
 			forkHeights:  []uint64{0},
 			expectedFrom: 0,

@@ -107,8 +107,7 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	if err != nil {
 		return err
 	}
-	chainConf := genesis.Config
-	c.ChainConfig = chainConf
+	c.ChainConfig = genesis.Config
 
 	if !store {
 		return nil
