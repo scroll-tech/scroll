@@ -74,6 +74,10 @@ func (*Batch) TableName() string {
 // GetUnassignedBatch retrieves unassigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
 func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
+	t := time.Now()
+	defer func() {
+		log.Info("GetUnassignedBatch cost", "duration(ms)", time.Since(t).Milliseconds())
+	}()
 	db := o.db.WithContext(ctx)
 	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
@@ -95,6 +99,10 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTo
 // GetAssignedBatch retrieves assigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
 func (o *Batch) GetAssignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
+	t := time.Now()
+	defer func() {
+		log.Info("GetAssignedBatch cost", "duration(ms)", time.Since(t).Milliseconds())
+	}()
 	db := o.db.WithContext(ctx)
 	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)

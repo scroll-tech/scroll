@@ -69,6 +69,10 @@ func (*Chunk) TableName() string {
 // GetUnassignedChunk retrieves unassigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+	t := time.Now()
+	defer func() {
+		log.Info("GetUnassignedChunk cost", "duration(ms)", time.Since(t).Milliseconds())
+	}()
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
@@ -91,6 +95,10 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAtt
 // GetAssignedChunk retrieves assigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetAssignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+	t := time.Now()
+	defer func() {
+		log.Info("GetAssignedChunk cost", "duration(ms)", time.Since(t).Milliseconds())
+	}()
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
