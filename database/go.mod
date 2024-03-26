@@ -6,7 +6,7 @@ require (
 	github.com/jmoiron/sqlx v1.3.5
 	github.com/lib/pq v1.10.9
 	github.com/pressly/goose/v3 v3.16.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240326144132-0f0cd99f7a2e
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240314095130-4553f5f26935
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.25.7
 )
@@ -31,10 +31,10 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/mod v0.16.0 // indirect
 	golang.org/x/sync v0.6.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231127180814-3a041ad873d4 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
