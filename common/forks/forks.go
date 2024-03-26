@@ -18,6 +18,19 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 	forkHeightNameMap := make(map[uint64]string)
 
 	for _, fork := range []nameFork{
+		{name: "homestead", block: config.HomesteadBlock},
+		{name: "daoFork", block: config.DAOForkBlock},
+		{name: "eip150", block: config.EIP150Block},
+		{name: "eip155", block: config.EIP155Block},
+		{name: "eip158", block: config.EIP158Block},
+		{name: "byzantium", block: config.ByzantiumBlock},
+		{name: "constantinople", block: config.ConstantinopleBlock},
+		{name: "petersburg", block: config.PetersburgBlock},
+		{name: "istanbul", block: config.IstanbulBlock},
+		{name: "muirGlacier", block: config.MuirGlacierBlock},
+		{name: "berlin", block: config.BerlinBlock},
+		{name: "london", block: config.LondonBlock},
+		{name: "arrowGlacier", block: config.ArrowGlacierBlock},
 		{name: "archimedes", block: config.ArchimedesBlock},
 		{name: "shanghai", block: config.ShanghaiBlock},
 		{name: "bernoulli", block: config.BernoulliBlock},
