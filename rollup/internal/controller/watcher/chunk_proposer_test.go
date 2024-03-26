@@ -300,7 +300,7 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
-			}, &params.ChainConfig{BanachBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock}, db, nil)
+			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock}, db, nil)
 			cp.TryProposeChunk()
 
 			chunkOrm := orm.NewChunk(db)
@@ -342,7 +342,7 @@ func testChunkProposerCodecv1BlobSizeLimit(t *testing.T) {
 		MaxRowConsumptionPerChunk:       math.MaxUint64,
 		ChunkTimeoutSec:                 math.MaxUint64,
 		GasCostIncreaseMultiplier:       1,
-	}, &params.ChainConfig{BanachBlock: big.NewInt(0)}, db, nil)
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
 
 	for i := 0; i < 10; i++ {
 		cp.TryProposeChunk()

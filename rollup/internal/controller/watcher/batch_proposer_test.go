@@ -268,7 +268,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				ChunkTimeoutSec:                 300,
 				GasCostIncreaseMultiplier:       1.2,
 			}, &params.ChainConfig{
-				BanachBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock,
+				BernoulliBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
@@ -287,7 +287,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				BatchTimeoutSec:                 tt.batchTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
 			}, &params.ChainConfig{
-				BanachBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock,
+				BernoulliBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			bp.TryProposeBatch()
 
@@ -428,7 +428,7 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 		MaxRowConsumptionPerChunk:       math.MaxUint64,
 		ChunkTimeoutSec:                 math.MaxUint64,
 		GasCostIncreaseMultiplier:       1,
-	}, &params.ChainConfig{BanachBlock: big.NewInt(0)}, db, nil)
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
 
 	block = readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 	for total := int64(0); total < 7; total++ {
@@ -447,7 +447,7 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 		MaxL1CommitCalldataSizePerBatch: 1,
 		BatchTimeoutSec:                 math.MaxUint64,
 		GasCostIncreaseMultiplier:       1,
-	}, &params.ChainConfig{BanachBlock: big.NewInt(0)}, db, nil)
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
 
 	for i := 0; i < 10; i++ {
 		bp.TryProposeBatch()

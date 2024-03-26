@@ -57,7 +57,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 		l2Cfg := cfg.L2Config
 		chainConfig := &params.ChainConfig{}
 		if codecVersion == encoding.CodecV0 {
-			chainConfig.BanachBlock = big.NewInt(0)
+			chainConfig.BernoulliBlock = big.NewInt(0)
 		}
 
 		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
@@ -107,7 +107,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 		l2Cfg := cfg.L2Config
 		chainConfig := &params.ChainConfig{}
 		if codecVersion == encoding.CodecV0 {
-			chainConfig.BanachBlock = big.NewInt(0)
+			chainConfig.BernoulliBlock = big.NewInt(0)
 		}
 		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
@@ -172,7 +172,7 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 		l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
 		chainConfig := &params.ChainConfig{}
 		if codecVersion == encoding.CodecV0 {
-			chainConfig.BanachBlock = big.NewInt(0)
+			chainConfig.BernoulliBlock = big.NewInt(0)
 		}
 		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)

@@ -182,7 +182,7 @@ func (p *BatchProposer) proposeBatch() error {
 	}
 
 	codecVersion := encoding.CodecV0
-	if p.chainCfg.IsBanach(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) {
+	if p.chainCfg.IsBernoulli(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) {
 		codecVersion = encoding.CodecV1
 	}
 
@@ -201,8 +201,8 @@ func (p *BatchProposer) proposeBatch() error {
 	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
 	parentBatchEndBlockNumber := daChunks[0].Blocks[0].Header.Number.Uint64() - 1
 	parentBatchCodecVersion := encoding.CodecV0
-	// Genesis batch uses codecv0 encoding, otherwise using banach fork to choose codec version.
-	if dbParentBatch.Index > 0 && p.chainCfg.IsBanach(new(big.Int).SetUint64(parentBatchEndBlockNumber)) {
+	// Genesis batch uses codecv0 encoding, otherwise using bernoulli fork to choose codec version.
+	if dbParentBatch.Index > 0 && p.chainCfg.IsBernoulli(new(big.Int).SetUint64(parentBatchEndBlockNumber)) {
 		parentBatchCodecVersion = encoding.CodecV1
 	}
 	batch.TotalL1MessagePoppedBefore, err = utils.GetTotalL1MessagePoppedBeforeBatch(dbParentBatch.BatchHeader, parentBatchCodecVersion)
