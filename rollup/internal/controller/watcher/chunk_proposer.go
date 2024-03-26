@@ -193,7 +193,7 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	codecVersion := encoding.CodecV0
-	if p.chainCfg.IsBanach(blocks[0].Header.Number) {
+	if p.chainCfg.IsBernoulli(blocks[0].Header.Number) {
 		codecVersion = encoding.CodecV1
 	}
 

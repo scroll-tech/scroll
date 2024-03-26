@@ -374,7 +374,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		var calldata []byte
 		var blob *kzg4844.Blob
-		if !r.chainCfg.IsBanach(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv0
+		if !r.chainCfg.IsBernoulli(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv0
 			calldata, err = r.constructCommitBatchPayloadCodecV0(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
 				log.Error("failed to construct commitBatch payload codecv0", "index", dbBatch.Index, "err", err)
@@ -535,7 +535,7 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 	}
 
 	var calldata []byte
-	if !r.chainCfg.IsBanach(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv0
+	if !r.chainCfg.IsBernoulli(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv0
 		calldata, err = r.constructFinalizeBatchPayloadCodecV0(dbBatch, dbParentBatch, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct commitBatch payload codecv0, index: %v, err: %w", dbBatch.Index, err)

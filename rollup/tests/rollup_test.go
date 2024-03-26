@@ -187,7 +187,7 @@ func testCommitBatchAndFinalizeBatch4844(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := rollupApp.Config.L2Config
-	chainConfig := &params.ChainConfig{BanachBlock: big.NewInt(0)}
+	chainConfig := &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
@@ -316,7 +316,7 @@ func testCommitBatchAndFinalizeBatchBeforeAndPost4844(t *testing.T) {
 
 	// Create L2Relayer
 	l2Cfg := rollupApp.Config.L2Config
-	chainConfig := &params.ChainConfig{BanachBlock: big.NewInt(5)}
+	chainConfig := &params.ChainConfig{BernoulliBlock: big.NewInt(5)}
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
