@@ -646,8 +646,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _blobVersionedHash := blobhash(0)
                 _secondBlob := blobhash(1)
             }
-            if (_blobVersionedHash == bytes32(0)) revert ErrorNoBlobFound();
-            if (_secondBlob != bytes32(0)) revert ErrorFoundMultipleBlob();
+            // if (_blobVersionedHash == bytes32(0)) revert ErrorNoBlobFound();
+            // if (_secondBlob != bytes32(0)) revert ErrorFoundMultipleBlob();
         }
 
         uint256 _chunksLength = _chunks.length;
