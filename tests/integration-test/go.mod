@@ -3,7 +3,7 @@ module scroll-tech/integration-test
 go 1.21
 
 require (
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240314095130-4553f5f26935
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240326144132-0f0cd99f7a2e
 	github.com/stretchr/testify v1.9.0
 	gorm.io/gorm v1.25.5
 )
