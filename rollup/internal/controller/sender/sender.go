@@ -37,9 +37,6 @@ const (
 
 	// DynamicFeeTxType type for DynamicFeeTx
 	DynamicFeeTxType = "DynamicFeeTx"
-
-	// BlobTxType type for BlobTx
-	BlobTxType = "BlobTx"
 )
 
 // Confirmation struct used to indicate transaction confirmation details
@@ -163,8 +160,9 @@ func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTy
 	case LegacyTxType:
 		return s.estimateLegacyGas(target, data, fallbackGasLimit)
 	case DynamicFeeTxType:
-		return s.estimateDynamicGas(target, data, baseFee, fallbackGasLimit)
-	case BlobTxType:
+		if sidecar == nil {
+			return s.estimateDynamicGas(target, data, baseFee, fallbackGasLimit)
+		}
 		return s.estimateBlobGas(target, data, sidecar, baseFee, blobBaseFee, fallbackGasLimit)
 	default:
 		return nil, fmt.Errorf("unsupported transaction type: %s", s.config.TxType)
@@ -181,7 +179,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		err     error
 	)
 
-	if s.config.TxType == BlobTxType {
+	if blob != nil {
 		sidecar, err = makeSidecar(blob)
 		if err != nil {
 			log.Error("failed to make sidecar for blob transaction", "error", err)
@@ -235,39 +233,36 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 			Data:     data,
 		}
 	case DynamicFeeTxType:
-		txData = &gethTypes.DynamicFeeTx{
-			Nonce:      nonce,
-			To:         target,
-			Data:       data,
-			Gas:        feeData.gasLimit,
-			AccessList: feeData.accessList,
-			ChainID:    s.chainID,
-			GasTipCap:  feeData.gasTipCap,
-			GasFeeCap:  feeData.gasFeeCap,
-		}
-	case BlobTxType:
-		if target == nil {
-			log.Error("blob transaction to address cannot be nil", "address", s.auth.From.String(), "chainID", s.chainID.Uint64(), "nonce", s.auth.Nonce.Uint64())
-			return nil, errors.New("blob transaction to address cannot be nil")
-		}
-
 		if sidecar == nil {
-			log.Error("blob transaction sidecar cannot be nil", "address", s.auth.From.String(), "chainID", s.chainID.Uint64(), "nonce", s.auth.Nonce.Uint64())
-			return nil, errors.New("blob transaction sidecar cannot be nil")
-		}
+			txData = &gethTypes.DynamicFeeTx{
+				Nonce:      nonce,
+				To:         target,
+				Data:       data,
+				Gas:        feeData.gasLimit,
+				AccessList: feeData.accessList,
+				ChainID:    s.chainID,
+				GasTipCap:  feeData.gasTipCap,
+				GasFeeCap:  feeData.gasFeeCap,
+			}
+		} else {
+			if target == nil {
+				log.Error("blob transaction to address cannot be nil", "address", s.auth.From.String(), "chainID", s.chainID.Uint64(), "nonce", s.auth.Nonce.Uint64())
+				return nil, errors.New("blob transaction to address cannot be nil")
+			}
 
-		txData = &gethTypes.BlobTx{
-			ChainID:    uint256.MustFromBig(s.chainID),
-			Nonce:      nonce,
-			GasTipCap:  uint256.MustFromBig(feeData.gasTipCap),
-			GasFeeCap:  uint256.MustFromBig(feeData.gasFeeCap),
-			Gas:        feeData.gasLimit,
-			To:         *target,
-			Data:       data,
-			AccessList: feeData.accessList,
-			BlobFeeCap: uint256.MustFromBig(feeData.blobGasFeeCap),
-			BlobHashes: sidecar.BlobHashes(),
-			Sidecar:    sidecar,
+			txData = &gethTypes.BlobTx{
+				ChainID:    uint256.MustFromBig(s.chainID),
+				Nonce:      nonce,
+				GasTipCap:  uint256.MustFromBig(feeData.gasTipCap),
+				GasFeeCap:  uint256.MustFromBig(feeData.gasFeeCap),
+				Gas:        feeData.gasLimit,
+				To:         *target,
+				Data:       data,
+				AccessList: feeData.accessList,
+				BlobFeeCap: uint256.MustFromBig(feeData.blobGasFeeCap),
+				BlobHashes: sidecar.BlobHashes(),
+				Sidecar:    sidecar,
+			}
 		}
 	}
 
@@ -357,93 +352,94 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 		txInfo["adjusted_gas_price"] = gasPrice.Uint64()
 
 	case DynamicFeeTxType:
-		originalGasTipCap := tx.GasTipCap()
-		originalGasFeeCap := tx.GasFeeCap()
+		if tx.BlobTxSidecar() == nil {
+			originalGasTipCap := tx.GasTipCap()
+			originalGasFeeCap := tx.GasFeeCap()
 
-		gasTipCap := new(big.Int).Mul(originalGasTipCap, escalateMultipleNum)
-		gasTipCap = new(big.Int).Div(gasTipCap, escalateMultipleDen)
-		gasFeeCap := new(big.Int).Mul(originalGasFeeCap, escalateMultipleNum)
-		gasFeeCap = new(big.Int).Div(gasFeeCap, escalateMultipleDen)
+			gasTipCap := new(big.Int).Mul(originalGasTipCap, escalateMultipleNum)
+			gasTipCap = new(big.Int).Div(gasTipCap, escalateMultipleDen)
+			gasFeeCap := new(big.Int).Mul(originalGasFeeCap, escalateMultipleNum)
+			gasFeeCap = new(big.Int).Div(gasFeeCap, escalateMultipleDen)
 
-		// adjust for rising basefee
-		currentGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
-		if gasFeeCap.Cmp(currentGasFeeCap) < 0 {
-			gasFeeCap = currentGasFeeCap
+			// adjust for rising basefee
+			currentGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
+			if gasFeeCap.Cmp(currentGasFeeCap) < 0 {
+				gasFeeCap = currentGasFeeCap
+			}
+
+			// but don't exceed maxGasPrice
+			if gasFeeCap.Cmp(maxGasPrice) > 0 {
+				gasFeeCap = maxGasPrice
+			}
+
+			// gasTipCap <= gasFeeCap
+			if gasTipCap.Cmp(gasFeeCap) > 0 {
+				gasTipCap = gasFeeCap
+			}
+
+			if originalGasTipCap.Cmp(gasTipCap) == 0 {
+				log.Warn("gas tip cap bump corner case, add 1 wei", "original", originalGasTipCap.Uint64(), "adjusted", gasTipCap.Uint64())
+				gasTipCap = new(big.Int).Add(gasTipCap, big.NewInt(1))
+			}
+
+			if originalGasFeeCap.Cmp(gasFeeCap) == 0 {
+				log.Warn("gas fee cap bump corner case, add 1 wei", "original", originalGasFeeCap.Uint64(), "adjusted", gasFeeCap.Uint64())
+				gasFeeCap = new(big.Int).Add(gasFeeCap, big.NewInt(1))
+			}
+
+			feeData.gasFeeCap = gasFeeCap
+			feeData.gasTipCap = gasTipCap
+			txInfo["original_gas_tip_cap"] = originalGasTipCap.Uint64()
+			txInfo["adjusted_gas_tip_cap"] = gasTipCap.Uint64()
+			txInfo["original_gas_fee_cap"] = originalGasFeeCap.Uint64()
+			txInfo["adjusted_gas_fee_cap"] = gasFeeCap.Uint64()
+		} else {
+			originalGasTipCap := tx.GasTipCap()
+			originalGasFeeCap := tx.GasFeeCap()
+			originalBlobGasFeeCap := tx.BlobGasFeeCap()
+
+			// bumping at least 100%
+			gasTipCap := new(big.Int).Mul(originalGasTipCap, big.NewInt(2))
+			gasFeeCap := new(big.Int).Mul(originalGasFeeCap, big.NewInt(2))
+			blobGasFeeCap := new(big.Int).Mul(originalBlobGasFeeCap, big.NewInt(2))
+
+			// adjust for rising basefee
+			currentGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
+			if gasFeeCap.Cmp(currentGasFeeCap) < 0 {
+				gasFeeCap = currentGasFeeCap
+			}
+
+			// but don't exceed maxGasPrice
+			if gasFeeCap.Cmp(maxGasPrice) > 0 {
+				gasFeeCap = maxGasPrice
+			}
+
+			// gasTipCap <= gasFeeCap
+			if gasTipCap.Cmp(gasFeeCap) > 0 {
+				gasTipCap = gasFeeCap
+			}
+
+			// adjust for rising blobbasefee
+			currentBlobGasFeeCap := getBlobGasFeeCap(new(big.Int).SetUint64(blobBaseFee))
+			if blobGasFeeCap.Cmp(currentBlobGasFeeCap) < 0 {
+				blobGasFeeCap = currentBlobGasFeeCap
+			}
+
+			// but don't exceed maxBlobGasPrice
+			if blobGasFeeCap.Cmp(maxBlobGasPrice) > 0 {
+				blobGasFeeCap = maxBlobGasPrice
+			}
+
+			feeData.gasFeeCap = gasFeeCap
+			feeData.gasTipCap = gasTipCap
+			feeData.blobGasFeeCap = blobGasFeeCap
+			txInfo["original_gas_tip_cap"] = originalGasTipCap.Uint64()
+			txInfo["adjusted_gas_tip_cap"] = gasTipCap.Uint64()
+			txInfo["original_gas_fee_cap"] = originalGasFeeCap.Uint64()
+			txInfo["adjusted_gas_fee_cap"] = gasFeeCap.Uint64()
+			txInfo["original_blob_gas_fee_cap"] = originalBlobGasFeeCap.Uint64()
+			txInfo["adjusted_blob_gas_fee_cap"] = blobGasFeeCap.Uint64()
 		}
-
-		// but don't exceed maxGasPrice
-		if gasFeeCap.Cmp(maxGasPrice) > 0 {
-			gasFeeCap = maxGasPrice
-		}
-
-		// gasTipCap <= gasFeeCap
-		if gasTipCap.Cmp(gasFeeCap) > 0 {
-			gasTipCap = gasFeeCap
-		}
-
-		if originalGasTipCap.Cmp(gasTipCap) == 0 {
-			log.Warn("gas tip cap bump corner case, add 1 wei", "original", originalGasTipCap.Uint64(), "adjusted", gasTipCap.Uint64())
-			gasTipCap = new(big.Int).Add(gasTipCap, big.NewInt(1))
-		}
-
-		if originalGasFeeCap.Cmp(gasFeeCap) == 0 {
-			log.Warn("gas fee cap bump corner case, add 1 wei", "original", originalGasFeeCap.Uint64(), "adjusted", gasFeeCap.Uint64())
-			gasFeeCap = new(big.Int).Add(gasFeeCap, big.NewInt(1))
-		}
-
-		feeData.gasFeeCap = gasFeeCap
-		feeData.gasTipCap = gasTipCap
-		txInfo["original_gas_tip_cap"] = originalGasTipCap.Uint64()
-		txInfo["adjusted_gas_tip_cap"] = gasTipCap.Uint64()
-		txInfo["original_gas_fee_cap"] = originalGasFeeCap.Uint64()
-		txInfo["adjusted_gas_fee_cap"] = gasFeeCap.Uint64()
-
-	case BlobTxType:
-		originalGasTipCap := tx.GasTipCap()
-		originalGasFeeCap := tx.GasFeeCap()
-		originalBlobGasFeeCap := tx.BlobGasFeeCap()
-
-		// bumping at least 100%
-		gasTipCap := new(big.Int).Mul(originalGasTipCap, big.NewInt(2))
-		gasFeeCap := new(big.Int).Mul(originalGasFeeCap, big.NewInt(2))
-		blobGasFeeCap := new(big.Int).Mul(originalBlobGasFeeCap, big.NewInt(2))
-
-		// adjust for rising basefee
-		currentGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
-		if gasFeeCap.Cmp(currentGasFeeCap) < 0 {
-			gasFeeCap = currentGasFeeCap
-		}
-
-		// but don't exceed maxGasPrice
-		if gasFeeCap.Cmp(maxGasPrice) > 0 {
-			gasFeeCap = maxGasPrice
-		}
-
-		// gasTipCap <= gasFeeCap
-		if gasTipCap.Cmp(gasFeeCap) > 0 {
-			gasTipCap = gasFeeCap
-		}
-
-		// adjust for rising blobbasefee
-		currentBlobGasFeeCap := getBlobGasFeeCap(new(big.Int).SetUint64(blobBaseFee))
-		if blobGasFeeCap.Cmp(currentBlobGasFeeCap) < 0 {
-			blobGasFeeCap = currentBlobGasFeeCap
-		}
-
-		// but don't exceed maxBlobGasPrice
-		if blobGasFeeCap.Cmp(maxBlobGasPrice) > 0 {
-			blobGasFeeCap = maxBlobGasPrice
-		}
-
-		feeData.gasFeeCap = gasFeeCap
-		feeData.gasTipCap = gasTipCap
-		feeData.blobGasFeeCap = blobGasFeeCap
-		txInfo["original_gas_tip_cap"] = originalGasTipCap.Uint64()
-		txInfo["adjusted_gas_tip_cap"] = gasTipCap.Uint64()
-		txInfo["original_gas_fee_cap"] = originalGasFeeCap.Uint64()
-		txInfo["adjusted_gas_fee_cap"] = gasFeeCap.Uint64()
-		txInfo["original_blob_gas_fee_cap"] = originalBlobGasFeeCap.Uint64()
-		txInfo["adjusted_blob_gas_fee_cap"] = blobGasFeeCap.Uint64()
 
 	default:
 		return nil, fmt.Errorf("unsupported transaction type: %s", s.config.TxType)

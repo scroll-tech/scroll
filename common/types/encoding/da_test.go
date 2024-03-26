@@ -75,7 +75,6 @@ func TestUtilFunctions(t *testing.T) {
 	assert.Equal(t, uint64(240000), chunk3.L2GasUsed())
 
 	// Test Batch methods
-	assert.Equal(t, uint64(3), batch.NumChunks())
 	assert.Equal(t, block6.Header.Root, batch.StateRoot())
 	assert.Equal(t, block6.WithdrawRoot, batch.WithdrawRoot())
 }

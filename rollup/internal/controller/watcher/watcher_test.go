@@ -59,25 +59,9 @@ func setupEnv(t *testing.T) (err error) {
 	l2Cli, err = base.L2Client()
 	assert.NoError(t, err)
 
-	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
-	if err != nil {
-		return err
-	}
-	// unmarshal blockTrace
-	block1 = &encoding.Block{}
-	if err = json.Unmarshal(templateBlockTrace1, block1); err != nil {
-		return err
-	}
+	block1 = readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	block2 = readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 
-	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
-	if err != nil {
-		return err
-	}
-	// unmarshal blockTrace
-	block2 = &encoding.Block{}
-	if err = json.Unmarshal(templateBlockTrace2, block2); err != nil {
-		return err
-	}
 	return err
 }
 
@@ -115,9 +99,22 @@ func TestFunction(t *testing.T) {
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
 
 	// Run chunk proposer test cases.
-	t.Run("TestChunkProposerLimits", testChunkProposerLimits)
+	t.Run("TestChunkProposerCodecv0Limits", testChunkProposerCodecv0Limits)
+	t.Run("TestChunkProposerCodecv1Limits", testChunkProposerCodecv1Limits)
+	t.Run("TestChunkProposerCodecv1BlobSizeLimit", testChunkProposerCodecv1BlobSizeLimit)
 
 	// Run chunk proposer test cases.
-	t.Run("TestBatchProposerLimits", testBatchProposerLimits)
+	t.Run("TestBatchProposerCodecv0Limits", testBatchProposerCodecv0Limits)
+	t.Run("TestBatchProposerCodecv1Limits", testBatchProposerCodecv1Limits)
 	t.Run("TestBatchCommitGasAndCalldataSizeEstimation", testBatchCommitGasAndCalldataSizeEstimation)
+	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
+}
+
+func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {
+	data, err := os.ReadFile(filename)
+	assert.NoError(t, err)
+
+	block := &encoding.Block{}
+	assert.NoError(t, json.Unmarshal(data, block))
+	return block
 }

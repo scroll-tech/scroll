@@ -15,6 +15,7 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
+	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
 
@@ -25,7 +26,8 @@ var (
 	// config
 	cfg *config.Config
 
-	base *docker.App
+	base         *docker.App
+	posL1TestEnv *dockercompose.PoSL1TestEnv
 
 	// l2geth client
 	l2Cli *ethclient.Client
@@ -51,9 +53,10 @@ func setupEnv(t *testing.T) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	base.RunImages(t)
+	base.RunL2Geth(t)
+	base.RunDBImage(t)
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
 	cfg.DBConfig = &database.Config{
 		DSN:         base.DBConfig.DSN,
@@ -97,10 +100,19 @@ func setupEnv(t *testing.T) {
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
+	base.Free()
+
+	var err error
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
+	if err != nil {
+		log.Crit("failed to create PoS L1 test environment", "err", err)
+	}
+	if err := posL1TestEnv.Start(); err != nil {
+		log.Crit("failed to start PoS L1 test environment", "err", err)
+	}
+	defer posL1TestEnv.Stop()
 
 	m.Run()
-
-	base.Free()
 }
 
 func TestFunctions(t *testing.T) {

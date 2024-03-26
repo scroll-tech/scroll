@@ -19,7 +19,7 @@ services:
     command:
       - testnet
       - generate-genesis
-      - --fork=capella
+      - --fork=deneb
       - --num-validators=64
       - --genesis-time-delay=3
       - --output-ssz=/data/consensus/genesis.ssz

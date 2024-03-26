@@ -45,7 +45,8 @@ var (
 	cfg                  *config.Config
 	base                 *docker.App
 	posL1TestEnv         *dockercompose.PoSL1TestEnv
-	txTypes              = []string{"LegacyTx", "DynamicFeeTx", "BlobTx"}
+	txTypes              = []string{"LegacyTx", "DynamicFeeTx", "DynamicFeeTx"}
+	txBlob               = []*kzg4844.Blob{nil, nil, randBlob()}
 	txUint8Types         = []uint8{0, 2, 3}
 	db                   *gorm.DB
 	testContractsAddress common.Address
@@ -80,7 +81,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	privateKey = priv
 
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 
 	base.RunDBImage(t)
 	db, err = database.InitDB(
@@ -112,7 +113,7 @@ func setupEnv(t *testing.T) {
 
 	testContractsAddress = crypto.CreateAddress(auth.From, nonce)
 
-	tx := gethTypes.NewContractCreation(nonce, big.NewInt(0), 1000000, big.NewInt(10000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
+	tx := gethTypes.NewContractCreation(nonce, big.NewInt(0), 10000000, big.NewInt(10000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
 	signedTx, err := auth.Signer(auth.From, tx)
 	assert.NoError(t, err)
 	err = l1Client.SendTransaction(context.Background(), signedTx)
@@ -160,14 +161,14 @@ func testNewSender(t *testing.T) {
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
 		// exit by Stop()
-		cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy1 := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy1.TxType = txType
 		newSender1, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		newSender1.Stop()
 
 		// exit by ctx.Done()
-		cfgCopy2 := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy2 := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy2.TxType = txType
 		subCtx, cancel := context.WithCancel(context.Background())
 		_, err = NewSender(subCtx, &cfgCopy2, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
@@ -182,12 +183,12 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		hash, err := s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
+		hash, err := s.SendTransaction("0", &common.Address{}, nil, txBlob[i], 0)
 		assert.NoError(t, err)
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
 		assert.NoError(t, err)
@@ -212,12 +213,12 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 }
 
 func testFallbackGasLimit(t *testing.T) {
-	for _, txType := range txTypes {
+	for i, txType := range txTypes {
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.Confirmations = rpc.LatestBlockNumber
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
@@ -227,7 +228,7 @@ func testFallbackGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 
 		// FallbackGasLimit = 0
-		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
+		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, txBlob[i], 0)
 		assert.NoError(t, err)
 		tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
 		assert.NoError(t, err)
@@ -247,7 +248,7 @@ func testFallbackGasLimit(t *testing.T) {
 			},
 		)
 
-		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, randBlob(), 100000)
+		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, txBlob[i], 100000)
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
@@ -265,8 +266,8 @@ func testFallbackGasLimit(t *testing.T) {
 }
 
 func testResubmitZeroGasPriceTransaction(t *testing.T) {
-	for _, txType := range txTypes {
-		if txType == BlobTxType {
+	for i, txType := range txTypes {
+		if txBlob[i] != nil {
 			continue
 		}
 
@@ -274,7 +275,7 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
@@ -314,7 +315,7 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
@@ -325,16 +326,20 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(int64(i+1)))
 		assert.NoError(t, err)
 
-		sidecar, err := makeSidecar(randBlob())
-		assert.NoError(t, err)
+		var sidecar *gethTypes.BlobTxSidecar
+		if txBlob[i] != nil {
+			sidecar, err = makeSidecar(txBlob[i])
+			assert.NoError(t, err)
+		}
+
 		gasLimit, accessList, err := s.estimateGasLimit(&testContractsAddress, data, sidecar, nil, big.NewInt(1000000000), big.NewInt(1000000000), big.NewInt(1000000000))
 		assert.NoError(t, err)
 
 		if txType == LegacyTxType { // Legacy transactions can not have an access list.
-			assert.Equal(t, uint64(43935), gasLimit)
+			assert.Equal(t, uint64(43956), gasLimit)
 			assert.Nil(t, accessList)
 		} else { // Dynamic fee and blob transactions can have an access list.
-			assert.Equal(t, uint64(43458), gasLimit)
+			assert.Equal(t, uint64(43479), gasLimit)
 			assert.NotNil(t, accessList)
 		}
 
@@ -343,12 +348,12 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 }
 
 func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
-	for _, txType := range txTypes {
+	for i, txType := range txTypes {
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		// Bump gas price, gas tip cap and gas fee cap just touch the minimum threshold of 10% (default config of geth).
 		cfgCopy.EscalateMultipleNum = 110
 		cfgCopy.EscalateMultipleDen = 100
@@ -362,8 +367,11 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 			blobGasFeeCap: big.NewInt(1000000000),
 			gasLimit:      50000,
 		}
-		sidecar, err := makeSidecar(randBlob())
-		assert.NoError(t, err)
+		var sidecar *gethTypes.BlobTxSidecar
+		if txBlob[i] != nil {
+			sidecar, err = makeSidecar(txBlob[i])
+			assert.NoError(t, err)
+		}
 		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, sidecar, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
@@ -385,8 +393,8 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 }
 
 func testResubmitUnderpricedTransaction(t *testing.T) {
-	for _, txType := range txTypes {
-		if txType == BlobTxType {
+	for i, txType := range txTypes {
+		if txBlob[i] != nil {
 			continue
 		}
 
@@ -394,7 +402,7 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		// Bump gas price, gas tip cap and gas fee cap less than 10% (default config of geth).
 		cfgCopy.EscalateMultipleNum = 109
 		cfgCopy.EscalateMultipleDen = 100
@@ -433,7 +441,7 @@ func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	txType := "DynamicFeeTx"
-	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+	cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 	cfgCopy.TxType = txType
 
 	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
@@ -475,9 +483,8 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	txType := "BlobTx"
-	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
-	cfgCopy.TxType = txType
+	cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
+	cfgCopy.TxType = DynamicFeeTxType
 
 	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 	assert.NoError(t, err)
@@ -533,7 +540,7 @@ func testCheckPendingTransactionTxConfirmed(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeCommitBatch, db, nil)
 		assert.NoError(t, err)
@@ -574,7 +581,7 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.EscalateBlocks = 0
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeFinalizeBatch, db, nil)
@@ -634,7 +641,7 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.EscalateBlocks = 0
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeL1GasOracle, db, nil)
@@ -704,7 +711,7 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.EscalateBlocks = 0
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeCommitBatch, db, nil)
@@ -779,8 +786,8 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
-	cfgCopy.TxType = BlobTxType
+	cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
+	cfgCopy.TxType = DynamicFeeTxType
 	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeL1GasOracle, db, nil)
 	assert.NoError(t, err)
 	defer s.Stop()

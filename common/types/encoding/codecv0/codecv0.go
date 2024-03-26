@@ -442,9 +442,9 @@ func EstimateBatchL1CommitGas(b *encoding.Batch) (uint64, error) {
 }
 
 // EstimateBatchL1CommitCalldataSize calculates the calldata size in l1 commit for this batch approximately.
-func EstimateBatchL1CommitCalldataSize(c *encoding.Batch) (uint64, error) {
+func EstimateBatchL1CommitCalldataSize(b *encoding.Batch) (uint64, error) {
 	var totalL1CommitCalldataSize uint64
-	for _, chunk := range c.Chunks {
+	for _, chunk := range b.Chunks {
 		chunkL1CommitCalldataSize, err := EstimateChunkL1CommitCalldataSize(chunk)
 		if err != nil {
 			return 0, err

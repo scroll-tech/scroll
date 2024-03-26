@@ -15,7 +15,7 @@
     "archimedesBlock": 0,
     "shanghaiBlock": 0,
     "clique": {
-      "period": 3,
+      "period": 1,
       "epoch": 30000
     },
     "scroll": {
