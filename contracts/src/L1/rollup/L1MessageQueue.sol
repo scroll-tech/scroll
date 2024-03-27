@@ -402,6 +402,13 @@ contract L1MessageQueue is OwnableUpgradeable, IL1MessageQueue {
         emit UpdateMaxGasLimit(_oldMaxGasLimit, _newMaxGasLimit);
     }
 
+    function appendHashes(bytes32[] _hashes, uint256 _fromQueueIndex) external {
+        require(_fromQueueIndex == messageQueue.length, "messageQueue index mismatch");
+        for (uint256 i = 0; i < _hashes.length; i++) {
+            messageQueue.push(_hashes[i]);
+        }
+    }
+
     /**********************
      * Internal Functions *
      **********************/
