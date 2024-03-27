@@ -40,7 +40,9 @@
 		"dsn": "postgres://postgres:123456@localhost:5444/test?sslmode=disable",
 		"driverName": "postgres",
 		"maxOpenNum": 200,
-		"maxIdleNum": 20
+		"maxIdleNum": 20,
+		"maxLifetime": 600,
+		"maxIdleTime": 300
 	},
 	"redis": {
 		"address": "localhost:6379",

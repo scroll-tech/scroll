@@ -15,7 +15,9 @@ func TestConfig(t *testing.T) {
 		"dsn": "postgres://postgres:123456@localhost:5444/test?sslmode=disable",
 		"driver_name": "postgres",
 		"maxOpenNum": %d,
-		"maxIdleNum": %d
+		"maxIdleNum": %d,
+		"maxLifetime": %d,
+		"maxIdleTime": %d
 	}`
 
 	t.Run("Success Case", func(t *testing.T) {

@@ -48,10 +48,12 @@ var (
 
 func setupDB(t *testing.T) *gorm.DB {
 	cfg := &database.Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
+		DSN:         base.DBConfig.DSN,
+		DriverName:  base.DBConfig.DriverName,
+		MaxOpenNum:  base.DBConfig.MaxOpenNum,
+		MaxIdleNum:  base.DBConfig.MaxIdleNum,
+		MaxLifetime: base.DBConfig.MaxLifetime,
+		MaxIdleTime: base.DBConfig.MaxIdleTime,
 	}
 	db, err := database.InitDB(cfg)
 	assert.NoError(t, err)
