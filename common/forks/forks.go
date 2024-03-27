@@ -33,7 +33,8 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 		{name: "arrowGlacier", block: config.ArrowGlacierBlock},
 		{name: "archimedes", block: config.ArchimedesBlock},
 		{name: "shanghai", block: config.ShanghaiBlock},
-		{name: "banach", block: config.BanachBlock},
+		{name: "bernoulli", block: config.BernoulliBlock},
+		{name: "curie", block: config.CurieBlock},
 	} {
 		if fork.block == nil {
 			continue

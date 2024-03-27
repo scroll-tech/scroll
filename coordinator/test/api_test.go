@@ -115,8 +115,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	var chainConf params.ChainConfig
 	for forkName, forkNumber := range nameForkMap {
 		switch forkName {
-		case "banach":
-			chainConf.BanachBlock = big.NewInt(forkNumber)
+		case "bernoulli":
+			chainConf.BernoulliBlock = big.NewInt(forkNumber)
 		case "london":
 			chainConf.LondonBlock = big.NewInt(forkNumber)
 		case "istanbul":
@@ -334,18 +334,18 @@ func testHardForkAssignTask(t *testing.T) {
 		{ // hard fork 4, prover 4  block [2-3]
 			name:                  "noTaskForkChunkProverVersionLargeOrEqualThanHardFork",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           map[string]int64{"banach": forkNumberFour},
+			forkNumbers:           map[string]int64{"bernoulli": forkNumberFour},
 			exceptTaskNumber:      0,
-			proverForkNames:       []string{"banach", "banach"},
+			proverForkNames:       []string{"bernoulli", "bernoulli"},
 			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
 		{
 			name:                  "noTaskForkBatchProverVersionLargeOrEqualThanHardFork",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           map[string]int64{"banach": forkNumberFour},
+			forkNumbers:           map[string]int64{"bernoulli": forkNumberFour},
 			exceptTaskNumber:      0,
-			proverForkNames:       []string{"banach", "banach"},
+			proverForkNames:       []string{"bernoulli", "bernoulli"},
 			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
@@ -433,7 +433,7 @@ func testHardForkAssignTask(t *testing.T) {
 		{ // hard fork 4, prover 3 block [2-3]
 			name:                  "twoTaskForkChunkProverVersionLessThanHardFork",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           map[string]int64{"banach": forkNumberFour, "istanbul": forkNumberTwo},
+			forkNumbers:           map[string]int64{"bernoulli": forkNumberFour, "istanbul": forkNumberTwo},
 			exceptTaskNumber:      2,
 			proverForkNames:       []string{"istanbul", "istanbul"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
