@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -71,10 +70,16 @@ func ReadGenesis(genesisPath string) (*core.Genesis, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil && err == nil {
+			err = closeErr
+		}
+	}()
 
 	genesis := new(core.Genesis)
 	if err := json.NewDecoder(file).Decode(genesis); err != nil {
-		return nil, errors.Join(err, file.Close())
+		return nil, err
 	}
-	return genesis, file.Close()
+	return genesis, nil
 }
+
