@@ -83,6 +83,26 @@ Return the batch hash of a committed batch.
 |---|---|---|
 | _0 | bytes32 | undefined |
 
+### finalizeBatch4844
+
+```solidity
+function finalizeBatch4844(bytes _batchHeader, bytes32 _prevStateRoot, bytes32 _postStateRoot, bytes32 _withdrawRoot, bytes _blobDataProof) external nonpayable
+```
+
+Finalize a committed batch (with blob) on layer 1 without providing proof.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _batchHeader | bytes | undefined |
+| _prevStateRoot | bytes32 | undefined |
+| _postStateRoot | bytes32 | undefined |
+| _withdrawRoot | bytes32 | undefined |
+| _blobDataProof | bytes | undefined |
+
 ### finalizeBatchWithProof
 
 ```solidity
