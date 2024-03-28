@@ -6,6 +6,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // CodecVersion defines the version of encoder and decoder.
@@ -17,7 +18,17 @@ const (
 
 	// CodecV1 represents the version 1 of the encoder and decoder.
 	CodecV1
+
+	// txTypeTest is a special transaction type used in unit tests.
+	txTypeTest = 0xff
 )
+
+func init() {
+	// make sure txTypeTest will not interfere with other transaction types
+	if txTypeTest == types.LegacyTxType || txTypeTest == types.AccessListTxType || txTypeTest == types.DynamicFeeTxType || txTypeTest == types.BlobTxType || txTypeTest == types.L1MessageTxType {
+		log.Crit("txTypeTest is overlapping with existing transaction types")
+	}
+}
 
 // Block represents an L2 block.
 type Block struct {
@@ -133,6 +144,10 @@ func ConvertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
 			R:          txData.R.ToInt(),
 			S:          txData.S.ToInt(),
 		})
+
+	case txTypeTest:
+		// in the tests, we simply use `data` as the RLP-encoded transaction
+		return data, nil
 
 	case types.L1MessageTxType: // L1MessageTxType is not supported
 	default:
