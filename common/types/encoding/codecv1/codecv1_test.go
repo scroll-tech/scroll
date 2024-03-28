@@ -10,6 +10,7 @@ import (
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
 
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 )
@@ -526,6 +527,69 @@ func TestCodecV1BatchChallenge(t *testing.T) {
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
 	assert.Equal(t, "03523cd88a7227826e093305cbe4ce237e8df38e2157566fb3742cc39dbc9c43", hex.EncodeToString(batch.z[:]))
+}
+
+func repeat(element byte, count int) string {
+	result := make([]byte, 0, count)
+	for i := 0; i < count; i++ {
+		result = append(result, element)
+	}
+	return "0x" + common.Bytes2Hex(result)
+}
+
+func TestCodecV1BatchChallengeWithStandardTestCases(t *testing.T) {
+	nRowsData := 126914
+
+	for _, tc := range []struct {
+		chunks   [][]string
+		expected string
+	}{
+		// single empty chunk
+		{chunks: [][]string{{}}, expected: "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec"},
+		// single non-empty chunk
+		{chunks: [][]string{{"0x010203"}}, expected: "30a9d6cfc2b87fb00d80e7fea28ebb9eff0bd526dbf1da32acfe8c5fd49632ff"},
+		// multiple empty chunks
+		{chunks: [][]string{{}, {}}, expected: "17772348f946a4e4adfcaf5c1690d078933b6b090ca9a52fab6c7e545b1007ae"},
+		// multiple non-empty chunks
+		{chunks: [][]string{{"0x010203"}, {"0x070809"}}, expected: "60376321eea0886c29bd97d95851c7b5fbdb064c8adfdadd7678617b32b3ebf2"},
+		// empty chunk followed by non-empty chunk
+		{chunks: [][]string{{}, {"0x010203"}}, expected: "054539f03564eda9462d582703cde0788e4e27c311582ddfb19835358273a7ca"},
+		// non-empty chunk followed by empty chunk
+		{chunks: [][]string{{"0x070809"}, {}}, expected: "0b82dceaa6ca4b5d704590c921accfd991b56b5ad0212e6a4e63e54915a2053b"},
+		// max number of chunks all empty
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}}, expected: "174cd3ba9b2ae8ab789ec0b5b8e0b27ee122256ec1756c383dbf2b5b96903f1b"},
+		// max number of chunks all non-empty
+		{chunks: [][]string{{}, {"0x0a"}, {"0x0a0b"}, {"0x0a0b0c"}, {"0x0a0b0c0d"}, {"0x0a0b0c0d0e"}, {"0x0a0b0c0d0e0f"}, {"0x0a0b0c0d0e0f10"}, {"0x0a0b0c0d0e0f1011"}, {"0x0a0b0c0d0e0f101112"}, {"0x0a0b0c0d0e0f10111213"}, {"0x0a0b0c0d0e0f1011121314"}, {"0x0a0b0c0d0e0f101112131415"}, {"0x0a0b0c0d0e0f10111213141516"}, {"0x0a0b0c0d0e0f1011121314151617"}}, expected: "31d0b297e3aa9c5256afc52123ef3c1db0e9ce44a3ede66343705c86e3495d8a"},
+		// single chunk blob full
+		{chunks: [][]string{{repeat(123, nRowsData)}}, expected: "61405cb0b114dfb4d611be84bedba0fcd2e55615e193e424f1cc7b1af0df3d31"},
+		// multiple chunks blob full
+		{chunks: [][]string{{repeat(123, 1111)}, {repeat(231, nRowsData-1111)}}, expected: "22533c3ea99536b4b83a89835aa91e6f0d2fc3866c201e18d7ca4b3af92fad61"},
+		// max number of chunks only last one non-empty not full blob
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData-1111)}}, expected: "0e6525c0dd261e8f62342b1139062bb23bc2b8b460163364598fb29e82a4eed5"},
+		// max number of chunks only last one non-empty full blob
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData-1)}}, expected: "16e9355a968787a21290b0298ecf9681776d6fa97aa68c8c509b26ad301b2216"},
+		// max number of chunks but last is empty
+		{chunks: [][]string{{repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {}}, expected: "02ef442d99f450559647a7823f1be0e148c75481cc5c703c02a116e8ac531fa8"},
+	} {
+		chunks := []*encoding.Chunk{}
+
+		for _, c := range tc.chunks {
+			block := &encoding.Block{Transactions: []*types.TransactionData{}}
+
+			for _, data := range c {
+				tx := &types.TransactionData{Type: 0xff, Data: data}
+				block.Transactions = append(block.Transactions, tx)
+			}
+
+			chunk := &encoding.Chunk{Blocks: []*encoding.Block{block}}
+			chunks = append(chunks, chunk)
+		}
+
+		_, z, err := constructBlobPayload(chunks)
+		assert.NoError(t, err)
+		actual := hex.EncodeToString(z[:])
+		assert.Equal(t, tc.expected, actual)
+	}
 }
 
 func TestCodecV1BatchBlobDataProof(t *testing.T) {
