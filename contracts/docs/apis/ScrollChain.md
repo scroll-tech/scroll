@@ -91,7 +91,7 @@ function finalizeBatchWithProof(bytes _batchHeader, bytes32 _prevStateRoot, byte
 
 Finalize a committed batch on layer 1.
 
-
+*We keep this function to upgrade to 4844 more smoothly.*
 
 #### Parameters
 
@@ -101,6 +101,27 @@ Finalize a committed batch on layer 1.
 | _prevStateRoot | bytes32 | undefined |
 | _postStateRoot | bytes32 | undefined |
 | _withdrawRoot | bytes32 | undefined |
+| _aggrProof | bytes | undefined |
+
+### finalizeBatchWithProof4844
+
+```solidity
+function finalizeBatchWithProof4844(bytes _batchHeader, bytes32 _prevStateRoot, bytes32 _postStateRoot, bytes32 _withdrawRoot, bytes _blobDataProof, bytes _aggrProof) external nonpayable
+```
+
+Finalize a committed batch (with blob) on layer 1.
+
+*Memory layout of `_blobDataProof`: ```text | z       | y       | kzg_commitment | kzg_proof | |---------|---------|----------------|-----------| | bytes32 | bytes32 | bytes48        | bytes48   | ```*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _batchHeader | bytes | undefined |
+| _prevStateRoot | bytes32 | undefined |
+| _postStateRoot | bytes32 | undefined |
+| _withdrawRoot | bytes32 | undefined |
+| _blobDataProof | bytes | undefined |
 | _aggrProof | bytes | undefined |
 
 ### finalizedStateRoots
@@ -493,8 +514,8 @@ Emitted when a new batch is committed.
 
 | Name | Type | Description |
 |---|---|---|
-| batchIndex `indexed` | uint256 | undefined |
-| batchHash `indexed` | bytes32 | undefined |
+| batchIndex `indexed` | uint256 | The index of the batch. |
+| batchHash `indexed` | bytes32 | The hash of the batch. |
 
 ### FinalizeBatch
 
@@ -510,10 +531,10 @@ Emitted when a batch is finalized.
 
 | Name | Type | Description |
 |---|---|---|
-| batchIndex `indexed` | uint256 | undefined |
-| batchHash `indexed` | bytes32 | undefined |
-| stateRoot  | bytes32 | undefined |
-| withdrawRoot  | bytes32 | undefined |
+| batchIndex `indexed` | uint256 | The index of the batch. |
+| batchHash `indexed` | bytes32 | The hash of the batch |
+| stateRoot  | bytes32 | The state root on layer 2 after this batch. |
+| withdrawRoot  | bytes32 | The merkle root on layer2 after this batch. |
 
 ### Initialized
 
@@ -523,7 +544,7 @@ event Initialized(uint8 version)
 
 
 
-
+*Triggered when the contract has been initialized or reinitialized.*
 
 #### Parameters
 
@@ -556,7 +577,7 @@ event Paused(address account)
 
 
 
-
+*Emitted when the pause is triggered by `account`.*
 
 #### Parameters
 
@@ -578,8 +599,8 @@ revert a pending batch.
 
 | Name | Type | Description |
 |---|---|---|
-| batchIndex `indexed` | uint256 | undefined |
-| batchHash `indexed` | bytes32 | undefined |
+| batchIndex `indexed` | uint256 | The index of the batch. |
+| batchHash `indexed` | bytes32 | The hash of the batch |
 
 ### Unpaused
 
@@ -589,7 +610,7 @@ event Unpaused(address account)
 
 
 
-
+*Emitted when the pause is lifted by `account`.*
 
 #### Parameters
 
@@ -651,6 +672,347 @@ Emitted when owner updates the status of sequencer.
 
 
 ## Errors
+
+### ErrorAccountIsNotEOA
+
+```solidity
+error ErrorAccountIsNotEOA()
+```
+
+
+
+*Thrown when the given account is not EOA account.*
+
+
+### ErrorBatchHeaderLengthTooSmall
+
+```solidity
+error ErrorBatchHeaderLengthTooSmall()
+```
+
+
+
+*Thrown when the length of batch header is smaller than 89*
+
+
+### ErrorBatchIsAlreadyCommitted
+
+```solidity
+error ErrorBatchIsAlreadyCommitted()
+```
+
+
+
+*Thrown when committing a committed batch.*
+
+
+### ErrorBatchIsAlreadyVerified
+
+```solidity
+error ErrorBatchIsAlreadyVerified()
+```
+
+
+
+*Thrown when finalizing a verified batch.*
+
+
+### ErrorBatchIsEmpty
+
+```solidity
+error ErrorBatchIsEmpty()
+```
+
+
+
+*Thrown when committing empty batch (batch without chunks)*
+
+
+### ErrorCallPointEvaluationPrecompileFailed
+
+```solidity
+error ErrorCallPointEvaluationPrecompileFailed()
+```
+
+
+
+*Thrown when call precompile failed.*
+
+
+### ErrorCallerIsNotProver
+
+```solidity
+error ErrorCallerIsNotProver()
+```
+
+
+
+*Thrown when the caller is not prover.*
+
+
+### ErrorCallerIsNotSequencer
+
+```solidity
+error ErrorCallerIsNotSequencer()
+```
+
+
+
+*Thrown when the caller is not sequencer.*
+
+
+### ErrorFoundMultipleBlob
+
+```solidity
+error ErrorFoundMultipleBlob()
+```
+
+
+
+*Thrown when the transaction has multiple blobs.*
+
+
+### ErrorGenesisBatchHasNonZeroField
+
+```solidity
+error ErrorGenesisBatchHasNonZeroField()
+```
+
+
+
+*Thrown when some fields are not zero in genesis batch.*
+
+
+### ErrorGenesisBatchImported
+
+```solidity
+error ErrorGenesisBatchImported()
+```
+
+
+
+*Thrown when importing genesis batch twice.*
+
+
+### ErrorGenesisDataHashIsZero
+
+```solidity
+error ErrorGenesisDataHashIsZero()
+```
+
+
+
+*Thrown when data hash in genesis batch is zero.*
+
+
+### ErrorGenesisParentBatchHashIsNonZero
+
+```solidity
+error ErrorGenesisParentBatchHashIsNonZero()
+```
+
+
+
+*Thrown when the parent batch hash in genesis batch is zero.*
+
+
+### ErrorIncompleteL2TransactionData
+
+```solidity
+error ErrorIncompleteL2TransactionData()
+```
+
+
+
+*Thrown when the l2 transaction is incomplete.*
+
+
+### ErrorIncorrectBatchHash
+
+```solidity
+error ErrorIncorrectBatchHash()
+```
+
+
+
+*Thrown when the batch hash is incorrect.*
+
+
+### ErrorIncorrectBatchIndex
+
+```solidity
+error ErrorIncorrectBatchIndex()
+```
+
+
+
+*Thrown when the batch index is incorrect.*
+
+
+### ErrorIncorrectBitmapLength
+
+```solidity
+error ErrorIncorrectBitmapLength()
+```
+
+
+
+*Thrown when the bitmap length is incorrect.*
+
+
+### ErrorIncorrectChunkLength
+
+```solidity
+error ErrorIncorrectChunkLength()
+```
+
+
+
+*Thrown when the length of chunk is incorrect.*
+
+
+### ErrorIncorrectPreviousStateRoot
+
+```solidity
+error ErrorIncorrectPreviousStateRoot()
+```
+
+
+
+*Thrown when the previous state root doesn&#39;t match stored one.*
+
+
+### ErrorInvalidBatchHeaderVersion
+
+```solidity
+error ErrorInvalidBatchHeaderVersion()
+```
+
+
+
+*Thrown when the batch header version is invalid.*
+
+
+### ErrorLastL1MessageSkipped
+
+```solidity
+error ErrorLastL1MessageSkipped()
+```
+
+
+
+*Thrown when the last message is skipped.*
+
+
+### ErrorNoBlobFound
+
+```solidity
+error ErrorNoBlobFound()
+```
+
+
+
+*Thrown when no blob found in the transaction.*
+
+
+### ErrorNoBlockInChunk
+
+```solidity
+error ErrorNoBlockInChunk()
+```
+
+
+
+*Thrown when no blocks in chunk.*
+
+
+### ErrorNumTxsLessThanNumL1Msgs
+
+```solidity
+error ErrorNumTxsLessThanNumL1Msgs()
+```
+
+
+
+*Thrown when the number of transactions is less than number of L1 message in one block.*
+
+
+### ErrorPreviousStateRootIsZero
+
+```solidity
+error ErrorPreviousStateRootIsZero()
+```
+
+
+
+*Thrown when the given previous state is zero.*
+
+
+### ErrorRevertFinalizedBatch
+
+```solidity
+error ErrorRevertFinalizedBatch()
+```
+
+
+
+*Thrown when reverting a finialized batch.*
+
+
+### ErrorRevertNotStartFromEnd
+
+```solidity
+error ErrorRevertNotStartFromEnd()
+```
+
+
+
+*Thrown when the reverted batches are not in the ending of commited batch chain.*
+
+
+### ErrorRevertZeroBatches
+
+```solidity
+error ErrorRevertZeroBatches()
+```
+
+
+
+*Thrown when the number of batches to revert is zero.*
+
+
+### ErrorStateRootIsZero
+
+```solidity
+error ErrorStateRootIsZero()
+```
+
+
+
+*Thrown when the given state root is zero.*
+
+
+### ErrorTooManyTxsInOneChunk
+
+```solidity
+error ErrorTooManyTxsInOneChunk()
+```
+
+
+
+*Thrown when a chunk contains too many transactions.*
+
+
+### ErrorUnexpectedPointEvaluationPrecompileOutput
+
+```solidity
+error ErrorUnexpectedPointEvaluationPrecompileOutput()
+```
+
+
+
+*Thrown when the precompile output is incorrect.*
+
 
 ### ErrorZeroAddress
 

@@ -11,6 +11,9 @@ import (
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/common"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -39,136 +42,173 @@ func setupL2RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewRelayer(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
 }
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
-	db := setupL2RelayerDB(t)
-	defer database.CloseDB(db)
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
+	for _, codecVersion := range codecVersions {
+		db := setupL2RelayerDB(t)
+		defer database.CloseDB(db)
 
-	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
-	assert.NoError(t, err)
+		l2Cfg := cfg.L2Config
+		chainConfig := &params.ChainConfig{}
+		if codecVersion == encoding.CodecV0 {
+			chainConfig.BernoulliBlock = big.NewInt(0)
+		}
 
-	l2BlockOrm := orm.NewL2Block(db)
-	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
-	assert.NoError(t, err)
-	chunkOrm := orm.NewChunk(db)
-	_, err = chunkOrm.InsertChunk(context.Background(), chunk1)
-	assert.NoError(t, err)
-	_, err = chunkOrm.InsertChunk(context.Background(), chunk2)
-	assert.NoError(t, err)
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		assert.NoError(t, err)
 
-	batch := &encoding.Batch{
-		Index:                      0,
-		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
-		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
+		patchGuard := gomonkey.ApplyMethodFunc(l2Cli, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
+			return nil
+		})
+
+		l2BlockOrm := orm.NewL2Block(db)
+		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+		assert.NoError(t, err)
+		chunkOrm := orm.NewChunk(db)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
+		assert.NoError(t, err)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
+		assert.NoError(t, err)
+
+		batch := &encoding.Batch{
+			Index:                      1,
+			TotalL1MessagePoppedBefore: 0,
+			ParentBatchHash:            common.Hash{},
+			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		}
+
+		batchOrm := orm.NewBatch(db)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
+		assert.NoError(t, err)
+
+		relayer.ProcessPendingBatches()
+
+		statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(statuses))
+		assert.Equal(t, types.RollupCommitting, statuses[0])
+		relayer.StopSenders()
+		patchGuard.Reset()
 	}
-
-	batchOrm := orm.NewBatch(db)
-	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
-	assert.NoError(t, err)
-
-	relayer.ProcessPendingBatches()
-
-	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupCommitting, statuses[0])
 }
 
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
-	db := setupL2RelayerDB(t)
-	defer database.CloseDB(db)
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
+	for _, codecVersion := range codecVersions {
+		db := setupL2RelayerDB(t)
+		defer database.CloseDB(db)
 
-	l2Cfg := cfg.L2Config
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
-	assert.NoError(t, err)
+		l2Cfg := cfg.L2Config
+		chainConfig := &params.ChainConfig{}
+		if codecVersion == encoding.CodecV0 {
+			chainConfig.BernoulliBlock = big.NewInt(0)
+		}
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		assert.NoError(t, err)
 
-	batch := &encoding.Batch{
-		Index:                      0,
-		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
-		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
+		l2BlockOrm := orm.NewL2Block(db)
+		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+		assert.NoError(t, err)
+		chunkOrm := orm.NewChunk(db)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
+		assert.NoError(t, err)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
+		assert.NoError(t, err)
+
+		batch := &encoding.Batch{
+			Index:                      1,
+			TotalL1MessagePoppedBefore: 0,
+			ParentBatchHash:            common.Hash{},
+			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		}
+
+		batchOrm := orm.NewBatch(db)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
+		assert.NoError(t, err)
+
+		err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
+		assert.NoError(t, err)
+
+		err = batchOrm.UpdateProvingStatus(context.Background(), dbBatch.Hash, types.ProvingTaskVerified)
+		assert.NoError(t, err)
+
+		relayer.ProcessCommittedBatches()
+
+		statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(statuses))
+		// no valid proof, rollup status remains the same
+		assert.Equal(t, types.RollupCommitted, statuses[0])
+
+		proof := &message.BatchProof{
+			Proof: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		}
+		err = batchOrm.UpdateProofByHash(context.Background(), dbBatch.Hash, proof, 100)
+		assert.NoError(t, err)
+
+		relayer.ProcessCommittedBatches()
+		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(statuses))
+		assert.Equal(t, types.RollupFinalizing, statuses[0])
+		relayer.StopSenders()
 	}
-
-	batchOrm := orm.NewBatch(db)
-	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
-	assert.NoError(t, err)
-
-	err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
-	assert.NoError(t, err)
-
-	err = batchOrm.UpdateProvingStatus(context.Background(), dbBatch.Hash, types.ProvingTaskVerified)
-	assert.NoError(t, err)
-
-	relayer.ProcessCommittedBatches()
-
-	statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	// no valid proof, rollup status remains the same
-	assert.Equal(t, types.RollupCommitted, statuses[0])
-
-	proof := &message.BatchProof{
-		Proof: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-	}
-	err = batchOrm.UpdateProofByHash(context.Background(), dbBatch.Hash, proof, 100)
-	assert.NoError(t, err)
-
-	relayer.ProcessCommittedBatches()
-	statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
-	assert.NoError(t, err)
-	assert.Equal(t, 1, len(statuses))
-	assert.Equal(t, types.RollupFinalizing, statuses[0])
 }
 
 func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
-	db := setupL2RelayerDB(t)
-	defer database.CloseDB(db)
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
+	for _, codecVersion := range codecVersions {
+		db := setupL2RelayerDB(t)
+		defer database.CloseDB(db)
 
-	l2Cfg := cfg.L2Config
-	l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
-	l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
-	assert.NoError(t, err)
+		l2Cfg := cfg.L2Config
+		l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
+		l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
+		chainConfig := &params.ChainConfig{}
+		if codecVersion == encoding.CodecV0 {
+			chainConfig.BernoulliBlock = big.NewInt(0)
+		}
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		assert.NoError(t, err)
 
-	batch := &encoding.Batch{
-		Index:                      0,
-		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
-		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
+		l2BlockOrm := orm.NewL2Block(db)
+		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+		assert.NoError(t, err)
+		chunkOrm := orm.NewChunk(db)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
+		assert.NoError(t, err)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
+		assert.NoError(t, err)
+
+		batch := &encoding.Batch{
+			Index:                      1,
+			TotalL1MessagePoppedBefore: 0,
+			ParentBatchHash:            common.Hash{},
+			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		}
+
+		batchOrm := orm.NewBatch(db)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
+		assert.NoError(t, err)
+
+		err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
+		assert.NoError(t, err)
+
+		// Check the database for the updated status using TryTimes.
+		ok := utils.TryTimes(5, func() bool {
+			relayer.ProcessCommittedBatches()
+			statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
+			return err == nil && len(statuses) == 1 && statuses[0] == types.RollupFinalizing
+		})
+		assert.True(t, ok)
+		relayer.StopSenders()
 	}
-
-	batchOrm := orm.NewBatch(db)
-	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
-	assert.NoError(t, err)
-
-	err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
-	assert.NoError(t, err)
-
-	// Check the database for the updated status using TryTimes.
-	ok := utils.TryTimes(5, func() bool {
-		relayer.ProcessCommittedBatches()
-		statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
-		return err == nil && len(statuses) == 1 && statuses[0] == types.RollupFinalizing
-	})
-	assert.True(t, ok)
 }
 
 func testL2RelayerCommitConfirm(t *testing.T) {
@@ -179,8 +219,9 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	isSuccessful := []bool{true, false}
@@ -188,17 +229,13 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	batchHashes := make([]string, len(isSuccessful))
 	for i := range batchHashes {
 		batch := &encoding.Batch{
-			Index:                      uint64(i),
+			Index:                      uint64(i + 1),
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-			StartChunkIndex:            0,
-			StartChunkHash:             chunkHash1,
-			EndChunkIndex:              1,
-			EndChunkHash:               chunkHash2,
 		}
 
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
 		assert.NoError(t, err)
 		batchHashes[i] = dbBatch.Hash
 	}
@@ -238,8 +275,9 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	isSuccessful := []bool{true, false}
@@ -247,17 +285,13 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 	batchHashes := make([]string, len(isSuccessful))
 	for i := range batchHashes {
 		batch := &encoding.Batch{
-			Index:                      uint64(i),
+			Index:                      uint64(i + 1),
 			TotalL1MessagePoppedBefore: 0,
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-			StartChunkIndex:            0,
-			StartChunkHash:             chunkHash1,
-			EndChunkIndex:              1,
-			EndChunkHash:               chunkHash2,
 		}
 
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
 		assert.NoError(t, err)
 		batchHashes[i] = dbBatch.Hash
 	}
@@ -298,14 +332,10 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              0,
-		EndChunkHash:               chunkHash1,
 	}
 
 	batchOrm := orm.NewBatch(db)
-	dbBatch1, err := batchOrm.InsertBatch(context.Background(), batch1)
+	dbBatch1, err := batchOrm.InsertBatch(context.Background(), batch1, encoding.CodecV0)
 	assert.NoError(t, err)
 
 	batch2 := &encoding.Batch{
@@ -313,21 +343,18 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		TotalL1MessagePoppedBefore: batch1.TotalL1MessagePoppedBefore,
 		ParentBatchHash:            common.HexToHash(dbBatch1.Hash),
 		Chunks:                     []*encoding.Chunk{chunk2},
-		StartChunkIndex:            1,
-		StartChunkHash:             chunkHash2,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
-	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2)
+	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2, encoding.CodecV0)
 	assert.NoError(t, err)
 
 	// Create and set up the Layer2 Relayer.
 	l2Cfg := cfg.L2Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// Simulate message confirmations.
 	type BatchConfirmation struct {
@@ -365,9 +392,10 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2GasOracle, nil)
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, false, ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
 
 	var batchOrm *orm.Batch
 	convey.Convey("Failed to GetLatestBatch", t, func() {
@@ -414,13 +442,13 @@ func testLayer2RelayerProcessGasPriceOracle(t *testing.T) {
 
 	convey.Convey("Failed to send setL2BaseFee tx to layer2", t, func() {
 		targetErr := errors.New("failed to send setL2BaseFee tx to layer2 error")
-		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
+		patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (hash common.Hash, err error) {
 			return common.Hash{}, targetErr
 		})
 		relayer.ProcessGasPriceOracle()
 	})
 
-	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, value *big.Int, data []byte, fallbackGasLimit uint64) (hash common.Hash, err error) {
+	patchGuard.ApplyMethodFunc(relayer.gasOracleSender, "SendTransaction", func(ContextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (hash common.Hash, err error) {
 		return common.HexToHash("0x56789abcdef1234"), nil
 	})
 
@@ -459,34 +487,31 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
+	cfg.L2Config.RelayerConfig.ChainMonitor.Enabled = true
+	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, relayer)
+	defer relayer.StopSenders()
+
 	l2BlockOrm := orm.NewL2Block(db)
-	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 	assert.NoError(t, err)
 	chunkOrm := orm.NewChunk(db)
-	_, err = chunkOrm.InsertChunk(context.Background(), chunk1)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk1, encoding.CodecV0)
 	assert.NoError(t, err)
-	_, err = chunkOrm.InsertChunk(context.Background(), chunk2)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk2, encoding.CodecV0)
 	assert.NoError(t, err)
 
 	batch := &encoding.Batch{
-		Index:                      0,
+		Index:                      1,
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash1,
-		EndChunkIndex:              1,
-		EndChunkHash:               chunkHash2,
 	}
 
 	batchOrm := orm.NewBatch(db)
-	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
 	assert.NoError(t, err)
-
-	cfg.L2Config.RelayerConfig.ChainMonitor.Enabled = true
-	relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, cfg.L2Config.RelayerConfig, false, ServiceTypeL2RollupRelayer, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, relayer)
 
 	status, err := relayer.getBatchStatusByIndex(dbBatch)
 	assert.NoError(t, err)

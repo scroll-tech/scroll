@@ -72,16 +72,16 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
-	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
-	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, initGenesis, relayer.ServiceTypeL2RollupRelayer, registry)
-	if err != nil {
-		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
-	}
-
 	genesisPath := ctx.String(utils.Genesis.Name)
-	genesis, err := config.ReadGenesis(genesisPath)
+	genesis, err := utils.ReadGenesis(genesisPath)
 	if err != nil {
 		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
+	}
+
+	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
+	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, initGenesis, relayer.ServiceTypeL2RollupRelayer, registry)
+	if err != nil {
+		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
 	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, genesis.Config, db, registry)

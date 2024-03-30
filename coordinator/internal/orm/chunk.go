@@ -70,13 +70,14 @@ func (*Chunk) TableName() string {
 
 // GetUnassignedChunk retrieves unassigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+func (o *Chunk) GetUnassignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("end_block_number <= ?", height)
+	db = db.Where("start_block_number >= ?", fromBlockNum)
+	db = db.Where("end_block_number < ?", toBlockNum)
 
 	var chunk Chunk
 	err := db.First(&chunk).Error
@@ -92,13 +93,14 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAtt
 
 // GetAssignedChunk retrieves assigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetAssignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+func (o *Chunk) GetAssignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("end_block_number <= ?", height)
+	db = db.Where("start_block_number >= ?", fromBlockNum)
+	db = db.Where("end_block_number < ?", toBlockNum)
 
 	var chunk Chunk
 	err := db.First(&chunk).Error
@@ -153,15 +155,18 @@ func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*
 	return proofs, nil
 }
 
-// GetLatestChunk retrieves the latest chunk from the database.
-func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
+// getLatestChunk retrieves the latest chunk from the database.
+func (o *Chunk) getLatestChunk(ctx context.Context) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Order("index desc")
 
 	var latestChunk Chunk
 	if err := db.First(&latestChunk).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.GetLatestChunk error: %w", err)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Chunk.getLatestChunk error: %w", err)
 	}
 	return &latestChunk, nil
 }
@@ -193,18 +198,33 @@ func (o *Chunk) CheckIfBatchChunkProofsAreReady(ctx context.Context, batchHash s
 	return count == 0, nil
 }
 
-// GetChunkBatchHash retrieves the batchHash of a given chunk.
-func (o *Chunk) GetChunkBatchHash(ctx context.Context, chunkHash string) (string, error) {
+// GetChunkByHash retrieves the given chunk.
+func (o *Chunk) GetChunkByHash(ctx context.Context, chunkHash string) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("hash = ?", chunkHash)
-	db = db.Select("batch_hash")
 
 	var chunk Chunk
 	if err := db.First(&chunk).Error; err != nil {
-		return "", fmt.Errorf("Chunk.GetChunkBatchHash error: %w, chunk hash: %v", err, chunkHash)
+		return nil, fmt.Errorf("Chunk.GetChunkByHash error: %w, chunk hash: %v", err, chunkHash)
 	}
-	return chunk.BatchHash, nil
+	return &chunk, nil
+}
+
+// GetChunkByStartBlockNumber retrieves the given chunk.
+func (o *Chunk) GetChunkByStartBlockNumber(ctx context.Context, startBlockNumber uint64) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("start_block_number = ?", startBlockNumber)
+
+	var chunk Chunk
+	if err := db.First(&chunk).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Chunk.GetChunkByStartBlockNumber error: %w, chunk start block number: %v", err, startBlockNumber)
+	}
+	return &chunk, nil
 }
 
 // GetAttemptsByHash get chunk attempts by hash. Used by unit test
@@ -230,15 +250,15 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
-	parentChunk, err := o.GetLatestChunk(ctx)
-	if err != nil && !errors.Is(errors.Unwrap(err), gorm.ErrRecordNotFound) {
+	parentChunk, err := o.getLatestChunk(ctx)
+	if err != nil {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
 	// if parentChunk==nil then err==gorm.ErrRecordNotFound, which means there's
-	// not chunk record in the db, we then use default empty values for the creating chunk;
-	// if parentChunk!=nil then err=nil, then we fill the parentChunk-related data into the creating chunk
+	// no chunk record in the db, we then use default empty values for the creating chunk;
+	// if parentChunk!=nil then err==nil, then we fill the parentChunk-related data into the creating chunk
 	if parentChunk != nil {
 		chunkIndex = parentChunk.Index + 1
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk

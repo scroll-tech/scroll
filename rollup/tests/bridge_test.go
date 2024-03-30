@@ -9,11 +9,14 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +24,7 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
+	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/utils"
 
 	"scroll-tech/database/migrate"
@@ -30,20 +34,16 @@ import (
 )
 
 var (
-	base      *docker.App
-	rollupApp *bcmd.MockApp
+	base         *docker.App
+	rollupApp    *bcmd.MockApp
+	posL1TestEnv *dockercompose.PoSL1TestEnv
 
 	// clients
 	l1Client *ethclient.Client
 	l2Client *ethclient.Client
 
-	// auth
+	// l1Auth
 	l1Auth *bind.TransactOpts
-	l2Auth *bind.TransactOpts
-
-	// l1 rollup contract
-	scrollChainInstance *mock_bridge.MockBridgeL1
-	scrollChainAddress  common.Address
 )
 
 func setupDB(t *testing.T) *gorm.DB {
@@ -63,9 +63,21 @@ func setupDB(t *testing.T) *gorm.DB {
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
+	defer base.Free()
+
 	rollupApp = bcmd.NewRollupApp(base, "../conf/config.json")
 	defer rollupApp.Free()
-	defer base.Free()
+
+	var err error
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
+	if err != nil {
+		log.Crit("failed to create PoS L1 test environment", "err", err)
+	}
+	if err := posL1TestEnv.Start(); err != nil {
+		log.Crit("failed to start PoS L1 test environment", "err", err)
+	}
+	defer posL1TestEnv.Stop()
+
 	m.Run()
 }
 
@@ -74,11 +86,18 @@ func setupEnv(t *testing.T) {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
+	var err error
+	l1Client, err = posL1TestEnv.L1Client()
+	assert.NoError(t, err)
+	chainID, err := l1Client.ChainID(context.Background())
+	assert.NoError(t, err)
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, chainID)
+	assert.NoError(t, err)
+	rollupApp.Config.L1Config.Endpoint = posL1TestEnv.Endpoint()
+	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
+
 	base.RunImages(t)
 
-	var err error
-	l1Client, err = base.L1Client()
-	assert.NoError(t, err)
 	l2Client, err = base.L2Client()
 	assert.NoError(t, err)
 
@@ -87,12 +106,6 @@ func setupEnv(t *testing.T) {
 	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
-
-	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L1gethImg.ChainID())
-	assert.NoError(t, err)
-
-	l2Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKey, base.L2gethImg.ChainID())
-	assert.NoError(t, err)
 
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)
@@ -118,18 +131,33 @@ func mockChainMonitorServer(baseURL string) (*http.Server, error) {
 }
 
 func prepareContracts(t *testing.T) {
-	var err error
-	var tx *types.Transaction
-
 	// L1 ScrolChain contract
-	_, tx, scrollChainInstance, err = mock_bridge.DeployMockBridgeL1(l1Auth, l1Client)
+	nonce, err := l1Client.PendingNonceAt(context.Background(), l1Auth.From)
 	assert.NoError(t, err)
-	scrollChainAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	scrollChainAddress := crypto.CreateAddress(l1Auth.From, nonce)
+	tx := types.NewContractCreation(nonce, big.NewInt(0), 10000000, big.NewInt(1000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
+	signedTx, err := l1Auth.Signer(l1Auth.From, tx)
 	assert.NoError(t, err)
+	err = l1Client.SendTransaction(context.Background(), signedTx)
+	assert.NoError(t, err)
+
+	assert.Eventually(t, func() bool {
+		_, isPending, err := l1Client.TransactionByHash(context.Background(), signedTx.Hash())
+		return err == nil && !isPending
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		receipt, err := l1Client.TransactionReceipt(context.Background(), signedTx.Hash())
+		return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		code, err := l1Client.CodeAt(context.Background(), scrollChainAddress, nil)
+		return err == nil && len(code) > 0
+	}, 30*time.Second, time.Second)
 
 	l1Config, l2Config := rollupApp.Config.L1Config, rollupApp.Config.L2Config
 	l1Config.ScrollChainContractAddress = scrollChainAddress
-
 	l2Config.RelayerConfig.RollupContractAddress = scrollChainAddress
 }
 
@@ -146,6 +174,8 @@ func TestFunction(t *testing.T) {
 	// l1 rollup and watch rollup events
 	t.Run("TestCommitAndFinalizeGenesisBatch", testCommitAndFinalizeGenesisBatch)
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
+	t.Run("TestCommitBatchAndFinalizeBatch4844", testCommitBatchAndFinalizeBatch4844)
+	t.Run("TestCommitBatchAndFinalizeBatchBeforeAndPost4844", testCommitBatchAndFinalizeBatchBeforeAndPost4844)
 
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)

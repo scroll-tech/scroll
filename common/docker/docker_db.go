@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 
 	"scroll-tech/common/cmd"
@@ -75,7 +74,7 @@ func (i *ImgDB) Stop() error {
 		return err
 	}
 	// remove the stopped container.
-	return cli.ContainerRemove(ctx, i.id, types.ContainerRemoveOptions{})
+	return cli.ContainerRemove(ctx, i.id, container.RemoveOptions{})
 }
 
 // Endpoint return the dsn.

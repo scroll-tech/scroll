@@ -9,13 +9,13 @@
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://rpc.scroll.io",
-        "escalate_blocks": 100,
-        "confirmations": "0x1",
-        "escalate_multiple_num": 11,
-        "escalate_multiple_den": 10,
-        "max_gas_price": 10000000000,
+        "escalate_blocks": 1,
+        "confirmations": "0x0",
+        "escalate_multiple_num": 2,
+        "escalate_multiple_den": 1,
+        "max_gas_price": 1000000000000,
         "tx_type": "LegacyTx",
-        "check_pending_time": 3
+        "check_pending_time": 1
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
@@ -33,13 +33,14 @@
       "gas_price_oracle_address": "0x0000000000000000000000000000000000000000",
       "sender_config": {
         "endpoint": "https://rpc.ankr.com/eth",
-        "escalate_blocks": 100,
-        "confirmations": "0x6",
-        "escalate_multiple_num": 11,
-        "escalate_multiple_den": 10,
-        "max_gas_price": 10000000000,
+        "escalate_blocks": 1,
+        "confirmations": "0x0",
+        "escalate_multiple_num": 2,
+        "escalate_multiple_den": 1,
+        "max_gas_price": 1000000000000,
+        "max_blob_gas_price": 10000000000000,
         "tx_type": "DynamicFeeTx",
-        "check_pending_time": 12
+        "check_pending_time": 1
       },
       "gas_oracle_config": {
         "min_gas_price": 0,

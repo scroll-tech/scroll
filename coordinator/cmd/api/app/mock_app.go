@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/params"
+
 	coordinatorConfig "scroll-tech/coordinator/internal/config"
 
 	"scroll-tech/common/cmd"
@@ -23,29 +25,35 @@ var (
 
 // CoordinatorApp coordinator-test client manager.
 type CoordinatorApp struct {
-	Config *coordinatorConfig.Config
+	Config      *coordinatorConfig.Config
+	ChainConfig *params.ChainConfig
 
 	base *docker.App
 
-	originFile      string
-	coordinatorFile string
-	HTTPPort        int64
+	configOriginFile      string
+	chainConfigOriginFile string
+	coordinatorFile       string
+	genesisFile           string
+	HTTPPort              int64
 
 	args []string
 	docker.AppAPI
 }
 
 // NewCoordinatorApp return a new coordinatorApp manager.
-func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
+func NewCoordinatorApp(base *docker.App, configFile string, chainConfigFile string) *CoordinatorApp {
 	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", base.Timestamp)
+	genesisFile := fmt.Sprintf("/tmp/%d_genesis.json", base.Timestamp)
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	httpPort := port.Int64() + httpStartPort
 	coordinatorApp := &CoordinatorApp{
-		base:            base,
-		originFile:      file,
-		coordinatorFile: coordinatorFile,
-		HTTPPort:        httpPort,
-		args:            []string{"--log.debug", "--config", coordinatorFile, "--http", "--http.port", strconv.Itoa(int(httpPort))},
+		base:                  base,
+		configOriginFile:      configFile,
+		chainConfigOriginFile: chainConfigFile,
+		coordinatorFile:       coordinatorFile,
+		genesisFile:           genesisFile,
+		HTTPPort:              httpPort,
+		args:                  []string{"--log.debug", "--config", coordinatorFile, "--genesis", genesisFile, "--http", "--http.port", strconv.Itoa(int(httpPort))},
 	}
 	if err := coordinatorApp.MockConfig(true); err != nil {
 		panic(err)
@@ -75,7 +83,7 @@ func (c *CoordinatorApp) HTTPEndpoint() string {
 // MockConfig creates a new coordinator config.
 func (c *CoordinatorApp) MockConfig(store bool) error {
 	base := c.base
-	cfg, err := coordinatorConfig.NewConfig(c.originFile)
+	cfg, err := coordinatorConfig.NewConfig(c.configOriginFile)
 	if err != nil {
 		return err
 	}
@@ -95,14 +103,30 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	cfg.Auth.LoginExpireDurationSec = 1
 	c.Config = cfg
 
+	genesis, err := utils.ReadGenesis(c.chainConfigOriginFile)
+	if err != nil {
+		return err
+	}
+	c.ChainConfig = genesis.Config
+
 	if !store {
 		return nil
 	}
 
-	data, err := json.Marshal(c.Config)
+	coordinatorConfigData, err := json.Marshal(c.Config)
+	if err != nil {
+		return err
+	}
+	genesisConfigData, err := json.Marshal(genesis)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(c.coordinatorFile, data, 0600)
+	if writeErr := os.WriteFile(c.coordinatorFile, coordinatorConfigData, 0600); writeErr != nil {
+		return writeErr
+	}
+	if writeErr := os.WriteFile(c.genesisFile, genesisConfigData, 0600); writeErr != nil {
+		return writeErr
+	}
+	return nil
 }

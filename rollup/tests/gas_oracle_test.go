@@ -7,12 +7,12 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
 
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"
@@ -30,6 +30,7 @@ func testImportL1GasPrice(t *testing.T) {
 	// Create L1Relayer
 	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, relayer.ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
+	defer l1Relayer.StopSenders()
 
 	// Create L1Watcher
 	startHeight, err := l1Client.BlockNumber(context.Background())
@@ -69,8 +70,9 @@ func testImportL2GasPrice(t *testing.T) {
 	prepareContracts(t)
 
 	l2Cfg := rollupApp.Config.L2Config
-	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, false, relayer.ServiceTypeL2GasOracle, nil)
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, false, relayer.ServiceTypeL2GasOracle, nil)
 	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
 
 	// add fake chunk
 	chunk := &encoding.Chunk{
@@ -88,24 +90,15 @@ func testImportL2GasPrice(t *testing.T) {
 			},
 		},
 	}
-	daChunk, err := codecv0.NewDAChunk(chunk, 0)
-	assert.NoError(t, err)
-	chunkHash, err := daChunk.Hash()
-	assert.NoError(t, err)
-
 	batch := &encoding.Batch{
 		Index:                      0,
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		StartChunkHash:             chunkHash,
-		EndChunkIndex:              0,
-		EndChunkHash:               chunkHash,
 	}
 
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch)
+	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
 	assert.NoError(t, err)
 
 	// check db status

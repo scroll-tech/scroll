@@ -8,6 +8,17 @@ import (
 	"github.com/scroll-tech/go-ethereum/core/types"
 )
 
+// CodecVersion defines the version of encoder and decoder.
+type CodecVersion int
+
+const (
+	// CodecV0 represents the version 0 of the encoder and decoder.
+	CodecV0 CodecVersion = iota
+
+	// CodecV1 represents the version 1 of the encoder and decoder.
+	CodecV1
+)
+
 // Block represents an L2 block.
 type Block struct {
 	Header         *types.Header
@@ -27,12 +38,6 @@ type Batch struct {
 	TotalL1MessagePoppedBefore uint64
 	ParentBatchHash            common.Hash
 	Chunks                     []*Chunk
-
-	// Only used in updating db info.
-	StartChunkIndex uint64
-	EndChunkIndex   uint64
-	StartChunkHash  common.Hash
-	EndChunkHash    common.Hash
 }
 
 // NumL1Messages returns the number of L1 messages in this block.
@@ -214,9 +219,4 @@ func (b *Batch) WithdrawRoot() common.Hash {
 	}
 	lastChunkBlockNum := len(b.Chunks[numChunks-1].Blocks)
 	return b.Chunks[len(b.Chunks)-1].Blocks[lastChunkBlockNum-1].WithdrawRoot
-}
-
-// NumChunks gets the number of chunks of the batch.
-func (b *Batch) NumChunks() uint64 {
-	return uint64(len(b.Chunks))
 }

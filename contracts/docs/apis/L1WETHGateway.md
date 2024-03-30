@@ -152,15 +152,15 @@ function initialize(address _counterpart, address _router, address _messenger) e
 
 Initialize the storage of L1WETHGateway.
 
-
+*The parameters `_counterpart`, `_router` and `_messenger` are no longer used.*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
 | _counterpart | address | The address of L2ETHGateway in L2. |
-| _router | address | The address of L1GatewayRouter. |
-| _messenger | address | The address of L1ScrollMessenger. |
+| _router | address | The address of L1GatewayRouter in L1. |
+| _messenger | address | The address of L1ScrollMessenger in L1. |
 
 ### l2WETH
 
@@ -291,12 +291,12 @@ Emitted when someone deposit ERC20 token from L1 to L2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| l1Token `indexed` | address | The address of the token in L1. |
+| l2Token `indexed` | address | The address of the token in L2. |
+| from `indexed` | address | The address of sender in L1. |
+| to  | address | The address of recipient in L2. |
+| amount  | uint256 | The amount of token will be deposited from L1 to L2. |
+| data  | bytes | The optional calldata passed to recipient in L2. |
 
 ### FinalizeWithdrawERC20
 
@@ -312,12 +312,12 @@ Emitted when ERC20 token is withdrawn from L2 to L1 and transfer to recipient.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| l1Token `indexed` | address | The address of the token in L1. |
+| l2Token `indexed` | address | The address of the token in L2. |
+| from `indexed` | address | The address of sender in L2. |
+| to  | address | The address of recipient in L1. |
+| amount  | uint256 | The amount of token withdrawn from L2 to L1. |
+| data  | bytes | The optional calldata passed to recipient in L1. |
 
 ### Initialized
 
@@ -327,7 +327,7 @@ event Initialized(uint8 version)
 
 
 
-
+*Triggered when the contract has been initialized or reinitialized.*
 
 #### Parameters
 
@@ -366,9 +366,9 @@ Emitted when some ERC20 token is refunded.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | undefined |
-| recipient `indexed` | address | undefined |
-| amount  | uint256 | undefined |
+| token `indexed` | address | The address of the token in L1. |
+| recipient `indexed` | address | The address of receiver in L1. |
+| amount  | uint256 | The amount of token refunded to receiver. |
 
 
 

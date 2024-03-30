@@ -3,17 +3,23 @@ package sender
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"math/big"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
+	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	gokzg4844 "github.com/crate-crypto/go-kzg-4844"
+	"github.com/holiman/uint256"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
@@ -22,31 +28,45 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
+	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/mock_bridge"
 )
 
 const TXBatch = 50
 
 var (
-	privateKey             *ecdsa.PrivateKey
-	cfg                    *config.Config
-	base                   *docker.App
-	txTypes                = []string{"LegacyTx", "AccessListTx", "DynamicFeeTx"}
-	db                     *gorm.DB
-	mockL1ContractsAddress common.Address
+	privateKey           *ecdsa.PrivateKey
+	cfg                  *config.Config
+	base                 *docker.App
+	posL1TestEnv         *dockercompose.PoSL1TestEnv
+	txTypes              = []string{"LegacyTx", "DynamicFeeTx", "DynamicFeeTx"}
+	txBlob               = []*kzg4844.Blob{nil, nil, randBlob()}
+	txUint8Types         = []uint8{0, 2, 3}
+	db                   *gorm.DB
+	testContractsAddress common.Address
 )
 
 func TestMain(m *testing.M) {
 	base = docker.NewDockerApp()
+	defer base.Free()
+
+	var err error
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
+	if err != nil {
+		log.Crit("failed to create PoS L1 test environment", "err", err)
+	}
+	if err := posL1TestEnv.Start(); err != nil {
+		log.Crit("failed to start PoS L1 test environment", "err", err)
+	}
+	defer posL1TestEnv.Stop()
 
 	m.Run()
-
-	base.Free()
 }
 
 func setupEnv(t *testing.T) {
@@ -61,8 +81,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	privateKey = priv
 
-	base.RunL1Geth(t)
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 
 	base.RunDBImage(t)
 	db, err = database.InitDB(
@@ -78,35 +97,59 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, base.L1gethImg.ChainID())
+	l1Client, err := posL1TestEnv.L1Client()
 	assert.NoError(t, err)
 
-	l1Client, err := base.L1Client()
+	chainID, err := l1Client.ChainID(context.Background())
 	assert.NoError(t, err)
 
-	_, tx, _, err := mock_bridge.DeployMockBridgeL1(auth, l1Client)
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
 	assert.NoError(t, err)
 
-	mockL1ContractsAddress, err = bind.WaitDeployed(context.Background(), l1Client, tx)
+	nonce, err := l1Client.PendingNonceAt(context.Background(), auth.From)
 	assert.NoError(t, err)
+
+	testContractsAddress = crypto.CreateAddress(auth.From, nonce)
+
+	tx := gethTypes.NewContractCreation(nonce, big.NewInt(0), 10000000, big.NewInt(10000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
+	signedTx, err := auth.Signer(auth.From, tx)
+	assert.NoError(t, err)
+	err = l1Client.SendTransaction(context.Background(), signedTx)
+	assert.NoError(t, err)
+
+	assert.Eventually(t, func() bool {
+		_, isPending, err := l1Client.TransactionByHash(context.Background(), signedTx.Hash())
+		return err == nil && !isPending
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		receipt, err := l1Client.TransactionReceipt(context.Background(), signedTx.Hash())
+		return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		code, err := l1Client.CodeAt(context.Background(), testContractsAddress, nil)
+		return err == nil && len(code) > 0
+	}, 30*time.Second, time.Second)
 }
 
 func TestSender(t *testing.T) {
-	// Setup
 	setupEnv(t)
 
 	t.Run("test new sender", testNewSender)
-	t.Run("test fallback gas limit", testFallbackGasLimit)
 	t.Run("test send and retrieve transaction", testSendAndRetrieveTransaction)
+	t.Run("test fallback gas limit", testFallbackGasLimit)
 	t.Run("test access list transaction gas limit", testAccessListTransactionGasLimit)
 	t.Run("test resubmit zero gas price transaction", testResubmitZeroGasPriceTransaction)
 	t.Run("test resubmit non-zero gas price transaction", testResubmitNonZeroGasPriceTransaction)
 	t.Run("test resubmit under priced transaction", testResubmitUnderpricedTransaction)
-	t.Run("test resubmit transaction with rising base fee", testResubmitTransactionWithRisingBaseFee)
+	t.Run("test resubmit dynamic fee transaction with rising base fee", testResubmitDynamicFeeTransactionWithRisingBaseFee)
+	t.Run("test resubmit blob transaction with rising base fee and blob base fee", testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee)
 	t.Run("test check pending transaction tx confirmed", testCheckPendingTransactionTxConfirmed)
 	t.Run("test check pending transaction resubmit tx confirmed", testCheckPendingTransactionResubmitTxConfirmed)
 	t.Run("test check pending transaction replaced tx confirmed", testCheckPendingTransactionReplacedTxConfirmed)
 	t.Run("test check pending transaction multiple times with only one transaction pending", testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending)
+	t.Run("test blob transaction with blobhash op contract call", testBlobTransactionWithBlobhashOpContractCall)
 }
 
 func testNewSender(t *testing.T) {
@@ -116,14 +159,14 @@ func testNewSender(t *testing.T) {
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
 		// exit by Stop()
-		cfgCopy1 := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy1 := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy1.TxType = txType
 		newSender1, err := NewSender(context.Background(), &cfgCopy1, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		newSender1.Stop()
 
 		// exit by ctx.Done()
-		cfgCopy2 := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy2 := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy2.TxType = txType
 		subCtx, cancel := context.WithCancel(context.Background())
 		_, err = NewSender(subCtx, &cfgCopy2, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
@@ -138,35 +181,42 @@ func testSendAndRetrieveTransaction(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 
-		hash, err := s.SendTransaction("0", &common.Address{}, big.NewInt(0), nil, 0)
+		hash, err := s.SendTransaction("0", &common.Address{}, nil, txBlob[i], 0)
 		assert.NoError(t, err)
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
 		assert.NoError(t, err)
 		assert.Len(t, txs, 1)
 		assert.Equal(t, "0", txs[0].ContextID)
 		assert.Equal(t, hash.String(), txs[0].Hash)
-		assert.Equal(t, uint8(i), txs[0].Type)
+		assert.Equal(t, txUint8Types[i], txs[0].Type)
 		assert.Equal(t, types.TxStatusPending, txs[0].Status)
 		assert.Equal(t, "0x1C5A77d9FA7eF466951B2F01F724BCa3A5820b63", txs[0].SenderAddress)
 		assert.Equal(t, types.SenderTypeUnknown, txs[0].SenderType)
 		assert.Equal(t, "test", txs[0].SenderService)
 		assert.Equal(t, "test", txs[0].SenderName)
+
+		assert.Eventually(t, func() bool {
+			txs, err = s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 100)
+			assert.NoError(t, err)
+			return len(txs) == 0
+		}, 30*time.Second, time.Second)
+
 		s.Stop()
 	}
 }
 
 func testFallbackGasLimit(t *testing.T) {
-	for _, txType := range txTypes {
+	for i, txType := range txTypes {
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.Confirmations = rpc.LatestBlockNumber
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
@@ -176,24 +226,37 @@ func testFallbackGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 
 		// FallbackGasLimit = 0
-		txHash0, err := s.SendTransaction("0", &common.Address{}, big.NewInt(0), nil, 0)
+		txHash0, err := s.SendTransaction("0", &common.Address{}, nil, txBlob[i], 0)
 		assert.NoError(t, err)
 		tx0, _, err := client.TransactionByHash(context.Background(), txHash0)
 		assert.NoError(t, err)
 		assert.Greater(t, tx0.Gas(), uint64(0))
 
+		assert.Eventually(t, func() bool {
+			var txs []orm.PendingTransaction
+			txs, err = s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 100)
+			assert.NoError(t, err)
+			return len(txs) == 0
+		}, 30*time.Second, time.Second)
+
 		// FallbackGasLimit = 100000
 		patchGuard := gomonkey.ApplyPrivateMethod(s, "estimateGasLimit",
-			func(contract *common.Address, data []byte, gasPrice, gasTipCap, gasFeeCap, value *big.Int) (uint64, *gethTypes.AccessList, error) {
+			func(contract *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobGasFeeCap *big.Int) (uint64, *gethTypes.AccessList, error) {
 				return 0, nil, errors.New("estimateGasLimit error")
 			},
 		)
 
-		txHash1, err := s.SendTransaction("1", &common.Address{}, big.NewInt(0), nil, 100000)
+		txHash1, err := s.SendTransaction("1", &common.Address{}, nil, txBlob[i], 100000)
 		assert.NoError(t, err)
 		tx1, _, err := client.TransactionByHash(context.Background(), txHash1)
 		assert.NoError(t, err)
 		assert.Equal(t, uint64(100000), tx1.Gas())
+
+		assert.Eventually(t, func() bool {
+			txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 100)
+			assert.NoError(t, err)
+			return len(txs) == 0
+		}, 30*time.Second, time.Second)
 
 		s.Stop()
 		patchGuard.Reset()
@@ -201,12 +264,16 @@ func testFallbackGasLimit(t *testing.T) {
 }
 
 func testResubmitZeroGasPriceTransaction(t *testing.T) {
-	for _, txType := range txTypes {
+	for i, txType := range txTypes {
+		if txBlob[i] != nil {
+			continue
+		}
+
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
@@ -216,23 +283,37 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(0),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
-		_, err = s.resubmitTransaction(tx, 0)
-		assert.NoError(t, err)
+		// Bumping the fees enough times to let the transaction be included in a block.
+		for i := 0; i < 30; i++ {
+			tx, err = s.resubmitTransaction(tx, 0, 0)
+			assert.NoError(t, err)
+		}
+
+		assert.Eventually(t, func() bool {
+			_, isPending, err := s.client.TransactionByHash(context.Background(), tx.Hash())
+			return err == nil && !isPending
+		}, 30*time.Second, time.Second)
+
+		assert.Eventually(t, func() bool {
+			receipt, err := s.client.TransactionReceipt(context.Background(), tx.Hash())
+			return err == nil && receipt != nil
+		}, 30*time.Second, time.Second)
+
 		s.Stop()
 	}
 }
 
 func testAccessListTransactionGasLimit(t *testing.T) {
-	for _, txType := range txTypes {
+	for i, txType := range txTypes {
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
@@ -240,30 +321,37 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		l2GasOracleABI, err := bridgeAbi.L2GasPriceOracleMetaData.GetAbi()
 		assert.NoError(t, err)
 
-		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(2333))
+		data, err := l2GasOracleABI.Pack("setL2BaseFee", big.NewInt(int64(i+1)))
 		assert.NoError(t, err)
 
-		gasLimit, accessList, err := s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), true)
-		assert.NoError(t, err)
-		assert.Equal(t, uint64(43472), gasLimit)
-		assert.NotNil(t, accessList)
+		var sidecar *gethTypes.BlobTxSidecar
+		if txBlob[i] != nil {
+			sidecar, err = makeSidecar(txBlob[i])
+			assert.NoError(t, err)
+		}
 
-		gasLimit, accessList, err = s.estimateGasLimit(&mockL1ContractsAddress, data, big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(100000000000), big.NewInt(0), false)
+		gasLimit, accessList, err := s.estimateGasLimit(&testContractsAddress, data, sidecar, nil, big.NewInt(1000000000), big.NewInt(1000000000), big.NewInt(1000000000))
 		assert.NoError(t, err)
-		assert.Equal(t, uint64(43949), gasLimit)
-		assert.Nil(t, accessList)
+
+		if txType == LegacyTxType { // Legacy transactions can not have an access list.
+			assert.Equal(t, uint64(43956), gasLimit)
+			assert.Nil(t, accessList)
+		} else { // Dynamic fee and blob transactions can have an access list.
+			assert.Equal(t, uint64(43479), gasLimit)
+			assert.NotNil(t, accessList)
+		}
 
 		s.Stop()
 	}
 }
 
 func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
-	for _, txType := range txTypes {
+	for i, txType := range txTypes {
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		// Bump gas price, gas tip cap and gas fee cap just touch the minimum threshold of 10% (default config of geth).
 		cfgCopy.EscalateMultipleNum = 110
 		cfgCopy.EscalateMultipleDen = 100
@@ -271,27 +359,48 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		feeData := &FeeData{
-			gasPrice:  big.NewInt(100000),
-			gasTipCap: big.NewInt(100000),
-			gasFeeCap: big.NewInt(100000),
-			gasLimit:  50000,
+			gasPrice:      big.NewInt(1000000000),
+			gasTipCap:     big.NewInt(1000000000),
+			gasFeeCap:     big.NewInt(1000000000),
+			blobGasFeeCap: big.NewInt(1000000000),
+			gasLimit:      50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		var sidecar *gethTypes.BlobTxSidecar
+		if txBlob[i] != nil {
+			sidecar, err = makeSidecar(txBlob[i])
+			assert.NoError(t, err)
+		}
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, sidecar, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(tx, 0)
+		resubmittedTx, err := s.resubmitTransaction(tx, 0, 0)
 		assert.NoError(t, err)
+
+		assert.Eventually(t, func() bool {
+			_, isPending, err := s.client.TransactionByHash(context.Background(), resubmittedTx.Hash())
+			return err == nil && !isPending
+		}, 30*time.Second, time.Second)
+
+		assert.Eventually(t, func() bool {
+			receipt, err := s.client.TransactionReceipt(context.Background(), resubmittedTx.Hash())
+			return err == nil && receipt != nil
+		}, 30*time.Second, time.Second)
+
 		s.Stop()
 	}
 }
 
 func testResubmitUnderpricedTransaction(t *testing.T) {
-	for _, txType := range txTypes {
+	for i, txType := range txTypes {
+		if txBlob[i] != nil {
+			continue
+		}
+
 		sqlDB, err := db.DB()
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		// Bump gas price, gas tip cap and gas fee cap less than 10% (default config of geth).
 		cfgCopy.EscalateMultipleNum = 109
 		cfgCopy.EscalateMultipleDen = 100
@@ -299,54 +408,127 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 		assert.NoError(t, err)
 		feeData := &FeeData{
-			gasPrice:  big.NewInt(100000),
-			gasTipCap: big.NewInt(100000),
-			gasFeeCap: big.NewInt(100000),
+			gasPrice:  big.NewInt(1000000000),
+			gasTipCap: big.NewInt(1000000000),
+			gasFeeCap: big.NewInt(1000000000),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, big.NewInt(0), nil, nil)
+		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(tx, 0)
+		_, err = s.resubmitTransaction(tx, 0, 0)
 		assert.Error(t, err, "replacement transaction underpriced")
+
+		assert.Eventually(t, func() bool {
+			_, isPending, err := s.client.TransactionByHash(context.Background(), tx.Hash())
+			return err == nil && !isPending
+		}, 30*time.Second, time.Second)
+
+		assert.Eventually(t, func() bool {
+			receipt, err := s.client.TransactionReceipt(context.Background(), tx.Hash())
+			return err == nil && receipt != nil
+		}, 30*time.Second, time.Second)
+
 		s.Stop()
 	}
 }
 
-func testResubmitTransactionWithRisingBaseFee(t *testing.T) {
+func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
 	txType := "DynamicFeeTx"
-	cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+	cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 	cfgCopy.TxType = txType
 
 	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
 	assert.NoError(t, err)
-	tx := gethTypes.NewTransaction(s.auth.Nonce.Uint64(), common.Address{}, big.NewInt(0), 21000, big.NewInt(0), nil)
+
+	patchGuard := gomonkey.ApplyMethodFunc(s.client, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
+		return nil
+	})
+	defer patchGuard.Reset()
+
+	tx := gethTypes.NewTx(&gethTypes.DynamicFeeTx{
+		Nonce:     s.auth.Nonce.Uint64(),
+		To:        &common.Address{},
+		Data:      nil,
+		Gas:       21000,
+		ChainID:   s.chainID,
+		GasTipCap: big.NewInt(0),
+		GasFeeCap: big.NewInt(0),
+	})
 	baseFeePerGas := uint64(1000)
 	// bump the basefee by 10x
 	baseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.resubmitTransaction(tx, baseFeePerGas)
+	newTx, err := s.resubmitTransaction(tx, baseFeePerGas, 0)
 	assert.NoError(t, err)
 
-	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
-	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
-
-	adjBaseFee := new(big.Int)
-	adjBaseFee.SetUint64(baseFeePerGas)
-	adjBaseFee = adjBaseFee.Mul(adjBaseFee, escalateMultipleNum)
-	adjBaseFee = adjBaseFee.Div(adjBaseFee, escalateMultipleDen)
-
-	expectedGasFeeCap := new(big.Int).Add(tx.GasTipCap(), adjBaseFee)
+	expectedGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFeePerGas), tx.GasTipCap())
 	if expectedGasFeeCap.Cmp(maxGasPrice) > 0 {
 		expectedGasFeeCap = maxGasPrice
 	}
 
-	assert.Equal(t, expectedGasFeeCap.Int64(), newTx.GasFeeCap().Int64())
+	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())
+	s.Stop()
+}
+
+func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
+	cfgCopy.TxType = DynamicFeeTxType
+
+	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+	assert.NoError(t, err)
+
+	patchGuard := gomonkey.ApplyMethodFunc(s.client, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
+		return nil
+	})
+	defer patchGuard.Reset()
+
+	sidecar, err := makeSidecar(randBlob())
+	assert.NoError(t, err)
+	tx := gethTypes.NewTx(&gethTypes.BlobTx{
+		ChainID:    uint256.MustFromBig(s.chainID),
+		Nonce:      s.auth.Nonce.Uint64(),
+		GasTipCap:  uint256.MustFromBig(big.NewInt(0)),
+		GasFeeCap:  uint256.MustFromBig(big.NewInt(0)),
+		Gas:        21000,
+		To:         common.Address{},
+		Data:       nil,
+		BlobFeeCap: uint256.MustFromBig(big.NewInt(1)),
+		BlobHashes: sidecar.BlobHashes(),
+		Sidecar:    sidecar,
+	})
+	baseFeePerGas := uint64(1000)
+	blobBaseFeePerGas := uint64(10000000000000) // bounded by max blob base fee.
+	// bump the basefee and blobbasefee by 10x
+	baseFeePerGas *= 10
+	blobBaseFeePerGas *= 10
+	// resubmit and check that the gas fee has been adjusted accordingly
+	newTx, err := s.resubmitTransaction(tx, baseFeePerGas, blobBaseFeePerGas)
+	assert.NoError(t, err)
+
+	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
+	expectedGasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFeePerGas), tx.GasTipCap())
+	if expectedGasFeeCap.Cmp(maxGasPrice) > 0 {
+		expectedGasFeeCap = maxGasPrice
+	}
+
+	maxBlobGasPrice := new(big.Int).SetUint64(s.config.MaxBlobGasPrice)
+	expectedBlobGasFeeCap := getBlobGasFeeCap(new(big.Int).SetUint64(blobBaseFeePerGas))
+	if expectedBlobGasFeeCap.Cmp(maxBlobGasPrice) > 0 {
+		expectedBlobGasFeeCap = maxBlobGasPrice
+	}
+
+	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())
+	assert.Equal(t, expectedBlobGasFeeCap.Uint64(), newTx.BlobGasFeeCap().Uint64())
 	s.Stop()
 }
 
@@ -356,12 +538,16 @@ func testCheckPendingTransactionTxConfirmed(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeCommitBatch, db, nil)
 		assert.NoError(t, err)
 
-		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
+		patchGuard1 := gomonkey.ApplyMethodFunc(s.client, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
+			return nil
+		})
+
+		_, err = s.SendTransaction("test", &common.Address{}, nil, randBlob(), 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -370,7 +556,7 @@ func testCheckPendingTransactionTxConfirmed(t *testing.T) {
 		assert.Equal(t, types.TxStatusPending, txs[0].Status)
 		assert.Equal(t, types.SenderTypeCommitBatch, txs[0].SenderType)
 
-		patchGuard := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
+		patchGuard2 := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
 			return &gethTypes.Receipt{TxHash: hash, BlockNumber: big.NewInt(0), Status: gethTypes.ReceiptStatusSuccessful}, nil
 		})
 
@@ -382,7 +568,8 @@ func testCheckPendingTransactionTxConfirmed(t *testing.T) {
 		assert.Len(t, txs, 0)
 
 		s.Stop()
-		patchGuard.Reset()
+		patchGuard1.Reset()
+		patchGuard2.Reset()
 	}
 }
 
@@ -392,13 +579,17 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.EscalateBlocks = 0
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeFinalizeBatch, db, nil)
 		assert.NoError(t, err)
 
-		originTxHash, err := s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
+		patchGuard1 := gomonkey.ApplyMethodFunc(s.client, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
+			return nil
+		})
+
+		originTxHash, err := s.SendTransaction("test", &common.Address{}, nil, randBlob(), 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -407,7 +598,7 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 		assert.Equal(t, types.TxStatusPending, txs[0].Status)
 		assert.Equal(t, types.SenderTypeFinalizeBatch, txs[0].SenderType)
 
-		patchGuard := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
+		patchGuard2 := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
 			if hash == originTxHash {
 				return nil, fmt.Errorf("simulated transaction receipt error")
 			}
@@ -437,7 +628,8 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 		assert.Len(t, txs, 0)
 
 		s.Stop()
-		patchGuard.Reset()
+		patchGuard1.Reset()
+		patchGuard2.Reset()
 	}
 }
 
@@ -447,13 +639,17 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.EscalateBlocks = 0
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeL1GasOracle, db, nil)
 		assert.NoError(t, err)
 
-		txHash, err := s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
+		patchGuard1 := gomonkey.ApplyMethodFunc(s.client, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
+			return nil
+		})
+
+		txHash, err := s.SendTransaction("test", &common.Address{}, nil, randBlob(), 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -462,7 +658,7 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 		assert.Equal(t, types.TxStatusPending, txs[0].Status)
 		assert.Equal(t, types.SenderTypeL1GasOracle, txs[0].SenderType)
 
-		patchGuard := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
+		patchGuard2 := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
 			var status types.TxStatus
 			status, err = s.pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), hash)
 			if err != nil {
@@ -502,7 +698,8 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 		assert.Len(t, txs, 0)
 
 		s.Stop()
-		patchGuard.Reset()
+		patchGuard1.Reset()
+		patchGuard2.Reset()
 	}
 }
 
@@ -512,13 +709,17 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		assert.NoError(t, err)
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
-		cfgCopy := *cfg.L1Config.RelayerConfig.SenderConfig
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
 		cfgCopy.TxType = txType
 		cfgCopy.EscalateBlocks = 0
 		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeCommitBatch, db, nil)
 		assert.NoError(t, err)
 
-		_, err = s.SendTransaction("test", &common.Address{}, big.NewInt(0), nil, 0)
+		patchGuard1 := gomonkey.ApplyMethodFunc(s.client, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
+			return nil
+		})
+
+		_, err = s.SendTransaction("test", &common.Address{}, nil, randBlob(), 0)
 		assert.NoError(t, err)
 
 		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 1)
@@ -527,7 +728,7 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		assert.Equal(t, types.TxStatusPending, txs[0].Status)
 		assert.Equal(t, types.SenderTypeCommitBatch, txs[0].SenderType)
 
-		patchGuard := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
+		patchGuard2 := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
 			return nil, fmt.Errorf("simulated transaction receipt error")
 		})
 
@@ -545,6 +746,87 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		}
 
 		s.Stop()
-		patchGuard.Reset()
+		patchGuard1.Reset()
+		patchGuard2.Reset()
 	}
+}
+
+func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	blob := randBlob()
+	sideCar, err := makeSidecar(blob)
+	assert.NoError(t, err)
+	versionedHash := sideCar.BlobHashes()[0]
+	blsModulo, ok := new(big.Int).SetString("52435875175126190479447740508185965837690552500527637822603658699938581184513", 10)
+	assert.True(t, ok)
+	pointHash := crypto.Keccak256Hash(versionedHash.Bytes())
+	pointBigInt := new(big.Int).SetBytes(pointHash.Bytes())
+	point := kzg4844.Point(new(big.Int).Mod(pointBigInt, blsModulo).Bytes())
+	commitment := sideCar.Commitments[0]
+	proof, claim, err := kzg4844.ComputeProof(*blob, point)
+	assert.NoError(t, err)
+
+	var claimArray [32]byte
+	copy(claimArray[:], claim[:])
+
+	demoContractMetaData := &bind.MetaData{ABI: "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"claim\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"commitment\",\"type\":\"bytes\"},{\"internalType\":\"bytes\",\"name\":\"proof\",\"type\":\"bytes\"}],\"name\":\"verifyProof\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]"}
+	demoContractABI, err := demoContractMetaData.GetAbi()
+	assert.NoError(t, err)
+
+	data, err := demoContractABI.Pack(
+		"verifyProof",
+		claimArray,
+		commitment[:],
+		proof[:],
+	)
+	assert.NoError(t, err)
+
+	cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
+	cfgCopy.TxType = DynamicFeeTxType
+	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeL1GasOracle, db, nil)
+	assert.NoError(t, err)
+	defer s.Stop()
+
+	_, err = s.SendTransaction("0", &testContractsAddress, data, blob, 0)
+	assert.NoError(t, err)
+
+	var txHash common.Hash
+	assert.Eventually(t, func() bool {
+		txs, err := s.pendingTransactionOrm.GetConfirmedTransactionsBySenderType(context.Background(), s.senderType, 100)
+		assert.NoError(t, err)
+		if len(txs) == 1 {
+			txHash = common.HexToHash(txs[0].Hash)
+			return true
+		}
+		return false
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		receipt, err := s.client.TransactionReceipt(context.Background(), txHash)
+		return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
+	}, 30*time.Second, time.Second)
+}
+
+func randBlob() *kzg4844.Blob {
+	var blob kzg4844.Blob
+	for i := 0; i < len(blob); i += gokzg4844.SerializedScalarSize {
+		fieldElementBytes := randFieldElement()
+		copy(blob[i:i+gokzg4844.SerializedScalarSize], fieldElementBytes[:])
+	}
+	return &blob
+}
+
+func randFieldElement() [32]byte {
+	bytes := make([]byte, 32)
+	_, err := rand.Read(bytes)
+	if err != nil {
+		panic("failed to get random field element")
+	}
+	var r fr.Element
+	r.SetBytes(bytes)
+
+	return gokzg4844.SerializeScalar(r)
 }

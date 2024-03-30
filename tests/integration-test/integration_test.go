@@ -22,7 +22,6 @@ import (
 	"scroll-tech/common/database"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 
@@ -93,22 +92,11 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 		RowConsumption: &gethTypes.RowConsumption{},
 	}
 	chunk := &encoding.Chunk{Blocks: []*encoding.Block{block}}
-
-	daChunk, err := codecv0.NewDAChunk(chunk, 0)
-	assert.NoError(t, err)
-
-	daChunkHash, err := daChunk.Hash()
-	assert.NoError(t, err)
-
 	batch := &encoding.Batch{
 		Index:                      0,
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk},
-		StartChunkIndex:            0,
-		EndChunkIndex:              0,
-		StartChunkHash:             daChunkHash,
-		EndChunkHash:               daChunkHash,
 	}
 
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
@@ -124,7 +112,7 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	t.Log(version.Version)
 
 	base.Timestamp = time.Now().Nanosecond()
-	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
+	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json", "./genesis.json")
 	chunkProverApp := rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	batchProverApp := rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	defer coordinatorApp.Free()
@@ -159,7 +147,7 @@ func TestProverReLogin(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
 
 	base.Timestamp = time.Now().Nanosecond()
-	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json")
+	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json", "./genesis.json")
 	chunkProverApp := rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	batchProverApp := rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	defer coordinatorApp.Free()
