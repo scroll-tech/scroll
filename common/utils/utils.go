@@ -82,4 +82,3 @@ func ReadGenesis(genesisPath string) (*core.Genesis, error) {
 	}
 	return genesis, nil
 }
-
