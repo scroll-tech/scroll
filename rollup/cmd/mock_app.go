@@ -86,22 +86,21 @@ func (b *MockApp) Free() {
 
 // MockConfig creates a new rollup config.
 func (b *MockApp) MockConfig(store bool) error {
-	base := b.testApps
 	// Load origin rollup config file.
 	cfg, err := config.NewConfig(b.originFile)
 	if err != nil {
 		return err
 	}
 
-	l1GethEndpoint, err := base.GetL1GethEndPoint()
+	l1GethEndpoint, err := b.testApps.GetL1GethEndPoint()
 	if err != nil {
 		return err
 	}
-	l2GethEndpoint, err := base.GetL2GethEndPoint()
+	l2GethEndpoint, err := b.testApps.GetL2GethEndPoint()
 	if err != nil {
 		return err
 	}
-	dbEndpoint, err := base.GetDBEndPoint()
+	dbEndpoint, err := b.testApps.GetDBEndPoint()
 	if err != nil {
 		return err
 	}
