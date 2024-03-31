@@ -64,14 +64,6 @@ func setupDB(t *testing.T) *gorm.DB {
 }
 
 func TestMain(m *testing.M) {
-	var err error
-	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
-	if err != nil {
-		log.Crit("failed to create PoS L1 test environment", "err", err)
-	}
-	if err := posL1TestEnv.Start(); err != nil {
-		log.Crit("failed to start PoS L1 test environment", "err", err)
-	}
 	defer func() {
 		ctx := context.Background()
 		if testApps != nil {
@@ -97,20 +89,23 @@ func setupEnv(t *testing.T) {
 		l1GethChainID *big.Int
 	)
 
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
+	assert.NoError(t, err, "failed to create PoS L1 test environment")
+	assert.NoError(t, posL1TestEnv.Start(), "failed to start PoS L1 test environment")
+
 	testApps = tc.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
+	rollupApp = bcmd.NewRollupApp2(testApps, "../conf/config.json")
 
 	l1Client, err = testApps.GetL1GethClient()
 	assert.NoError(t, err)
 	l2Client, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
-
 	l1GethChainID, err = l1Client.ChainID(context.Background())
 	assert.NoError(t, err)
 
-	rollupApp = bcmd.NewRollupApp2(testApps, "../conf/config.json")
 	l1Cfg, l2Cfg := rollupApp.Config.L1Config, rollupApp.Config.L2Config
 	l1Cfg.Confirmations = 0
 	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
