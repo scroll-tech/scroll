@@ -165,12 +165,18 @@ func (t *TestcontainerApps) GetL2GethClient() (*ethclient.Client, error) {
 // Free stops all running containers
 func (t *TestcontainerApps) Free(ctx context.Context) {
 	if t.postgresContainer != nil && t.postgresContainer.IsRunning() {
-		t.postgresContainer.Terminate(ctx)
+		if err := t.postgresContainer.Terminate(ctx); err != nil {
+			log.Printf("failed to stop postgres container: %s", err)
+		}
 	}
 	if t.l1GethContainer != nil && t.l1GethContainer.IsRunning() {
-		t.l1GethContainer.Terminate(ctx)
+		if err := t.l1GethContainer.Terminate(ctx); err != nil {
+			log.Printf("failed to stop scroll_l1geth container: %s", err)
+		}
 	}
 	if t.l2GethContainer != nil && t.l2GethContainer.IsRunning() {
-		t.l2GethContainer.Terminate(ctx)
+		if err := t.l2GethContainer.Terminate(ctx); err != nil {
+			log.Printf("failed to stop scroll_l2geth container: %s", err)
+		}
 	}
 }
