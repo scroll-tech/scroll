@@ -22,8 +22,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"gorm.io/gorm"
 
 	bcmd "scroll-tech/rollup/cmd"
@@ -31,12 +29,7 @@ import (
 )
 
 var (
-	postgresContainer *postgres.PostgresContainer
-	l1GethContainer   *testcontainers.DockerContainer
-	l2GethContainer   *testcontainers.DockerContainer
-
-	//base      *docker.App
-	base      *tc.TestContainerApps
+	testApps  *tc.TestcontainerApps
 	rollupApp *bcmd.MockApp
 
 	// clients
@@ -53,7 +46,7 @@ var (
 )
 
 func setupDB(t *testing.T) *gorm.DB {
-	dsn, err := postgresContainer.ConnectionString(context.Background(), "sslmode=disable")
+	dsn, err := testApps.GetDBEndPoint()
 	assert.NoError(t, err)
 
 	cfg := &database.Config{
@@ -72,11 +65,11 @@ func setupDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func TestMain(m *testing.M) { //defer base.Free()
+func TestMain(m *testing.M) { //defer testApps.Free()
 	defer func() {
 		ctx := context.Background()
-		if base != nil {
-			base.Free(ctx)
+		if testApps != nil {
+			testApps.Free(ctx)
 		}
 		if rollupApp != nil {
 			rollupApp.Free()
@@ -96,17 +89,14 @@ func setupEnv(t *testing.T) {
 		l2GethChainID *big.Int
 	)
 
-	base = tc.NewTestContainerApps()
-	postgresContainer, err = base.StartPostgresContainer()
-	assert.NoError(t, err)
-	l1GethContainer, err = base.StartL1GethContainer()
-	assert.NoError(t, err)
-	l2GethContainer, err = base.StartL2GethContainer()
-	assert.NoError(t, err)
+	testApps = tc.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+	assert.NoError(t, testApps.StartL1GethContainer())
+	assert.NoError(t, testApps.StartL2GethContainer())
 
-	l1Client, err = base.GetL1GethClient()
+	l1Client, err = testApps.GetL1GethClient()
 	assert.NoError(t, err)
-	l2Client, err = base.GetL2GethClient()
+	l2Client, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
 
 	l1GethChainID, err = l1Client.ChainID(context.Background())
@@ -114,7 +104,7 @@ func setupEnv(t *testing.T) {
 	l2GethChainID, err = l2Client.ChainID(context.Background())
 	assert.NoError(t, err)
 
-	rollupApp = bcmd.NewRollupApp2(base, "../conf/config.json")
+	rollupApp = bcmd.NewRollupApp2(testApps, "../conf/config.json")
 	l1Cfg, l2Cfg := rollupApp.Config.L1Config, rollupApp.Config.L2Config
 	l1Cfg.Confirmations = 0
 	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0

@@ -14,7 +14,7 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
-type TestContainerApps struct {
+type TestcontainerApps struct {
 	postgresContainer *postgres.PostgresContainer
 	l1GethContainer   *testcontainers.DockerContainer
 	l2GethContainer   *testcontainers.DockerContainer
@@ -27,17 +27,17 @@ type TestContainerApps struct {
 	Timestamp int
 }
 
-func NewTestContainerApps() *TestContainerApps {
+func NewTestcontainerApps() *TestcontainerApps {
 	timestamp := time.Now().Nanosecond()
-	return &TestContainerApps{
+	return &TestcontainerApps{
 		DBConfigFile: fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
 		Timestamp:    timestamp,
 	}
 }
 
-func (t *TestContainerApps) StartPostgresContainer() (*postgres.PostgresContainer, error) {
+func (t *TestcontainerApps) StartPostgresContainer() error {
 	if t.postgresContainer != nil && t.postgresContainer.IsRunning() {
-		return t.postgresContainer, nil
+		return nil
 	}
 	postgresContainer, err := postgres.RunContainer(context.Background(),
 		testcontainers.WithImage("postgres"),
@@ -48,15 +48,15 @@ func (t *TestContainerApps) StartPostgresContainer() (*postgres.PostgresContaine
 	)
 	if err != nil {
 		log.Printf("failed to start container: %s", err)
-		return nil, err
+		return err
 	}
 	t.postgresContainer = postgresContainer
-	return t.postgresContainer, nil
+	return nil
 }
 
-func (t *TestContainerApps) StartL1GethContainer() (*testcontainers.DockerContainer, error) {
+func (t *TestcontainerApps) StartL1GethContainer() error {
 	if t.l1GethContainer != nil && t.l1GethContainer.IsRunning() {
-		return t.l1GethContainer, nil
+		return nil
 	}
 	req := testcontainers.ContainerRequest{
 		Image:        "scroll_l1geth",
@@ -71,15 +71,15 @@ func (t *TestContainerApps) StartL1GethContainer() (*testcontainers.DockerContai
 	container, err := testcontainers.GenericContainer(context.Background(), genericContainerReq)
 	if err != nil {
 		log.Printf("failed to start scroll_l1geth container: %s", err)
-		return nil, err
+		return err
 	}
 	t.l1GethContainer, _ = container.(*testcontainers.DockerContainer)
-	return t.l1GethContainer, nil
+	return nil
 }
 
-func (t *TestContainerApps) StartL2GethContainer() (*testcontainers.DockerContainer, error) {
+func (t *TestcontainerApps) StartL2GethContainer() error {
 	if t.l2GethContainer != nil && t.l2GethContainer.IsRunning() {
-		return t.l2GethContainer, nil
+		return nil
 	}
 	req := testcontainers.ContainerRequest{
 		Image:        "scroll_l2geth",
@@ -93,20 +93,20 @@ func (t *TestContainerApps) StartL2GethContainer() (*testcontainers.DockerContai
 	container, err := testcontainers.GenericContainer(context.Background(), genericContainerReq)
 	if err != nil {
 		log.Printf("failed to start scroll_l2geth container: %s", err)
-		return nil, err
+		return err
 	}
 	t.l2GethContainer, _ = container.(*testcontainers.DockerContainer)
-	return t.l2GethContainer, nil
+	return nil
 }
 
-func (t *TestContainerApps) GetDBEndPoint() (string, error) {
+func (t *TestcontainerApps) GetDBEndPoint() (string, error) {
 	if t.postgresContainer == nil || !t.postgresContainer.IsRunning() {
 		return "", fmt.Errorf("postgres is not running")
 	}
 	return t.postgresContainer.ConnectionString(context.Background(), "sslmode=disable")
 }
 
-func (t *TestContainerApps) GetL1GethEndPoint() (string, error) {
+func (t *TestcontainerApps) GetL1GethEndPoint() (string, error) {
 	if t.l1GethContainer == nil || !t.l1GethContainer.IsRunning() {
 		return "", fmt.Errorf("l1 geth is not running")
 	}
@@ -117,7 +117,7 @@ func (t *TestContainerApps) GetL1GethEndPoint() (string, error) {
 	return endpoint, nil
 }
 
-func (t *TestContainerApps) GetL2GethEndPoint() (string, error) {
+func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 	if t.l2GethContainer == nil || !t.l2GethContainer.IsRunning() {
 		return "", fmt.Errorf("l2 geth is not running")
 	}
@@ -128,7 +128,7 @@ func (t *TestContainerApps) GetL2GethEndPoint() (string, error) {
 	return endpoint, nil
 }
 
-func (t *TestContainerApps) GetL1GethClient() (*ethclient.Client, error) {
+func (t *TestcontainerApps) GetL1GethClient() (*ethclient.Client, error) {
 	endpoint, err := t.GetL1GethEndPoint()
 	if err != nil {
 		return nil, err
@@ -140,7 +140,7 @@ func (t *TestContainerApps) GetL1GethClient() (*ethclient.Client, error) {
 	return client, nil
 }
 
-func (t *TestContainerApps) GetL2GethClient() (*ethclient.Client, error) {
+func (t *TestcontainerApps) GetL2GethClient() (*ethclient.Client, error) {
 	endpoint, err := t.GetL2GethEndPoint()
 	if err != nil {
 		return nil, err
@@ -152,7 +152,7 @@ func (t *TestContainerApps) GetL2GethClient() (*ethclient.Client, error) {
 	return client, nil
 }
 
-func (t *TestContainerApps) Free(ctx context.Context) {
+func (t *TestcontainerApps) Free(ctx context.Context) {
 	if t.postgresContainer != nil && t.postgresContainer.IsRunning() {
 		t.postgresContainer.Terminate(ctx)
 	}
