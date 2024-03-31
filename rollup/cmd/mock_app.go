@@ -48,7 +48,6 @@ func NewRollupApp(base *docker.App, file string) *MockApp {
 
 // NewRollupApp return a new rollupApp manager, name mush be one them.
 func NewRollupApp2(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
-
 	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
 	rollupApp := &MockApp{
 		testApps:   testApps,

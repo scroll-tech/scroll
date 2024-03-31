@@ -2,10 +2,8 @@ package testcontainers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
-	"scroll-tech/database"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -20,10 +18,6 @@ type TestcontainerApps struct {
 	l1GethContainer   *testcontainers.DockerContainer
 	l2GethContainer   *testcontainers.DockerContainer
 
-	dbClient     *sql.DB
-	DBConfig     *database.DBConfig
-	DBConfigFile string
-
 	// common time stamp.
 	Timestamp int
 }
@@ -32,8 +26,7 @@ type TestcontainerApps struct {
 func NewTestcontainerApps() *TestcontainerApps {
 	timestamp := time.Now().Nanosecond()
 	return &TestcontainerApps{
-		DBConfigFile: fmt.Sprintf("/tmp/%d_db-config.json", timestamp),
-		Timestamp:    timestamp,
+		Timestamp: timestamp,
 	}
 }
 
