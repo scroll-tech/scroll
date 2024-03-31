@@ -17,7 +17,9 @@ import (
 
 // MockApp mockApp-test client manager.
 type MockApp struct {
-	Config   *config.Config
+	Config *config.Config
+	// TODO field willl be replaced by testApps
+	base     *docker.App
 	testApps *testcontainers.TestcontainerApps
 
 	mockApps map[utils.MockAppName]docker.AppAPI
@@ -28,9 +30,20 @@ type MockApp struct {
 	args []string
 }
 
-// TODO delete this function
+// TODO function will be replaced by NewRollupApp2
 func NewRollupApp(base *docker.App, file string) *MockApp {
-	return nil
+	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", base.Timestamp)
+	rollupApp := &MockApp{
+		base:       base,
+		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
+		originFile: file,
+		rollupFile: rollupFile,
+		args:       []string{"--log.debug", "--config", rollupFile},
+	}
+	if err := rollupApp.MockConfig(true); err != nil {
+		panic(err)
+	}
+	return rollupApp
 }
 
 // NewRollupApp return a new rollupApp manager, name mush be one them.
@@ -44,7 +57,7 @@ func NewRollupApp2(testApps *testcontainers.TestcontainerApps, file string) *Moc
 		rollupFile: rollupFile,
 		args:       []string{"--log.debug", "--config", rollupFile},
 	}
-	if err := rollupApp.MockConfig(true); err != nil {
+	if err := rollupApp.MockConfig2(true); err != nil {
 		panic(err)
 	}
 	return rollupApp
@@ -84,8 +97,35 @@ func (b *MockApp) Free() {
 	_ = os.Remove(b.rollupFile)
 }
 
-// MockConfig creates a new rollup config.
+// TODO function will be replaced by MockConfig2
 func (b *MockApp) MockConfig(store bool) error {
+	base := b.base
+	// Load origin rollup config file.
+	cfg, err := config.NewConfig(b.originFile)
+	if err != nil {
+		return err
+	}
+
+	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
+	cfg.DBConfig.DSN = base.DBImg.Endpoint()
+	b.Config = cfg
+
+	if !store {
+		return nil
+	}
+	// Store changed rollup config into a temp file.
+	data, err := json.Marshal(b.Config)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(b.rollupFile, data, 0600)
+}
+
+// MockConfig creates a new rollup config.
+func (b *MockApp) MockConfig2(store bool) error {
 	// Load origin rollup config file.
 	cfg, err := config.NewConfig(b.originFile)
 	if err != nil {
