@@ -10,6 +10,11 @@ import (
 	"strings"
 	"testing"
 
+	"scroll-tech/common/database"
+	tc "scroll-tech/common/testcontainers"
+	"scroll-tech/common/utils"
+	"scroll-tech/database/migrate"
+
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -17,20 +22,21 @@ import (
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
-	"scroll-tech/common/utils"
-
-	"scroll-tech/database/migrate"
 
 	bcmd "scroll-tech/rollup/cmd"
 	"scroll-tech/rollup/mock_bridge"
 )
 
 var (
-	base      *docker.App
+	postgresContainer *postgres.PostgresContainer
+	l1GethContainer   *testcontainers.DockerContainer
+	l2GethContainer   *testcontainers.DockerContainer
+
+	//base      *docker.App
+	base      *tc.TestContainerApps
 	rollupApp *bcmd.MockApp
 
 	// clients
@@ -47,25 +53,35 @@ var (
 )
 
 func setupDB(t *testing.T) *gorm.DB {
+	dsn, err := postgresContainer.ConnectionString(context.Background(), "sslmode=disable")
+	assert.NoError(t, err)
+
 	cfg := &database.Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
+		DSN:        dsn,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
 	}
 	db, err := database.InitDB(cfg)
 	assert.NoError(t, err)
+
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
+
 	return db
 }
 
-func TestMain(m *testing.M) {
-	base = docker.NewDockerApp()
-	rollupApp = bcmd.NewRollupApp(base, "../conf/config.json")
-	defer rollupApp.Free()
-	defer base.Free()
+func TestMain(m *testing.M) { //defer base.Free()
+	defer func() {
+		ctx := context.Background()
+		if base != nil {
+			base.Free(ctx)
+		}
+		if rollupApp != nil {
+			rollupApp.Free()
+		}
+	}()
 	m.Run()
 }
 
@@ -74,24 +90,40 @@ func setupEnv(t *testing.T) {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
-	base.RunImages(t)
+	var (
+		err           error
+		l1GethChainID *big.Int
+		l2GethChainID *big.Int
+	)
 
-	var err error
-	l1Client, err = base.L1Client()
+	base = tc.NewTestContainerApps()
+	postgresContainer, err = base.StartPostgresContainer()
 	assert.NoError(t, err)
-	l2Client, err = base.L2Client()
+	l1GethContainer, err = base.StartL1GethContainer()
+	assert.NoError(t, err)
+	l2GethContainer, err = base.StartL2GethContainer()
 	assert.NoError(t, err)
 
+	l1Client, err = base.GetL1GethClient()
+	assert.NoError(t, err)
+	l2Client, err = base.GetL2GethClient()
+	assert.NoError(t, err)
+
+	l1GethChainID, err = l1Client.ChainID(context.Background())
+	assert.NoError(t, err)
+	l2GethChainID, err = l2Client.ChainID(context.Background())
+	assert.NoError(t, err)
+
+	rollupApp = bcmd.NewRollupApp2(base, "../conf/config.json")
 	l1Cfg, l2Cfg := rollupApp.Config.L1Config, rollupApp.Config.L2Config
 	l1Cfg.Confirmations = 0
 	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
-	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L1gethImg.ChainID())
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, l1GethChainID)
 	assert.NoError(t, err)
-
-	l2Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKey, base.L2gethImg.ChainID())
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L1Config.RelayerConfig.GasOracleSenderPrivateKey, l2GethChainID)
 	assert.NoError(t, err)
 
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))

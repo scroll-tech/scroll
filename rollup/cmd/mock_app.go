@@ -9,6 +9,7 @@ import (
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 
 	"scroll-tech/rollup/internal/config"
@@ -17,7 +18,7 @@ import (
 // MockApp mockApp-test client manager.
 type MockApp struct {
 	Config *config.Config
-	base   *docker.App
+	base   *testcontainers.TestContainerApps
 
 	mockApps map[utils.MockAppName]docker.AppAPI
 
@@ -27,8 +28,13 @@ type MockApp struct {
 	args []string
 }
 
-// NewRollupApp return a new rollupApp manager, name mush be one them.
+// TODO delete this function
 func NewRollupApp(base *docker.App, file string) *MockApp {
+	return nil
+}
+
+// NewRollupApp return a new rollupApp manager, name mush be one them.
+func NewRollupApp2(base *testcontainers.TestContainerApps, file string) *MockApp {
 
 	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", base.Timestamp)
 	rollupApp := &MockApp{
@@ -87,11 +93,23 @@ func (b *MockApp) MockConfig(store bool) error {
 		return err
 	}
 
-	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.DBConfig.DSN = base.DBImg.Endpoint()
+	l1GethEndpoint, err := base.GetL1GethEndPoint()
+	if err != nil {
+		return err
+	}
+	l2GethEndpoint, err := base.GetL2GethEndPoint()
+	if err != nil {
+		return err
+	}
+	dbEndpoint, err := base.GetDBEndPoint()
+	if err != nil {
+		return err
+	}
+	cfg.L1Config.Endpoint = l1GethEndpoint
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2GethEndpoint
+	cfg.L2Config.Endpoint = l2GethEndpoint
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1GethEndpoint
+	cfg.DBConfig.DSN = dbEndpoint
 	b.Config = cfg
 
 	if !store {
