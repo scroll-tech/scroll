@@ -99,7 +99,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, testApps.StartL2GethContainer())
 	rollupApp = bcmd.NewRollupApp2(testApps, "../conf/config.json")
 
-	l1Client, err = testApps.GetL1GethClient()
+	l1Client, err = posL1TestEnv.L1Client()
 	assert.NoError(t, err)
 	l2Client, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
