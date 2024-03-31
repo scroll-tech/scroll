@@ -17,8 +17,8 @@ import (
 
 // MockApp mockApp-test client manager.
 type MockApp struct {
-	Config *config.Config
-	base   *testcontainers.TestcontainerApps
+	Config   *config.Config
+	testApps *testcontainers.TestcontainerApps
 
 	mockApps map[utils.MockAppName]docker.AppAPI
 
@@ -34,11 +34,11 @@ func NewRollupApp(base *docker.App, file string) *MockApp {
 }
 
 // NewRollupApp return a new rollupApp manager, name mush be one them.
-func NewRollupApp2(base *testcontainers.TestcontainerApps, file string) *MockApp {
+func NewRollupApp2(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
 
-	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", base.Timestamp)
+	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
 	rollupApp := &MockApp{
-		base:       base,
+		testApps:   testApps,
 		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
 		originFile: file,
 		rollupFile: rollupFile,
@@ -86,7 +86,7 @@ func (b *MockApp) Free() {
 
 // MockConfig creates a new rollup config.
 func (b *MockApp) MockConfig(store bool) error {
-	base := b.base
+	base := b.testApps
 	// Load origin rollup config file.
 	cfg, err := config.NewConfig(b.originFile)
 	if err != nil {
