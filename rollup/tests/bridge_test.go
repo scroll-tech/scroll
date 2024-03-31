@@ -118,6 +118,8 @@ func setupEnv(t *testing.T) {
 
 	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, l1GethChainID)
 	assert.NoError(t, err)
+	rollupApp.Config.L1Config.Endpoint = posL1TestEnv.Endpoint()
+	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)
