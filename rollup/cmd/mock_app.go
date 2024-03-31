@@ -30,7 +30,7 @@ type MockApp struct {
 	args []string
 }
 
-// TODO function will be replaced by NewRollupApp2
+// NewRollupApp TODO function will be replaced by NewRollupApp2
 func NewRollupApp(base *docker.App, file string) *MockApp {
 	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", base.Timestamp)
 	rollupApp := &MockApp{
@@ -46,7 +46,7 @@ func NewRollupApp(base *docker.App, file string) *MockApp {
 	return rollupApp
 }
 
-// NewRollupApp return a new rollupApp manager, name mush be one them.
+// NewRollupApp2 return a new rollupApp manager, name mush be one them.
 func NewRollupApp2(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
 	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
 	rollupApp := &MockApp{
@@ -96,7 +96,7 @@ func (b *MockApp) Free() {
 	_ = os.Remove(b.rollupFile)
 }
 
-// TODO function will be replaced by MockConfig2
+// MockConfig TODO function will be replaced by MockConfig2
 func (b *MockApp) MockConfig(store bool) error {
 	base := b.base
 	// Load origin rollup config file.

@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"scroll-tech/common/types/encoding"
 	"time"
+
+	"scroll-tech/common/types/encoding"
 
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"

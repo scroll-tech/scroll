@@ -2,9 +2,10 @@ package testcontainers
 
 import (
 	"context"
+	"testing"
+
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // TestNewTestcontainerApps tests NewTestcontainerApps
