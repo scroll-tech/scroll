@@ -64,7 +64,8 @@ func setupDB(t *testing.T) *gorm.DB {
 }
 
 func TestMain(m *testing.M) {
-	posL1TestEnv, err := dockercompose.NewPoSL1TestEnv()
+	var err error
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
 	if err != nil {
 		log.Crit("failed to create PoS L1 test environment", "err", err)
 	}
