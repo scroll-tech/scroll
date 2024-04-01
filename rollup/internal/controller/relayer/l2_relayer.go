@@ -2,6 +2,7 @@ package relayer
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"sort"
@@ -816,6 +817,8 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch,
 	if getErr != nil {
 		return nil, fmt.Errorf("failed to get blob data proof: %w", getErr)
 	}
+
+	log.Info("daBatch.BlobDataProof", "batchIndex", batch.Index, "batchHash", dbBatch.Hash, "dataProof", hex.EncodeToString(blobDataProof))
 
 	if aggProof != nil { // finalizeBatch4844 with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
