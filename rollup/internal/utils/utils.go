@@ -8,6 +8,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
+	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
@@ -236,6 +237,8 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get codecv0 end DA chunk hash: %w", err)
 		}
+
+		log.Info("GetBatchMetadata", "batchIndex", batch.Index, "batchHash", batchMeta.BatchHash.Hex(), "batchDataHash", daBatch.DataHash.Hex())
 		return batchMeta, nil
 	case encoding.CodecV1:
 		daBatch, err := codecv1.NewDABatch(batch)
@@ -267,6 +270,8 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get codecv1 end DA chunk hash: %w", err)
 		}
+
+		log.Info("GetBatchMetadata", "batchIndex", batch.Index, "batchHash", batchMeta.BatchHash.Hex(), "batchDataHash", daBatch.DataHash.Hex())
 		return batchMeta, nil
 	default:
 		return nil, fmt.Errorf("unsupported codec version: %v", codecVersion)
