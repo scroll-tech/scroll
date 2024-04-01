@@ -192,6 +192,7 @@ func GetChunkHash(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64, code
 // BatchMetadata represents the metadata of a batch.
 type BatchMetadata struct {
 	BatchHash      common.Hash
+	BatchDataHash  common.Hash
 	BatchBytes     []byte
 	StartChunkHash common.Hash
 	EndChunkHash   common.Hash
@@ -213,8 +214,9 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		}
 
 		batchMeta := &BatchMetadata{
-			BatchHash:  daBatch.Hash(),
-			BatchBytes: daBatch.Encode(),
+			BatchHash:     daBatch.Hash(),
+			BatchDataHash: daBatch.DataHash,
+			BatchBytes:    daBatch.Encode(),
 		}
 
 		startDAChunk, err := codecv0.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
@@ -244,8 +246,9 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		}
 
 		batchMeta := &BatchMetadata{
-			BatchHash:  daBatch.Hash(),
-			BatchBytes: daBatch.Encode(),
+			BatchHash:     daBatch.Hash(),
+			BatchDataHash: daBatch.DataHash,
+			BatchBytes:    daBatch.Encode(),
 		}
 
 		startDAChunk, err := codecv1.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)

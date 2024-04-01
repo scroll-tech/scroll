@@ -25,6 +25,7 @@ type Batch struct {
 	// batch
 	Index           uint64 `json:"index" gorm:"column:index"`
 	Hash            string `json:"hash" gorm:"column:hash"`
+	DataHash        string `json:"data_hash" gorm:"column:data_hash"`
 	StartChunkIndex uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
 	StartChunkHash  string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
 	EndChunkIndex   uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
@@ -257,6 +258,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 	newBatch := Batch{
 		Index:                     batch.Index,
 		Hash:                      batchMeta.BatchHash.Hex(),
+		DataHash:                  batchMeta.BatchDataHash.Hex(),
 		StartChunkHash:            batchMeta.StartChunkHash.Hex(),
 		StartChunkIndex:           startChunkIndex,
 		EndChunkHash:              batchMeta.EndChunkHash.Hex(),
