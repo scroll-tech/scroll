@@ -4,58 +4,77 @@ import (
 	"context"
 	"log"
 	"math/big"
+	"scroll-tech/common/database"
+	"scroll-tech/common/testcontainers"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
+	capp "scroll-tech/coordinator/cmd/api/app"
+	"scroll-tech/database/migrate"
+	"scroll-tech/integration-test/orm"
+	rapp "scroll-tech/prover/cmd/app"
+	bcmd "scroll-tech/rollup/cmd"
 	"testing"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/integration-test/orm"
-
-	rapp "scroll-tech/prover/cmd/app"
-
-	"scroll-tech/database/migrate"
-
-	capp "scroll-tech/coordinator/cmd/api/app"
-
-	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
-
-	bcmd "scroll-tech/rollup/cmd"
+	"gorm.io/gorm"
 )
 
 var (
-	base      *docker.App
+	testApps  *testcontainers.TestcontainerApps
 	rollupApp *bcmd.MockApp
 )
 
 func TestMain(m *testing.M) {
-	base = docker.NewDockerApp()
-	rollupApp = bcmd.NewRollupApp(base, "../../rollup/conf/config.json")
+	defer func() {
+		ctx := context.Background()
+		if testApps != nil {
+			testApps.Free(ctx)
+		}
+		if rollupApp != nil {
+			rollupApp.Free()
+		}
+	}()
 	m.Run()
-	rollupApp.Free()
-	base.Free()
 }
 
-func TestCoordinatorProverInteraction(t *testing.T) {
-	// Start postgres docker containers
-	base.RunL2Geth(t)
-	base.RunDBImage(t)
+func setupEnv(t *testing.T) {
+	testApps = testcontainers.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+	assert.NoError(t, testApps.StartL1GethContainer())
+	assert.NoError(t, testApps.StartL2GethContainer())
+	rollupApp = bcmd.NewRollupApp2(testApps, "../conf/config.json")
+}
 
-	// Init data
-	dbCfg := &database.Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
-	}
+func TestFunction(t *testing.T) {
+	setupEnv(t)
+	t.Run("TestCoordinatorProverInteraction", testCoordinatorProverInteraction)
+	t.Run("TestProverReLogin", testProverReLogin)
+}
 
-	db, err := database.InitDB(dbCfg)
+func setupDB(t *testing.T) *gorm.DB {
+	dsn, err := testApps.GetDBEndPoint()
 	assert.NoError(t, err)
+
+	cfg := &database.Config{
+		DSN:        dsn,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
+	}
+	db, err := database.InitDB(cfg)
+	assert.NoError(t, err)
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+	return db
+}
+
+func testCoordinatorProverInteraction(t *testing.T) {
+	db := setupDB(t)
 
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -66,7 +85,7 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	l2BlockOrm := orm.NewL2Block(db)
 
 	// Connect to l2geth client
-	l2Client, err := base.L2Client()
+	l2Client, err := testApps.GetL2GethClient()
 	if err != nil {
 		log.Fatalf("Failed to connect to the l2geth client: %v", err)
 	}
@@ -111,10 +130,9 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	assert.NoError(t, err)
 	t.Log(version.Version)
 
-	base.Timestamp = time.Now().Nanosecond()
-	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json", "./genesis.json")
-	chunkProverApp := rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
-	batchProverApp := rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
+	coordinatorApp := capp.NewCoordinatorApp(testApps, "../../coordinator/conf/config.json", "./genesis.json")
+	chunkProverApp := rapp.NewProverApp(testApps, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
+	batchProverApp := rapp.NewProverApp(testApps, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	defer coordinatorApp.Free()
 	defer chunkProverApp.Free()
 	defer batchProverApp.Free()
@@ -139,17 +157,14 @@ func TestCoordinatorProverInteraction(t *testing.T) {
 	coordinatorApp.WaitExit()
 }
 
-func TestProverReLogin(t *testing.T) {
-	// Start postgres docker containers.
-	base.RunL2Geth(t)
-	base.RunDBImage(t)
+func testProverReLogin(t *testing.T) {
+	client, err := testApps.GetDBClient()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(client))
 
-	assert.NoError(t, migrate.ResetDB(base.DBClient(t)))
-
-	base.Timestamp = time.Now().Nanosecond()
-	coordinatorApp := capp.NewCoordinatorApp(base, "../../coordinator/conf/config.json", "./genesis.json")
-	chunkProverApp := rapp.NewProverApp(base, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
-	batchProverApp := rapp.NewProverApp(base, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
+	coordinatorApp := capp.NewCoordinatorApp(testApps, "../../coordinator/conf/config.json", "./genesis.json")
+	chunkProverApp := rapp.NewProverApp(testApps, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
+	batchProverApp := rapp.NewProverApp(testApps, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	defer coordinatorApp.Free()
 	defer chunkProverApp.Free()
 	defer batchProverApp.Free()

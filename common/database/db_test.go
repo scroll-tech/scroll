@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"scroll-tech/common/testcontainers"
 	"testing"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/docker"
 	"scroll-tech/common/version"
 )
 
@@ -39,18 +39,21 @@ func TestGormLogger(t *testing.T) {
 }
 
 func TestDB(t *testing.T) {
+	var err error
 	version.Version = "v4.1.98-aaa-bbb-ccc"
-	base := docker.NewDockerApp()
-	base.RunDBImage(t)
 
+	testApps := testcontainers.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartL2GethContainer())
+
+	dsn, err := testApps.GetDBEndPoint()
+	assert.NoError(t, err)
 	dbCfg := &Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
+		DSN:        dsn,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
 	}
 
-	var err error
 	db, err := InitDB(dbCfg)
 	assert.NoError(t, err)
 

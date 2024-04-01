@@ -5,25 +5,25 @@ import (
 	"encoding/json"
 	"math/big"
 	"os"
+	"scroll-tech/common/database"
+	"scroll-tech/common/testcontainers"
+	tc "scroll-tech/common/testcontainers"
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
+	"scroll-tech/common/types/encoding/codecv1"
+	"scroll-tech/database/migrate"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-
-	"scroll-tech/database/migrate"
-
-	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
-	"scroll-tech/common/types/encoding/codecv1"
 )
 
 var (
-	base *docker.App
+	//base *docker.App
+	testApps *testcontainers.TestcontainerApps
 
 	db                    *gorm.DB
 	l2BlockOrm            *L2Block
@@ -37,21 +37,32 @@ var (
 
 func TestMain(m *testing.M) {
 	t := &testing.T{}
+	defer func() {
+		if testApps != nil {
+			testApps.Free(context.Background())
+		}
+		tearDownEnv(t)
+	}()
 	setupEnv(t)
-	defer tearDownEnv(t)
 	m.Run()
 }
 
 func setupEnv(t *testing.T) {
-	base = docker.NewDockerApp()
-	base.RunDBImage(t)
 	var err error
+
+	testApps = tc.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+	assert.NoError(t, testApps.StartL1GethContainer())
+	assert.NoError(t, testApps.StartL2GethContainer())
+
+	dsn, err := testApps.GetDBEndPoint()
+	assert.NoError(t, err)
 	db, err = database.InitDB(
 		&database.Config{
-			DSN:        base.DBConfig.DSN,
-			DriverName: base.DBConfig.DriverName,
-			MaxOpenNum: base.DBConfig.MaxOpenNum,
-			MaxIdleNum: base.DBConfig.MaxIdleNum,
+			DSN:        dsn,
+			DriverName: "postgres",
+			MaxOpenNum: 200,
+			MaxIdleNum: 20,
 		},
 	)
 	assert.NoError(t, err)
@@ -81,7 +92,6 @@ func tearDownEnv(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	sqlDB.Close()
-	base.Free()
 }
 
 func TestL1BlockOrm(t *testing.T) {

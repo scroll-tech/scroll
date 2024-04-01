@@ -2,39 +2,43 @@ package docker_test
 
 import (
 	"context"
+	"scroll-tech/common/testcontainers"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/common/docker"
 )
 
 var (
-	base *docker.App
+	testApps *testcontainers.TestcontainerApps
 )
 
 func TestMain(m *testing.M) {
-	base = docker.NewDockerApp()
-
+	defer func() {
+		if testApps != nil {
+			testApps.Free(context.Background())
+		}
+	}()
 	m.Run()
-
-	base.Free()
 }
 
 func TestDB(t *testing.T) {
-	base.RunDBImage(t)
+	testApps = testcontainers.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
 
-	db, err := sqlx.Open("postgres", base.DBImg.Endpoint())
+	dsn, err := testApps.GetDBEndPoint()
+	assert.NoError(t, err)
+
+	db, err := sqlx.Open("postgres", dsn)
 	assert.NoError(t, err)
 	assert.NoError(t, db.Ping())
 }
 
 func TestL1Geth(t *testing.T) {
-	base.RunL1Geth(t)
+	assert.NoError(t, testApps.StartL1GethContainer())
 
-	client, err := base.L1Client()
+	client, err := testApps.GetL1GethClient()
 	assert.NoError(t, err)
 
 	chainID, err := client.ChainID(context.Background())
@@ -43,9 +47,9 @@ func TestL1Geth(t *testing.T) {
 }
 
 func TestL2Geth(t *testing.T) {
-	base.RunL2Geth(t)
+	assert.NoError(t, testApps.StartL2GethContainer())
 
-	client, err := base.L2Client()
+	client, err := testApps.GetL2GethClient()
 	assert.NoError(t, err)
 
 	chainID, err := client.ChainID(context.Background())

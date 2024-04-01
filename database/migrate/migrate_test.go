@@ -1,50 +1,56 @@
 package migrate
 
 import (
+	"context"
+	"scroll-tech/common/testcontainers"
+	tc "scroll-tech/common/testcontainers"
+	"scroll-tech/database"
+	db "scroll-tech/database"
 	"testing"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/common/docker"
-
-	"scroll-tech/database"
 )
 
 var (
-	base *docker.App
-	pgDB *sqlx.DB
+	testApps *testcontainers.TestcontainerApps
+	pgDB     *sqlx.DB
 )
 
-func initEnv(t *testing.T) error {
+func setupEnv(t *testing.T) {
 	// Start db container.
-	base.RunDBImage(t)
-
+	testApps = tc.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
 	// Create db orm handler.
-	factory, err := database.NewOrmFactory(base.DBConfig)
-	if err != nil {
-		return err
-	}
+	dsn, err := testApps.GetDBEndPoint()
+	assert.NoError(t, err)
+	factory, err := db.NewOrmFactory(&database.DBConfig{
+		DSN:        dsn,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
+	})
+	assert.NoError(t, err)
 	pgDB = factory.GetDB()
-	return nil
+}
+
+func TestMain(m *testing.M) {
+	defer func() {
+		if testApps != nil {
+			testApps.Free(context.Background())
+		}
+	}()
+	m.Run()
 }
 
 func TestMigrate(t *testing.T) {
-	base = docker.NewDockerApp()
-	if err := initEnv(t); err != nil {
-		t.Fatal(err)
-	}
-
+	setupEnv(t)
 	t.Run("testCurrent", testCurrent)
 	t.Run("testStatus", testStatus)
 	t.Run("testResetDB", testResetDB)
 	t.Run("testMigrate", testMigrate)
 	t.Run("testRollback", testRollback)
-
-	t.Cleanup(func() {
-		base.Free()
-	})
 }
 
 func testCurrent(t *testing.T) {

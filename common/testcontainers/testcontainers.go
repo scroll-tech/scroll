@@ -2,6 +2,7 @@ package testcontainers
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"time"
@@ -127,6 +128,15 @@ func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 		return "", err
 	}
 	return endpoint, nil
+}
+
+// GetDBEndPoint returns the endpoint of the running postgres container
+func (t *TestcontainerApps) GetDBClient() (*sql.DB, error) {
+	endpoint, err := t.GetDBEndPoint()
+	if err != nil {
+		return nil, err
+	}
+	return sql.Open("postgres", endpoint)
 }
 
 // GetL1GethClient returns a ethclient by dialing running L1Geth
