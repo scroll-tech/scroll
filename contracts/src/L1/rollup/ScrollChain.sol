@@ -427,6 +427,45 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     }
 
     /// @inheritdoc IScrollChain
+    function finalizeBatch(
+        bytes calldata _batchHeader,
+        bytes32 _prevStateRoot,
+        bytes32 _postStateRoot,
+        bytes32 _withdrawRoot
+    ) external override OnlyProver whenNotPaused {
+        if (_prevStateRoot == bytes32(0)) revert ErrorPreviousStateRootIsZero();
+        if (_postStateRoot == bytes32(0)) revert ErrorStateRootIsZero();
+
+        // compute batch hash and verify
+        (uint256 memPtr, bytes32 _batchHash, uint256 _batchIndex, ) = _loadBatchHeader(_batchHeader);
+
+        // verify previous state root.
+        if (finalizedStateRoots[_batchIndex - 1] != _prevStateRoot) revert ErrorIncorrectPreviousStateRoot();
+
+        // avoid duplicated verification
+        if (finalizedStateRoots[_batchIndex] != bytes32(0)) revert ErrorBatchIsAlreadyVerified();
+
+        // check and update lastFinalizedBatchIndex
+        unchecked {
+            if (lastFinalizedBatchIndex + 1 != _batchIndex) revert ErrorIncorrectBatchIndex();
+            lastFinalizedBatchIndex = _batchIndex;
+        }
+
+        // record state root and withdraw root
+        finalizedStateRoots[_batchIndex] = _postStateRoot;
+        withdrawRoots[_batchIndex] = _withdrawRoot;
+
+        // Pop finalized and non-skipped message from L1MessageQueue.
+        _popL1Messages(
+            BatchHeaderV0Codec.getSkippedBitmapPtr(memPtr),
+            BatchHeaderV0Codec.getTotalL1MessagePopped(memPtr),
+            BatchHeaderV0Codec.getL1MessagePopped(memPtr)
+        );
+
+        emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
+    }
+
+    /// @inheritdoc IScrollChain
     /// @dev Memory layout of `_blobDataProof`:
     /// ```text
     /// | z       | y       | kzg_commitment | kzg_proof |
