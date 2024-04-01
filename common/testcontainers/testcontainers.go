@@ -18,7 +18,7 @@ type TestcontainerApps struct {
 	l1GethContainer   *testcontainers.DockerContainer
 	l2GethContainer   *testcontainers.DockerContainer
 
-	// common time stamp.
+	// common time stamp in nanoseconds.
 	Timestamp int
 }
 
