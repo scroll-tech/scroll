@@ -589,13 +589,13 @@ func TestCodecV1BatchChallengeWithStandardTestCases(t *testing.T) {
 
 		b, z, err := constructBlobPayload(chunks)
 		assert.NoError(t, err)
-		actualz := hex.EncodeToString(z[:])
-		assert.Equal(t, tc.expectedz, actualz)
+		actualZ := hex.EncodeToString(z[:])
+		assert.Equal(t, tc.expectedz, actualZ)
 
 		_, y, err := kzg4844.ComputeProof(*b, *z)
 		assert.NoError(t, err)
-		actualy := hex.EncodeToString(y[:])
-		assert.Equal(t, tc.expectedy, actualy)
+		actualY := hex.EncodeToString(y[:])
+		assert.Equal(t, tc.expectedy, actualY)
 
 	}
 }
