@@ -399,5 +399,9 @@ func (m *ProofReceiverLogic) updateProverTaskProof(ctx context.Context, proverTa
 	if len(proofBytes) == 0 || marshalErr != nil {
 		return fmt.Errorf("updateProverTaskProof marshal proof error:%w", marshalErr)
 	}
-	return m.proverTaskOrm.UpdateProverTaskProof(ctx, proverTask.UUID, proofBytes)
+	// only info this, don't insert to db
+	log.Info("prover task pprof submit", "proverTask UUID",
+		proverTask.UUID, "task id", proverTask.TaskID, "public key", proverTask.ProverPublicKey, "prover name", proverTask.ProverName)
+	return nil
+	//return m.proverTaskOrm.UpdateProverTaskProof(ctx, proverTask.UUID, proofBytes)
 }
