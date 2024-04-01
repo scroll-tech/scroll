@@ -51,7 +51,8 @@ func InitDB(config *Config) (*gorm.DB, error) {
 	}
 
 	db, err := gorm.Open(postgres.Open(config.DSN), &gorm.Config{
-		Logger: &tmpGormLogger,
+		PrepareStmt: false,
+		Logger:      &tmpGormLogger,
 		NowFunc: func() time.Time {
 			// why set time to UTC.
 			// if now set this, the inserted data time will use local timezone. like 2023-07-18 18:24:00 CST+8
