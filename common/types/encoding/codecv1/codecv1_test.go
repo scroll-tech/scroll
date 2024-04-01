@@ -559,7 +559,7 @@ func TestCodecV1BatchChallengeWithStandardTestCases(t *testing.T) {
 		// max number of chunks all empty
 		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}}, expected: "174cd3ba9b2ae8ab789ec0b5b8e0b27ee122256ec1756c383dbf2b5b96903f1b"},
 		// max number of chunks all non-empty
-		{chunks: [][]string{{}, {"0x0a"}, {"0x0a0b"}, {"0x0a0b0c"}, {"0x0a0b0c0d"}, {"0x0a0b0c0d0e"}, {"0x0a0b0c0d0e0f"}, {"0x0a0b0c0d0e0f10"}, {"0x0a0b0c0d0e0f1011"}, {"0x0a0b0c0d0e0f101112"}, {"0x0a0b0c0d0e0f10111213"}, {"0x0a0b0c0d0e0f1011121314"}, {"0x0a0b0c0d0e0f101112131415"}, {"0x0a0b0c0d0e0f10111213141516"}, {"0x0a0b0c0d0e0f1011121314151617"}}, expected: "31d0b297e3aa9c5256afc52123ef3c1db0e9ce44a3ede66343705c86e3495d8a"},
+		{chunks: [][]string{{"0x0a"}, {"0x0a0b"}, {"0x0a0b0c"}, {"0x0a0b0c0d"}, {"0x0a0b0c0d0e"}, {"0x0a0b0c0d0e0f"}, {"0x0a0b0c0d0e0f10"}, {"0x0a0b0c0d0e0f1011"}, {"0x0a0b0c0d0e0f101112"}, {"0x0a0b0c0d0e0f10111213"}, {"0x0a0b0c0d0e0f1011121314"}, {"0x0a0b0c0d0e0f101112131415"}, {"0x0a0b0c0d0e0f10111213141516"}, {"0x0a0b0c0d0e0f1011121314151617"}, {"0x0a0b0c0d0e0f101112131415161718"}}, expected: "1e93e961cdfb4bd26a5be48f23af4f1aa8c6bebe57a089d3250f8afb1e988bf8"},
 		// single chunk blob full
 		{chunks: [][]string{{repeat(123, nRowsData)}}, expected: "61405cb0b114dfb4d611be84bedba0fcd2e55615e193e424f1cc7b1af0df3d31"},
 		// multiple chunks blob full
@@ -567,7 +567,7 @@ func TestCodecV1BatchChallengeWithStandardTestCases(t *testing.T) {
 		// max number of chunks only last one non-empty not full blob
 		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData-1111)}}, expected: "0e6525c0dd261e8f62342b1139062bb23bc2b8b460163364598fb29e82a4eed5"},
 		// max number of chunks only last one non-empty full blob
-		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData-1)}}, expected: "16e9355a968787a21290b0298ecf9681776d6fa97aa68c8c509b26ad301b2216"},
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData)}}, expected: "3a638eac98f22f817b84e3d81ccaa3de080f83dc80a5823a3f19320ef3cb6fc8"},
 		// max number of chunks but last is empty
 		{chunks: [][]string{{repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {}}, expected: "02ef442d99f450559647a7823f1be0e148c75481cc5c703c02a116e8ac531fa8"},
 	} {
