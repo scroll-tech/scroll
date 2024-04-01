@@ -15,6 +15,11 @@ import (
 	cutils "scroll-tech/common/utils"
 )
 
+const (
+	defaultConnMaxLifetime = time.Minute * 10
+	defaultConnMaxIdleTime = time.Minute * 5
+)
+
 type gormLogger struct {
 	gethLogger log.Logger
 }
