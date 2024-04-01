@@ -96,7 +96,7 @@ func (o *Batch) GetAssignedBatch(ctx context.Context, maxActiveAttempts, maxTota
 		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady))
 	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
-		return nil, fmt.Errorf("Batch.GetAssignedBatches error: %w", err)
+		return nil, fmt.Errorf("Batch.GetAssignedBatch error: %w", err)
 	}
 	if batch.Hash == "" {
 		return nil, nil
