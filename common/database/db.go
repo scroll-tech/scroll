@@ -78,13 +78,13 @@ func InitDB(config *Config) (*gorm.DB, error) {
 	if (config.MaxLifetime != 0) {
 		sqlDB.SetConnMaxLifetime(time.Second * time.Duration(config.MaxLifetime))
 	} else {
-		sqlDB.SetConnMaxLifetime(time.Minute * 10)
+		sqlDB.SetConnMaxLifetime(defaultConnMaxLifetime)
 	}
 
 	if (config.MaxIdleTime != 0) {
 		sqlDB.SetConnMaxIdleTime(time.Second * time.Duration(config.MaxIdleTime))
 	} else {
-		sqlDB.SetConnMaxIdleTime(time.Minute * 5)
+		sqlDB.SetConnMaxIdleTime(defaultConnMaxIdleTime)
 	}
 
 	sqlDB.SetMaxOpenConns(config.MaxOpenNum)
