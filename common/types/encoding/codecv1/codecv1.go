@@ -292,9 +292,6 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 	// 1 hash for metadata and 1 for each chunk
 	challengePreimage := make([]byte, (1+MaxNumChunks)*32)
 
-	// the challenge point z
-	var z kzg4844.Point
-
 	// the chunk data hash used for calculating the challenge preimage
 	var chunkDataHash common.Hash
 
@@ -348,9 +345,14 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, *kzg4844.Poi
 	}
 
 	// compute z = challenge_digest % BLS_MODULUS
-	challengeDigest := crypto.Keccak256Hash(challengePreimage[:])
-	point := new(big.Int).Mod(new(big.Int).SetBytes(challengeDigest[:]), BLSModulus)
-	copy(z[:], point.Bytes()[0:32])
+	challengeDigest := crypto.Keccak256Hash(challengePreimage)
+	pointBigInt := new(big.Int).Mod(new(big.Int).SetBytes(challengeDigest[:]), BLSModulus)
+	pointBytes := pointBigInt.Bytes()
+
+	// the challenge point z
+	var z kzg4844.Point
+	start := 32 - len(pointBytes)
+	copy(z[start:], pointBytes)
 
 	return blob, &z, nil
 }
