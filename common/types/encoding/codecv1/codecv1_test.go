@@ -12,6 +12,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -541,35 +542,36 @@ func TestCodecV1BatchChallengeWithStandardTestCases(t *testing.T) {
 	nRowsData := 126914
 
 	for _, tc := range []struct {
-		chunks   [][]string
-		expected string
+		chunks    [][]string
+		expectedz string
+		expectedy string
 	}{
 		// single empty chunk
-		{chunks: [][]string{{}}, expected: "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec"},
+		{chunks: [][]string{{}}, expectedz: "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec", expectedy: "28bda8f1836f60a3879f4253c4f51b3e41a905449b60a83a594f9f2487e8df51"},
 		// single non-empty chunk
-		{chunks: [][]string{{"0x010203"}}, expected: "30a9d6cfc2b87fb00d80e7fea28ebb9eff0bd526dbf1da32acfe8c5fd49632ff"},
+		{chunks: [][]string{{"0x010203"}}, expectedz: "30a9d6cfc2b87fb00d80e7fea28ebb9eff0bd526dbf1da32acfe8c5fd49632ff", expectedy: "723515444cb320fe437b9cea3b51293f5fbcb5913739ad35eab28b1863f7c312"},
 		// multiple empty chunks
-		{chunks: [][]string{{}, {}}, expected: "17772348f946a4e4adfcaf5c1690d078933b6b090ca9a52fab6c7e545b1007ae"},
+		{chunks: [][]string{{}, {}}, expectedz: "17772348f946a4e4adfcaf5c1690d078933b6b090ca9a52fab6c7e545b1007ae", expectedy: "05ba9abbc81a1c97f4cdaa683a7e0c731d9dfd88feef8f7b2fcfd79e593662b5"},
 		// multiple non-empty chunks
-		{chunks: [][]string{{"0x010203"}, {"0x070809"}}, expected: "60376321eea0886c29bd97d95851c7b5fbdb064c8adfdadd7678617b32b3ebf2"},
+		{chunks: [][]string{{"0x010203"}, {"0x070809"}}, expectedz: "60376321eea0886c29bd97d95851c7b5fbdb064c8adfdadd7678617b32b3ebf2", expectedy: "50cfbcece01cadb4eade40649e17b140b31f96088097e38f020e31dfe6551604"},
 		// empty chunk followed by non-empty chunk
-		{chunks: [][]string{{}, {"0x010203"}}, expected: "054539f03564eda9462d582703cde0788e4e27c311582ddfb19835358273a7ca"},
+		{chunks: [][]string{{}, {"0x010203"}}, expectedz: "054539f03564eda9462d582703cde0788e4e27c311582ddfb19835358273a7ca", expectedy: "1fba03580b5908c4c66b48e79c10e7a34e4b27ed37a1a049b3e17e017cad5245"},
 		// non-empty chunk followed by empty chunk
-		{chunks: [][]string{{"0x070809"}, {}}, expected: "0b82dceaa6ca4b5d704590c921accfd991b56b5ad0212e6a4e63e54915a2053b"},
+		{chunks: [][]string{{"0x070809"}, {}}, expectedz: "0b82dceaa6ca4b5d704590c921accfd991b56b5ad0212e6a4e63e54915a2053b", expectedy: "2362f3a0c87f0ea11eb898ed608c7f09a42926a058d4c5d111a0f54cad10ebbd"},
 		// max number of chunks all empty
-		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}}, expected: "174cd3ba9b2ae8ab789ec0b5b8e0b27ee122256ec1756c383dbf2b5b96903f1b"},
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}}, expectedz: "174cd3ba9b2ae8ab789ec0b5b8e0b27ee122256ec1756c383dbf2b5b96903f1b", expectedy: "225cab9658904181671eb7abc342ffc36a6836048b64a67f0fb758439da2567b"},
 		// max number of chunks all non-empty
-		{chunks: [][]string{{"0x0a"}, {"0x0a0b"}, {"0x0a0b0c"}, {"0x0a0b0c0d"}, {"0x0a0b0c0d0e"}, {"0x0a0b0c0d0e0f"}, {"0x0a0b0c0d0e0f10"}, {"0x0a0b0c0d0e0f1011"}, {"0x0a0b0c0d0e0f101112"}, {"0x0a0b0c0d0e0f10111213"}, {"0x0a0b0c0d0e0f1011121314"}, {"0x0a0b0c0d0e0f101112131415"}, {"0x0a0b0c0d0e0f10111213141516"}, {"0x0a0b0c0d0e0f1011121314151617"}, {"0x0a0b0c0d0e0f101112131415161718"}}, expected: "1e93e961cdfb4bd26a5be48f23af4f1aa8c6bebe57a089d3250f8afb1e988bf8"},
+		{chunks: [][]string{{"0x0a"}, {"0x0a0b"}, {"0x0a0b0c"}, {"0x0a0b0c0d"}, {"0x0a0b0c0d0e"}, {"0x0a0b0c0d0e0f"}, {"0x0a0b0c0d0e0f10"}, {"0x0a0b0c0d0e0f1011"}, {"0x0a0b0c0d0e0f101112"}, {"0x0a0b0c0d0e0f10111213"}, {"0x0a0b0c0d0e0f1011121314"}, {"0x0a0b0c0d0e0f101112131415"}, {"0x0a0b0c0d0e0f10111213141516"}, {"0x0a0b0c0d0e0f1011121314151617"}, {"0x0a0b0c0d0e0f101112131415161718"}}, expectedz: "1e93e961cdfb4bd26a5be48f23af4f1aa8c6bebe57a089d3250f8afb1e988bf8", expectedy: "24ed4791a70b28a6bad21c22d58f82a5ea5f9f9d2bcfc07428b494e9ae93de6e"},
 		// single chunk blob full
-		{chunks: [][]string{{repeat(123, nRowsData)}}, expected: "61405cb0b114dfb4d611be84bedba0fcd2e55615e193e424f1cc7b1af0df3d31"},
+		{chunks: [][]string{{repeat(123, nRowsData)}}, expectedz: "61405cb0b114dfb4d611be84bedba0fcd2e55615e193e424f1cc7b1af0df3d31", expectedy: "58609bbca10e50489b630ecb5b9347378579ed784d6a10749fd505055d35c3c0"},
 		// multiple chunks blob full
-		{chunks: [][]string{{repeat(123, 1111)}, {repeat(231, nRowsData-1111)}}, expected: "22533c3ea99536b4b83a89835aa91e6f0d2fc3866c201e18d7ca4b3af92fad61"},
+		{chunks: [][]string{{repeat(123, 1111)}, {repeat(231, nRowsData-1111)}}, expectedz: "22533c3ea99536b4b83a89835aa91e6f0d2fc3866c201e18d7ca4b3af92fad61", expectedy: "40d4b71492e1a06ee3c273ef9003c7cb05aed021208871e13fa33302fa0f4dcc"},
 		// max number of chunks only last one non-empty not full blob
-		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData-1111)}}, expected: "0e6525c0dd261e8f62342b1139062bb23bc2b8b460163364598fb29e82a4eed5"},
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData-1111)}}, expectedz: "0e6525c0dd261e8f62342b1139062bb23bc2b8b460163364598fb29e82a4eed5", expectedy: "1db984d6deb5e84bc67d0755aa2da8fe687233147603b4ecba94d0c8463c3836"},
 		// max number of chunks only last one non-empty full blob
-		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData)}}, expected: "3a638eac98f22f817b84e3d81ccaa3de080f83dc80a5823a3f19320ef3cb6fc8"},
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData)}}, expectedz: "3a638eac98f22f817b84e3d81ccaa3de080f83dc80a5823a3f19320ef3cb6fc8", expectedy: "73ab100278822144e2ed8c9d986e92f7a2662fd18a51bdf96ec55848578b227a"},
 		// max number of chunks but last is empty
-		{chunks: [][]string{{repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {}}, expected: "02ef442d99f450559647a7823f1be0e148c75481cc5c703c02a116e8ac531fa8"},
+		{chunks: [][]string{{repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {}}, expectedz: "02ef442d99f450559647a7823f1be0e148c75481cc5c703c02a116e8ac531fa8", expectedy: "31743538cfc3ac43d1378a5c497ebc9462c20b4cb4470e0e7a9f7342ea948333"},
 	} {
 		chunks := []*encoding.Chunk{}
 
@@ -585,10 +587,16 @@ func TestCodecV1BatchChallengeWithStandardTestCases(t *testing.T) {
 			chunks = append(chunks, chunk)
 		}
 
-		_, z, err := constructBlobPayload(chunks)
+		b, z, err := constructBlobPayload(chunks)
 		assert.NoError(t, err)
-		actual := hex.EncodeToString(z[:])
-		assert.Equal(t, tc.expected, actual)
+		actualz := hex.EncodeToString(z[:])
+		assert.Equal(t, tc.expectedz, actualz)
+
+		_, y, err := kzg4844.ComputeProof(*b, *z)
+		assert.NoError(t, err)
+		actualy := hex.EncodeToString(y[:])
+		assert.Equal(t, tc.expectedy, actualy)
+
 	}
 }
 
