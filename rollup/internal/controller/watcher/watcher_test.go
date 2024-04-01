@@ -1,7 +1,6 @@
 package watcher
 
 import (
-	"context"
 	"encoding/json"
 	"os"
 	"scroll-tech/common/database"
@@ -85,7 +84,7 @@ func setupDB(t *testing.T) *gorm.DB {
 func TestMain(m *testing.M) {
 	defer func() {
 		if testApps != nil {
-			testApps.Free(context.Background())
+			testApps.Free()
 		}
 	}()
 	m.Run()

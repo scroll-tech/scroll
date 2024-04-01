@@ -166,7 +166,8 @@ func (t *TestcontainerApps) GetL2GethClient() (*ethclient.Client, error) {
 }
 
 // Free stops all running containers
-func (t *TestcontainerApps) Free(ctx context.Context) {
+func (t *TestcontainerApps) Free() {
+	ctx := context.Background()
 	if t.postgresContainer != nil && t.postgresContainer.IsRunning() {
 		if err := t.postgresContainer.Terminate(ctx); err != nil {
 			log.Printf("failed to stop postgres container: %s", err)

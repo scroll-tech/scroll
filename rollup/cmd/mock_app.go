@@ -44,6 +44,22 @@ func NewRollupApp(testApps *testcontainers.TestcontainerApps, file string) *Mock
 	return rollupApp
 }
 
+// NewRollupApp2 return a new rollupApp manager, name mush be one them.
+func NewRollupApp2(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
+	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
+	rollupApp := &MockApp{
+		testApps:   testApps,
+		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
+		originFile: file,
+		rollupFile: rollupFile,
+		args:       []string{"--log.debug", "--config", rollupFile},
+	}
+	if err := rollupApp.MockConfig2(true); err != nil {
+		panic(err)
+	}
+	return rollupApp
+}
+
 // RunApp run rollup-test child process by multi parameters.
 func (b *MockApp) RunApp(t *testing.T, name utils.MockAppName, args ...string) {
 	if !(name == utils.EventWatcherApp ||
@@ -78,8 +94,46 @@ func (b *MockApp) Free() {
 	_ = os.Remove(b.rollupFile)
 }
 
-// MockConfig creates a new rollup config.
+// MockConfig TODO function will be replaced by MockConfig2
 func (b *MockApp) MockConfig(store bool) error {
+	// Load origin rollup config file.
+	cfg, err := config.NewConfig(b.originFile)
+	if err != nil {
+		return err
+	}
+
+	l1GethEndpoint, err := b.testApps.GetL1GethEndPoint()
+	if err != nil {
+		return err
+	}
+	l2GethEndpoint, err := b.testApps.GetL2GethEndPoint()
+	if err != nil {
+		return err
+	}
+	dbEndpoint, err := b.testApps.GetDBEndPoint()
+	if err != nil {
+		return err
+	}
+	cfg.L1Config.Endpoint = l1GethEndpoint
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2GethEndpoint
+	cfg.L2Config.Endpoint = l2GethEndpoint
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1GethEndpoint
+	cfg.DBConfig.DSN = dbEndpoint
+	b.Config = cfg
+
+	if !store {
+		return nil
+	}
+	// Store changed rollup config into a temp file.
+	data, err := json.Marshal(b.Config)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(b.rollupFile, data, 0600)
+}
+
+// MockConfig2 creates a new rollup config.
+func (b *MockApp) MockConfig2(store bool) error {
 	// Load origin rollup config file.
 	cfg, err := config.NewConfig(b.originFile)
 	if err != nil {

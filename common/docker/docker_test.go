@@ -16,7 +16,7 @@ var (
 func TestMain(m *testing.M) {
 	defer func() {
 		if testApps != nil {
-			testApps.Free(context.Background())
+			testApps.Free()
 		}
 	}()
 	m.Run()

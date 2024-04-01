@@ -1,7 +1,6 @@
 package relayer
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/json"
 	"math/big"
@@ -109,7 +108,7 @@ func setupEnv(t *testing.T) {
 func TestMain(m *testing.M) {
 	defer func() {
 		if testApps != nil {
-			testApps.Free(context.Background())
+			testApps.Free()
 		}
 		if posL1TestEnv != nil {
 			posL1TestEnv.Stop()

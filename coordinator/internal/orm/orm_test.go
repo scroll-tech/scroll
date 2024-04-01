@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 	t := &testing.T{}
 	defer func() {
 		if testApps != nil {
-			testApps.Free(context.Background())
+			testApps.Free()
 		}
 		tearDownEnv(t)
 	}()

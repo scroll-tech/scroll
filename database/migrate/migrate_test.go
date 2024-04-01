@@ -1,7 +1,6 @@
 package migrate
 
 import (
-	"context"
 	"scroll-tech/common/testcontainers"
 	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/database"
@@ -38,7 +37,7 @@ func setupEnv(t *testing.T) {
 func TestMain(m *testing.M) {
 	defer func() {
 		if testApps != nil {
-			testApps.Free(context.Background())
+			testApps.Free()
 		}
 	}()
 	m.Run()

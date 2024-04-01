@@ -1,7 +1,6 @@
 package testcontainers
 
 import (
-	"context"
 	"database/sql"
 	"testing"
 
@@ -45,7 +44,7 @@ func TestNewTestcontainerApps(t *testing.T) {
 	assert.NotNil(t, ethclient)
 
 	// test free testcontainers
-	testApps.Free(context.Background())
+	testApps.Free()
 	endpoint, err = testApps.GetDBEndPoint()
 	assert.EqualError(t, err, "postgres is not running")
 	assert.Empty(t, endpoint)
