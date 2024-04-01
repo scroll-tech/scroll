@@ -74,8 +74,9 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAtt
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
+	db = db.Where("active_attempts = 0")
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	db = db.Where("active_attempts < ?", maxActiveAttempts)
+	//db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("end_block_number <= ?", height)
 
 	var chunk Chunk
@@ -96,8 +97,9 @@ func (o *Chunk) GetAssignedChunk(ctx context.Context, height int, maxActiveAttem
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
+	db = db.Where("active_attempts = 0")
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	db = db.Where("active_attempts < ?", maxActiveAttempts)
+	//db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("end_block_number <= ?", height)
 
 	var chunk Chunk
