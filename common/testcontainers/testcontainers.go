@@ -50,7 +50,7 @@ func (t *TestcontainerApps) StartPostgresContainer() error {
 	return nil
 }
 
-// GetDBEndPoint starts a L1Geth container
+// StartL1GethContainer starts a L1Geth container
 func (t *TestcontainerApps) StartL1GethContainer() error {
 	if t.l1GethContainer != nil && t.l1GethContainer.IsRunning() {
 		return nil

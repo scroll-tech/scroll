@@ -123,7 +123,7 @@ func (b *MockApp) MockConfig(store bool) error {
 	return os.WriteFile(b.rollupFile, data, 0600)
 }
 
-// MockConfig creates a new rollup config.
+// MockConfig2 creates a new rollup config.
 func (b *MockApp) MockConfig2(store bool) error {
 	// Load origin rollup config file.
 	cfg, err := config.NewConfig(b.originFile)
