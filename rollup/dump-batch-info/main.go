@@ -99,5 +99,5 @@ func main() {
 		return
 	}
 
-	log.Info("batchMeta", "batchHash", daBatch.Hash().Hex(), "batchDataHash", daBatch.DataHash.Hex(), "blobDataProof", hex.EncodeToString(blobDataProof))
+	log.Info("batchMeta", "batchHash", daBatch.Hash().Hex(), "batchDataHash", daBatch.DataHash.Hex(), "blobDataProof", hex.EncodeToString(blobDataProof), "blobData", hex.EncodeToString(daBatch.Blob()[:]))
 }
