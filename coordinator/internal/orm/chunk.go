@@ -71,22 +71,34 @@ func (*Chunk) TableName() string {
 // GetUnassignedChunk retrieves unassigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Chunk{})
-	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
-	db = db.Where("active_attempts = 0")
-	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	//db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("end_block_number <= ?", height)
+	//db := o.db.WithContext(ctx)
+	//db = db.Model(&Chunk{})
+	//db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
+	//db = db.Where("active_attempts = 0")
+	//db = db.Where("total_attempts < ?", maxTotalAttempts)
+	////db = db.Where("active_attempts < ?", maxActiveAttempts)
+	//db = db.Where("end_block_number <= ?", height)
+	//
+	//var chunk Chunk
+	//err := db.First(&chunk).Error
+	//if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+	//	return nil, nil
+	//}
+	//
+	//if err != nil {
+	//	return nil, fmt.Errorf("Chunk.GetUnassignedChunks error: %w", err)
+	//}
+	//return &chunk, nil
 
 	var chunk Chunk
-	err := db.First(&chunk).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
+	db := o.db.WithContext(ctx)
+	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = 1 AND active_attempts = 0 AND total_attempts < %d AND end_block_number <= %d AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;", maxTotalAttempts, height)
+	err := db.Raw(sql).Scan(&chunk).Error
 	if err != nil {
 		return nil, fmt.Errorf("Chunk.GetUnassignedChunks error: %w", err)
+	}
+	if chunk.Hash == "" {
+		return nil, nil
 	}
 	return &chunk, nil
 }
@@ -94,23 +106,36 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, height int, maxActiveAtt
 // GetAssignedChunk retrieves assigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetAssignedChunk(ctx context.Context, height int, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Chunk{})
-	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
-	db = db.Where("active_attempts = 0")
-	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	//db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("end_block_number <= ?", height)
+	//db := o.db.WithContext(ctx)
+	//db = db.Model(&Chunk{})
+	//db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
+	//db = db.Where("active_attempts = 0")
+	//db = db.Where("total_attempts < ?", maxTotalAttempts)
+	////db = db.Where("active_attempts < ?", maxActiveAttempts)
+	//db = db.Where("end_block_number <= ?", height)
+	//
+	//var chunk Chunk
+	//err := db.First(&chunk).Error
+	//if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+	//	return nil, nil
+	//}
+	//
+	//if err != nil {
+	//	return nil, fmt.Errorf("Chunk.GetAssignedChunks error: %w", err)
+	//}
+	//return &chunk, nil
 
 	var chunk Chunk
-	err := db.First(&chunk).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
+	db := o.db.WithContext(ctx)
+	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = 2 AND active_attempts = 0 AND total_attempts < %d AND end_block_number <= %d AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;", maxTotalAttempts, height)
+	err := db.Raw(sql).Scan(&chunk).Error
 	if err != nil {
 		return nil, fmt.Errorf("Chunk.GetAssignedChunks error: %w", err)
 	}
+	if chunk.Hash == "" {
+		return nil, nil
+	}
+
 	return &chunk, nil
 }
 
