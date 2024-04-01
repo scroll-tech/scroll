@@ -46,7 +46,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
-	rollupApp = bcmd.NewRollupApp2(testApps, "../conf/config.json")
+	rollupApp = bcmd.NewRollupApp(testApps, "../conf/config.json")
 }
 
 func TestFunction(t *testing.T) {
