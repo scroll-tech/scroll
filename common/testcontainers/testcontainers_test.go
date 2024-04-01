@@ -1,7 +1,6 @@
 package testcontainers
 
 import (
-	"context"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -40,7 +39,7 @@ func TestNewTestcontainerApps(t *testing.T) {
 	assert.NotNil(t, client)
 
 	// test free testcontainers
-	testApps.Free(context.Background())
+	testApps.Free()
 	endpoint, err = testApps.GetDBEndPoint()
 	assert.EqualError(t, err, "postgres is not running")
 	assert.Empty(t, endpoint)
