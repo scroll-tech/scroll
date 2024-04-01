@@ -5,7 +5,6 @@ import (
 	"scroll-tech/common/testcontainers"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" //nolint:golint
 	"github.com/stretchr/testify/assert"
 )
@@ -27,10 +26,7 @@ func TestDB(t *testing.T) {
 	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 
-	dsn, err := testApps.GetDBEndPoint()
-	assert.NoError(t, err)
-
-	db, err := sqlx.Open("postgres", dsn)
+	db, err := testApps.GetDBClient()
 	assert.NoError(t, err)
 	assert.NoError(t, db.Ping())
 }

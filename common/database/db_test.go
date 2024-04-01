@@ -43,7 +43,7 @@ func TestDB(t *testing.T) {
 	version.Version = "v4.1.98-aaa-bbb-ccc"
 
 	testApps := testcontainers.NewTestcontainerApps()
-	assert.NoError(t, testApps.StartL2GethContainer())
+	assert.NoError(t, testApps.StartPostgresContainer())
 
 	dsn, err := testApps.GetDBEndPoint()
 	assert.NoError(t, err)

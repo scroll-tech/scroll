@@ -157,8 +157,6 @@ func setEnv(t *testing.T) {
 
 	testApps = tc.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
-	assert.NoError(t, testApps.StartL1GethContainer())
-	assert.NoError(t, testApps.StartL2GethContainer())
 
 	dsn, err := testApps.GetDBEndPoint()
 	assert.NoError(t, err)

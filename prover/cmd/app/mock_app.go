@@ -94,7 +94,7 @@ func (r *ProverApp) MockConfig(store bool, httpURL string, proofType message.Pro
 	cfg.ProverName = fmt.Sprintf("%s_%d", r.name, r.index)
 	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.testApps.Timestamp, cfg.ProverName)
 
-	endpoint, err := r.testApps.GetL1GethEndPoint()
+	endpoint, err := r.testApps.GetL2GethEndPoint()
 	if err != nil {
 		return err
 	}
