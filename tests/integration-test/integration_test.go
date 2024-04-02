@@ -8,13 +8,14 @@ import (
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-	capp "scroll-tech/coordinator/cmd/api/app"
 	"scroll-tech/database/migrate"
 	"scroll-tech/integration-test/orm"
 	rapp "scroll-tech/prover/cmd/app"
 	bcmd "scroll-tech/rollup/cmd"
 	"testing"
 	"time"
+
+	capp "scroll-tech/coordinator/cmd/api/app"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -51,6 +52,8 @@ func TestFunction(t *testing.T) {
 	setupEnv(t)
 	t.Run("TestCoordinatorProverInteraction", testCoordinatorProverInteraction)
 	t.Run("TestProverReLogin", testProverReLogin)
+	t.Run("TestERC20", testERC20)
+	t.Run("TestGreeter", testGreeter)
 }
 
 func setupDB(t *testing.T) *gorm.DB {

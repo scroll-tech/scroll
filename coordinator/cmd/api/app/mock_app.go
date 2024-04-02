@@ -7,10 +7,11 @@ import (
 	"math/big"
 	"os"
 	"scroll-tech/common/testcontainers"
-	coordinatorConfig "scroll-tech/coordinator/internal/config"
 	"strconv"
 	"testing"
 	"time"
+
+	coordinatorConfig "scroll-tech/coordinator/internal/config"
 
 	"github.com/scroll-tech/go-ethereum/params"
 

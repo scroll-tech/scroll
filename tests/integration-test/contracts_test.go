@@ -20,7 +20,7 @@ var (
 	greeterAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000015")
 )
 
-func TestERC20(t *testing.T) {
+func testERC20(t *testing.T) {
 	assert.NoError(t, testApps.StartL2GethContainer())
 	time.Sleep(time.Second * 3)
 
@@ -60,7 +60,7 @@ func TestERC20(t *testing.T) {
 	assert.Equal(t, tokenBls1.Int64(), tokenBls0.Add(tokenBls0, value).Int64())
 }
 
-func TestGreeter(t *testing.T) {
+func testGreeter(t *testing.T) {
 	assert.NoError(t, testApps.StartL2GethContainer())
 	l2Cli, err := testApps.GetL2GethClient()
 	assert.Nil(t, err)
