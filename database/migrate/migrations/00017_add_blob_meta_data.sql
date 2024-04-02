@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 
 ALTER TABLE chunk
-ADD COLUMN crc_max VARCHAR NOT NULL,
+ADD COLUMN crc_max INTEGER NOT NULL,
 ADD COLUMN blob_size INTEGER NOT NULL DEFAULT 0;
 
 ALTER TABLE batch

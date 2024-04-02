@@ -44,6 +44,10 @@ type Chunk struct {
 	// batch
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
 
+	// blob
+	CrcMax   uint64 `json:"crc_max" gorm:"column:crc_max"`
+	BlobSize uint64 `json:"blob_size" gorm:"column:blob_size"`
+
 	// metadata
 	TotalL2TxGas              uint64         `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
 	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
@@ -198,6 +202,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		ParentChunkStateRoot:         parentChunkStateRoot,
 		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
+		CrcMax:                       metrics.CrcMax,
+		BlobSize:                     metrics.L1CommitBlobSize,
 	}
 
 	db := o.db
