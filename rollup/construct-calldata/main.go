@@ -120,7 +120,7 @@ func main() {
 		} else {
 			calldata, blob, err := constructCommitBatchPayloadCodecV1(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
-				log.Crit("fail to construct payload codecv0", "err", err)
+				log.Crit("fail to construct payload codecv1", "err", err)
 			}
 
 			_, err = file.WriteString(fmt.Sprintf("\nBatch Index: %d\n", i))
