@@ -15,13 +15,13 @@ ADD COLUMN blob_len INTEGER NOT NULL DEFAULT 0;
 -- +goose Down
 -- +goose StatementBegin
 
-ALTER TABLE IF EXISTS chunk
-DROP COLUMN crc_max,
-DROP COLUMN blob_len;
-
 ALTER TABLE IF EXISTS batch
 DROP COLUMN data_hash,
 DROP COLUMN blob_data_proof,
+DROP COLUMN blob_len;
+
+ALTER TABLE IF EXISTS chunk
+DROP COLUMN crc_max,
 DROP COLUMN blob_len;
 
 -- +goose StatementEnd
