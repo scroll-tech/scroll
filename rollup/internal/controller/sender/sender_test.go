@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/common/database"
 	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/testcontainers"
 	tc "scroll-tech/common/testcontainers"
@@ -86,16 +85,7 @@ func setupEnv(t *testing.T) {
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 
-	dsn, err := testApps.GetDBEndPoint()
-	assert.NoError(t, err)
-	db, err = database.InitDB(
-		&database.Config{
-			DSN:        dsn,
-			DriverName: "postgres",
-			MaxOpenNum: 200,
-			MaxIdleNum: 20,
-		},
-	)
+	db, err = testApps.GetGormDBClient()
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)

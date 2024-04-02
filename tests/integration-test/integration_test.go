@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"math/big"
-	"scroll-tech/common/database"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/utils"
@@ -55,16 +54,7 @@ func TestFunction(t *testing.T) {
 }
 
 func setupDB(t *testing.T) *gorm.DB {
-	dsn, err := testApps.GetDBEndPoint()
-	assert.NoError(t, err)
-
-	cfg := &database.Config{
-		DSN:        dsn,
-		DriverName: "postgres",
-		MaxOpenNum: 200,
-		MaxIdleNum: 20,
-	}
-	db, err := database.InitDB(cfg)
+	db, err := testApps.GetGormDBClient()
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -157,7 +147,7 @@ func testCoordinatorProverInteraction(t *testing.T) {
 }
 
 func testProverReLogin(t *testing.T) {
-	client, err := testApps.GetDBClient()
+	client, err := testApps.GetSqlxDBClient()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(client.DB))
 

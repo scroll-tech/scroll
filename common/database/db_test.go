@@ -45,16 +45,7 @@ func TestDB(t *testing.T) {
 	testApps := testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 
-	dsn, err := testApps.GetDBEndPoint()
-	assert.NoError(t, err)
-	dbCfg := &Config{
-		DSN:        dsn,
-		DriverName: "postgres",
-		MaxOpenNum: 200,
-		MaxIdleNum: 20,
-	}
-
-	db, err := InitDB(dbCfg)
+	db, err := testApps.GetGormDBClient()
 	assert.NoError(t, err)
 
 	sqlDB, err := Ping(db)

@@ -23,7 +23,7 @@ func TestNewTestcontainerApps(t *testing.T) {
 	endpoint, err = testApps.GetDBEndPoint()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, endpoint)
-	dbclient, err = testApps.GetDBClient()
+	dbclient, err = testApps.GetSqlxDBClient()
 	assert.NoError(t, err)
 	assert.NotNil(t, dbclient)
 

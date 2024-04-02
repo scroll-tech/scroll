@@ -6,17 +6,14 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	dockercompose "scroll-tech/common/docker-compose/l1"
+	tc "scroll-tech/common/testcontainers"
+	"scroll-tech/common/utils"
+	"scroll-tech/database/migrate"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
-
-	"scroll-tech/database/migrate"
-
-	"scroll-tech/common/database"
-	dockercompose "scroll-tech/common/docker-compose/l1"
-	tc "scroll-tech/common/testcontainers"
-	"scroll-tech/common/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
@@ -47,16 +44,7 @@ var (
 )
 
 func setupDB(t *testing.T) *gorm.DB {
-	dsn, err := testApps.GetDBEndPoint()
-	assert.NoError(t, err)
-
-	cfg := &database.Config{
-		DSN:        dsn,
-		DriverName: "postgres",
-		MaxOpenNum: 200,
-		MaxIdleNum: 20,
-	}
-	db, err := database.InitDB(cfg)
+	db, err := testApps.GetGormDBClient()
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)

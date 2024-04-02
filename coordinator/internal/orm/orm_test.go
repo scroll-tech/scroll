@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/database"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -40,16 +39,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, testApps.StartPostgresContainer())
 
 	var err error
-	dsn, err := testApps.GetDBEndPoint()
-	assert.NoError(t, err)
-	db, err = database.InitDB(
-		&database.Config{
-			DSN:        dsn,
-			DriverName: "postgres",
-			MaxOpenNum: 200,
-			MaxIdleNum: 20,
-		},
-	)
+	db, err = testApps.GetGormDBClient()
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
