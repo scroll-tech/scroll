@@ -56,7 +56,7 @@ type Batch struct {
 
 	// blob
 	BlobDataProof []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
-	BlobLen       uint64 `json:"blob_len" gorm:"column:blob_len"`
+	BlobSize      uint64 `json:"blob_size" gorm:"column:blob_size"`
 
 	// metadata
 	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas;default:0"`
@@ -278,6 +278,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		TotalL1CommitGas:          metrics.L1CommitGas,
 		TotalL1CommitCalldataSize: metrics.L1CommitCalldataSize,
 		BlobDataProof:             batchMeta.BatchBlobDataProof,
+		BlobSize:                  metrics.L1CommitBlobSize,
 	}
 
 	db := o.db

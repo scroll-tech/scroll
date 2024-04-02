@@ -52,7 +52,7 @@ type Batch struct {
 
 	// blob
 	BlobDataProof []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
-	BlobLen       uint64 `json:"blob_len" gorm:"column:blob_len"`
+	BlobSize      uint64 `json:"blob_size" gorm:"column:blob_size"`
 
 	// metadata
 	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
@@ -170,6 +170,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		RollupStatus:      int16(types.RollupPending),
 		OracleStatus:      int16(types.GasOraclePending),
 		BlobDataProof:     nil, // BlobDataProof is not supported in codecv0
+		BlobSize:          0,   // BlobSize is not supported in codecv0
 	}
 
 	db := o.db
