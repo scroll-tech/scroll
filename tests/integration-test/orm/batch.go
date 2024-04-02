@@ -22,7 +22,6 @@ type Batch struct {
 	Index           uint64 `json:"index" gorm:"column:index"`
 	Hash            string `json:"hash" gorm:"column:hash"`
 	DataHash        string `json:"data_hash" gorm:"column:data_hash"`
-	BlobDataProof   []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
 	StartChunkIndex uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
 	StartChunkHash  string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
 	EndChunkIndex   uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
@@ -50,6 +49,10 @@ type Batch struct {
 	// gas oracle
 	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
 	OracleTxHash string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
+
+	// blob
+	BlobDataProof []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
+	BlobLen       uint64 `json:"blob_len" gorm:"column:blob_len"`
 
 	// metadata
 	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
@@ -154,7 +157,6 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		Index:             batch.Index,
 		Hash:              daBatch.Hash().Hex(),
 		DataHash:          daBatch.DataHash.Hex(),
-		BlobDataProof:     nil, // BlobDataProof is not supported in codecv0
 		StartChunkHash:    startDAChunkHash.Hex(),
 		StartChunkIndex:   startChunkIndex,
 		EndChunkHash:      endDAChunkHash.Hex(),
@@ -167,6 +169,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),
 		RollupStatus:      int16(types.RollupPending),
 		OracleStatus:      int16(types.GasOraclePending),
+		BlobDataProof:     nil, // BlobDataProof is not supported in codecv0
 	}
 
 	db := o.db

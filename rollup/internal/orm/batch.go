@@ -26,7 +26,6 @@ type Batch struct {
 	Index           uint64 `json:"index" gorm:"column:index"`
 	Hash            string `json:"hash" gorm:"column:hash"`
 	DataHash        string `json:"data_hash" gorm:"column:data_hash"`
-	BlobDataProof   []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
 	StartChunkIndex uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
 	StartChunkHash  string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
 	EndChunkIndex   uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
@@ -54,6 +53,10 @@ type Batch struct {
 	// gas oracle
 	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
 	OracleTxHash string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
+
+	// blob
+	BlobDataProof []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
+	BlobLen       uint64 `json:"blob_len" gorm:"column:blob_len"`
 
 	// metadata
 	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas;default:0"`
@@ -260,7 +263,6 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		Index:                     batch.Index,
 		Hash:                      batchMeta.BatchHash.Hex(),
 		DataHash:                  batchMeta.BatchDataHash.Hex(),
-		BlobDataProof:             batchMeta.BatchBlobDataProof,
 		StartChunkHash:            batchMeta.StartChunkHash.Hex(),
 		StartChunkIndex:           startChunkIndex,
 		EndChunkHash:              batchMeta.EndChunkHash.Hex(),
@@ -275,6 +277,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		OracleStatus:              int16(types.GasOraclePending),
 		TotalL1CommitGas:          metrics.L1CommitGas,
 		TotalL1CommitCalldataSize: metrics.L1CommitCalldataSize,
+		BlobDataProof:             batchMeta.BatchBlobDataProof,
 	}
 
 	db := o.db
