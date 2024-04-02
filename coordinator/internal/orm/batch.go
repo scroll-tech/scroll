@@ -72,46 +72,34 @@ func (*Batch) TableName() string {
 
 // GetUnassignedBatch retrieves unassigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
-func (o *Batch) GetUnassignedBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
-	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
-	db = db.Where("start_chunk_index >= ?", startChunkIndex)
-	db = db.Where("end_chunk_index < ?", endChunkIndex)
-
+func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	var batch Batch
-	err := db.First(&batch).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
+	db := o.db.WithContext(ctx)
+	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
+		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady))
+	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
-		return nil, fmt.Errorf("Batch.GetUnassignedBatches error: %w", err)
+		return nil, fmt.Errorf("Batch.GetUnassignedBatch error: %w", err)
+	}
+	if batch.Hash == "" {
+		return nil, nil
 	}
 	return &batch, nil
 }
 
 // GetAssignedBatch retrieves assigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
-func (o *Batch) GetAssignedBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
-	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
-	db = db.Where("start_chunk_index >= ?", startChunkIndex)
-	db = db.Where("end_chunk_index < ?", endChunkIndex)
-
+func (o *Batch) GetAssignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	var batch Batch
-	err := db.First(&batch).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
+	db := o.db.WithContext(ctx)
+	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
+		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady))
+	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
-		return nil, fmt.Errorf("Batch.GetAssignedBatches error: %w", err)
+		return nil, fmt.Errorf("Batch.GetAssignedBatch error: %w", err)
+	}
+	if batch.Hash == "" {
+		return nil, nil
 	}
 	return &batch, nil
 }
