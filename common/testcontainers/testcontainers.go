@@ -4,8 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"scroll-tech/common/database"
 	"time"
 
+	"gorm.io/gorm"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" //nolint:golint
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -127,6 +132,30 @@ func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 		return "", err
 	}
 	return endpoint, nil
+}
+
+// GetSqlxDBClient returns a sqlx.DB by connecting to the running postgres container
+func (t *TestcontainerApps) GetSqlxDBClient() (*sqlx.DB, error) {
+	endpoint, err := t.GetDBEndPoint()
+	if err != nil {
+		return nil, err
+	}
+	return sqlx.Open("postgres", endpoint)
+}
+
+// GetGormDBClient returns a gorm.DB by connecting to the running postgres container
+func (t *TestcontainerApps) GetGormDBClient() (*gorm.DB, error) {
+	endpoint, err := t.GetDBEndPoint()
+	if err != nil {
+		return nil, err
+	}
+	dbCfg := &database.Config{
+		DSN:        endpoint,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
+	}
+	return database.InitDB(dbCfg)
 }
 
 // GetL1GethClient returns a ethclient by dialing running L1Geth

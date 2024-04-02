@@ -17,9 +17,7 @@ import (
 
 // MockApp mockApp-test client manager.
 type MockApp struct {
-	Config *config.Config
-	// TODO field willl be replaced by testApps
-	base     *docker.App
+	Config   *config.Config
 	testApps *testcontainers.TestcontainerApps
 
 	mockApps map[utils.MockAppName]docker.AppAPI
@@ -30,11 +28,11 @@ type MockApp struct {
 	args []string
 }
 
-// NewRollupApp TODO function will be replaced by NewRollupApp2
-func NewRollupApp(base *docker.App, file string) *MockApp {
-	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", base.Timestamp)
+// NewRollupApp return a new rollupApp manager, name mush be one them.
+func NewRollupApp(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
+	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
 	rollupApp := &MockApp{
-		base:       base,
+		testApps:   testApps,
 		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
 		originFile: file,
 		rollupFile: rollupFile,
@@ -98,18 +96,29 @@ func (b *MockApp) Free() {
 
 // MockConfig TODO function will be replaced by MockConfig2
 func (b *MockApp) MockConfig(store bool) error {
-	base := b.base
 	// Load origin rollup config file.
 	cfg, err := config.NewConfig(b.originFile)
 	if err != nil {
 		return err
 	}
 
-	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.DBConfig.DSN = base.DBImg.Endpoint()
+	l1GethEndpoint, err := b.testApps.GetL1GethEndPoint()
+	if err != nil {
+		return err
+	}
+	l2GethEndpoint, err := b.testApps.GetL2GethEndPoint()
+	if err != nil {
+		return err
+	}
+	dbEndpoint, err := b.testApps.GetDBEndPoint()
+	if err != nil {
+		return err
+	}
+	cfg.L1Config.Endpoint = l1GethEndpoint
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2GethEndpoint
+	cfg.L2Config.Endpoint = l2GethEndpoint
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1GethEndpoint
+	cfg.DBConfig.DSN = dbEndpoint
 	b.Config = cfg
 
 	if !store {

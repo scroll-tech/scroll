@@ -9,6 +9,19 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"scroll-tech/common/database"
+	"scroll-tech/common/testcontainers"
+	tc "scroll-tech/common/testcontainers"
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/message"
+	"scroll-tech/common/version"
+	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/controller/api"
+	"scroll-tech/coordinator/internal/controller/cron"
+	"scroll-tech/coordinator/internal/orm"
+	"scroll-tech/coordinator/internal/route"
+	"scroll-tech/database/migrate"
 	"strconv"
 	"testing"
 	"time"
@@ -18,21 +31,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-
-	"scroll-tech/database/migrate"
-
-	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/message"
-	"scroll-tech/common/version"
-
-	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/controller/api"
-	"scroll-tech/coordinator/internal/controller/cron"
-	"scroll-tech/coordinator/internal/orm"
-	"scroll-tech/coordinator/internal/route"
 )
 
 const (
@@ -46,7 +44,7 @@ var (
 	dbCfg *database.Config
 	conf  *config.Config
 
-	base *docker.App
+	testApps *testcontainers.TestcontainerApps
 
 	db                 *gorm.DB
 	l2BlockOrm         *orm.L2Block
@@ -70,13 +68,12 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
-	glogger.Verbosity(log.LvlInfo)
-	log.Root().SetHandler(glogger)
-
-	base = docker.NewDockerApp()
+	defer func() {
+		if testApps != nil {
+			testApps.Free()
+		}
+	}()
 	m.Run()
-	base.Free()
 }
 
 func randomURL() string {
@@ -149,20 +146,18 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 }
 
 func setEnv(t *testing.T) {
+	var err error
+
 	version.Version = "v4.1.98"
 
-	base = docker.NewDockerApp()
-	base.RunDBImage(t)
+	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
+	glogger.Verbosity(log.LvlInfo)
+	log.Root().SetHandler(glogger)
 
-	dbCfg = &database.Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
-	}
+	testApps = tc.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
 
-	var err error
-	db, err = database.InitDB(dbCfg)
+	db, err = testApps.GetGormDBClient()
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -199,7 +194,6 @@ func setEnv(t *testing.T) {
 
 func TestApis(t *testing.T) {
 	// Set up the test environment.
-	base = docker.NewDockerApp()
 	setEnv(t)
 
 	t.Run("TestHandshake", testHandshake)
@@ -211,11 +205,6 @@ func TestApis(t *testing.T) {
 	t.Run("TestProofGeneratedFailed", testProofGeneratedFailed)
 	t.Run("TestTimeoutProof", testTimeoutProof)
 	t.Run("TestHardFork", testHardForkAssignTask)
-
-	// Teardown
-	t.Cleanup(func() {
-		base.Free()
-	})
 }
 
 func testHandshake(t *testing.T) {

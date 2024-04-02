@@ -20,11 +20,11 @@ var (
 	greeterAddress = common.HexToAddress("0x7363726f6c6c6c20000000000000000000000015")
 )
 
-func TestERC20(t *testing.T) {
-	base.RunL2Geth(t)
+func testERC20(t *testing.T) {
+	assert.NoError(t, testApps.StartL2GethContainer())
 	time.Sleep(time.Second * 3)
 
-	l2Cli, err := base.L2Client()
+	l2Cli, err := testApps.GetL2GethClient()
 	assert.Nil(t, err)
 
 	token, err := erc20.NewERC20Mock(erc20Address, l2Cli)
@@ -32,7 +32,9 @@ func TestERC20(t *testing.T) {
 	privKey, err := crypto.ToECDSA(common.FromHex("1212121212121212121212121212121212121212121212121212121212121212"))
 	assert.NoError(t, err)
 
-	auth, err := bind.NewKeyedTransactorWithChainID(privKey, base.L2gethImg.ChainID())
+	chainID, err := l2Cli.ChainID(context.Background())
+	assert.NoError(t, err)
+	auth, err := bind.NewKeyedTransactorWithChainID(privKey, chainID)
 	assert.NoError(t, err)
 
 	authBls0, err := token.BalanceOf(nil, auth.From)
@@ -58,12 +60,14 @@ func TestERC20(t *testing.T) {
 	assert.Equal(t, tokenBls1.Int64(), tokenBls0.Add(tokenBls0, value).Int64())
 }
 
-func TestGreeter(t *testing.T) {
-	base.RunL2Geth(t)
-	l2Cli, err := base.L2Client()
+func testGreeter(t *testing.T) {
+	assert.NoError(t, testApps.StartL2GethContainer())
+	l2Cli, err := testApps.GetL2GethClient()
 	assert.Nil(t, err)
 
-	auth, err := bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, base.L2gethImg.ChainID())
+	chainID, err := l2Cli.ChainID(context.Background())
+	assert.NoError(t, err)
+	auth, err := bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, chainID)
 	assert.NoError(t, err)
 
 	token, err := greeter.NewGreeter(greeterAddress, l2Cli)

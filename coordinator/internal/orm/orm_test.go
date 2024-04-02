@@ -3,14 +3,13 @@ package orm
 import (
 	"context"
 	"math/big"
+	"scroll-tech/common/testcontainers"
 	"testing"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -19,31 +18,28 @@ import (
 )
 
 var (
-	base *docker.App
-
+	testApps      *testcontainers.TestcontainerApps
 	db            *gorm.DB
 	proverTaskOrm *ProverTask
 )
 
 func TestMain(m *testing.M) {
 	t := &testing.T{}
-	setupEnv(t)
-	defer tearDownEnv(t)
+	defer func() {
+		if testApps != nil {
+			testApps.Free()
+		}
+		tearDownEnv(t)
+	}()
 	m.Run()
 }
 
 func setupEnv(t *testing.T) {
-	base = docker.NewDockerApp()
-	base.RunDBImage(t)
+	testApps = testcontainers.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+
 	var err error
-	db, err = database.InitDB(
-		&database.Config{
-			DSN:        base.DBConfig.DSN,
-			DriverName: base.DBConfig.DriverName,
-			MaxOpenNum: base.DBConfig.MaxOpenNum,
-			MaxIdleNum: base.DBConfig.MaxIdleNum,
-		},
-	)
+	db, err = testApps.GetGormDBClient()
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -56,10 +52,11 @@ func tearDownEnv(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	sqlDB.Close()
-	base.Free()
 }
 
 func TestProverTaskOrm(t *testing.T) {
+	setupEnv(t)
+
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
