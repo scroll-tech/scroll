@@ -30,9 +30,8 @@ var (
 
 func TestMain(m *testing.M) {
 	defer func() {
-		ctx := context.Background()
 		if testApps != nil {
-			testApps.Free(ctx)
+			testApps.Free()
 		}
 		if rollupApp != nil {
 			rollupApp.Free()
@@ -160,7 +159,7 @@ func testCoordinatorProverInteraction(t *testing.T) {
 func testProverReLogin(t *testing.T) {
 	client, err := testApps.GetDBClient()
 	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(client))
+	assert.NoError(t, migrate.ResetDB(client.DB))
 
 	coordinatorApp := capp.NewCoordinatorApp(testApps, "../../coordinator/conf/config.json", "./genesis.json")
 	chunkProverApp := rapp.NewProverApp(testApps, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())

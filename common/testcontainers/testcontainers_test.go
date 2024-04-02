@@ -1,9 +1,9 @@
 package testcontainers
 
 import (
-	"database/sql"
 	"testing"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -13,7 +13,7 @@ func TestNewTestcontainerApps(t *testing.T) {
 	var (
 		err       error
 		endpoint  string
-		dbclient  *sql.DB
+		dbclient  *sqlx.DB
 		ethclient *ethclient.Client
 	)
 

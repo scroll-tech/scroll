@@ -69,9 +69,8 @@ var (
 
 func TestMain(m *testing.M) {
 	defer func() {
-		ctx := context.Background()
 		if testApps != nil {
-			testApps.Free(ctx)
+			testApps.Free()
 		}
 	}()
 	m.Run()

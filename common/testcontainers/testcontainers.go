@@ -2,11 +2,12 @@ package testcontainers
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" //nolint:golint
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -130,13 +131,13 @@ func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 	return endpoint, nil
 }
 
-// GetDBEndPoint returns the endpoint of the running postgres container
-func (t *TestcontainerApps) GetDBClient() (*sql.DB, error) {
+// GetDBClient returns a sqlx.DB by connecting to the running postgres container
+func (t *TestcontainerApps) GetDBClient() (*sqlx.DB, error) {
 	endpoint, err := t.GetDBEndPoint()
 	if err != nil {
 		return nil, err
 	}
-	return sql.Open("postgres", endpoint)
+	return sqlx.Open("postgres", endpoint)
 }
 
 // GetL1GethClient returns a ethclient by dialing running L1Geth
