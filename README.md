@@ -97,10 +97,10 @@ See [`contracts`](/contracts) for more details on the contracts.
 
 Scroll Monorepo is licensed under the [MIT](./LICENSE) license.
 
-## For Peter
-1. `git checkout 4844-contracts-unit-test-branch`
+## Unit Test Instructions
+1. `git checkout 4844-contracts-unit-test-branch` off of [https://github.com/scroll-tech/scroll].
 2. FYI, The unit test file is located in `./contracts`. (`contracts/ScrollChainWithBlobTest.ts`)
-3. Use nodejs version 16.0.0
-4. FOllow the steps in the `Dependencies` & `Build` sections in here [https://github.com/scroll-tech/scroll/tree/develop/contracts].
+3. Use nodejs version 18.0.0.
+4. Follow the steps in the `Dependencies` & `Build` sections in here [https://github.com/scroll-tech/scroll/tree/develop/contracts].
 5. Boot up testnet sepolia separately.
 6. `npx hardhat --network local run contracts/ScrollChainWithBlobTest.ts`.
