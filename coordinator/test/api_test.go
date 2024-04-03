@@ -9,22 +9,24 @@ import (
 	"math/big"
 	"net/http"
 	"os"
-	"scroll-tech/common/database"
+	"strconv"
+	"testing"
+	"time"
+
+	"scroll-tech/database/migrate"
+
+	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/controller/api"
+	"scroll-tech/coordinator/internal/controller/cron"
+	"scroll-tech/coordinator/internal/orm"
+	"scroll-tech/coordinator/internal/route"
+
 	"scroll-tech/common/testcontainers"
 	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/version"
-	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/controller/api"
-	"scroll-tech/coordinator/internal/controller/cron"
-	"scroll-tech/coordinator/internal/orm"
-	"scroll-tech/coordinator/internal/route"
-	"scroll-tech/database/migrate"
-	"strconv"
-	"testing"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -41,8 +43,7 @@ const (
 )
 
 var (
-	dbCfg *database.Config
-	conf  *config.Config
+	conf *config.Config
 
 	testApps *testcontainers.TestcontainerApps
 
@@ -83,7 +84,8 @@ func randomURL() string {
 
 func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string, nameForkMap map[string]int64) (*cron.Collector, *http.Server) {
 	var err error
-	db, err = database.InitDB(dbCfg)
+	db, err = testApps.GetGormDBClient()
+
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)

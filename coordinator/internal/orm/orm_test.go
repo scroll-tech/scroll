@@ -3,8 +3,9 @@ package orm
 import (
 	"context"
 	"math/big"
-	"scroll-tech/common/testcontainers"
 	"testing"
+
+	"scroll-tech/common/testcontainers"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"

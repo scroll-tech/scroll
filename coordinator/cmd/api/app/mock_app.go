@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/common/testcontainers"
 	"strconv"
 	"testing"
 	"time"
+
+	"scroll-tech/common/testcontainers"
 
 	coordinatorConfig "scroll-tech/coordinator/internal/config"
 
