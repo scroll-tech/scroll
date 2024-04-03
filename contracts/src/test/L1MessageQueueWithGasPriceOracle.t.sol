@@ -97,4 +97,9 @@ contract L1MessageQueueWithGasPriceOracleTest is ScrollTestBase {
     function testCalculateIntrinsicGasFee(bytes memory data) external {
         assertEq(queue.calculateIntrinsicGasFee(data), 21000 + data.length * 16);
     }
+
+    function testInitializeV2() external {
+        // Call initializeV2 again, should not revert
+        queue.initializeV2();
+    }
 }
