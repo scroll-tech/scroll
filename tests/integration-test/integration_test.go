@@ -150,9 +150,11 @@ func testCoordinatorProverInteraction(t *testing.T) {
 }
 
 func testProverReLogin(t *testing.T) {
-	client, err := testApps.GetSqlxDBClient()
+	client, err := testApps.GetGormDBClient()
 	assert.NoError(t, err)
-	assert.NoError(t, migrate.ResetDB(client.DB))
+	db, err := client.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(db))
 
 	coordinatorApp := capp.NewCoordinatorApp(testApps, "../../coordinator/conf/config.json", "./genesis.json")
 	chunkProverApp := rapp.NewProverApp(testApps, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())

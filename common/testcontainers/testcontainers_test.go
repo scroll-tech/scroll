@@ -5,7 +5,6 @@ import (
 
 	"gorm.io/gorm"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +14,6 @@ func TestNewTestcontainerApps(t *testing.T) {
 	var (
 		err          error
 		endpoint     string
-		sqlDBclient  *sqlx.DB
 		gormDBclient *gorm.DB
 		ethclient    *ethclient.Client
 	)
@@ -26,9 +24,6 @@ func TestNewTestcontainerApps(t *testing.T) {
 	endpoint, err = testApps.GetDBEndPoint()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, endpoint)
-	sqlDBclient, err = testApps.GetSqlxDBClient()
-	assert.NoError(t, err)
-	assert.NotNil(t, sqlDBclient)
 	gormDBclient, err = testApps.GetGormDBClient()
 	assert.NoError(t, err)
 	assert.NotNil(t, gormDBclient)
