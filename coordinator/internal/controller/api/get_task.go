@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
@@ -21,6 +23,8 @@ import (
 // GetTaskController the get prover task api controller
 type GetTaskController struct {
 	proverTasks map[message.ProofType]provertask.ProverTask
+
+	getTaskAccessCounter *prometheus.CounterVec
 }
 
 // NewGetTaskController create a get prover task controller
@@ -30,12 +34,38 @@ func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),
+		getTaskAccessCounter: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "coordinator_get_task_access_count",
+			Help: "Multi dimensions get task counter.",
+		}, []string{coordinatorType.LabelProverName, coordinatorType.LabelProverPublicKey, coordinatorType.LabelProverVersion}),
 	}
 
 	ptc.proverTasks[message.ProofTypeChunk] = chunkProverTask
 	ptc.proverTasks[message.ProofTypeBatch] = batchProverTask
 
 	return ptc
+}
+
+func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
+	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
+	if !publicKeyExist {
+		return fmt.Errorf("get public key from context failed")
+	}
+	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
+	if !proverNameExist {
+		return fmt.Errorf("get prover name from context failed")
+	}
+	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
+	if !proverVersionExist {
+		return fmt.Errorf("get prover version from context failed")
+	}
+
+	ptc.getTaskAccessCounter.With(prometheus.Labels{
+		coordinatorType.LabelProverPublicKey: publicKey.(string),
+		coordinatorType.LabelProverName:      proverName.(string),
+		coordinatorType.LabelProverVersion:   proverVersion.(string),
+	}).Inc()
+	return nil
 }
 
 // GetTasks get assigned chunk/batch task
@@ -53,6 +83,10 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 		nerr := fmt.Errorf("parameter wrong proof type:%v", proofType)
 		types.RenderFailure(ctx, types.ErrCoordinatorParameterInvalidNo, nerr)
 		return
+	}
+
+	if err := ptc.incGetTaskAccessCounter(ctx); err != nil {
+		log.Warn("get_task access counter inc failed", "error", err.Error())
 	}
 
 	result, err := proverTask.Assign(ctx, &getTaskParameter)

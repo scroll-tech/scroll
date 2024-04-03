@@ -31,6 +31,7 @@ type BatchProverTask struct {
 
 	batchAttemptsExceedTotal prometheus.Counter
 	batchTaskGetTaskTotal    *prometheus.CounterVec
+	batchTaskGetTaskProver   *prometheus.CounterVec
 }
 
 // NewBatchProverTask new a batch collector
@@ -58,6 +59,7 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			Name: "coordinator_batch_get_task_total",
 			Help: "Total number of batch get task.",
 		}, []string{"fork_name"}),
+		batchTaskGetTaskProver: newGetTaskCounterVec(promauto.With(reg), "batch"),
 	}
 	return bp
 }
@@ -180,6 +182,11 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	bp.batchTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
+	bp.batchTaskGetTaskProver.With(prometheus.Labels{
+		coordinatorType.LabelProverName:      proverTask.ProverName,
+		coordinatorType.LabelProverPublicKey: proverTask.ProverPublicKey,
+		coordinatorType.LabelProverVersion:   proverTask.ProverVersion,
+	}).Inc()
 
 	return taskMsg, nil
 }

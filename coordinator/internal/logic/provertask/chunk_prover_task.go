@@ -29,6 +29,7 @@ type ChunkProverTask struct {
 
 	chunkAttemptsExceedTotal prometheus.Counter
 	chunkTaskGetTaskTotal    *prometheus.CounterVec
+	chunkTaskGetTaskProver   *prometheus.CounterVec
 }
 
 // NewChunkProverTask new a chunk prover task
@@ -55,6 +56,7 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			Name: "coordinator_chunk_get_task_total",
 			Help: "Total number of chunk get task.",
 		}, []string{"fork_name"}),
+		chunkTaskGetTaskProver: newGetTaskCounterVec(promauto.With(reg), "chunk"),
 	}
 	return cp
 }
@@ -152,6 +154,11 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	cp.chunkTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
+	cp.chunkTaskGetTaskProver.With(prometheus.Labels{
+		coordinatorType.LabelProverName:      proverTask.ProverName,
+		coordinatorType.LabelProverPublicKey: proverTask.ProverPublicKey,
+		coordinatorType.LabelProverVersion:   proverTask.ProverVersion,
+	}).Inc()
 
 	return taskMsg, nil
 }
