@@ -9,13 +9,12 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
 	"scroll-tech/common/types/encoding/codecv1"
+	"scroll-tech/common/types/message"
 	"scroll-tech/rollup/internal/orm"
 )
 
@@ -97,92 +96,39 @@ func main() {
 			chunks[i] = &encoding.Chunk{Blocks: blocks}
 		}
 
-		if index == 0 {
-			calldata, err := constructCommitBatchPayloadCodecV0(dbBatch, dbParentBatch, dbChunks, chunks)
-			if err != nil {
-				log.Crit("fail to construct payload codecv0", "err", err)
-			}
-
-			_, err = file.WriteString(fmt.Sprintf("\nBatch Index: %d\n", index))
-			if err != nil {
-				log.Crit("failed to write batch index to file", "err", err)
-			}
-
-			_, err = file.WriteString("Calldata:\n")
-			if err != nil {
-				log.Crit("failed to write 'Calldata' label to file", "err", err)
-			}
-
-			_, err = file.WriteString(hex.EncodeToString(calldata) + "\n")
-			if err != nil {
-				log.Crit("failed to write calldata to file", "err", err)
-			}
-		} else {
-			calldata, blob, err := constructCommitBatchPayloadCodecV1(dbBatch, dbParentBatch, dbChunks, chunks)
-			if err != nil {
-				log.Crit("fail to construct payload codecv1", "err", err)
-			}
-
-			_, err = file.WriteString(fmt.Sprintf("\nBatch Index: %d\n", index))
-			if err != nil {
-				log.Crit("failed to write batch index to file", "err", err)
-			}
-
-			_, err = file.WriteString("Calldata:\n")
-			if err != nil {
-				log.Crit("failed to write 'Calldata' label to file", "err", err)
-			}
-
-			_, err = file.WriteString(hex.EncodeToString(calldata) + "\n")
-			if err != nil {
-				log.Crit("failed to write calldata to file", "err", err)
-			}
-
-			//_, err = file.WriteString("Blob:\n")
-			//if err != nil {
-			//	log.Crit("failed to write 'Blob' label to file", "err", err)
-			//}
-
-			//_, err = file.WriteString(hex.EncodeToString(blob[:]) + "\n")
-			//if err != nil {
-			//	log.Crit("failed to write blob to file", "err", err)
-			//}
+		aggProof, err := batchOrm.GetVerifiedProofByHash(context.Background(), dbBatch.Hash)
+		if err != nil {
+			log.Crit("failed to get verified proof by hash", "index", dbBatch.Index, "err", err)
 		}
+
+		if err = aggProof.SanityCheck(); err != nil {
+			log.Crit("failed to check agg_proof sanity", "index", dbBatch.Index, "err", err)
+		}
+
+		calldata, err := constructFinalizeBatchPayloadCodecV1(dbBatch, dbParentBatch, dbChunks, chunks, aggProof)
+		if err != nil {
+			log.Crit("fail to construct payload codecv1", "err", err)
+		}
+
+		_, err = file.WriteString(fmt.Sprintf("\nBatch Index: %d\n", index))
+		if err != nil {
+			log.Crit("failed to write batch index to file", "err", err)
+		}
+
+		_, err = file.WriteString("Calldata:\n")
+		if err != nil {
+			log.Crit("failed to write 'Calldata' label to file", "err", err)
+		}
+
+		_, err = file.WriteString(hex.EncodeToString(calldata) + "\n")
+		if err != nil {
+			log.Crit("failed to write calldata to file", "err", err)
+		}
+
 	}
 }
 
-func constructCommitBatchPayloadCodecV0(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, error) {
-	daBatch, err := codecv0.NewDABatchFromBytes(dbBatch.BatchHeader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create DA batch from bytes: %w", err)
-	}
-
-	encodedChunks := make([][]byte, len(dbChunks))
-	for i, c := range dbChunks {
-		daChunk, createErr := codecv0.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
-		if createErr != nil {
-			return nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
-		}
-		daChunkBytes, encodeErr := daChunk.Encode()
-		if encodeErr != nil {
-			return nil, fmt.Errorf("failed to encode DA chunk: %w", encodeErr)
-		}
-		encodedChunks[i] = daChunkBytes
-	}
-
-	l1RollupABI, err := ScrollChainMetaData.GetAbi()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get abi: %w", err)
-	}
-
-	calldata, packErr := l1RollupABI.Pack("commitBatch", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap)
-	if packErr != nil {
-		return nil, fmt.Errorf("failed to pack commitBatch: %w", packErr)
-	}
-	return calldata, nil
-}
-
-func constructCommitBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
+func constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk, aggProof *message.BatchProof) ([]byte, error) {
 	batch := &encoding.Batch{
 		Index:                      dbBatch.Index,
 		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
@@ -192,26 +138,33 @@ func constructCommitBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.B
 
 	daBatch, createErr := codecv1.NewDABatch(batch)
 	if createErr != nil {
-		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
+		return nil, fmt.Errorf("failed to create DA batch: %w", createErr)
 	}
 
-	encodedChunks := make([][]byte, len(dbChunks))
-	for i, c := range dbChunks {
-		daChunk, createErr := codecv1.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
-		if createErr != nil {
-			return nil, nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
-		}
-		encodedChunks[i] = daChunk.Encode()
+	blobDataProof, getErr := daBatch.BlobDataProof()
+	if getErr != nil {
+		return nil, fmt.Errorf("failed to get blob data proof: %w", getErr)
 	}
 
 	l1RollupABI, err := ScrollChainMetaData.GetAbi()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get abi: %w", err)
+		return nil, fmt.Errorf("failed to get abi: %w", err)
 	}
 
-	calldata, packErr := l1RollupABI.Pack("commitBatch", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap)
-	if packErr != nil {
-		return nil, nil, fmt.Errorf("failed to pack commitBatch: %w", packErr)
+	if aggProof != nil { // finalizeBatch4844 with proof.
+		calldata, packErr := l1RollupABI.Pack(
+			"finalizeBatchWithProof4844",
+			dbBatch.BatchHeader,
+			common.HexToHash(dbParentBatch.StateRoot),
+			common.HexToHash(dbBatch.StateRoot),
+			common.HexToHash(dbBatch.WithdrawRoot),
+			blobDataProof,
+			aggProof.Proof,
+		)
+		if packErr != nil {
+			return nil, fmt.Errorf("failed to pack finalizeBatchWithProof4844: %w", packErr)
+		}
+		return calldata, nil
 	}
-	return calldata, daBatch.Blob(), nil
+	return nil, fmt.Errorf("proof is nil")
 }
