@@ -199,6 +199,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
 			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
 		}
+		if proof.ChunkInfo == nil {
+			return nil, fmt.Errorf("ChunkProof should embed ChunkInfo, batch hash: %v, chunk hash: %v", task.TaskID, chunk.Hash)
+		}
 		chunkProofs = append(chunkProofs, &proof)
 
 		chunkInfo := message.ChunkInfo{
@@ -207,6 +210,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			PostStateRoot: common.HexToHash(chunk.StateRoot),
 			WithdrawRoot:  common.HexToHash(chunk.WithdrawRoot),
 			DataHash:      common.HexToHash(chunk.Hash),
+			TxBytes:       proof.ChunkInfo.TxBytes,
 			IsPadding:     false,
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
