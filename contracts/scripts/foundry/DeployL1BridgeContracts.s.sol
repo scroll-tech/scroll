@@ -92,10 +92,12 @@ contract DeployL1BridgeContracts is Script {
     }
 
     function deployMultipleVersionRollupVerifier() internal {
-        uint256[] memory _versions = new uint256[](1);
-        address[] memory _verifiers = new address[](1);
+        uint256[] memory _versions = new uint256[](2);
+        address[] memory _verifiers = new address[](2);
         _versions[0] = 0;
         _verifiers[0] = address(zkEvmVerifierV1);
+        _versions[1] = 1;
+        _verifiers[1] = address(zkEvmVerifierV1);
         rollupVerifier = new MultipleVersionRollupVerifier(L1_SCROLL_CHAIN_PROXY_ADDR, _versions, _verifiers);
 
         logAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR", address(rollupVerifier));
