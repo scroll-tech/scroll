@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.24;
+pragma solidity ^0.8.0;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
-
 import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-
 import {L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
 import {L1StandardERC20Gateway} from "../L1/gateways/L1StandardERC20Gateway.sol";
 import {L1ScrollMessenger} from "../L1/L1ScrollMessenger.sol";
@@ -16,7 +14,6 @@ import {L2StandardERC20Gateway} from "../L2/gateways/L2StandardERC20Gateway.sol"
 import {AddressAliasHelper} from "../libraries/common/AddressAliasHelper.sol";
 import {ScrollStandardERC20} from "../libraries/token/ScrollStandardERC20.sol";
 import {ScrollStandardERC20Factory} from "../libraries/token/ScrollStandardERC20Factory.sol";
-
 import {L2GatewayTestBase} from "./L2GatewayTestBase.t.sol";
 
 contract L2GatewayRouterTest is L2GatewayTestBase {
