@@ -7,8 +7,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -24,8 +27,7 @@ var (
 	paramsPath    = flag.String("params", "/assets/test_params", "params dir")
 	assetsPath    = flag.String("assets", "/assets/test_assets", "assets dir")
 	proofDumpPath = flag.String("dump", "/assets/proof_data", "the path proofs dump to")
-	tracePath1    = flag.String("trace1", "/assets/traces/1_transfer.json", "chunk trace 1")
-	tracePath2    = flag.String("trace2", "/assets/traces/10_transfer.json", "chunk trace 2")
+	batchDirPath  = flag.String("batch-dir", "/assets/traces/batch_24", "batch directory")
 	batchVkPath   = flag.String("batch-vk", "/assets/test_assets/agg_vk.vkey", "batch vk")
 	chunkVkPath   = flag.String("chunk-vk", "/assets/test_assets/chunk_vk.vkey", "chunk vk")
 )
@@ -46,23 +48,34 @@ func TestFFI(t *testing.T) {
 	as.Equal(chunkProverCore.VK, readVk(*chunkVkPath, as))
 	t.Log("Chunk VK must be available when init")
 
-	chunkTrace1 := readChunkTrace(*tracePath1, as)
-	chunkTrace2 := readChunkTrace(*tracePath2, as)
-	t.Log("Loaded chunk traces")
+	// Get the list of subdirectories (chunks)
+	chunkDirs, err := os.ReadDir(*batchDirPath)
+	as.NoError(err)
+	sort.Slice(chunkDirs, func(i, j int) bool {
+		return chunkDirs[i].Name() < chunkDirs[j].Name()
+	})
 
-	chunkInfo1, err := chunkProverCore.TracesToChunkInfo(chunkTrace1)
-	as.NoError(err)
-	chunkInfo2, err := chunkProverCore.TracesToChunkInfo(chunkTrace2)
-	as.NoError(err)
-	t.Log("Converted to chunk infos")
+	chunkInfos := make([]*message.ChunkInfo, 0, len(chunkDirs))
+	chunkProofs := make([]*message.ChunkProof, 0, len(chunkDirs))
 
-	chunkProof1, err := chunkProverCore.ProveChunk("chunk_proof1", chunkTrace1)
-	as.NoError(err)
-	t.Log("Generated and dumped chunk proof 1")
+	for i, dir := range chunkDirs {
+		if dir.IsDir() {
+			chunkPath := filepath.Join(*batchDirPath, dir.Name())
 
-	chunkProof2, err := chunkProverCore.ProveChunk("chunk_proof2", chunkTrace2)
-	as.NoError(err)
-	t.Log("Generated and dumped chunk proof 2")
+			chunkTrace := readChunkTrace(chunkPath, as)
+			t.Logf("Loaded chunk trace %d", i+1)
+
+			chunkInfo, err := chunkProverCore.TracesToChunkInfo(chunkTrace)
+			as.NoError(err)
+			chunkInfos = append(chunkInfos, chunkInfo)
+			t.Logf("Converted to chunk info %d", i+1)
+
+			chunkProof, err := chunkProverCore.ProveChunk(fmt.Sprintf("chunk_proof%d", i+1), chunkTrace)
+			as.NoError(err)
+			chunkProofs = append(chunkProofs, chunkProof)
+			t.Logf("Generated and dumped chunk proof %d", i+1)
+		}
+	}
 
 	as.Equal(chunkProverCore.VK, readVk(*chunkVkPath, as))
 	t.Log("Chunk VKs must be equal after proving")
@@ -79,8 +92,6 @@ func TestFFI(t *testing.T) {
 	as.Equal(batchProverCore.VK, readVk(*batchVkPath, as))
 	t.Log("Batch VK must be available when init")
 
-	chunkInfos := []*message.ChunkInfo{chunkInfo1, chunkInfo2}
-	chunkProofs := []*message.ChunkProof{chunkProof1, chunkProof2}
 	_, err = batchProverCore.ProveBatch("batch_proof", chunkInfos, chunkProofs)
 	as.NoError(err)
 	t.Log("Generated and dumped batch proof")
@@ -88,20 +99,46 @@ func TestFFI(t *testing.T) {
 	as.Equal(batchProverCore.VK, readVk(*batchVkPath, as))
 	t.Log("Batch VKs must be equal after proving")
 }
-
 func readChunkTrace(filePat string, as *assert.Assertions) []*types.BlockTrace {
-	f, err := os.Open(filePat)
-	as.NoError(err)
-	defer func() {
-		as.NoError(f.Close())
-	}()
-	byt, err := io.ReadAll(f)
+	fileInfo, err := os.Stat(filePat)
 	as.NoError(err)
 
-	trace := &types.BlockTrace{}
-	as.NoError(json.Unmarshal(byt, trace))
+	var traces []*types.BlockTrace
 
-	return []*types.BlockTrace{trace}
+	readFile := func(path string) {
+		f, err := os.Open(path)
+		as.NoError(err)
+		defer func() {
+			as.NoError(f.Close())
+		}()
+		byt, err := io.ReadAll(f)
+		as.NoError(err)
+
+		trace := &types.BlockTrace{}
+		as.NoError(json.Unmarshal(byt, trace))
+
+		traces = append(traces, trace)
+	}
+
+	if fileInfo.IsDir() {
+		files, err := os.ReadDir(filePat)
+		as.NoError(err)
+
+		// Sort files alphabetically
+		sort.Slice(files, func(i, j int) bool {
+			return files[i].Name() < files[j].Name()
+		})
+
+		for _, file := range files {
+			if !file.IsDir() {
+				readFile(filepath.Join(filePat, file.Name()))
+			}
+		}
+	} else {
+		readFile(filePat)
+	}
+
+	return traces
 }
 
 func readVk(filePat string, as *assert.Assertions) string {

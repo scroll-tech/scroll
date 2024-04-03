@@ -11,6 +11,13 @@ import (
 	"testing"
 	"time"
 
+	"scroll-tech/database/migrate"
+
+	"scroll-tech/common/database"
+	dockercompose "scroll-tech/common/docker-compose/l1"
+	tc "scroll-tech/common/testcontainers"
+	"scroll-tech/common/utils"
+
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -22,19 +29,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
-	dockercompose "scroll-tech/common/docker-compose/l1"
-	"scroll-tech/common/utils"
-
-	"scroll-tech/database/migrate"
-
 	bcmd "scroll-tech/rollup/cmd"
 	"scroll-tech/rollup/mock_bridge"
 )
 
 var (
-	base         *docker.App
+	testApps     *tc.TestcontainerApps
 	rollupApp    *bcmd.MockApp
 	posL1TestEnv *dockercompose.PoSL1TestEnv
 
@@ -47,13 +47,14 @@ var (
 )
 
 func setupDB(t *testing.T) *gorm.DB {
+	dsn, err := testApps.GetDBEndPoint()
+	assert.NoError(t, err)
+
 	cfg := &database.Config{
-		DSN:         base.DBConfig.DSN,
-		DriverName:  base.DBConfig.DriverName,
-		MaxOpenNum:  base.DBConfig.MaxOpenNum,
-		MaxIdleNum:  base.DBConfig.MaxIdleNum,
-		MaxLifetime: base.DBConfig.MaxLifetime,
-		MaxIdleTime: base.DBConfig.MaxIdleTime,
+		DSN:        dsn,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
 	}
 	db, err := database.InitDB(cfg)
 	assert.NoError(t, err)
@@ -64,22 +65,17 @@ func setupDB(t *testing.T) *gorm.DB {
 }
 
 func TestMain(m *testing.M) {
-	base = docker.NewDockerApp()
-	defer base.Free()
-
-	rollupApp = bcmd.NewRollupApp(base, "../conf/config.json")
-	defer rollupApp.Free()
-
-	var err error
-	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
-	if err != nil {
-		log.Crit("failed to create PoS L1 test environment", "err", err)
-	}
-	if err := posL1TestEnv.Start(); err != nil {
-		log.Crit("failed to start PoS L1 test environment", "err", err)
-	}
-	defer posL1TestEnv.Stop()
-
+	defer func() {
+		if testApps != nil {
+			testApps.Free()
+		}
+		if rollupApp != nil {
+			rollupApp.Free()
+		}
+		if posL1TestEnv != nil {
+			posL1TestEnv.Stop()
+		}
+	}()
 	m.Run()
 }
 
@@ -88,19 +84,26 @@ func setupEnv(t *testing.T) {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
-	var err error
+	var (
+		err           error
+		l1GethChainID *big.Int
+	)
+
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
+	assert.NoError(t, err, "failed to create PoS L1 test environment")
+	assert.NoError(t, posL1TestEnv.Start(), "failed to start PoS L1 test environment")
+
+	testApps = tc.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+	assert.NoError(t, testApps.StartL1GethContainer())
+	assert.NoError(t, testApps.StartL2GethContainer())
+	rollupApp = bcmd.NewRollupApp2(testApps, "../conf/config.json")
+
 	l1Client, err = posL1TestEnv.L1Client()
 	assert.NoError(t, err)
-	chainID, err := l1Client.ChainID(context.Background())
+	l2Client, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
-	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, chainID)
-	assert.NoError(t, err)
-	rollupApp.Config.L1Config.Endpoint = posL1TestEnv.Endpoint()
-	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
-
-	base.RunImages(t)
-
-	l2Client, err = base.L2Client()
+	l1GethChainID, err = l1Client.ChainID(context.Background())
 	assert.NoError(t, err)
 
 	l1Cfg, l2Cfg := rollupApp.Config.L1Config, rollupApp.Config.L2Config
@@ -108,6 +111,11 @@ func setupEnv(t *testing.T) {
 	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
+
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, l1GethChainID)
+	assert.NoError(t, err)
+	rollupApp.Config.L1Config.Endpoint = posL1TestEnv.Endpoint()
+	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)

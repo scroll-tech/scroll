@@ -209,6 +209,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			DataHash:      common.HexToHash(chunk.Hash),
 			IsPadding:     false,
 		}
+		if proof.ChunkInfo != nil {
+			chunkInfo.TxBytes = proof.ChunkInfo.TxBytes
+		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
 
