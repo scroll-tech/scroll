@@ -1,25 +1,20 @@
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-pragma solidity =0.8.24;
-
-import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
-
-import {ITransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-
-import {L1ETHGateway} from "../L1/gateways/L1ETHGateway.sol";
-import {L1GatewayRouter} from "../L1/gateways/L1GatewayRouter.sol";
-import {L1StandardERC20Gateway} from "../L1/gateways/L1StandardERC20Gateway.sol";
-import {L2ETHGateway} from "../L2/gateways/L2ETHGateway.sol";
-import {L2StandardERC20Gateway} from "../L2/gateways/L2StandardERC20Gateway.sol";
-import {ScrollStandardERC20} from "../libraries/token/ScrollStandardERC20.sol";
-import {ScrollStandardERC20Factory} from "../libraries/token/ScrollStandardERC20Factory.sol";
-
-import {L1GatewayTestBase} from "./L1GatewayTestBase.t.sol";
-
-import {TransferReentrantToken} from "./mocks/tokens/TransferReentrantToken.sol";
+import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
+import { MockERC20 } from "solmate/test/utils/mocks/MockERC20.sol";
+import { ITransparentUpgradeableProxy } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import { L1ETHGateway } from "../L1/gateways/L1ETHGateway.sol";
+import { L1GatewayRouter } from "../L1/gateways/L1GatewayRouter.sol";
+import { L1StandardERC20Gateway } from "../L1/gateways/L1StandardERC20Gateway.sol";
+import { L2ETHGateway } from "../L2/gateways/L2ETHGateway.sol";
+import { L2StandardERC20Gateway } from "../L2/gateways/L2StandardERC20Gateway.sol";
+import { ScrollStandardERC20 } from "../libraries/token/ScrollStandardERC20.sol";
+import { ScrollStandardERC20Factory } from "../libraries/token/ScrollStandardERC20Factory.sol";
+import { L1GatewayTestBase } from "./L1GatewayTestBase.t.sol";
+import { TransferReentrantToken } from "./mocks/tokens/TransferReentrantToken.sol";
 
 contract L1GatewayRouterTest is L1GatewayTestBase {
-    // from L1GatewayRouter
     event SetETHGateway(address indexed oldETHGateway, address indexed newEthGateway);
     event SetDefaultERC20Gateway(address indexed oldDefaultERC20Gateway, address indexed newDefaultERC20Gateway);
     event SetERC20Gateway(address indexed token, address indexed oldGateway, address indexed newGateway);
