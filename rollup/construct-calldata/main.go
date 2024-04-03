@@ -68,16 +68,16 @@ func main() {
 	}
 	defer file.Close()
 
-	for i := uint64(0); i <= batchIndex; i++ {
-		dbBatch, err := batchOrm.GetBatchByIndex(context.Background(), batchIndex)
+	for index := uint64(1); index <= batchIndex; index++ {
+		dbBatch, err := batchOrm.GetBatchByIndex(context.Background(), index)
 		if err != nil {
-			log.Crit("failed to get batch", "index", batchIndex, "err", err)
+			log.Crit("failed to get batch", "index", index, "err", err)
 			return
 		}
 
-		dbParentBatch, err := batchOrm.GetBatchByIndex(context.Background(), batchIndex-1)
+		dbParentBatch, err := batchOrm.GetBatchByIndex(context.Background(), index-1)
 		if err != nil {
-			log.Crit("failed to get batch", "index", batchIndex-1, "err", err)
+			log.Crit("failed to get batch", "index", index-1, "err", err)
 			return
 		}
 
@@ -97,13 +97,13 @@ func main() {
 			chunks[i] = &encoding.Chunk{Blocks: blocks}
 		}
 
-		if i == 0 {
+		if index == 0 {
 			calldata, err := constructCommitBatchPayloadCodecV0(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
 				log.Crit("fail to construct payload codecv0", "err", err)
 			}
 
-			_, err = file.WriteString(fmt.Sprintf("\nBatch Index: %d\n", i))
+			_, err = file.WriteString(fmt.Sprintf("\nBatch Index: %d\n", index))
 			if err != nil {
 				log.Crit("failed to write batch index to file", "err", err)
 			}
@@ -123,7 +123,7 @@ func main() {
 				log.Crit("fail to construct payload codecv1", "err", err)
 			}
 
-			_, err = file.WriteString(fmt.Sprintf("\nBatch Index: %d\n", i))
+			_, err = file.WriteString(fmt.Sprintf("\nBatch Index: %d\n", index))
 			if err != nil {
 				log.Crit("failed to write batch index to file", "err", err)
 			}
@@ -138,15 +138,15 @@ func main() {
 				log.Crit("failed to write calldata to file", "err", err)
 			}
 
-			_, err = file.WriteString("Blob:\n")
-			if err != nil {
-				log.Crit("failed to write 'Blob' label to file", "err", err)
-			}
+			//_, err = file.WriteString("Blob:\n")
+			//if err != nil {
+			//	log.Crit("failed to write 'Blob' label to file", "err", err)
+			//}
 
-			_, err = file.WriteString(hex.EncodeToString(blob[:]) + "\n")
-			if err != nil {
-				log.Crit("failed to write blob to file", "err", err)
-			}
+			//_, err = file.WriteString(hex.EncodeToString(blob[:]) + "\n")
+			//if err != nil {
+			//	log.Crit("failed to write blob to file", "err", err)
+			//}
 		}
 	}
 }
