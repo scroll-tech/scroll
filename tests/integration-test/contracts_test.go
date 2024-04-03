@@ -4,7 +4,6 @@ import (
 	"context"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -21,9 +20,6 @@ var (
 )
 
 func TestERC20(t *testing.T) {
-	base.RunL2Geth(t)
-	time.Sleep(time.Second * 3)
-
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
 
@@ -59,7 +55,6 @@ func TestERC20(t *testing.T) {
 }
 
 func TestGreeter(t *testing.T) {
-	base.RunL2Geth(t)
 	l2Cli, err := base.L2Client()
 	assert.Nil(t, err)
 
@@ -72,9 +67,19 @@ func TestGreeter(t *testing.T) {
 	val := big.NewInt(100)
 	tx, err := token.SetValue(auth, val)
 	assert.NoError(t, err)
-	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
 
-	res, err := token.Retrieve(nil)
-	assert.NoError(t, err)
-	assert.Equal(t, val.String(), res.String())
+	done := make(chan struct{})
+	go func() {
+		_, err = bind.WaitMined(context.Background(), l2Cli, tx)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		res, err := token.Retrieve(nil)
+		assert.NoError(t, err)
+		assert.Equal(t, val.String(), res.String())
+	case <-time.After(time.Second * 10): // Timeout after 10 seconds
+		t.Fatal("timeout waiting for transaction to be mined")
+	}
 }
