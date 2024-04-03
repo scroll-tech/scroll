@@ -47,7 +47,8 @@ func testERC20(t *testing.T) {
 	value := big.NewInt(1000)
 	tx, err := token.Transfer(auth, erc20Address, value)
 	assert.NoError(t, err)
-	bind.WaitMined(context.Background(), l2Cli, tx)
+	_, err = bind.WaitMined(context.Background(), l2Cli, tx)
+	assert.NoError(t, err)
 
 	authBls1, err := token.BalanceOf(nil, auth.From)
 	assert.NoError(t, err)
