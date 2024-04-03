@@ -8,11 +8,12 @@ import {L2ERC20Gateway} from "../L2/gateways/L2ERC20Gateway.sol";
 import {IL2ScrollMessenger} from "../L2/IL2ScrollMessenger.sol";
 import {IScrollERC20Upgradeable} from "../libraries/token/IScrollERC20Upgradeable.sol";
 import {ScrollGatewayBase} from "../libraries/gateway/ScrollGatewayBase.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {LidoBridgeableTokens} from "./LidoBridgeableTokens.sol";
 import {LidoGatewayManager} from "./LidoGatewayManager.sol";
 
-contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManager {
+contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManager, AccessControl {
     /**********
      * Errors *
      **********/
@@ -30,6 +31,9 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
     /// @dev The initial version of `L2LidoGateway` use `L2CustomERC20Gateway`. We keep the storage
     /// slot for `tokenMapping` for compatibility. It should no longer be used.
     mapping(address => address) private __tokenMapping;
+
+    // New role for initializing V2
+    bytes32 public constant INITIALIZER_ROLE = keccak256("INITIALIZER_ROLE");
 
     /***************
      * Constructor *
@@ -52,6 +56,8 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
         if (_l1Token == address(0) || _l2Token == address(0) || _router == address(0)) {
             revert ErrorZeroAddress();
         }
+
+        _setupRole(INITIALIZER_ROLE, msg.sender);
 
         _disableInitializers();
     }
@@ -81,7 +87,7 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
         address _depositsDisabler,
         address _withdrawalsEnabler,
         address _withdrawalsDisabler
-    ) external reinitializer(2) {
+    ) external reinitializer(2) onlyRole(INITIALIZER_ROLE) {
         __LidoGatewayManager_init(_depositsEnabler, _depositsDisabler, _withdrawalsEnabler, _withdrawalsDisabler);
     }
 
@@ -180,8 +186,3 @@ contract L2LidoGateway is L2ERC20Gateway, LidoBridgeableTokens, LidoGatewayManag
         );
 
         // 4. send message to L2ScrollMessenger
-        IL2ScrollMessenger(messenger).sendMessage{value: msg.value}(counterpart, 0, _message, _gasLimit);
-
-        emit WithdrawERC20(l1Token, _l2Token, _from, _to, _amount, _data);
-    }
-}
