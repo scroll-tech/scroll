@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-pragma solidity =0.8.24;
-
-import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
-
-import {ETHRateLimiter} from "../rate-limiter/ETHRateLimiter.sol";
-import {IETHRateLimiter} from "../rate-limiter/IETHRateLimiter.sol";
+import { DSTestPlus } from "solmate/test/utils/DSTestPlus.sol";
+import { ETHRateLimiter } from "../rate-limiter/ETHRateLimiter.sol";
+import { IETHRateLimiter } from "../rate-limiter/IETHRateLimiter.sol";
 
 contract ETHRateLimiterTest is DSTestPlus {
     event UpdateTotalLimit(uint256 oldTotalLimit, uint256 newTotalLimit);
