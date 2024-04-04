@@ -119,7 +119,7 @@ pub unsafe extern "C" fn gen_batch_proof(
 
         let chunk_hashes_proofs = chunk_hashes
             .into_iter()
-            .zip(chunk_proofs.into_iter())
+            .zip(chunk_proofs)
             .collect();
 
         let proof = PROVER
