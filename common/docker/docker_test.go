@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"scroll-tech/common/docker"
-
 	"github.com/jmoiron/sqlx"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/docker"
 )
 
 var (
