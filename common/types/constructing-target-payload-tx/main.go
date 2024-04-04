@@ -14,7 +14,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
 
-const targetBlobSize = 126976
+const targetTxSize = 126976
 
 func main() {
 	privateKeyHex := "0000000000000000000000000000000000000000000000000000000000000042"
@@ -46,7 +46,7 @@ func main() {
 	gasPrice := big.NewInt(2000000000)
 
 	lowerBound := 0
-	upperBound := targetBlobSize
+	upperBound := targetTxSize
 
 	for lowerBound <= upperBound {
 		mid := (lowerBound + upperBound) / 2
@@ -65,19 +65,15 @@ func main() {
 			log.Fatalf("Failed to sign tx: %v", err)
 		}
 
-		blobSize, err := estimateBatchL1CommitBlobSize(signedTx)
-		if err != nil {
-			log.Fatalf("Failed to estimate batch L1 commit blob size: %v", err)
-		}
-
 		rlpTxData, err := rlp.EncodeToBytes(signedTx)
 		if err != nil {
 			log.Fatalf("Failed to RLP encode the tx: %v", err)
 		}
+		txSize := len(rlpTxData)
 
-		if blobSize < targetBlobSize {
+		if txSize < targetTxSize {
 			lowerBound = mid + 1
-		} else if blobSize > targetBlobSize {
+		} else if txSize > targetTxSize {
 			upperBound = mid - 1
 		} else {
 			fmt.Printf("Found correct payload size: %d bytes\n", mid)
@@ -109,15 +105,4 @@ func main() {
 	}
 
 	fmt.Println("Could not find the exact payload size for 128 KiB RLP encoded transaction.")
-}
-
-func estimateBatchL1CommitBlobSize(tx *types.Transaction) (uint64, error) {
-	metadataSize := uint64(2 + 4*15)
-	rlpTxData, err := rlp.EncodeToBytes(tx)
-	if err != nil {
-		return 0, fmt.Errorf("failed to RLP encode the tx: tx=%v, err=%w", tx, err)
-	}
-	batchDataSize := uint64(len(rlpTxData))
-	paddedSize := ((metadataSize + batchDataSize + 30) / 31) * 32
-	return paddedSize, nil
 }
