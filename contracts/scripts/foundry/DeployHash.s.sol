@@ -4,7 +4,7 @@ pragma solidity =0.8.24;
 import {Script} from "forge-std/Script.sol";
 import {console} from "forge-std/console.sol";
 
-import {Hash} from "../../src/misc/Hash.sol";
+import {Hash} from "../../src/misc/hash.sol";
 
 contract DeployHash is Script {
     function run() external {
