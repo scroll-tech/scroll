@@ -169,8 +169,8 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		ProvingStatus:     int16(types.ProvingTaskUnassigned),
 		RollupStatus:      int16(types.RollupPending),
 		OracleStatus:      int16(types.GasOraclePending),
-		BlobDataProof:     nil, // BlobDataProof is not supported in codecv0
-		BlobSize:          0,   // BlobSize is not supported in codecv0
+		BlobDataProof:     nil, // only used for unit tests
+		BlobSize:          0,   // only used for unit tests
 	}
 
 	db := o.db

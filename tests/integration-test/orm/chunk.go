@@ -154,8 +154,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		ParentChunkStateRoot:         parentChunkStateRoot,
 		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
-		CrcMax:                       0, // CrcMax is not supported in codecv0
-		BlobSize:                     0, // BlobSize is not supported in codecv0
+		CrcMax:                       0, // only used for unit tests
+		BlobSize:                     0, // only used for unit tests
 	}
 
 	db := o.db
