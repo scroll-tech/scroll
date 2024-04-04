@@ -13,13 +13,13 @@ import (
 	"testing"
 	"time"
 
-	"scroll-tech/database/migrate"
+	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/params"
+	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 
-	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/controller/api"
-	"scroll-tech/coordinator/internal/controller/cron"
-	"scroll-tech/coordinator/internal/orm"
-	"scroll-tech/coordinator/internal/route"
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/common/testcontainers"
 	tc "scroll-tech/common/testcontainers"
@@ -28,11 +28,11 @@ import (
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/version"
 
-	"github.com/gin-gonic/gin"
-	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/params"
-	"github.com/stretchr/testify/assert"
-	"gorm.io/gorm"
+	"scroll-tech/coordinator/internal/config"
+	"scroll-tech/coordinator/internal/controller/api"
+	"scroll-tech/coordinator/internal/controller/cron"
+	"scroll-tech/coordinator/internal/orm"
+	"scroll-tech/coordinator/internal/route"
 )
 
 const (

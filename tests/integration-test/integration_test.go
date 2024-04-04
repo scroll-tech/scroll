@@ -4,27 +4,23 @@ import (
 	"context"
 	"log"
 	"math/big"
-	"scroll-tech/integration-test/orm"
 	"testing"
 	"time"
-
-	bcmd "scroll-tech/rollup/cmd"
-
-	rapp "scroll-tech/prover/cmd/app"
-
-	"scroll-tech/database/migrate"
-
-	capp "scroll-tech/coordinator/cmd/api/app"
-
-	"scroll-tech/common/testcontainers"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/utils"
-	"scroll-tech/common/version"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
+
+	"scroll-tech/common/testcontainers"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/utils"
+	"scroll-tech/common/version"
+	capp "scroll-tech/coordinator/cmd/api/app"
+	"scroll-tech/database/migrate"
+	"scroll-tech/integration-test/orm"
+	rapp "scroll-tech/prover/cmd/app"
+	bcmd "scroll-tech/rollup/cmd"
 )
 
 var (

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/rpc"
+
 	"scroll-tech/prover/config"
 
 	"scroll-tech/common/cmd"
@@ -14,8 +16,6 @@ import (
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
-
-	"github.com/scroll-tech/go-ethereum/rpc"
 )
 
 var (

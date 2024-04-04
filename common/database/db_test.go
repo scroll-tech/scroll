@@ -3,11 +3,11 @@ package database_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"scroll-tech/common/database"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/version"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestDB(t *testing.T) {
