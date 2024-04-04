@@ -4,14 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"testing"
+	"time"
+
+	"scroll-tech/prover/config"
+
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
-	"scroll-tech/prover/config"
-	"testing"
-	"time"
 
 	"github.com/scroll-tech/go-ethereum/rpc"
 )

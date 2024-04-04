@@ -1,10 +1,11 @@
 package database_test
 
 import (
+	"testing"
+
 	"scroll-tech/common/database"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/version"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

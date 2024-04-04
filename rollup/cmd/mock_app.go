@@ -28,7 +28,7 @@ type MockApp struct {
 	args []string
 }
 
-// NewRollupApp return a new rollupApp manager, name mush be one them.
+// NewRollupApp return a new rollupApp manager.
 func NewRollupApp(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
 	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
 	rollupApp := &MockApp{

@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"scroll-tech/common/database"
 	"time"
+
+	"scroll-tech/common/database"
 
 	"gorm.io/gorm"
 

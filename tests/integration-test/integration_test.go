@@ -4,16 +4,20 @@ import (
 	"context"
 	"log"
 	"math/big"
+	"scroll-tech/integration-test/orm"
+	"testing"
+	"time"
+
+	bcmd "scroll-tech/rollup/cmd"
+
+	rapp "scroll-tech/prover/cmd/app"
+
+	"scroll-tech/database/migrate"
+
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-	"scroll-tech/database/migrate"
-	"scroll-tech/integration-test/orm"
-	rapp "scroll-tech/prover/cmd/app"
-	bcmd "scroll-tech/rollup/cmd"
-	"testing"
-	"time"
 
 	capp "scroll-tech/coordinator/cmd/api/app"
 
