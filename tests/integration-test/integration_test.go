@@ -14,12 +14,12 @@ import (
 
 	"scroll-tech/database/migrate"
 
+	capp "scroll-tech/coordinator/cmd/api/app"
+
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-
-	capp "scroll-tech/coordinator/cmd/api/app"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"

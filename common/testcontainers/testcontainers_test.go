@@ -3,10 +3,9 @@ package testcontainers
 import (
 	"testing"
 
-	"gorm.io/gorm"
-
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 // TestNewTestcontainerApps tests NewTestcontainerApps

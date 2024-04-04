@@ -10,15 +10,14 @@ import (
 	"testing"
 	"time"
 
-	"scroll-tech/common/testcontainers"
-
 	coordinatorConfig "scroll-tech/coordinator/internal/config"
-
-	"github.com/scroll-tech/go-ethereum/params"
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
+
+	"github.com/scroll-tech/go-ethereum/params"
 )
 
 var (

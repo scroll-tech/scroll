@@ -4,11 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq" //nolint:golint
-	"github.com/stretchr/testify/assert"
-
 	"scroll-tech/common/docker"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/stretchr/testify/assert"
 )
 
 var (
