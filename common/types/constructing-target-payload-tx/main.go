@@ -36,10 +36,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to retrieve account nonce: %v", err)
 	}
-	prepareAndSendTransactions(client, auth, nonce, 2)
-	prepareAndSendTransactions(client, auth, nonce+2, 3)
-	prepareAndSendTransactions(client, auth, nonce+2+3, 4)
-	prepareAndSendTransactions(client, auth, nonce+2+3+4, 5)
+	prepareAndSendTransactions(client, auth, nonce, 4)
+	prepareAndSendTransactions(client, auth, nonce+4, 5)
+	prepareAndSendTransactions(client, auth, nonce+4+5, 6)
 }
 
 func prepareAndSendTransactions(client *ethclient.Client, auth *bind.TransactOpts, initialNonce uint64, totalTxNum uint64) error {
