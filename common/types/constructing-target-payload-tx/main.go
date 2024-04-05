@@ -37,6 +37,9 @@ func main() {
 		log.Fatalf("Failed to retrieve account nonce: %v", err)
 	}
 	prepareAndSendTransactions(client, auth, nonce, 2)
+	prepareAndSendTransactions(client, auth, nonce+2, 3)
+	prepareAndSendTransactions(client, auth, nonce+2+3, 4)
+	prepareAndSendTransactions(client, auth, nonce+2+3+4, 5)
 }
 
 func prepareAndSendTransactions(client *ethclient.Client, auth *bind.TransactOpts, initialNonce uint64, totalTxNum uint64) error {
@@ -46,7 +49,7 @@ func prepareAndSendTransactions(client *ethclient.Client, auth *bind.TransactOpt
 	var signedTxs []*types.Transaction
 	payloadSum := 0
 
-	dataPayload := make([]byte, targetTxSize/4)
+	dataPayload := make([]byte, targetTxSize/totalTxNum)
 	for i := range dataPayload {
 		dataPayload[i] = 0xff
 	}
@@ -102,7 +105,7 @@ func prepareAndSendTransactions(client *ethclient.Client, auth *bind.TransactOpt
 		if err != nil {
 			log.Fatalf("Failed to RLP encode the tx: %v", err)
 		}
-		txSize := len(rlpTxData) + payloadSum
+		txSize := len(rlpTxData)
 
 		if payloadSum+txSize < targetTxSize {
 			lowerBound = mid + 1
