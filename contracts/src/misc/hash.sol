@@ -18,8 +18,7 @@ contract Hash {
         }
     }
 
-    function sha256s(uint256 n) public {
-        bytes memory input = abi.encode(999);
+    function sha256s(bytes memory input, uint256 n) public {
         for (uint256 i = 0; i < n; i++) {
             sha256(input);
         }
