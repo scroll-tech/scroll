@@ -13,7 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
 
-const targetTxSize = 126914
+const targetTxSize = 120568
 
 func main() {
 	privateKeyHex := "0000000000000000000000000000000000000000000000000000000000000042"
