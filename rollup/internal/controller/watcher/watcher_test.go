@@ -10,14 +10,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/rollup/internal/config"
-
-	"scroll-tech/database/migrate"
-
 	"scroll-tech/common/database"
 	"scroll-tech/common/testcontainers"
 	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
+	"scroll-tech/database/migrate"
+
+	"scroll-tech/rollup/internal/config"
 )
 
 var (
