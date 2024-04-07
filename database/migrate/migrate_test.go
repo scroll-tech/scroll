@@ -7,11 +7,9 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/database"
-	db "scroll-tech/database"
-
 	"scroll-tech/common/testcontainers"
-	tc "scroll-tech/common/testcontainers"
+
+	"scroll-tech/database"
 )
 
 var (
@@ -21,12 +19,12 @@ var (
 
 func setupEnv(t *testing.T) {
 	// Start db container.
-	testApps = tc.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	// Create db orm handler.
 	dsn, err := testApps.GetDBEndPoint()
 	assert.NoError(t, err)
-	factory, err := db.NewOrmFactory(&database.DBConfig{
+	factory, err := database.NewOrmFactory(&database.DBConfig{
 		DSN:        dsn,
 		DriverName: "postgres",
 		MaxOpenNum: 200,
