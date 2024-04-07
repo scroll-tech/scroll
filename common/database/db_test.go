@@ -11,7 +11,6 @@ import (
 )
 
 func TestDB(t *testing.T) {
-	var err error
 	version.Version = "v4.1.98-aaa-bbb-ccc"
 
 	testApps := testcontainers.NewTestcontainerApps()
