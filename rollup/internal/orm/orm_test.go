@@ -15,7 +15,6 @@ import (
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/common/testcontainers"
-	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
@@ -50,7 +49,7 @@ func TestMain(m *testing.M) {
 func setupEnv(t *testing.T) {
 	var err error
 
-	testApps = tc.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 
 	db, err = testApps.GetGormDBClient()

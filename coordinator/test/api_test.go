@@ -22,7 +22,6 @@ import (
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/common/testcontainers"
-	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
@@ -156,7 +155,7 @@ func setEnv(t *testing.T) {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
-	testApps = tc.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 
 	db, err = testApps.GetGormDBClient()

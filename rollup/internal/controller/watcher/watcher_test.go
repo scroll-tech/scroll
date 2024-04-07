@@ -12,7 +12,6 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/testcontainers"
-	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/database/migrate"
 
@@ -42,7 +41,7 @@ func setupEnv(t *testing.T) (err error) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	testApps = tc.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())

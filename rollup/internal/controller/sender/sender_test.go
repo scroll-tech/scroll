@@ -28,7 +28,6 @@ import (
 
 	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/testcontainers"
-	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
 
@@ -78,7 +77,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err, "failed to create PoS L1 test environment")
 	assert.NoError(t, posL1TestEnv.Start(), "failed to start PoS L1 test environment")
 
-	testApps = tc.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
