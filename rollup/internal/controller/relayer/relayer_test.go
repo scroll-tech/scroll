@@ -8,17 +8,17 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/ethclient"
+	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/stretchr/testify/assert"
+
 	"scroll-tech/common/database"
 	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/testcontainers"
 	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
-
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/ethclient"
-	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/rollup/internal/config"
 )
