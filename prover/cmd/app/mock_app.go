@@ -13,6 +13,7 @@ import (
 
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/docker"
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
@@ -30,7 +31,7 @@ func getIndex() int {
 type ProverApp struct {
 	Config *config.Config
 
-	base *docker.App
+	testApps *testcontainers.TestcontainerApps
 
 	originFile string
 	proverFile string
@@ -43,7 +44,7 @@ type ProverApp struct {
 }
 
 // NewProverApp return a new proverApp manager.
-func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, httpURL string) *ProverApp {
+func NewProverApp(testApps *testcontainers.TestcontainerApps, mockName utils.MockAppName, file string, httpURL string) *ProverApp {
 	var proofType message.ProofType
 	switch mockName {
 	case utils.ChunkProverApp:
@@ -54,12 +55,12 @@ func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, htt
 		return nil
 	}
 	name := string(mockName)
-	proverFile := fmt.Sprintf("/tmp/%d_%s-config.json", base.Timestamp, name)
+	proverFile := fmt.Sprintf("/tmp/%d_%s-config.json", testApps.Timestamp, name)
 	proverApp := &ProverApp{
-		base:       base,
+		testApps:   testApps,
 		originFile: file,
 		proverFile: proverFile,
-		bboltDB:    fmt.Sprintf("/tmp/%d_%s_bbolt_db", base.Timestamp, name),
+		bboltDB:    fmt.Sprintf("/tmp/%d_%s_bbolt_db", testApps.Timestamp, name),
 		index:      getIndex(),
 		name:       name,
 		args:       []string{"--log.debug", "--config", proverFile},
@@ -93,8 +94,13 @@ func (r *ProverApp) MockConfig(store bool, httpURL string, proofType message.Pro
 		return err
 	}
 	cfg.ProverName = fmt.Sprintf("%s_%d", r.name, r.index)
-	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.ProverName)
-	cfg.L2Geth.Endpoint = r.base.L2gethImg.Endpoint()
+	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.testApps.Timestamp, cfg.ProverName)
+
+	endpoint, err := r.testApps.GetL2GethEndPoint()
+	if err != nil {
+		return err
+	}
+	cfg.L2Geth.Endpoint = endpoint
 	cfg.L2Geth.Confirmations = rpc.LatestBlockNumber
 	// Reuse l1geth's keystore file
 	cfg.KeystorePassword = "scrolltest"
