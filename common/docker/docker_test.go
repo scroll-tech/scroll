@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq" //nolint:golint
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/docker"
