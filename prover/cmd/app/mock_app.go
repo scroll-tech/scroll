@@ -12,7 +12,6 @@ import (
 	"scroll-tech/prover/config"
 
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/docker"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -40,7 +39,7 @@ type ProverApp struct {
 	index int
 	name  string
 	args  []string
-	docker.AppAPI
+	*cmd.Cmd
 }
 
 // NewProverApp return a new proverApp manager.
@@ -65,7 +64,7 @@ func NewProverApp(testApps *testcontainers.TestcontainerApps, mockName utils.Moc
 		name:       name,
 		args:       []string{"--log.debug", "--config", proverFile},
 	}
-	proverApp.AppAPI = cmd.NewCmd(proverApp.name, proverApp.args...)
+	proverApp.Cmd = cmd.NewCmd(proverApp.name, proverApp.args...)
 	if err := proverApp.MockConfig(true, httpURL, proofType); err != nil {
 		panic(err)
 	}
@@ -74,13 +73,13 @@ func NewProverApp(testApps *testcontainers.TestcontainerApps, mockName utils.Moc
 
 // RunApp run prover-test child process by multi parameters.
 func (r *ProverApp) RunApp(t *testing.T) {
-	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
+	r.Cmd.RunApp(func() bool { return r.Cmd.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
 // Free stop and release prover-test.
 func (r *ProverApp) Free() {
-	if !utils.IsNil(r.AppAPI) {
-		r.AppAPI.WaitExit()
+	if !utils.IsNil(r.Cmd) {
+		r.Cmd.WaitExit()
 	}
 	_ = os.Remove(r.proverFile)
 	_ = os.Remove(r.Config.KeystorePath)

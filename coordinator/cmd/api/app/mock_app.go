@@ -13,7 +13,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/docker"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 
@@ -38,7 +37,7 @@ type CoordinatorApp struct {
 	HTTPPort              int64
 
 	args []string
-	docker.AppAPI
+	*cmd.Cmd
 }
 
 // NewCoordinatorApp return a new coordinatorApp manager.
@@ -64,14 +63,14 @@ func NewCoordinatorApp(testApps *testcontainers.TestcontainerApps, configFile st
 
 // RunApp run coordinator-test child process by multi parameters.
 func (c *CoordinatorApp) RunApp(t *testing.T, args ...string) {
-	c.AppAPI = cmd.NewCmd(string(utils.CoordinatorAPIApp), append(c.args, args...)...)
-	c.AppAPI.RunApp(func() bool { return c.AppAPI.WaitResult(t, time.Second*20, "Start coordinator api successfully") })
+	c.Cmd = cmd.NewCmd(string(utils.CoordinatorAPIApp), append(c.args, args...)...)
+	c.Cmd.RunApp(func() bool { return c.Cmd.WaitResult(t, time.Second*20, "Start coordinator api successfully") })
 }
 
 // Free stop and release coordinator-test.
 func (c *CoordinatorApp) Free() {
-	if !utils.IsNil(c.AppAPI) {
-		c.AppAPI.WaitExit()
+	if !utils.IsNil(c.Cmd) {
+		c.Cmd.WaitExit()
 	}
 	_ = os.Remove(c.coordinatorFile)
 }
