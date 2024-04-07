@@ -47,8 +47,6 @@ func setupEnv(t *testing.T) (err error) {
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
 
-	//base.RunImages(t)
-
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL1GethEndPoint()
 	assert.NoError(t, err)
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL2GethEndPoint()
