@@ -26,17 +26,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/database/migrate"
-
-	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
-	dockercompose "scroll-tech/common/docker-compose/l1"
-	"scroll-tech/common/types"
-
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/mock_bridge"
+
+	"scroll-tech/database/migrate"
+
+	dockercompose "scroll-tech/common/docker-compose/l1"
+	"scroll-tech/common/testcontainers"
+	tc "scroll-tech/common/testcontainers"
+	"scroll-tech/common/types"
 )
 
 const TXBatch = 50
@@ -44,7 +44,7 @@ const TXBatch = 50
 var (
 	privateKey           *ecdsa.PrivateKey
 	cfg                  *config.Config
-	base                 *docker.App
+	testApps             *testcontainers.TestcontainerApps
 	posL1TestEnv         *dockercompose.PoSL1TestEnv
 	txTypes              = []string{"LegacyTx", "DynamicFeeTx", "DynamicFeeTx"}
 	txBlob               = []*kzg4844.Blob{nil, nil, randBlob()}
@@ -54,19 +54,14 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	base = docker.NewDockerApp()
-	defer base.Free()
-
-	var err error
-	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
-	if err != nil {
-		log.Crit("failed to create PoS L1 test environment", "err", err)
-	}
-	if err := posL1TestEnv.Start(); err != nil {
-		log.Crit("failed to start PoS L1 test environment", "err", err)
-	}
-	defer posL1TestEnv.Stop()
-
+	defer func() {
+		if testApps != nil {
+			testApps.Free()
+		}
+		if posL1TestEnv != nil {
+			posL1TestEnv.Stop()
+		}
+	}()
 	m.Run()
 }
 
@@ -82,17 +77,18 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	privateKey = priv
 
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
+	assert.NoError(t, err, "failed to create PoS L1 test environment")
+	assert.NoError(t, posL1TestEnv.Start(), "failed to start PoS L1 test environment")
+
+	testApps = tc.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+	assert.NoError(t, testApps.StartL1GethContainer())
+	assert.NoError(t, testApps.StartL2GethContainer())
+
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
 
-	base.RunDBImage(t)
-	db, err = database.InitDB(
-		&database.Config{
-			DSN:        base.DBConfig.DSN,
-			DriverName: base.DBConfig.DriverName,
-			MaxOpenNum: base.DBConfig.MaxOpenNum,
-			MaxIdleNum: base.DBConfig.MaxIdleNum,
-		},
-	)
+	db, err = testApps.GetGormDBClient()
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)

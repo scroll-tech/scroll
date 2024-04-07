@@ -7,12 +7,11 @@ import (
 	"testing"
 	"time"
 
+	"scroll-tech/rollup/internal/config"
+
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/docker"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
-
-	"scroll-tech/rollup/internal/config"
 )
 
 // MockApp mockApp-test client manager.
@@ -20,7 +19,7 @@ type MockApp struct {
 	Config   *config.Config
 	testApps *testcontainers.TestcontainerApps
 
-	mockApps map[utils.MockAppName]docker.AppAPI
+	mockApps map[utils.MockAppName]*cmd.Cmd
 
 	originFile string
 	rollupFile string
@@ -33,7 +32,7 @@ func NewRollupApp(testApps *testcontainers.TestcontainerApps, file string) *Mock
 	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
 	rollupApp := &MockApp{
 		testApps:   testApps,
-		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
+		mockApps:   make(map[utils.MockAppName]*cmd.Cmd),
 		originFile: file,
 		rollupFile: rollupFile,
 		args:       []string{"--log.debug", "--config", rollupFile},
@@ -69,7 +68,7 @@ func (b *MockApp) WaitExit() {
 	for _, app := range b.mockApps {
 		app.WaitExit()
 	}
-	b.mockApps = make(map[utils.MockAppName]docker.AppAPI)
+	b.mockApps = make(map[utils.MockAppName]*cmd.Cmd)
 }
 
 // Free stop and release rollup mocked apps.

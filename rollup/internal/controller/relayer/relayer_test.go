@@ -13,20 +13,21 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 
+	"scroll-tech/rollup/internal/config"
+
 	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
 	dockercompose "scroll-tech/common/docker-compose/l1"
+	"scroll-tech/common/testcontainers"
+	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
-
-	"scroll-tech/rollup/internal/config"
 )
 
 var (
 	// config
 	cfg *config.Config
 
-	base         *docker.App
+	testApps     *testcontainers.TestcontainerApps
 	posL1TestEnv *dockercompose.PoSL1TestEnv
 
 	// l2geth client
@@ -53,16 +54,25 @@ func setupEnv(t *testing.T) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	base.RunL2Geth(t)
-	base.RunDBImage(t)
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
+	assert.NoError(t, err, "failed to create PoS L1 test environment")
+	assert.NoError(t, posL1TestEnv.Start(), "failed to start PoS L1 test environment")
+
+	testApps = tc.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+	assert.NoError(t, testApps.StartL2GethContainer())
 
 	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL2GethEndPoint()
+	assert.NoError(t, err)
+
+	dsn, err := testApps.GetDBEndPoint()
+	assert.NoError(t, err)
 	cfg.DBConfig = &database.Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
+		DSN:        dsn,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
 	}
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)
@@ -70,7 +80,7 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 
 	// Create l2geth client.
-	l2Cli, err = base.L2Client()
+	l2Cli, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
@@ -97,19 +107,14 @@ func setupEnv(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	base = docker.NewDockerApp()
-	base.Free()
-
-	var err error
-	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
-	if err != nil {
-		log.Crit("failed to create PoS L1 test environment", "err", err)
-	}
-	if err := posL1TestEnv.Start(); err != nil {
-		log.Crit("failed to start PoS L1 test environment", "err", err)
-	}
-	defer posL1TestEnv.Stop()
-
+	defer func() {
+		if testApps != nil {
+			testApps.Free()
+		}
+		if posL1TestEnv != nil {
+			posL1TestEnv.Stop()
+		}
+	}()
 	m.Run()
 }
 
