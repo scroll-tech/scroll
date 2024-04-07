@@ -26,20 +26,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	bridgeAbi "scroll-tech/rollup/abi"
-	"scroll-tech/rollup/internal/config"
-	"scroll-tech/rollup/internal/orm"
-	"scroll-tech/rollup/mock_bridge"
-
-	"scroll-tech/database/migrate"
-
 	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/testcontainers"
 	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
-)
+	"scroll-tech/database/migrate"
 
-const TXBatch = 50
+	bridgeAbi "scroll-tech/rollup/abi"
+	"scroll-tech/rollup/internal/config"
+	"scroll-tech/rollup/internal/orm"
+	"scroll-tech/rollup/mock_bridge"
+)
 
 var (
 	privateKey           *ecdsa.PrivateKey
