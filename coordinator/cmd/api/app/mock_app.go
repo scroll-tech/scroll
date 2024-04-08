@@ -12,11 +12,11 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/params"
 
-	coordinatorConfig "scroll-tech/coordinator/internal/config"
-
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/docker"
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
+
+	coordinatorConfig "scroll-tech/coordinator/internal/config"
 )
 
 var (
@@ -28,7 +28,7 @@ type CoordinatorApp struct {
 	Config      *coordinatorConfig.Config
 	ChainConfig *params.ChainConfig
 
-	base *docker.App
+	testApps *testcontainers.TestcontainerApps
 
 	configOriginFile      string
 	chainConfigOriginFile string
@@ -37,17 +37,17 @@ type CoordinatorApp struct {
 	HTTPPort              int64
 
 	args []string
-	docker.AppAPI
+	*cmd.Cmd
 }
 
 // NewCoordinatorApp return a new coordinatorApp manager.
-func NewCoordinatorApp(base *docker.App, configFile string, chainConfigFile string) *CoordinatorApp {
-	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", base.Timestamp)
-	genesisFile := fmt.Sprintf("/tmp/%d_genesis.json", base.Timestamp)
+func NewCoordinatorApp(testApps *testcontainers.TestcontainerApps, configFile string, chainConfigFile string) *CoordinatorApp {
+	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", testApps.Timestamp)
+	genesisFile := fmt.Sprintf("/tmp/%d_genesis.json", testApps.Timestamp)
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	httpPort := port.Int64() + httpStartPort
 	coordinatorApp := &CoordinatorApp{
-		base:                  base,
+		testApps:              testApps,
 		configOriginFile:      configFile,
 		chainConfigOriginFile: chainConfigFile,
 		coordinatorFile:       coordinatorFile,
@@ -63,14 +63,14 @@ func NewCoordinatorApp(base *docker.App, configFile string, chainConfigFile stri
 
 // RunApp run coordinator-test child process by multi parameters.
 func (c *CoordinatorApp) RunApp(t *testing.T, args ...string) {
-	c.AppAPI = cmd.NewCmd(string(utils.CoordinatorAPIApp), append(c.args, args...)...)
-	c.AppAPI.RunApp(func() bool { return c.AppAPI.WaitResult(t, time.Second*20, "Start coordinator api successfully") })
+	c.Cmd = cmd.NewCmd(string(utils.CoordinatorAPIApp), append(c.args, args...)...)
+	c.Cmd.RunApp(func() bool { return c.Cmd.WaitResult(t, time.Second*20, "Start coordinator api successfully") })
 }
 
 // Free stop and release coordinator-test.
 func (c *CoordinatorApp) Free() {
-	if !utils.IsNil(c.AppAPI) {
-		c.AppAPI.WaitExit()
+	if !utils.IsNil(c.Cmd) {
+		c.Cmd.WaitExit()
 	}
 	_ = os.Remove(c.coordinatorFile)
 }
@@ -82,7 +82,6 @@ func (c *CoordinatorApp) HTTPEndpoint() string {
 
 // MockConfig creates a new coordinator config.
 func (c *CoordinatorApp) MockConfig(store bool) error {
-	base := c.base
 	cfg, err := coordinatorConfig.NewConfig(c.configOriginFile)
 	if err != nil {
 		return err
@@ -97,7 +96,11 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		MaxVerifierWorkers:     4,
 		MinProverVersion:       "v1.0.0",
 	}
-	cfg.DB.DSN = base.DBImg.Endpoint()
+	endpoint, err := c.testApps.GetDBEndPoint()
+	if err != nil {
+		return err
+	}
+	cfg.DB.DSN = endpoint
 	cfg.L2.ChainID = 111
 	cfg.Auth.ChallengeExpireDurationSec = 1
 	cfg.Auth.LoginExpireDurationSec = 1

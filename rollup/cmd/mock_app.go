@@ -7,19 +7,19 @@ import (
 	"testing"
 	"time"
 
-	"scroll-tech/common/cmd"
-	"scroll-tech/common/docker"
-	"scroll-tech/common/utils"
-
 	"scroll-tech/rollup/internal/config"
+
+	"scroll-tech/common/cmd"
+	"scroll-tech/common/testcontainers"
+	"scroll-tech/common/utils"
 )
 
 // MockApp mockApp-test client manager.
 type MockApp struct {
-	Config *config.Config
-	base   *docker.App
+	Config   *config.Config
+	testApps *testcontainers.TestcontainerApps
 
-	mockApps map[utils.MockAppName]docker.AppAPI
+	mockApps map[utils.MockAppName]*cmd.Cmd
 
 	originFile string
 	rollupFile string
@@ -27,13 +27,12 @@ type MockApp struct {
 	args []string
 }
 
-// NewRollupApp return a new rollupApp manager, name mush be one them.
-func NewRollupApp(base *docker.App, file string) *MockApp {
-
-	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", base.Timestamp)
+// NewRollupApp return a new rollupApp manager.
+func NewRollupApp(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
+	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
 	rollupApp := &MockApp{
-		base:       base,
-		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
+		testApps:   testApps,
+		mockApps:   make(map[utils.MockAppName]*cmd.Cmd),
 		originFile: file,
 		rollupFile: rollupFile,
 		args:       []string{"--log.debug", "--config", rollupFile},
@@ -69,7 +68,7 @@ func (b *MockApp) WaitExit() {
 	for _, app := range b.mockApps {
 		app.WaitExit()
 	}
-	b.mockApps = make(map[utils.MockAppName]docker.AppAPI)
+	b.mockApps = make(map[utils.MockAppName]*cmd.Cmd)
 }
 
 // Free stop and release rollup mocked apps.
@@ -80,18 +79,29 @@ func (b *MockApp) Free() {
 
 // MockConfig creates a new rollup config.
 func (b *MockApp) MockConfig(store bool) error {
-	base := b.base
 	// Load origin rollup config file.
 	cfg, err := config.NewConfig(b.originFile)
 	if err != nil {
 		return err
 	}
 
-	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.DBConfig.DSN = base.DBImg.Endpoint()
+	l1GethEndpoint, err := b.testApps.GetL1GethEndPoint()
+	if err != nil {
+		return err
+	}
+	l2GethEndpoint, err := b.testApps.GetL2GethEndPoint()
+	if err != nil {
+		return err
+	}
+	dbEndpoint, err := b.testApps.GetDBEndPoint()
+	if err != nil {
+		return err
+	}
+	cfg.L1Config.Endpoint = l1GethEndpoint
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = l2GethEndpoint
+	cfg.L2Config.Endpoint = l2GethEndpoint
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = l1GethEndpoint
+	cfg.DBConfig.DSN = dbEndpoint
 	b.Config = cfg
 
 	if !store {
