@@ -12,6 +12,7 @@ use prover::{
     utils::{chunk_trace_to_witness_block, init_env_and_log},
     BatchProof, BlockTrace, ChunkHash, ChunkProof,
 };
+use snark_verifier_sdk::verify_evm_calldata;
 use std::{cell::OnceCell, env, ptr::null};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
@@ -148,11 +149,17 @@ pub unsafe extern "C" fn gen_batch_proof(
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char) -> c_char {
+pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char, hardfork_id: usize) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
-
-    let verified = panic_catch(|| VERIFIER.get().unwrap().verify_agg_evm_proof(proof));
+    let verified = panic_catch(|| {
+        if hardfork_id == 1 {
+            // before upgrade#2: 4844
+            verify_evm_calldata(include!("evm_verifier_fork_1.bin"), proof.calldata())
+        } else {
+            VERIFIER.get().unwrap().verify_agg_evm_proof(proof)
+        }
+    });
     verified.unwrap_or(false) as c_char
 }
 
