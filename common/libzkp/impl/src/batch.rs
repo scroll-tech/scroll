@@ -155,7 +155,7 @@ pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char, hardfork_id: u
     let verified = panic_catch(|| {
         if hardfork_id == 1 {
             // before upgrade#2: 4844
-            verify_evm_calldata(include!("evm_verifier_fork_1.bin"), proof.calldata())
+            verify_evm_calldata(include_bytes!("evm_verifier_fork_1.bin").to_vec(), proof.calldata())
         } else {
             VERIFIER.get().unwrap().verify_agg_evm_proof(proof)
         }
