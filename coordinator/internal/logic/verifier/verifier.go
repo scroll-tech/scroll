@@ -78,8 +78,8 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
 	}()
 
 	log.Info("Start to verify batch proof ...")
-        forkID := 2 // FIXME: get forkID from block height?
-	verified := C.verify_batch_proof(proofStr, forkID)
+        var forkID int64 = 2 // FIXME: get forkID from block height?
+	verified := C.verify_batch_proof(proofStr, C.int64_t(forkID))
 	return verified != 0, nil
 }
 

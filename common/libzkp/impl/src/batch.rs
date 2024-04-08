@@ -149,12 +149,12 @@ pub unsafe extern "C" fn gen_batch_proof(
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char, hardfork_id: usize) -> c_char {
+pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char, fork_id: i64) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
     let verified = panic_catch(|| {
-        if hardfork_id == 1 {
-            // before upgrade#2: 4844
+        if fork_id == 1 {
+            // before upgrade#2(EIP4844)
             verify_evm_calldata(include_bytes!("evm_verifier_fork_1.bin").to_vec(), proof.calldata())
         } else {
             VERIFIER.get().unwrap().verify_agg_evm_proof(proof)
