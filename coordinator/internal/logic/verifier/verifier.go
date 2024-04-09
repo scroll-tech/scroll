@@ -80,7 +80,6 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) 
 		C.free(unsafe.Pointer(forkNameStr))
 	}()
 
-	var forkID int64 = 2 // FIXME: get forkID from block height?
 	verified := C.verify_batch_proof(proofStr, forkNameStr)
 	return verified != 0, nil
 }
