@@ -88,9 +88,9 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.LIDOGatewayAddr))
 	}
 
-	if common.HexToAddress(cfg.PUFFERGatewayAddr) != (common.Address{}) {
-		addressList = append(addressList, common.HexToAddress(cfg.PUFFERGatewayAddr))
-		gatewayList = append(gatewayList, common.HexToAddress(cfg.PUFFERGatewayAddr))
+	if common.HexToAddress(cfg.PufferGatewayAddr) != (common.Address{}) {
+		addressList = append(addressList, common.HexToAddress(cfg.PufferGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.PufferGatewayAddr))
 	}
 
 	log.Info("L2 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)

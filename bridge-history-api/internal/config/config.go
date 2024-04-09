@@ -23,7 +23,7 @@ type FetcherConfig struct {
 	DAIGatewayAddr           string `json:"DAIGatewayAddr"`
 	USDCGatewayAddr          string `json:"USDCGatewayAddr"`
 	LIDOGatewayAddr          string `json:"LIDOGatewayAddr"`
-	PUFFERGatewayAddr        string `json:"PUFFERGatewayAddr"`
+	PufferGatewayAddr        string `json:"PufferGatewayAddr"`
 	ERC721GatewayAddr        string `json:"ERC721GatewayAddr"`
 	ERC1155GatewayAddr       string `json:"ERC1155GatewayAddr"`
 	ScrollChainAddr          string `json:"ScrollChainAddr"`
