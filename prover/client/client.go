@@ -21,14 +21,15 @@ import (
 type CoordinatorClient struct {
 	client *resty.Client
 
-	proverName string
-	priv       *ecdsa.PrivateKey
+	proverName   string
+	hardForkName string
+	priv         *ecdsa.PrivateKey
 
 	mu sync.Mutex
 }
 
 // NewCoordinatorClient constructs a new CoordinatorClient.
-func NewCoordinatorClient(cfg *config.CoordinatorConfig, proverName string, priv *ecdsa.PrivateKey) (*CoordinatorClient, error) {
+func NewCoordinatorClient(cfg *config.CoordinatorConfig, proverName string, hardForkName string, priv *ecdsa.PrivateKey) (*CoordinatorClient, error) {
 	client := resty.New().
 		SetTimeout(time.Duration(cfg.ConnectionTimeoutSec) * time.Second).
 		SetRetryCount(cfg.RetryCount).
@@ -50,9 +51,10 @@ func NewCoordinatorClient(cfg *config.CoordinatorConfig, proverName string, priv
 		"retry wait time (second)", cfg.RetryWaitTimeSec)
 
 	return &CoordinatorClient{
-		client:     client,
-		proverName: proverName,
-		priv:       priv,
+		client:       client,
+		proverName:   proverName,
+		hardForkName: hardForkName,
+		priv:         priv,
 	}, nil
 }
 
@@ -83,6 +85,7 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 			ProverVersion: version.Version,
 			ProverName:    c.proverName,
 			Challenge:     challengeResult.Data.Token,
+			HardForkName:  c.hardForkName,
 		},
 	}
 
@@ -97,10 +100,12 @@ func (c *CoordinatorClient) Login(ctx context.Context) error {
 			Challenge     string `json:"challenge"`
 			ProverName    string `json:"prover_name"`
 			ProverVersion string `json:"prover_version"`
+			HardForkName  string `json:"hard_fork_name"`
 		}{
 			Challenge:     authMsg.Identity.Challenge,
 			ProverName:    authMsg.Identity.ProverName,
 			ProverVersion: authMsg.Identity.ProverVersion,
+			HardForkName:  authMsg.Identity.HardForkName,
 		},
 		Signature: authMsg.Signature,
 	}

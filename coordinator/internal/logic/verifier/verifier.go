@@ -58,7 +58,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, batch verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -77,8 +77,8 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
 		C.free(unsafe.Pointer(proofStr))
 	}()
 
-	log.Info("Start to verify batch proof ...")
-        var forkID int64 = 2 // FIXME: get forkID from block height?
+	log.Info("Start to verify batch proof", "forkName", forkName)
+	var forkID int64 = 2 // FIXME: get forkID from block height?
 	verified := C.verify_batch_proof(proofStr, C.int64_t(forkID))
 	return verified != 0, nil
 }

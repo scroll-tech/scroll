@@ -51,9 +51,9 @@ func newMockProver(t *testing.T, proverName string, coordinatorURL string, proof
 }
 
 // connectToCoordinator sets up a websocket client to connect to the prover manager.
-func (r *mockProver) connectToCoordinator(t *testing.T) string {
+func (r *mockProver) connectToCoordinator(t *testing.T, forkName string) string {
 	challengeString := r.challenge(t)
-	return r.login(t, challengeString)
+	return r.login(t, challengeString, forkName)
 }
 
 func (r *mockProver) challenge(t *testing.T) string {
@@ -76,18 +76,19 @@ func (r *mockProver) challenge(t *testing.T) string {
 	return loginData.Token
 }
 
-func (r *mockProver) login(t *testing.T, challengeString string) string {
+func (r *mockProver) login(t *testing.T, challengeString string, forkName string) string {
 	authMsg := message.AuthMsg{
 		Identity: &message.Identity{
 			Challenge:     challengeString,
 			ProverName:    r.proverName,
 			ProverVersion: r.proverVersion,
+			HardForkName:  forkName,
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(r.privKey))
 
-	body := fmt.Sprintf("{\"message\":{\"challenge\":\"%s\",\"prover_name\":\"%s\", \"prover_version\":\"%s\"},\"signature\":\"%s\"}",
-		authMsg.Identity.Challenge, authMsg.Identity.ProverName, authMsg.Identity.ProverVersion, authMsg.Signature)
+	body := fmt.Sprintf("{\"message\":{\"challenge\":\"%s\",\"prover_name\":\"%s\", \"prover_version\":\"%s\", \"hard_fork_name\":\"%s\"},\"signature\":\"%s\"}",
+		authMsg.Identity.Challenge, authMsg.Identity.ProverName, authMsg.Identity.ProverVersion, authMsg.Identity.HardForkName, authMsg.Signature)
 
 	var result ctypes.Response
 	client := resty.New()
@@ -137,7 +138,7 @@ func (r *mockProver) healthCheckFailure(t *testing.T) bool {
 
 func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, forkName string) (*types.GetTaskSchema, int, string) {
 	// get task from coordinator
-	token := r.connectToCoordinator(t)
+	token := r.connectToCoordinator(t, forkName)
 	assert.NotEmpty(t, token)
 
 	type response struct {
@@ -151,7 +152,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, fo
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
-		SetBody(map[string]interface{}{"prover_height": 100, "task_type": int(proofType), "hard_fork_name": forkName}).
+		SetBody(map[string]interface{}{"prover_height": 100, "task_type": int(proofType)}).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
 	assert.NoError(t, err)
@@ -160,9 +161,9 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, fo
 }
 
 // Testing expected errors returned by coordinator.
-func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType) (int, string) {
+func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType, forkName string) (int, string) {
 	// get task from coordinator
-	token := r.connectToCoordinator(t)
+	token := r.connectToCoordinator(t, forkName)
 	assert.NotEmpty(t, token)
 
 	type response struct {
@@ -185,7 +186,7 @@ func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType)
 	return result.ErrCode, result.ErrMsg
 }
 
-func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus, errCode int) {
+func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus, errCode int, forkName string) {
 	proofMsgStatus := message.StatusOk
 	if proofStatus == generatedFailed {
 		proofMsgStatus = message.StatusProofError
@@ -228,7 +229,7 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 		submitProof.Proof = string(encodeData)
 	}
 
-	token := r.connectToCoordinator(t)
+	token := r.connectToCoordinator(t, forkName)
 	assert.NotEmpty(t, token)
 
 	submitProofData, err := json.Marshal(submitProof)

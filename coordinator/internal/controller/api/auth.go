@@ -59,6 +59,7 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 			Challenge:     v.Message.Challenge,
 			ProverName:    v.Message.ProverName,
 			ProverVersion: v.Message.ProverVersion,
+			HardForkName:  v.Message.HardForkName,
 		},
 		Signature: v.Signature,
 	}
@@ -72,6 +73,7 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 		types.PublicKey:     publicKey,
 		types.ProverName:    v.Message.ProverName,
 		types.ProverVersion: v.Message.ProverVersion,
+		types.HardForkName:  v.Message.HardForkName,
 	}
 }
 
@@ -88,6 +90,10 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 
 	if proverVersion, ok := claims[types.ProverVersion]; ok {
 		c.Set(types.ProverVersion, proverVersion)
+	}
+
+	if hardForkName, ok := claims[types.HardForkName]; ok {
+		c.Set(types.HardForkName, hardForkName)
 	}
 	return nil
 }

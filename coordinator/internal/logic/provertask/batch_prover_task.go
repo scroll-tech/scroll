@@ -69,9 +69,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	hardForkNumber, err := bp.getHardForkNumberByName(getTaskParameter.HardForkName)
+	hardForkNumber, err := bp.getHardForkNumberByName(taskCtx.HardForkName)
 	if err != nil {
-		log.Error("batch assign failure because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		log.Error("batch assign failure because of the hard fork name don't exist", "fork name", taskCtx.HardForkName)
 		return nil, err
 	}
 
@@ -83,7 +83,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if fromBlockNum != 0 {
 		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, fromBlockNum)
 		if chunkErr != nil {
-			log.Error("failed to get fork start chunk index", "forkName", getTaskParameter.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
+			log.Error("failed to get fork start chunk index", "forkName", taskCtx.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if startChunk == nil {
@@ -93,8 +93,8 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 	if toBlockNum != math.MaxInt64 {
 		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, toBlockNum)
-		if err != nil {
-			log.Error("failed to get fork end chunk index", "forkName", getTaskParameter.HardForkName, "toBlockNumber", toBlockNum, "err", chunkErr)
+		if chunkErr != nil {
+			log.Error("failed to get fork end chunk index", "forkName", taskCtx.HardForkName, "toBlockNumber", toBlockNum, "err", chunkErr)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if toChunk != nil {
@@ -179,7 +179,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	bp.batchTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
+	bp.batchTaskGetTaskTotal.WithLabelValues(taskCtx.HardForkName).Inc()
 
 	return taskMsg, nil
 }

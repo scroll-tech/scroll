@@ -44,6 +44,7 @@ type proverTaskContext struct {
 	PublicKey     string
 	ProverName    string
 	ProverVersion string
+	HardForkName  string
 }
 
 // checkParameter check the prover task parameter illegal
@@ -67,6 +68,12 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		return nil, fmt.Errorf("get prover version from context failed")
 	}
 	ptc.ProverVersion = proverVersion.(string)
+
+	hardForkName, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
+	if !hardForkNameExist {
+		return nil, fmt.Errorf("get hard fork name from context failed")
+	}
+	ptc.HardForkName = hardForkName.(string)
 
 	if !version.CheckScrollRepoVersion(proverVersion.(string), b.cfg.ProverManager.MinProverVersion) {
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", b.cfg.ProverManager.MinProverVersion, proverVersion.(string))

@@ -22,7 +22,7 @@ func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
 }
 
 // VerifyBatchProof return a mock verification result for a BatchProof.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}

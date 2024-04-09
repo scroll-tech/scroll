@@ -66,9 +66,9 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	hardForkNumber, err := cp.getHardForkNumberByName(getTaskParameter.HardForkName)
+	hardForkNumber, err := cp.getHardForkNumberByName(taskCtx.HardForkName)
 	if err != nil {
-		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", taskCtx.HardForkName)
 		return nil, err
 	}
 
@@ -151,7 +151,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	cp.chunkTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
+	cp.chunkTaskGetTaskTotal.WithLabelValues(taskCtx.HardForkName).Inc()
 
 	return taskMsg, nil
 }
