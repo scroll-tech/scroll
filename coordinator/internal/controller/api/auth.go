@@ -69,10 +69,6 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 		return jwt.MapClaims{}
 	}
 
-	if v.Message.HardForkName == "" {
-		v.Message.HardForkName = "shanghai"
-	}
-
 	return jwt.MapClaims{
 		types.PublicKey:     publicKey,
 		types.ProverName:    v.Message.ProverName,

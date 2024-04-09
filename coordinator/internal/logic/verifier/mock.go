@@ -9,8 +9,26 @@ import (
 )
 
 // NewVerifier Sets up a mock verifier.
-func NewVerifier(_ *config.VerifierConfig) (*Verifier, error) {
-	return &Verifier{}, nil
+func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
+	batchVKMap := map[string]string{
+		"shanghai":  "",
+		"bernoulli": "",
+		"london":    "",
+		"istanbul":  "",
+		"homestead": "",
+		"eip155":    "",
+	}
+	chunkVKMap := map[string]string{
+		"shanghai":  "",
+		"bernoulli": "",
+		"london":    "",
+		"istanbul":  "",
+		"homestead": "",
+		"eip155":    "",
+	}
+	batchVKMap[cfg.ForkName] = ""
+	chunkVKMap[cfg.ForkName] = ""
+	return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap}, nil
 }
 
 // VerifyChunkProof return a mock verification result for a ChunkProof.

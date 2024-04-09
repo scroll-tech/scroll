@@ -96,8 +96,10 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			ChainID: 111,
 		},
 		ProverManager: &config.ProverManager{
-			ProversPerSession:      proversPerSession,
-			Verifier:               &config.VerifierConfig{MockMode: true},
+			ProversPerSession: proversPerSession,
+			Verifier: &config.VerifierConfig{
+				MockMode: true,
+			},
 			BatchCollectionTimeSec: 10,
 			ChunkCollectionTimeSec: 10,
 			MaxVerifierWorkers:     10,

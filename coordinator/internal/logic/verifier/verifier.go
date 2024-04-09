@@ -30,8 +30,25 @@ import (
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if cfg.MockMode {
-		batchVKMap := map[string]string{cfg.ForkName: ""}
-		chunkVKMap := map[string]string{cfg.ForkName: ""}
+		batchVKMap := map[string]string{
+			"shanghai":  "",
+			"bernoulli": "",
+			"london":    "",
+			"istanbul":  "",
+			"homestead": "",
+			"eip155":    "",
+		}
+		chunkVKMap := map[string]string{
+			"shanghai":  "",
+			"bernoulli": "",
+			"london":    "",
+			"istanbul":  "",
+			"homestead": "",
+			"eip155":    "",
+		}
+
+		batchVKMap[cfg.ForkName] = ""
+		chunkVKMap[cfg.ForkName] = ""
 		return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
