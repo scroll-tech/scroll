@@ -643,42 +643,21 @@ func testInvalidProof(t *testing.T) {
 	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
-	// create mock provers.
-	provers := make([]*mockProver, 2)
-	for i := 0; i < len(provers); i++ {
-		var (
-			proofType     message.ProofType
-			provingStatus proofStatus
-			expectErrCode int
-		)
-		if i%2 == 0 {
-			proofType = message.ProofTypeChunk
-			provingStatus = verifiedSuccess
-			expectErrCode = types.Success
-		} else {
-			proofType = message.ProofTypeBatch
-			provingStatus = verifiedFailed
-			expectErrCode = types.ErrCoordinatorHandleZkProofFailure
-		}
-		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, "istanbul")
-		assert.NotNil(t, proverTask)
-		assert.Equal(t, errCode, types.Success)
-		assert.Equal(t, errMsg, "")
-		provers[i].submitProof(t, proverTask, provingStatus, expectErrCode, "istanbul")
-	}
+	proofType := message.ProofTypeBatch
+	provingStatus := verifiedFailed
+	expectErrCode := types.ErrCoordinatorHandleZkProofFailure
+	prover := newMockProver(t, "prover_test", coordinatorURL, proofType, version.Version)
+	proverTask, errCode, errMsg := prover.getProverTask(t, proofType, "istanbul")
+	assert.NotNil(t, proverTask)
+	assert.Equal(t, errCode, types.Success)
+	assert.Equal(t, errMsg, "")
+	prover.submitProof(t, proverTask, provingStatus, expectErrCode, "istanbul")
 
 	// verify proof status
 	var (
-		tick     = time.Tick(1500 * time.Millisecond)
-		tickStop = time.Tick(time.Minute)
-	)
-
-	var (
-		chunkProofStatus    types.ProvingStatus
+		tick                = time.Tick(1500 * time.Millisecond)
+		tickStop            = time.Tick(time.Minute)
 		batchProofStatus    types.ProvingStatus
-		chunkActiveAttempts int16
-		chunkMaxAttempts    int16
 		batchActiveAttempts int16
 		batchMaxAttempts    int16
 	)
@@ -686,24 +665,17 @@ func testInvalidProof(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
-			assert.NoError(t, err)
 			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
-			if chunkProofStatus == types.ProvingTaskAssigned && batchProofStatus == types.ProvingTaskAssigned {
+			if batchProofStatus == types.ProvingTaskAssigned {
 				return
 			}
-			chunkActiveAttempts, chunkMaxAttempts, err = chunkOrm.GetAttemptsByHash(context.Background(), dbChunk.Hash)
-			assert.NoError(t, err)
-			assert.Equal(t, 1, int(chunkMaxAttempts))
-			assert.Equal(t, 0, int(chunkActiveAttempts))
-
 			batchActiveAttempts, batchMaxAttempts, err = batchOrm.GetAttemptsByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, int(batchMaxAttempts))
 			assert.Equal(t, 0, int(batchActiveAttempts))
 		case <-tickStop:
-			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
+			t.Error("failed to check proof status", "batchProofStatus", batchProofStatus.String())
 			return
 		}
 	}

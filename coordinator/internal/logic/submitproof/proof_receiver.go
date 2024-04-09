@@ -135,9 +135,6 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 		return fmt.Errorf("get ProverVersion from context failed")
 	}
 	hardForkName := ctx.GetString(coordinatorType.HardForkName)
-	if len(hardForkName) == 0 {
-		return fmt.Errorf("get hard fork name from context failed")
-	}
 
 	var proverTask *orm.ProverTask
 	var err error
