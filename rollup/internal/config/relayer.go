@@ -65,7 +65,7 @@ type RelayerConfig struct {
 	// The timeout in seconds for finalizing a batch without proof, only used when EnableTestEnvBypassFeatures is true.
 	FinalizeBatchWithoutProofTimeoutSec uint64 `json:"finalize_batch_without_proof_timeout_sec"`
 
-	EnableTestEnvSamplingFeature bool   `json:"enable_test_env_sampling_feature"`
+	EnableTestEnvSamplingFeature bool   `json:"enable_test_env_sampling_feature,omitempty"`
 	SamplingPercentage           uint64 `json:"sampling_percentage,omitempty"`
 }
 

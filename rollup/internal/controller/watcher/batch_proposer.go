@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/forks"
+	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/rollup/internal/config"
@@ -37,6 +38,7 @@ type BatchProposer struct {
 	gasCostIncreaseMultiplier       float64
 	forkMap                         map[uint64]bool
 
+	cfg      *config.BatchProposerConfig
 	chainCfg *params.ChainConfig
 
 	batchProposerCircleTotal           prometheus.Counter
@@ -74,6 +76,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		forkMap:                         forkMap,
+		cfg:                             cfg,
 		chainCfg:                        chainCfg,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -144,6 +147,27 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 			log.Warn("BatchProposer.UpdateBatchHashInRange update the chunk's batch hash failure", "hash", batch.Hash, "error", dbErr)
 			return dbErr
 		}
+
+		skipProof := false
+		if p.cfg.EnableTestEnvSamplingFeature && ((batch.Index % 100) >= p.cfg.SamplingPercentage) {
+			skipProof = true
+		}
+		if skipProof {
+			dbErr = p.batchOrm.UpdateProvingStatus(p.ctx, batch.Hash, types.ProvingTaskVerified, dbTX)
+			if dbErr != nil {
+				log.Warn("BatchProposer.updateBatchInfoInDB update batch proving_status failure",
+					"batch hash", batch.Hash, "error", dbErr)
+				return dbErr
+			}
+			dbErr = p.chunkOrm.UpdateProvingStatusInRange(p.ctx, batch.StartChunkIndex, batch.EndChunkIndex, types.ProvingTaskVerified, dbTX)
+			if dbErr != nil {
+				log.Warn("BatchProposer.updateBatchInfoInDB update chunk proving_status failure",
+					"start chunk index", batch.StartChunkIndex, "end chunk index", batch.EndChunkIndex,
+					"batch hash", batch.Hash, "error", dbErr)
+				return dbErr
+			}
+		}
+
 		return nil
 	})
 	if err != nil {

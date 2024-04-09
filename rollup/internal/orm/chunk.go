@@ -258,3 +258,28 @@ func (o *Chunk) UpdateBatchHashInRange(ctx context.Context, startIndex uint64, e
 	}
 	return nil
 }
+func (o *Chunk) UpdateProvingStatusInRange(ctx context.Context, startIndex uint64, endIndex uint64, status types.ProvingStatus, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("index >= ? AND index <= ?", startIndex, endIndex)
+
+	updateFields := make(map[string]interface{})
+	updateFields["proving_status"] = int(status)
+	switch status {
+	case types.ProvingTaskAssigned:
+		updateFields["prover_assigned_at"] = time.Now()
+	case types.ProvingTaskUnassigned:
+		updateFields["prover_assigned_at"] = nil
+	case types.ProvingTaskVerified:
+		updateFields["proved_at"] = time.Now()
+	}
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Chunk.UpdateProvingStatusInRange error: %w, start index: %v, end index: %v, status: %v", err, startIndex, endIndex, status.String())
+	}
+	return nil
+}
