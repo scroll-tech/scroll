@@ -7,22 +7,19 @@ import (
 	"testing"
 	"time"
 
+	"scroll-tech/rollup/internal/config"
+
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/docker"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
-
-	"scroll-tech/rollup/internal/config"
 )
 
 // MockApp mockApp-test client manager.
 type MockApp struct {
-	Config *config.Config
-	// TODO field willl be replaced by testApps
-	base     *docker.App
+	Config   *config.Config
 	testApps *testcontainers.TestcontainerApps
 
-	mockApps map[utils.MockAppName]docker.AppAPI
+	mockApps map[utils.MockAppName]*cmd.Cmd
 
 	originFile string
 	rollupFile string
@@ -30,33 +27,17 @@ type MockApp struct {
 	args []string
 }
 
-// NewRollupApp TODO function will be replaced by NewRollupApp2
-func NewRollupApp(base *docker.App, file string) *MockApp {
-	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", base.Timestamp)
+// NewRollupApp return a new rollupApp manager.
+func NewRollupApp(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
+	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
 	rollupApp := &MockApp{
-		base:       base,
-		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
+		testApps:   testApps,
+		mockApps:   make(map[utils.MockAppName]*cmd.Cmd),
 		originFile: file,
 		rollupFile: rollupFile,
 		args:       []string{"--log.debug", "--config", rollupFile},
 	}
 	if err := rollupApp.MockConfig(true); err != nil {
-		panic(err)
-	}
-	return rollupApp
-}
-
-// NewRollupApp2 return a new rollupApp manager, name mush be one them.
-func NewRollupApp2(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
-	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
-	rollupApp := &MockApp{
-		testApps:   testApps,
-		mockApps:   make(map[utils.MockAppName]docker.AppAPI),
-		originFile: file,
-		rollupFile: rollupFile,
-		args:       []string{"--log.debug", "--config", rollupFile},
-	}
-	if err := rollupApp.MockConfig2(true); err != nil {
 		panic(err)
 	}
 	return rollupApp
@@ -87,7 +68,7 @@ func (b *MockApp) WaitExit() {
 	for _, app := range b.mockApps {
 		app.WaitExit()
 	}
-	b.mockApps = make(map[utils.MockAppName]docker.AppAPI)
+	b.mockApps = make(map[utils.MockAppName]*cmd.Cmd)
 }
 
 // Free stop and release rollup mocked apps.
@@ -96,35 +77,8 @@ func (b *MockApp) Free() {
 	_ = os.Remove(b.rollupFile)
 }
 
-// MockConfig TODO function will be replaced by MockConfig2
+// MockConfig creates a new rollup config.
 func (b *MockApp) MockConfig(store bool) error {
-	base := b.base
-	// Load origin rollup config file.
-	cfg, err := config.NewConfig(b.originFile)
-	if err != nil {
-		return err
-	}
-
-	cfg.L1Config.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L2Config.Endpoint = base.L2gethImg.Endpoint()
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.DBConfig.DSN = base.DBImg.Endpoint()
-	b.Config = cfg
-
-	if !store {
-		return nil
-	}
-	// Store changed rollup config into a temp file.
-	data, err := json.Marshal(b.Config)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(b.rollupFile, data, 0600)
-}
-
-// MockConfig2 creates a new rollup config.
-func (b *MockApp) MockConfig2(store bool) error {
 	// Load origin rollup config file.
 	cfg, err := config.NewConfig(b.originFile)
 	if err != nil {

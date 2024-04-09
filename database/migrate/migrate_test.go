@@ -1,93 +1,89 @@
 package migrate
 
 import (
+	"database/sql"
 	"testing"
 
-	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/docker"
-
-	"scroll-tech/database"
+	"scroll-tech/common/testcontainers"
 )
 
 var (
-	base *docker.App
-	pgDB *sqlx.DB
+	testApps *testcontainers.TestcontainerApps
+	pgDB     *sql.DB
 )
 
-func initEnv(t *testing.T) error {
+func setupEnv(t *testing.T) {
 	// Start db container.
-	base.RunDBImage(t)
+	testApps = testcontainers.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+	gormClient, err := testApps.GetGormDBClient()
+	assert.NoError(t, err)
+	pgDB, err = gormClient.DB()
+	assert.NoError(t, err)
+}
 
-	// Create db orm handler.
-	factory, err := database.NewOrmFactory(base.DBConfig)
-	if err != nil {
-		return err
-	}
-	pgDB = factory.GetDB()
-	return nil
+func TestMain(m *testing.M) {
+	defer func() {
+		if testApps != nil {
+			testApps.Free()
+		}
+	}()
+	m.Run()
 }
 
 func TestMigrate(t *testing.T) {
-	base = docker.NewDockerApp()
-	if err := initEnv(t); err != nil {
-		t.Fatal(err)
-	}
-
+	setupEnv(t)
 	t.Run("testCurrent", testCurrent)
 	t.Run("testStatus", testStatus)
 	t.Run("testResetDB", testResetDB)
 	t.Run("testMigrate", testMigrate)
 	t.Run("testRollback", testRollback)
-
-	t.Cleanup(func() {
-		base.Free()
-	})
 }
 
 func testCurrent(t *testing.T) {
-	cur, err := Current(pgDB.DB)
+	cur, err := Current(pgDB)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), cur)
 }
 
 func testStatus(t *testing.T) {
-	status := Status(pgDB.DB)
+	status := Status(pgDB)
 	assert.NoError(t, status)
 }
 
 func testResetDB(t *testing.T) {
-	assert.NoError(t, ResetDB(pgDB.DB))
-	cur, err := Current(pgDB.DB)
+	assert.NoError(t, ResetDB(pgDB))
+	cur, err := Current(pgDB)
 	assert.NoError(t, err)
 	// total number of tables.
 	assert.Equal(t, int64(17), cur)
 }
 
 func testMigrate(t *testing.T) {
-	assert.NoError(t, Migrate(pgDB.DB))
-	cur, err := Current(pgDB.DB)
+	assert.NoError(t, Migrate(pgDB))
+	cur, err := Current(pgDB)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(17), cur)
 }
 
 func testRollback(t *testing.T) {
-	version, err := Current(pgDB.DB)
+	version, err := Current(pgDB)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(17), version)
 
-	assert.NoError(t, Rollback(pgDB.DB, nil))
+	assert.NoError(t, Rollback(pgDB, nil))
 
-	cur, err := Current(pgDB.DB)
+	cur, err := Current(pgDB)
 	assert.NoError(t, err)
 	assert.Equal(t, version, cur+1)
 
 	targetVersion := int64(0)
-	assert.NoError(t, Rollback(pgDB.DB, &targetVersion))
+	assert.NoError(t, Rollback(pgDB, &targetVersion))
 
-	cur, err = Current(pgDB.DB)
+	cur, err = Current(pgDB)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), cur)
 }
