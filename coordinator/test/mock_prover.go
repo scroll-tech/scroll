@@ -161,6 +161,8 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, fo
 }
 
 // Testing expected errors returned by coordinator.
+//
+//nolint:unparam
 func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType, forkName string) (int, string) {
 	// get task from coordinator
 	token := r.connectToCoordinator(t, forkName)
