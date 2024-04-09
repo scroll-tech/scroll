@@ -115,6 +115,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	var chainConf params.ChainConfig
 	for forkName, forkNumber := range nameForkMap {
 		switch forkName {
+		case "shanghai":
+			chainConf.ShanghaiBlock = big.NewInt(forkNumber)
 		case "bernoulli":
 			chainConf.BernoulliBlock = big.NewInt(forkNumber)
 		case "london":
@@ -360,7 +362,7 @@ func testHardForkAssignTask(t *testing.T) {
 		{
 			name:                  "noTaskForkBatchProverVersionLessThanHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
+			forkNumbers:           map[string]int64{"shanghai": forkNumberOne, "london": forkNumberThree},
 			exceptTaskNumber:      0,
 			proverForkNames:       []string{"", ""},
 			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
@@ -450,7 +452,7 @@ func testHardForkAssignTask(t *testing.T) {
 		{ // hard fork 3, prover1:2 prover2:3 block [2-3]
 			name:                  "twoTaskForkChunkProverVersionMiddleHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           map[string]int64{"london": forkNumberThree},
+			forkNumbers:           map[string]int64{"shanghai": forkNumberTwo, "london": forkNumberThree},
 			exceptTaskNumber:      2,
 			proverForkNames:       []string{"", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
@@ -459,7 +461,7 @@ func testHardForkAssignTask(t *testing.T) {
 		{
 			name:                  "twoTaskForkBatchProverVersionMiddleHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           map[string]int64{"london": forkNumberThree},
+			forkNumbers:           map[string]int64{"shanghai": forkNumberTwo, "london": forkNumberThree},
 			exceptTaskNumber:      2,
 			proverForkNames:       []string{"", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
@@ -468,7 +470,7 @@ func testHardForkAssignTask(t *testing.T) {
 		{ // hard fork 2, prover 2 block [2-3]
 			name:                  "oneTaskForkChunkProverVersionLessThanHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           map[string]int64{"london": forkNumberThree},
+			forkNumbers:           map[string]int64{"shanghai": forkNumberOne, "london": forkNumberThree},
 			exceptTaskNumber:      1,
 			proverForkNames:       []string{"", ""},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},

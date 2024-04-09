@@ -166,5 +166,7 @@ func (v *Verifier) loadEmbedVK() error {
 
 	v.BatchVKMap["shanghai"] = base64.StdEncoding.EncodeToString(batchVKBytes)
 	v.ChunkVKMap["shanghai"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
+	v.BatchVKMap[""] = base64.StdEncoding.EncodeToString(batchVKBytes)
+	v.ChunkVKMap[""] = base64.StdEncoding.EncodeToString(chunkVkBytes)
 	return nil
 }
