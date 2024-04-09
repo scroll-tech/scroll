@@ -2,9 +2,12 @@ package provertask
 
 import (
 	"fmt"
+
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
+
 	"scroll-tech/common/version"
+
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
