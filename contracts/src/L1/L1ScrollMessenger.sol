@@ -105,6 +105,18 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         messageQueue = _messageQueue;
     }
 
+   
+   /// @notice Pause the contract
+    /// @dev This function can only called by contract owner.
+    /// @param _status The pause status to update.
+    function setPause(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
+    }
+
     /// @notice Initialize the storage of L1ScrollMessenger.
     ///
     /// @dev The parameters `_counterpart`, `_rollup` and `_messageQueue` are no longer used.
@@ -324,10 +336,20 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
         emit UpdateMaxReplayTimes(_oldMaxReplayTimes, _newMaxReplayTimes);
     }
 
+     /// @notice Set a new maximum replay times value.
+    /// @dev This function can only be called by the contract owner.
+    /// @param _newMaxReplayTimes The new maximum replay times value.
+    function setMaxReplayTimes(uint256 _newMaxReplayTimes) external onlyOwner {
+        require(_newMaxReplayTimes > 0, "Max replay times must be greater than zero");
+        maxReplayTimes = _newMaxReplayTimes;
+        emit UpdateMaxReplayTimes(maxReplayTimes, _newMaxReplayTimes);
+    }
+
     /**********************
      * Internal Functions *
      **********************/
 
+     
     function _sendMessage(
         address _to,
         uint256 _value,

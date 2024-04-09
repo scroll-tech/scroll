@@ -73,7 +73,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         bytes memory _message,
         uint256 _gasLimit
     ) external payable override whenNotPaused {
-        _sendMessage(_to, _value, _message, _gasLimit);
+                _sendMessage(_to, _value, _message, _gasLimit);
     }
 
     /// @inheritdoc IScrollMessenger
@@ -84,7 +84,7 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         uint256 _gasLimit,
         address
     ) external payable override whenNotPaused {
-        _sendMessage(_to, _value, _message, _gasLimit);
+                _sendMessage(_to, _value, _message, _gasLimit);
     }
 
     /// @inheritdoc IL2ScrollMessenger
@@ -132,6 +132,16 @@ contract L2ScrollMessenger is ScrollMessengerBase, IL2ScrollMessenger {
         L2MessageQueue(messageQueue).appendMessage(_xDomainCalldataHash);
 
         emit SentMessage(_msgSender(), _to, _value, _nonce, _gasLimit, _message);
+    }
+   /// @notice Pause the contract
+   /// @dev This function can only called by contract owner.
+   /// @param _status The pause status to update.
+    function setPause(bool _status) external onlyOwner {
+        if (_status) {
+            _pause();
+        } else {
+            _unpause();
+        }
     }
 
     /// @dev Internal function to execute a L1 => L2 message.
