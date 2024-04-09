@@ -25,8 +25,8 @@ type GetTaskController struct {
 
 // NewGetTaskController create a get prover task controller
 func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, vf.ChunkVK, reg)
-	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, vf.BatchVK, reg)
+	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, vf.ChunkVKMap, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, vf.BatchVKMap, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),

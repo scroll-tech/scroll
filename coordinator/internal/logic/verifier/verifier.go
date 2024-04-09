@@ -11,9 +11,11 @@ package verifier
 import "C" //nolint:typecheck
 
 import (
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"unsafe"
@@ -40,21 +42,27 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	C.init_batch_verifier(paramsPathStr, assetsPathStr)
 	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
 
-	batchVK, err := readVK(path.Join(cfg.AssetsPath, "agg_vk.vkey"))
+	v := &Verifier{
+		cfg:        cfg,
+		ChunkVKMap: make(map[string]string),
+		BatchVKMap: make(map[string]string),
+	}
+
+	batchVK, err := v.readVK(path.Join(cfg.AssetsPath, "agg_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}
-
-	chunkVK, err := readVK(path.Join(cfg.AssetsPath, "chunk_vk.vkey"))
+	chunkVK, err := v.readVK(path.Join(cfg.AssetsPath, "chunk_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}
+	v.BatchVKMap[cfg.ForkName] = batchVK
+	v.ChunkVKMap[cfg.ForkName] = chunkVK
 
-	return &Verifier{
-		cfg:     cfg,
-		BatchVK: batchVK,
-		ChunkVK: chunkVK,
-	}, nil
+	if err := v.loadEmbedVK(); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
@@ -108,7 +116,7 @@ func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
 	return verified != 0, nil
 }
 
-func readVK(filePat string) (string, error) {
+func (v *Verifier) readVK(filePat string) (string, error) {
 	f, err := os.Open(filePat)
 	if err != nil {
 		return "", err
@@ -118,4 +126,25 @@ func readVK(filePat string) (string, error) {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(byt), nil
+}
+
+//go:embed legacy_vk/*
+var legacyVKFS embed.FS
+
+func (v *Verifier) loadEmbedVK() error {
+	batchVKBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/agg_vk.vkey")
+	if err != nil {
+		log.Error("load embed batch vk failure", "err", err)
+		return err
+	}
+
+	chunkVkBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/chunk_vk.vkey")
+	if err != nil {
+		log.Error("load embed chunk vk failure", "err", err)
+		return err
+	}
+
+	v.BatchVKMap["shanghai"] = base64.StdEncoding.EncodeToString(batchVKBytes)
+	v.ChunkVKMap["shanghai"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
+	return nil
 }

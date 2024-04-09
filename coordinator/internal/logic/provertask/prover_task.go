@@ -2,22 +2,20 @@ package provertask
 
 import (
 	"fmt"
-
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-
 	"scroll-tech/common/version"
-
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-// ErrCoordinatorInternalFailure coordinator internal db failure
-var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
-
-// ErrHardForkName indicates client request with the wrong hard fork name
-var ErrHardForkName = fmt.Errorf("wrong hard fork name")
+var (
+	// ErrCoordinatorInternalFailure coordinator internal db failure
+	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+	// ErrHardForkName indicates client request with the wrong hard fork name
+	ErrHardForkName = fmt.Errorf("wrong hard fork name")
+)
 
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
@@ -28,8 +26,8 @@ type ProverTask interface {
 type BaseProverTask struct {
 	cfg *config.Config
 	db  *gorm.DB
-	vk  string
 
+	vkMap       map[string]string
 	nameForkMap map[string]uint64
 	forkHeights []uint64
 
@@ -79,8 +77,13 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", b.cfg.ProverManager.MinProverVersion, proverVersion.(string))
 	}
 
+	vk, vkExist := b.vkMap[ptc.HardForkName]
+	if !vkExist {
+		return nil, fmt.Errorf("can't get vk for hard fork:%s, vkMap:%v", ptc.HardForkName, b.vkMap)
+	}
+
 	// if the prover has a different vk
-	if getTaskParameter.VK != b.vk {
+	if getTaskParameter.VK != vk {
 		// if the prover reports a different prover version
 		if !version.CheckScrollProverVersion(proverVersion.(string)) {
 			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))

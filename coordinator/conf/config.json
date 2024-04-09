@@ -5,6 +5,7 @@
     "batch_collection_time_sec": 180,
     "chunk_collection_time_sec": 180,
     "verifier": {
+      "fork_name": "bernoulli",
       "mock_mode": true,
       "params_path": "",
       "assets_path": ""
