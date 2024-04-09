@@ -93,6 +93,11 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.LIDOGatewayAddr))
 	}
 
+	if common.HexToAddress(cfg.PUFFERGatewayAddr) != (common.Address{}) {
+		addressList = append(addressList, common.HexToAddress(cfg.PUFFERGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.PUFFERGatewayAddr))
+	}
+
 	log.Info("L1 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)
 
 	f := &L1FetcherLogic{
