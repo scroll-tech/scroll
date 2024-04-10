@@ -4,14 +4,13 @@ import (
 	"math"
 	"math/big"
 	"sort"
-
 	"github.com/scroll-tech/go-ethereum/params"
 )
 
 // CollectSortedForkHeights returns a sorted set of block numbers that one or more forks are activated on
 func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]bool, map[string]uint64) {
 	type nameFork struct {
-		name  string
+		name string
 		block *big.Int
 	}
 
@@ -40,7 +39,6 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 			continue
 		}
 		height := fork.block.Uint64()
-
 		// only keep latest fork for at each height, discard the rest
 		forkHeightNameMap[height] = fork.name
 	}
@@ -48,18 +46,17 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 	forkHeightsMap := make(map[uint64]bool)
 	forkNameHeightMap := make(map[string]uint64)
 
+	var forkHeights []uint64
 	for height, name := range forkHeightNameMap {
 		forkHeightsMap[height] = true
 		forkNameHeightMap[name] = height
-	}
-
-	var forkHeights []uint64
-	for height := range forkHeightsMap {
 		forkHeights = append(forkHeights, height)
 	}
+
 	sort.Slice(forkHeights, func(i, j int) bool {
 		return forkHeights[i] < forkHeights[j]
 	})
+
 	return forkHeights, forkHeightsMap, forkNameHeightMap
 }
 
@@ -77,7 +74,7 @@ func BlocksUntilFork(blockHeight uint64, forkHeights []uint64) uint64 {
 // BlockRange returns the block range of the hard fork
 // Need ensure the forkHeights is incremental
 func BlockRange(currentForkHeight uint64, forkHeights []uint64) (from, to uint64) {
-	to = math.MaxInt64
+	to = math.MaxUint64
 	for _, height := range forkHeights {
 		if currentForkHeight < height {
 			to = height
