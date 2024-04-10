@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+/// @title IScrollChain
+/// @notice The interface for ScrollChain.
 interface IScrollChain {
     /**********
      * Events *
@@ -43,23 +45,23 @@ interface IScrollChain {
      * Public View Functions *
      *************************/
 
-    /// @notice The latest finalized batch index.
+    /// @return The latest finalized batch index.
     function lastFinalizedBatchIndex() external view returns (uint256);
 
-    /// @notice Return the batch hash of a committed batch.
     /// @param batchIndex The index of the batch.
+    /// @return The batch hash of a committed batch.
     function committedBatches(uint256 batchIndex) external view returns (bytes32);
 
-    /// @notice Return the state root of a committed batch.
     /// @param batchIndex The index of the batch.
+    /// @return The state root of a committed batch.
     function finalizedStateRoots(uint256 batchIndex) external view returns (bytes32);
 
-    /// @notice Return the message root of a committed batch.
     /// @param batchIndex The index of the batch.
+    /// @return The message root of a committed batch.
     function withdrawRoots(uint256 batchIndex) external view returns (bytes32);
 
-    /// @notice Return whether the batch is finalized by batch index.
     /// @param batchIndex The index of the batch.
+    /// @return Whether the batch is finalized by batch index.
     function isBatchFinalized(uint256 batchIndex) external view returns (bool);
 
     /*****************************

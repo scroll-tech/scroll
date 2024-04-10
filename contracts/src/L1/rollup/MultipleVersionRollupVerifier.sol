@@ -8,6 +8,8 @@ import {IScrollChain} from "./IScrollChain.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 import {IZkEvmVerifier} from "../../libraries/verifier/IZkEvmVerifier.sol";
 
+/// @title MultipleVersionRollupVerifier
+/// @notice Verifies aggregate zk proofs using the appropriate verifier.
 contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
     /**********
      * Events *
@@ -37,7 +39,7 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
      *************/
 
     /// @notice The address of ScrollChain contract.
-    address immutable scrollChain;
+    address public immutable scrollChain;
 
     /***********
      * Structs *
@@ -58,7 +60,7 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
     /// The verifiers are sorted by batchIndex in increasing order.
     mapping(uint256 => Verifier[]) public legacyVerifiers;
 
-    /// @notice Mapping from verifier version to the lastest used zkevm verifier.
+    /// @notice Mapping from verifier version to the latest used zkevm verifier.
     mapping(uint256 => Verifier) public latestVerifier;
 
     /***************
@@ -86,6 +88,8 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
      *************************/
 
     /// @notice Return the number of legacy verifiers.
+    /// @param _version The version of legacy verifiers.
+    /// @return The number of legacy verifiers.
     function legacyVerifiersLength(uint256 _version) external view returns (uint256) {
         return legacyVerifiers[_version].length;
     }
@@ -93,6 +97,7 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
     /// @notice Compute the verifier should be used for specific batch.
     /// @param _version The version of verifier to query.
     /// @param _batchIndex The batch index to query.
+    /// @return The address of verifier.
     function getVerifier(uint256 _version, uint256 _batchIndex) public view returns (address) {
         // Normally, we will use the latest verifier.
         Verifier memory _verifier = latestVerifier[_version];
@@ -144,6 +149,7 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
      ************************/
 
     /// @notice Update the address of zkevm verifier.
+    /// @param _version The version of the verifier.
     /// @param _startBatchIndex The start batch index when the verifier will be used.
     /// @param _verifier The address of new verifier.
     function updateVerifier(
