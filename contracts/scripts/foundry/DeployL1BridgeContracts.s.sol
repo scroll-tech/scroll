@@ -37,7 +37,8 @@ contract DeployL1BridgeContracts is Script {
     address L1_WETH_ADDR = vm.envAddress("L1_WETH_ADDR");
     address L2_WETH_ADDR = vm.envAddress("L2_WETH_ADDR");
 
-    address L1_PLONK_VERIFIER_ADDR = vm.envAddress("L1_PLONK_VERIFIER_ADDR");
+    address L1_PLONK_VERIFIER_0_ADDR = vm.envAddress("L1_PLONK_VERIFIER_0_ADDR");
+    address L1_PLONK_VERIFIER_1_ADDR = vm.envAddress("L1_PLONK_VERIFIER_1_ADDR");
 
     address L1_PROXY_ADMIN_ADDR = vm.envAddress("L1_PROXY_ADMIN_ADDR");
 
@@ -89,11 +90,11 @@ contract DeployL1BridgeContracts is Script {
 
     // TODO: refactor
     function deployZkEvmVerifierV1s() internal {
-        zkEvmVerifierV1_0 = new ZkEvmVerifierV1(L1_PLONK_VERIFIER_ADDR);
-        zkEvmVerifierV1_1 = new ZkEvmVerifierV1(L1_PLONK_VERIFIER_ADDR); // TODO: update plonk verifier address
+        zkEvmVerifierV1_0 = new ZkEvmVerifierV1(L1_PLONK_VERIFIER_0_ADDR);
+        zkEvmVerifierV1_1 = new ZkEvmVerifierV1(L1_PLONK_VERIFIER_1_ADDR);
 
-        logAddress("L1_ZKEVM_VERIFIER_V1_ADDR", address(zkEvmVerifierV1_0)); // TODO: update env name
-        logAddress("L1_ZKEVM_VERIFIER_V1_ADDR", address(zkEvmVerifierV1_1)); // TODO: update env name
+        logAddress("L1_ZKEVM_VERIFIER_V1_0_ADDR", address(zkEvmVerifierV1_0));
+        logAddress("L1_ZKEVM_VERIFIER_V1_1_ADDR", address(zkEvmVerifierV1_1));
     }
 
     // TODO: refactor
