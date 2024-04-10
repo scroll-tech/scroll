@@ -585,6 +585,24 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 		log.Error("UpdateFinalizeTxHashAndRollupStatus failed", "index", dbBatch.Index, "batch hash", dbBatch.Hash, "tx hash", txHash.String(), "err", err)
 		return err
 	}
+
+	// when finalized without proof, need also update the proving status, coordinator don't attest this task
+	// it isn't a necessary step, so don't put in a transaction with UpdateFinalizeTxHashAndRollupStatus
+	if !withProof {
+		txErr := r.db.Transaction(func(tx *gorm.DB) error {
+			if updateErr := r.batchOrm.UpdateProvingStatus(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
+				return updateErr
+			}
+			if updateErr := r.chunkOrm.UpdateProvingStatusByBatchHash(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
+				return updateErr
+			}
+			return nil
+		})
+		if txErr != nil {
+			log.Error("when finalize batch without proof, updates batch&chunk proving status failure", "batchHash", dbBatch.Hash, "err", txErr)
+		}
+	}
+
 	r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal.Inc()
 	return nil
 }
