@@ -9,12 +9,12 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/mitchellh/mapstructure"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 
 	ctypes "scroll-tech/common/types"
 	"scroll-tech/common/types/message"
-	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/types"
@@ -30,17 +30,19 @@ const (
 
 type mockProver struct {
 	proverName     string
+	proverVersion  string
 	privKey        *ecdsa.PrivateKey
 	proofType      message.ProofType
 	coordinatorURL string
 }
 
-func newMockProver(t *testing.T, proverName string, coordinatorURL string, proofType message.ProofType) *mockProver {
+func newMockProver(t *testing.T, proverName string, coordinatorURL string, proofType message.ProofType, version string) *mockProver {
 	privKey, err := crypto.GenerateKey()
 	assert.NoError(t, err)
 
 	prover := &mockProver{
 		proverName:     proverName,
+		proverVersion:  version,
 		privKey:        privKey,
 		proofType:      proofType,
 		coordinatorURL: coordinatorURL,
@@ -78,8 +80,8 @@ func (r *mockProver) login(t *testing.T, challengeString string) string {
 	authMsg := message.AuthMsg{
 		Identity: &message.Identity{
 			Challenge:     challengeString,
-			ProverName:    "test",
-			ProverVersion: version.Version,
+			ProverName:    r.proverName,
+			ProverVersion: r.proverVersion,
 		},
 	}
 	assert.NoError(t, authMsg.SignWithKey(r.privKey))
@@ -133,7 +135,32 @@ func (r *mockProver) healthCheckFailure(t *testing.T) bool {
 	return true
 }
 
-func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *types.GetTaskSchema {
+func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType, forkName string) (*types.GetTaskSchema, int, string) {
+	// get task from coordinator
+	token := r.connectToCoordinator(t)
+	assert.NotEmpty(t, token)
+
+	type response struct {
+		ErrCode int                 `json:"errcode"`
+		ErrMsg  string              `json:"errmsg"`
+		Data    types.GetTaskSchema `json:"data"`
+	}
+
+	var result response
+	client := resty.New()
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", token)).
+		SetBody(map[string]interface{}{"prover_height": 100, "task_type": int(proofType), "hard_fork_name": forkName}).
+		SetResult(&result).
+		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.StatusCode())
+	return &result.Data, result.ErrCode, result.ErrMsg
+}
+
+// Testing expected errors returned by coordinator.
+func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType) (int, string) {
 	// get task from coordinator
 	token := r.connectToCoordinator(t)
 	assert.NotEmpty(t, token)
@@ -154,12 +181,8 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) *t
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/get_task")
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
-	assert.Equal(t, ctypes.Success, result.ErrCode)
 
-	assert.NotEmpty(t, result.Data.TaskID)
-	assert.NotEmpty(t, result.Data.TaskType)
-	assert.NotEmpty(t, result.Data.TaskData)
-	return &result.Data
+	return result.ErrCode, result.ErrMsg
 }
 
 func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus, errCode int) {
@@ -223,4 +246,8 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
 	assert.Equal(t, errCode, result.ErrCode)
+}
+
+func (r *mockProver) publicKey() string {
+	return common.Bytes2Hex(crypto.CompressPubkey(&r.privKey.PublicKey))
 }

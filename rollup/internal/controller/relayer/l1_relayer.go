@@ -132,7 +132,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				return
 			}
 
-			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, big.NewInt(0), data, 0)
+			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil, 0)
 			if err != nil {
 				log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
@@ -183,5 +183,13 @@ func (r *Layer1Relayer) handleL1GasOracleConfirmLoop(ctx context.Context) {
 		case cfm := <-r.gasOracleSender.ConfirmChan():
 			r.handleConfirmation(cfm)
 		}
+	}
+}
+
+// StopSenders stops the senders of the rollup-relayer to prevent querying the removed pending_transaction table in unit tests.
+// for unit test
+func (r *Layer1Relayer) StopSenders() {
+	if r.gasOracleSender != nil {
+		r.gasOracleSender.Stop()
 	}
 }

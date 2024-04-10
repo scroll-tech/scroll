@@ -23,6 +23,8 @@ type ProverManager struct {
 	ChunkCollectionTimeSec int `json:"chunk_collection_time_sec"`
 	// Max number of workers in verifier worker pool
 	MaxVerifierWorkers int `json:"max_verifier_workers"`
+	// MinProverVersion is the minimum version of the prover that is required.
+	MinProverVersion string `json:"min_prover_version"`
 }
 
 // L2 loads l2geth configuration items.

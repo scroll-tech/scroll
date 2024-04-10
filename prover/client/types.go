@@ -41,6 +41,7 @@ type LoginResponse struct {
 
 // GetTaskRequest defines the request structure for GetTask API
 type GetTaskRequest struct {
+	HardForkName string            `json:"hard_fork_name"`
 	TaskType     message.ProofType `json:"task_type"`
 	ProverHeight uint64            `json:"prover_height,omitempty"`
 	VK           string            `json:"vk"`

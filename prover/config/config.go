@@ -14,6 +14,7 @@ import (
 // Config loads prover configuration items.
 type Config struct {
 	ProverName       string             `json:"prover_name"`
+	HardForkName     string             `json:"hard_fork_name"`
 	KeystorePath     string             `json:"keystore_path"`
 	KeystorePassword string             `json:"keystore_password"`
 	Core             *ProverCoreConfig  `json:"core"`

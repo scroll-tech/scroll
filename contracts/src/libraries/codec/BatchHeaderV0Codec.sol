@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.24;
 
 // solhint-disable no-inline-assembly
 
@@ -10,19 +10,28 @@ pragma solidity ^0.8.16;
 ///   * version                 1           uint8       0       The batch version
 ///   * batchIndex              8           uint64      1       The index of the batch
 ///   * l1MessagePopped         8           uint64      9       Number of L1 messages popped in the batch
-///   * totalL1MessagePopped    8           uint64      17      Number of total L1 message popped after the batch
+///   * totalL1MessagePopped    8           uint64      17      Number of total L1 messages popped after the batch
 ///   * dataHash                32          bytes32     25      The data hash of the batch
 ///   * parentBatchHash         32          bytes32     57      The parent batch hash
 ///   * skippedL1MessageBitmap  dynamic     uint256[]   89      A bitmap to indicate which L1 messages are skipped in the batch
 /// ```
 library BatchHeaderV0Codec {
+    /// @dev Thrown when the length of batch header is smaller than 89
+    error ErrorBatchHeaderLengthTooSmall();
+
+    /// @dev Thrown when the length of skippedL1MessageBitmap is incorrect.
+    error ErrorIncorrectBitmapLength();
+
+    /// @dev The length of fixed parts of the batch header.
+    uint256 internal constant BATCH_HEADER_FIXED_LENGTH = 89;
+
     /// @notice Load batch header in calldata to memory.
     /// @param _batchHeader The encoded batch header bytes in calldata.
     /// @return batchPtr The start memory offset of the batch header in memory.
     /// @return length The length in bytes of the batch header.
     function loadAndValidate(bytes calldata _batchHeader) internal pure returns (uint256 batchPtr, uint256 length) {
         length = _batchHeader.length;
-        require(length >= 89, "batch header length too small");
+        if (length < BATCH_HEADER_FIXED_LENGTH) revert ErrorBatchHeaderLengthTooSmall();
 
         // copy batch header to memory.
         assembly {
@@ -32,17 +41,19 @@ library BatchHeaderV0Codec {
         }
 
         // check batch header length
-        uint256 _l1MessagePopped = BatchHeaderV0Codec.l1MessagePopped(batchPtr);
+        uint256 _l1MessagePopped = getL1MessagePopped(batchPtr);
 
         unchecked {
-            require(length == 89 + ((_l1MessagePopped + 255) / 256) * 32, "wrong bitmap length");
+            if (length != BATCH_HEADER_FIXED_LENGTH + ((_l1MessagePopped + 255) / 256) * 32) {
+                revert ErrorIncorrectBitmapLength();
+            }
         }
     }
 
     /// @notice Get the version of the batch header.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @return _version The version of the batch header.
-    function version(uint256 batchPtr) internal pure returns (uint256 _version) {
+    function getVersion(uint256 batchPtr) internal pure returns (uint256 _version) {
         assembly {
             _version := shr(248, mload(batchPtr))
         }
@@ -51,7 +62,7 @@ library BatchHeaderV0Codec {
     /// @notice Get the batch index of the batch.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @return _batchIndex The batch index of the batch.
-    function batchIndex(uint256 batchPtr) internal pure returns (uint256 _batchIndex) {
+    function getBatchIndex(uint256 batchPtr) internal pure returns (uint256 _batchIndex) {
         assembly {
             _batchIndex := shr(192, mload(add(batchPtr, 1)))
         }
@@ -60,7 +71,7 @@ library BatchHeaderV0Codec {
     /// @notice Get the number of L1 messages of the batch.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @return _l1MessagePopped The number of L1 messages of the batch.
-    function l1MessagePopped(uint256 batchPtr) internal pure returns (uint256 _l1MessagePopped) {
+    function getL1MessagePopped(uint256 batchPtr) internal pure returns (uint256 _l1MessagePopped) {
         assembly {
             _l1MessagePopped := shr(192, mload(add(batchPtr, 9)))
         }
@@ -69,7 +80,7 @@ library BatchHeaderV0Codec {
     /// @notice Get the number of L1 messages popped before this batch.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @return _totalL1MessagePopped The the number of L1 messages popped before this batch.
-    function totalL1MessagePopped(uint256 batchPtr) internal pure returns (uint256 _totalL1MessagePopped) {
+    function getTotalL1MessagePopped(uint256 batchPtr) internal pure returns (uint256 _totalL1MessagePopped) {
         assembly {
             _totalL1MessagePopped := shr(192, mload(add(batchPtr, 17)))
         }
@@ -78,7 +89,7 @@ library BatchHeaderV0Codec {
     /// @notice Get the data hash of the batch header.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @return _dataHash The data hash of the batch header.
-    function dataHash(uint256 batchPtr) internal pure returns (bytes32 _dataHash) {
+    function getDataHash(uint256 batchPtr) internal pure returns (bytes32 _dataHash) {
         assembly {
             _dataHash := mload(add(batchPtr, 25))
         }
@@ -87,9 +98,18 @@ library BatchHeaderV0Codec {
     /// @notice Get the parent batch hash of the batch header.
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @return _parentBatchHash The parent batch hash of the batch header.
-    function parentBatchHash(uint256 batchPtr) internal pure returns (bytes32 _parentBatchHash) {
+    function getParentBatchHash(uint256 batchPtr) internal pure returns (bytes32 _parentBatchHash) {
         assembly {
             _parentBatchHash := mload(add(batchPtr, 57))
+        }
+    }
+
+    /// @notice Get the start memory offset for skipped L1 messages bitmap.
+    /// @param batchPtr The start memory offset of the batch header in memory.
+    /// @return _bitmapPtr the start memory offset for skipped L1 messages bitmap.
+    function getSkippedBitmapPtr(uint256 batchPtr) internal pure returns (uint256 _bitmapPtr) {
+        assembly {
+            _bitmapPtr := add(batchPtr, BATCH_HEADER_FIXED_LENGTH)
         }
     }
 
@@ -97,9 +117,9 @@ library BatchHeaderV0Codec {
     /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param index The index of bitmap to load.
     /// @return _bitmap The bitmap from bits `index * 256` to `index * 256 + 255`.
-    function skippedBitmap(uint256 batchPtr, uint256 index) internal pure returns (uint256 _bitmap) {
+    function getSkippedBitmap(uint256 batchPtr, uint256 index) internal pure returns (uint256 _bitmap) {
         assembly {
-            batchPtr := add(batchPtr, 89)
+            batchPtr := add(batchPtr, BATCH_HEADER_FIXED_LENGTH)
             _bitmap := mload(add(batchPtr, mul(index, 32)))
         }
     }
@@ -169,14 +189,18 @@ library BatchHeaderV0Codec {
     /// @param _skippedL1MessageBitmap The skipped L1 message bitmap.
     function storeSkippedBitmap(uint256 batchPtr, bytes calldata _skippedL1MessageBitmap) internal pure {
         assembly {
-            calldatacopy(add(batchPtr, 89), _skippedL1MessageBitmap.offset, _skippedL1MessageBitmap.length)
+            calldatacopy(
+                add(batchPtr, BATCH_HEADER_FIXED_LENGTH),
+                _skippedL1MessageBitmap.offset,
+                _skippedL1MessageBitmap.length
+            )
         }
     }
 
     /// @notice Compute the batch hash.
     /// @dev Caller should make sure that the encoded batch header is correct.
     ///
-    /// @param batchPtr The memory offset of the encoded batch header.
+    /// @param batchPtr The start memory offset of the batch header in memory.
     /// @param length The length of the batch.
     /// @return _batchHash The hash of the corresponding batch.
     function computeBatchHash(uint256 batchPtr, uint256 length) internal pure returns (bytes32 _batchHash) {

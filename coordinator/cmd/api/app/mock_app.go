@@ -10,11 +10,13 @@ import (
 	"testing"
 	"time"
 
-	coordinatorConfig "scroll-tech/coordinator/internal/config"
+	"github.com/scroll-tech/go-ethereum/params"
 
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/docker"
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
+
+	coordinatorConfig "scroll-tech/coordinator/internal/config"
 )
 
 var (
@@ -23,29 +25,35 @@ var (
 
 // CoordinatorApp coordinator-test client manager.
 type CoordinatorApp struct {
-	Config *coordinatorConfig.Config
+	Config      *coordinatorConfig.Config
+	ChainConfig *params.ChainConfig
 
-	base *docker.App
+	testApps *testcontainers.TestcontainerApps
 
-	originFile      string
-	coordinatorFile string
-	HTTPPort        int64
+	configOriginFile      string
+	chainConfigOriginFile string
+	coordinatorFile       string
+	genesisFile           string
+	HTTPPort              int64
 
 	args []string
-	docker.AppAPI
+	*cmd.Cmd
 }
 
 // NewCoordinatorApp return a new coordinatorApp manager.
-func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
-	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", base.Timestamp)
+func NewCoordinatorApp(testApps *testcontainers.TestcontainerApps, configFile string, chainConfigFile string) *CoordinatorApp {
+	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", testApps.Timestamp)
+	genesisFile := fmt.Sprintf("/tmp/%d_genesis.json", testApps.Timestamp)
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))
 	httpPort := port.Int64() + httpStartPort
 	coordinatorApp := &CoordinatorApp{
-		base:            base,
-		originFile:      file,
-		coordinatorFile: coordinatorFile,
-		HTTPPort:        httpPort,
-		args:            []string{"--log.debug", "--config", coordinatorFile, "--http", "--http.port", strconv.Itoa(int(httpPort))},
+		testApps:              testApps,
+		configOriginFile:      configFile,
+		chainConfigOriginFile: chainConfigFile,
+		coordinatorFile:       coordinatorFile,
+		genesisFile:           genesisFile,
+		HTTPPort:              httpPort,
+		args:                  []string{"--log.debug", "--config", coordinatorFile, "--genesis", genesisFile, "--http", "--http.port", strconv.Itoa(int(httpPort))},
 	}
 	if err := coordinatorApp.MockConfig(true); err != nil {
 		panic(err)
@@ -55,14 +63,14 @@ func NewCoordinatorApp(base *docker.App, file string) *CoordinatorApp {
 
 // RunApp run coordinator-test child process by multi parameters.
 func (c *CoordinatorApp) RunApp(t *testing.T, args ...string) {
-	c.AppAPI = cmd.NewCmd(string(utils.CoordinatorAPIApp), append(c.args, args...)...)
-	c.AppAPI.RunApp(func() bool { return c.AppAPI.WaitResult(t, time.Second*20, "Start coordinator api successfully") })
+	c.Cmd = cmd.NewCmd(string(utils.CoordinatorAPIApp), append(c.args, args...)...)
+	c.Cmd.RunApp(func() bool { return c.Cmd.WaitResult(t, time.Second*20, "Start coordinator api successfully") })
 }
 
 // Free stop and release coordinator-test.
 func (c *CoordinatorApp) Free() {
-	if !utils.IsNil(c.AppAPI) {
-		c.AppAPI.WaitExit()
+	if !utils.IsNil(c.Cmd) {
+		c.Cmd.WaitExit()
 	}
 	_ = os.Remove(c.coordinatorFile)
 }
@@ -74,8 +82,7 @@ func (c *CoordinatorApp) HTTPEndpoint() string {
 
 // MockConfig creates a new coordinator config.
 func (c *CoordinatorApp) MockConfig(store bool) error {
-	base := c.base
-	cfg, err := coordinatorConfig.NewConfig(c.originFile)
+	cfg, err := coordinatorConfig.NewConfig(c.configOriginFile)
 	if err != nil {
 		return err
 	}
@@ -87,21 +94,42 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		ChunkCollectionTimeSec: 60,
 		SessionAttempts:        10,
 		MaxVerifierWorkers:     4,
+		MinProverVersion:       "v1.0.0",
 	}
-	cfg.DB.DSN = base.DBImg.Endpoint()
+	endpoint, err := c.testApps.GetDBEndPoint()
+	if err != nil {
+		return err
+	}
+	cfg.DB.DSN = endpoint
 	cfg.L2.ChainID = 111
 	cfg.Auth.ChallengeExpireDurationSec = 1
 	cfg.Auth.LoginExpireDurationSec = 1
 	c.Config = cfg
 
+	genesis, err := utils.ReadGenesis(c.chainConfigOriginFile)
+	if err != nil {
+		return err
+	}
+	c.ChainConfig = genesis.Config
+
 	if !store {
 		return nil
 	}
 
-	data, err := json.Marshal(c.Config)
+	coordinatorConfigData, err := json.Marshal(c.Config)
+	if err != nil {
+		return err
+	}
+	genesisConfigData, err := json.Marshal(genesis)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(c.coordinatorFile, data, 0600)
+	if writeErr := os.WriteFile(c.coordinatorFile, coordinatorConfigData, 0600); writeErr != nil {
+		return writeErr
+	}
+	if writeErr := os.WriteFile(c.genesisFile, genesisConfigData, 0600); writeErr != nil {
+		return writeErr
+	}
+	return nil
 }

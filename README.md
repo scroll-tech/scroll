@@ -29,7 +29,7 @@
 We welcome community contributions to this repository. Before you submit any issues or PRs, please read the [Code of Conduct](CODE_OF_CONDUCT.md) and the [Contribution Guideline](CONTRIBUTING.md).
 
 ## Prerequisites
-+ Go 1.20
++ Go 1.21
 + Rust (for version, see [rust-toolchain](./common/libzkp/impl/rust-toolchain))
 + Hardhat / Foundry
 + Docker

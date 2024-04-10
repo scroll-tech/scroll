@@ -7,16 +7,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/scroll-tech/go-ethereum/log"
+	"gorm.io/gorm"
+
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/log"
-	"gorm.io/gorm"
+	rutils "scroll-tech/rollup/internal/utils"
 )
-
-const defaultBatchHeaderVersion = 0
 
 // Batch represents a batch of chunks.
 type Batch struct {
@@ -55,7 +55,7 @@ type Batch struct {
 
 	// metadata
 	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas;default:0"`
-	TotalL1CommitCalldataSize uint32         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size;default:0"`
+	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size;default:0"`
 	CreatedAt                 time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt                 time.Time      `json:"updated_at" gorm:"column:updated_at"`
 	DeletedAt                 gorm.DeletedAt `json:"deleted_at" gorm:"column:deleted_at;default:NULL"`
@@ -137,9 +137,6 @@ func (o *Batch) GetLatestBatch(ctx context.Context) (*Batch, error) {
 
 	var latestBatch Batch
 	if err := db.First(&latestBatch).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("Batch.GetLatestBatch error: %w", err)
 	}
 	return &latestBatch, nil
@@ -150,12 +147,7 @@ func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error)
 	// Get the latest batch
 	latestBatch, err := o.GetLatestBatch(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("Chunk.GetChunkedBlockHeight error: %w", err)
-	}
-	// if parentBatch==nil then err==gorm.ErrRecordNotFound,
-	// which means there is not batched chunk yet, thus returns 0
-	if latestBatch == nil {
-		return 0, nil
+		return 0, fmt.Errorf("Batch.GetFirstUnbatchedChunkIndex error: %w", err)
 	}
 	return latestBatch.EndChunkIndex + 1, nil
 }
@@ -227,68 +219,58 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, chunks []*types.Chunk, batchMeta *types.BatchMeta, dbTX ...*gorm.DB) (*Batch, error) {
-	if len(chunks) == 0 {
-		return nil, errors.New("invalid args")
+func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, dbTX ...*gorm.DB) (*Batch, error) {
+	if batch == nil {
+		return nil, errors.New("invalid args: batch is nil")
 	}
 
-	parentBatch, err := o.GetLatestBatch(ctx)
+	numChunks := uint64(len(batch.Chunks))
+	if numChunks == 0 {
+		return nil, errors.New("invalid args: batch contains 0 chunk")
+	}
+
+	metrics, err := rutils.CalculateBatchMetrics(batch, codecVersion)
 	if err != nil {
-		log.Error("failed to get the latest batch", "err", err)
-		return nil, err
+		log.Error("failed to calculate batch metrics",
+			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
 	}
 
-	var batchIndex uint64
-	var parentBatchHash common.Hash
-	var totalL1MessagePoppedBefore uint64
-	var version uint8 = defaultBatchHeaderVersion
-
-	// if parentBatch==nil then err==gorm.ErrRecordNotFound, which means there's
-	// not batch record in the db, we then use default empty values for the creating batch;
-	// if parentBatch!=nil then err=nil, then we fill the parentBatch-related data into the creating batch
-	if parentBatch != nil {
-		batchIndex = parentBatch.Index + 1
-		parentBatchHash = common.HexToHash(parentBatch.Hash)
-
-		var parentBatchHeader *types.BatchHeader
-		parentBatchHeader, err = types.DecodeBatchHeader(parentBatch.BatchHeader)
-		if err != nil {
-			log.Error("failed to decode parent batch header", "index", parentBatch.Index, "hash", parentBatch.Hash, "err", err)
-			return nil, err
+	var startChunkIndex uint64
+	if batch.Index > 0 {
+		parentBatch, getErr := o.GetBatchByIndex(ctx, batch.Index-1)
+		if getErr != nil {
+			log.Error("failed to get batch by index", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+				"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", getErr)
+			return nil, fmt.Errorf("Batch.InsertBatch error: %w", getErr)
 		}
-
-		totalL1MessagePoppedBefore = parentBatchHeader.TotalL1MessagePopped()
-		version = parentBatchHeader.Version()
+		startChunkIndex = parentBatch.EndChunkIndex + 1
 	}
 
-	batchHeader, err := types.NewBatchHeader(version, batchIndex, totalL1MessagePoppedBefore, parentBatchHash, chunks)
+	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion)
 	if err != nil {
-		log.Error("failed to create batch header",
-			"index", batchIndex, "total l1 message popped before", totalL1MessagePoppedBefore,
-			"parent hash", parentBatchHash, "number of chunks", len(chunks), "err", err)
-		return nil, err
+		log.Error("failed to get batch metadata", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
-
-	numChunks := len(chunks)
-	lastChunkBlockNum := len(chunks[numChunks-1].Blocks)
 
 	newBatch := Batch{
-		Index:                     batchIndex,
-		Hash:                      batchHeader.Hash().Hex(),
-		StartChunkHash:            batchMeta.StartChunkHash,
-		StartChunkIndex:           batchMeta.StartChunkIndex,
-		EndChunkHash:              batchMeta.EndChunkHash,
-		EndChunkIndex:             batchMeta.EndChunkIndex,
-		StateRoot:                 chunks[numChunks-1].Blocks[lastChunkBlockNum-1].Header.Root.Hex(),
-		WithdrawRoot:              chunks[numChunks-1].Blocks[lastChunkBlockNum-1].WithdrawRoot.Hex(),
-		ParentBatchHash:           parentBatchHash.Hex(),
-		BatchHeader:               batchHeader.Encode(),
+		Index:                     batch.Index,
+		Hash:                      batchMeta.BatchHash.Hex(),
+		StartChunkHash:            batchMeta.StartChunkHash.Hex(),
+		StartChunkIndex:           startChunkIndex,
+		EndChunkHash:              batchMeta.EndChunkHash.Hex(),
+		EndChunkIndex:             startChunkIndex + numChunks - 1,
+		StateRoot:                 batch.StateRoot().Hex(),
+		WithdrawRoot:              batch.WithdrawRoot().Hex(),
+		ParentBatchHash:           batch.ParentBatchHash.Hex(),
+		BatchHeader:               batchMeta.BatchBytes,
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),
 		OracleStatus:              int16(types.GasOraclePending),
-		TotalL1CommitGas:          batchMeta.TotalL1CommitGas,
-		TotalL1CommitCalldataSize: batchMeta.TotalL1CommitCalldataSize,
+		TotalL1CommitGas:          metrics.L1CommitGas,
+		TotalL1CommitCalldataSize: metrics.L1CommitCalldataSize,
 	}
 
 	db := o.db

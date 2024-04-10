@@ -43,10 +43,10 @@ jobs:
       - name: Setup LCOV
         uses: hrishikesh-kadam/setup-lcov@v1
 
-      - name: Install Node.js 14
+      - name: Install Node.js 18
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '18'
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path
@@ -73,13 +73,13 @@ jobs:
         run: yarn install
 
       - name: Compile with foundry
-        run: forge build
+        run: forge build --evm-version cancun
 
       - name: Run foundry tests
-        run: forge test -vvv
+        run: forge test --evm-version cancun -vvv
 
       - name: Run foundry coverage
-        run : forge coverage --report lcov
+        run : forge coverage --evm-version cancun --report lcov
 
       - name : Prune coverage
         run : lcov --rc branch_coverage=1 --remove ./lcov.info -o ./lcov.info.pruned 'src/mocks/*' 'src/test/*' 'scripts/*' 'node_modules/*' 'lib/*'
@@ -102,10 +102,10 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install Node.js 14
+      - name: Install Node.js 18
         uses: actions/setup-node@v2
         with:
-          node-version: '14'
+          node-version: '18'
 
       - name: Get yarn cache directory path
         id: yarn-cache-dir-path

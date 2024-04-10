@@ -9,10 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/forks"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -22,36 +23,38 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-// ErrCoordinatorInternalFailure coordinator internal db failure
-var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
-
 // ChunkProverTask the chunk prover task
 type ChunkProverTask struct {
 	BaseProverTask
 
 	chunkAttemptsExceedTotal prometheus.Counter
-	chunkTaskGetTaskTotal    prometheus.Counter
+	chunkTaskGetTaskTotal    *prometheus.CounterVec
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
+	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
+	log.Info("new chunk prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
-			vk:            vk,
-			db:            db,
-			cfg:           cfg,
-			chunkOrm:      orm.NewChunk(db),
-			blockOrm:      orm.NewL2Block(db),
-			proverTaskOrm: orm.NewProverTask(db),
+			vk:                 vk,
+			db:                 db,
+			cfg:                cfg,
+			nameForkMap:        nameForkMap,
+			forkHeights:        forkHeights,
+			chunkOrm:           orm.NewChunk(db),
+			blockOrm:           orm.NewL2Block(db),
+			proverTaskOrm:      orm.NewProverTask(db),
+			proverBlockListOrm: orm.NewProverBlockList(db),
 		},
 		chunkAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_chunk_attempts_exceed_total",
 			Help: "Total number of chunk attempts exceed.",
 		}),
-		chunkTaskGetTaskTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+		chunkTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_chunk_get_task_total",
 			Help: "Total number of chunk get task.",
-		}),
+		}, []string{"fork_name"}),
 	}
 	return cp
 }
@@ -63,13 +66,24 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
+	hardForkNumber, err := cp.getHardForkNumberByName(getTaskParameter.HardForkName)
+	if err != nil {
+		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		return nil, err
+	}
+
+	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, cp.forkHeights)
+	if toBlockNum > getTaskParameter.ProverHeight {
+		toBlockNum = getTaskParameter.ProverHeight + 1
+	}
+
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := cp.cfg.ProverManager.SessionAttempts
 	var chunkTask *orm.Chunk
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
-		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
+		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx, fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
 			log.Error("failed to get assigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
@@ -78,7 +92,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpChunkTask == nil {
-			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx, getTaskParameter.ProverHeight, maxActiveAttempts, maxTotalAttempts)
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx, fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
 				log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
@@ -137,21 +151,16 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	cp.chunkTaskGetTaskTotal.Inc()
+	cp.chunkTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
 
 	return taskMsg, nil
 }
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
-	wrappedBlocks, wrappedErr := cp.blockOrm.GetL2BlocksByChunkHash(ctx, task.TaskID)
-	if wrappedErr != nil || len(wrappedBlocks) == 0 {
-		return nil, fmt.Errorf("failed to fetch wrapped blocks, chunk hash:%s err:%w", task.TaskID, wrappedErr)
-	}
-
-	blockHashes := make([]common.Hash, len(wrappedBlocks))
-	for i, wrappedBlock := range wrappedBlocks {
-		blockHashes[i] = wrappedBlock.Header.Hash()
+	blockHashes, dbErr := cp.blockOrm.GetL2BlockHashesByChunkHash(ctx, task.TaskID)
+	if dbErr != nil || len(blockHashes) == 0 {
+		return nil, fmt.Errorf("failed to fetch block hashes of a chunk, chunk hash:%s err:%w", task.TaskID, dbErr)
 	}
 
 	taskDetail := message.ChunkTaskDetail{

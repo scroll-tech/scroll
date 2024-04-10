@@ -168,7 +168,7 @@ function ethGateway() external view returns (address)
 
 The address of L1ETHGateway.
 
-*This variable is no longer used.*
+
 
 
 #### Returns
@@ -286,7 +286,7 @@ function initialize(address _ethGateway, address _defaultERC20Gateway) external 
 
 Initialize the storage of L1GatewayRouter.
 
-*The parameters `_ethGateway` is no longer used.*
+
 
 #### Parameters
 
@@ -294,23 +294,6 @@ Initialize the storage of L1GatewayRouter.
 |---|---|---|
 | _ethGateway | address | The address of L1ETHGateway contract. |
 | _defaultERC20Gateway | address | The address of default ERC20 Gateway contract. |
-
-### messenger
-
-```solidity
-function messenger() external view returns (address)
-```
-
-The address of `L1ScrollMessenger`.
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined |
 
 ### owner
 
@@ -447,12 +430,12 @@ Emitted when someone deposit ERC20 token from L1 to L2.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| l1Token `indexed` | address | The address of the token in L1. |
+| l2Token `indexed` | address | The address of the token in L2. |
+| from `indexed` | address | The address of sender in L1. |
+| to  | address | The address of recipient in L2. |
+| amount  | uint256 | The amount of token will be deposited from L1 to L2. |
+| data  | bytes | The optional calldata passed to recipient in L2. |
 
 ### DepositETH
 
@@ -468,10 +451,10 @@ Emitted when someone deposit ETH from L1 to L2.
 
 | Name | Type | Description |
 |---|---|---|
-| from `indexed` | address | undefined |
-| to `indexed` | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| from `indexed` | address | The address of sender in L1. |
+| to `indexed` | address | The address of recipient in L2. |
+| amount  | uint256 | The amount of ETH will be deposited from L1 to L2. |
+| data  | bytes | The optional calldata passed to recipient in L2. |
 
 ### FinalizeWithdrawERC20
 
@@ -487,12 +470,12 @@ Emitted when ERC20 token is withdrawn from L2 to L1 and transfer to recipient.
 
 | Name | Type | Description |
 |---|---|---|
-| l1Token `indexed` | address | undefined |
-| l2Token `indexed` | address | undefined |
-| from `indexed` | address | undefined |
-| to  | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| l1Token `indexed` | address | The address of the token in L1. |
+| l2Token `indexed` | address | The address of the token in L2. |
+| from `indexed` | address | The address of sender in L2. |
+| to  | address | The address of recipient in L1. |
+| amount  | uint256 | The amount of token withdrawn from L2 to L1. |
+| data  | bytes | The optional calldata passed to recipient in L1. |
 
 ### FinalizeWithdrawETH
 
@@ -508,10 +491,10 @@ Emitted when ETH is withdrawn from L2 to L1 and transfer to recipient.
 
 | Name | Type | Description |
 |---|---|---|
-| from `indexed` | address | undefined |
-| to `indexed` | address | undefined |
-| amount  | uint256 | undefined |
-| data  | bytes | undefined |
+| from `indexed` | address | The address of sender in L2. |
+| to `indexed` | address | The address of recipient in L1. |
+| amount  | uint256 | The amount of ETH withdrawn from L2 to L1. |
+| data  | bytes | The optional calldata passed to recipient in L1. |
 
 ### Initialized
 
@@ -521,7 +504,7 @@ event Initialized(uint8 version)
 
 
 
-
+*Triggered when the contract has been initialized or reinitialized.*
 
 #### Parameters
 
@@ -560,9 +543,9 @@ Emitted when some ERC20 token is refunded.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | undefined |
-| recipient `indexed` | address | undefined |
-| amount  | uint256 | undefined |
+| token `indexed` | address | The address of the token in L1. |
+| recipient `indexed` | address | The address of receiver in L1. |
+| amount  | uint256 | The amount of token refunded to receiver. |
 
 ### RefundETH
 
@@ -578,8 +561,8 @@ Emitted when some ETH is refunded.
 
 | Name | Type | Description |
 |---|---|---|
-| recipient `indexed` | address | undefined |
-| amount  | uint256 | undefined |
+| recipient `indexed` | address | The address of receiver in L1. |
+| amount  | uint256 | The amount of ETH refunded to receiver. |
 
 ### SetDefaultERC20Gateway
 
@@ -595,8 +578,8 @@ Emitted when the address of default ERC20 Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| oldDefaultERC20Gateway `indexed` | address | undefined |
-| newDefaultERC20Gateway `indexed` | address | undefined |
+| oldDefaultERC20Gateway `indexed` | address | The address of the old default ERC20 Gateway. |
+| newDefaultERC20Gateway `indexed` | address | The address of the new default ERC20 Gateway. |
 
 ### SetERC20Gateway
 
@@ -612,9 +595,9 @@ Emitted when the `gateway` for `token` is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| token `indexed` | address | undefined |
-| oldGateway `indexed` | address | undefined |
-| newGateway `indexed` | address | undefined |
+| token `indexed` | address | The address of token updated. |
+| oldGateway `indexed` | address | The corresponding address of the old gateway. |
+| newGateway `indexed` | address | The corresponding address of the new gateway. |
 
 ### SetETHGateway
 
@@ -630,22 +613,8 @@ Emitted when the address of ETH Gateway is updated.
 
 | Name | Type | Description |
 |---|---|---|
-| oldETHGateway `indexed` | address | undefined |
-| newEthGateway `indexed` | address | undefined |
-
-
-
-## Errors
-
-### ErrorZeroAddress
-
-```solidity
-error ErrorZeroAddress()
-```
-
-
-
-*Thrown when the given address is `address(0)`.*
+| oldETHGateway `indexed` | address | The address of the old ETH Gateway. |
+| newEthGateway `indexed` | address | The address of the new ETH Gateway. |
 
 
 

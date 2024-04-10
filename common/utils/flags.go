@@ -16,6 +16,7 @@ var (
 		&MetricsAddr,
 		&MetricsPort,
 		&ServicePortFlag,
+		&Genesis,
 	}
 	// RollupRelayerFlags contains flags only used in rollup-relayer
 	RollupRelayerFlags = []cli.Flag{
@@ -82,5 +83,11 @@ var (
 		Name:  "service.port",
 		Usage: "Port that the service will listen on",
 		Value: 8080,
+	}
+	// Genesis is the genesis file
+	Genesis = cli.StringFlag{
+		Name:  "genesis",
+		Usage: "Genesis file of the network",
+		Value: "./conf/genesis.json",
 	}
 )

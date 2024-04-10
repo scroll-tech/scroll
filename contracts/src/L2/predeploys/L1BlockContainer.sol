@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 import {IL1BlockContainer} from "./IL1BlockContainer.sol";
 import {IL1GasPriceOracle} from "./IL1GasPriceOracle.sol";

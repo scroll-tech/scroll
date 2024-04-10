@@ -14,8 +14,10 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
+	dockercompose "scroll-tech/common/docker-compose/l1"
+	"scroll-tech/common/testcontainers"
+	"scroll-tech/common/types/encoding"
+	"scroll-tech/common/types/encoding/codecv0"
 
 	"scroll-tech/rollup/internal/config"
 )
@@ -24,18 +26,19 @@ var (
 	// config
 	cfg *config.Config
 
-	base *docker.App
+	testApps     *testcontainers.TestcontainerApps
+	posL1TestEnv *dockercompose.PoSL1TestEnv
 
 	// l2geth client
 	l2Cli *ethclient.Client
 
 	// l2 block
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
+	block1 *encoding.Block
+	block2 *encoding.Block
 
 	// chunk
-	chunk1     *types.Chunk
-	chunk2     *types.Chunk
+	chunk1     *encoding.Chunk
+	chunk2     *encoding.Chunk
 	chunkHash1 common.Hash
 	chunkHash2 common.Hash
 )
@@ -50,15 +53,25 @@ func setupEnv(t *testing.T) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	base.RunImages(t)
+	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
+	assert.NoError(t, err, "failed to create PoS L1 test environment")
+	assert.NoError(t, posL1TestEnv.Start(), "failed to start PoS L1 test environment")
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	testApps = testcontainers.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+	assert.NoError(t, testApps.StartL2GethContainer())
+
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL2GethEndPoint()
+	assert.NoError(t, err)
+
+	dsn, err := testApps.GetDBEndPoint()
+	assert.NoError(t, err)
 	cfg.DBConfig = &database.Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
+		DSN:        dsn,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
 	}
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)
@@ -66,34 +79,42 @@ func setupEnv(t *testing.T) {
 	cfg.L2Config.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 
 	// Create l2geth client.
-	l2Cli, err = base.L2Client()
+	l2Cli, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
 
 	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
 	assert.NoError(t, err)
-	wrappedBlock1 = &types.WrappedBlock{}
-	err = json.Unmarshal(templateBlockTrace1, wrappedBlock1)
+	block1 = &encoding.Block{}
+	err = json.Unmarshal(templateBlockTrace1, block1)
 	assert.NoError(t, err)
-	chunk1 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock1}}
-	chunkHash1, err = chunk1.Hash(0)
+	chunk1 = &encoding.Chunk{Blocks: []*encoding.Block{block1}}
+	daChunk1, err := codecv0.NewDAChunk(chunk1, 0)
+	assert.NoError(t, err)
+	chunkHash1, err = daChunk1.Hash()
 	assert.NoError(t, err)
 
 	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
 	assert.NoError(t, err)
-	wrappedBlock2 = &types.WrappedBlock{}
-	err = json.Unmarshal(templateBlockTrace2, wrappedBlock2)
+	block2 = &encoding.Block{}
+	err = json.Unmarshal(templateBlockTrace2, block2)
 	assert.NoError(t, err)
-	chunk2 = &types.Chunk{Blocks: []*types.WrappedBlock{wrappedBlock2}}
-	chunkHash2, err = chunk2.Hash(chunk1.NumL1Messages(0))
+	chunk2 = &encoding.Chunk{Blocks: []*encoding.Block{block2}}
+	daChunk2, err := codecv0.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
+	assert.NoError(t, err)
+	chunkHash2, err = daChunk2.Hash()
 	assert.NoError(t, err)
 }
 
 func TestMain(m *testing.M) {
-	base = docker.NewDockerApp()
-
+	defer func() {
+		if testApps != nil {
+			testApps.Free()
+		}
+		if posL1TestEnv != nil {
+			posL1TestEnv.Stop()
+		}
+	}()
 	m.Run()
-
-	base.Free()
 }
 
 func TestFunctions(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/urfave/cli/v2"
 	"gorm.io/gorm"
 
@@ -49,7 +50,6 @@ func action(ctx *cli.Context) error {
 	if err != nil {
 		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
 	}
-
 	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
@@ -60,10 +60,16 @@ func action(ctx *cli.Context) error {
 		}
 	}()
 
+	genesisPath := ctx.String(utils.Genesis.Name)
+	genesis, err := utils.ReadGenesis(genesisPath)
+	if err != nil {
+		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
+	}
+
 	registry := prometheus.DefaultRegisterer
 	observability.Server(ctx, db)
 
-	apiSrv := apiServer(ctx, cfg, db, registry)
+	apiSrv := apiServer(ctx, cfg, genesis.Config, db, registry)
 
 	log.Info(
 		"Start coordinator api successfully.",
@@ -90,9 +96,9 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-func apiServer(ctx *cli.Context, cfg *config.Config, db *gorm.DB, reg prometheus.Registerer) *http.Server {
+func apiServer(ctx *cli.Context, cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *http.Server {
 	router := gin.New()
-	api.InitController(cfg, db, reg)
+	api.InitController(cfg, chainCfg, db, reg)
 	route.Route(router, cfg, reg)
 	port := ctx.String(httpPortFlag.Name)
 	srv := &http.Server{

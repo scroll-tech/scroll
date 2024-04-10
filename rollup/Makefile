@@ -4,8 +4,8 @@ IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
 mock_abi:
-	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --sol ./rollup/mock_bridge/MockBridgeL1.sol --pkg mock_bridge --out ./rollup/mock_bridge/MockBridgeL1.go
-	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --sol ./rollup/mock_bridge/MockBridgeL2.sol --pkg mock_bridge --out ./rollup/mock_bridge/MockBridgeL2.go
+	cd .. && solc --evm-version cancun --bin --abi --optimize --overwrite -o ./build/bin ./rollup/mock_bridge/MockBridge.sol
+	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --bin=./build/bin/MockBridge.bin --abi=./build/bin/MockBridge.abi --pkg=mock_bridge --out=./rollup/mock_bridge/MockBridge.go
 
 rollup_bins: ## Builds the Rollup bins.
 	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/

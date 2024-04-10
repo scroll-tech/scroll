@@ -1,9 +1,8 @@
 /* eslint-disable node/no-missing-import */
 /* eslint-disable node/no-unpublished-import */
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { BigNumber, BigNumberish, ContractTransaction, constants } from "ethers";
-import { keccak256 } from "ethers/lib/utils";
+import { BigNumberish, ContractTransactionResponse, MaxUint256, keccak256, toQuantity } from "ethers";
 import { ethers, network } from "hardhat";
 
 import {
@@ -24,31 +23,27 @@ describe("GasOptimizationUpgrade.spec", async () => {
   const L2_MESSAGE_QUEUE = "0x5300000000000000000000000000000000000000";
   const SCROLL_CHAIN = "0xa13BAF47339d63B743e7Da8741db5456DAc1E556";
 
-  let deployer: SignerWithAddress;
+  let deployer: HardhatEthersSigner;
 
   let proxyAdmin: ProxyAdmin;
 
-  const mockERC20Balance = async (tokenAddress: string, balance: BigNumber, slot: BigNumberish) => {
+  const mockERC20Balance = async (tokenAddress: string, balance: bigint, slot: BigNumberish) => {
     const storageSlot = keccak256(
-      ethers.utils.defaultAbiCoder.encode(["address", "uint256"], [deployer.address, slot])
+      ethers.AbiCoder.defaultAbiCoder().encode(["address", "uint256"], [deployer.address, slot])
     );
-    await ethers.provider.send("hardhat_setStorageAt", [
-      tokenAddress,
-      storageSlot,
-      ethers.utils.hexlify(ethers.utils.zeroPad(balance.toHexString(), 32)),
-    ]);
+    await ethers.provider.send("hardhat_setStorageAt", [tokenAddress, storageSlot, toQuantity(balance)]);
     const token = await ethers.getContractAt("MockERC20", tokenAddress, deployer);
     expect(await token.balanceOf(deployer.address)).to.eq(balance);
   };
 
-  const mockETHBalance = async (balance: BigNumber) => {
-    await network.provider.send("hardhat_setBalance", [deployer.address, balance.toHexString()]);
-    expect(await deployer.getBalance()).to.eq(balance);
+  const mockETHBalance = async (balance: bigint) => {
+    await network.provider.send("hardhat_setBalance", [deployer.address, toQuantity(balance)]);
+    expect(await ethers.provider.getBalance(deployer.address)).to.eq(balance);
   };
 
-  const showGasUsage = async (tx: ContractTransaction, desc: string) => {
+  const showGasUsage = async (tx: ContractTransactionResponse, desc: string) => {
     const receipt = await tx.wait();
-    console.log(`${desc}: GasUsed[${receipt.gasUsed}]`);
+    console.log(`${desc}: GasUsed[${receipt!.gasUsed}]`);
   };
 
   context("L1 upgrade", async () => {
@@ -59,7 +54,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
 
     beforeEach(async () => {
       // fork network
-      const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/eth");
+      const provider = new ethers.JsonRpcProvider("https://rpc.ankr.com/eth");
       if (!forkBlock) {
         forkBlock = (await provider.getBlockNumber()) - 10;
       }
@@ -81,14 +76,14 @@ describe("GasOptimizationUpgrade.spec", async () => {
 
       // mock eth balance
       deployer = await ethers.getSigner("0x1100000000000000000000000000000000000011");
-      await mockETHBalance(ethers.utils.parseEther("1000"));
+      await mockETHBalance(ethers.parseEther("1000"));
 
       // mock owner of proxy admin
       proxyAdmin = await ethers.getContractAt("ProxyAdmin", "0xEB803eb3F501998126bf37bB823646Ed3D59d072", deployer);
       await ethers.provider.send("hardhat_setStorageAt", [
-        proxyAdmin.address,
+        await proxyAdmin.getAddress(),
         "0x0",
-        ethers.utils.hexlify(ethers.utils.zeroPad(deployer.address, 32)),
+        ethers.AbiCoder.defaultAbiCoder().encode(["address"], [deployer.address]),
       ]);
       expect(await proxyAdmin.owner()).to.eq(deployer.address);
 
@@ -107,9 +102,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const ScrollChain = await ethers.getContractFactory("ScrollChain", deployer);
       await proxyAdmin.upgrade(
         L1_MESSENGER,
-        (
-          await L1ScrollMessenger.deploy(L2_MESSENGER, SCROLL_CHAIN, L1_MESSAGE_QUEUE)
-        ).address
+        (await L1ScrollMessenger.deploy(L2_MESSENGER, SCROLL_CHAIN, L1_MESSAGE_QUEUE)).getAddress()
       );
       await proxyAdmin.upgrade(
         L1_MESSAGE_QUEUE,
@@ -119,14 +112,12 @@ describe("GasOptimizationUpgrade.spec", async () => {
             SCROLL_CHAIN,
             "0x72CAcBcfDe2d1e19122F8A36a4d6676cd39d7A5d"
           )
-        ).address
+        ).getAddress()
       );
       await queue.initializeV2();
       await proxyAdmin.upgrade(
         SCROLL_CHAIN,
-        (
-          await ScrollChain.deploy(534352, L1_MESSAGE_QUEUE, "0xA2Ab526e5C5491F10FC05A55F064BF9F7CEf32a0")
-        ).address
+        (await ScrollChain.deploy(534352, L1_MESSAGE_QUEUE, "0xA2Ab526e5C5491F10FC05A55F064BF9F7CEf32a0")).getAddress()
       );
     };
 
@@ -136,40 +127,40 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L1ETHGateway = await ethers.getContractFactory("L1ETHGateway", deployer);
       const impl = await L1ETHGateway.deploy(L2_GATEWAY, L1_ROUTER, L1_MESSENGER);
       const gateway = await ethers.getContractAt("L1ETHGateway", L1_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseEther("1");
+      const amountIn = ethers.parseEther("1");
       const fee = await queue.estimateCrossDomainMessageFee(1e6);
 
       // before upgrade
       await showGasUsage(
-        await gateway["depositETH(uint256,uint256)"](amountIn, 1e6, { value: amountIn.add(fee) }),
+        await gateway["depositETH(uint256,uint256)"](amountIn, 1e6, { value: amountIn + fee }),
         "L1ETHGateway.depositETH before upgrade"
       );
       await showGasUsage(
-        await router["depositETH(uint256,uint256)"](amountIn, 1e6, { value: amountIn.add(fee) }),
+        await router["depositETH(uint256,uint256)"](amountIn, 1e6, { value: amountIn + fee }),
         "L1GatewayRouter.depositETH before upgrade"
       );
       await showGasUsage(
         await messenger["sendMessage(address,uint256,bytes,uint256)"](deployer.address, amountIn, "0x", 1e6, {
-          value: amountIn.add(fee),
+          value: amountIn + fee,
         }),
         "L1ScrollMessenger.sendMessage before upgrade"
       );
 
       // do upgrade
-      await upgradeL1(L1_GATEWAY, impl.address);
+      await upgradeL1(L1_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
-        await gateway["depositETH(uint256,uint256)"](amountIn, 1e6, { value: amountIn.add(fee) }),
+        await gateway["depositETH(uint256,uint256)"](amountIn, 1e6, { value: amountIn + fee }),
         "L1ETHGateway.depositETH after upgrade"
       );
       await showGasUsage(
-        await router["depositETH(uint256,uint256)"](amountIn, 1e6, { value: amountIn.add(fee) }),
+        await router["depositETH(uint256,uint256)"](amountIn, 1e6, { value: amountIn + fee }),
         "L1GatewayRouter.depositETH after upgrade"
       );
       await showGasUsage(
         await messenger["sendMessage(address,uint256,bytes,uint256)"](deployer.address, amountIn, "0x", 1e6, {
-          value: amountIn.add(fee),
+          value: amountIn + fee,
         }),
         "L1ScrollMessenger.sendMessage after upgrade"
       );
@@ -183,12 +174,12 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L1WETHGateway = await ethers.getContractFactory("L1WETHGateway", deployer);
       const impl = await L1WETHGateway.deploy(L1_WETH, L2_WETH, L2_GATEWAY, L1_ROUTER, L1_MESSENGER);
       const gateway = await ethers.getContractAt("L1WETHGateway", L1_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseEther("1");
+      const amountIn = ethers.parseEther("1");
       const fee = await queue.estimateCrossDomainMessageFee(1e6);
       const token = await ethers.getContractAt("MockERC20", L1_WETH, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 3);
-      await token.approve(L1_GATEWAY, constants.MaxUint256);
-      await token.approve(L1_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 3);
+      await token.approve(L1_GATEWAY, MaxUint256);
+      await token.approve(L1_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -201,7 +192,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL1(L1_GATEWAY, impl.address);
+      await upgradeL1(L1_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
@@ -227,12 +218,12 @@ describe("GasOptimizationUpgrade.spec", async () => {
         "0x66e5312EDeEAef6e80759A0F789e7914Fb401484"
       );
       const gateway = await ethers.getContractAt("L1StandardERC20Gateway", L1_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseUnits("1", 6);
+      const amountIn = ethers.parseUnits("1", 6);
       const fee = await queue.estimateCrossDomainMessageFee(1e6);
       const token = await ethers.getContractAt("MockERC20", L1_USDT, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 2);
-      await token.approve(L1_GATEWAY, constants.MaxUint256);
-      await token.approve(L1_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 2);
+      await token.approve(L1_GATEWAY, MaxUint256);
+      await token.approve(L1_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -245,7 +236,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL1(L1_GATEWAY, impl.address);
+      await upgradeL1(L1_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
@@ -265,12 +256,12 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L1CustomERC20Gateway = await ethers.getContractFactory("L1CustomERC20Gateway", deployer);
       const impl = await L1CustomERC20Gateway.deploy(L2_GATEWAY, L1_ROUTER, L1_MESSENGER);
       const gateway = await ethers.getContractAt("L1CustomERC20Gateway", L1_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseUnits("1", 18);
+      const amountIn = ethers.parseUnits("1", 18);
       const fee = await queue.estimateCrossDomainMessageFee(1e6);
       const token = await ethers.getContractAt("MockERC20", L1_DAI, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 2);
-      await token.approve(L1_GATEWAY, constants.MaxUint256);
-      await token.approve(L1_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 2);
+      await token.approve(L1_GATEWAY, MaxUint256);
+      await token.approve(L1_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -283,7 +274,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL1(L1_GATEWAY, impl.address);
+      await upgradeL1(L1_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
@@ -304,12 +295,12 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L1USDCGateway = await ethers.getContractFactory("L1USDCGateway", deployer);
       const impl = await L1USDCGateway.deploy(L1_USDC, L2_USDC, L2_GATEWAY, L1_ROUTER, L1_MESSENGER);
       const gateway = await ethers.getContractAt("L1USDCGateway", L1_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseUnits("1", 6);
+      const amountIn = ethers.parseUnits("1", 6);
       const fee = await queue.estimateCrossDomainMessageFee(1e6);
       const token = await ethers.getContractAt("MockERC20", L1_USDC, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 9);
-      await token.approve(L1_GATEWAY, constants.MaxUint256);
-      await token.approve(L1_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 9);
+      await token.approve(L1_GATEWAY, MaxUint256);
+      await token.approve(L1_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -322,7 +313,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL1(L1_GATEWAY, impl.address);
+      await upgradeL1(L1_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
@@ -343,12 +334,12 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L1LidoGateway = await ethers.getContractFactory("L1LidoGateway", deployer);
       const impl = await L1LidoGateway.deploy(L1_WSTETH, L2_WSTETH, L2_GATEWAY, L1_ROUTER, L1_MESSENGER);
       const gateway = await ethers.getContractAt("L1LidoGateway", L1_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseUnits("1", 6);
+      const amountIn = ethers.parseUnits("1", 6);
       const fee = await queue.estimateCrossDomainMessageFee(1e6);
       const token = await ethers.getContractAt("MockERC20", L1_WSTETH, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 0);
-      await token.approve(L1_GATEWAY, constants.MaxUint256);
-      await token.approve(L1_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 0);
+      await token.approve(L1_GATEWAY, MaxUint256);
+      await token.approve(L1_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -361,7 +352,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL1(L1_GATEWAY, impl.address);
+      await upgradeL1(L1_GATEWAY, await impl.getAddress());
       await gateway.initializeV2(deployer.address, deployer.address, deployer.address, deployer.address);
 
       // after upgrade
@@ -383,7 +374,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
 
     beforeEach(async () => {
       // fork network
-      const provider = new ethers.providers.JsonRpcProvider("https://rpc.scroll.io");
+      const provider = new ethers.JsonRpcProvider("https://rpc.scroll.io");
       if (!forkBlock) {
         forkBlock = (await provider.getBlockNumber()) - 31;
       }
@@ -405,14 +396,14 @@ describe("GasOptimizationUpgrade.spec", async () => {
 
       // mock eth balance
       deployer = await ethers.getSigner("0x1100000000000000000000000000000000000011");
-      await mockETHBalance(ethers.utils.parseEther("1000"));
+      await mockETHBalance(ethers.parseEther("1000"));
 
       // mock owner of proxy admin
       proxyAdmin = await ethers.getContractAt("ProxyAdmin", "0xA76acF000C890b0DD7AEEf57627d9899F955d026", deployer);
       await ethers.provider.send("hardhat_setStorageAt", [
-        proxyAdmin.address,
+        await proxyAdmin.getAddress(),
         "0x0",
-        ethers.utils.hexlify(ethers.utils.zeroPad(deployer.address, 32)),
+        ethers.AbiCoder.defaultAbiCoder().encode(["address"], [deployer.address]),
       ]);
       expect(await proxyAdmin.owner()).to.eq(deployer.address);
 
@@ -423,7 +414,10 @@ describe("GasOptimizationUpgrade.spec", async () => {
     const upgradeL2 = async (proxy: string, impl: string) => {
       await proxyAdmin.upgrade(proxy, impl);
       const L2ScrollMessenger = await ethers.getContractFactory("L2ScrollMessenger", deployer);
-      await proxyAdmin.upgrade(L2_MESSENGER, (await L2ScrollMessenger.deploy(L1_MESSENGER, L2_MESSAGE_QUEUE)).address);
+      await proxyAdmin.upgrade(
+        L2_MESSENGER,
+        (await L2ScrollMessenger.deploy(L1_MESSENGER, L2_MESSAGE_QUEUE)).getAddress()
+      );
     };
 
     it.skip("should succeed on L2ETHGateway", async () => {
@@ -432,7 +426,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L2ETHGateway = await ethers.getContractFactory("L2ETHGateway", deployer);
       const impl = await L2ETHGateway.deploy(L1_GATEWAY, L2_ROUTER, L2_MESSENGER);
       const gateway = await ethers.getContractAt("L2ETHGateway", L2_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseEther("1");
+      const amountIn = ethers.parseEther("1");
 
       // before upgrade
       await showGasUsage(
@@ -451,7 +445,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL2(L2_GATEWAY, impl.address);
+      await upgradeL2(L2_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
@@ -478,11 +472,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L2WETHGateway = await ethers.getContractFactory("L2WETHGateway", deployer);
       const impl = await L2WETHGateway.deploy(L2_WETH, L1_WETH, L1_GATEWAY, L2_ROUTER, L2_MESSENGER);
       const gateway = await ethers.getContractAt("L2WETHGateway", L2_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseEther("1");
+      const amountIn = ethers.parseEther("1");
       const token = await ethers.getContractAt("MockERC20", L2_WETH, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 0);
-      await token.approve(L2_GATEWAY, constants.MaxUint256);
-      await token.approve(L2_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 0);
+      await token.approve(L2_GATEWAY, MaxUint256);
+      await token.approve(L2_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -495,7 +489,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL2(L2_GATEWAY, impl.address);
+      await upgradeL2(L2_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
@@ -520,11 +514,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
         "0x66e5312EDeEAef6e80759A0F789e7914Fb401484"
       );
       const gateway = await ethers.getContractAt("L2StandardERC20Gateway", L2_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseUnits("1", 6);
+      const amountIn = ethers.parseUnits("1", 6);
       const token = await ethers.getContractAt("MockERC20", L2_USDT, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 51);
-      await token.approve(L2_GATEWAY, constants.MaxUint256);
-      await token.approve(L2_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 51);
+      await token.approve(L2_GATEWAY, MaxUint256);
+      await token.approve(L2_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -537,7 +531,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL2(L2_GATEWAY, impl.address);
+      await upgradeL2(L2_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
@@ -557,11 +551,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L2CustomERC20Gateway = await ethers.getContractFactory("L2CustomERC20Gateway", deployer);
       const impl = await L2CustomERC20Gateway.deploy(L1_GATEWAY, L2_ROUTER, L2_MESSENGER);
       const gateway = await ethers.getContractAt("L2CustomERC20Gateway", L2_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseUnits("1", 18);
+      const amountIn = ethers.parseUnits("1", 18);
       const token = await ethers.getContractAt("MockERC20", L2_DAI, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 51);
-      await token.approve(L1_GATEWAY, constants.MaxUint256);
-      await token.approve(L1_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 51);
+      await token.approve(L1_GATEWAY, MaxUint256);
+      await token.approve(L1_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -574,7 +568,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL2(L2_GATEWAY, impl.address);
+      await upgradeL2(L2_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
@@ -595,11 +589,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L2USDCGateway = await ethers.getContractFactory("L2USDCGateway", deployer);
       const impl = await L2USDCGateway.deploy(L1_USDC, L2_USDC, L1_GATEWAY, L2_ROUTER, L2_MESSENGER);
       const gateway = await ethers.getContractAt("L2USDCGateway", L2_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseUnits("1", 6);
+      const amountIn = ethers.parseUnits("1", 6);
       const token = await ethers.getContractAt("MockERC20", L2_USDC, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 9);
-      await token.approve(L2_GATEWAY, constants.MaxUint256);
-      await token.approve(L2_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 9);
+      await token.approve(L2_GATEWAY, MaxUint256);
+      await token.approve(L2_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -612,7 +606,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL2(L2_GATEWAY, impl.address);
+      await upgradeL2(L2_GATEWAY, await impl.getAddress());
 
       // after upgrade
       await showGasUsage(
@@ -633,11 +627,11 @@ describe("GasOptimizationUpgrade.spec", async () => {
       const L2LidoGateway = await ethers.getContractFactory("L2LidoGateway", deployer);
       const impl = await L2LidoGateway.deploy(L1_WSTETH, L2_WSTETH, L1_GATEWAY, L2_ROUTER, L2_MESSENGER);
       const gateway = await ethers.getContractAt("L2LidoGateway", L2_GATEWAY, deployer);
-      const amountIn = ethers.utils.parseUnits("1", 6);
+      const amountIn = ethers.parseUnits("1", 6);
       const token = await ethers.getContractAt("MockERC20", L2_WSTETH, deployer);
-      await mockERC20Balance(token.address, amountIn.mul(10), 51);
-      await token.approve(L2_GATEWAY, constants.MaxUint256);
-      await token.approve(L2_ROUTER, constants.MaxUint256);
+      await mockERC20Balance(await token.getAddress(), amountIn * 10n, 51);
+      await token.approve(L2_GATEWAY, MaxUint256);
+      await token.approve(L2_ROUTER, MaxUint256);
 
       // before upgrade
       await showGasUsage(
@@ -650,7 +644,7 @@ describe("GasOptimizationUpgrade.spec", async () => {
       );
 
       // do upgrade
-      await upgradeL2(L2_GATEWAY, impl.address);
+      await upgradeL2(L2_GATEWAY, await impl.getAddress());
       await gateway.initializeV2(deployer.address, deployer.address, deployer.address, deployer.address);
 
       // after upgrade

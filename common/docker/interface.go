@@ -4,7 +4,7 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 )
@@ -40,7 +40,7 @@ type GethImgInstance interface {
 func GetContainerID(name string) string {
 	filter := filters.NewArgs()
 	filter.Add("name", name)
-	lst, _ := cli.ContainerList(context.Background(), types.ContainerListOptions{
+	lst, _ := cli.ContainerList(context.Background(), container.ListOptions{
 		Filters: filter,
 	})
 	if len(lst) > 0 {

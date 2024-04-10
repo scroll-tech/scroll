@@ -11,9 +11,8 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
-	"scroll-tech/common/types"
-
+	"scroll-tech/common/testcontainers"
+	"scroll-tech/common/types/encoding"
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/rollup/internal/config"
@@ -23,14 +22,14 @@ var (
 	// config
 	cfg *config.Config
 
-	base *docker.App
+	testApps *testcontainers.TestcontainerApps
 
 	// l2geth client
 	l2Cli *ethclient.Client
 
 	// block trace
-	wrappedBlock1 *types.WrappedBlock
-	wrappedBlock2 *types.WrappedBlock
+	block1 *encoding.Block
+	block2 *encoding.Block
 )
 
 func setupEnv(t *testing.T) (err error) {
@@ -42,40 +41,32 @@ func setupEnv(t *testing.T) (err error) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	base.RunImages(t)
+	testApps = testcontainers.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+	assert.NoError(t, testApps.StartL1GethContainer())
+	assert.NoError(t, testApps.StartL2GethContainer())
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = base.L1gethImg.Endpoint()
-	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint = base.L2gethImg.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL1GethEndPoint()
+	assert.NoError(t, err)
+	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL2GethEndPoint()
+	assert.NoError(t, err)
+
+	dsn, err := testApps.GetDBEndPoint()
+	assert.NoError(t, err)
 	cfg.DBConfig = &database.Config{
-		DSN:        base.DBConfig.DSN,
-		DriverName: base.DBConfig.DriverName,
-		MaxOpenNum: base.DBConfig.MaxOpenNum,
-		MaxIdleNum: base.DBConfig.MaxIdleNum,
+		DSN:        dsn,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
 	}
 
 	// Create l2geth client.
-	l2Cli, err = base.L2Client()
+	l2Cli, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
 
-	templateBlockTrace1, err := os.ReadFile("../../../testdata/blockTrace_02.json")
-	if err != nil {
-		return err
-	}
-	// unmarshal blockTrace
-	wrappedBlock1 = &types.WrappedBlock{}
-	if err = json.Unmarshal(templateBlockTrace1, wrappedBlock1); err != nil {
-		return err
-	}
+	block1 = readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	block2 = readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 
-	templateBlockTrace2, err := os.ReadFile("../../../testdata/blockTrace_03.json")
-	if err != nil {
-		return err
-	}
-	// unmarshal blockTrace
-	wrappedBlock2 = &types.WrappedBlock{}
-	if err = json.Unmarshal(templateBlockTrace2, wrappedBlock2); err != nil {
-		return err
-	}
 	return err
 }
 
@@ -89,11 +80,12 @@ func setupDB(t *testing.T) *gorm.DB {
 }
 
 func TestMain(m *testing.M) {
-	base = docker.NewDockerApp()
-
+	defer func() {
+		if testApps != nil {
+			testApps.Free()
+		}
+	}()
 	m.Run()
-
-	base.Free()
 }
 
 func TestFunction(t *testing.T) {
@@ -113,9 +105,22 @@ func TestFunction(t *testing.T) {
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
 
 	// Run chunk proposer test cases.
-	t.Run("TestChunkProposerLimits", testChunkProposerLimits)
+	t.Run("TestChunkProposerCodecv0Limits", testChunkProposerCodecv0Limits)
+	t.Run("TestChunkProposerCodecv1Limits", testChunkProposerCodecv1Limits)
+	t.Run("TestChunkProposerCodecv1BlobSizeLimit", testChunkProposerCodecv1BlobSizeLimit)
 
 	// Run chunk proposer test cases.
-	t.Run("TestBatchProposerLimits", testBatchProposerLimits)
+	t.Run("TestBatchProposerCodecv0Limits", testBatchProposerCodecv0Limits)
+	t.Run("TestBatchProposerCodecv1Limits", testBatchProposerCodecv1Limits)
 	t.Run("TestBatchCommitGasAndCalldataSizeEstimation", testBatchCommitGasAndCalldataSizeEstimation)
+	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
+}
+
+func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {
+	data, err := os.ReadFile(filename)
+	assert.NoError(t, err)
+
+	block := &encoding.Block{}
+	assert.NoError(t, json.Unmarshal(data, block))
+	return block
 }
