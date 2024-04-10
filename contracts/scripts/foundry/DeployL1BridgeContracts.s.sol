@@ -55,7 +55,9 @@ contract DeployL1BridgeContracts is Script {
     address L2_SCROLL_STANDARD_ERC20_ADDR = vm.envAddress("L2_SCROLL_STANDARD_ERC20_ADDR");
     address L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR = vm.envAddress("L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR");
 
-    ZkEvmVerifierV1 zkEvmVerifierV1;
+    // TODO: refactor ZkEvmVerifierV1 into an array?
+    ZkEvmVerifierV1 zkEvmVerifierV1_0;
+    ZkEvmVerifierV1 zkEvmVerifierV1_1;
     MultipleVersionRollupVerifier rollupVerifier;
     EnforcedTxGateway enforcedTxGateway;
     ProxyAdmin proxyAdmin;
@@ -66,7 +68,7 @@ contract DeployL1BridgeContracts is Script {
 
         vm.startBroadcast(L1_DEPLOYER_PRIVATE_KEY);
 
-        deployZkEvmVerifierV1();
+        deployZkEvmVerifierV1s();
         deployMultipleVersionRollupVerifier();
         deployL1Whitelist();
         deployEnforcedTxGateway();
@@ -85,17 +87,23 @@ contract DeployL1BridgeContracts is Script {
         vm.stopBroadcast();
     }
 
-    function deployZkEvmVerifierV1() internal {
-        zkEvmVerifierV1 = new ZkEvmVerifierV1(L1_PLONK_VERIFIER_ADDR);
+    // TODO: refactor
+    function deployZkEvmVerifierV1s() internal {
+        zkEvmVerifierV1_0 = new ZkEvmVerifierV1(L1_PLONK_VERIFIER_ADDR);
+        zkEvmVerifierV1_1 = new ZkEvmVerifierV1(L1_PLONK_VERIFIER_ADDR); // TODO: update plonk verifier address
 
-        logAddress("L1_ZKEVM_VERIFIER_V1_ADDR", address(zkEvmVerifierV1));
+        logAddress("L1_ZKEVM_VERIFIER_V1_ADDR", address(zkEvmVerifierV1_0)); // TODO: update env name
+        logAddress("L1_ZKEVM_VERIFIER_V1_ADDR", address(zkEvmVerifierV1_1)); // TODO: update env name
     }
 
+    // TODO: refactor
     function deployMultipleVersionRollupVerifier() internal {
-        uint256[] memory _versions = new uint256[](1);
-        address[] memory _verifiers = new address[](1);
+        uint256[] memory _versions = new uint256[](2);
+        address[] memory _verifiers = new address[](2);
         _versions[0] = 0;
-        _verifiers[0] = address(zkEvmVerifierV1);
+        _verifiers[0] = address(zkEvmVerifierV1_0);
+        _versions[1] = 1;
+        _verifiers[1] = address(zkEvmVerifierV1_1);
         rollupVerifier = new MultipleVersionRollupVerifier(L1_SCROLL_CHAIN_PROXY_ADDR, _versions, _verifiers);
 
         logAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR", address(rollupVerifier));
