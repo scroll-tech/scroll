@@ -157,16 +157,16 @@ pub unsafe extern "C" fn verify_batch_proof(
     let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
     let fork_name_str = c_char_to_str(fork_name);
     let fork_id = match fork_name_str {
-        "" => 1,
-        "shanghai" => 1,
-        "bernoulli" => 2,
+        "" => 0,
+        "shanghai" => 0,
+        "bernoulli" => 1,
         _ => {
             log::warn!("unexpected fork_name {fork_name_str}, treated as bernoulli");
-            2
+            1
         }
     };
     let verified = panic_catch(|| {
-        if fork_id == 1 {
+        if fork_id == 0 {
             // before upgrade#2(EIP4844)
             verify_evm_calldata(
                 include_bytes!("evm_verifier_fork_1.bin").to_vec(),
