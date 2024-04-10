@@ -4,7 +4,7 @@
 // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Nonces.sol
 // Modifications are made to make it compatible with solidity 0.8.16.
 
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.24;
 
 /**
  * @dev Provides tracking nonces for addresses. Nonces will only increment.

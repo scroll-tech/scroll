@@ -22,7 +22,8 @@ func TestConfig(t *testing.T) {
 				"params_path": "",
 				"agg_vk_path": ""
 			},
-			"max_verifier_workers": 4
+			"max_verifier_workers": 4,
+			"min_prover_version": "v1.0.0"
 		},
 		"db": {
 			"driver_name": "postgres",

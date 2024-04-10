@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 import {IL1ETHGateway} from "../../L1/gateways/IL1ETHGateway.sol";
 import {IL2ScrollMessenger} from "../IL2ScrollMessenger.sol";

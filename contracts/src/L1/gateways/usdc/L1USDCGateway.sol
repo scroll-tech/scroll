@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 import {IFiatToken} from "../../../interfaces/IFiatToken.sol";
 import {IUSDCBurnableSourceBridge} from "../../../interfaces/IUSDCBurnableSourceBridge.sol";

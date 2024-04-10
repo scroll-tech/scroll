@@ -32,7 +32,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.20.x
+        go-version: 1.21.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Lint
@@ -47,7 +47,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.20.x
+        go-version: 1.21.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install goimports
@@ -72,15 +72,15 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.20.x
+        go-version: 1.21.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install Solc
       uses: supplypike/setup-bin@v3
       with:
-        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.16/solc-static-linux'
+        uri: 'https://github.com/ethereum/solidity/releases/download/v0.8.24/solc-static-linux'
         name: 'solc'
-        version: '0.8.16'
+        version: '0.8.24'
     - name: Install Geth Tools
       uses: gacts/install-geth-tools@v1
     - name: Build prerequisites

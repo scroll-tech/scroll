@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 import {MockERC20} from "solmate/test/utils/mocks/MockERC20.sol";
 
@@ -56,11 +56,11 @@ contract LidoGatewayIntegrationTest is GatewayIntegrationBase {
         L2LidoGateway(L2_LIDO_GATEWAY).initializeV2(address(0), address(0), address(0), address(0));
     }
 
-    function testWithoutRouter() public {
+    function testWithoutRouter() private {
         depositAndWithdraw(false);
     }
 
-    function testWithRouter() public {
+    function testWithRouter() private {
         depositAndWithdraw(true);
     }
 

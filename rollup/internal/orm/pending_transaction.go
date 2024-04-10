@@ -85,6 +85,21 @@ func (o *PendingTransaction) GetPendingOrReplacedTransactionsBySenderType(ctx co
 	return transactions, nil
 }
 
+// GetConfirmedTransactionsBySenderType retrieves confirmed transactions filtered by sender type, limited to a specified count.
+// for unit test
+func (o *PendingTransaction) GetConfirmedTransactionsBySenderType(ctx context.Context, senderType types.SenderType, limit int) ([]PendingTransaction, error) {
+	var transactions []PendingTransaction
+	db := o.db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+	db = db.Where("sender_type = ?", senderType)
+	db = db.Where("status = ?", types.TxStatusConfirmed)
+	db = db.Limit(limit)
+	if err := db.Find(&transactions).Error; err != nil {
+		return nil, fmt.Errorf("failed to get confirmed transactions by sender type, error: %w", err)
+	}
+	return transactions, nil
+}
+
 // InsertPendingTransaction creates a new pending transaction record and stores it in the database.
 func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, contextID string, senderMeta *SenderMeta, tx *gethTypes.Transaction, submitBlockNumber uint64, dbTX ...*gorm.DB) error {
 	rlp := new(bytes.Buffer)

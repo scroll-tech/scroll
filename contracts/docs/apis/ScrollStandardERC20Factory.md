@@ -135,8 +135,8 @@ Emitted when a l2 token is deployed.
 
 | Name | Type | Description |
 |---|---|---|
-| _l1Token `indexed` | address | undefined |
-| _l2Token `indexed` | address | undefined |
+| _l1Token `indexed` | address | The address of the l1 token. |
+| _l2Token `indexed` | address | The address of the l2 token. |
 
 ### OwnershipTransferred
 

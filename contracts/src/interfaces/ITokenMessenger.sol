@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.24;
 
 /// @title ITokenMessenger
 /// @notice The interface of `TokenMessenger` of Circle's Cross-Chain Transfer Protocol (CCTP).

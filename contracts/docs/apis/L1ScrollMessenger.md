@@ -471,7 +471,7 @@ Emitted when a cross domain message is failed to relay.
 
 | Name | Type | Description |
 |---|---|---|
-| messageHash `indexed` | bytes32 | undefined |
+| messageHash `indexed` | bytes32 | The hash of the message. |
 
 ### Initialized
 
@@ -481,7 +481,7 @@ event Initialized(uint8 version)
 
 
 
-
+*Triggered when the contract has been initialized or reinitialized.*
 
 #### Parameters
 
@@ -514,7 +514,7 @@ event Paused(address account)
 
 
 
-
+*Emitted when the pause is triggered by `account`.*
 
 #### Parameters
 
@@ -536,7 +536,7 @@ Emitted when a cross domain message is relayed successfully.
 
 | Name | Type | Description |
 |---|---|---|
-| messageHash `indexed` | bytes32 | undefined |
+| messageHash `indexed` | bytes32 | The hash of the message. |
 
 ### SentMessage
 
@@ -552,12 +552,12 @@ Emitted when a cross domain message is sent.
 
 | Name | Type | Description |
 |---|---|---|
-| sender `indexed` | address | undefined |
-| target `indexed` | address | undefined |
-| value  | uint256 | undefined |
-| messageNonce  | uint256 | undefined |
-| gasLimit  | uint256 | undefined |
-| message  | bytes | undefined |
+| sender `indexed` | address | The address of the sender who initiates the message. |
+| target `indexed` | address | The address of target contract to call. |
+| value  | uint256 | The amount of value passed to the target contract. |
+| messageNonce  | uint256 | The nonce of the message. |
+| gasLimit  | uint256 | The optional gas limit passed to L1 or L2. |
+| message  | bytes | The calldata passed to the target contract. |
 
 ### Unpaused
 
@@ -567,7 +567,7 @@ event Unpaused(address account)
 
 
 
-
+*Emitted when the pause is lifted by `account`.*
 
 #### Parameters
 
@@ -589,8 +589,8 @@ Emitted when owner updates fee vault contract.
 
 | Name | Type | Description |
 |---|---|---|
-| _oldFeeVault  | address | undefined |
-| _newFeeVault  | address | undefined |
+| _oldFeeVault  | address | The address of old fee vault contract. |
+| _newFeeVault  | address | The address of new fee vault contract. |
 
 ### UpdateMaxReplayTimes
 
@@ -606,8 +606,8 @@ Emitted when the maximum number of times each message can be replayed is updated
 
 | Name | Type | Description |
 |---|---|---|
-| oldMaxReplayTimes  | uint256 | undefined |
-| newMaxReplayTimes  | uint256 | undefined |
+| oldMaxReplayTimes  | uint256 | The old maximum number of times each message can be replayed. |
+| newMaxReplayTimes  | uint256 | The new maximum number of times each message can be replayed. |
 
 
 

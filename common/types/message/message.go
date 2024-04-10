@@ -259,6 +259,7 @@ type ChunkInfo struct {
 	WithdrawRoot  common.Hash `json:"withdraw_root"`
 	DataHash      common.Hash `json:"data_hash"`
 	IsPadding     bool        `json:"is_padding"`
+	TxBytes       []byte      `json:"tx_bytes"`
 }
 
 // ChunkProof includes the proof info that are required for chunk verification and rollup.

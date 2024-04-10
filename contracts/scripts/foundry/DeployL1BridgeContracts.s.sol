@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.16;
+pragma solidity =0.8.24;
 
 // solhint-disable no-console
 
@@ -92,7 +92,11 @@ contract DeployL1BridgeContracts is Script {
     }
 
     function deployMultipleVersionRollupVerifier() internal {
-        rollupVerifier = new MultipleVersionRollupVerifier(address(zkEvmVerifierV1));
+        uint256[] memory _versions = new uint256[](1);
+        address[] memory _verifiers = new address[](1);
+        _versions[0] = 0;
+        _verifiers[0] = address(zkEvmVerifierV1);
+        rollupVerifier = new MultipleVersionRollupVerifier(L1_SCROLL_CHAIN_PROXY_ADDR, _versions, _verifiers);
 
         logAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR", address(rollupVerifier));
     }

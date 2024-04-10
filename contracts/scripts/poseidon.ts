@@ -1,5 +1,5 @@
 /* eslint-disable node/no-missing-import */
-import { ethers } from "ethers";
+import { ethers, keccak256 } from "ethers";
 
 import Contract from "circomlib/src/evmasm";
 import * as constants from "circomlib/src/poseidon_constants";
@@ -90,10 +90,10 @@ export function createCode(nInputs: number) {
   C.calldataload();
   C.div();
   C.dup(0);
-  C.push(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`poseidon(uint256[${nInputs}],uint256)`)).slice(0, 10)); // poseidon(uint256[n],uint256)
+  C.push(keccak256(ethers.toUtf8Bytes(`poseidon(uint256[${nInputs}],uint256)`)).slice(0, 10)); // poseidon(uint256[n],uint256)
   C.eq();
   C.swap(1);
-  C.push(ethers.utils.keccak256(ethers.utils.toUtf8Bytes(`poseidon(bytes32[${nInputs}],bytes32)`)).slice(0, 10)); // poseidon(bytes32[n],bytes32)
+  C.push(keccak256(ethers.toUtf8Bytes(`poseidon(bytes32[${nInputs}],bytes32)`)).slice(0, 10)); // poseidon(bytes32[n],bytes32)
   C.eq();
   C.or();
   C.jmpi("start");

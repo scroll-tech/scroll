@@ -1,16 +1,16 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
+import { HardhatEthersSigner, SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { expect } from "chai";
-import { BigNumberish, BytesLike, constants } from "ethers";
+import { BigNumberish, BytesLike, MaxUint256, ZeroAddress, getBytes } from "ethers";
 import { ethers } from "hardhat";
+
 import { EnforcedTxGateway, L1MessageQueue, L2GasPriceOracle, MockCaller } from "../typechain";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
-import { arrayify } from "ethers/lib/utils";
 
 describe("EnforcedTxGateway.spec", async () => {
-  let deployer: SignerWithAddress;
-  let feeVault: SignerWithAddress;
-  let signer: SignerWithAddress;
+  let deployer: HardhatEthersSigner;
+  let feeVault: HardhatEthersSigner;
+  let signer: HardhatEthersSigner;
 
   let caller: MockCaller;
   let gateway: EnforcedTxGateway;
@@ -21,10 +21,8 @@ describe("EnforcedTxGateway.spec", async () => {
     const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy", deployer);
     const Factory = await ethers.getContractFactory(name, deployer);
     const impl = args.length > 0 ? await Factory.deploy(...args) : await Factory.deploy();
-    await impl.deployed();
-    const proxy = await TransparentUpgradeableProxy.deploy(impl.address, admin, "0x");
-    await proxy.deployed();
-    return proxy.address;
+    const proxy = await TransparentUpgradeableProxy.deploy(impl.getAddress(), admin, "0x");
+    return proxy.getAddress();
   };
 
   beforeEach(async () => {
@@ -32,66 +30,61 @@ describe("EnforcedTxGateway.spec", async () => {
 
     const ProxyAdmin = await ethers.getContractFactory("ProxyAdmin", deployer);
     const admin = await ProxyAdmin.deploy();
-    await admin.deployed();
 
     gateway = await ethers.getContractAt(
       "EnforcedTxGateway",
-      await deployProxy("EnforcedTxGateway", admin.address, []),
+      await deployProxy("EnforcedTxGateway", await admin.getAddress(), []),
       deployer
     );
 
     queue = await ethers.getContractAt(
       "L1MessageQueue",
-      await deployProxy("L1MessageQueue", admin.address, [deployer.address, deployer.address, gateway.address]),
+      await deployProxy("L1MessageQueue", await admin.getAddress(), [
+        deployer.address,
+        deployer.address,
+        await gateway.getAddress(),
+      ]),
       deployer
     );
 
     oracle = await ethers.getContractAt(
       "L2GasPriceOracle",
-      await deployProxy("L2GasPriceOracle", admin.address, []),
+      await deployProxy("L2GasPriceOracle", await admin.getAddress(), []),
       deployer
     );
 
     const MockCaller = await ethers.getContractFactory("MockCaller", deployer);
     caller = await MockCaller.deploy();
-    await caller.deployed();
 
-    await queue.initialize(
-      constants.AddressZero,
-      constants.AddressZero,
-      constants.AddressZero,
-      oracle.address,
-      10000000
-    );
-    await gateway.initialize(queue.address, feeVault.address);
+    await queue.initialize(ZeroAddress, ZeroAddress, ZeroAddress, oracle.getAddress(), 10000000);
+    await gateway.initialize(queue.getAddress(), feeVault.address);
     await oracle.initialize(21000, 51000, 8, 16);
 
     const Whitelist = await ethers.getContractFactory("Whitelist", deployer);
     const whitelist = await Whitelist.deploy(deployer.address);
-    await whitelist.deployed();
 
     await whitelist.updateWhitelistStatus([deployer.address], true);
-    await oracle.updateWhitelist(whitelist.address);
+    await oracle.updateWhitelist(whitelist.getAddress());
     await oracle.setL2BaseFee(1);
   });
 
   context("auth", async () => {
     it("should initialize correctly", async () => {
       expect(await gateway.owner()).to.eq(deployer.address);
-      expect(await gateway.messageQueue()).to.eq(queue.address);
+      expect(await gateway.messageQueue()).to.eq(await queue.getAddress());
       expect(await gateway.feeVault()).to.eq(feeVault.address);
       expect(await gateway.paused()).to.eq(false);
     });
 
     it("should revert, when initialize again", async () => {
-      await expect(gateway.initialize(constants.AddressZero, constants.AddressZero)).to.revertedWith(
+      await expect(gateway.initialize(ZeroAddress, ZeroAddress)).to.revertedWith(
         "Initializable: contract is already initialized"
       );
     });
 
     context("#updateFeeVault", async () => {
       it("should revert, when non-owner call", async () => {
-        await expect(gateway.connect(signer).updateFeeVault(constants.AddressZero)).to.revertedWith(
+        await expect(gateway.connect(signer).updateFeeVault(ZeroAddress)).to.revertedWith(
           "Ownable: caller is not the owner"
         );
       });
@@ -129,13 +122,13 @@ describe("EnforcedTxGateway.spec", async () => {
     });
 
     it("should revert, when call is not EOA", async () => {
-      const tx = await gateway.populateTransaction["sendTransaction(address,uint256,uint256,bytes)"](
+      const calldata = gateway.interface.encodeFunctionData("sendTransaction(address,uint256,uint256,bytes)", [
         signer.address,
         0,
         0,
-        "0x"
-      );
-      await expect(caller.callTarget(gateway.address, tx.data!)).to.revertedWith(
+        "0x",
+      ]);
+      await expect(caller.callTarget(gateway.getAddress(), calldata)).to.revertedWith(
         "Only EOA senders are allowed to send enforced transaction"
       );
     });
@@ -145,12 +138,12 @@ describe("EnforcedTxGateway.spec", async () => {
       await expect(
         gateway
           .connect(signer)
-          ["sendTransaction(address,uint256,uint256,bytes)"](signer.address, 0, 1000000, "0x", { value: fee.sub(1) })
+          ["sendTransaction(address,uint256,uint256,bytes)"](signer.address, 0, 1000000, "0x", { value: fee - 1n })
       ).to.revertedWith("Insufficient value for fee");
     });
 
     it("should revert, when failed to deduct the fee", async () => {
-      await gateway.updateFeeVault(gateway.address);
+      await gateway.updateFeeVault(gateway.getAddress());
       const fee = await queue.estimateCrossDomainMessageFee(1000000);
       await expect(
         gateway
@@ -170,7 +163,7 @@ describe("EnforcedTxGateway.spec", async () => {
         .to.emit(queue, "QueueTransaction")
         .withArgs(signer.address, deployer.address, 0, 0, 1000000, "0x");
       const feeVaultBalanceAfter = await ethers.provider.getBalance(feeVault.address);
-      expect(feeVaultBalanceAfter.sub(feeVaultBalanceBefore)).to.eq(fee);
+      expect(feeVaultBalanceAfter - feeVaultBalanceBefore).to.eq(fee);
     });
 
     it("should succeed, with refund", async () => {
@@ -179,17 +172,15 @@ describe("EnforcedTxGateway.spec", async () => {
       const signerBalanceBefore = await ethers.provider.getBalance(signer.address);
       const tx = await gateway
         .connect(signer)
-        ["sendTransaction(address,uint256,uint256,bytes)"](deployer.address, 0, 1000000, "0x", { value: fee.add(100) });
+        ["sendTransaction(address,uint256,uint256,bytes)"](deployer.address, 0, 1000000, "0x", { value: fee + 100n });
       await expect(tx)
         .to.emit(queue, "QueueTransaction")
         .withArgs(signer.address, deployer.address, 0, 0, 1000000, "0x");
       const receipt = await tx.wait();
       const feeVaultBalanceAfter = await ethers.provider.getBalance(feeVault.address);
       const signerBalanceAfter = await ethers.provider.getBalance(signer.address);
-      expect(feeVaultBalanceAfter.sub(feeVaultBalanceBefore)).to.eq(fee);
-      expect(signerBalanceBefore.sub(signerBalanceAfter)).to.eq(
-        receipt.gasUsed.mul(receipt.effectiveGasPrice).add(fee)
-      );
+      expect(feeVaultBalanceAfter - feeVaultBalanceBefore).to.eq(fee);
+      expect(signerBalanceBefore - signerBalanceAfter).to.eq(receipt!.gasUsed * receipt!.gasPrice + fee);
     });
   });
 
@@ -203,19 +194,19 @@ describe("EnforcedTxGateway.spec", async () => {
     ) => {
       const enforcedTx = {
         sender: signer.address,
-        target: target,
-        value: value,
-        gasLimit: gasLimit,
-        data: arrayify(data),
+        target,
+        value,
+        gasLimit,
+        data: getBytes(data),
         nonce: await gateway.nonces(signer.address),
-        deadline: constants.MaxUint256,
+        deadline: MaxUint256,
       };
 
       const domain = {
         name: "EnforcedTxGateway",
         version: "1",
         chainId: (await ethers.provider.getNetwork()).chainId,
-        verifyingContract: gateway.address,
+        verifyingContract: await gateway.getAddress(),
       };
 
       const types = {
@@ -251,7 +242,7 @@ describe("EnforcedTxGateway.spec", async () => {
         ],
       };
 
-      const signature = await signer._signTypedData(domain, types, enforcedTx);
+      const signature = await signer.signTypedData(domain, types, enforcedTx);
       return signature;
     };
 
@@ -266,15 +257,15 @@ describe("EnforcedTxGateway.spec", async () => {
             0,
             0,
             "0x",
-            constants.MaxUint256,
+            MaxUint256,
             "0x",
-            constants.AddressZero
+            ZeroAddress
           )
       ).to.revertedWith("Pausable: paused");
     });
 
     it("should revert, when signature expired", async () => {
-      const timestamp = (await ethers.provider.getBlock("latest")).timestamp;
+      const timestamp = (await ethers.provider.getBlock("latest"))!.timestamp;
       await expect(
         gateway
           .connect(deployer)
@@ -286,7 +277,7 @@ describe("EnforcedTxGateway.spec", async () => {
             "0x",
             timestamp - 1,
             "0x",
-            constants.AddressZero
+            ZeroAddress
           )
       ).to.revertedWith("signature expired");
     });
@@ -302,9 +293,9 @@ describe("EnforcedTxGateway.spec", async () => {
             0,
             0,
             "0x",
-            constants.MaxUint256,
+            MaxUint256,
             signature,
-            constants.AddressZero
+            ZeroAddress
           )
       ).to.revertedWith("Incorrect signature");
     });
@@ -321,16 +312,16 @@ describe("EnforcedTxGateway.spec", async () => {
             0,
             1000000,
             "0x",
-            constants.MaxUint256,
+            MaxUint256,
             signature,
             signer.address,
-            { value: fee.sub(1) }
+            { value: fee - 1n }
           )
       ).to.revertedWith("Insufficient value for fee");
     });
 
     it("should revert, when failed to deduct the fee", async () => {
-      await gateway.updateFeeVault(gateway.address);
+      await gateway.updateFeeVault(gateway.getAddress());
       const signature = await getSignature(signer, signer.address, 0, 1000000, "0x");
       const fee = await queue.estimateCrossDomainMessageFee(1000000);
       await expect(
@@ -342,7 +333,7 @@ describe("EnforcedTxGateway.spec", async () => {
             0,
             1000000,
             "0x",
-            constants.MaxUint256,
+            MaxUint256,
             signature,
             signer.address,
             { value: fee }
@@ -364,7 +355,7 @@ describe("EnforcedTxGateway.spec", async () => {
             0,
             1000000,
             "0x",
-            constants.MaxUint256,
+            MaxUint256,
             signature,
             signer.address,
             { value: fee }
@@ -374,7 +365,7 @@ describe("EnforcedTxGateway.spec", async () => {
         .withArgs(signer.address, deployer.address, 0, 0, 1000000, "0x");
       expect(await gateway.nonces(signer.address)).to.eq(1);
       const feeVaultBalanceAfter = await ethers.provider.getBalance(feeVault.address);
-      expect(feeVaultBalanceAfter.sub(feeVaultBalanceBefore)).to.eq(fee);
+      expect(feeVaultBalanceAfter - feeVaultBalanceBefore).to.eq(fee);
 
       // use the same nonce to sign should fail
       await expect(
@@ -386,7 +377,7 @@ describe("EnforcedTxGateway.spec", async () => {
             0,
             1000000,
             "0x",
-            constants.MaxUint256,
+            MaxUint256,
             signature,
             signer.address,
             { value: fee }
@@ -409,10 +400,10 @@ describe("EnforcedTxGateway.spec", async () => {
             0,
             1000000,
             "0x",
-            constants.MaxUint256,
+            MaxUint256,
             signature,
             signer.address,
-            { value: fee.add(100) }
+            { value: fee + 100n }
           )
       )
         .to.emit(queue, "QueueTransaction")
@@ -420,8 +411,8 @@ describe("EnforcedTxGateway.spec", async () => {
       expect(await gateway.nonces(signer.address)).to.eq(1);
       const feeVaultBalanceAfter = await ethers.provider.getBalance(feeVault.address);
       const signerBalanceAfter = await ethers.provider.getBalance(signer.address);
-      expect(feeVaultBalanceAfter.sub(feeVaultBalanceBefore)).to.eq(fee);
-      expect(signerBalanceAfter.sub(signerBalanceBefore)).to.eq(100);
+      expect(feeVaultBalanceAfter - feeVaultBalanceBefore).to.eq(fee);
+      expect(signerBalanceAfter - signerBalanceBefore).to.eq(100n);
 
       // use the same nonce to sign should fail
       await expect(
@@ -433,10 +424,10 @@ describe("EnforcedTxGateway.spec", async () => {
             0,
             1000000,
             "0x",
-            constants.MaxUint256,
+            MaxUint256,
             signature,
             signer.address,
-            { value: fee.add(100) }
+            { value: fee + 100n }
           )
       ).to.revertedWith("Incorrect signature");
     });
@@ -453,10 +444,10 @@ describe("EnforcedTxGateway.spec", async () => {
             0,
             1000000,
             "0x1234",
-            constants.MaxUint256,
+            MaxUint256,
             signature,
-            gateway.address,
-            { value: fee.add(100) }
+            gateway.getAddress(),
+            { value: fee + 100n }
           )
       ).to.revertedWith("Failed to refund the fee");
     });
