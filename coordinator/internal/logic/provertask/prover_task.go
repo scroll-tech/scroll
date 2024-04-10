@@ -88,7 +88,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 
 	// if the prover has a different vk
 	if getTaskParameter.VK != vk {
-		log.Error("vk.....", "prover vk", getTaskParameter.VK, "vk", vk, "hardForkName", ptc.HardForkName)
+		log.Error("vk inconsistency", "prover vk", getTaskParameter.VK, "vk", vk, "hardForkName", ptc.HardForkName)
 		// if the prover reports a different prover version
 		if !version.CheckScrollProverVersion(proverVersion.(string)) {
 			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
