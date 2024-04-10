@@ -49,7 +49,7 @@ func TestFFI(t *testing.T) {
 	t.Log("Verified chunk proof 2")
 
 	batchProof := readBatchProof(*batchProofPath, as)
-	batchOk, err := v.VerifyBatchProof(batchProof)
+	batchOk, err := v.VerifyBatchProof(batchProof, "bernoulli")
 	as.NoError(err)
 	as.True(batchOk)
 	t.Log("Verified batch proof")
