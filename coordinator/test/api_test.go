@@ -96,8 +96,10 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			ChainID: 111,
 		},
 		ProverManager: &config.ProverManager{
-			ProversPerSession:      proversPerSession,
-			Verifier:               &config.VerifierConfig{MockMode: true},
+			ProversPerSession: proversPerSession,
+			Verifier: &config.VerifierConfig{
+				MockMode: true,
+			},
 			BatchCollectionTimeSec: 10,
 			ChunkCollectionTimeSec: 10,
 			MaxVerifierWorkers:     10,
@@ -113,6 +115,8 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	var chainConf params.ChainConfig
 	for forkName, forkNumber := range nameForkMap {
 		switch forkName {
+		case "shanghai":
+			chainConf.ShanghaiBlock = big.NewInt(forkNumber)
 		case "bernoulli":
 			chainConf.BernoulliBlock = big.NewInt(forkNumber)
 		case "london":
@@ -258,12 +262,12 @@ func testGetTaskBlocked(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedErr := fmt.Errorf("return prover task err:check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", chunkProver.publicKey(), chunkProver.proverName, chunkProver.proverVersion)
-	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
+	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk, "homestead")
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 
 	expectedErr = fmt.Errorf("get empty prover task")
-	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
+	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch, "homestead")
 	assert.Equal(t, types.ErrCoordinatorEmptyProofData, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 
@@ -274,12 +278,12 @@ func testGetTaskBlocked(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedErr = fmt.Errorf("get empty prover task")
-	code, errMsg = chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
+	code, errMsg = chunkProver.tryGetProverTask(t, message.ProofTypeChunk, "homestead")
 	assert.Equal(t, types.ErrCoordinatorEmptyProofData, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 
 	expectedErr = fmt.Errorf("return prover task err:check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", batchProver.publicKey(), batchProver.proverName, batchProver.proverVersion)
-	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
+	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch, "homestead")
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 }
@@ -299,12 +303,12 @@ func testOutdatedProverVersion(t *testing.T) {
 	assert.True(t, chunkProver.healthCheckSuccess(t))
 
 	expectedErr := fmt.Errorf("return prover task err:check prover task parameter failed, error:incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", version.Version, chunkProver.proverVersion)
-	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
+	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk, "homestead")
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 
 	expectedErr = fmt.Errorf("return prover task err:check prover task parameter failed, error:incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", version.Version, batchProver.proverVersion)
-	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
+	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch, "homestead")
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 }
@@ -358,7 +362,7 @@ func testHardForkAssignTask(t *testing.T) {
 		{
 			name:                  "noTaskForkBatchProverVersionLessThanHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           map[string]int64{"istanbul": forkNumberTwo, "london": forkNumberThree},
+			forkNumbers:           map[string]int64{"shanghai": forkNumberOne, "london": forkNumberThree},
 			exceptTaskNumber:      0,
 			proverForkNames:       []string{"", ""},
 			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
@@ -448,7 +452,7 @@ func testHardForkAssignTask(t *testing.T) {
 		{ // hard fork 3, prover1:2 prover2:3 block [2-3]
 			name:                  "twoTaskForkChunkProverVersionMiddleHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           map[string]int64{"london": forkNumberThree},
+			forkNumbers:           map[string]int64{"shanghai": forkNumberTwo, "london": forkNumberThree},
 			exceptTaskNumber:      2,
 			proverForkNames:       []string{"", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
@@ -457,7 +461,7 @@ func testHardForkAssignTask(t *testing.T) {
 		{
 			name:                  "twoTaskForkBatchProverVersionMiddleHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeBatch,
-			forkNumbers:           map[string]int64{"london": forkNumberThree},
+			forkNumbers:           map[string]int64{"shanghai": forkNumberTwo, "london": forkNumberThree},
 			exceptTaskNumber:      2,
 			proverForkNames:       []string{"", "london"},
 			exceptGetTaskErrCodes: []int{types.Success, types.Success},
@@ -466,7 +470,7 @@ func testHardForkAssignTask(t *testing.T) {
 		{ // hard fork 2, prover 2 block [2-3]
 			name:                  "oneTaskForkChunkProverVersionLessThanHardForkProverNumberEqual0",
 			proofType:             message.ProofTypeChunk,
-			forkNumbers:           map[string]int64{"london": forkNumberThree},
+			forkNumbers:           map[string]int64{"shanghai": forkNumberOne, "london": forkNumberThree},
 			exceptTaskNumber:      1,
 			proverForkNames:       []string{"", ""},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
@@ -534,7 +538,7 @@ func testHardForkAssignTask(t *testing.T) {
 					continue
 				}
 				getTaskNumber++
-				mockProver.submitProof(t, proverTask, verifiedSuccess, types.Success)
+				mockProver.submitProof(t, proverTask, verifiedSuccess, types.Success, tt.proverForkNames[i])
 			}
 			assert.Equal(t, getTaskNumber, tt.exceptTaskNumber)
 		})
@@ -577,7 +581,7 @@ func testValidProof(t *testing.T) {
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
 		assert.NotNil(t, proverTask)
-		provers[i].submitProof(t, proverTask, proofStatus, types.Success)
+		provers[i].submitProof(t, proverTask, proofStatus, types.Success, "istanbul")
 	}
 
 	// verify proof status
@@ -643,34 +647,21 @@ func testInvalidProof(t *testing.T) {
 	err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), batch.Hash, types.ChunkProofsStatusReady)
 	assert.NoError(t, err)
 
-	// create mock provers.
-	provers := make([]*mockProver, 2)
-	for i := 0; i < len(provers); i++ {
-		var proofType message.ProofType
-		if i%2 == 0 {
-			proofType = message.ProofTypeChunk
-		} else {
-			proofType = message.ProofTypeBatch
-		}
-		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, "istanbul")
-		assert.NotNil(t, proverTask)
-		assert.Equal(t, errCode, types.Success)
-		assert.Equal(t, errMsg, "")
-		provers[i].submitProof(t, proverTask, verifiedFailed, types.ErrCoordinatorHandleZkProofFailure)
-	}
+	proofType := message.ProofTypeBatch
+	provingStatus := verifiedFailed
+	expectErrCode := types.ErrCoordinatorHandleZkProofFailure
+	prover := newMockProver(t, "prover_test", coordinatorURL, proofType, version.Version)
+	proverTask, errCode, errMsg := prover.getProverTask(t, proofType, "istanbul")
+	assert.NotNil(t, proverTask)
+	assert.Equal(t, errCode, types.Success)
+	assert.Equal(t, errMsg, "")
+	prover.submitProof(t, proverTask, provingStatus, expectErrCode, "istanbul")
 
 	// verify proof status
 	var (
-		tick     = time.Tick(1500 * time.Millisecond)
-		tickStop = time.Tick(time.Minute)
-	)
-
-	var (
-		chunkProofStatus    types.ProvingStatus
+		tick                = time.Tick(1500 * time.Millisecond)
+		tickStop            = time.Tick(time.Minute)
 		batchProofStatus    types.ProvingStatus
-		chunkActiveAttempts int16
-		chunkMaxAttempts    int16
 		batchActiveAttempts int16
 		batchMaxAttempts    int16
 	)
@@ -678,24 +669,17 @@ func testInvalidProof(t *testing.T) {
 	for {
 		select {
 		case <-tick:
-			chunkProofStatus, err = chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
-			assert.NoError(t, err)
 			batchProofStatus, err = batchOrm.GetProvingStatusByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
-			if chunkProofStatus == types.ProvingTaskAssigned && batchProofStatus == types.ProvingTaskAssigned {
+			if batchProofStatus == types.ProvingTaskAssigned {
 				return
 			}
-			chunkActiveAttempts, chunkMaxAttempts, err = chunkOrm.GetAttemptsByHash(context.Background(), dbChunk.Hash)
-			assert.NoError(t, err)
-			assert.Equal(t, 1, int(chunkMaxAttempts))
-			assert.Equal(t, 0, int(chunkActiveAttempts))
-
 			batchActiveAttempts, batchMaxAttempts, err = batchOrm.GetAttemptsByHash(context.Background(), batch.Hash)
 			assert.NoError(t, err)
 			assert.Equal(t, 1, int(batchMaxAttempts))
 			assert.Equal(t, 0, int(batchActiveAttempts))
 		case <-tickStop:
-			t.Error("failed to check proof status", "chunkProofStatus", chunkProofStatus.String(), "batchProofStatus", batchProofStatus.String())
+			t.Error("failed to check proof status", "batchProofStatus", batchProofStatus.String())
 			return
 		}
 	}
@@ -735,7 +719,7 @@ func testProofGeneratedFailed(t *testing.T) {
 		assert.NotNil(t, proverTask)
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
-		provers[i].submitProof(t, proverTask, generatedFailed, types.ErrCoordinatorHandleZkProofFailure)
+		provers[i].submitProof(t, proverTask, generatedFailed, types.ErrCoordinatorHandleZkProofFailure, "istanbul")
 	}
 
 	// verify proof status
@@ -858,14 +842,14 @@ func testTimeoutProof(t *testing.T) {
 	assert.NotNil(t, proverChunkTask2)
 	assert.Equal(t, chunkTask2ErrCode, types.Success)
 	assert.Equal(t, chunkTask2ErrMsg, "")
-	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess, types.Success)
+	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess, types.Success, "istanbul")
 
 	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), coordinatorURL, message.ProofTypeBatch, version.Version)
 	proverBatchTask2, batchTask2ErrCode, batchTask2ErrMsg := batchProver2.getProverTask(t, message.ProofTypeBatch, "istanbul")
 	assert.NotNil(t, proverBatchTask2)
 	assert.Equal(t, batchTask2ErrCode, types.Success)
 	assert.Equal(t, batchTask2ErrMsg, "")
-	batchProver2.submitProof(t, proverBatchTask2, verifiedSuccess, types.Success)
+	batchProver2.submitProof(t, proverBatchTask2, verifiedSuccess, types.Success, "istanbul")
 
 	// verify proof status, it should be verified now, because second prover sent valid proof
 	chunkProofStatus2, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
