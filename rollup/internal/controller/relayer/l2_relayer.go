@@ -586,7 +586,7 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 		return err
 	}
 
-	// when finalized without proof, need also update the proving status, coordinator don't attest this task
+	// Updating the proving status when finalizing without proof, thus the coordinator could omit this task.
 	// it isn't a necessary step, so don't put in a transaction with UpdateFinalizeTxHashAndRollupStatus
 	if !withProof {
 		txErr := r.db.Transaction(func(tx *gorm.DB) error {
