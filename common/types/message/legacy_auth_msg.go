@@ -9,7 +9,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/rlp"
 )
 
-// LegacyAuthMsg is the first message exchanged from the Prover to the Sequencer.
+// LegacyAuthMsg is the old auth message exchanged from the Prover to the Sequencer.
 // It effectively acts as a registration, and makes the Prover identification
 // known to the Sequencer.
 type LegacyAuthMsg struct {
