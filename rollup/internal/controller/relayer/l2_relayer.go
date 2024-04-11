@@ -599,7 +599,7 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 			return nil
 		})
 		if txErr != nil {
-			log.Error("when finalize batch without proof, updates batch&chunk proving status failure", "batchHash", dbBatch.Hash, "err", txErr)
+			log.Error("Updating chunk and batch proving status when finalizing without proof failure", "batchHash", dbBatch.Hash, "err", txErr)
 		}
 	}
 
