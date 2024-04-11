@@ -271,7 +271,7 @@ func (t *TestcontainerApps) Free() {
 	}
 }
 
-// findProjectRootDir find project root dir
+// findProjectRootDir find project root directory
 func findProjectRootDir() (string, error) {
 	currentDir, err := os.Getwd()
 	if err != nil {

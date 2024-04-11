@@ -8,29 +8,6 @@ import (
 	"gorm.io/gorm"
 )
 
-func TestNewTestcontainerApps2(t *testing.T) {
-	var (
-		err       error
-		endpoint  string
-		ethclient *ethclient.Client
-	)
-
-	testApps := NewTestcontainerApps()
-
-	assert.NoError(t, testApps.StartPoSL1Container())
-	endpoint, err = testApps.GetPoSL1EndPoint()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, endpoint)
-	ethclient, err = testApps.GetPoSL1Client()
-	assert.NoError(t, err)
-	assert.NotNil(t, ethclient)
-
-	testApps.Free()
-	endpoint, err = testApps.GetPoSL1EndPoint()
-	assert.EqualError(t, err, "PoS L1 container is not running")
-	assert.NotEmpty(t, endpoint)
-}
-
 // TestNewTestcontainerApps tests NewTestcontainerApps
 func TestNewTestcontainerApps(t *testing.T) {
 	var (
@@ -91,5 +68,5 @@ func TestNewTestcontainerApps(t *testing.T) {
 
 	endpoint, err = testApps.GetPoSL1EndPoint()
 	assert.EqualError(t, err, "PoS L1 container is not running")
-	assert.NotEmpty(t, endpoint)
+	assert.Empty(t, endpoint)
 }
