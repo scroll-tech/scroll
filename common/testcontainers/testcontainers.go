@@ -32,14 +32,6 @@ type TestcontainerApps struct {
 	poSL1GethPort int64
 }
 
-// PoSL1TestEnv represents the config needed to test in PoS Layer 1.
-type PoSL1TestEnv struct {
-	dockerComposeFile string
-	compose           compose.ComposeStack
-	gethHTTPPort      int
-	hostPath          string
-}
-
 // NewTestcontainerApps returns new instance of TestcontainerApps struct
 func NewTestcontainerApps() *TestcontainerApps {
 	timestamp := time.Now().Nanosecond()
@@ -115,7 +107,7 @@ func (t *TestcontainerApps) StartL2GethContainer() error {
 	return nil
 }
 
-// StartPoSL1TestEnv start starts the PoS L1 container by running the associated Docker Compose configuration
+// StartPoSL1Container start starts the PoS L1 container by running the associated Docker Compose configuration
 func (t *TestcontainerApps) StartPoSL1Container() error {
 	var (
 		err               error

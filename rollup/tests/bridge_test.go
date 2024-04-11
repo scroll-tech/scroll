@@ -33,9 +33,8 @@ import (
 )
 
 var (
-	testApps     *tc.TestcontainerApps
-	rollupApp    *bcmd.MockApp
-	posL1TestEnv *tc.PoSL1TestEnv
+	testApps  *tc.TestcontainerApps
+	rollupApp *bcmd.MockApp
 
 	// clients
 	l1Client *ethclient.Client
