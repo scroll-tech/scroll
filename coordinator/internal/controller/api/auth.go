@@ -59,9 +59,12 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 			Challenge:     v.Message.Challenge,
 			ProverName:    v.Message.ProverName,
 			ProverVersion: v.Message.ProverVersion,
-			HardForkName:  v.Message.HardForkName,
 		},
 		Signature: v.Signature,
+	}
+
+	if v.Message.HardForkName != "" {
+		authMsg.Identity.HardForkName = v.Message.HardForkName
 	}
 
 	publicKey, err := authMsg.PublicKey()
