@@ -82,7 +82,7 @@ func NewProver(ctx context.Context, cfg *config.Config) (*Prover, error) {
 	}
 	log.Info("init prover_core successfully!")
 
-	coordinatorClient, err := client.NewCoordinatorClient(cfg.Coordinator, cfg.ProverName, priv)
+	coordinatorClient, err := client.NewCoordinatorClient(cfg.Coordinator, cfg.ProverName, cfg.HardForkName, priv)
 	if err != nil {
 		return nil, err
 	}
@@ -178,8 +178,7 @@ func (r *Prover) proveAndSubmit() error {
 func (r *Prover) fetchTaskFromCoordinator() (*store.ProvingTask, error) {
 	// prepare the request
 	req := &client.GetTaskRequest{
-		HardForkName: r.cfg.HardForkName,
-		TaskType:     r.Type(),
+		TaskType: r.Type(),
 		// we may not be able to get the vk at the first time, so we should pass vk to the coordinator every time we getTask
 		// instead of passing vk when we login
 		VK: r.proverCore.VK,
