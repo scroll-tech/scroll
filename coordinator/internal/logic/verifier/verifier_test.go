@@ -14,7 +14,6 @@ import (
 	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
-	"scroll-tech/coordinator/internal/logic/verifier"
 )
 
 var (
@@ -34,7 +33,7 @@ func TestFFI(t *testing.T) {
 		AssetsPath: *assetsPath,
 	}
 
-	v, err := verifier.NewVerifier(cfg)
+	v, err := NewVerifier(cfg)
 	as.NoError(err)
 
 	chunkProof1 := readChunkProof(*chunkProofPath1, as)
@@ -50,7 +49,7 @@ func TestFFI(t *testing.T) {
 	t.Log("Verified chunk proof 2")
 
 	batchProof := readBatchProof(*batchProofPath, as)
-	batchOk, err := v.VerifyBatchProof(batchProof)
+	batchOk, err := v.VerifyBatchProof(batchProof, "bernoulli")
 	as.NoError(err)
 	as.True(batchOk)
 	t.Log("Verified batch proof")

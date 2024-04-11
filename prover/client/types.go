@@ -25,6 +25,7 @@ type LoginRequest struct {
 		Challenge     string `json:"challenge"`
 		ProverName    string `json:"prover_name"`
 		ProverVersion string `json:"prover_version"`
+		HardForkName  string `json:"hard_fork_name"`
 	} `json:"message"`
 	Signature string `json:"signature"`
 }
@@ -41,7 +42,6 @@ type LoginResponse struct {
 
 // GetTaskRequest defines the request structure for GetTask API
 type GetTaskRequest struct {
-	HardForkName string            `json:"hard_fork_name"`
 	TaskType     message.ProofType `json:"task_type"`
 	ProverHeight uint64            `json:"prover_height,omitempty"`
 	VK           string            `json:"vk"`
