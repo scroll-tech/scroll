@@ -11,9 +11,11 @@ package verifier
 import "C" //nolint:typecheck
 
 import (
+	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"io/fs"
 	"os"
 	"path"
 	"unsafe"
@@ -28,7 +30,26 @@ import (
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if cfg.MockMode {
-		return &Verifier{cfg: cfg}, nil
+		batchVKMap := map[string]string{
+			"shanghai":  "",
+			"bernoulli": "",
+			"london":    "",
+			"istanbul":  "",
+			"homestead": "",
+			"eip155":    "",
+		}
+		chunkVKMap := map[string]string{
+			"shanghai":  "",
+			"bernoulli": "",
+			"london":    "",
+			"istanbul":  "",
+			"homestead": "",
+			"eip155":    "",
+		}
+
+		batchVKMap[cfg.ForkName] = ""
+		chunkVKMap[cfg.ForkName] = ""
+		return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
 	assetsPathStr := C.CString(cfg.AssetsPath)
@@ -40,25 +61,31 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	C.init_batch_verifier(paramsPathStr, assetsPathStr)
 	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
 
-	batchVK, err := readVK(path.Join(cfg.AssetsPath, "agg_vk.vkey"))
+	v := &Verifier{
+		cfg:        cfg,
+		ChunkVKMap: make(map[string]string),
+		BatchVKMap: make(map[string]string),
+	}
+
+	batchVK, err := v.readVK(path.Join(cfg.AssetsPath, "agg_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}
-
-	chunkVK, err := readVK(path.Join(cfg.AssetsPath, "chunk_vk.vkey"))
+	chunkVK, err := v.readVK(path.Join(cfg.AssetsPath, "chunk_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}
+	v.BatchVKMap[cfg.ForkName] = batchVK
+	v.ChunkVKMap[cfg.ForkName] = chunkVK
 
-	return &Verifier{
-		cfg:     cfg,
-		BatchVK: batchVK,
-		ChunkVK: chunkVK,
-	}, nil
+	if err := v.loadEmbedVK(); err != nil {
+		return nil, err
+	}
+	return v, nil
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, batch verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -72,13 +99,15 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof) (bool, error) {
 		return false, err
 	}
 
+	log.Info("Start to verify batch proof", "forkName", forkName)
 	proofStr := C.CString(string(buf))
+	forkNameStr := C.CString(forkName)
 	defer func() {
 		C.free(unsafe.Pointer(proofStr))
+		C.free(unsafe.Pointer(forkNameStr))
 	}()
 
-	log.Info("Start to verify batch proof ...")
-	verified := C.verify_batch_proof(proofStr)
+	verified := C.verify_batch_proof(proofStr, forkNameStr)
 	return verified != 0, nil
 }
 
@@ -107,7 +136,7 @@ func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
 	return verified != 0, nil
 }
 
-func readVK(filePat string) (string, error) {
+func (v *Verifier) readVK(filePat string) (string, error) {
 	f, err := os.Open(filePat)
 	if err != nil {
 		return "", err
@@ -117,4 +146,27 @@ func readVK(filePat string) (string, error) {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString(byt), nil
+}
+
+//go:embed legacy_vk/*
+var legacyVKFS embed.FS
+
+func (v *Verifier) loadEmbedVK() error {
+	batchVKBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/agg_vk.vkey")
+	if err != nil {
+		log.Error("load embed batch vk failure", "err", err)
+		return err
+	}
+
+	chunkVkBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/chunk_vk.vkey")
+	if err != nil {
+		log.Error("load embed chunk vk failure", "err", err)
+		return err
+	}
+
+	v.BatchVKMap["shanghai"] = base64.StdEncoding.EncodeToString(batchVKBytes)
+	v.ChunkVKMap["shanghai"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
+	v.BatchVKMap[""] = base64.StdEncoding.EncodeToString(batchVKBytes)
+	v.ChunkVKMap[""] = base64.StdEncoding.EncodeToString(chunkVkBytes)
+	return nil
 }

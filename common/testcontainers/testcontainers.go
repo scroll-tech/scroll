@@ -10,6 +10,9 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"gorm.io/gorm"
+
+	"scroll-tech/common/database"
 )
 
 // TestcontainerApps testcontainers struct
@@ -127,6 +130,21 @@ func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 		return "", err
 	}
 	return endpoint, nil
+}
+
+// GetGormDBClient returns a gorm.DB by connecting to the running postgres container
+func (t *TestcontainerApps) GetGormDBClient() (*gorm.DB, error) {
+	endpoint, err := t.GetDBEndPoint()
+	if err != nil {
+		return nil, err
+	}
+	dbCfg := &database.Config{
+		DSN:        endpoint,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
+	}
+	return database.InitDB(dbCfg)
 }
 
 // GetL1GethClient returns a ethclient by dialing running L1Geth

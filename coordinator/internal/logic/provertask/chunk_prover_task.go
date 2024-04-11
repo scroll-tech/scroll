@@ -33,12 +33,12 @@ type ChunkProverTask struct {
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vkMap map[string]string, reg prometheus.Registerer) *ChunkProverTask {
 	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
 	log.Info("new chunk prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
-			vk:                 vk,
+			vkMap:              vkMap,
 			db:                 db,
 			cfg:                cfg,
 			nameForkMap:        nameForkMap,
@@ -68,9 +68,9 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	hardForkNumber, err := cp.getHardForkNumberByName(getTaskParameter.HardForkName)
+	hardForkNumber, err := cp.getHardForkNumberByName(taskCtx.HardForkName)
 	if err != nil {
-		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", taskCtx.HardForkName)
 		return nil, err
 	}
 
@@ -153,7 +153,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	cp.chunkTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
+	cp.chunkTaskGetTaskTotal.WithLabelValues(taskCtx.HardForkName).Inc()
 	cp.chunkTaskGetTaskProver.With(prometheus.Labels{
 		coordinatorType.LabelProverName:      proverTask.ProverName,
 		coordinatorType.LabelProverPublicKey: proverTask.ProverPublicKey,
