@@ -5,7 +5,6 @@ import (
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types/message"
@@ -82,8 +81,6 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 	if err != nil {
 		return jwt.MapClaims{}
 	}
-
-	log.Info("parameter......", "login", v, "publicKey", publicKey)
 
 	if v.Message.HardForkName == "" {
 		v.Message.HardForkName = "shanghai"
