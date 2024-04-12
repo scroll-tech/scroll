@@ -304,8 +304,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 		TotalAttempts:                0,
 		ActiveAttempts:               0,
-		CrcMax:                       0, // only used for unit tests
-		BlobSize:                     0, // BlobSize is not supported in codecv0
+		CrcMax:                       0, // using mock value because this piece of codes is only used in unit tests
+		BlobSize:                     0, // using mock value because this piece of codes is only used in unit tests
 	}
 
 	db := o.db

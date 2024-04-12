@@ -268,8 +268,8 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		ActiveAttempts:    0,
 		RollupStatus:      int16(types.RollupPending),
 		OracleStatus:      int16(types.GasOraclePending),
-		BlobDataProof:     nil, // only used for unit tests
-		BlobSize:          0,   // only used for unit tests
+		BlobDataProof:     nil, // using mock value because this piece of codes is only used in unit tests
+		BlobSize:          0,   // using mock value because this piece of codes is only used in unit tests
 	}
 
 	db := o.db
