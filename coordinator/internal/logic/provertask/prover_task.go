@@ -2,8 +2,12 @@ package provertask
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/version"
@@ -13,11 +17,12 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-// ErrCoordinatorInternalFailure coordinator internal db failure
-var ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
-
-// ErrHardForkName indicates client request with the wrong hard fork name
-var ErrHardForkName = fmt.Errorf("wrong hard fork name")
+var (
+	// ErrCoordinatorInternalFailure coordinator internal db failure
+	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+	// ErrHardForkName indicates client request with the wrong hard fork name
+	ErrHardForkName = fmt.Errorf("wrong hard fork name")
+)
 
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
@@ -28,8 +33,8 @@ type ProverTask interface {
 type BaseProverTask struct {
 	cfg *config.Config
 	db  *gorm.DB
-	vk  string
 
+	vkMap       map[string]string
 	nameForkMap map[string]uint64
 	forkHeights []uint64
 
@@ -44,6 +49,7 @@ type proverTaskContext struct {
 	PublicKey     string
 	ProverName    string
 	ProverVersion string
+	HardForkName  string
 }
 
 // checkParameter check the prover task parameter illegal
@@ -68,12 +74,24 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 	}
 	ptc.ProverVersion = proverVersion.(string)
 
+	hardForkName, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
+	if !hardForkNameExist {
+		return nil, fmt.Errorf("get hard fork name from context failed")
+	}
+	ptc.HardForkName = hardForkName.(string)
+
 	if !version.CheckScrollRepoVersion(proverVersion.(string), b.cfg.ProverManager.MinProverVersion) {
 		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", b.cfg.ProverManager.MinProverVersion, proverVersion.(string))
 	}
 
+	vk, vkExist := b.vkMap[ptc.HardForkName]
+	if !vkExist {
+		return nil, fmt.Errorf("can't get vk for hard fork:%s, vkMap:%v", ptc.HardForkName, b.vkMap)
+	}
+
 	// if the prover has a different vk
-	if getTaskParameter.VK != b.vk {
+	if getTaskParameter.VK != vk {
+		log.Error("vk inconsistency", "prover vk", getTaskParameter.VK, "vk", vk, "hardForkName", ptc.HardForkName)
 		// if the prover reports a different prover version
 		if !version.CheckScrollProverVersion(proverVersion.(string)) {
 			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
@@ -114,4 +132,23 @@ func (b *BaseProverTask) getHardForkNumberByName(forkName string) (uint64, error
 	}
 
 	return hardForkNumber, nil
+}
+
+var (
+	getTaskCounterInitOnce sync.Once
+	getTaskCounterVec      *prometheus.CounterVec = nil
+)
+
+func newGetTaskCounterVec(factory promauto.Factory, taskType string) *prometheus.CounterVec {
+	getTaskCounterInitOnce.Do(func() {
+		getTaskCounterVec = factory.NewCounterVec(prometheus.CounterOpts{
+			Name: "coordinator_get_task_count",
+			Help: "Multi dimensions get task counter.",
+		}, []string{"task_type",
+			coordinatorType.LabelProverName,
+			coordinatorType.LabelProverPublicKey,
+			coordinatorType.LabelProverVersion})
+	})
+
+	return getTaskCounterVec.MustCurryWith(prometheus.Labels{"task_type": taskType})
 }

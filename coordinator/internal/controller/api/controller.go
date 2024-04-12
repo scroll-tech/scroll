@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
@@ -24,6 +25,8 @@ func InitController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.D
 	if err != nil {
 		panic("proof receiver new verifier failure")
 	}
+
+	log.Info("verifier created", "chunkVerifier", vf.ChunkVKMap, "batchVerifier", vf.BatchVKMap)
 
 	Auth = NewAuthController(db)
 	GetTask = NewGetTaskController(cfg, chainCfg, db, vf, reg)

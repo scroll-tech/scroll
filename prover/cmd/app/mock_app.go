@@ -12,7 +12,7 @@ import (
 	"scroll-tech/prover/config"
 
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/docker"
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
@@ -30,7 +30,7 @@ func getIndex() int {
 type ProverApp struct {
 	Config *config.Config
 
-	base *docker.App
+	testApps *testcontainers.TestcontainerApps
 
 	originFile string
 	proverFile string
@@ -39,11 +39,11 @@ type ProverApp struct {
 	index int
 	name  string
 	args  []string
-	docker.AppAPI
+	*cmd.Cmd
 }
 
 // NewProverApp return a new proverApp manager.
-func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, httpURL string) *ProverApp {
+func NewProverApp(testApps *testcontainers.TestcontainerApps, mockName utils.MockAppName, file string, httpURL string) *ProverApp {
 	var proofType message.ProofType
 	switch mockName {
 	case utils.ChunkProverApp:
@@ -54,17 +54,17 @@ func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, htt
 		return nil
 	}
 	name := string(mockName)
-	proverFile := fmt.Sprintf("/tmp/%d_%s-config.json", base.Timestamp, name)
+	proverFile := fmt.Sprintf("/tmp/%d_%s-config.json", testApps.Timestamp, name)
 	proverApp := &ProverApp{
-		base:       base,
+		testApps:   testApps,
 		originFile: file,
 		proverFile: proverFile,
-		bboltDB:    fmt.Sprintf("/tmp/%d_%s_bbolt_db", base.Timestamp, name),
+		bboltDB:    fmt.Sprintf("/tmp/%d_%s_bbolt_db", testApps.Timestamp, name),
 		index:      getIndex(),
 		name:       name,
 		args:       []string{"--log.debug", "--config", proverFile},
 	}
-	proverApp.AppAPI = cmd.NewCmd(proverApp.name, proverApp.args...)
+	proverApp.Cmd = cmd.NewCmd(proverApp.name, proverApp.args...)
 	if err := proverApp.MockConfig(true, httpURL, proofType); err != nil {
 		panic(err)
 	}
@@ -73,13 +73,13 @@ func NewProverApp(base *docker.App, mockName utils.MockAppName, file string, htt
 
 // RunApp run prover-test child process by multi parameters.
 func (r *ProverApp) RunApp(t *testing.T) {
-	r.AppAPI.RunApp(func() bool { return r.AppAPI.WaitResult(t, time.Second*40, "prover start successfully") })
+	r.Cmd.RunApp(func() bool { return r.Cmd.WaitResult(t, time.Second*40, "prover start successfully") })
 }
 
 // Free stop and release prover-test.
 func (r *ProverApp) Free() {
-	if !utils.IsNil(r.AppAPI) {
-		r.AppAPI.WaitExit()
+	if !utils.IsNil(r.Cmd) {
+		r.Cmd.WaitExit()
 	}
 	_ = os.Remove(r.proverFile)
 	_ = os.Remove(r.Config.KeystorePath)
@@ -93,8 +93,13 @@ func (r *ProverApp) MockConfig(store bool, httpURL string, proofType message.Pro
 		return err
 	}
 	cfg.ProverName = fmt.Sprintf("%s_%d", r.name, r.index)
-	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.base.Timestamp, cfg.ProverName)
-	cfg.L2Geth.Endpoint = r.base.L2gethImg.Endpoint()
+	cfg.KeystorePath = fmt.Sprintf("/tmp/%d_%s.json", r.testApps.Timestamp, cfg.ProverName)
+
+	endpoint, err := r.testApps.GetL2GethEndPoint()
+	if err != nil {
+		return err
+	}
+	cfg.L2Geth.Endpoint = endpoint
 	cfg.L2Geth.Confirmations = rpc.LatestBlockNumber
 	// Reuse l1geth's keystore file
 	cfg.KeystorePassword = "scrolltest"
