@@ -115,7 +115,7 @@ func action(ctx *cli.Context) error {
 	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessCommittedBatches)
 
 	// Finish start all rollup relayer functions.
-	log.Info("Start rollup-relayer successfully")
+	log.Info("Start rollup-relayer successfully", "version", version.Version)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
