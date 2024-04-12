@@ -395,8 +395,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         (uint256 memPtr, bytes32 _batchHash, uint256 _batchIndex, ) = _loadBatchHeader(_batchHeader);
         bytes32 _dataHash = BatchHeaderV0Codec.getDataHash(memPtr);
 
-        // verify previous state root.
-        if (finalizedStateRoots[_batchIndex - 1] != _prevStateRoot) revert ErrorIncorrectPreviousStateRoot();
+        // // verify previous state root.
+        // if (finalizedStateRoots[_batchIndex - 1] != _prevStateRoot) revert ErrorIncorrectPreviousStateRoot();
 
         // avoid duplicated verification
         if (finalizedStateRoots[_batchIndex] != bytes32(0)) revert ErrorBatchIsAlreadyVerified();
@@ -411,20 +411,21 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // check and update lastFinalizedBatchIndex
         unchecked {
-            if (lastFinalizedBatchIndex + 1 != _batchIndex) revert ErrorIncorrectBatchIndex();
-            lastFinalizedBatchIndex = _batchIndex;
+            // if (lastFinalizedBatchIndex + 1 != _batchIndex) revert ErrorIncorrectBatchIndex();
+            // lastFinalizedBatchIndex = _batchIndex;
+            if (_batchIndex > lastFinalizedBatchIndex) lastFinalizedBatchIndex = _batchIndex;
         }
 
         // record state root and withdraw root
         finalizedStateRoots[_batchIndex] = _postStateRoot;
         withdrawRoots[_batchIndex] = _withdrawRoot;
 
-        // Pop finalized and non-skipped message from L1MessageQueue.
-        _popL1Messages(
-            BatchHeaderV0Codec.getSkippedBitmapPtr(memPtr),
-            BatchHeaderV0Codec.getTotalL1MessagePopped(memPtr),
-            BatchHeaderV0Codec.getL1MessagePopped(memPtr)
-        );
+        // // Pop finalized and non-skipped message from L1MessageQueue.
+        // _popL1Messages(
+        //     BatchHeaderV0Codec.getSkippedBitmapPtr(memPtr),
+        //     BatchHeaderV0Codec.getTotalL1MessagePopped(memPtr),
+        //     BatchHeaderV0Codec.getL1MessagePopped(memPtr)
+        // );
 
         emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
     }
@@ -464,8 +465,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             if (result != BLS_MODULUS) revert ErrorUnexpectedPointEvaluationPrecompileOutput();
         }
 
-        // verify previous state root.
-        if (finalizedStateRoots[_batchIndex - 1] != _prevStateRoot) revert ErrorIncorrectPreviousStateRoot();
+        // // verify previous state root.
+        // if (finalizedStateRoots[_batchIndex - 1] != _prevStateRoot) revert ErrorIncorrectPreviousStateRoot();
 
         // avoid duplicated verification
         if (finalizedStateRoots[_batchIndex] != bytes32(0)) revert ErrorBatchIsAlreadyVerified();
@@ -492,20 +493,21 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
         // check and update lastFinalizedBatchIndex
         unchecked {
-            if (lastFinalizedBatchIndex + 1 != _batchIndex) revert ErrorIncorrectBatchIndex();
-            lastFinalizedBatchIndex = _batchIndex;
+            // if (lastFinalizedBatchIndex + 1 != _batchIndex) revert ErrorIncorrectBatchIndex();
+            // lastFinalizedBatchIndex = _batchIndex;
+            if (_batchIndex > lastFinalizedBatchIndex) lastFinalizedBatchIndex = _batchIndex;
         }
 
         // record state root and withdraw root
         finalizedStateRoots[_batchIndex] = _postStateRoot;
         withdrawRoots[_batchIndex] = _withdrawRoot;
 
-        // Pop finalized and non-skipped message from L1MessageQueue.
-        _popL1Messages(
-            BatchHeaderV1Codec.getSkippedBitmapPtr(memPtr),
-            BatchHeaderV1Codec.getTotalL1MessagePopped(memPtr),
-            BatchHeaderV1Codec.getL1MessagePopped(memPtr)
-        );
+        // // Pop finalized and non-skipped message from L1MessageQueue.
+        // _popL1Messages(
+        //     BatchHeaderV1Codec.getSkippedBitmapPtr(memPtr),
+        //     BatchHeaderV1Codec.getTotalL1MessagePopped(memPtr),
+        //     BatchHeaderV1Codec.getL1MessagePopped(memPtr)
+        // );
 
         emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
     }
@@ -523,8 +525,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         // compute batch hash and verify
         (uint256 memPtr, bytes32 _batchHash, uint256 _batchIndex, ) = _loadBatchHeader(_batchHeader);
 
-        // verify previous state root.
-        require(finalizedStateRoots[_batchIndex - 1] == _prevStateRoot, "incorrect previous state root");
+        // // verify previous state root.
+        // require(finalizedStateRoots[_batchIndex - 1] == _prevStateRoot, "incorrect previous state root");
 
         // avoid duplicated verification
         require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
@@ -539,12 +541,12 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         finalizedStateRoots[_batchIndex] = _postStateRoot;
         withdrawRoots[_batchIndex] = _withdrawRoot;
 
-        // Pop finalized and non-skipped message from L1MessageQueue.
-        _popL1Messages(
-            BatchHeaderV0Codec.getSkippedBitmapPtr(memPtr),
-            BatchHeaderV0Codec.getTotalL1MessagePopped(memPtr),
-            BatchHeaderV0Codec.getL1MessagePopped(memPtr)
-        );
+        // // Pop finalized and non-skipped message from L1MessageQueue.
+        // _popL1Messages(
+        //     BatchHeaderV0Codec.getSkippedBitmapPtr(memPtr),
+        //     BatchHeaderV0Codec.getTotalL1MessagePopped(memPtr),
+        //     BatchHeaderV0Codec.getL1MessagePopped(memPtr)
+        // );
 
         emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
     }
@@ -582,28 +584,29 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             if (result != BLS_MODULUS) revert ErrorUnexpectedPointEvaluationPrecompileOutput();
         }
 
-        // verify previous state root.
-        if (finalizedStateRoots[_batchIndex - 1] != _prevStateRoot) revert ErrorIncorrectPreviousStateRoot();
+        // // verify previous state root.
+        // if (finalizedStateRoots[_batchIndex - 1] != _prevStateRoot) revert ErrorIncorrectPreviousStateRoot();
 
         // avoid duplicated verification
         if (finalizedStateRoots[_batchIndex] != bytes32(0)) revert ErrorBatchIsAlreadyVerified();
 
         // check and update lastFinalizedBatchIndex
         unchecked {
-            if (lastFinalizedBatchIndex + 1 != _batchIndex) revert ErrorIncorrectBatchIndex();
-            lastFinalizedBatchIndex = _batchIndex;
+            // if (lastFinalizedBatchIndex + 1 != _batchIndex) revert ErrorIncorrectBatchIndex();
+            // lastFinalizedBatchIndex = _batchIndex;
+            if (_batchIndex > lastFinalizedBatchIndex) lastFinalizedBatchIndex = _batchIndex;
         }
 
         // record state root and withdraw root
         finalizedStateRoots[_batchIndex] = _postStateRoot;
         withdrawRoots[_batchIndex] = _withdrawRoot;
 
-        // Pop finalized and non-skipped message from L1MessageQueue.
-        _popL1Messages(
-            BatchHeaderV1Codec.getSkippedBitmapPtr(memPtr),
-            BatchHeaderV1Codec.getTotalL1MessagePopped(memPtr),
-            BatchHeaderV1Codec.getL1MessagePopped(memPtr)
-        );
+        // // Pop finalized and non-skipped message from L1MessageQueue.
+        // _popL1Messages(
+        //     BatchHeaderV1Codec.getSkippedBitmapPtr(memPtr),
+        //     BatchHeaderV1Codec.getTotalL1MessagePopped(memPtr),
+        //     BatchHeaderV1Codec.getL1MessagePopped(memPtr)
+        // );
 
         emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
     }
