@@ -109,7 +109,7 @@ func action(ctx *cli.Context) error {
 	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessGasPriceOracle)
 
 	// Finish start all message relayer functions
-	log.Info("Start gas-oracle successfully")
+	log.Info("Start gas-oracle successfully", "version", version.Version)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
