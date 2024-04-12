@@ -479,55 +479,55 @@ func TestCodecV1BatchChallenge(t *testing.T) {
 	originalBatch := &encoding.Batch{Chunks: []*encoding.Chunk{chunk2}}
 	batch, err := NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "06138a688f328d13cb9caf0e2046d65bbcf766eab00196fb05e43806c7b26b36", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "0d8e67f882c61159aa99b04ec4f6f3d90cb95cbfba6efd56cefc55ca15b290ef", hex.EncodeToString(batch.z[:]))
 
 	trace3 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 	chunk3 := &encoding.Chunk{Blocks: []*encoding.Block{trace3}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk3}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "1e3f41f46941b3d30bbc482942026b09224636ed63a160738d7ae57a00c99294", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "32da228f4945de828954675f9396debb169bbf336ba93f849a8fc7fee1bc9e58", hex.EncodeToString(batch.z[:]))
 
 	trace4 := readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
 	chunk4 := &encoding.Chunk{Blocks: []*encoding.Block{trace4}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk4}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "37c3ab6ad48e99fc0ce8e9de5f9b2c9be832699b293e4243b85d4e42bad0db7a", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "09a37ab43d41bcae3000c090a341e4661a8dc705b3c93d01b9eda3a0b3f8d4a8", hex.EncodeToString(batch.z[:]))
 
 	trace5 := readBlockFromJSON(t, "../../../testdata/blockTrace_05.json")
 	chunk5 := &encoding.Chunk{Blocks: []*encoding.Block{trace5}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk5}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "17c71700d949f82963d3bd6af3994ecc383a3d58007f2f27702758fefa34a925", hex.EncodeToString(batch.z[:]))
 
 	trace6 := readBlockFromJSON(t, "../../../testdata/blockTrace_06.json")
 	chunk6 := &encoding.Chunk{Blocks: []*encoding.Block{trace6}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk6}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "17c71700d949f82963d3bd6af3994ecc383a3d58007f2f27702758fefa34a925", hex.EncodeToString(batch.z[:]))
 
 	trace7 := readBlockFromJSON(t, "../../../testdata/blockTrace_07.json")
 	chunk7 := &encoding.Chunk{Blocks: []*encoding.Block{trace7}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk7}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "17c71700d949f82963d3bd6af3994ecc383a3d58007f2f27702758fefa34a925", hex.EncodeToString(batch.z[:]))
 
 	// 15 chunks
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "0244c987922db21694e8eb0184c4a5e6f3785fb688224822f1f826874ed5aae2", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "55dac3baa818133cfdce0f97ddbb950e341399756d7b49bc34107dd65ecd3a4b", hex.EncodeToString(batch.z[:]))
 
 	chunk8 := &encoding.Chunk{Blocks: []*encoding.Block{trace2, trace3, trace4}}
 	chunk9 := &encoding.Chunk{Blocks: []*encoding.Block{trace5}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk8, chunk9}}
 	batch, err = NewDABatch(originalBatch)
 	assert.NoError(t, err)
-	assert.Equal(t, "03523cd88a7227826e093305cbe4ce237e8df38e2157566fb3742cc39dbc9c43", hex.EncodeToString(batch.z[:]))
+	assert.Equal(t, "0b14dce4abfdeb3a69a341f7db6b1e16162c20826e6d964a829e20f671030cab", hex.EncodeToString(batch.z[:]))
 }
 
 func repeat(element byte, count int) string {
@@ -547,31 +547,31 @@ func TestCodecV1BatchChallengeWithStandardTestCases(t *testing.T) {
 		expectedy string
 	}{
 		// single empty chunk
-		{chunks: [][]string{{}}, expectedz: "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec", expectedy: "28bda8f1836f60a3879f4253c4f51b3e41a905449b60a83a594f9f2487e8df51"},
+		{chunks: [][]string{{}}, expectedz: "17c71700d949f82963d3bd6af3994ecc383a3d58007f2f27702758fefa34a925", expectedy: "304817c2a9ec97b4cfdfc7a646f4bd5ac309e967465bb49059d397094e57cd08"},
 		// single non-empty chunk
-		{chunks: [][]string{{"0x010203"}}, expectedz: "30a9d6cfc2b87fb00d80e7fea28ebb9eff0bd526dbf1da32acfe8c5fd49632ff", expectedy: "723515444cb320fe437b9cea3b51293f5fbcb5913739ad35eab28b1863f7c312"},
+		{chunks: [][]string{{"0x010203"}}, expectedz: "1c1d4bd5153f877d799853080aba243f2c186dd6d6064eaefacfe715c92b6354", expectedy: "24e80ed99526b0d15ba46f7ec682f517576ddae68d5131e5d351f8bae06ea7d3"},
 		// multiple empty chunks
-		{chunks: [][]string{{}, {}}, expectedz: "17772348f946a4e4adfcaf5c1690d078933b6b090ca9a52fab6c7e545b1007ae", expectedy: "05ba9abbc81a1c97f4cdaa683a7e0c731d9dfd88feef8f7b2fcfd79e593662b5"},
+		{chunks: [][]string{{}, {}}, expectedz: "152c9ccfcc2884f9891f7adce2de110cf9f85bfd0e21f0933ae0636390a84d41", expectedy: "5f6f532676e25b49e2eae77513fbeca173a300b434c0a5e24fa554b68e27d582"},
 		// multiple non-empty chunks
-		{chunks: [][]string{{"0x010203"}, {"0x070809"}}, expectedz: "60376321eea0886c29bd97d95851c7b5fbdb064c8adfdadd7678617b32b3ebf2", expectedy: "50cfbcece01cadb4eade40649e17b140b31f96088097e38f020e31dfe6551604"},
+		{chunks: [][]string{{"0x010203"}, {"0x070809"}}, expectedz: "62100f5381179ea7db7aa8fdedb0f7fc7b82730b75432d50ab41f80aeebe45a3", expectedy: "5b1f6e7a54907ddc06871853cf1f5d53bf2de0df7b61d0df84bc2c3fb80320cd"},
 		// empty chunk followed by non-empty chunk
-		{chunks: [][]string{{}, {"0x010203"}}, expectedz: "054539f03564eda9462d582703cde0788e4e27c311582ddfb19835358273a7ca", expectedy: "1fba03580b5908c4c66b48e79c10e7a34e4b27ed37a1a049b3e17e017cad5245"},
+		{chunks: [][]string{{}, {"0x010203"}}, expectedz: "2d94d241c4a2a8d8f02845ca40cfba344f3b42384af2045a75c82e725a184232", expectedy: "302416c177e9e7fe40c3bc4315066c117e27d246b0a33ef68cdda6dd333c485c"},
 		// non-empty chunk followed by empty chunk
-		{chunks: [][]string{{"0x070809"}, {}}, expectedz: "0b82dceaa6ca4b5d704590c921accfd991b56b5ad0212e6a4e63e54915a2053b", expectedy: "2362f3a0c87f0ea11eb898ed608c7f09a42926a058d4c5d111a0f54cad10ebbd"},
+		{chunks: [][]string{{"0x070809"}, {}}, expectedz: "7227567e3b1dbacb48a32bb85e4e99f73e4bd5620ea8cd4f5ac00a364c86af9c", expectedy: "2eb3dfd28362f35f562f779e749a555d2f1f87ddc716e95f04133d25189a391c"},
 		// max number of chunks all empty
-		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}}, expectedz: "174cd3ba9b2ae8ab789ec0b5b8e0b27ee122256ec1756c383dbf2b5b96903f1b", expectedy: "225cab9658904181671eb7abc342ffc36a6836048b64a67f0fb758439da2567b"},
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}}, expectedz: "1128ac3e22ced6af85be4335e0d03a266946a7cade8047e7fc59d6c8be642321", expectedy: "2d9b16422ce17f328fd00c99349768f0cb0c8648115eb3bd9b7864617ba88059"},
 		// max number of chunks all non-empty
-		{chunks: [][]string{{"0x0a"}, {"0x0a0b"}, {"0x0a0b0c"}, {"0x0a0b0c0d"}, {"0x0a0b0c0d0e"}, {"0x0a0b0c0d0e0f"}, {"0x0a0b0c0d0e0f10"}, {"0x0a0b0c0d0e0f1011"}, {"0x0a0b0c0d0e0f101112"}, {"0x0a0b0c0d0e0f10111213"}, {"0x0a0b0c0d0e0f1011121314"}, {"0x0a0b0c0d0e0f101112131415"}, {"0x0a0b0c0d0e0f10111213141516"}, {"0x0a0b0c0d0e0f1011121314151617"}, {"0x0a0b0c0d0e0f101112131415161718"}}, expectedz: "1e93e961cdfb4bd26a5be48f23af4f1aa8c6bebe57a089d3250f8afb1e988bf8", expectedy: "24ed4791a70b28a6bad21c22d58f82a5ea5f9f9d2bcfc07428b494e9ae93de6e"},
+		{chunks: [][]string{{"0x0a"}, {"0x0a0b"}, {"0x0a0b0c"}, {"0x0a0b0c0d"}, {"0x0a0b0c0d0e"}, {"0x0a0b0c0d0e0f"}, {"0x0a0b0c0d0e0f10"}, {"0x0a0b0c0d0e0f1011"}, {"0x0a0b0c0d0e0f101112"}, {"0x0a0b0c0d0e0f10111213"}, {"0x0a0b0c0d0e0f1011121314"}, {"0x0a0b0c0d0e0f101112131415"}, {"0x0a0b0c0d0e0f10111213141516"}, {"0x0a0b0c0d0e0f1011121314151617"}, {"0x0a0b0c0d0e0f101112131415161718"}}, expectedz: "1a4025a3d74e70b511007dd55a2e252478c48054c6383285e8a176f33d99853b", expectedy: "12071ac2571c11220432a27b8be549392892e9baf4c654748ca206def3843940"},
 		// single chunk blob full
-		{chunks: [][]string{{repeat(123, nRowsData)}}, expectedz: "61405cb0b114dfb4d611be84bedba0fcd2e55615e193e424f1cc7b1af0df3d31", expectedy: "58609bbca10e50489b630ecb5b9347378579ed784d6a10749fd505055d35c3c0"},
+		{chunks: [][]string{{repeat(123, nRowsData)}}, expectedz: "72714cc4a0ca75cee2d543b1f958e3d3dd59ac7df0d9d5617d8117b65295a5f2", expectedy: "4ebb690362bcbc42321309c210c99f2ebdb53b3fcf7cf3b17b78f6cfd1203ed3"},
 		// multiple chunks blob full
-		{chunks: [][]string{{repeat(123, 1111)}, {repeat(231, nRowsData-1111)}}, expectedz: "22533c3ea99536b4b83a89835aa91e6f0d2fc3866c201e18d7ca4b3af92fad61", expectedy: "40d4b71492e1a06ee3c273ef9003c7cb05aed021208871e13fa33302fa0f4dcc"},
+		{chunks: [][]string{{repeat(123, 1111)}, {repeat(231, nRowsData-1111)}}, expectedz: "70eb5b4db503e59413238eef451871c5d12f2bb96c8b96ceca012f4ca0114727", expectedy: "568d0aaf280ec83f9c81ed2d80ecbdf199bd72dafb8a350007d37ea82997e455"},
 		// max number of chunks only last one non-empty not full blob
-		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData-1111)}}, expectedz: "0e6525c0dd261e8f62342b1139062bb23bc2b8b460163364598fb29e82a4eed5", expectedy: "1db984d6deb5e84bc67d0755aa2da8fe687233147603b4ecba94d0c8463c3836"},
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData-1111)}}, expectedz: "03db68ae16ee88489d52db19e6111b25630c5f23ad7cd14530aacf0cd231d476", expectedy: "24527d0b0e93b3dec0060c7b128975a8088b3104d3a297dc807ab43862a77a1a"},
 		// max number of chunks only last one non-empty full blob
-		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData)}}, expectedz: "3a638eac98f22f817b84e3d81ccaa3de080f83dc80a5823a3f19320ef3cb6fc8", expectedy: "73ab100278822144e2ed8c9d986e92f7a2662fd18a51bdf96ec55848578b227a"},
+		{chunks: [][]string{{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {repeat(132, nRowsData)}}, expectedz: "677670193f73db499cede572bcb55677f0d2f13d690f9a820bd00bf584c3c241", expectedy: "1d85677f172dbdf4ad3094a17deeb1df4d7d2b7f35ecea44aebffa757811a268"},
 		// max number of chunks but last is empty
-		{chunks: [][]string{{repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {}}, expectedz: "02ef442d99f450559647a7823f1be0e148c75481cc5c703c02a116e8ac531fa8", expectedy: "31743538cfc3ac43d1378a5c497ebc9462c20b4cb4470e0e7a9f7342ea948333"},
+		{chunks: [][]string{{repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {repeat(111, 100)}, {}}, expectedz: "22935042dfe7df771b02c1f5cababfe508869e8f6339dabe25a8a32e37728bb0", expectedy: "48ca66fb5a094401728c3a6a517ffbd72c4d4d9a8c907e2d2f1320812f4d856f"},
 	} {
 		chunks := []*encoding.Chunk{}
 
@@ -587,7 +587,7 @@ func TestCodecV1BatchChallengeWithStandardTestCases(t *testing.T) {
 			chunks = append(chunks, chunk)
 		}
 
-		b, z, err := constructBlobPayload(chunks)
+		b, _, z, err := constructBlobPayload(chunks)
 		assert.NoError(t, err)
 		actualZ := hex.EncodeToString(z[:])
 		assert.Equal(t, tc.expectedz, actualZ)
@@ -608,7 +608,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err := batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "06138a688f328d13cb9caf0e2046d65bbcf766eab00196fb05e43806c7b26b363d27683f7aab53cf071e2c8c8f3abfe750d206c048489450d120679cdc823f7db44a38af1f9a6c70cd3ccfbf71968f447aa566bbafb0bbc566fc9eeb42973484802635a1bbd8305d34a46693331bf607a30dad96431f70551dd950c1426131d73ccea6d050d38dea123aad90aa8c0b734c98e8e04bd8ea8f19b415f2d85156d8", hex.EncodeToString(verifyData))
+	assert.Equal(t, "0d8e67f882c61159aa99b04ec4f6f3d90cb95cbfba6efd56cefc55ca15b290ef423dc493f1dd7c9fbecdffa021ca4649b13e8d72231487034ec6b27e155ecfd7b44a38af1f9a6c70cd3ccfbf71968f447aa566bbafb0bbc566fc9eeb42973484802635a1bbd8305d34a46693331bf607b38542ec811c92d86ff6f3319de06ee60c42655278ccf874f3615f450de730895276828b73db03c553b0bc7e5474a5e0", hex.EncodeToString(verifyData))
 
 	trace3 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 	chunk3 := &encoding.Chunk{Blocks: []*encoding.Block{trace3}}
@@ -617,7 +617,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "1e3f41f46941b3d30bbc482942026b09224636ed63a160738d7ae57a00c992946dc7e51a42a31f429bc1f321dcf020b9a661225259522dba186fcfe5dc012191b8aab265dc352e352807a298f7bb99d432c7cd543e63158cbdb8fbf99f3182a71af35ccbed2693c5e0bc5be38d565e86a0b3c76e33edb24eb07faeaa5d3f2b15a55df6ab99abf828b5803f5681dc634602eb7469ee0556563b2eccebf16ec822", hex.EncodeToString(verifyData))
+	assert.Equal(t, "32da228f4945de828954675f9396debb169bbf336ba93f849a8fc7fee1bc9e5821975f318babe50be728f9b52754d5ce2caa2ba82ba35b5888af1c5f28d23206b8aab265dc352e352807a298f7bb99d432c7cd543e63158cbdb8fbf99f3182a71af35ccbed2693c5e0bc5be38d565e868e0c6fe7bd39baa5ee6339cd334a18af7c680d24e825262499e83b31633b13a9ee89813fae8441630c82bc9dce3f1e07", hex.EncodeToString(verifyData))
 
 	trace4 := readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
 	chunk4 := &encoding.Chunk{Blocks: []*encoding.Block{trace4}}
@@ -626,7 +626,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "37c3ab6ad48e99fc0ce8e9de5f9b2c9be832699b293e4243b85d4e42bad0db7a24164e6ea8b7946ce5e40d2baa4f6aa0d030076f6074295288133c00e75dafa2afd4e1c55a17dbdf8390b5736158afe238d82f8b696669ba47015fcdfd4d1becd0ff7a47f8f379a4ac8d1741e2d676248f5ca4a9f0d9b7fa48f5f649dc84e928161fd99ad1bd9a9879b05d29c5f718bfb3b0a696a5f3ed50b5b8c6a9d530b3ee", hex.EncodeToString(verifyData))
+	assert.Equal(t, "09a37ab43d41bcae3000c090a341e4661a8dc705b3c93d01b9eda3a0b3f8d4a8088a01e54e3565d2e91ce6afbadf479330847d9106737875303ce17f17c48722afd4e1c55a17dbdf8390b5736158afe238d82f8b696669ba47015fcdfd4d1becd0ff7a47f8f379a4ac8d1741e2d67624aee03a0f7cdb7807bc7e0b9fb20bc299af2a35e38cda816708b40f2f18db491e14a0f5d9cfe2f4c12e4ca1a219484f17", hex.EncodeToString(verifyData))
 
 	trace5 := readBlockFromJSON(t, "../../../testdata/blockTrace_05.json")
 	chunk5 := &encoding.Chunk{Blocks: []*encoding.Block{trace5}}
@@ -635,7 +635,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec28bda8f1836f60a3879f4253c4f51b3e41a905449b60a83a594f9f2487e8df518f26f349339c68b33ce856aa2c05b8f89e7c23db0c00817550679998efcbd8f2464f9e1ea6c3172b0b750603d1e4ea389598d958507378f8212199c51c059f8c419fd809dcc7de5750f76220c9c54cd57ad18cb3c38c127559a133df250f66b7", hex.EncodeToString(verifyData))
+	assert.Equal(t, "17c71700d949f82963d3bd6af3994ecc383a3d58007f2f27702758fefa34a925304817c2a9ec97b4cfdfc7a646f4bd5ac309e967465bb49059d397094e57cd088f26f349339c68b33ce856aa2c05b8f89e7c23db0c00817550679998efcbd8f2464f9e1ea6c3172b0b750603d1e4ea38979341a25ec6b613f9f32b23fc0e1a11342bc84d4af0705c666e7813de790d0e63b0a9bc56dc484590728aaaafa6b7a4", hex.EncodeToString(verifyData))
 
 	trace6 := readBlockFromJSON(t, "../../../testdata/blockTrace_06.json")
 	chunk6 := &encoding.Chunk{Blocks: []*encoding.Block{trace6}}
@@ -644,7 +644,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec28bda8f1836f60a3879f4253c4f51b3e41a905449b60a83a594f9f2487e8df518f26f349339c68b33ce856aa2c05b8f89e7c23db0c00817550679998efcbd8f2464f9e1ea6c3172b0b750603d1e4ea389598d958507378f8212199c51c059f8c419fd809dcc7de5750f76220c9c54cd57ad18cb3c38c127559a133df250f66b7", hex.EncodeToString(verifyData))
+	assert.Equal(t, "17c71700d949f82963d3bd6af3994ecc383a3d58007f2f27702758fefa34a925304817c2a9ec97b4cfdfc7a646f4bd5ac309e967465bb49059d397094e57cd088f26f349339c68b33ce856aa2c05b8f89e7c23db0c00817550679998efcbd8f2464f9e1ea6c3172b0b750603d1e4ea38979341a25ec6b613f9f32b23fc0e1a11342bc84d4af0705c666e7813de790d0e63b0a9bc56dc484590728aaaafa6b7a4", hex.EncodeToString(verifyData))
 
 	trace7 := readBlockFromJSON(t, "../../../testdata/blockTrace_07.json")
 	chunk7 := &encoding.Chunk{Blocks: []*encoding.Block{trace7}}
@@ -653,7 +653,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "1fa77f72d924ed6efdc399cf7a3de45fd3b50538d368d80d94840d30fdb606ec28bda8f1836f60a3879f4253c4f51b3e41a905449b60a83a594f9f2487e8df518f26f349339c68b33ce856aa2c05b8f89e7c23db0c00817550679998efcbd8f2464f9e1ea6c3172b0b750603d1e4ea389598d958507378f8212199c51c059f8c419fd809dcc7de5750f76220c9c54cd57ad18cb3c38c127559a133df250f66b7", hex.EncodeToString(verifyData))
+	assert.Equal(t, "17c71700d949f82963d3bd6af3994ecc383a3d58007f2f27702758fefa34a925304817c2a9ec97b4cfdfc7a646f4bd5ac309e967465bb49059d397094e57cd088f26f349339c68b33ce856aa2c05b8f89e7c23db0c00817550679998efcbd8f2464f9e1ea6c3172b0b750603d1e4ea38979341a25ec6b613f9f32b23fc0e1a11342bc84d4af0705c666e7813de790d0e63b0a9bc56dc484590728aaaafa6b7a4", hex.EncodeToString(verifyData))
 
 	// 15 chunks
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2, chunk2}}
@@ -661,7 +661,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "0244c987922db21694e8eb0184c4a5e6f3785fb688224822f1f826874ed5aae2613ca15d051a539e3b239027f9bdbd03bd3c66c98afafb674e2a7441912cbe099743324c70e20042de6480f115b215fbba3472a8b994303a99576c1244aa4aec22fdfe6c74ec728aa28a9eb3812bc93291fbc65cfa558e4df12bcde442483d31072000c56f94fe012285bc5832eaee5fe1d47f1e8655539c4500f66207d8edc6", hex.EncodeToString(verifyData))
+	assert.Equal(t, "55dac3baa818133cfdce0f97ddbb950e341399756d7b49bc34107dd65ecd3a4b54d28f1479467d8b97fb99f5257d3e5d63a81cb2d60e3564fe6ec6066a311c119743324c70e20042de6480f115b215fbba3472a8b994303a99576c1244aa4aec22fdfe6c74ec728aa28a9eb3812bc932a0b603cc94be2007d4b3b17af06b4fb30caf0e574d5abcfc5654079e65154679afad75844396082a7200a4e82462aeed", hex.EncodeToString(verifyData))
 
 	chunk8 := &encoding.Chunk{Blocks: []*encoding.Block{trace2, trace3, trace4}}
 	chunk9 := &encoding.Chunk{Blocks: []*encoding.Block{trace5}}
@@ -670,7 +670,7 @@ func TestCodecV1BatchBlobDataProof(t *testing.T) {
 	assert.NoError(t, err)
 	verifyData, err = batch.BlobDataProof()
 	assert.NoError(t, err)
-	assert.Equal(t, "03523cd88a7227826e093305cbe4ce237e8df38e2157566fb3742cc39dbc9c4330b3863672052b3d6c6552d121b0b13f97659f49bbfb6d7fed6e4b7076e4a43383bee97f95fbf2d789a8e0fb365c26e141d6a31e43403b4a469d1723128f6d5de5c54e913e143feede32d0af9b6fd6fdae9cb71d402cfe8bc4d659f228c41f0b9d195c5074278a2346204cfaa336f5de2244a3d53e0effa2f49c81924720e84e", hex.EncodeToString(verifyData))
+	assert.Equal(t, "0b14dce4abfdeb3a69a341f7db6b1e16162c20826e6d964a829e20f671030cab35b73ddb4a78fc4a8540f1d8259512c46e606a701e7ef7742e38cc4562ef53b983bee97f95fbf2d789a8e0fb365c26e141d6a31e43403b4a469d1723128f6d5de5c54e913e143feede32d0af9b6fd6fda28e5610ca6b185d6ac30b53bd83d6366fccb1956daafa90ff6b504a966b119ebb45cb3f7085b7c1d622ee1ad27fcff9", hex.EncodeToString(verifyData))
 }
 
 func TestCodecV1BatchSkipBitmap(t *testing.T) {

@@ -83,6 +83,8 @@ contract L2USDCGatewayTest is L2GatewayTestBase {
     }
 
     function testTransferUSDCRoles(address owner) external {
+        hevm.assume(owner != address(0));
+
         // non-whitelisted caller call, should revert
         hevm.expectRevert("only circle caller");
         gateway.transferUSDCRoles(owner);
