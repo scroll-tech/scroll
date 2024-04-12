@@ -53,18 +53,31 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 		return jwt.MapClaims{}
 	}
 
-	// recover the public key
-	authMsg := message.AuthMsg{
-		Identity: &message.Identity{
-			Challenge:     v.Message.Challenge,
-			ProverName:    v.Message.ProverName,
-			ProverVersion: v.Message.ProverVersion,
-			HardForkName:  v.Message.HardForkName,
-		},
-		Signature: v.Signature,
+	var publicKey string
+	var err error
+	if v.Message.HardForkName != "" {
+		authMsg := message.AuthMsg{
+			Identity: &message.Identity{
+				Challenge:     v.Message.Challenge,
+				ProverName:    v.Message.ProverName,
+				ProverVersion: v.Message.ProverVersion,
+				HardForkName:  v.Message.HardForkName,
+			},
+			Signature: v.Signature,
+		}
+		publicKey, err = authMsg.PublicKey()
+	} else {
+		authMsg := message.LegacyAuthMsg{
+			Identity: &message.LegacyIdentity{
+				Challenge:     v.Message.Challenge,
+				ProverName:    v.Message.ProverName,
+				ProverVersion: v.Message.ProverVersion,
+			},
+			Signature: v.Signature,
+		}
+		publicKey, err = authMsg.PublicKey()
 	}
 
-	publicKey, err := authMsg.PublicKey()
 	if err != nil {
 		return jwt.MapClaims{}
 	}

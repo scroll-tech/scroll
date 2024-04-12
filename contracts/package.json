@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "test:hardhat": "npx hardhat test",
-    "test:forge": "forge test -vvv",
+    "test:forge": "forge test -vvv --evm-version cancun",
     "test": "yarn test:hardhat && yarn test:forge",
     "solhint": "./node_modules/.bin/solhint -f table 'src/**/*.sol'",
     "lint:sol": "./node_modules/.bin/prettier --write 'src/**/*.sol'",

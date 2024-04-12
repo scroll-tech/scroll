@@ -77,18 +77,31 @@ func (r *mockProver) challenge(t *testing.T) string {
 }
 
 func (r *mockProver) login(t *testing.T, challengeString string, forkName string) string {
-	authMsg := message.AuthMsg{
-		Identity: &message.Identity{
-			Challenge:     challengeString,
-			ProverName:    r.proverName,
-			ProverVersion: r.proverVersion,
-			HardForkName:  forkName,
-		},
+	var body string
+	if forkName != "" {
+		authMsg := message.AuthMsg{
+			Identity: &message.Identity{
+				Challenge:     challengeString,
+				ProverName:    r.proverName,
+				ProverVersion: r.proverVersion,
+				HardForkName:  forkName,
+			},
+		}
+		assert.NoError(t, authMsg.SignWithKey(r.privKey))
+		body = fmt.Sprintf("{\"message\":{\"challenge\":\"%s\",\"prover_name\":\"%s\", \"prover_version\":\"%s\", \"hard_fork_name\":\"%s\"},\"signature\":\"%s\"}",
+			authMsg.Identity.Challenge, authMsg.Identity.ProverName, authMsg.Identity.ProverVersion, authMsg.Identity.HardForkName, authMsg.Signature)
+	} else {
+		authMsg := message.LegacyAuthMsg{
+			Identity: &message.LegacyIdentity{
+				Challenge:     challengeString,
+				ProverName:    r.proverName,
+				ProverVersion: r.proverVersion,
+			},
+		}
+		assert.NoError(t, authMsg.SignWithKey(r.privKey))
+		body = fmt.Sprintf("{\"message\":{\"challenge\":\"%s\",\"prover_name\":\"%s\", \"prover_version\":\"%s\"},\"signature\":\"%s\"}",
+			authMsg.Identity.Challenge, authMsg.Identity.ProverName, authMsg.Identity.ProverVersion, authMsg.Signature)
 	}
-	assert.NoError(t, authMsg.SignWithKey(r.privKey))
-
-	body := fmt.Sprintf("{\"message\":{\"challenge\":\"%s\",\"prover_name\":\"%s\", \"prover_version\":\"%s\", \"hard_fork_name\":\"%s\"},\"signature\":\"%s\"}",
-		authMsg.Identity.Challenge, authMsg.Identity.ProverName, authMsg.Identity.ProverVersion, authMsg.Identity.HardForkName, authMsg.Signature)
 
 	var result ctypes.Response
 	client := resty.New()
