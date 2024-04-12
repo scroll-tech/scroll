@@ -477,7 +477,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _postStateRoot,
                 _withdrawRoot,
                 _dataHash,
-                _blobDataProof[0:64]
+                _blobDataProof[0:64],
+                _blobVersionedHash
             )
         );
 
