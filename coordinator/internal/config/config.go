@@ -50,6 +50,7 @@ type Config struct {
 
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
+	ForkName   string `json:"fork_name"`
 	MockMode   bool   `json:"mock_mode"`
 	ParamsPath string `json:"params_path"`
 	AssetsPath string `json:"assets_path"`

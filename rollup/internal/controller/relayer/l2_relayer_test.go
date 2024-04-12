@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/gin-gonic/gin"
@@ -181,9 +182,9 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 		assert.NoError(t, err)
 		chunkOrm := orm.NewChunk(db)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
+		chunkDB1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
 		assert.NoError(t, err)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
+		chunkDB2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
 		assert.NoError(t, err)
 
 		batch := &encoding.Batch{
@@ -200,11 +201,30 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 		err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
 		assert.NoError(t, err)
 
+		err = chunkOrm.UpdateBatchHashInRange(context.Background(), chunkDB1.Index, chunkDB2.Index, dbBatch.Hash, nil)
+		assert.NoError(t, err)
+
 		// Check the database for the updated status using TryTimes.
 		ok := utils.TryTimes(5, func() bool {
 			relayer.ProcessCommittedBatches()
-			statuses, err := batchOrm.GetRollupStatusByHashList(context.Background(), []string{dbBatch.Hash})
-			return err == nil && len(statuses) == 1 && statuses[0] == types.RollupFinalizing
+			time.Sleep(time.Second)
+
+			batchInDB, batchErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": dbBatch.Hash}, nil, 0)
+			if batchErr != nil {
+				return false
+			}
+			chunks, chunkErr := chunkOrm.GetChunksByBatchHash(context.Background(), dbBatch.Hash)
+			if chunkErr != nil {
+				return false
+			}
+
+			batchStatus := len(batchInDB) == 1 && types.RollupStatus(batchInDB[0].RollupStatus) == types.RollupFinalizing &&
+				types.ProvingStatus(batchInDB[0].ProvingStatus) == types.ProvingTaskVerified
+
+			chunkStatus := len(chunks) == 2 && types.ProvingStatus(chunks[0].ProvingStatus) == types.ProvingTaskVerified &&
+				types.ProvingStatus(chunks[1].ProvingStatus) == types.ProvingTaskVerified
+
+			return batchStatus && chunkStatus
 		})
 		assert.True(t, ok)
 		relayer.StopSenders()
