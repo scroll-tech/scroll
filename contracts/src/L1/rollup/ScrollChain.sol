@@ -119,7 +119,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
     /// @dev BLS Modulus value defined in EIP-4844 and the magic value returned from a successful call to the
     /// point evaluation precompile
-    uint256 private constant BLS_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513;
+    uint256 private constant BLS_MODULUS =
+        52435875175126190479447740508185965837690552500527637822603658699938581184513;
 
     /// @notice The chain id of the corresponding layer 2 chain.
     uint64 public immutable layer2ChainId;
@@ -489,6 +490,104 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
         }
         // verify batch
         IRollupVerifier(verifier).verifyAggregateProof(batchVersion, _batchIndex, _aggrProof, _publicInputHash);
+
+        // check and update lastFinalizedBatchIndex
+        unchecked {
+            if (lastFinalizedBatchIndex + 1 != _batchIndex) revert ErrorIncorrectBatchIndex();
+            lastFinalizedBatchIndex = _batchIndex;
+        }
+
+        // record state root and withdraw root
+        finalizedStateRoots[_batchIndex] = _postStateRoot;
+        withdrawRoots[_batchIndex] = _withdrawRoot;
+
+        // Pop finalized and non-skipped message from L1MessageQueue.
+        _popL1Messages(
+            BatchHeaderV1Codec.getSkippedBitmapPtr(memPtr),
+            BatchHeaderV1Codec.getTotalL1MessagePopped(memPtr),
+            BatchHeaderV1Codec.getL1MessagePopped(memPtr)
+        );
+
+        emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
+    }
+
+    /// @inheritdoc IScrollChain
+    function finalizeBatch(
+        bytes calldata _batchHeader,
+        bytes32 _prevStateRoot,
+        bytes32 _postStateRoot,
+        bytes32 _withdrawRoot
+    ) external override OnlyProver whenNotPaused {
+        require(_prevStateRoot != bytes32(0), "previous state root is zero");
+        require(_postStateRoot != bytes32(0), "new state root is zero");
+
+        // compute batch hash and verify
+        (uint256 memPtr, bytes32 _batchHash, uint256 _batchIndex, ) = _loadBatchHeader(_batchHeader);
+
+        // verify previous state root.
+        require(finalizedStateRoots[_batchIndex - 1] == _prevStateRoot, "incorrect previous state root");
+
+        // avoid duplicated verification
+        require(finalizedStateRoots[_batchIndex] == bytes32(0), "batch already verified");
+
+        // check and update lastFinalizedBatchIndex
+        unchecked {
+            require(lastFinalizedBatchIndex + 1 == _batchIndex, "incorrect batch index");
+            lastFinalizedBatchIndex = _batchIndex;
+        }
+
+        // record state root and withdraw root
+        finalizedStateRoots[_batchIndex] = _postStateRoot;
+        withdrawRoots[_batchIndex] = _withdrawRoot;
+
+        // Pop finalized and non-skipped message from L1MessageQueue.
+        _popL1Messages(
+            BatchHeaderV0Codec.getSkippedBitmapPtr(memPtr),
+            BatchHeaderV0Codec.getTotalL1MessagePopped(memPtr),
+            BatchHeaderV0Codec.getL1MessagePopped(memPtr)
+        );
+
+        emit FinalizeBatch(_batchIndex, _batchHash, _postStateRoot, _withdrawRoot);
+    }
+
+    /// @inheritdoc IScrollChain
+    /// @dev Memory layout of `_blobDataProof`:
+    /// ```text
+    /// | z       | y       | kzg_commitment | kzg_proof |
+    /// |---------|---------|----------------|-----------|
+    /// | bytes32 | bytes32 | bytes48        | bytes48   |
+    /// ```
+    function finalizeBatch4844(
+        bytes calldata _batchHeader,
+        bytes32 _prevStateRoot,
+        bytes32 _postStateRoot,
+        bytes32 _withdrawRoot,
+        bytes calldata _blobDataProof
+    ) external override OnlyProver whenNotPaused {
+        if (_prevStateRoot == bytes32(0)) revert ErrorPreviousStateRootIsZero();
+        if (_postStateRoot == bytes32(0)) revert ErrorStateRootIsZero();
+
+        // compute batch hash and verify
+        (uint256 memPtr, bytes32 _batchHash, uint256 _batchIndex, ) = _loadBatchHeader(_batchHeader);
+        bytes32 _blobVersionedHash = BatchHeaderV1Codec.getBlobVersionedHash(memPtr);
+
+        // Calls the point evaluation precompile and verifies the output
+        {
+            (bool success, bytes memory data) = POINT_EVALUATION_PRECOMPILE_ADDR.staticcall(
+                abi.encodePacked(_blobVersionedHash, _blobDataProof)
+            );
+            // We verify that the point evaluation precompile call was successful by testing the latter 32 bytes of the
+            // response is equal to BLS_MODULUS as defined in https://eips.ethereum.org/EIPS/eip-4844#point-evaluation-precompile
+            if (!success) revert ErrorCallPointEvaluationPrecompileFailed();
+            (, uint256 result) = abi.decode(data, (uint256, uint256));
+            if (result != BLS_MODULUS) revert ErrorUnexpectedPointEvaluationPrecompileOutput();
+        }
+
+        // verify previous state root.
+        if (finalizedStateRoots[_batchIndex - 1] != _prevStateRoot) revert ErrorIncorrectPreviousStateRoot();
+
+        // avoid duplicated verification
+        if (finalizedStateRoots[_batchIndex] != bytes32(0)) revert ErrorBatchIsAlreadyVerified();
 
         // check and update lastFinalizedBatchIndex
         unchecked {

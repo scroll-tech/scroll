@@ -83,6 +83,45 @@ function committedBatches(uint256) external view returns (bytes32)
 |---|---|---|
 | _0 | bytes32 | The batch hash of a committed batch. |
 
+### finalizeBatch
+
+```solidity
+function finalizeBatch(bytes _batchHeader, bytes32 _prevStateRoot, bytes32 _postStateRoot, bytes32 _withdrawRoot) external nonpayable
+```
+
+Finalize a committed batch on layer 1 without providing proof.
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _batchHeader | bytes | undefined |
+| _prevStateRoot | bytes32 | undefined |
+| _postStateRoot | bytes32 | undefined |
+| _withdrawRoot | bytes32 | undefined |
+
+### finalizeBatch4844
+
+```solidity
+function finalizeBatch4844(bytes _batchHeader, bytes32 _prevStateRoot, bytes32 _postStateRoot, bytes32 _withdrawRoot, bytes _blobDataProof) external nonpayable
+```
+
+Finalize a committed batch (with blob) on layer 1 without providing proof.
+
+*Memory layout of `_blobDataProof`: ```text | z       | y       | kzg_commitment | kzg_proof | |---------|---------|----------------|-----------| | bytes32 | bytes32 | bytes48        | bytes48   | ```*
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| _batchHeader | bytes | undefined |
+| _prevStateRoot | bytes32 | undefined |
+| _postStateRoot | bytes32 | undefined |
+| _withdrawRoot | bytes32 | undefined |
+| _blobDataProof | bytes | undefined |
+
 ### finalizeBatchWithProof
 
 ```solidity
