@@ -587,22 +587,22 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 		return err
 	}
 
-	// Updating the proving status when finalizing without proof, thus the coordinator could omit this task.
-	// it isn't a necessary step, so don't put in a transaction with UpdateFinalizeTxHashAndRollupStatus
-	if !withProof {
-		txErr := r.db.Transaction(func(tx *gorm.DB) error {
-			if updateErr := r.batchOrm.UpdateProvingStatus(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
-				return updateErr
-			}
-			if updateErr := r.chunkOrm.UpdateProvingStatusByBatchHash(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
-				return updateErr
-			}
-			return nil
-		})
-		if txErr != nil {
-			log.Error("Updating chunk and batch proving status when finalizing without proof failure", "batchHash", dbBatch.Hash, "err", txErr)
-		}
-	}
+	// // Updating the proving status when finalizing without proof, thus the coordinator could omit this task.
+	// // it isn't a necessary step, so don't put in a transaction with UpdateFinalizeTxHashAndRollupStatus
+	// if !withProof {
+	// 	txErr := r.db.Transaction(func(tx *gorm.DB) error {
+	// 		if updateErr := r.batchOrm.UpdateProvingStatus(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
+	// 			return updateErr
+	// 		}
+	// 		if updateErr := r.chunkOrm.UpdateProvingStatusByBatchHash(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
+	// 			return updateErr
+	// 		}
+	// 		return nil
+	// 	})
+	// 	if txErr != nil {
+	// 		log.Error("Updating chunk and batch proving status when finalizing without proof failure", "batchHash", dbBatch.Hash, "err", txErr)
+	// 	}
+	// }
 
 	r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal.Inc()
 	return nil
