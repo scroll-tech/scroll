@@ -76,7 +76,7 @@ func action(ctx *cli.Context) error {
 		}
 	})
 
-	log.Info("Start event-watcher successfully")
+	log.Info("Start event-watcher successfully", "version", version.Version)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
