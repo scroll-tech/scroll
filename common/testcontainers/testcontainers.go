@@ -68,8 +68,11 @@ func (t *TestcontainerApps) StartL1GethContainer() error {
 	req := testcontainers.ContainerRequest{
 		Image:        "scroll_l1geth",
 		ExposedPorts: []string{"8546/tcp", "8545/tcp"},
-		WaitingFor:   wait.ForHTTP("/").WithPort("8545").WithStartupTimeout(100 * time.Second),
-		Cmd:          []string{"--log.debug", "ANY"},
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("8546").WithStartupTimeout(100*time.Second),
+			wait.ForListeningPort("8545").WithStartupTimeout(100*time.Second),
+		),
+		Cmd: []string{"--log.debug", "ANY"},
 	}
 	genericContainerReq := testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -92,7 +95,10 @@ func (t *TestcontainerApps) StartL2GethContainer() error {
 	req := testcontainers.ContainerRequest{
 		Image:        "scroll_l2geth",
 		ExposedPorts: []string{"8546/tcp", "8545/tcp"},
-		WaitingFor:   wait.ForHTTP("/").WithPort("8545").WithStartupTimeout(100 * time.Second),
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("8546").WithStartupTimeout(100*time.Second),
+			wait.ForListeningPort("8545").WithStartupTimeout(100*time.Second),
+		),
 	}
 	genericContainerReq := testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
