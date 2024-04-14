@@ -113,7 +113,7 @@ func (t *TestcontainerApps) StartL2GethContainer() error {
 	return nil
 }
 
-// StartPoSL1Container start starts the PoS L1 container by running the associated Docker Compose configuration
+// StartPoSL1Container starts the PoS L1 container by running the associated Docker Compose configuration
 func (t *TestcontainerApps) StartPoSL1Container() error {
 	var (
 		err               error
