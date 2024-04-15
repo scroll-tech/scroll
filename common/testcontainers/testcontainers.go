@@ -12,8 +12,8 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/compose"  //nolint:all
-	"github.com/testcontainers/testcontainers-go/modules/postgres" //nolint:all
+	"github.com/testcontainers/testcontainers-go/modules/compose"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/gorm"
 
