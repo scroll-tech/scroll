@@ -39,7 +39,6 @@ jobs:
           aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Build and push
         uses: docker/build-push-action@v3
-        platforms: linux/amd64,linux/arm64
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: event-watcher
