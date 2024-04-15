@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.24;
 
+/// @title IRollupVerifier
+/// @notice The interface for rollup verifier.
 interface IRollupVerifier {
     /// @notice Verify aggregate zk proof.
     /// @param batchIndex The batch index to verify.

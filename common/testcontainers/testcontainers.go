@@ -10,6 +10,9 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"gorm.io/gorm"
+
+	"scroll-tech/common/database"
 )
 
 // TestcontainerApps testcontainers struct
@@ -58,8 +61,11 @@ func (t *TestcontainerApps) StartL1GethContainer() error {
 	req := testcontainers.ContainerRequest{
 		Image:        "scroll_l1geth",
 		ExposedPorts: []string{"8546/tcp", "8545/tcp"},
-		WaitingFor:   wait.ForHTTP("/").WithPort("8545").WithStartupTimeout(100 * time.Second),
-		Cmd:          []string{"--log.debug", "ANY"},
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("8546").WithStartupTimeout(100*time.Second),
+			wait.ForListeningPort("8545").WithStartupTimeout(100*time.Second),
+		),
+		Cmd: []string{"--log.debug", "ANY"},
 	}
 	genericContainerReq := testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -82,7 +88,10 @@ func (t *TestcontainerApps) StartL2GethContainer() error {
 	req := testcontainers.ContainerRequest{
 		Image:        "scroll_l2geth",
 		ExposedPorts: []string{"8546/tcp", "8545/tcp"},
-		WaitingFor:   wait.ForHTTP("/").WithPort("8545").WithStartupTimeout(100 * time.Second),
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("8546").WithStartupTimeout(100*time.Second),
+			wait.ForListeningPort("8545").WithStartupTimeout(100*time.Second),
+		),
 	}
 	genericContainerReq := testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
@@ -127,6 +136,21 @@ func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 		return "", err
 	}
 	return endpoint, nil
+}
+
+// GetGormDBClient returns a gorm.DB by connecting to the running postgres container
+func (t *TestcontainerApps) GetGormDBClient() (*gorm.DB, error) {
+	endpoint, err := t.GetDBEndPoint()
+	if err != nil {
+		return nil, err
+	}
+	dbCfg := &database.Config{
+		DSN:        endpoint,
+		DriverName: "postgres",
+		MaxOpenNum: 200,
+		MaxIdleNum: 20,
+	}
+	return database.InitDB(dbCfg)
 }
 
 // GetL1GethClient returns a ethclient by dialing running L1Geth
