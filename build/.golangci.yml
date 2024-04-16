@@ -215,7 +215,13 @@ issues:
         - gosec
 
     # Exclude some linters from third-party code.
-    - path: github.com/docker/cli/cli/context/store
+    - path: github.com/docker/cli/cli/context/store/...
+      linters:
+        - errcheck
+        - gosec
+        - golint
+    # Exclude some linters from third-party code.
+    - path: github.com/docker/cli...
       linters:
         - errcheck
         - gosec
