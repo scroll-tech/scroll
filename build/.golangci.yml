@@ -216,9 +216,8 @@ issues:
 
     # Exclude some linters from third-party code.
     - path: github.com/docker/cli/cli/context/store
-      linters:
-        - all
-        
+      linters: []
+
     # Exclude abi files in bridge-history-api
     - path: backend_abi\.go
       linters:
