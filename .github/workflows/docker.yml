@@ -91,6 +91,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/gas_oracle.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -135,6 +136,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/rollup_relayer.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -179,6 +181,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/bridgehistoryapi-fetcher.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -223,6 +226,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/bridgehistoryapi-api.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -267,6 +271,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/coordinator-api.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -311,6 +316,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/coordinator-cron.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
