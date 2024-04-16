@@ -227,6 +227,7 @@ issues:
         - errcheck
         - gosec
         - golint
+        - goanalysis_metalinter
 
     # Exclude some staticcheck messages
     - linters:
