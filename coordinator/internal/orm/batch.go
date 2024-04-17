@@ -75,6 +75,18 @@ func (*Batch) TableName() string {
 	return "batch"
 }
 
+// GetBatchHashByIndex retrieves the hash of the batch given its index.
+// used for the script.
+func (o *Batch) GetBatchHashByIndex(ctx context.Context, index uint64) (string, error) {
+	db := o.db.WithContext(ctx)
+	var batch Batch
+	err := db.Select("hash").Where("index = ?", index).First(&batch).Error
+	if err != nil {
+		return "", fmt.Errorf("Batch.GetBatchHashByIndex error: %w, index: %v", err, index)
+	}
+	return batch.Hash, nil
+}
+
 // GetUnassignedBatch retrieves unassigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
 func (o *Batch) GetUnassignedBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
