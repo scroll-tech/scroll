@@ -79,3 +79,50 @@ provides REST APIs. Please refer to the API details below.
 // @Success      200
 // @Router       /api/txsbyhashes [post]
 ```
+
+## Running bridge-history-api locally
+
+1. Pull the latest Redis image:
+   ```
+   docker pull redis:latest
+   ```
+
+2. Run the Redis container:
+   ```
+   docker run --name bridgehistoryapi-redis -d -p 6379:6379 redis:latest
+   ```
+
+3. Pull the latest PostgreSQL image:
+   ```
+   docker pull postgres:latest
+   ```
+
+4. Run the PostgreSQL container:
+   ```
+   docker run --name bridgehistoryapi-history-db -p 5444:5432 -e POSTGRES_PASSWORD=123456 -e POSTGRES_DB=test -d postgres
+   ```
+
+5. Run database migrations to initialize the tables:
+   ```
+   make bridgehistoryapi-db-cli
+   ./build/bin/bridgehistoryapi-db-cli migrate
+   ```
+
+6. Run bridgehistoryapi-fetcher:
+   ```
+   make bridgehistoryapi-fetcher
+   ./build/bin/bridgehistoryapi-fetcher
+   ```
+
+7. Run bridgehistoryapi-api:
+   ```
+   make bridgehistoryapi-api
+   ./build/bin/bridgehistoryapi-api
+   ```
+
+The endpoints provided in [./conf/config.json](./conf/config.json) are all public endpoints and have rate limits.
+
+For production usage:
+
+- For L1 endpoints, utilizing a service provider's free tier should suffice.
+- For L2 endpoints, consider [running a Scroll L2geth node](https://www.notion.so/scrollzkp/Mainnet-Deployment-Overview-c193b12cd8894e30a4ba77f6e97109a0) and using the exposed HTTP port.
