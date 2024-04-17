@@ -214,23 +214,22 @@ issues:
         - errcheck
         - gosec
 
-    # Exclude some linters from third-party code.
-    - path: docker/cli
+    # Exclude abi files in bridge-history-api
+    - path: backend_abi\.go
       linters:
         - errcheck
         - gosec
         - golint
-        - goanalysis_metalinter
-    # Exclude some linters from third-party code..
-    - path: docker/cli/...
-      linters:
-        - errcheck
-        - gosec
-        - golint
-        - goanalysis_metalinter
 
     # Exclude abi files in bridge-history-api
     - path: backend_abi\.go
+      linters:
+        - errcheck
+        - gosec
+        - golint
+
+    # Exclude abi files in testcontainers
+    - path: testcontainers\.go
       linters:
         - errcheck
         - gosec
