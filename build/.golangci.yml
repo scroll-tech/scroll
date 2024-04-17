@@ -221,7 +221,7 @@ issues:
         - gosec
         - golint
         - goanalysis_metalinter
-    # Exclude some linters from third-party code.
+    # Exclude some linters from third-party code..
     - path: docker/cli/...
       linters:
         - errcheck
