@@ -3,6 +3,7 @@ package watcher
 import (
 	"encoding/json"
 	"os"
+	"scroll-tech/common/testcontainers/l1"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -11,7 +12,6 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/database/migrate"
 
@@ -22,7 +22,7 @@ var (
 	// config
 	cfg *config.Config
 
-	testApps *testcontainers.TestcontainerApps
+	testApps *l1.TestcontainerApps
 
 	// l2geth client
 	l2Cli *ethclient.Client
@@ -41,7 +41,7 @@ func setupEnv(t *testing.T) (err error) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	testApps = testcontainers.NewTestcontainerApps()
+	testApps = l1.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())

@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	tc "scroll-tech/common/testcontainers/l1"
 	"strconv"
 	"strings"
 	"testing"
@@ -14,7 +15,6 @@ import (
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/common/database"
-	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 
 	"github.com/gin-gonic/gin"

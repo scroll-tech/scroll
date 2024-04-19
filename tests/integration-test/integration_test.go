@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"math/big"
+	"scroll-tech/common/testcontainers/l1"
 	"testing"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	testApps  *testcontainers.TestcontainerApps
+	testApps  *l1.TestcontainerApps
 	rollupApp *bcmd.MockApp
 )
 
@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 }
 
 func setupEnv(t *testing.T) {
-	testApps = testcontainers.NewTestcontainerApps()
+	testApps = l1.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())

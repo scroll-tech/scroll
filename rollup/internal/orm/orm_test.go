@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"os"
+	"scroll-tech/common/testcontainers/l1"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -14,7 +15,6 @@ import (
 
 	"scroll-tech/database/migrate"
 
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	testApps *testcontainers.TestcontainerApps
+	testApps *l1.TestcontainerApps
 
 	db                    *gorm.DB
 	l2BlockOrm            *L2Block
@@ -49,7 +49,7 @@ func TestMain(m *testing.M) {
 func setupEnv(t *testing.T) {
 	var err error
 
-	testApps = testcontainers.NewTestcontainerApps()
+	testApps = l1.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 
 	db, err = testApps.GetGormDBClient()

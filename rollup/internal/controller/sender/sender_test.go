@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"scroll-tech/common/testcontainers/l1"
 	"testing"
 	"time"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
 
@@ -39,7 +39,7 @@ import (
 var (
 	privateKey           *ecdsa.PrivateKey
 	cfg                  *config.Config
-	testApps             *testcontainers.TestcontainerApps
+	testApps             *l1.TestcontainerApps
 	txTypes              = []string{"LegacyTx", "DynamicFeeTx", "DynamicFeeTx"}
 	txBlob               = []*kzg4844.Blob{nil, nil, randBlob()}
 	txUint8Types         = []uint8{0, 2, 3}
@@ -68,7 +68,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	privateKey = priv
 
-	testApps = testcontainers.NewTestcontainerApps()
+	testApps = l1.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())

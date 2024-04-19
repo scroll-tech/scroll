@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"os"
+	"scroll-tech/common/testcontainers/l1"
 	"strconv"
 	"testing"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
 
@@ -25,7 +25,7 @@ var (
 	// config
 	cfg *config.Config
 
-	testApps *testcontainers.TestcontainerApps
+	testApps *l1.TestcontainerApps
 	// l2geth client
 	l2Cli *ethclient.Client
 
@@ -50,7 +50,7 @@ func setupEnv(t *testing.T) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	testApps = testcontainers.NewTestcontainerApps()
+	testApps = l1.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
 	assert.NoError(t, testApps.StartPoSL1Container())

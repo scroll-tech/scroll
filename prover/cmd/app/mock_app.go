@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"scroll-tech/common/testcontainers/l1"
 	"testing"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"scroll-tech/prover/config"
 
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
@@ -30,7 +30,7 @@ func getIndex() int {
 type ProverApp struct {
 	Config *config.Config
 
-	testApps *testcontainers.TestcontainerApps
+	testApps *l1.TestcontainerApps
 
 	originFile string
 	proverFile string
@@ -43,7 +43,7 @@ type ProverApp struct {
 }
 
 // NewProverApp return a new proverApp manager.
-func NewProverApp(testApps *testcontainers.TestcontainerApps, mockName utils.MockAppName, file string, httpURL string) *ProverApp {
+func NewProverApp(testApps *l1.TestcontainerApps, mockName utils.MockAppName, file string, httpURL string) *ProverApp {
 	var proofType message.ProofType
 	switch mockName {
 	case utils.ChunkProverApp:

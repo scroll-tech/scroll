@@ -2,22 +2,21 @@ package migrate
 
 import (
 	"database/sql"
+	"scroll-tech/common/testcontainers/l1"
 	"testing"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/common/testcontainers"
 )
 
 var (
-	testApps *testcontainers.TestcontainerApps
+	testApps *l1.TestcontainerApps
 	pgDB     *sql.DB
 )
 
 func setupEnv(t *testing.T) {
 	// Start db container.
-	testApps = testcontainers.NewTestcontainerApps()
+	testApps = l1.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	gormClient, err := testApps.GetGormDBClient()
 	assert.NoError(t, err)

@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
+	"scroll-tech/common/testcontainers/l1"
 	"strconv"
 	"testing"
 	"time"
@@ -21,7 +22,6 @@ import (
 
 	"scroll-tech/database/migrate"
 
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
@@ -44,7 +44,7 @@ const (
 var (
 	conf *config.Config
 
-	testApps *testcontainers.TestcontainerApps
+	testApps *l1.TestcontainerApps
 
 	db                 *gorm.DB
 	l2BlockOrm         *orm.L2Block
@@ -159,7 +159,7 @@ func setEnv(t *testing.T) {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
-	testApps = testcontainers.NewTestcontainerApps()
+	testApps = l1.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 
 	db, err = testApps.GetGormDBClient()

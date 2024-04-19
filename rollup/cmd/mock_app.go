@@ -4,20 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"scroll-tech/common/testcontainers/l1"
 	"testing"
 	"time"
 
 	"scroll-tech/rollup/internal/config"
 
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 )
 
 // MockApp mockApp-test client manager.
 type MockApp struct {
 	Config   *config.Config
-	testApps *testcontainers.TestcontainerApps
+	testApps *l1.TestcontainerApps
 
 	mockApps map[utils.MockAppName]*cmd.Cmd
 
@@ -28,7 +28,7 @@ type MockApp struct {
 }
 
 // NewRollupApp return a new rollupApp manager.
-func NewRollupApp(testApps *testcontainers.TestcontainerApps, file string) *MockApp {
+func NewRollupApp(testApps *l1.TestcontainerApps, file string) *MockApp {
 	rollupFile := fmt.Sprintf("/tmp/%d_rollup-config.json", testApps.Timestamp)
 	rollupApp := &MockApp{
 		testApps:   testApps,

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"scroll-tech/common/testcontainers/l1"
 	"strconv"
 	"testing"
 	"time"
@@ -13,7 +14,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 
 	"scroll-tech/common/cmd"
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 
 	coordinatorConfig "scroll-tech/coordinator/internal/config"
@@ -28,7 +28,7 @@ type CoordinatorApp struct {
 	Config      *coordinatorConfig.Config
 	ChainConfig *params.ChainConfig
 
-	testApps *testcontainers.TestcontainerApps
+	testApps *l1.TestcontainerApps
 
 	configOriginFile      string
 	chainConfigOriginFile string
@@ -41,7 +41,7 @@ type CoordinatorApp struct {
 }
 
 // NewCoordinatorApp return a new coordinatorApp manager.
-func NewCoordinatorApp(testApps *testcontainers.TestcontainerApps, configFile string, chainConfigFile string) *CoordinatorApp {
+func NewCoordinatorApp(testApps *l1.TestcontainerApps, configFile string, chainConfigFile string) *CoordinatorApp {
 	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", testApps.Timestamp)
 	genesisFile := fmt.Sprintf("/tmp/%d_genesis.json", testApps.Timestamp)
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))

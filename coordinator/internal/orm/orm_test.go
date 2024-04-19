@@ -3,13 +3,13 @@ package orm
 import (
 	"context"
 	"math/big"
+	"scroll-tech/common/testcontainers/l1"
 	"testing"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	testApps      *testcontainers.TestcontainerApps
+	testApps      *l1.TestcontainerApps
 	db            *gorm.DB
 	proverTaskOrm *ProverTask
 )
@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 }
 
 func setupEnv(t *testing.T) {
-	testApps = testcontainers.NewTestcontainerApps()
+	testApps = l1.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 
 	var err error
