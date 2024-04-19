@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/colinlyguo/zstd"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
@@ -204,7 +205,7 @@ func (c *DAChunk) Hash() (common.Hash, error) {
 }
 
 // NewDABatch creates a DABatch from the provided encoding.Batch.
-func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
+func NewDABatch(batch *encoding.Batch, withCompression bool) (*DABatch, error) {
 	// this encoding can only support a fixed number of chunks per batch
 	if len(batch.Chunks) > MaxNumChunks {
 		return nil, fmt.Errorf("too many chunks in batch")
@@ -227,7 +228,7 @@ func NewDABatch(batch *encoding.Batch) (*DABatch, error) {
 	}
 
 	// blob payload
-	blob, blobVersionedHash, z, err := constructBlobPayload(batch.Chunks)
+	blob, blobVersionedHash, z, err := constructBlobPayload(batch.Chunks, withCompression)
 	if err != nil {
 		return nil, err
 	}
@@ -274,12 +275,12 @@ func computeBatchDataHash(chunks []*encoding.Chunk, totalL1MessagePoppedBefore u
 }
 
 // constructBlobPayload constructs the 4844 blob payload.
-func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, common.Hash, *kzg4844.Point, error) {
+func constructBlobPayload(chunks []*encoding.Chunk, withCompression bool) (*kzg4844.Blob, common.Hash, *kzg4844.Point, error) {
 	// metadata consists of num_chunks (2 bytes) and chunki_size (4 bytes per chunk)
 	metadataLength := 2 + MaxNumChunks*4
 
 	// the raw (un-padded) blob payload
-	blobBytes := make([]byte, metadataLength)
+	batchBytes := make([]byte, metadataLength)
 
 	// challenge digest preimage
 	// 1 hash for metadata, 1 hash for each chunk, 1 hash for blob versioned hash
@@ -289,12 +290,12 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, common.Hash,
 	var chunkDataHash common.Hash
 
 	// blob metadata: num_chunks
-	binary.BigEndian.PutUint16(blobBytes[0:], uint16(len(chunks)))
+	binary.BigEndian.PutUint16(batchBytes[0:], uint16(len(chunks)))
 
 	// encode blob metadata and L2 transactions,
 	// and simultaneously also build challenge preimage
 	for chunkID, chunk := range chunks {
-		currentChunkStartIndex := len(blobBytes)
+		currentChunkStartIndex := len(batchBytes)
 
 		for _, block := range chunk.Blocks {
 			for _, tx := range block.Transactions {
@@ -304,18 +305,18 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, common.Hash,
 					if err != nil {
 						return nil, common.Hash{}, nil, err
 					}
-					blobBytes = append(blobBytes, rlpTxData...)
+					batchBytes = append(batchBytes, rlpTxData...)
 				}
 			}
 		}
 
 		// blob metadata: chunki_size
-		if chunkSize := len(blobBytes) - currentChunkStartIndex; chunkSize != 0 {
-			binary.BigEndian.PutUint32(blobBytes[2+4*chunkID:], uint32(chunkSize))
+		if chunkSize := len(batchBytes) - currentChunkStartIndex; chunkSize != 0 {
+			binary.BigEndian.PutUint32(batchBytes[2+4*chunkID:], uint32(chunkSize))
 		}
 
 		// challenge: compute chunk data hash
-		chunkDataHash = crypto.Keccak256Hash(blobBytes[currentChunkStartIndex:])
+		chunkDataHash = crypto.Keccak256Hash(batchBytes[currentChunkStartIndex:])
 		copy(challengePreimage[32+chunkID*32:], chunkDataHash[:])
 	}
 
@@ -328,8 +329,17 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, common.Hash,
 	}
 
 	// challenge: compute metadata hash
-	hash := crypto.Keccak256Hash(blobBytes[0:metadataLength])
+	hash := crypto.Keccak256Hash(batchBytes[0:metadataLength])
 	copy(challengePreimage[0:], hash[:])
+
+	blobBytes := batchBytes
+	if withCompression {
+		var err error
+		blobBytes, err = zstd.CompressScrollBatchBytes(batchBytes)
+		if err != nil {
+			return nil, common.Hash{}, nil, err
+		}
+	}
 
 	// convert raw data to BLSFieldElements
 	blob, err := makeBlobCanonical(blobBytes)
@@ -363,7 +373,7 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, common.Hash,
 // makeBlobCanonical converts the raw blob data into the canonical blob representation of 4096 BLSFieldElements.
 func makeBlobCanonical(blobBytes []byte) (*kzg4844.Blob, error) {
 	// blob contains 131072 bytes but we can only utilize 31/32 of these
-	if len(blobBytes) > 126976 {
+	if len(blobBytes) > 124*1024 {
 		return nil, fmt.Errorf("oversized batch payload")
 	}
 

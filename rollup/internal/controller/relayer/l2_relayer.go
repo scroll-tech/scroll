@@ -766,7 +766,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV1(dbBatch *orm.Batch, d
 		Chunks:                     chunks,
 	}
 
-	daBatch, createErr := codecv1.NewDABatch(batch)
+	daBatch, createErr := codecv1.NewDABatch(batch, false)
 	if createErr != nil {
 		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
 	}
@@ -825,7 +825,7 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch,
 		Chunks:                     chunks,
 	}
 
-	daBatch, createErr := codecv1.NewDABatch(batch)
+	daBatch, createErr := codecv1.NewDABatch(batch, false)
 	if createErr != nil {
 		return nil, fmt.Errorf("failed to create DA batch: %w", createErr)
 	}

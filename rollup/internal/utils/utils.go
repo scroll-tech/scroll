@@ -242,7 +242,7 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		}
 		return batchMeta, nil
 	case encoding.CodecV1:
-		daBatch, err := codecv1.NewDABatch(batch)
+		daBatch, err := codecv1.NewDABatch(batch, false)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codecv1 DA batch: %w", err)
 		}
