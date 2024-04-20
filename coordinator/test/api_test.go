@@ -565,7 +565,7 @@ func testValidProof(t *testing.T) {
 	assert.NoError(t, err)
 
 	//create mock provers.
-	provers := make([]*mockProver, 1)
+	provers := make([]*mockProver, 2)
 	for i := 0; i < len(provers); i++ {
 		var proofType message.ProofType
 		if i%2 == 0 {
