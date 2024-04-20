@@ -125,4 +125,4 @@ The endpoints provided in [./conf/config.json](./conf/config.json) are all publi
 For production usage:
 
 - For L1 endpoints, utilizing a service provider's free tier should suffice.
-- For L2 endpoints, consider [running a Scroll L2geth node](https://www.notion.so/scrollzkp/Mainnet-Deployment-Overview-c193b12cd8894e30a4ba77f6e97109a0) and using the exposed HTTP port.
+- For L2 endpoints, consider [running a Scroll L2geth node](https://docs.scroll.xyz/en/developers/guides/running-a-scroll-node) and using the exposed HTTP port.
