@@ -203,7 +203,7 @@ func TestApis(t *testing.T) {
 
 	//t.Run("TestHandshake", testHandshake)
 	//t.Run("TestFailedHandshake", testFailedHandshake)
-	//t.Run("TestGetTaskBlocked", testGetTaskBlocked)
+	t.Run("TestGetTaskBlocked", testGetTaskBlocked)
 	//t.Run("TestOutdatedProverVersion", testOutdatedProverVersion)
 	t.Run("TestValidProof", testValidProof)
 	//t.Run("TestInvalidProof", testInvalidProof)
