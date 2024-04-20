@@ -40,9 +40,9 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	}
 
 	// check the challenge is used, if used, return failure
-	if err := a.loginLogic.InsertChallengeString(c, login.Message.Challenge); err != nil {
-		return "", fmt.Errorf("login insert challenge string failure:%w", err)
-	}
+	//if err := a.loginLogic.InsertChallengeString(c, login.Message.Challenge); err != nil {
+	//	return "", fmt.Errorf("login insert challenge string failure:%w", err)
+	//}
 	return login, nil
 }
 
