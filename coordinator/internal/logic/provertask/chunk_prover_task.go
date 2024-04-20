@@ -140,11 +140,11 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		AssignedAt: utils.NowUTC(),
 	}
 
-	//if err = cp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
-	//	cp.recoverActiveAttempts(ctx, chunkTask)
-	//	log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
-	//	return nil, ErrCoordinatorInternalFailure
-	//}
+	if err = cp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
+		cp.recoverActiveAttempts(ctx, chunkTask)
+		log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		return nil, ErrCoordinatorInternalFailure
+	}
 
 	taskMsg, err := cp.formatProverTask(ctx, &proverTask)
 	if err != nil {
