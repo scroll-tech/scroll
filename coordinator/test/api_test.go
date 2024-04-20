@@ -564,25 +564,25 @@ func testValidProof(t *testing.T) {
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, batch.Hash)
 	assert.NoError(t, err)
 
-	// create mock provers.
-	//provers := make([]*mockProver, 1)
-	//for i := 0; i < len(provers); i++ {
-	//	var proofType message.ProofType
-	//	if i%2 == 0 {
-	//		proofType = message.ProofTypeChunk
-	//	} else {
-	//		proofType = message.ProofTypeBatch
-	//	}
-	//
-	//	provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
-	//
-	//	proofStatus := verifiedSuccess
-	//	proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, "istanbul")
-	//	assert.Equal(t, errCode, types.Success)
-	//	assert.Equal(t, errMsg, "")
-	//	assert.NotNil(t, proverTask)
-	//	provers[i].submitProof(t, proverTask, proofStatus, types.Success, "istanbul")
-	//}
+	//create mock provers.
+	provers := make([]*mockProver, 1)
+	for i := 0; i < len(provers); i++ {
+		var proofType message.ProofType
+		if i%2 == 0 {
+			proofType = message.ProofTypeChunk
+		} else {
+			proofType = message.ProofTypeBatch
+		}
+
+		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
+
+		proofStatus := verifiedSuccess
+		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, "istanbul")
+		assert.Equal(t, errCode, types.Success)
+		assert.Equal(t, errMsg, "")
+		assert.NotNil(t, proverTask)
+		provers[i].submitProof(t, proverTask, proofStatus, types.Success, "istanbul")
+	}
 
 	//// verify proof status
 	//var (
