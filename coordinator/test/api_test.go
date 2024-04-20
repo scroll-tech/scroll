@@ -595,8 +595,8 @@ func testValidProof(t *testing.T) {
 		batchProofStatus    types.ProvingStatus
 		chunkActiveAttempts int16
 		chunkMaxAttempts    int16
-		batchActiveAttempts int16
-		batchMaxAttempts    int16
+		//batchActiveAttempts int16
+		//batchMaxAttempts    int16
 	)
 
 	for {
