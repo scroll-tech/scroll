@@ -547,7 +547,7 @@ func testHardForkAssignTask(t *testing.T) {
 
 func testValidProof(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"istanbul": forkNumberTwo})
+	collector, _ := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"istanbul": forkNumberTwo})
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 	assert.NoError(t, err)
