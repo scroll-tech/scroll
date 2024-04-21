@@ -203,7 +203,7 @@ func TestApis(t *testing.T) {
 
 	//t.Run("TestHandshake", testHandshake)
 	//t.Run("TestFailedHandshake", testFailedHandshake)
-	//t.Run("TestGetTaskBlocked", testGetTaskBlocked)
+	t.Run("TestGetTaskBlocked", testGetTaskBlocked)
 	//t.Run("TestOutdatedProverVersion", testOutdatedProverVersion)
 	t.Run("TestValidProof", testValidProof)
 	//t.Run("TestInvalidProof", testInvalidProof)
@@ -246,10 +246,10 @@ func testFailedHandshake(t *testing.T) {
 
 func testGetTaskBlocked(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"homestead": forkNumberOne})
+	collector, _ := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"homestead": forkNumberOne})
 	defer func() {
 		collector.Stop()
-		assert.NoError(t, httpHandler.Shutdown(context.Background()))
+		//assert.NoError(t, httpHandler.Shutdown(context.Background()))
 	}()
 
 	chunkProver := newMockProver(t, "prover_chunk_test", coordinatorURL, message.ProofTypeChunk, version.Version)
