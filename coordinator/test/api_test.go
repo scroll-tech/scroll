@@ -548,10 +548,6 @@ func testHardForkAssignTask(t *testing.T) {
 func testValidProof(t *testing.T) {
 	coordinatorURL := randomURL()
 	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, map[string]int64{"istanbul": forkNumberTwo})
-	defer func() {
-		collector.Stop()
-		assert.NoError(t, httpHandler.Shutdown(context.Background()))
-	}()
 
 	err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 	assert.NoError(t, err)
@@ -583,6 +579,8 @@ func testValidProof(t *testing.T) {
 		assert.NotNil(t, proverTask)
 		provers[i].submitProof(t, proverTask, proofStatus, types.Success, "istanbul")
 	}
+	collector.Stop()
+	assert.NoError(t, httpHandler.Shutdown(context.Background()))
 
 	// verify proof status
 	var (
