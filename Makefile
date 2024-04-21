@@ -42,10 +42,10 @@ fmt: ## format the code
 	goimports -local $(PWD)/rollup/ -w .
 	goimports -local $(PWD)/tests/integration-test/ -w .
 
-dev_docker: ## build docker images for development/testing usages
+dev_docker: ## only build docker images for development/testing usages
 	docker pull postgres
-	docker build -t scroll_l1geth ./common/docker/l1geth/
-	docker build -t scroll_l2geth ./common/docker/l2geth/
+	docker buildx build --platform linux/amd64,linux/arm64 -t scroll_l1geth ./common/docker/l1geth/
+	docker buildx build --platform linux/amd64,linux/arm64 -t scroll_l2geth ./common/docker/l2geth/
 
 build_test_docker: ## build Docker image for local testing on M1/M2 Silicon Mac
 	docker build -t scroll_test_image -f ./build/dockerfiles/local_testing.Dockerfile $$(mktemp -d)
