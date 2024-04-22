@@ -100,7 +100,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
 	}
 
-	isBlocked, err := b.proverBlockListOrm.IsPublicKeyBlocked(ctx, publicKey.(string))
+	isBlocked, err := b.proverBlockListOrm.IsPublicKeyBlocked(ctx.Copy(), publicKey.(string))
 	if err != nil {
 		return nil, fmt.Errorf("failed to check whether the public key %s is blocked before assigning a chunk task, err: %w, proverName: %s, proverVersion: %s", publicKey, err, proverName, proverVersion)
 	}
@@ -108,7 +108,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		return nil, fmt.Errorf("public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
 	}
 
-	isAssigned, err := b.proverTaskOrm.IsProverAssigned(ctx, publicKey.(string))
+	isAssigned, err := b.proverTaskOrm.IsProverAssigned(ctx.Copy(), publicKey.(string))
 	if err != nil {
 		return nil, fmt.Errorf("failed to check if prover %s is assigned a task, err: %w", publicKey.(string), err)
 	}
