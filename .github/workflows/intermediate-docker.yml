@@ -41,19 +41,17 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Build
-      run: |
-        make all
-      env:
-        GO_VERSION: ${{ inputs.GO_VERSION }}
-        RUST_VERSION: ${{ inputs.RUST_VERSION }}
-        PYTHON_VERSION: ${{ inputs.PYTHON_VERSION }}
-        CUDA_VERSION: ${{ inputs.CUDA_VERSION }}
-    - name: Publish
-      run: |
-        make publish
-      env:
-        GO_VERSION: ${{ inputs.GO_VERSION }}
-        RUST_VERSION: ${{ inputs.RUST_VERSION }}
-        PYTHON_VERSION: ${{ inputs.PYTHON_VERSION }}
-        CUDA_VERSION: ${{ inputs.CUDA_VERSION }}
+    #cuda-go-rust-builder
+    - name: Build image
+      id: build
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        file: build/dockerfiles/intermediate/cuda-go-rust-builder.Dockerfile
+        platforms: linux/amd64,linux/arm64
+        tags: scrolltech/cuda-go-rust-builder:${{ github.event.inputs.CUDA_VERSION }}
+        build-args: |
+          CUDA_VERSION: ${{ github.event.inputs.CUDA_VERSION }}
+          GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
+          RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
