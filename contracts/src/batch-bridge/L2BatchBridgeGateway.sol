@@ -7,6 +7,7 @@ import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ER
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import {IL2ScrollMessenger} from "../L2/IL2ScrollMessenger.sol";
+import {BatchBridgeCodec} from "./BatchBridgeCodec.sol";
 
 /// @title L2BatchBridgeGateway
 contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
@@ -20,9 +21,40 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     /// @param newL1Token The address of the new corresponding ERC20 token in layer 1.
     event UpdateTokenMapping(address indexed l2Token, address indexed oldL1Token, address indexed newL1Token);
 
+    /// @notice Emitted when batch bridge is finalized.
+    /// @param l1Token The address of token in L1.
+    /// @param l2Token The address of token in L2.
+    /// @param phase The index of phase finalized.
     event FinalizeBatchBridge(address indexed l1Token, address indexed l2Token, uint256 indexed phase);
 
+    /// @notice Emitted when token distribute failed.
+    /// @param l2Token The address of token in L2.
+    /// @param phase The index of the phase.
+    /// @param receiver The address of token receiver.
+    /// @param amount The amount of token to distribute.
     event DistributeFailed(address l2Token, uint256 phase, address receiver, uint256 amount);
+
+    /**********
+     * Errors *
+     **********/
+
+    /// @dev Thrown when caller is not `messenger`.
+    error ErrorCallerNotMessenger();
+
+    /// @dev Thrown when the L1 token mapping mismatch with `finalizeBatchBridge`.
+    error ErrorL1TokenMismatched();
+
+    /// @dev Thrown when messenge sender is not `counterpart`.
+    error ErrorMessageSenderNotCounterpart();
+
+    /// @dev Thrown no failed distribution exists.
+    error ErrorNoFailedDistribution();
+
+    /// @dev Thrown when the phase hash mismatch.
+    error ErrorPhaseHashMismatch();
+
+    /// @dev Thrown when distributing the same phase.
+    error ErrorPhaseDistributed();
 
     /*************
      * Constants *
@@ -50,14 +82,29 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     /// @notice Mapping from L2 token address to phase index to phase hash.
     mapping(address => mapping(uint256 => bytes32)) public phaseHashes;
 
+    /// @notice Mapping from token address to the amount of failed distribution.
     mapping(address => uint256) public failedAmount;
 
+    /// @notice Mapping from phase hash to the distribute status.
     mapping(bytes32 => bool) public isDistributed;
+
+    /*************
+     * Modifiers *
+     *************/
+
+    modifier onlyMessenger() {
+        if (_msgSender() != messenger) {
+            revert ErrorCallerNotMessenger();
+        }
+        _;
+    }
 
     /***************
      * Constructor *
      ***************/
 
+    /// @param _counterpart The address of `L1BatchBridgeGateway` contract in L1.
+    /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
     constructor(address _counterpart, address _messenger) {
         _disableInitializers();
 
@@ -65,6 +112,7 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
         messenger = _messenger;
     }
 
+    /// @notice Initialize the storage of `L2BatchBridgeGateway`.
     function initialize() external initializer {
         __Context_init(); // from ContextUpgradeable
         __ERC165_init(); // from ERC165Upgradeable
@@ -78,19 +126,29 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
      * Public Mutating Functions *
      *****************************/
 
-    receive() external payable {
-        if (_msgSender() != messenger) revert();
+    /// @notice Receive batch bridged ETH from `L2ScrollMessenger`.
+    receive() external payable onlyMessenger {
+        // empty
     }
 
+    /// @notice Finalize L1 initiated batch token bridge.
+    /// @param l1Token The address of the token in L1.
+    /// @param l2Token The address of the token in L2.
+    /// @param phase The phase of this batch bridge.
+    /// @param hash The hash of this phase.
     function finalizeBatchBridge(
         address l1Token,
         address l2Token,
         uint256 phase,
         bytes32 hash
-    ) external {
-        if (tokenMapping[l2Token] != l1Token) revert();
-        if (_msgSender() != messenger) revert();
-        if (counterpart != IL2ScrollMessenger(messenger).xDomainMessageSender()) revert();
+    ) external onlyMessenger {
+        // this usually won't happen, check just in case.
+        if (tokenMapping[l2Token] != l1Token) {
+            revert ErrorL1TokenMismatched();
+        }
+        if (counterpart != IL2ScrollMessenger(messenger).xDomainMessageSender()) {
+            revert ErrorMessageSenderNotCounterpart();
+        }
 
         phaseHashes[l2Token][phase] = hash;
 
@@ -111,9 +169,12 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
         emit UpdateTokenMapping(l2Token, oldL1Token, l1Token);
     }
 
+    /// @notice Withdraw distribution failed tokens.
+    /// @param token The address of token to withdraw.
+    /// @param receiver The address of token receiver.
     function withdrawFailedAmount(address token, address receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 amount = failedAmount[token];
-        if (amount == 0) revert();
+        if (amount == 0) revert ErrorNoFailedDistribution();
 
         _transferToken(token, receiver, amount);
     }
@@ -124,47 +185,36 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     /// @param nodes The list of encoded L1 deposits.
     function distribute(
         address l2Token,
-        uint256 phase,
+        uint64 phase,
         bytes32[] memory nodes
     ) external onlyRole(KEEPER_ROLE) {
         address l1Token = tokenMapping[l2Token];
-        bytes32 hash;
-        assembly {
-            hash := add(shl(96, l1Token), phase)
-        }
+        bytes32 hash = BatchBridgeCodec.encodeInitialNode(l1Token, phase);
         for (uint256 i = 0; i < nodes.length; i++) {
-            hash = _efficientHash(hash, nodes[i]);
+            hash = BatchBridgeCodec.hash(hash, nodes[i]);
         }
-        if (phaseHashes[l2Token][phase] != hash) revert();
-        if (isDistributed[hash]) revert();
+        if (phaseHashes[l2Token][phase] != hash) {
+            revert ErrorPhaseHashMismatch();
+        }
+        if (isDistributed[hash]) {
+            revert ErrorPhaseDistributed();
+        }
+        isDistributed[hash] = true;
 
         // do transfer and allow failure to avoid DDOS attack
         for (uint256 i = 0; i < nodes.length; i++) {
-            address receiver = address(uint160(uint256(nodes[i]) >> 96));
-            uint256 amount = uint256(nodes[i]) & 0xffffffffffffffffffffffff;
+            (address receiver, uint256 amount) = BatchBridgeCodec.decodeNode(nodes[i]);
             if (!_transferToken(l2Token, receiver, amount)) {
                 failedAmount[l2Token] += amount;
 
                 emit DistributeFailed(l2Token, phase, receiver, amount);
             }
         }
-
-        isDistributed[hash] = true;
     }
 
     /**********************
      * Internal Functions *
      **********************/
-
-    /// @dev Internal function to compute `keccak256(concat(a, b))`.
-    function _efficientHash(bytes32 a, bytes32 b) private pure returns (bytes32 value) {
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            mstore(0x00, a)
-            mstore(0x20, b)
-            value := keccak256(0x00, 0x40)
-        }
-    }
 
     /// @dev Internal function to transfer token, including ETH.
     /// @param token The address of token.
