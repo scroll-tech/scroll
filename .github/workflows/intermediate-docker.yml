@@ -29,29 +29,192 @@ defaults:
     working-directory: 'build/dockerfiles/intermediate'
 
 jobs:
-  build-and-push:
+  build-and-publish-cuda-go-rust-builder:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-    - name: Login to Docker Hub
-      uses: docker/login-action@v2
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    #cuda-go-rust-builder
-    - name: Build image
-      id: build
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        file: build/dockerfiles/intermediate/cuda-go-rust-builder.Dockerfile
-        platforms: linux/amd64,linux/arm64
-        tags: scrolltech/cuda-go-rust-builder:${{ github.event.inputs.CUDA_VERSION }}
-        build-args: |
-          CUDA_VERSION: ${{ github.event.inputs.CUDA_VERSION }}
-          GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
-          RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: build/dockerfiles/intermediate/cuda-go-rust-builder.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: scrolltech/cuda-go-rust-builder:${{ github.event.inputs.CUDA_VERSION }}
+          build-args: |
+            CUDA_VERSION: ${{ github.event.inputs.CUDA_VERSION }}
+            GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
+            RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
+
+  build-and-publish-go-rust-builder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: build/dockerfiles/intermediate/go-rust-builder.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: scrolltech/go-rust-builder:${{ github.event.inputs.CUDA_VERSION }}
+          build-args: |
+            GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
+            RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
+
+  build-and-publish-go-alpine-builder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: build/dockerfiles/intermediate/go-alpine-builder.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: scrolltech/go-alpine-builder:${{ github.event.inputs.CUDA_VERSION }}
+          build-args: |
+            GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
+            RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
+
+  build-and-rust-builder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: build/dockerfiles/intermediate/rust-builder.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: scrolltech/rust-builder:${{ github.event.inputs.CUDA_VERSION }}
+          build-args: |
+            RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
+
+  build-and-publish-rust-alpine-builder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: build/dockerfiles/intermediate/rust-alpine-builder.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: scrolltech/rust-alpine-builder:${{ github.event.inputs.CUDA_VERSION }}
+          build-args: |
+            RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
+
+  build-and-publish-go-rust-alpine-builder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: build/dockerfiles/intermediate/go-rust-alpine-builder.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: scrolltech/go-rust-alpine-builder:${{ github.event.inputs.CUDA_VERSION }}
+          build-args: |
+            GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
+            RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
+
+  build-and-publish-py-runner:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          file: build/dockerfiles/intermediate/py-runner.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          tags: scrolltech/py-runner:${{ github.event.inputs.CUDA_VERSION }}
+          build-args: |
+            CUDA_VERSION: ${{ github.event.inputs.CUDA_VERSION }}
+            GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
+            RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
+
