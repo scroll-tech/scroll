@@ -7,12 +7,12 @@ on:
         description: 'Go version'
         required: true
         type: string
-        default: '1.20'
+        default: '1.21'
       RUST_VERSION:
         description: 'Rust toolchain version'
         required: true
         type: string
-        default: 'nightly-2022-12-10'
+        default: 'nightly-2023-12-03'
       PYTHON_VERSION:
         description: 'Python version'
         required: false

@@ -30,8 +30,8 @@ func (c *Collector) cleanupChallenge() {
 				log.Error("manager context canceled with error", "error", c.ctx.Err())
 			}
 			return
-		case <-c.stopTimeoutChan:
-			log.Info("the coordinator run loop exit")
+		case <-c.stopCleanChallengeChan:
+			log.Info("the coordinator cleanupChallenge run loop exit")
 			return
 		}
 	}

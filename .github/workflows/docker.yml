@@ -39,7 +39,6 @@ jobs:
           aws --region ${{ env.AWS_REGION }} ecr describe-repositories --repository-names ${{ env.REPOSITORY }} && : || aws --region ${{ env.AWS_REGION }} ecr create-repository --repository-name ${{ env.REPOSITORY }}
       - name: Build and push
         uses: docker/build-push-action@v3
-        platforms: linux/amd64,linux/arm64
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           REPOSITORY: event-watcher
@@ -47,6 +46,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/event_watcher.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -91,6 +91,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/gas_oracle.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -135,6 +136,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/rollup_relayer.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -179,6 +181,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/bridgehistoryapi-fetcher.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -223,6 +226,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/bridgehistoryapi-api.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -267,6 +271,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/coordinator-api.Dockerfile
+          platforms: linux/amd64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -311,6 +316,7 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/coordinator-cron.Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
