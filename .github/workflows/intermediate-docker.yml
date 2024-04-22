@@ -50,7 +50,6 @@ jobs:
           context: .
           push: true
           file: build/dockerfiles/intermediate/cuda-go-rust-builder.Dockerfile
-          platforms: linux/amd64,linux/arm64
           tags: scrolltech/cuda-go-rust-builder:${{ github.event.inputs.CUDA_VERSION }}
           build-args: |
             CUDA_VERSION: ${{ github.event.inputs.CUDA_VERSION }}
@@ -79,7 +78,7 @@ jobs:
           push: true
           file: build/dockerfiles/intermediate/go-rust-builder.Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: scrolltech/go-rust-builder:${{ github.event.inputs.CUDA_VERSION }}
+          tags: scrolltech/go-rust-builder:go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}
           build-args: |
             GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
             RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
@@ -106,7 +105,7 @@ jobs:
           push: true
           file: build/dockerfiles/intermediate/go-alpine-builder.Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: scrolltech/go-alpine-builder:${{ github.event.inputs.CUDA_VERSION }}
+          tags: scrolltech/go-alpine-builder:${{ github.event.inputs.GO_VERSION }}
           build-args: |
             GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
             RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
@@ -133,7 +132,7 @@ jobs:
           push: true
           file: build/dockerfiles/intermediate/rust-builder.Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: scrolltech/rust-builder:${{ github.event.inputs.CUDA_VERSION }}
+          tags: scrolltech/rust-builder:${{ github.event.inputs.RUST_VERSION }}
           build-args: |
             RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
 
@@ -159,7 +158,7 @@ jobs:
           push: true
           file: build/dockerfiles/intermediate/rust-alpine-builder.Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: scrolltech/rust-alpine-builder:${{ github.event.inputs.CUDA_VERSION }}
+          tags: scrolltech/rust-alpine-builder:${{ github.event.inputs.RUST_VERSION }}
           build-args: |
             RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
 
@@ -185,7 +184,7 @@ jobs:
           push: true
           file: build/dockerfiles/intermediate/go-rust-alpine-builder.Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: scrolltech/go-rust-alpine-builder:${{ github.event.inputs.CUDA_VERSION }}
+          tags: scrolltech/go-rust-alpine-builder:go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}
           build-args: |
             GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
             RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
@@ -212,7 +211,7 @@ jobs:
           push: true
           file: build/dockerfiles/intermediate/py-runner.Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: scrolltech/py-runner:${{ github.event.inputs.CUDA_VERSION }}
+          tags: scrolltech/py-runner:${{ github.event.inputs.PYTHON_VERSION }}
           build-args: |
             CUDA_VERSION: ${{ github.event.inputs.CUDA_VERSION }}
             GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
