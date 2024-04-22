@@ -27,17 +27,23 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     /// @notice Emitted when some user deposited token to this contract.
     /// @param sender The address of token sender.
     /// @param token The address of deposited token.
-    /// @param phase The phase of current deposit.
+    /// @param batchIndex The batch index of current deposit.
     /// @param amount The amount of token deposited (including fee).
     /// @param fee The amount of fee charged.
-    event Deposit(address indexed sender, address indexed token, uint256 indexed phase, uint256 amount, uint256 fee);
+    event Deposit(
+        address indexed sender,
+        address indexed token,
+        uint256 indexed batchIndex,
+        uint256 amount,
+        uint256 fee
+    );
 
-    /// @notice Emitted when a batch bridge is initiated.
-    /// @param caller The address of caller who initiate the bridge.
-    /// @param l1Token The address of the token in L1 to bridge.
-    /// @param phase The phase of the bridge.
+    /// @notice Emitted when a batch deposit is initiated.
+    /// @param caller The address of caller who initiate the deposit.
+    /// @param l1Token The address of the token in L1 to deposit.
+    /// @param batchIndex The index of current batch deposit.
     /// @param l2Token The address of the corresponding token in L2.
-    event BatchBridge(address indexed caller, address indexed l1Token, uint256 indexed phase, address l2Token);
+    event BatchDeposit(address indexed caller, address indexed l1Token, uint256 indexed batchIndex, address l2Token);
 
     /**********
      * Errors *
@@ -49,17 +55,17 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     /// @dev Thrown when the deposited amount is smaller than `minAmountPerTx`.
     error ErrorDepositAmountTooSmall();
 
-    /// @dev Thrown when user try to deposit ETH with `depositERC20` method.
+    /// @dev Thrown when users try to deposit ETH with `depositERC20` method.
     error ErrorIncorrectMethodForETHDeposit();
 
-    /// @dev Thrown when the `msg.value` is not enough for batch bridge fee.
-    error ErrorInsufficientMsgValueForBatchBridgeFee();
+    /// @dev Thrown when the `msg.value` is not enough for batch deposit fee.
+    error ErrorInsufficientMsgValueForBatchDepositFee();
 
-    /// @dev Thrown when the given new batch setting is invalid.
-    error ErrorInvalidBatchSetting();
+    /// @dev Thrown when the given new batch config is invalid.
+    error ErrorInvalidBatchConfig();
 
-    /// @dev Thrown when no pending phase exists.
-    error ErrorNoPendingPhase();
+    /// @dev Thrown when no pending batch exists.
+    error ErrorNoPendingBatch();
 
     /// @dev Thrown when user deposits unsupported tokens.
     error ErrorTokenNotSupported();
@@ -75,9 +81,9 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
 
     /// @notice The safe gas limit for batch bridge.
-    uint256 private constant SAFE_BATCH_BRIDGE_GAS_LIMIT = 1000000;
+    uint256 private constant SAFE_BATCH_BRIDGE_GAS_LIMIT = 200000;
 
-    /// @notice The address of corresponding `L2BatchBridgeGateway` contract.
+    /// @notice The address of corresponding `L2BatchDepositGateway` contract.
     address public immutable counterpart;
 
     /// @notice The address of `L1GatewayRouter` contract.
@@ -93,14 +99,14 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
      * Structs *
      ***********/
 
-    /// @notice The setting for batch token bridging.
+    /// @notice The config for batch token bridge.
     /// @dev Compiler will pack this into a single `bytes32`.
     /// @param feeAmountPerTx The amount of fee charged for each deposit.
     /// @param minAmountPerTx The minimum amount of token for each deposit.
     /// @param maxTxPerBatch The maximum number of deposit in each batch.
     /// @param maxDelayPerBatch The maximum number of seconds to wait in each batch.
     /// @param safeBridgeGasLimit The safe bridge gas limit for bridging token from L1 to L2.
-    struct BatchSetting {
+    struct BatchConfig {
         uint96 feeAmountPerTx;
         uint96 minAmountPerTx;
         uint16 maxTxPerBatch;
@@ -109,18 +115,18 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     }
 
     /// @dev Compiler will pack this into two `bytes32`.
-    /// @param amount The total amount of token to deposit in current phase.
+    /// @param amount The total amount of token to deposit in current batch.
     /// @param firstDepositTimestamp The timestamp of first deposit.
-    /// @param numDeposits The total number of deposits in current phase.
-    /// @param hash The hash of current phase.
-    ///   Suppose there are `n` deposits in current phase with `senders` and `amounts`. The hash is computed as
+    /// @param numDeposits The total number of deposits in current batch.
+    /// @param hash The hash of current batch.
+    ///   Suppose there are `n` deposits in current batch with `senders` and `amounts`. The hash is computed as
     ///   ```text
-    ///   hash[0] = concat(token, phase_index)
+    ///   hash[0] = concat(token, batch_index)
     ///   hash[i] = keccak(hash[i-1], concat(senders[i], amounts[i]))
     ///   ```
-    ///   The type of `token` and `senders` is `address`, while The type of `phase_index` and `amounts[i]` is `uint96`.
-    ///   In current way, the hash of each phase should be different.
-    struct PhaseState {
+    ///   The type of `token` and `senders` is `address`, while The type of `batch_index` and `amounts[i]` is `uint96`.
+    ///   In current way, the hash of each batch among all tokens should be different.
+    struct BatchState {
         uint128 amount;
         uint64 firstDepositTimestamp;
         uint64 numDeposits;
@@ -129,25 +135,25 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
 
     /// @dev Compiler will pack this into a single `bytes32`.
     /// @param pending The total amount of token pending to bridge.
-    /// @param currentPhaseIndex The index of current phase.
-    /// @param pendingPhaseIndex The index of pending phase (next phase to batch bridge).
+    /// @param currentBatchIndex The index of current batch.
+    /// @param pendingBatchIndex The index of pending batch (next batch to bridge).
     struct TokenState {
         uint128 pending;
-        uint64 currentPhaseIndex;
-        uint64 pendingPhaseIndex;
+        uint64 currentBatchIndex;
+        uint64 pendingBatchIndex;
     }
 
     /*************
      * Variables *
      *************/
 
-    /// @notice Mapping from token address to batch deposit setting.
+    /// @notice Mapping from token address to batch bridge config.
     /// @dev The `address(0)` is used for ETH.
-    mapping(address => BatchSetting) public settings;
+    mapping(address => BatchConfig) public configs;
 
-    /// @notice Mapping from token address to phase index to phase state.
+    /// @notice Mapping from token address to batch index to batch state.
     /// @dev The `address(0)` is used for ETH.
-    mapping(address => mapping(uint256 => PhaseState)) public phases;
+    mapping(address => mapping(uint256 => BatchState)) public batches;
 
     /// @notice Mapping from token address to token state.
     /// @dev The `address(0)` is used for ETH.
@@ -160,7 +166,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
      * Constructor *
      ***************/
 
-    /// @param _counterpart The address of `L2BatchBridgeGateway` contract in L2.
+    /// @param _counterpart The address of `L2BatchDepositGateway` contract in L2.
     /// @param _router The address of `L1GatewayRouter` contract in L1.
     /// @param _messenger The address of `L1ScrollMessenger` contract in L1.
     /// @param _queue The address of `L1MessageQueue` contract in L1.
@@ -178,7 +184,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         queue = _queue;
     }
 
-    /// @notice Initialize the storage of `L1BatchBridgeGateway`.
+    /// @notice Initialize the storage of `L1BatchDepositGateway`.
     /// @param _feeVault The address of fee vault contract.
     function initialize(address _feeVault) external initializer {
         __Context_init(); // from ContextUpgradeable
@@ -227,42 +233,40 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
      * Restricted Functions *
      ************************/
 
-    /// @notice Add or update the batch deposit setting for the given token.
+    /// @notice Add or update the batch bridge config for the given token.
     ///
     /// @dev The caller should make sure `safeBridgeGasLimit` is enough for batch bridging.
     ///
     /// @param token The address of token to update.
-    /// @param newSetting The new setting.
-    function setTokenSetting(address token, BatchSetting memory newSetting) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    /// @param newConfig The new config.
+    function setBatchConfig(address token, BatchConfig memory newConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (
-            newSetting.maxTxPerBatch == 0 ||
-            newSetting.maxDelayPerBatch == 0 ||
-            newSetting.feeAmountPerTx > newSetting.minAmountPerTx
+            newConfig.maxTxPerBatch == 0 ||
+            newConfig.maxDelayPerBatch == 0 ||
+            newConfig.feeAmountPerTx > newConfig.minAmountPerTx
         ) {
-            revert ErrorInvalidBatchSetting();
+            revert ErrorInvalidBatchConfig();
         }
-        settings[token] = newSetting;
+        configs[token] = newConfig;
     }
 
-    /// @notice Initiate the batch bridge of current pending phase.
+    /// @notice Initiate the batch bridge of current pending batch.
     /// @param token The address of the token.
     function batchBridge(address token) external payable onlyRole(KEEPER_ROLE) {
-        BatchSetting memory cachedBatchSetting = settings[token];
+        BatchConfig memory cachedBatchConfig = configs[token];
         TokenState memory cachedTokenState = tokens[token];
-        _tryFinalzeCurrentPhase(token, cachedBatchSetting, cachedTokenState);
+        _tryFinalzeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
 
-        // no phase to bridge
-        if (cachedTokenState.currentPhaseIndex == cachedTokenState.pendingPhaseIndex) {
-            revert ErrorNoPendingPhase();
+        // no batch to bridge
+        if (cachedTokenState.currentBatchIndex == cachedTokenState.pendingBatchIndex) {
+            revert ErrorNoPendingBatch();
         }
 
         // check bridge fee
-        uint256 depositFee = IL1MessageQueue(queue).estimateCrossDomainMessageFee(
-            cachedBatchSetting.safeBridgeGasLimit
-        );
+        uint256 depositFee = IL1MessageQueue(queue).estimateCrossDomainMessageFee(cachedBatchConfig.safeBridgeGasLimit);
         uint256 batchBridgeFee = IL1MessageQueue(queue).estimateCrossDomainMessageFee(SAFE_BATCH_BRIDGE_GAS_LIMIT);
         if (msg.value < depositFee + batchBridgeFee) {
-            revert ErrorInsufficientMsgValueForBatchBridgeFee();
+            revert ErrorInsufficientMsgValueForBatchDepositFee();
         }
 
         // take accumulated fee to fee vault
@@ -279,25 +283,25 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         }
 
         // deposit token to L2
-        PhaseState memory cachedPhaseState = phases[token][cachedTokenState.pendingPhaseIndex];
+        BatchState memory cachedBatchState = batches[token][cachedTokenState.pendingBatchIndex];
         address l2Token;
         if (token == address(0)) {
-            IL1ScrollMessenger(messenger).sendMessage{value: cachedPhaseState.amount + depositFee}(
+            IL1ScrollMessenger(messenger).sendMessage{value: cachedBatchState.amount + depositFee}(
                 counterpart,
-                cachedPhaseState.amount,
+                cachedBatchState.amount,
                 new bytes(0),
-                cachedBatchSetting.safeBridgeGasLimit
+                cachedBatchConfig.safeBridgeGasLimit
             );
         } else {
             address gateway = IL1GatewayRouter(router).getERC20Gateway(token);
             l2Token = IL1ERC20Gateway(gateway).getL2ERC20Address(token);
             IERC20Upgradeable(token).safeApprove(gateway, 0);
-            IERC20Upgradeable(token).safeApprove(gateway, cachedPhaseState.amount);
+            IERC20Upgradeable(token).safeApprove(gateway, cachedBatchState.amount);
             IL1ERC20Gateway(gateway).depositERC20{value: depositFee}(
                 token,
                 counterpart,
-                cachedPhaseState.amount,
-                cachedBatchSetting.safeBridgeGasLimit
+                cachedBatchState.amount,
+                cachedBatchConfig.safeBridgeGasLimit
             );
         }
 
@@ -306,18 +310,18 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
             counterpart,
             0,
             abi.encodeCall(
-                L2BatchBridgeGateway.finalizeBatchBridge,
-                (token, l2Token, cachedTokenState.pendingPhaseIndex, cachedPhaseState.hash)
+                L2BatchBridgeGateway.finalizeBatchDeposit,
+                (token, l2Token, cachedTokenState.pendingBatchIndex, cachedBatchState.hash)
             ),
             SAFE_BATCH_BRIDGE_GAS_LIMIT
         );
 
-        emit BatchBridge(_msgSender(), token, cachedTokenState.pendingPhaseIndex, l2Token);
+        emit BatchDeposit(_msgSender(), token, cachedTokenState.pendingBatchIndex, l2Token);
 
         // update token state
         unchecked {
-            cachedTokenState.pending -= uint128(cachedPhaseState.amount);
-            cachedTokenState.pendingPhaseIndex += 1;
+            cachedTokenState.pending -= uint128(cachedBatchState.amount);
+            cachedTokenState.pendingBatchIndex += 1;
         }
         tokens[token] = cachedTokenState;
 
@@ -342,60 +346,63 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         address sender,
         uint96 amount
     ) internal nonReentrant {
-        BatchSetting memory cachedBatchSetting = settings[token];
+        BatchConfig memory cachedBatchConfig = configs[token];
         TokenState memory cachedTokenState = tokens[token];
-        _tryFinalzeCurrentPhase(token, cachedBatchSetting, cachedTokenState);
+        _tryFinalzeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
 
-        PhaseState memory cachedPhaseState = phases[token][cachedTokenState.currentPhaseIndex];
-        if (amount < cachedBatchSetting.minAmountPerTx) {
+        BatchState memory cachedBatchState = batches[token][cachedTokenState.currentBatchIndex];
+        if (amount < cachedBatchConfig.minAmountPerTx) {
             revert ErrorDepositAmountTooSmall();
         }
 
+        emit Deposit(sender, token, cachedTokenState.currentBatchIndex, amount, cachedBatchConfig.feeAmountPerTx);
+
         // deduct fee and update cached state
         unchecked {
-            amount -= cachedBatchSetting.feeAmountPerTx;
+            amount -= cachedBatchConfig.feeAmountPerTx;
             cachedTokenState.pending += amount;
-            cachedPhaseState.amount += amount;
-            cachedPhaseState.numDeposits += 1;
+            cachedBatchState.amount += amount;
+            cachedBatchState.numDeposits += 1;
         }
 
         // compute the hash chain
         bytes32 node = BatchBridgeCodec.encodeNode(sender, amount);
-        if (cachedPhaseState.hash == bytes32(0)) {
-            bytes32 initialNode = BatchBridgeCodec.encodeInitialNode(token, cachedTokenState.currentPhaseIndex);
-            // this is first tx in this phase
-            cachedPhaseState.hash = BatchBridgeCodec.hash(initialNode, node);
-            cachedPhaseState.firstDepositTimestamp = uint64(block.timestamp);
+        if (cachedBatchState.hash == bytes32(0)) {
+            bytes32 initialNode = BatchBridgeCodec.encodeInitialNode(token, cachedTokenState.currentBatchIndex);
+            // this is first tx in this batch
+            cachedBatchState.hash = BatchBridgeCodec.hash(initialNode, node);
+            cachedBatchState.firstDepositTimestamp = uint64(block.timestamp);
         } else {
-            cachedPhaseState.hash = BatchBridgeCodec.hash(cachedPhaseState.hash, node);
+            cachedBatchState.hash = BatchBridgeCodec.hash(cachedBatchState.hash, node);
         }
 
-        phases[token][cachedTokenState.currentPhaseIndex] = cachedPhaseState;
+        batches[token][cachedTokenState.currentBatchIndex] = cachedBatchState;
         tokens[token] = cachedTokenState;
     }
 
-    /// @dev Internal function to finalze current phase.
+    /// @dev Internal function to finalze current batch.
     ///      This function may change the value of `cachedTokenState`, which can be used in later operation.
     /// @param token The address of token to finalze.
-    /// @param cachedBatchSetting The cached batch setting in memory.
+    /// @param cachedBatchConfig The cached batch config in memory.
     /// @param cachedTokenState The cached token state in memory.
-    function _tryFinalzeCurrentPhase(
+    function _tryFinalzeCurrentBatch(
         address token,
-        BatchSetting memory cachedBatchSetting,
+        BatchConfig memory cachedBatchConfig,
         TokenState memory cachedTokenState
     ) internal view {
-        if (cachedBatchSetting.maxTxPerBatch == 0) {
+        if (cachedBatchConfig.maxTxPerBatch == 0) {
             revert ErrorTokenNotSupported();
         }
-        PhaseState memory cachedPhaseState = phases[token][cachedTokenState.currentPhaseIndex];
-        if (cachedPhaseState.numDeposits == 0) return;
+        BatchState memory cachedBatchState = batches[token][cachedTokenState.currentBatchIndex];
+        // return if it is the very first batch
+        if (cachedBatchState.numDeposits == 0) return;
 
-        // finalize current phase when `maxTxPerBatch` or `maxDelayPerBatch` reached.
+        // finalize current batchIndex when `maxTxPerBatch` or `maxDelayPerBatch` reached.
         if (
-            cachedPhaseState.numDeposits == cachedBatchSetting.maxTxPerBatch ||
-            block.timestamp - cachedPhaseState.firstDepositTimestamp > cachedBatchSetting.maxDelayPerBatch
+            cachedBatchState.numDeposits == cachedBatchConfig.maxTxPerBatch ||
+            block.timestamp - cachedBatchState.firstDepositTimestamp > cachedBatchConfig.maxDelayPerBatch
         ) {
-            cachedTokenState.currentPhaseIndex += 1;
+            cachedTokenState.currentBatchIndex += 1;
         }
     }
 

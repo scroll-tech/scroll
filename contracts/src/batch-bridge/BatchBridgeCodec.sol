@@ -3,10 +3,10 @@
 pragma solidity =0.8.24;
 
 library BatchBridgeCodec {
-    /// @dev Encode the `token` and `phase` to single `bytes32`.
-    function encodeInitialNode(address token, uint64 phase) internal pure returns (bytes32 node) {
+    /// @dev Encode the `token` and `batchIndex` to single `bytes32`.
+    function encodeInitialNode(address token, uint64 batchIndex) internal pure returns (bytes32 node) {
         assembly {
-            node := add(shl(96, token), phase)
+            node := add(shl(96, token), batchIndex)
         }
     }
 

@@ -3,7 +3,6 @@
 pragma solidity =0.8.24;
 
 import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgradeable.sol";
-import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import {IL2ScrollMessenger} from "../L2/IL2ScrollMessenger.sol";
@@ -24,15 +23,21 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     /// @notice Emitted when batch bridge is finalized.
     /// @param l1Token The address of token in L1.
     /// @param l2Token The address of token in L2.
-    /// @param phase The index of phase finalized.
-    event FinalizeBatchBridge(address indexed l1Token, address indexed l2Token, uint256 indexed phase);
+    /// @param batchIndex The index of batch finalized.
+    event FinalizeBatchDeposit(address indexed l1Token, address indexed l2Token, uint256 indexed batchIndex);
+
+    /// @notice Emitted when batch distribution finished.
+    /// @param l1Token The address of token in L1.
+    /// @param l2Token The address of token in L2.
+    /// @param batchIndex The index of batch distributed.
+    event BatchDistribute(address indexed l1Token, address indexed l2Token, uint256 indexed batchIndex);
 
     /// @notice Emitted when token distribute failed.
     /// @param l2Token The address of token in L2.
-    /// @param phase The index of the phase.
+    /// @param batchIndex The index of the batch.
     /// @param receiver The address of token receiver.
     /// @param amount The amount of token to distribute.
-    event DistributeFailed(address l2Token, uint256 phase, address receiver, uint256 amount);
+    event DistributeFailed(address indexed l2Token, uint256 indexed batchIndex, address receiver, uint256 amount);
 
     /**********
      * Errors *
@@ -50,11 +55,11 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     /// @dev Thrown no failed distribution exists.
     error ErrorNoFailedDistribution();
 
-    /// @dev Thrown when the phase hash mismatch.
-    error ErrorPhaseHashMismatch();
+    /// @dev Thrown when the batch hash mismatch.
+    error ErrorBatchHashMismatch();
 
-    /// @dev Thrown when distributing the same phase.
-    error ErrorPhaseDistributed();
+    /// @dev Thrown when distributing the same batch.
+    error ErrorBatchDistributed();
 
     /*************
      * Constants *
@@ -64,7 +69,7 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     bytes32 public constant KEEPER_ROLE = keccak256("KEEPER_ROLE");
 
     /// @notice The safe gas limit for ETH transfer
-    uint256 private constant SAFE_ETH_TRANSFER_GAS_LIMIT = 100000;
+    uint256 private constant SAFE_ETH_TRANSFER_GAS_LIMIT = 50000;
 
     /// @notice The address of corresponding `L1BatchBridgeGateway` contract.
     address public immutable counterpart;
@@ -79,13 +84,13 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     /// @notice Mapping from l2 token address to l1 token address.
     mapping(address => address) public tokenMapping;
 
-    /// @notice Mapping from L2 token address to phase index to phase hash.
-    mapping(address => mapping(uint256 => bytes32)) public phaseHashes;
+    /// @notice Mapping from L2 token address to batch index to batch hash.
+    mapping(address => mapping(uint256 => bytes32)) public batchHashes;
 
     /// @notice Mapping from token address to the amount of failed distribution.
     mapping(address => uint256) public failedAmount;
 
-    /// @notice Mapping from phase hash to the distribute status.
+    /// @notice Mapping from batch hash to the distribute status.
     mapping(bytes32 => bool) public isDistributed;
 
     /*************
@@ -131,15 +136,15 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
         // empty
     }
 
-    /// @notice Finalize L1 initiated batch token bridge.
+    /// @notice Finalize L1 initiated batch token deposit.
     /// @param l1Token The address of the token in L1.
     /// @param l2Token The address of the token in L2.
-    /// @param phase The phase of this batch bridge.
-    /// @param hash The hash of this phase.
-    function finalizeBatchBridge(
+    /// @param batchIndex The index of this batch bridge.
+    /// @param hash The hash of this batch.
+    function finalizeBatchDeposit(
         address l1Token,
         address l2Token,
-        uint256 phase,
+        uint256 batchIndex,
         bytes32 hash
     ) external onlyMessenger {
         // this usually won't happen, check just in case.
@@ -150,9 +155,9 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
             revert ErrorMessageSenderNotCounterpart();
         }
 
-        phaseHashes[l2Token][phase] = hash;
+        batchHashes[l2Token][batchIndex] = hash;
 
-        emit FinalizeBatchBridge(l1Token, l2Token, phase);
+        emit FinalizeBatchDeposit(l1Token, l2Token, batchIndex);
     }
 
     /************************
@@ -175,29 +180,30 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     function withdrawFailedAmount(address token, address receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         uint256 amount = failedAmount[token];
         if (amount == 0) revert ErrorNoFailedDistribution();
+        failedAmount[token] = 0;
 
         _transferToken(token, receiver, amount);
     }
 
     /// @notice Distribute deposited token to corresponding receivers.
     /// @param l2Token The address of L2 token.
-    /// @param phase The phase to distribute.
+    /// @param batchIndex The index of batch to distribute.
     /// @param nodes The list of encoded L1 deposits.
     function distribute(
         address l2Token,
-        uint64 phase,
+        uint64 batchIndex,
         bytes32[] memory nodes
     ) external onlyRole(KEEPER_ROLE) {
         address l1Token = tokenMapping[l2Token];
-        bytes32 hash = BatchBridgeCodec.encodeInitialNode(l1Token, phase);
+        bytes32 hash = BatchBridgeCodec.encodeInitialNode(l1Token, batchIndex);
         for (uint256 i = 0; i < nodes.length; i++) {
             hash = BatchBridgeCodec.hash(hash, nodes[i]);
         }
-        if (phaseHashes[l2Token][phase] != hash) {
-            revert ErrorPhaseHashMismatch();
+        if (batchHashes[l2Token][batchIndex] != hash) {
+            revert ErrorBatchHashMismatch();
         }
         if (isDistributed[hash]) {
-            revert ErrorPhaseDistributed();
+            revert ErrorBatchDistributed();
         }
         isDistributed[hash] = true;
 
@@ -207,9 +213,11 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
             if (!_transferToken(l2Token, receiver, amount)) {
                 failedAmount[l2Token] += amount;
 
-                emit DistributeFailed(l2Token, phase, receiver, amount);
+                emit DistributeFailed(l2Token, batchIndex, receiver, amount);
             }
         }
+
+        emit BatchDistribute(l1Token, l2Token, batchIndex);
     }
 
     /**********************
@@ -227,12 +235,15 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
         uint256 amount
     ) private returns (bool success) {
         if (token == address(0)) {
+            // We add gas limit here to avoid DDOS from malicious receiver.
             (success, ) = receiver.call{value: amount, gas: SAFE_ETH_TRANSFER_GAS_LIMIT}("");
         } else {
-            try IERC20Upgradeable(token).transfer(receiver, amount) {
-                success = true;
-            } catch {
-                success = false;
+            // We perform a low level call here, to bypass Solidity's return data size checking mechanism.
+            // Normally, the token is selected that the call would not revert unless out of gas.
+            bytes memory returndata;
+            (success, returndata) = token.call(abi.encodeCall(IERC20Upgradeable.transfer, (receiver, amount)));
+            if (success && returndata.length > 0) {
+                success = abi.decode(returndata, (bool));
             }
         }
     }
