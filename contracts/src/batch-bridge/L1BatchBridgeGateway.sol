@@ -229,7 +229,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
 
     /// @notice Add or update the batch deposit setting for the given token.
     ///
-    /// @dev The caller should make sure `safeBridgeGasLimit` is valid for batch bridging.
+    /// @dev The caller should make sure `safeBridgeGasLimit` is enough for batch bridging.
     ///
     /// @param token The address of token to update.
     /// @param newSetting The new setting.
@@ -274,7 +274,9 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
             // no uncheck here just in case
             accumulatedFee = IERC20Upgradeable(token).balanceOf(address(this)) - cachedTokenState.pending;
         }
-        _transferToken(token, feeVault, accumulatedFee);
+        if (accumulatedFee > 0) {
+            _transferToken(token, feeVault, accumulatedFee);
+        }
 
         // deposit token to L2
         PhaseState memory cachedPhaseState = phases[token][cachedTokenState.pendingPhaseIndex];
@@ -293,6 +295,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
             IERC20Upgradeable(token).safeApprove(gateway, cachedPhaseState.amount);
             IL1ERC20Gateway(gateway).depositERC20{value: depositFee}(
                 token,
+                counterpart,
                 cachedPhaseState.amount,
                 cachedBatchSetting.safeBridgeGasLimit
             );
