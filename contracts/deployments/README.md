@@ -34,7 +34,6 @@ npx hardhat node
 | L2CustomERC20Gateway | [0x64CCBE37c9A82D85A1F2E74649b7A42923067988](https://scrollscan.com/address/0x64CCBE37c9A82D85A1F2E74649b7A42923067988)
 | L2ERC721Gateway | [0x7bC08E1c04fb41d75F1410363F0c5746Eae80582](https://scrollscan.com/address/0x7bC08E1c04fb41d75F1410363F0c5746Eae80582)
 | L2ERC1155Gateway | [0x62597Cc19703aF10B58feF87B0d5D29eFE263bcc](https://scrollscan.com/address/0x62597Cc19703aF10B58feF87B0d5D29eFE263bcc)
-| L1MessageQueueWithGasPriceOracle | [0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B](https://scrollscan.com/address/0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B)
 
 ### Layer 2 Predeploys
 | Name | Address |
