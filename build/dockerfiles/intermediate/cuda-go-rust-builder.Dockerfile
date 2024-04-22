@@ -10,7 +10,7 @@ RUN apt-get install build-essential curl wget git pkg-config --no-install-recomm
 # Install dev-packages
 RUN apt-get install libclang-dev libssl-dev cmake llvm --no-install-recommends -y
 # Install related libs
-RUN apt install libprocps-dev libboost-all-dev libmpfr-dev libgmp-dev --no-install-recommends -y
+RUN apt install libprocps-dev libmpfr-dev libgmp-dev --no-install-recommends -y
 # Clean installed cache
 RUN rm -rf /var/lib/apt/lists/*
 
