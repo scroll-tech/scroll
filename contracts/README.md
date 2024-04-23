@@ -25,7 +25,7 @@ This directory contains the solidity code for Scroll L1 bridge and rollup contra
 │   ├── <a href="./src/libraries/">libraries</a>: Shared contract libraries
 │   ├── <a href="./src/misc/">misc</a>: Miscellaneous contracts
 │   ├── <a href="./src/mocks/">mocks</a>: Mock contracts used in the testing
-│   ├── <a href="./src/rate-limiter/">rate-limiter</a>: Rater limiter contract
+│   ├── <a href="./src/rate-limiter/">rate-limiter</a>: Rate limiter contract
 │   └── <a href="./src/test/">test</a>: Unit tests in solidity
 ├── <a href="./foundry.toml">foundry.toml</a>: Foundry configuration
 ├── <a href="./hardhat.config.ts">hardhat.config.ts</a>: Hardhat configuration
@@ -74,5 +74,5 @@ yarn install
 - Run `yarn prepare` to install the precommit linting hook.
 - Run `forge build` to compile contracts with foundry.
 - Run `npx hardhat compile` to compile with hardhat.
-- Run `forge test -vvv` to run foundry units tests. It will compile all contracts before running the unit tests.
+- Run `forge test -vvv` to run foundry unit tests. It will compile all contracts before running the unit tests.
 - Run `npx hardhat test` to run integration tests. It may not compile all contracts before running, it's better to run `npx hardhat compile` first.

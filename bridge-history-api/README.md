@@ -1,6 +1,6 @@
 # bridge-history-api
 
-This directory contains the `bridge-history-api` service that provides REST APIs to query txs interact with Scroll official bridge contracts
+This directory contains the `bridge-history-api` service that provides REST APIs to query txs to interact with Scroll official bridge contracts
 
 ## Instructions
 The bridge-history-api contains three distinct components
