@@ -28,7 +28,7 @@ func testImportL1GasPrice(t *testing.T) {
 	l1Cfg := rollupApp.Config.L1Config
 
 	// Create L1Relayer
-	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, relayer.ServiceTypeL1GasOracle, nil)
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, &params.ChainConfig{}, relayer.ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	defer l1Relayer.StopSenders()
 

@@ -78,9 +78,15 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
 	}
 
+	genesisPath := ctx.String(utils.Genesis.Name)
+	genesis, err := utils.ReadGenesis(genesisPath)
+	if err != nil {
+		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
+	}
+
 	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db, registry)
 
-	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, relayer.ServiceTypeL1GasOracle, registry)
+	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, genesis.Config, relayer.ServiceTypeL1GasOracle, registry)
 	if err != nil {
 		log.Crit("failed to create new l1 relayer", "config file", cfgFile, "error", err)
 	}

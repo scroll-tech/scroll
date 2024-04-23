@@ -15,9 +15,10 @@ type L1Block struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	// block
-	Number  uint64 `json:"number" gorm:"column:number"`
-	Hash    string `json:"hash" gorm:"column:hash"`
-	BaseFee uint64 `json:"base_fee" gorm:"column:base_fee"`
+	Number      uint64 `json:"number" gorm:"column:number"`
+	Hash        string `json:"hash" gorm:"column:hash"`
+	BaseFee     uint64 `json:"base_fee" gorm:"column:base_fee"`
+	BlobBaseFee uint64 `json:"blob_base_fee" gorm:"column:blob_base_fee"`
 
 	// oracle
 	GasOracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
