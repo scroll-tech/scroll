@@ -16,11 +16,14 @@ import (
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
-	capp "scroll-tech/coordinator/cmd/api/app"
 	"scroll-tech/database/migrate"
 	"scroll-tech/integration-test/orm"
-	rapp "scroll-tech/prover/cmd/app"
+
 	bcmd "scroll-tech/rollup/cmd"
+
+	rapp "scroll-tech/prover/cmd/app"
+
+	capp "scroll-tech/coordinator/cmd/api/app"
 )
 
 var (
