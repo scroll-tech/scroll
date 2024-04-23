@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/common/testcontainers"
 	"strconv"
 	"testing"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 
 	"scroll-tech/common/cmd"
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 
 	coordinatorConfig "scroll-tech/coordinator/internal/config"

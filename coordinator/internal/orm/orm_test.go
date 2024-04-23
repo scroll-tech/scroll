@@ -3,13 +3,13 @@ package orm
 import (
 	"context"
 	"math/big"
-	"scroll-tech/common/testcontainers"
 	"testing"
 
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
