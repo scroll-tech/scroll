@@ -139,14 +139,14 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	var proverTask *orm.ProverTask
 	var err error
 	if proofParameter.UUID != "" {
-		proverTask, err = m.proverTaskOrm.GetProverTaskByUUIDAndPublicKey(ctx, proofParameter.UUID, pk)
+		proverTask, err = m.proverTaskOrm.GetProverTaskByUUIDAndPublicKey(ctx.Copy(), proofParameter.UUID, pk)
 		if proverTask == nil || err != nil {
 			log.Error("get none prover task for the proof", "uuid", proofParameter.UUID, "key", pk, "taskID", proofMsg.ID, "error", err)
 			return ErrValidatorFailureProverTaskEmpty
 		}
 	} else {
 		// TODO When prover all have upgrade, need delete this logic
-		proverTask, err = m.proverTaskOrm.GetAssignedProverTaskByTaskIDAndProver(ctx, proofMsg.Type, proofMsg.ID, pk, pv)
+		proverTask, err = m.proverTaskOrm.GetAssignedProverTaskByTaskIDAndProver(ctx.Copy(), proofMsg.Type, proofMsg.ID, pk, pv)
 		if proverTask == nil || err != nil {
 			log.Error("get none prover task for the proof", "key", pk, "taskID", proofMsg.ID, "error", err)
 			return ErrValidatorFailureProverTaskEmpty
@@ -159,7 +159,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	log.Info("handling zk proof", "proofID", proofMsg.ID, "proverName", proverTask.ProverName,
 		"proverPublicKey", pk, "proveType", proverTask.TaskType, "proofTime", proofTimeSec, "hardForkName", hardForkName)
 
-	if err = m.validator(ctx, proverTask, pk, proofMsg, proofParameter, hardForkName); err != nil {
+	if err = m.validator(ctx.Copy(), proverTask, pk, proofMsg, proofParameter, hardForkName); err != nil {
 		return err
 	}
 
@@ -175,7 +175,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if verifyErr != nil || !success {
 		m.verifierFailureTotal.WithLabelValues(pv).Inc()
 
-		m.proofRecover(ctx, proverTask, types.ProverTaskFailureTypeVerifiedFailed, proofMsg)
+		m.proofRecover(ctx.Copy(), proverTask, types.ProverTaskFailureTypeVerifiedFailed, proofMsg)
 
 		log.Info("proof verified by coordinator failed", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 			"prover pk", pk, "forkName", hardForkName, "prove type", proofMsg.Type, "proof time", proofTimeSec, "error", verifyErr)
@@ -191,10 +191,10 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	log.Info("proof verified and valid", "proof id", proofMsg.ID, "prover name", proverTask.ProverName,
 		"prover pk", pk, "prove type", proofMsg.Type, "proof time", proofTimeSec, "forkName", hardForkName)
 
-	if err := m.closeProofTask(ctx, proverTask, proofMsg, proofTimeSec); err != nil {
+	if err := m.closeProofTask(ctx.Copy(), proverTask, proofMsg, proofTimeSec); err != nil {
 		m.proofSubmitFailure.Inc()
 
-		m.proofRecover(ctx, proverTask, types.ProverTaskFailureTypeServerError, proofMsg)
+		m.proofRecover(ctx.Copy(), proverTask, types.ProverTaskFailureTypeServerError, proofMsg)
 
 		return ErrCoordinatorInternalFailure
 	}

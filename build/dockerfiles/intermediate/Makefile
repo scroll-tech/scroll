@@ -1,8 +1,8 @@
 ifeq ($(GO_VERSION),)
-  GO_VERSION=1.20
+  GO_VERSION=1.21
 endif
 ifeq ($(RUST_VERSION),)
-  RUST_VERSION=nightly-2022-12-10
+  RUST_VERSION=nightly-2023-12-03
 endif
 ifeq ($(PYTHON_VERSION),)
   PYTHON_VERSION=3.10

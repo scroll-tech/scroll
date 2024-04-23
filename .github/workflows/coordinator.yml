@@ -33,13 +33,13 @@ jobs:
     steps:
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-12-10
+        toolchain: nightly-2023-12-03
         override: true
         components: rustfmt, clippy
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.20.x
+        go-version: 1.21.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Lint
@@ -54,7 +54,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.20.x
+        go-version: 1.21.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install goimports
@@ -95,7 +95,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v2
       with:
-        go-version: 1.20.x
+        go-version: 1.21.x
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Install Solc
