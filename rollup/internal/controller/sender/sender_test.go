@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/common/testcontainers"
 	"testing"
 	"time"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	gokzg4844 "github.com/crate-crypto/go-kzg-4844"
 	"github.com/holiman/uint256"
@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
 
