@@ -3,7 +3,6 @@ package watcher
 import (
 	"encoding/json"
 	"os"
-	"scroll-tech/common/testcontainers"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -12,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/database"
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/database/migrate"
 
