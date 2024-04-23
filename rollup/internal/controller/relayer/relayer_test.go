@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"math/big"
 	"os"
-	"scroll-tech/common/testcontainers"
 	"strconv"
 	"testing"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
 
