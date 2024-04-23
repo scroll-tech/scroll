@@ -110,7 +110,7 @@ jobs:
             GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
             RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
 
-  build-and-rust-builder:
+  build-and-publish-rust-builder:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
