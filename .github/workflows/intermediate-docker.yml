@@ -50,7 +50,7 @@ jobs:
           context: .
           push: true
           file: build/dockerfiles/intermediate/cuda-go-rust-builder.Dockerfile
-          tags: scrolltech/cuda-go-rust-builder:${{ github.event.inputs.CUDA_VERSION }}
+          tags: scrolltech/cuda-go-rust-builder:cuda-${{ github.event.inputs.CUDA_VERSION }}-go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}
           build-args: |
             CUDA_VERSION: ${{ github.event.inputs.CUDA_VERSION }}
             GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
