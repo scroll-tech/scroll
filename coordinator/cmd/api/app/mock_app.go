@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/common/testcontainers/l1"
+	"scroll-tech/common/testcontainers"
 	"strconv"
 	"testing"
 	"time"
@@ -28,7 +28,7 @@ type CoordinatorApp struct {
 	Config      *coordinatorConfig.Config
 	ChainConfig *params.ChainConfig
 
-	testApps *l1.TestcontainerApps
+	testApps *testcontainers.TestcontainerApps
 
 	configOriginFile      string
 	chainConfigOriginFile string
@@ -41,7 +41,7 @@ type CoordinatorApp struct {
 }
 
 // NewCoordinatorApp return a new coordinatorApp manager.
-func NewCoordinatorApp(testApps *l1.TestcontainerApps, configFile string, chainConfigFile string) *CoordinatorApp {
+func NewCoordinatorApp(testApps *testcontainers.TestcontainerApps, configFile string, chainConfigFile string) *CoordinatorApp {
 	coordinatorFile := fmt.Sprintf("/tmp/%d_coordinator-config.json", testApps.Timestamp)
 	genesisFile := fmt.Sprintf("/tmp/%d_genesis.json", testApps.Timestamp)
 	port, _ := rand.Int(rand.Reader, big.NewInt(2000))

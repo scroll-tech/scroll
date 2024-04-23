@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"scroll-tech/common/testcontainers/l1"
+	"scroll-tech/common/testcontainers"
 	"testing"
 	"time"
 
-	"github.com/agiledragon/gomonkey/v2"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	gokzg4844 "github.com/crate-crypto/go-kzg-4844"
 	"github.com/holiman/uint256"
@@ -39,7 +38,7 @@ import (
 var (
 	privateKey           *ecdsa.PrivateKey
 	cfg                  *config.Config
-	testApps             *l1.TestcontainerApps
+	testApps             *testcontainers.TestcontainerApps
 	txTypes              = []string{"LegacyTx", "DynamicFeeTx", "DynamicFeeTx"}
 	txBlob               = []*kzg4844.Blob{nil, nil, randBlob()}
 	txUint8Types         = []uint8{0, 2, 3}
@@ -68,7 +67,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	privateKey = priv
 
-	testApps = l1.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())

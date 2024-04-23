@@ -1,7 +1,7 @@
 package database_test
 
 import (
-	"scroll-tech/common/testcontainers/l1"
+	"scroll-tech/common/testcontainers"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,7 +13,7 @@ import (
 func TestDB(t *testing.T) {
 	version.Version = "v4.1.98-aaa-bbb-ccc"
 
-	testApps := l1.NewTestcontainerApps()
+	testApps := testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 
 	db, err := testApps.GetGormDBClient()

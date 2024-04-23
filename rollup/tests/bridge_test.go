@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"net/http"
 	"os"
-	tc "scroll-tech/common/testcontainers/l1"
+	tc "scroll-tech/common/testcontainers"
 	"strconv"
 	"strings"
 	"testing"

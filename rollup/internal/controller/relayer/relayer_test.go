@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"math/big"
 	"os"
-	"scroll-tech/common/testcontainers/l1"
+	"scroll-tech/common/testcontainers"
 	"strconv"
 	"testing"
 
@@ -25,7 +25,7 @@ var (
 	// config
 	cfg *config.Config
 
-	testApps *l1.TestcontainerApps
+	testApps *testcontainers.TestcontainerApps
 	// l2geth client
 	l2Cli *ethclient.Client
 
@@ -50,7 +50,7 @@ func setupEnv(t *testing.T) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	testApps = l1.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
 	assert.NoError(t, testApps.StartPoSL1Container())

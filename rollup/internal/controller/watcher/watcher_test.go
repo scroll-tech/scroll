@@ -3,7 +3,7 @@ package watcher
 import (
 	"encoding/json"
 	"os"
-	"scroll-tech/common/testcontainers/l1"
+	"scroll-tech/common/testcontainers"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -22,7 +22,7 @@ var (
 	// config
 	cfg *config.Config
 
-	testApps *l1.TestcontainerApps
+	testApps *testcontainers.TestcontainerApps
 
 	// l2geth client
 	l2Cli *ethclient.Client
@@ -41,7 +41,7 @@ func setupEnv(t *testing.T) (err error) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	testApps = l1.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())

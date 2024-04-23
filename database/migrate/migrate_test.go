@@ -2,7 +2,7 @@ package migrate
 
 import (
 	"database/sql"
-	"scroll-tech/common/testcontainers/l1"
+	"scroll-tech/common/testcontainers"
 	"testing"
 
 	_ "github.com/lib/pq"
@@ -10,13 +10,13 @@ import (
 )
 
 var (
-	testApps *l1.TestcontainerApps
+	testApps *testcontainers.TestcontainerApps
 	pgDB     *sql.DB
 )
 
 func setupEnv(t *testing.T) {
 	// Start db container.
-	testApps = l1.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	gormClient, err := testApps.GetGormDBClient()
 	assert.NoError(t, err)

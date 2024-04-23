@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 	"math/big"
-	"scroll-tech/common/testcontainers/l1"
+	"scroll-tech/common/testcontainers"
 	"testing"
 	"time"
 
@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	testApps  *l1.TestcontainerApps
+	testApps  *testcontainers.TestcontainerApps
 	rollupApp *bcmd.MockApp
 )
 
@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 }
 
 func setupEnv(t *testing.T) {
-	testApps = l1.NewTestcontainerApps()
+	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())

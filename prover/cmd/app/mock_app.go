@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"scroll-tech/common/testcontainers/l1"
+	"scroll-tech/common/testcontainers"
 	"testing"
 	"time"
 
@@ -30,7 +30,7 @@ func getIndex() int {
 type ProverApp struct {
 	Config *config.Config
 
-	testApps *l1.TestcontainerApps
+	testApps *testcontainers.TestcontainerApps
 
 	originFile string
 	proverFile string
@@ -43,7 +43,7 @@ type ProverApp struct {
 }
 
 // NewProverApp return a new proverApp manager.
-func NewProverApp(testApps *l1.TestcontainerApps, mockName utils.MockAppName, file string, httpURL string) *ProverApp {
+func NewProverApp(testApps *testcontainers.TestcontainerApps, mockName utils.MockAppName, file string, httpURL string) *ProverApp {
 	var proofType message.ProofType
 	switch mockName {
 	case utils.ChunkProverApp:

@@ -221,21 +221,6 @@ issues:
         - gosec
         - golint
 
-    # Exclude abi files in bridge-history-api
-    - path: backend_abi\.go
-      linters:
-        - errcheck
-        - gosec
-        - golint
-
-    # Exclude abi files in testcontainers
-    - path: testcontainers\.go
-      linters:
-        - errcheck
-        - gosec
-        - golint
-        - goanalysis_metalinter
-
     # Exclude some staticcheck messages
     - linters:
         - staticcheck
