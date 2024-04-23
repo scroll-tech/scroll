@@ -2,11 +2,12 @@ package migrate
 
 import (
 	"database/sql"
-	"scroll-tech/common/testcontainers"
 	"testing"
 
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/testcontainers"
 )
 
 var (
