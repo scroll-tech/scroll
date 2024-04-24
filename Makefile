@@ -55,3 +55,4 @@ run_test_docker: ## run Docker image for local testing on M1/M2 Silicon Mac
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
+
