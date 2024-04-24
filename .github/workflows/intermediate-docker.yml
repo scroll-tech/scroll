@@ -95,8 +95,8 @@ jobs:
           file: build/dockerfiles/intermediate/${{ github.event.inputs.BASE_IMAGE }}.Dockerfile
           platforms: linux/amd64,linux/arm64
           tags: scrolltech/${{ github.event.inputs.BASE_IMAGE }}:${{ env.TAG }}
-          build-args: |
-            CUDA_VERSION: ${{ github.event.inputs.CUDA_VERSION }}
-            GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
-            RUST_VERSION: ${{ github.event.inputs.RUST_VERSION }}
-            PYTHON_VERSION: ${{ github.event.inputs.PYTHON_VERSION }}
+          build-args:
+            - "CUDA_VERSION=${{ github.event.inputs.CUDA_VERSION }}"
+            - "GO_VERSION=${{ github.event.inputs.GO_VERSION }}"
+            - "RUST_VERSION=${{ github.event.inputs.RUST_VERSION }}"
+            - "PYTHON_VERSION=${{ github.event.inputs.PYTHON_VERSION }}"
