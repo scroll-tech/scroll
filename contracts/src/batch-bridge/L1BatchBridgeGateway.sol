@@ -394,7 +394,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
             revert ErrorTokenNotSupported();
         }
         BatchState memory cachedBatchState = batches[token][cachedTokenState.currentBatchIndex];
-        // return if it is the very first batch
+        // return if it is the very first deposit in the current batch
         if (cachedBatchState.numDeposits == 0) return;
 
         // finalize current batchIndex when `maxTxsPerBatch` or `maxDelayPerBatch` reached.
