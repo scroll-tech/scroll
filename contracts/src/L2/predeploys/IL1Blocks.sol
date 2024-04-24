@@ -26,7 +26,7 @@ interface IL1Blocks {
      *************************/
 
     // /// @notice Return the latest imported L1 block number
-    // function latestBlockNumber() external view returns (uint256);
+    function latestBlockNumber() external view returns (uint256);
 
     /// @notice Return the latest imported L1 block hash
     function latestBlockHash() external view returns (bytes32);
@@ -80,17 +80,8 @@ interface IL1Blocks {
      * Public Mutating Functions *
      *****************************/
 
-    /// @notice Import L1 block header to this contract.
-    /// @param blockHash The hash of block.
-    /// @param blockHeaderRLP The RLP encoding of L1 block.
-    /// @param updateGasPriceOracle Whether to update gas price oracle.
-    function setL1BlockHeader(
-        uint64 blockNumber,
-        uint64 timestamp,
-        uint64 baseFee,
-        uint64 blobBaseFee,
-        bytes32 blockHash,
-        bytes32 stateRoot,
-        bytes32 parentBeaconRoot
-    ) external;
+    /// @notice Import L1 block header to this contract
+    /// @param blockHash The block hash
+    /// @param blockHeaderRlp The RLP encoding of L1 block
+    function setL1BlockHeader(bytes32 blockHash, bytes calldata blockHeaderRlp) external;
 }

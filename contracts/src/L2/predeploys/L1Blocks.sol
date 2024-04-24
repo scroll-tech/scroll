@@ -41,13 +41,26 @@ contract L1Blocks is OwnableBase, IL1Blocks {
         bytes32 stateRoot;
         // The parent beacon block root
         bytes32 parentBeaconRoot;
+        // The randao value
+        bytes32 Randao;
     }
+
+    // |   Bytes   |          Field           |
+    // ------------|--------------------------|
+    // | [0:7]     | block number             |
+    // | [8:15]    | timestamp                |
+    // | [16:23]   | base fee                 |
+    // | [24:31]   | blob base fee            |
+    // | [32:63]   | block hash               |
+    // | [64:95]   | state root               |
+    // | [96:127]  | parent beacon block root |
+    // | [128:160] | randao                   |
 
     /*************
      * Variables *
      *************/
 
-    address public constant SYSTEM_SENDER = 0xfffffffffffffffffffffffffffffffffffffffe;
+    address public constant SYSTEM_SENDER = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
 
     uint32 public constant BLOCK_BUFFER_SIZE = 8192;
 
@@ -55,16 +68,15 @@ contract L1Blocks is OwnableBase, IL1Blocks {
     /// @dev This is the keccak-256 hash of "l1blocks.block_storage_offset".
     bytes32 private constant BLOCK_STORAGE_OFFSET = 0xdb384d0440765c9be19ada21c3d61f9d220d57e5963a1fca370403ac2c4bbbad;
 
-    /// @inheritdoc IL1BlockContainer
-    uint64 public latestBlockNumber;
+    uint32 public constant BLOCK_FIELD_BYTES = 160;
+    uint32 public constant TIMESTAMP_OFFSET = 8;
+
+    /// @inheritdoc IL1Blocks
+    uint64 public override latestBlockNumber;
 
     /***************
      * Constructor *
      ***************/
-
-    constructor() {
-        //_transferOwnership(_owner);
-    }
 
     // function initialize(
     //     bytes32 _startBlockHash,
@@ -85,68 +97,79 @@ contract L1Blocks is OwnableBase, IL1Blocks {
     /*************************
      * Public View Functions *
      *************************/
-
-    modifier onlySystemSender() {
-        require(msg.sender == SYSTEM_SENDER, "only system sender allowed");
-        _;
-    }
-
     modifier validBlockNumber(uint64 blockNumber) {
         uint64 _latestBlockNumber = latestBlockNumber;
         require(
             blockNumber <= _latestBlockNumber && blockNumber > _latestBlockNumber - BLOCK_BUFFER_SIZE,
             "invalid block number"
         );
+        _;
     }
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function latestBlockHash() external view returns (bytes32) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function getBlockHash(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function latestStateRoot() external view returns (bytes32) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function getStateRoot(uint64 blockNumber) external view returns (bytes32 stateRoot) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function latestBlockTimestamp() external view returns (uint256) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function getBlockTimestamp(uint64 blockNumber) external view returns (uint256 timestamp) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function latestBaseFee() external view returns (uint256) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function getBaseFee(uint64 blockNumber) external view returns (bytes32 baseFee) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function latestBlobBaseFee() external view returns (uint256) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function getBlobBaseFee(uint64 blockNumber) external view returns (bytes32 blobBaseFee) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function latestParentBeaconRoot() external view returns (bytes32) {}
 
-    /// @inheritdoc IL1BlockContainer
+    /// @inheritdoc IL1Blocks
     function getParentBeaconRoot(uint64 blockNumber) external view returns (bytes32 parentBeaconRoot) {}
 
     /*****************************
      * Public Mutating Functions *
      *****************************/
 
-    /// @inheritdoc IL1BlockContainer
-    function setL1BlockHeader(
-        uint64 blockNumber,
-        uint64 timestamp,
-        uint64 baseFee,
-        uint64 blobBaseFee,
-        bytes32 blockHash,
-        bytes32 stateRoot,
-        bytes32 parentBeaconRoot
-    ) external onlySystemSender {}
+    /// @inheritdoc IL1Blocks
+    function setL1BlockHeader(bytes32 blockHash, bytes calldata blockHeaderRlp) external {
+        require(msg.sender == SYSTEM_SENDER, "only system sender allowed");
+
+        // The encoding order in block header is
+        // 1. ParentHash: 32 bytes
+        // 2. UncleHash: 32 bytes
+        // 3. Coinbase: 20 bytes
+        // 4. StateRoot: 32 bytes
+        // 5. TransactionsRoot: 32 bytes
+        // 6. ReceiptsRoot: 32 bytes
+        // 7. LogsBloom: 256 bytes
+        // 8. Difficulty: uint256
+        // 9. BlockNumber: uint256
+        // 10. GasLimit: uint64
+        // 11. GasUsed: uint64
+        // 12. BlockTimestamp: uint64
+        // 13. ExtraData: variable bytes
+        // 14. MixHash/Randao: 32 bytes
+        // 15. BlockNonce: 8 bytes
+        // 16. BaseFee: uint256 // optional
+        // 17. WithdrawalsHash: 32 bytes // optional
+        // 18. BlobGasUsed: uint64 // optional
+        // 19. ExcessBlobGas: uint64 // optional
+        // 20. ParentBeaconRoot: 32 bytes // optional
+    }
 }
