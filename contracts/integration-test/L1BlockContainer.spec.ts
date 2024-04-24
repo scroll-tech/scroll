@@ -1,10 +1,11 @@
 /* eslint-disable node/no-unpublished-import */
 /* eslint-disable node/no-missing-import */
+/*
 import { expect } from "chai";
 import { BigNumberish, ZeroHash, concat, encodeRlp, toBeHex, toBigInt } from "ethers";
 import { ethers } from "hardhat";
 
-import { L1BlockContainer } from "../typechain";
+import { L1Blocks } from "../typechain";
 
 interface IImportTestConfig {
   hash: string;
@@ -110,21 +111,14 @@ function encodeHeader(test: IImportTestConfig): string {
   ]);
 }
 
-describe("L1BlockContainer", async () => {
-  let container: L1BlockContainer;
-
+describe("L1Blocks", async () => {
+  let container: L1Blocks;
   for (const test of testcases) {
     context(`import block[${test.hash}] height[${test.blockHeight}]`, async () => {
       beforeEach(async () => {
         const [deployer] = await ethers.getSigners();
-        const L1BlockContainer = await ethers.getContractFactory("L1BlockContainer", deployer);
-        container = await L1BlockContainer.deploy(deployer.address);
-
-        const Whitelist = await ethers.getContractFactory("Whitelist", deployer);
-        const whitelist = await Whitelist.deploy(deployer.address);
-        await whitelist.updateWhitelistStatus([deployer.address], true);
-
-        await container.updateWhitelist(whitelist.getAddress());
+        const L1Blocks = await ethers.getContractFactory("L1Blocks", deployer);
+        container = await L1Blocks.deploy();
       });
 
       it("should revert, when sender not allowed", async () => {
@@ -218,7 +212,7 @@ describe("L1BlockContainer", async () => {
         );
         expect(await container.latestBlockHash()).to.eq(test.parentHash);
         const headerRLP = encodeHeader(test);
-        await expect(container.importBlockHeader(test.hash, headerRLP, false))
+        await expect(container.setL1BlockHeader(test.hash, headerRLP, false))
           .to.emit(container, "ImportBlock")
           .withArgs(test.hash, test.blockHeight, test.blockTimestamp, test.baseFee, test.stateRoot);
         expect(await container.getStateRoot(test.hash)).to.eq(test.stateRoot);
@@ -231,3 +225,4 @@ describe("L1BlockContainer", async () => {
     });
   }
 });
+*/

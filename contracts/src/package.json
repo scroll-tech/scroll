@@ -13,7 +13,7 @@
         "L1/rollup/IScrollChain.sol",
         "L1/IL1ScrollMessenger.sol",
         "L2/gateways",
-        "L2/predeploys/IL1BlockContainer.sol",
+        "L2/predeploys/IL1Blocks.sol",
         "L2/predeploys/IL1GasPriceOracle.sol",
         "L2/IL2ScrollMessenger.sol",
         "interfaces",

@@ -9,7 +9,7 @@ import {OwnableBase} from "../../libraries/common/OwnableBase.sol";
 import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
 import {ScrollPredeploy} from "../../libraries/constants/ScrollPredeploy.sol";
 
-/// @title L1BlockContainer
+/// @title L1Blocks
 /// @notice This contract will maintain the list of blocks proposed in L1.
 contract L1Blocks is OwnableBase, IL1Blocks {
     /**********
@@ -45,6 +45,7 @@ contract L1Blocks is OwnableBase, IL1Blocks {
         bytes32 Randao;
     }
 
+    // Block fields byte
     // |   Bytes   |          Field           |
     // ------------|--------------------------|
     // | [0:7]     | block number             |
@@ -64,12 +65,11 @@ contract L1Blocks is OwnableBase, IL1Blocks {
 
     uint32 public constant BLOCK_BUFFER_SIZE = 8192;
 
-    /// @notice Storage slot with the address of the current block hashes offset.
-    /// @dev This is the keccak-256 hash of "l1blocks.block_storage_offset".
-    bytes32 private constant BLOCK_STORAGE_OFFSET = 0xdb384d0440765c9be19ada21c3d61f9d220d57e5963a1fca370403ac2c4bbbad;
+    uint32 public constant BLOCK_FIELDS_BYTES = 160;
 
-    uint32 public constant BLOCK_FIELD_BYTES = 160;
-    uint32 public constant TIMESTAMP_OFFSET = 8;
+    /// @notice Storage slot with the address of the current block hashes offset.
+    /// @dev This is the keccak-256 hash of "l1blocks.block_storage_offset" with 256-bit alignment
+    uint256 private constant BLOCK_STORAGE_OFFSET = 0xdb384d0440765c9be19ada21c3d61f9d220d57e5963a1fca370403ac2c4bbb00;
 
     /// @inheritdoc IL1Blocks
     uint64 public override latestBlockNumber;
@@ -107,40 +107,100 @@ contract L1Blocks is OwnableBase, IL1Blocks {
     }
 
     /// @inheritdoc IL1Blocks
-    function latestBlockHash() external view returns (bytes32) {}
+    function latestBlockHash() external view returns (bytes32) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        return _loadBlockHash(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function getBlockHash(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {}
+    function getBlockHash(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        uint64 _blockNumber = _loadBlockNumber(blockPtr);
+        if (_blockNumber != blockNumber) {
+            revert ErrorBlockUnavailable();
+        }
+        return _loadBlockHash(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function latestStateRoot() external view returns (bytes32) {}
+    function latestStateRoot() external view returns (bytes32) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        return _loadStateRoot(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function getStateRoot(uint64 blockNumber) external view returns (bytes32 stateRoot) {}
+    function getStateRoot(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        uint64 _blockNumber = _loadBlockNumber(blockPtr);
+        if (_blockNumber != blockNumber) {
+            revert ErrorBlockUnavailable();
+        }
+        return _loadStateRoot(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function latestBlockTimestamp() external view returns (uint256) {}
+    function latestBlockTimestamp() external view returns (uint256) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        return _loadTimestamp(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function getBlockTimestamp(uint64 blockNumber) external view returns (uint256 timestamp) {}
+    function getBlockTimestamp(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (uint256) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        uint64 _blockNumber = _loadBlockNumber(blockPtr);
+        if (_blockNumber != blockNumber) {
+            revert ErrorBlockUnavailable();
+        }
+        return _loadTimestamp(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function latestBaseFee() external view returns (uint256) {}
+    function latestBaseFee() external view returns (uint256) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        return _loadBaseFee(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function getBaseFee(uint64 blockNumber) external view returns (bytes32 baseFee) {}
+    function getBaseFee(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (uint256) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        uint64 _blockNumber = _loadBlockNumber(blockPtr);
+        if (_blockNumber != blockNumber) {
+            revert ErrorBlockUnavailable();
+        }
+        return _loadBaseFee(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function latestBlobBaseFee() external view returns (uint256) {}
+    function latestBlobBaseFee() external view returns (uint256) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        return _loadBlobBaseFee(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function getBlobBaseFee(uint64 blockNumber) external view returns (bytes32 blobBaseFee) {}
+    function getBlobBaseFee(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (uint256) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        uint64 _blockNumber = _loadBlockNumber(blockPtr);
+        if (_blockNumber != blockNumber) {
+            revert ErrorBlockUnavailable();
+        }
+        return _loadBlobBaseFee(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function latestParentBeaconRoot() external view returns (bytes32) {}
+    function latestParentBeaconRoot() external view returns (bytes32) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        return _loadParentBeaconRoot(blockPtr);
+    }
 
     /// @inheritdoc IL1Blocks
-    function getParentBeaconRoot(uint64 blockNumber) external view returns (bytes32 parentBeaconRoot) {}
+    function getParentBeaconRoot(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {
+        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
+        uint64 _blockNumber = _loadBlockNumber(blockPtr);
+        if (_blockNumber != blockNumber) {
+            revert ErrorBlockUnavailable();
+        }
+        return _loadParentBeaconRoot(blockPtr);
+    }
 
     /*****************************
      * Public Mutating Functions *
@@ -171,5 +231,56 @@ contract L1Blocks is OwnableBase, IL1Blocks {
         // 18. BlobGasUsed: uint64 // optional
         // 19. ExcessBlobGas: uint64 // optional
         // 20. ParentBeaconRoot: 32 bytes // optional
+    }
+
+    /**********************
+     * Internal Functions *
+     **********************/
+    function _loadBlockNumber(uint256 blockPtr) internal pure returns (uint64 _blockNumber) {
+        assembly {
+            _blockNumber := shr(192, mload(blockPtr))
+        }
+    }
+
+    function _loadTimestamp(uint256 blockPtr) internal pure returns (uint256 _timestamp) {
+        assembly {
+            _timestamp := and(shr(128, mload(blockPtr)), 0xffffffffffffffff)
+        }
+    }
+
+    function _loadBaseFee(uint256 blockPtr) internal pure returns (uint256 _basefee) {
+        assembly {
+            _basefee := and(shr(64, mload(blockPtr)), 0xffffffffffffffff)
+        }
+    }
+
+    function _loadBlobBaseFee(uint256 blockPtr) internal pure returns (uint256 _blobbasefee) {
+        assembly {
+            _blobbasefee := and(mload(blockPtr), 0xffffffffffffffff)
+        }
+    }
+
+    function _loadBlockHash(uint256 blockPtr) internal pure returns (bytes32 _blockhash) {
+        assembly {
+            _blockhash := mload(add(blockPtr, 32))
+        }
+    }
+
+    function _loadStateRoot(uint256 blockPtr) internal pure returns (bytes32 _stateroot) {
+        assembly {
+            _stateroot := mload(add(blockPtr, 64))
+        }
+    }
+
+    function _loadParentBeaconRoot(uint256 blockPtr) internal pure returns (bytes32 _beaconRoot) {
+        assembly {
+            _beaconRoot := mload(add(blockPtr, 96))
+        }
+    }
+
+    function _loadRandao(uint256 blockPtr) internal pure returns (bytes32 _randao) {
+        assembly {
+            _randao := mload(add(blockPtr, 128))
+        }
     }
 }

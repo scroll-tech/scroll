@@ -7,7 +7,7 @@ import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {ITransparentUpgradeableProxy, TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-import {IL1BlockContainer, L1BlockContainer} from "../L2/predeploys/L1BlockContainer.sol";
+import {IL1Blocks, L1Blocks} from "../L2/predeploys/L1Blocks.sol";
 import {IL1GasPriceOracle, L1GasPriceOracle} from "../L2/predeploys/L1GasPriceOracle.sol";
 import {L2MessageQueue} from "../L2/predeploys/L2MessageQueue.sol";
 import {Whitelist} from "../L2/predeploys/Whitelist.sol";
@@ -53,7 +53,7 @@ abstract contract L2GatewayTestBase is DSTestPlus {
     Whitelist private whitelist;
 
     L2ScrollMessenger internal l2Messenger;
-    L1BlockContainer internal l1BlockContainer;
+    L1Blocks internal l1Blocks;
     L2MessageQueue internal l2MessageQueue;
     L1GasPriceOracle internal l1GasOracle;
 
@@ -67,7 +67,7 @@ abstract contract L2GatewayTestBase is DSTestPlus {
 
         // Deploy L2 contracts
         whitelist = new Whitelist(address(this));
-        l1BlockContainer = new L1BlockContainer(address(this));
+        l1Blocks = new L1Blocks();
         l2MessageQueue = new L2MessageQueue(address(this));
         l1GasOracle = new L1GasPriceOracle(address(this));
         l2Messenger = L2ScrollMessenger(payable(_deployProxy(address(0))));

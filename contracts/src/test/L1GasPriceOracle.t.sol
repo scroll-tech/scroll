@@ -4,7 +4,7 @@ pragma solidity =0.8.24;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
-import {L1BlockContainer} from "../L2/predeploys/L1BlockContainer.sol";
+import {L1Blocks} from "../L2/predeploys/L1Blocks.sol";
 import {L1GasPriceOracle} from "../L2/predeploys/L1GasPriceOracle.sol";
 import {Whitelist} from "../L2/predeploys/Whitelist.sol";
 

@@ -4,6 +4,13 @@ pragma solidity ^0.8.24;
 
 interface IL1Blocks {
     /**********
+     * Errors *
+     **********/
+
+    /// @dev Thrown when the given block number is not available in the storage;
+    error ErrorBlockUnavailable();
+
+    /**********
      * Events *
      **********/
 
@@ -26,7 +33,7 @@ interface IL1Blocks {
      *************************/
 
     // /// @notice Return the latest imported L1 block number
-    function latestBlockNumber() external view returns (uint256);
+    function latestBlockNumber() external view returns (uint64);
 
     /// @notice Return the latest imported L1 block hash
     function latestBlockHash() external view returns (bytes32);
@@ -42,7 +49,7 @@ interface IL1Blocks {
     /// @notice Return the state root of given block
     /// @param blockNumber The L1 block number
     /// @return stateRoot The state root of the block
-    function getStateRoot(uint64 blockNumber) external view returns (bytes32 stateRoot);
+    function getStateRoot(uint64 blockNumber) external view returns (bytes32);
 
     /// @notice Return the latest imported block timestamp
     function latestBlockTimestamp() external view returns (uint256);
@@ -50,7 +57,7 @@ interface IL1Blocks {
     /// @notice Return the block timestamp of the given block
     /// @param blockNumber The L1 block number
     /// @return timestamp The block timestamp of the block
-    function getBlockTimestamp(uint64 blockNumber) external view returns (uint256 timestamp);
+    function getBlockTimestamp(uint64 blockNumber) external view returns (uint256);
 
     /// @notice Return the latest imported L1 base fee
     function latestBaseFee() external view returns (uint256);
@@ -58,7 +65,7 @@ interface IL1Blocks {
     /// @notice Return the base fee of the given block
     /// @param blockNumber The L1 block number
     /// @return baseFee The base fee of the block
-    function getBaseFee(uint64 blockNumber) external view returns (bytes32 baseFee);
+    function getBaseFee(uint64 blockNumber) external view returns (uint256);
 
     /// @notice Return the latest imported L1 blob base fee
     function latestBlobBaseFee() external view returns (uint256);
@@ -66,7 +73,7 @@ interface IL1Blocks {
     /// @notice Return the blob base fee of the given block
     /// @param blockNumber The L1 block number
     /// @return blobBaseFee The blob base fee of the block
-    function getBlobBaseFee(uint64 blockNumber) external view returns (bytes32 blobBaseFee);
+    function getBlobBaseFee(uint64 blockNumber) external view returns (uint256);
 
     /// @notice Return the latest imported parent beacon block root
     function latestParentBeaconRoot() external view returns (bytes32);
@@ -74,7 +81,7 @@ interface IL1Blocks {
     /// @notice Return the state root of given block
     /// @param blockNumber The L1 block number
     /// @return parentBeaconRoot The parent beacon block root of the block
-    function getParentBeaconRoot(uint64 blockNumber) external view returns (bytes32 parentBeaconRoot);
+    function getParentBeaconRoot(uint64 blockNumber) external view returns (bytes32);
 
     /*****************************
      * Public Mutating Functions *
