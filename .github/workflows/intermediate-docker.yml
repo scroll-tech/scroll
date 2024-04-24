@@ -69,20 +69,20 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: set tag env
         run: |
-          if ${{github.event.inputs.BASE_IMAGE}} == "cuda-go-rust-builder";then
-            echo "tag=cuda-${{ github.event.inputs.CUDA_VERSION }}-go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
-          elif ${{github.event.inputs.BASE_IMAGE}} == "go-rust-builder";then
-            echo "tag=go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
-          elif ${{github.event.inputs.BASE_IMAGE}} == "go-alpine-builder";then
-            echo "tag=${{ github.event.inputs.GO_VERSION }}" >> $GITHUB_ENV
-          elif ${{github.event.inputs.BASE_IMAGE}} == "rust-builder";then
-            echo "tag=${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
-          elif ${{github.event.inputs.BASE_IMAGE}} == "rust-alpine-builder";then
-            echo "tag=${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
-          elif ${{github.event.inputs.BASE_IMAGE}} == "go-rust-alpine-builder";then
-            echo "tag=go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
-          elif ${{github.event.inputs.BASE_IMAGE}} == "py-runner";then
-            echo "tag=${{ github.event.inputs.PYTHON_VERSION }}" >> $GITHUB_ENV
+          if [ ${{github.event.inputs.BASE_IMAGE}} == "cuda-go-rust-builder" ]; then
+            echo "TAG=cuda-${{ github.event.inputs.CUDA_VERSION }}-go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
+          elif [ ${{github.event.inputs.BASE_IMAGE}} == "go-rust-builder" ]; then
+            echo "TAG=go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
+          elif [ ${{github.event.inputs.BASE_IMAGE}} == "go-alpine-builder" ]; then
+            echo "TAG=${{ github.event.inputs.GO_VERSION }}" >> $GITHUB_ENV
+          elif [ ${{github.event.inputs.BASE_IMAGE}} == "rust-builder" ]; then
+            echo "TAG=${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
+          elif [ ${{github.event.inputs.BASE_IMAGE}} == "rust-alpine-builder" ]; then
+            echo "TAG=${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
+          elif [ ${{github.event.inputs.BASE_IMAGE}} == "go-rust-alpine-builder" ]; then
+            echo "TAG=go-${{ github.event.inputs.GO_VERSION }}-rust-${{ github.event.inputs.RUST_VERSION }}" >> $GITHUB_ENV
+          elif [ ${{github.event.inputs.BASE_IMAGE}} == "py-runner" ]; then
+            echo "TAG=${{ github.event.inputs.PYTHON_VERSION }}" >> $GITHUB_ENV
           else
             echo "no BASE_IMAGE match"
           fi
@@ -94,7 +94,7 @@ jobs:
           push: true
           file: build/dockerfiles/intermediate/${{ github.event.inputs.BASE_IMAGE }}.Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: scrolltech/${{ github.event.inputs.BASE_IMAGE }}:${{ env.tag }}
+          tags: scrolltech/${{ github.event.inputs.BASE_IMAGE }}:${{ env.TAG }}
           build-args: |
             CUDA_VERSION: ${{ github.event.inputs.CUDA_VERSION }}
             GO_VERSION: ${{ github.event.inputs.GO_VERSION }}
