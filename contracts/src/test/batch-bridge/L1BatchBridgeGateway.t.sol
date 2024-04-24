@@ -119,7 +119,7 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
         batch.setBatchConfig(address(0), L1BatchBridgeGateway.BatchConfig(0, 0, 0, 0, 0));
         hevm.stopPrank();
 
-        // revert maxTxPerBatch = 0
+        // revert maxTxsPerBatch = 0
         hevm.expectRevert(L1BatchBridgeGateway.ErrorInvalidBatchConfig.selector);
         batch.setBatchConfig(address(0), L1BatchBridgeGateway.BatchConfig(0, 0, 0, 0, 0));
 
@@ -136,39 +136,39 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
         (
             uint96 feeAmountPerTx,
             uint96 minAmountPerTx,
-            uint16 maxTxPerBatch,
+            uint16 maxTxsPerBatch,
             uint24 maxDelayPerBatch,
             uint24 safeBridgeGasLimit
         ) = batch.configs(address(0));
         assertEq(feeAmountPerTx, 1);
         assertEq(minAmountPerTx, 2);
-        assertEq(maxTxPerBatch, 3);
+        assertEq(maxTxsPerBatch, 3);
         assertEq(maxDelayPerBatch, 4);
         assertEq(safeBridgeGasLimit, 5);
     }
 
     function testSetTokenSettingFuzzing(address token, L1BatchBridgeGateway.BatchConfig memory config) external {
-        hevm.assume(config.maxTxPerBatch > 0);
+        hevm.assume(config.maxTxsPerBatch > 0);
         hevm.assume(config.maxDelayPerBatch > 0);
         hevm.assume(config.feeAmountPerTx <= config.minAmountPerTx);
 
         (
             uint96 feeAmountPerTx,
             uint96 minAmountPerTx,
-            uint16 maxTxPerBatch,
+            uint16 maxTxsPerBatch,
             uint24 maxDelayPerBatch,
             uint24 safeBridgeGasLimit
         ) = batch.configs(token);
         assertEq(feeAmountPerTx, 0);
         assertEq(minAmountPerTx, 0);
-        assertEq(maxTxPerBatch, 0);
+        assertEq(maxTxsPerBatch, 0);
         assertEq(maxDelayPerBatch, 0);
         assertEq(safeBridgeGasLimit, 0);
         batch.setBatchConfig(token, config);
-        (feeAmountPerTx, minAmountPerTx, maxTxPerBatch, maxDelayPerBatch, safeBridgeGasLimit) = batch.configs(token);
+        (feeAmountPerTx, minAmountPerTx, maxTxsPerBatch, maxDelayPerBatch, safeBridgeGasLimit) = batch.configs(token);
         assertEq(feeAmountPerTx, config.feeAmountPerTx);
         assertEq(minAmountPerTx, config.minAmountPerTx);
-        assertEq(maxTxPerBatch, config.maxTxPerBatch);
+        assertEq(maxTxsPerBatch, config.maxTxsPerBatch);
         assertEq(maxDelayPerBatch, config.maxDelayPerBatch);
         assertEq(safeBridgeGasLimit, config.safeBridgeGasLimit);
     }
@@ -178,9 +178,9 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
         uint256 phase,
         L1BatchBridgeGateway.BatchState memory expected
     ) private {
-        (uint128 amount, uint64 firstDepositTimestamp, uint64 numDeposits, bytes32 hash) = batch.batches(token, phase);
+        (uint128 amount, uint64 startTime, uint64 numDeposits, bytes32 hash) = batch.batches(token, phase);
         assertEq(amount, expected.amount);
-        assertEq(firstDepositTimestamp, expected.firstDepositTimestamp);
+        assertEq(startTime, expected.startTime);
         assertEq(numDeposits, expected.numDeposits);
         // assertEq(hash, expected.hash);
     }
@@ -398,36 +398,38 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
         hevm.expectRevert(
             "AccessControl: account 0x0000000000000000000000000000000000000001 is missing role 0xfc8737ab85eb45125971625a9ebdb75cc78e01d5c1fa80c4c6e5203f47bc4fab"
         );
-        batch.batchBridge(address(0));
+        batch.batchDeposit(address(0));
         hevm.stopPrank();
 
         batch.grantRole(batch.KEEPER_ROLE(), address(this));
 
         // revert token not supported
         hevm.expectRevert(L1BatchBridgeGateway.ErrorTokenNotSupported.selector);
-        batch.batchBridge(address(0));
+        batch.batchDeposit(address(0));
 
         batch.setBatchConfig(address(0), L1BatchBridgeGateway.BatchConfig(0, 0, 1, 1, ETH_DEPOSIT_SAFE_GAS_LIMIT));
 
         // revert no pending
         hevm.expectRevert(L1BatchBridgeGateway.ErrorNoPendingBatch.selector);
-        batch.batchBridge(address(0));
+        batch.batchDeposit(address(0));
 
         // revert insufficient msg.value
         batch.depositETH{value: 1000}();
         hevm.expectRevert(L1BatchBridgeGateway.ErrorInsufficientMsgValueForBatchDepositFee.selector);
-        batch.batchBridge(address(0));
+        batch.batchDeposit(address(0));
 
         hevm.expectRevert(L1BatchBridgeGateway.ErrorInsufficientMsgValueForBatchDepositFee.selector);
-        batch.batchBridge{value: L2_GAS_PRICE * ETH_DEPOSIT_SAFE_GAS_LIMIT}(address(0));
+        batch.batchDeposit{value: L2_GAS_PRICE * ETH_DEPOSIT_SAFE_GAS_LIMIT}(address(0));
 
         hevm.expectRevert(L1BatchBridgeGateway.ErrorInsufficientMsgValueForBatchDepositFee.selector);
-        batch.batchBridge{value: L2_GAS_PRICE * (SAFE_BATCH_BRIDGE_GAS_LIMIT + ETH_DEPOSIT_SAFE_GAS_LIMIT) - 1}(
+        batch.batchDeposit{value: L2_GAS_PRICE * (SAFE_BATCH_BRIDGE_GAS_LIMIT + ETH_DEPOSIT_SAFE_GAS_LIMIT) - 1}(
             address(0)
         );
 
         // succeed
-        batch.batchBridge{value: L2_GAS_PRICE * (SAFE_BATCH_BRIDGE_GAS_LIMIT + ETH_DEPOSIT_SAFE_GAS_LIMIT)}(address(0));
+        batch.batchDeposit{value: L2_GAS_PRICE * (SAFE_BATCH_BRIDGE_GAS_LIMIT + ETH_DEPOSIT_SAFE_GAS_LIMIT)}(
+            address(0)
+        );
     }
 
     function testBatchBridgeETH() external {
@@ -470,7 +472,7 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
 
         uint256 batchFeeVaultBefore = batchFeeVault.balance;
         uint256 messengerBefore = address(l1Messenger).balance;
-        batch.batchBridge{value: 1 ether}(address(0));
+        batch.batchDeposit{value: 1 ether}(address(0));
         checkTokenState(address(0), L1BatchBridgeGateway.TokenState(0, 1, 1));
         assertEq(batchFeeVaultBefore, batchFeeVault.balance);
         assertEq(messengerBefore + 1000, address(l1Messenger).balance);
@@ -513,7 +515,7 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
 
         batchFeeVaultBefore = batchFeeVault.balance;
         messengerBefore = address(l1Messenger).balance;
-        batch.batchBridge{value: 1 ether}(address(0));
+        batch.batchDeposit{value: 1 ether}(address(0));
         checkTokenState(address(0), L1BatchBridgeGateway.TokenState(0, 2, 2));
         assertEq(batchFeeVaultBefore + 100, batchFeeVault.balance);
         assertEq(messengerBefore + 900, address(l1Messenger).balance);
@@ -570,7 +572,7 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
 
         uint256 batchFeeVaultBefore = l1Token.balanceOf(batchFeeVault);
         uint256 gatewayBefore = l1Token.balanceOf(address(gateway));
-        batch.batchBridge{value: 1 ether}(address(l1Token));
+        batch.batchDeposit{value: 1 ether}(address(l1Token));
         checkTokenState(address(l1Token), L1BatchBridgeGateway.TokenState(0, 1, 1));
         assertEq(batchFeeVaultBefore, l1Token.balanceOf(batchFeeVault));
         assertEq(gatewayBefore + 1000, l1Token.balanceOf(address(gateway)));
@@ -624,7 +626,7 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
 
         batchFeeVaultBefore = l1Token.balanceOf(batchFeeVault);
         gatewayBefore = l1Token.balanceOf(address(gateway));
-        batch.batchBridge{value: 1 ether}(address(l1Token));
+        batch.batchDeposit{value: 1 ether}(address(l1Token));
         checkTokenState(address(l1Token), L1BatchBridgeGateway.TokenState(0, 2, 2));
         assertEq(batchFeeVaultBefore + 100, l1Token.balanceOf(batchFeeVault));
         assertEq(gatewayBefore + 900, l1Token.balanceOf(address(gateway)));

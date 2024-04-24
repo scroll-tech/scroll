@@ -103,20 +103,20 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     /// @dev Compiler will pack this into a single `bytes32`.
     /// @param feeAmountPerTx The amount of fee charged for each deposit.
     /// @param minAmountPerTx The minimum amount of token for each deposit.
-    /// @param maxTxPerBatch The maximum number of deposit in each batch.
+    /// @param maxTxsPerBatch The maximum number of deposit in each batch.
     /// @param maxDelayPerBatch The maximum number of seconds to wait in each batch.
     /// @param safeBridgeGasLimit The safe bridge gas limit for bridging token from L1 to L2.
     struct BatchConfig {
         uint96 feeAmountPerTx;
         uint96 minAmountPerTx;
-        uint16 maxTxPerBatch;
+        uint16 maxTxsPerBatch;
         uint24 maxDelayPerBatch;
         uint24 safeBridgeGasLimit;
     }
 
     /// @dev Compiler will pack this into two `bytes32`.
     /// @param amount The total amount of token to deposit in current batch.
-    /// @param firstDepositTimestamp The timestamp of first deposit.
+    /// @param startTime The timestamp of the first deposit.
     /// @param numDeposits The total number of deposits in current batch.
     /// @param hash The hash of current batch.
     ///   Suppose there are `n` deposits in current batch with `senders` and `amounts`. The hash is computed as
@@ -128,7 +128,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     ///   In current way, the hash of each batch among all tokens should be different.
     struct BatchState {
         uint128 amount;
-        uint64 firstDepositTimestamp;
+        uint64 startTime;
         uint64 numDeposits;
         bytes32 hash;
     }
@@ -241,7 +241,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     /// @param newConfig The new config.
     function setBatchConfig(address token, BatchConfig memory newConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (
-            newConfig.maxTxPerBatch == 0 ||
+            newConfig.maxTxsPerBatch == 0 ||
             newConfig.maxDelayPerBatch == 0 ||
             newConfig.feeAmountPerTx > newConfig.minAmountPerTx
         ) {
@@ -252,7 +252,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
 
     /// @notice Initiate the batch bridge of current pending batch.
     /// @param token The address of the token.
-    function batchBridge(address token) external payable onlyRole(KEEPER_ROLE) {
+    function batchDeposit(address token) external payable onlyRole(KEEPER_ROLE) {
         BatchConfig memory cachedBatchConfig = configs[token];
         TokenState memory cachedTokenState = tokens[token];
         _tryFinalzeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
@@ -371,7 +371,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
             bytes32 initialNode = BatchBridgeCodec.encodeInitialNode(token, cachedTokenState.currentBatchIndex);
             // this is first tx in this batch
             cachedBatchState.hash = BatchBridgeCodec.hash(initialNode, node);
-            cachedBatchState.firstDepositTimestamp = uint64(block.timestamp);
+            cachedBatchState.startTime = uint64(block.timestamp);
         } else {
             cachedBatchState.hash = BatchBridgeCodec.hash(cachedBatchState.hash, node);
         }
@@ -390,17 +390,17 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         BatchConfig memory cachedBatchConfig,
         TokenState memory cachedTokenState
     ) internal view {
-        if (cachedBatchConfig.maxTxPerBatch == 0) {
+        if (cachedBatchConfig.maxTxsPerBatch == 0) {
             revert ErrorTokenNotSupported();
         }
         BatchState memory cachedBatchState = batches[token][cachedTokenState.currentBatchIndex];
         // return if it is the very first batch
         if (cachedBatchState.numDeposits == 0) return;
 
-        // finalize current batchIndex when `maxTxPerBatch` or `maxDelayPerBatch` reached.
+        // finalize current batchIndex when `maxTxsPerBatch` or `maxDelayPerBatch` reached.
         if (
-            cachedBatchState.numDeposits == cachedBatchConfig.maxTxPerBatch ||
-            block.timestamp - cachedBatchState.firstDepositTimestamp > cachedBatchConfig.maxDelayPerBatch
+            cachedBatchState.numDeposits == cachedBatchConfig.maxTxsPerBatch ||
+            block.timestamp - cachedBatchState.startTime > cachedBatchConfig.maxDelayPerBatch
         ) {
             cachedTokenState.currentBatchIndex += 1;
         }
