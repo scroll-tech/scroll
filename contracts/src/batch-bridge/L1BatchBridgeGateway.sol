@@ -252,10 +252,10 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
 
     /// @notice Initiate the batch bridge of current pending batch.
     /// @param token The address of the token.
-    function batchDeposit(address token) external payable onlyRole(KEEPER_ROLE) {
+    function executeBatchDeposit(address token) external payable onlyRole(KEEPER_ROLE) {
         BatchConfig memory cachedBatchConfig = configs[token];
         TokenState memory cachedTokenState = tokens[token];
-        _tryFinalzeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
+        _tryFinalizeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
 
         // no batch to bridge
         if (cachedTokenState.currentBatchIndex == cachedTokenState.pendingBatchIndex) {
@@ -348,7 +348,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     ) internal nonReentrant {
         BatchConfig memory cachedBatchConfig = configs[token];
         TokenState memory cachedTokenState = tokens[token];
-        _tryFinalzeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
+        _tryFinalizeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
 
         BatchState memory cachedBatchState = batches[token][cachedTokenState.currentBatchIndex];
         if (amount < cachedBatchConfig.minAmountPerTx) {
@@ -380,12 +380,12 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         tokens[token] = cachedTokenState;
     }
 
-    /// @dev Internal function to finalze current batch.
+    /// @dev Internal function to finalize current batch.
     ///      This function may change the value of `cachedTokenState`, which can be used in later operation.
-    /// @param token The address of token to finalze.
+    /// @param token The address of token to finalize.
     /// @param cachedBatchConfig The cached batch config in memory.
     /// @param cachedTokenState The cached token state in memory.
-    function _tryFinalzeCurrentBatch(
+    function _tryFinalizeCurrentBatch(
         address token,
         BatchConfig memory cachedBatchConfig,
         TokenState memory cachedTokenState

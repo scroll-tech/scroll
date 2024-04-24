@@ -398,36 +398,36 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
         hevm.expectRevert(
             "AccessControl: account 0x0000000000000000000000000000000000000001 is missing role 0xfc8737ab85eb45125971625a9ebdb75cc78e01d5c1fa80c4c6e5203f47bc4fab"
         );
-        batch.batchDeposit(address(0));
+        batch.executeBatchDeposit(address(0));
         hevm.stopPrank();
 
         batch.grantRole(batch.KEEPER_ROLE(), address(this));
 
         // revert token not supported
         hevm.expectRevert(L1BatchBridgeGateway.ErrorTokenNotSupported.selector);
-        batch.batchDeposit(address(0));
+        batch.executeBatchDeposit(address(0));
 
         batch.setBatchConfig(address(0), L1BatchBridgeGateway.BatchConfig(0, 0, 1, 1, ETH_DEPOSIT_SAFE_GAS_LIMIT));
 
         // revert no pending
         hevm.expectRevert(L1BatchBridgeGateway.ErrorNoPendingBatch.selector);
-        batch.batchDeposit(address(0));
+        batch.executeBatchDeposit(address(0));
 
         // revert insufficient msg.value
         batch.depositETH{value: 1000}();
         hevm.expectRevert(L1BatchBridgeGateway.ErrorInsufficientMsgValueForBatchDepositFee.selector);
-        batch.batchDeposit(address(0));
+        batch.executeBatchDeposit(address(0));
 
         hevm.expectRevert(L1BatchBridgeGateway.ErrorInsufficientMsgValueForBatchDepositFee.selector);
-        batch.batchDeposit{value: L2_GAS_PRICE * ETH_DEPOSIT_SAFE_GAS_LIMIT}(address(0));
+        batch.executeBatchDeposit{value: L2_GAS_PRICE * ETH_DEPOSIT_SAFE_GAS_LIMIT}(address(0));
 
         hevm.expectRevert(L1BatchBridgeGateway.ErrorInsufficientMsgValueForBatchDepositFee.selector);
-        batch.batchDeposit{value: L2_GAS_PRICE * (SAFE_BATCH_BRIDGE_GAS_LIMIT + ETH_DEPOSIT_SAFE_GAS_LIMIT) - 1}(
+        batch.executeBatchDeposit{value: L2_GAS_PRICE * (SAFE_BATCH_BRIDGE_GAS_LIMIT + ETH_DEPOSIT_SAFE_GAS_LIMIT) - 1}(
             address(0)
         );
 
         // succeed
-        batch.batchDeposit{value: L2_GAS_PRICE * (SAFE_BATCH_BRIDGE_GAS_LIMIT + ETH_DEPOSIT_SAFE_GAS_LIMIT)}(
+        batch.executeBatchDeposit{value: L2_GAS_PRICE * (SAFE_BATCH_BRIDGE_GAS_LIMIT + ETH_DEPOSIT_SAFE_GAS_LIMIT)}(
             address(0)
         );
     }
@@ -472,7 +472,7 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
 
         uint256 batchFeeVaultBefore = batchFeeVault.balance;
         uint256 messengerBefore = address(l1Messenger).balance;
-        batch.batchDeposit{value: 1 ether}(address(0));
+        batch.executeBatchDeposit{value: 1 ether}(address(0));
         checkTokenState(address(0), L1BatchBridgeGateway.TokenState(0, 1, 1));
         assertEq(batchFeeVaultBefore, batchFeeVault.balance);
         assertEq(messengerBefore + 1000, address(l1Messenger).balance);
@@ -515,7 +515,7 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
 
         batchFeeVaultBefore = batchFeeVault.balance;
         messengerBefore = address(l1Messenger).balance;
-        batch.batchDeposit{value: 1 ether}(address(0));
+        batch.executeBatchDeposit{value: 1 ether}(address(0));
         checkTokenState(address(0), L1BatchBridgeGateway.TokenState(0, 2, 2));
         assertEq(batchFeeVaultBefore + 100, batchFeeVault.balance);
         assertEq(messengerBefore + 900, address(l1Messenger).balance);
@@ -572,7 +572,7 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
 
         uint256 batchFeeVaultBefore = l1Token.balanceOf(batchFeeVault);
         uint256 gatewayBefore = l1Token.balanceOf(address(gateway));
-        batch.batchDeposit{value: 1 ether}(address(l1Token));
+        batch.executeBatchDeposit{value: 1 ether}(address(l1Token));
         checkTokenState(address(l1Token), L1BatchBridgeGateway.TokenState(0, 1, 1));
         assertEq(batchFeeVaultBefore, l1Token.balanceOf(batchFeeVault));
         assertEq(gatewayBefore + 1000, l1Token.balanceOf(address(gateway)));
@@ -626,7 +626,7 @@ contract L1BatchBridgeGatewayTest is L1GatewayTestBase {
 
         batchFeeVaultBefore = l1Token.balanceOf(batchFeeVault);
         gatewayBefore = l1Token.balanceOf(address(gateway));
-        batch.batchDeposit{value: 1 ether}(address(l1Token));
+        batch.executeBatchDeposit{value: 1 ether}(address(l1Token));
         checkTokenState(address(l1Token), L1BatchBridgeGateway.TokenState(0, 2, 2));
         assertEq(batchFeeVaultBefore + 100, l1Token.balanceOf(batchFeeVault));
         assertEq(gatewayBefore + 900, l1Token.balanceOf(address(gateway)));

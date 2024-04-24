@@ -49,7 +49,7 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     /// @dev Thrown when the L1 token mapping mismatch with `finalizeBatchBridge`.
     error ErrorL1TokenMismatched();
 
-    /// @dev Thrown when messenge sender is not `counterpart`.
+    /// @dev Thrown when message sender is not `counterpart`.
     error ErrorMessageSenderNotCounterpart();
 
     /// @dev Thrown no failed distribution exists.
@@ -240,10 +240,10 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
         } else {
             // We perform a low level call here, to bypass Solidity's return data size checking mechanism.
             // Normally, the token is selected that the call would not revert unless out of gas.
-            bytes memory returndata;
-            (success, returndata) = token.call(abi.encodeCall(IERC20Upgradeable.transfer, (receiver, amount)));
-            if (success && returndata.length > 0) {
-                success = abi.decode(returndata, (bool));
+            bytes memory returnData;
+            (success, returnData) = token.call(abi.encodeCall(IERC20Upgradeable.transfer, (receiver, amount)));
+            if (success && returnData.length > 0) {
+                success = abi.decode(returnData, (bool));
             }
         }
     }
