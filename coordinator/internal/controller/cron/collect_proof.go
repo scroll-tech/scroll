@@ -95,7 +95,7 @@ func (c *Collector) Stop() {
 	c.stopCleanChallengeChan <- struct{}{}
 }
 
-// timeoutTask cron check the send task is timeout. if timeout reached, restore the
+// timeoutBatchProofTask cron check the send task is timeout. if timeout reached, restore the
 // chunk/batch task to unassigned. then the batch/chunk collector can retry it.
 func (c *Collector) timeoutBatchProofTask() {
 	defer func() {
