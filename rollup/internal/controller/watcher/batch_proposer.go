@@ -131,9 +131,9 @@ func (p *BatchProposer) TryProposeBatch() {
 	}
 }
 
-func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion) error {
+func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, useCompression bool) error {
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		batch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, dbTX)
+		batch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, useCompression, dbTX)
 		if dbErr != nil {
 			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure",
 				"start chunk index", batch.StartChunkIndex, "end chunk index", batch.EndChunkIndex, "error", dbErr)
@@ -181,9 +181,18 @@ func (p *BatchProposer) proposeBatch() error {
 		}
 	}
 
-	codecVersion := encoding.CodecV0
+	var codecVersion encoding.CodecVersion
 	if p.chainCfg.IsBernoulli(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) {
 		codecVersion = encoding.CodecV1
+	} else {
+		codecVersion = encoding.CodecV0
+	}
+
+	var useCompression bool
+	if codecVersion == encoding.CodecV1 && p.chainCfg.IsCurie(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) {
+		useCompression = true
+	} else {
+		useCompression = false
 	}
 
 	daChunks, err := p.getDAChunks(dbChunks)
@@ -212,7 +221,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
-		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
+		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion, useCompression)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
@@ -227,24 +236,27 @@ func (p *BatchProposer) proposeBatch() error {
 			}
 
 			log.Debug("breaking limit condition in batching",
-				"currentL1CommitCalldataSize", metrics.L1CommitCalldataSize,
-				"maxL1CommitCalldataSizePerBatch", p.maxL1CommitCalldataSizePerBatch,
-				"currentOverEstimateL1CommitGas", totalOverEstimateL1CommitGas,
-				"maxL1CommitGasPerBatch", p.maxL1CommitGasPerBatch)
+				"l1CommitCalldataSize", metrics.L1CommitCalldataSize,
+				"maxL1CommitCalldataSize", p.maxL1CommitCalldataSizePerBatch,
+				"l1CommitGas", metrics.L1CommitGas,
+				"overEstimateL1CommitGas", totalOverEstimateL1CommitGas,
+				"maxL1CommitGas", p.maxL1CommitGasPerBatch,
+				"l1CommitBlobSize", metrics.L1CommitBlobSize,
+				"maxBlobSize", maxBlobSize)
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 
-			metrics, err := utils.CalculateBatchMetrics(&batch, codecVersion)
+			metrics, err := utils.CalculateBatchMetrics(&batch, codecVersion, useCompression)
 			if err != nil {
 				return fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
 
 			p.recordBatchMetrics(metrics)
-			return p.updateDBBatchInfo(&batch, codecVersion)
+			return p.updateDBBatchInfo(&batch, codecVersion, useCompression)
 		}
 	}
 
-	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
+	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion, useCompression)
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 	}
@@ -258,7 +270,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.recordBatchMetrics(metrics)
-		return p.updateDBBatchInfo(&batch, codecVersion)
+		return p.updateDBBatchInfo(&batch, codecVersion, useCompression)
 	}
 
 	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")

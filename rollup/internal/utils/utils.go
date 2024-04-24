@@ -85,7 +85,7 @@ type ChunkMetrics struct {
 }
 
 // CalculateChunkMetrics calculates chunk metrics.
-func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) (*ChunkMetrics, error) {
+func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, useCompression bool) (*ChunkMetrics, error) {
 	var err error
 	metrics := &ChunkMetrics{
 		TxNum:               chunk.NumTransactions(),
@@ -100,17 +100,18 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 	case encoding.CodecV0:
 		metrics.L1CommitCalldataSize, err = codecv0.EstimateChunkL1CommitCalldataSize(chunk)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate chunk L1 commit calldata size: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv0 chunk L1 commit calldata size: %w", err)
 		}
 		metrics.L1CommitGas, err = codecv0.EstimateChunkL1CommitGas(chunk)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate chunk L1 commit gas: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv0 chunk L1 commit gas: %w", err)
 		}
 		return metrics, nil
 	case encoding.CodecV1:
-		metrics.L1CommitBlobSize, err = codecv1.EstimateChunkL1CommitBlobSize(chunk)
+		metrics.L1CommitCalldataSize = codecv1.EstimateChunkL1CommitCalldataSize(chunk)
+		metrics.L1CommitBlobSize, err = codecv1.EstimateChunkL1CommitBlobSize(chunk, useCompression)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate chunk L1 commit blob size: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv1 chunk L1 commit blob size: %w", err)
 		}
 		return metrics, nil
 	default:
@@ -133,7 +134,7 @@ type BatchMetrics struct {
 }
 
 // CalculateBatchMetrics calculates batch metrics.
-func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetrics, error) {
+func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion, useCompression bool) (*BatchMetrics, error) {
 	var err error
 	metrics := &BatchMetrics{
 		NumChunks:           uint64(len(batch.Chunks)),
@@ -143,17 +144,18 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 	case encoding.CodecV0:
 		metrics.L1CommitGas, err = codecv0.EstimateBatchL1CommitGas(batch)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate batch L1 commit gas: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv0 batch L1 commit gas: %w", err)
 		}
 		metrics.L1CommitCalldataSize, err = codecv0.EstimateBatchL1CommitCalldataSize(batch)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate batch L1 commit calldata size: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv0 batch L1 commit calldata size: %w", err)
 		}
 		return metrics, nil
 	case encoding.CodecV1:
-		metrics.L1CommitBlobSize, err = codecv1.EstimateBatchL1CommitBlobSize(batch)
+		metrics.L1CommitCalldataSize = codecv1.EstimateBatchL1CommitCalldataSize(batch)
+		metrics.L1CommitBlobSize, err = codecv1.EstimateBatchL1CommitBlobSize(batch, useCompression)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate chunk L1 commit blob size: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv1 batch L1 commit blob size: %w", err)
 		}
 		return metrics, nil
 	default:
@@ -200,7 +202,7 @@ type BatchMetadata struct {
 }
 
 // GetBatchMetadata retrieves the metadata of a batch.
-func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetadata, error) {
+func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion, useCompression bool) (*BatchMetadata, error) {
 	numChunks := len(batch.Chunks)
 	totalL1MessagePoppedBeforeEndDAChunk := batch.TotalL1MessagePoppedBefore
 	for i := 0; i < numChunks-1; i++ {
@@ -242,7 +244,7 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		}
 		return batchMeta, nil
 	case encoding.CodecV1:
-		daBatch, err := codecv1.NewDABatch(batch, false)
+		daBatch, err := codecv1.NewDABatch(batch, useCompression)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codecv1 DA batch: %w", err)
 		}

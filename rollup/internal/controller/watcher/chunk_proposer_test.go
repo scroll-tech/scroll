@@ -178,6 +178,7 @@ func testChunkProposerCodecv0Limits(t *testing.T) {
 				GasCostIncreaseMultiplier:       1.2,
 			}, &params.ChainConfig{
 				HomesteadBlock: tt.forkBlock,
+				CurieBlock:     big.NewInt(0),
 			}, db, nil)
 			cp.TryProposeChunk()
 
@@ -296,7 +297,7 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 				MaxBlockNumPerChunk:             tt.maxBlockNum,
 				MaxTxNumPerChunk:                tt.maxTxNum,
 				MaxL1CommitGasPerChunk:          1,
-				MaxL1CommitCalldataSizePerChunk: 1,
+				MaxL1CommitCalldataSizePerChunk: 100000,
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
@@ -323,40 +324,60 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 }
 
 func testChunkProposerCodecv1BlobSizeLimit(t *testing.T) {
-	db := setupDB(t)
-	defer database.CloseDB(db)
-
-	block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
-	for i := int64(0); i < 2000; i++ {
-		l2BlockOrm := orm.NewL2Block(db)
-		block.Header.Number = big.NewInt(i + 1)
-		err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
-		assert.NoError(t, err)
-	}
-
-	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk:             math.MaxUint64,
-		MaxTxNumPerChunk:                math.MaxUint64,
-		MaxL1CommitGasPerChunk:          1,
-		MaxL1CommitCalldataSizePerChunk: 1,
-		MaxRowConsumptionPerChunk:       math.MaxUint64,
-		ChunkTimeoutSec:                 math.MaxUint64,
-		GasCostIncreaseMultiplier:       1,
-	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
-
-	for i := 0; i < 10; i++ {
-		cp.TryProposeChunk()
-	}
-
-	chunkOrm := orm.NewChunk(db)
-	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
-	assert.NoError(t, err)
-	assert.Len(t, chunks, 4)
-	for i, chunk := range chunks {
-		expected := uint64(551 * (i + 1))
-		if expected > 2000 {
-			expected = 2000
+	compressionTests := []bool{false, true} // false for uncompressed, true for compressed
+	for _, compressed := range compressionTests {
+		db := setupDB(t)
+		block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+		for i := int64(0); i < 2000; i++ {
+			l2BlockOrm := orm.NewL2Block(db)
+			block.Header.Number = big.NewInt(i + 1)
+			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
+			assert.NoError(t, err)
 		}
-		assert.Equal(t, expected, chunk.EndBlockNumber)
+
+		var chainConfig *params.ChainConfig
+		if compressed {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
+		} else {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
+		}
+
+		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+			MaxBlockNumPerChunk:             math.MaxUint64,
+			MaxTxNumPerChunk:                math.MaxUint64,
+			MaxL1CommitGasPerChunk:          1,
+			MaxL1CommitCalldataSizePerChunk: 100000,
+			MaxRowConsumptionPerChunk:       math.MaxUint64,
+			ChunkTimeoutSec:                 math.MaxUint64,
+			GasCostIncreaseMultiplier:       1,
+		}, chainConfig, db, nil)
+
+		for i := 0; i < 10; i++ {
+			cp.TryProposeChunk()
+		}
+
+		chunkOrm := orm.NewChunk(db)
+		chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
+		assert.NoError(t, err)
+
+		var expectedNumChunks int
+		var numBlocksMultiplier uint64
+		if compressed {
+			expectedNumChunks = 2
+			numBlocksMultiplier = 1666
+		} else {
+			expectedNumChunks = 4
+			numBlocksMultiplier = 551
+		}
+		assert.Len(t, chunks, expectedNumChunks)
+
+		for i, chunk := range chunks {
+			expected := numBlocksMultiplier * (uint64(i) + 1)
+			if expected > 2000 {
+				expected = 2000
+			}
+			assert.Equal(t, expected, chunk.EndBlockNumber)
+		}
+		database.CloseDB(db)
 	}
 }

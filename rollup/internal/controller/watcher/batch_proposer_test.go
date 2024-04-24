@@ -118,7 +118,7 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 				Blocks: []*encoding.Block{block},
 			}
 			chunkOrm := orm.NewChunk(db)
-			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0)
+			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, false)
 			assert.NoError(t, err)
 			batch := &encoding.Batch{
 				Index:                      0,
@@ -127,7 +127,7 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 				Chunks:                     []*encoding.Chunk{chunk},
 			}
 			batchOrm := orm.NewBatch(db)
-			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
+			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false)
 			assert.NoError(t, err)
 
 			l2BlockOrm := orm.NewL2Block(db)
@@ -163,6 +163,7 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 				GasCostIncreaseMultiplier:       1.2,
 			}, &params.ChainConfig{
 				HomesteadBlock: tt.forkBlock,
+				CurieBlock:     big.NewInt(0),
 			}, db, nil)
 			bp.TryProposeBatch()
 
@@ -243,7 +244,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				Blocks: []*encoding.Block{block},
 			}
 			chunkOrm := orm.NewChunk(db)
-			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV1)
+			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV1, false)
 			assert.NoError(t, err)
 			batch := &encoding.Batch{
 				Index:                      0,
@@ -252,7 +253,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				Chunks:                     []*encoding.Chunk{chunk},
 			}
 			batchOrm := orm.NewBatch(db)
-			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV1)
+			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV1, false)
 			assert.NoError(t, err)
 
 			l2BlockOrm := orm.NewL2Block(db)
@@ -263,7 +264,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				MaxBlockNumPerChunk:             1,
 				MaxTxNumPerChunk:                10000,
 				MaxL1CommitGasPerChunk:          1,
-				MaxL1CommitCalldataSizePerChunk: 1,
+				MaxL1CommitCalldataSizePerChunk: 100000,
 				MaxRowConsumptionPerChunk:       1000000,
 				ChunkTimeoutSec:                 300,
 				GasCostIncreaseMultiplier:       1.2,
@@ -276,14 +277,14 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 			chunks, err := chunkOrm.GetChunksInRange(context.Background(), 1, 2)
 			assert.NoError(t, err)
 			assert.Equal(t, uint64(0), chunks[0].TotalL1CommitGas)
-			assert.Equal(t, uint64(0), chunks[0].TotalL1CommitCalldataSize)
+			assert.Equal(t, uint64(60), chunks[0].TotalL1CommitCalldataSize)
 			assert.Equal(t, uint64(0), chunks[1].TotalL1CommitGas)
-			assert.Equal(t, uint64(0), chunks[1].TotalL1CommitCalldataSize)
+			assert.Equal(t, uint64(60), chunks[1].TotalL1CommitCalldataSize)
 
 			bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 				MaxChunkNumPerBatch:             tt.maxChunkNum,
 				MaxL1CommitGasPerBatch:          1,
-				MaxL1CommitCalldataSizePerBatch: 1,
+				MaxL1CommitCalldataSizePerBatch: 100000,
 				BatchTimeoutSec:                 tt.batchTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
 			}, &params.ChainConfig{
@@ -328,7 +329,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		Blocks: []*encoding.Block{block},
 	}
 	chunkOrm := orm.NewChunk(db)
-	_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0)
+	_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, false)
 	assert.NoError(t, err)
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -337,7 +338,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 	}
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
+	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false)
 	assert.NoError(t, err)
 
 	l2BlockOrm := orm.NewL2Block(db)
@@ -394,74 +395,97 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 }
 
 func testBatchProposerBlobSizeLimit(t *testing.T) {
-	db := setupDB(t)
-	defer database.CloseDB(db)
+	compressionTests := []bool{false, true} // false for uncompressed, true for compressed
+	for _, compressed := range compressionTests {
+		db := setupDB(t)
 
-	// Add genesis batch.
-	block := &encoding.Block{
-		Header: &gethTypes.Header{
-			Number: big.NewInt(0),
-		},
-		RowConsumption: &gethTypes.RowConsumption{},
-	}
-	chunk := &encoding.Chunk{
-		Blocks: []*encoding.Block{block},
-	}
-	chunkOrm := orm.NewChunk(db)
-	_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV1)
-	assert.NoError(t, err)
-	batch := &encoding.Batch{
-		Index:                      0,
-		TotalL1MessagePoppedBefore: 0,
-		ParentBatchHash:            common.Hash{},
-		Chunks:                     []*encoding.Chunk{chunk},
-	}
-	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV1)
-	assert.NoError(t, err)
-
-	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-		MaxBlockNumPerChunk:             math.MaxUint64,
-		MaxTxNumPerChunk:                math.MaxUint64,
-		MaxL1CommitGasPerChunk:          1,
-		MaxL1CommitCalldataSizePerChunk: 1,
-		MaxRowConsumptionPerChunk:       math.MaxUint64,
-		ChunkTimeoutSec:                 math.MaxUint64,
-		GasCostIncreaseMultiplier:       1,
-	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
-
-	block = readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
-	for total := int64(0); total < 7; total++ {
-		for i := int64(0); i < 10; i++ {
-			l2BlockOrm := orm.NewL2Block(db)
-			block.Header.Number = big.NewInt(total*10 + i + 1)
-			err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
-			assert.NoError(t, err)
+		// Add genesis batch.
+		block := &encoding.Block{
+			Header: &gethTypes.Header{
+				Number: big.NewInt(0),
+			},
+			RowConsumption: &gethTypes.RowConsumption{},
 		}
-		cp.TryProposeChunk()
-	}
-
-	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxChunkNumPerBatch:             math.MaxUint64,
-		MaxL1CommitGasPerBatch:          1,
-		MaxL1CommitCalldataSizePerBatch: 1,
-		BatchTimeoutSec:                 math.MaxUint64,
-		GasCostIncreaseMultiplier:       1,
-	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
-
-	for i := 0; i < 10; i++ {
-		bp.TryProposeBatch()
-	}
-
-	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
-	batches = batches[1:]
-	assert.NoError(t, err)
-	assert.Len(t, batches, 4)
-	for i, batch := range batches {
-		expected := uint64(2 * (i + 1))
-		if expected > 7 {
-			expected = 7
+		chunk := &encoding.Chunk{
+			Blocks: []*encoding.Block{block},
 		}
-		assert.Equal(t, expected, batch.EndChunkIndex)
+		chunkOrm := orm.NewChunk(db)
+		_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, false)
+		assert.NoError(t, err)
+		batch := &encoding.Batch{
+			Index:                      0,
+			TotalL1MessagePoppedBefore: 0,
+			ParentBatchHash:            common.Hash{},
+			Chunks:                     []*encoding.Chunk{chunk},
+		}
+		batchOrm := orm.NewBatch(db)
+		_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false)
+		assert.NoError(t, err)
+
+		var chainConfig *params.ChainConfig
+		if compressed {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
+		} else {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
+		}
+
+		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+			MaxBlockNumPerChunk:             math.MaxUint64,
+			MaxTxNumPerChunk:                math.MaxUint64,
+			MaxL1CommitGasPerChunk:          1,
+			MaxL1CommitCalldataSizePerChunk: 100000,
+			MaxRowConsumptionPerChunk:       math.MaxUint64,
+			ChunkTimeoutSec:                 0,
+			GasCostIncreaseMultiplier:       1,
+		}, chainConfig, db, nil)
+
+		blockHeight := int64(0)
+		block = readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
+		for total := int64(0); total < 20; total++ {
+			for i := int64(0); i < 30; i++ {
+				blockHeight++
+				l2BlockOrm := orm.NewL2Block(db)
+				block.Header.Number = big.NewInt(blockHeight)
+				err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
+				assert.NoError(t, err)
+			}
+			cp.TryProposeChunk()
+		}
+
+		bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+			MaxChunkNumPerBatch:             15,
+			MaxL1CommitGasPerBatch:          1,
+			MaxL1CommitCalldataSizePerBatch: 100000,
+			BatchTimeoutSec:                 math.MaxUint64,
+			GasCostIncreaseMultiplier:       1,
+		}, chainConfig, db, nil)
+
+		for i := 0; i < 30; i++ {
+			bp.TryProposeBatch()
+		}
+
+		batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
+		batches = batches[1:]
+		assert.NoError(t, err)
+
+		var expectedNumBatches int
+		var numChunksMultiplier uint64
+		if compressed {
+			expectedNumBatches = 2
+			numChunksMultiplier = 15
+		} else {
+			expectedNumBatches = 20
+			numChunksMultiplier = 1
+		}
+		assert.Len(t, batches, expectedNumBatches)
+
+		for i, batch := range batches {
+			expected := numChunksMultiplier * (uint64(i) + 1)
+			if expected > 20 {
+				expected = 20
+			}
+			assert.Equal(t, expected, batch.EndChunkIndex)
+		}
+		database.CloseDB(db)
 	}
 }

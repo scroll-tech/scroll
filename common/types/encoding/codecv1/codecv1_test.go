@@ -358,7 +358,7 @@ func TestCodecV1BatchDataHash(t *testing.T) {
 	trace3 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 	chunk3 := &encoding.Chunk{Blocks: []*encoding.Block{trace3}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk3}}
-	batch, err = NewDABatch(originalBatch, false)
+	batch, err = NewDABatch(originalBatch, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "0xd46d19f6d48083dc7905a68e6a20ea6a8fbcd445d56b549b324a8485b5b574a6", batch.DataHash.Hex())
 
@@ -372,7 +372,7 @@ func TestCodecV1BatchDataHash(t *testing.T) {
 	trace5 := readBlockFromJSON(t, "../../../testdata/blockTrace_05.json")
 	chunk5 := &encoding.Chunk{Blocks: []*encoding.Block{trace5}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk5}}
-	batch, err = NewDABatch(originalBatch, false)
+	batch, err = NewDABatch(originalBatch, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "0x93255aa24dd468c5645f1e6901b8131a7a78a0eeb2a17cbb09ba64688a8de6b4", batch.DataHash.Hex())
 
@@ -386,7 +386,7 @@ func TestCodecV1BatchDataHash(t *testing.T) {
 	trace7 := readBlockFromJSON(t, "../../../testdata/blockTrace_07.json")
 	chunk7 := &encoding.Chunk{Blocks: []*encoding.Block{trace7}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk7}}
-	batch, err = NewDABatch(originalBatch, false)
+	batch, err = NewDABatch(originalBatch, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "0x899a411a3309c6491701b7b955c7b1115ac015414bbb71b59a0ca561668d5208", batch.DataHash.Hex())
 
@@ -398,7 +398,7 @@ func TestCodecV1BatchDataHash(t *testing.T) {
 	chunk8 := &encoding.Chunk{Blocks: []*encoding.Block{trace2, trace3, trace4}}
 	chunk9 := &encoding.Chunk{Blocks: []*encoding.Block{trace5}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk8, chunk9}}
-	batch, err = NewDABatch(originalBatch, false)
+	batch, err = NewDABatch(originalBatch, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "0x9b0f37c563d27d9717ab16d47075df996c54fe110130df6b11bfd7230e134767", batch.DataHash.Hex())
 }
@@ -698,7 +698,7 @@ func TestCodecV1BatchSkipBitmap(t *testing.T) {
 	trace3 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
 	chunk3 := &encoding.Chunk{Blocks: []*encoding.Block{trace3}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk3}}
-	batch, err = NewDABatch(originalBatch, false)
+	batch, err = NewDABatch(originalBatch, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "", hex.EncodeToString(batch.SkippedL1MessageBitmap))
 	assert.Equal(t, 0, int(batch.L1MessagePopped))
@@ -716,7 +716,7 @@ func TestCodecV1BatchSkipBitmap(t *testing.T) {
 	trace5 := readBlockFromJSON(t, "../../../testdata/blockTrace_05.json")
 	chunk5 := &encoding.Chunk{Blocks: []*encoding.Block{trace5}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk5}}
-	batch, err = NewDABatch(originalBatch, false)
+	batch, err = NewDABatch(originalBatch, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "0000000000000000000000000000000000000000000000000000001fffffffff", hex.EncodeToString(batch.SkippedL1MessageBitmap))
 	assert.Equal(t, 42, int(batch.L1MessagePopped)) // skip 37, include 5
@@ -732,7 +732,7 @@ func TestCodecV1BatchSkipBitmap(t *testing.T) {
 	trace6 := readBlockFromJSON(t, "../../../testdata/blockTrace_06.json")
 	chunk6 := &encoding.Chunk{Blocks: []*encoding.Block{trace6}}
 	originalBatch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk6}}
-	batch, err = NewDABatch(originalBatch, false)
+	batch, err = NewDABatch(originalBatch, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "00000000000000000000000000000000000000000000000000000000000001dd", hex.EncodeToString(batch.SkippedL1MessageBitmap))
 	assert.Equal(t, 10, int(batch.L1MessagePopped)) // skip 7, include 3
@@ -748,7 +748,7 @@ func TestCodecV1BatchSkipBitmap(t *testing.T) {
 	assert.Equal(t, 257, int(batch.TotalL1MessagePopped))
 
 	originalBatch.TotalL1MessagePoppedBefore = 1
-	batch, err = NewDABatch(originalBatch, false)
+	batch, err = NewDABatch(originalBatch, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe", hex.EncodeToString(batch.SkippedL1MessageBitmap))
 	assert.Equal(t, 256, int(batch.L1MessagePopped)) // skip 254, include 2
@@ -764,7 +764,7 @@ func TestCodecV1BatchSkipBitmap(t *testing.T) {
 	assert.Equal(t, 42, int(batch.TotalL1MessagePopped))
 
 	originalBatch.TotalL1MessagePoppedBefore = 10
-	batch, err = NewDABatch(originalBatch, false)
+	batch, err = NewDABatch(originalBatch, true)
 	assert.NoError(t, err)
 	assert.Equal(t, "0000000000000000000000000000000000000000000000000000000007fffffe", hex.EncodeToString(batch.SkippedL1MessageBitmap))
 	assert.Equal(t, 32, int(batch.L1MessagePopped))
@@ -772,48 +772,61 @@ func TestCodecV1BatchSkipBitmap(t *testing.T) {
 }
 
 func TestCodecV1ChunkAndBatchBlobSizeEstimation(t *testing.T) {
-	trace2 := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
-	chunk2 := &encoding.Chunk{Blocks: []*encoding.Block{trace2}}
-	chunk2BlobSize, err := EstimateChunkL1CommitBlobSize(chunk2)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(320), chunk2BlobSize)
-	batch2 := &encoding.Batch{Chunks: []*encoding.Chunk{chunk2}}
-	batch2BlobSize, err := EstimateBatchL1CommitBlobSize(batch2)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(320), batch2BlobSize)
+	cases := []struct {
+		traceFile     string
+		expectedSizes map[bool]uint64
+	}{
+		{"../../../testdata/blockTrace_02.json", map[bool]uint64{false: 302, true: 228}},
+		{"../../../testdata/blockTrace_03.json", map[bool]uint64{false: 5929, true: 2846}},
+		{"../../../testdata/blockTrace_04.json", map[bool]uint64{false: 98, true: 51}},
+	}
 
-	trace3 := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
-	chunk3 := &encoding.Chunk{Blocks: []*encoding.Block{trace3}}
-	chunk3BlobSize, err := EstimateChunkL1CommitBlobSize(chunk3)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(5952), chunk3BlobSize)
-	batch3 := &encoding.Batch{Chunks: []*encoding.Chunk{chunk3}}
-	batch3BlobSize, err := EstimateBatchL1CommitBlobSize(batch3)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(5952), batch3BlobSize)
+	for _, c := range cases {
+		trace := readBlockFromJSON(t, c.traceFile)
+		chunk := &encoding.Chunk{Blocks: []*encoding.Block{trace}}
+		batch := &encoding.Batch{Chunks: []*encoding.Chunk{chunk}}
 
-	trace4 := readBlockFromJSON(t, "../../../testdata/blockTrace_04.json")
-	chunk4 := &encoding.Chunk{Blocks: []*encoding.Block{trace4}}
-	chunk4BlobSize, err := EstimateChunkL1CommitBlobSize(chunk4)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(128), chunk4BlobSize)
-	batch4 := &encoding.Batch{Chunks: []*encoding.Chunk{chunk4}}
-	batch4BlobSize, err := EstimateBatchL1CommitBlobSize(batch4)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(128), batch4BlobSize)
+		for compressed, expectedSize := range c.expectedSizes {
+			chunkBlobSize, err := EstimateChunkL1CommitBlobSize(chunk, compressed)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedSize, chunkBlobSize)
 
-	chunk5 := &encoding.Chunk{Blocks: []*encoding.Block{trace2, trace3}}
-	chunk5BlobSize, err := EstimateChunkL1CommitBlobSize(chunk5)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(6176), chunk5BlobSize)
-	chunk6 := &encoding.Chunk{Blocks: []*encoding.Block{trace4}}
-	chunk6BlobSize, err := EstimateChunkL1CommitBlobSize(chunk6)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(128), chunk6BlobSize)
-	batch5 := &encoding.Batch{Chunks: []*encoding.Chunk{chunk5, chunk6}}
-	batch5BlobSize, err := EstimateBatchL1CommitBlobSize(batch5)
-	assert.NoError(t, err)
-	assert.Equal(t, uint64(6208), batch5BlobSize)
+			batchBlobSize, err := EstimateBatchL1CommitBlobSize(batch, compressed)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedSize, batchBlobSize)
+		}
+	}
+
+	// Test with combined chunks
+	combinedCases := []struct {
+		traceFiles    []string
+		expectedSizes map[bool]uint64
+	}{
+		{[]string{"../../../testdata/blockTrace_02.json", "../../../testdata/blockTrace_03.json"}, map[bool]uint64{false: 6166, true: 3054}},
+		{[]string{"../../../testdata/blockTrace_04.json"}, map[bool]uint64{false: 98, true: 51}},
+	}
+
+	for _, cc := range combinedCases {
+		var chunks []*encoding.Chunk
+		var blocks []*encoding.Block
+		for _, file := range cc.traceFiles {
+			trace := readBlockFromJSON(t, file)
+			blocks = append(blocks, trace)
+		}
+		chunk := &encoding.Chunk{Blocks: blocks}
+		chunks = append(chunks, chunk)
+
+		for compressed, expectedSize := range cc.expectedSizes {
+			chunkBlobSize, err := EstimateChunkL1CommitBlobSize(chunk, compressed)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedSize, chunkBlobSize)
+
+			batch := &encoding.Batch{Chunks: chunks}
+			batchBlobSize, err := EstimateBatchL1CommitBlobSize(batch, compressed)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedSize, batchBlobSize)
+		}
+	}
 }
 
 func TestCompressScrollBatchBytes(t *testing.T) {
@@ -838,16 +851,13 @@ func TestCompressScrollBatchBytes(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 4, n)
 
-		batch = strings.TrimSuffix(batch, ",")
-		log.Info("test case", "filename", fmt.Sprintf("%s.hex", batch), "rawSize", rawSize, "comprSize", comprSize, "comprKeccakHash", common.HexToHash(comprKeccakHash).String())
-
 		tests = append(tests, struct {
 			filename     string
 			rawSize      int
 			comprSize    int
 			expectedHash common.Hash
 		}{
-			filename:     fmt.Sprintf("../testdata/%s.hex", batch),
+			filename:     fmt.Sprintf("../testdata/%s.hex", strings.TrimSuffix(batch, ",")),
 			rawSize:      rawSize,
 			comprSize:    comprSize,
 			expectedHash: common.HexToHash(comprKeccakHash),

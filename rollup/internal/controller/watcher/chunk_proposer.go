@@ -144,14 +144,14 @@ func (p *ChunkProposer) TryProposeChunk() {
 	}
 }
 
-func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) error {
+func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, useCompression bool) error {
 	if chunk == nil {
 		return nil
 	}
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, dbTX)
+		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, useCompression, dbTX)
 		if err != nil {
 			log.Warn("ChunkProposer.InsertChunk failed", "err", err)
 			return err
@@ -192,16 +192,25 @@ func (p *ChunkProposer) proposeChunk() error {
 		return nil
 	}
 
-	codecVersion := encoding.CodecV0
+	var codecVersion encoding.CodecVersion
 	if p.chainCfg.IsBernoulli(blocks[0].Header.Number) {
 		codecVersion = encoding.CodecV1
+	} else {
+		codecVersion = encoding.CodecV0
+	}
+
+	var useCompression bool
+	if codecVersion == encoding.CodecV1 && p.chainCfg.IsCurie(blocks[0].Header.Number) {
+		useCompression = true
+	} else {
+		useCompression = false
 	}
 
 	var chunk encoding.Chunk
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)
 
-		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
+		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion, useCompression)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 		}
@@ -223,25 +232,27 @@ func (p *ChunkProposer) proposeChunk() error {
 				"maxTxNum", p.maxTxNumPerChunk,
 				"l1CommitCalldataSize", metrics.L1CommitCalldataSize,
 				"maxL1CommitCalldataSize", p.maxL1CommitCalldataSizePerChunk,
+				"l1CommitGas", metrics.L1CommitGas,
 				"overEstimatedL1CommitGas", overEstimatedL1CommitGas,
 				"maxL1CommitGas", p.maxL1CommitGasPerChunk,
 				"rowConsumption", metrics.CrcMax,
 				"maxRowConsumption", p.maxRowConsumptionPerChunk,
+				"l1CommitBlobSize", metrics.L1CommitBlobSize,
 				"maxBlobSize", maxBlobSize)
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
 
-			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
+			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion, useCompression)
 			if calcErr != nil {
 				return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 			}
 
 			p.recordChunkMetrics(metrics)
-			return p.updateDBChunkInfo(&chunk, codecVersion)
+			return p.updateDBChunkInfo(&chunk, codecVersion, useCompression)
 		}
 	}
 
-	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
+	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion, useCompression)
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 	}
@@ -257,7 +268,7 @@ func (p *ChunkProposer) proposeChunk() error {
 
 		p.chunkFirstBlockTimeoutReached.Inc()
 		p.recordChunkMetrics(metrics)
-		return p.updateDBChunkInfo(&chunk, codecVersion)
+		return p.updateDBChunkInfo(&chunk, codecVersion, useCompression)
 	}
 
 	log.Debug("pending blocks do not reach one of the constraints or contain a timeout block")

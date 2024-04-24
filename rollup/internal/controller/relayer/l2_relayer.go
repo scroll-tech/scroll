@@ -196,7 +196,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		var dbChunk *orm.Chunk
-		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, encoding.CodecV0, dbTX)
+		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, encoding.CodecV0, false /* no compression */, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
@@ -213,7 +213,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		}
 
 		var dbBatch *orm.Batch
-		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, dbTX)
+		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, false /* no compression */, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
@@ -381,7 +381,14 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				return
 			}
 		} else { // codecv1
-			calldata, blob, err = r.constructCommitBatchPayloadCodecV1(dbBatch, dbParentBatch, dbChunks, chunks)
+			var useCompression bool
+			if r.chainCfg.IsCurie(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) {
+				useCompression = true
+			} else {
+				useCompression = false
+			}
+
+			calldata, blob, err = r.constructCommitBatchPayloadCodecV1(dbBatch, dbParentBatch, dbChunks, chunks, useCompression)
 			if err != nil {
 				log.Error("failed to construct commitBatch payload codecv1", "index", dbBatch.Index, "err", err)
 				return
@@ -550,7 +557,14 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 			chunks[i] = &encoding.Chunk{Blocks: blocks}
 		}
 
-		calldata, err = r.constructFinalizeBatchPayloadCodecV1(dbBatch, dbParentBatch, dbChunks, chunks, aggProof)
+		var useCompression bool
+		if r.chainCfg.IsCurie(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) {
+			useCompression = true
+		} else {
+			useCompression = false
+		}
+
+		calldata, err = r.constructFinalizeBatchPayloadCodecV1(dbBatch, dbParentBatch, dbChunks, chunks, aggProof, useCompression)
 		if err != nil {
 			return fmt.Errorf("failed to construct commitBatch payload codecv1, index: %v, err: %w", dbBatch.Index, err)
 		}
@@ -758,7 +772,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV0(dbBatch *orm.Batch, d
 	return calldata, nil
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
+func (r *Layer2Relayer) constructCommitBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk, useCompression bool) ([]byte, *kzg4844.Blob, error) {
 	batch := &encoding.Batch{
 		Index:                      dbBatch.Index,
 		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
@@ -766,7 +780,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV1(dbBatch *orm.Batch, d
 		Chunks:                     chunks,
 	}
 
-	daBatch, createErr := codecv1.NewDABatch(batch, false)
+	daBatch, createErr := codecv1.NewDABatch(batch, useCompression)
 	if createErr != nil {
 		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
 	}
@@ -817,7 +831,7 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV0(dbBatch *orm.Batch,
 	return calldata, nil
 }
 
-func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk, aggProof *message.BatchProof) ([]byte, error) {
+func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk, aggProof *message.BatchProof, useCompression bool) ([]byte, error) {
 	batch := &encoding.Batch{
 		Index:                      dbBatch.Index,
 		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
@@ -825,7 +839,7 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch,
 		Chunks:                     chunks,
 	}
 
-	daBatch, createErr := codecv1.NewDABatch(batch, false)
+	daBatch, createErr := codecv1.NewDABatch(batch, useCompression)
 	if createErr != nil {
 		return nil, fmt.Errorf("failed to create DA batch: %w", createErr)
 	}
