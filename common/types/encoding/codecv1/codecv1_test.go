@@ -3,7 +3,6 @@ package codecv1
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -11,14 +10,11 @@ import (
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
 
-	"github.com/colinlyguo/zstd"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestMain(m *testing.M) {
@@ -776,9 +772,9 @@ func TestCodecV1ChunkAndBatchBlobSizeEstimation(t *testing.T) {
 		traceFile     string
 		expectedSizes map[bool]uint64
 	}{
-		{"../../../testdata/blockTrace_02.json", map[bool]uint64{false: 302, true: 228}},
-		{"../../../testdata/blockTrace_03.json", map[bool]uint64{false: 5929, true: 2846}},
-		{"../../../testdata/blockTrace_04.json", map[bool]uint64{false: 98, true: 51}},
+		{"../../../testdata/blockTrace_02.json", map[bool]uint64{false: 302, true: 229}},
+		{"../../../testdata/blockTrace_03.json", map[bool]uint64{false: 5929, true: 2841}},
+		{"../../../testdata/blockTrace_04.json", map[bool]uint64{false: 98, true: 52}},
 	}
 
 	for _, c := range cases {
@@ -802,8 +798,8 @@ func TestCodecV1ChunkAndBatchBlobSizeEstimation(t *testing.T) {
 		traceFiles    []string
 		expectedSizes map[bool]uint64
 	}{
-		{[]string{"../../../testdata/blockTrace_02.json", "../../../testdata/blockTrace_03.json"}, map[bool]uint64{false: 6166, true: 3054}},
-		{[]string{"../../../testdata/blockTrace_04.json"}, map[bool]uint64{false: 98, true: 51}},
+		{[]string{"../../../testdata/blockTrace_02.json", "../../../testdata/blockTrace_03.json"}, map[bool]uint64{false: 6166, true: 3050}},
+		{[]string{"../../../testdata/blockTrace_04.json"}, map[bool]uint64{false: 98, true: 52}},
 	}
 
 	for _, cc := range combinedCases {
@@ -826,58 +822,6 @@ func TestCodecV1ChunkAndBatchBlobSizeEstimation(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, expectedSize, batchBlobSize)
 		}
-	}
-}
-
-func TestCompressScrollBatchBytes(t *testing.T) {
-	var tests []struct {
-		filename     string
-		rawSize      int
-		comprSize    int
-		expectedHash common.Hash
-	}
-
-	data, err := os.ReadFile("../testdata/input.txt")
-	require.NoError(t, err)
-
-	lines := strings.Split(string(data), "\n")
-
-	for _, line := range lines {
-		var batch string
-		var rawSize, comprSize int
-		var comprKeccakHash string
-
-		n, err := fmt.Sscanf(line, "%s raw_size= %d, compr_size= %d, compr_keccak_hash=%s", &batch, &rawSize, &comprSize, &comprKeccakHash)
-		require.NoError(t, err)
-		require.Equal(t, 4, n)
-
-		tests = append(tests, struct {
-			filename     string
-			rawSize      int
-			comprSize    int
-			expectedHash common.Hash
-		}{
-			filename:     fmt.Sprintf("../testdata/%s.hex", strings.TrimSuffix(batch, ",")),
-			rawSize:      rawSize,
-			comprSize:    comprSize,
-			expectedHash: common.HexToHash(comprKeccakHash),
-		})
-	}
-
-	for _, test := range tests {
-		hexData, err := os.ReadFile(test.filename)
-		assert.NoError(t, err)
-
-		batchBytes, err := hex.DecodeString(strings.TrimSpace(string(hexData)))
-		assert.NoError(t, err)
-		assert.Len(t, batchBytes, test.rawSize)
-
-		compressedBytes, err := zstd.CompressScrollBatchBytes(batchBytes)
-		assert.NoError(t, err)
-		assert.Len(t, compressedBytes, test.comprSize)
-
-		hash := crypto.Keccak256Hash(compressedBytes)
-		assert.Equal(t, test.expectedHash, hash)
 	}
 }
 

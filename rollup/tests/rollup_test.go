@@ -99,7 +99,6 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	}, &params.ChainConfig{}, db, nil)
 
 	bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxChunkNumPerBatch:             10,
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 300,
@@ -233,7 +232,6 @@ func testCommitBatchAndFinalizeBatch4844(t *testing.T) {
 		}, chainConfig, db, nil)
 
 		bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-			MaxChunkNumPerBatch:             10,
 			MaxL1CommitGasPerBatch:          1,
 			MaxL1CommitCalldataSizePerBatch: 100000,
 			BatchTimeoutSec:                 300,
@@ -371,7 +369,6 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfter4844(t *testing.T) {
 		}, chainConfig, db, nil)
 
 		bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-			MaxChunkNumPerBatch:             10,
 			MaxL1CommitGasPerBatch:          50000000000,
 			MaxL1CommitCalldataSizePerBatch: 1000000,
 			BatchTimeoutSec:                 300,
@@ -499,7 +496,6 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfterCompression(t *testing.T) {
 	}, chainConfig, db, nil)
 
 	bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-		MaxChunkNumPerBatch:             10,
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 300,

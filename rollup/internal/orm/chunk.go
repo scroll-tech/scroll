@@ -144,6 +144,22 @@ func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) (
 	return chunks, nil
 }
 
+// GetChunksByIndex retrieves a chunk that has the exact chunk index as given.
+func (o *Chunk) GetChunksByIndex(ctx context.Context, index uint64) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("index = ?", index)
+
+	var chunk Chunk
+	if err := db.First(&chunk).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Chunk.GetChunksByIndex error: %w", err)
+	}
+	return &chunk, nil
+}
+
 // GetChunksByBatchHash retrieves chunks by batch hash
 // for test
 func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*Chunk, error) {

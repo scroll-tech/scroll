@@ -114,6 +114,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestBatchProposerCodecv1Limits", testBatchProposerCodecv1Limits)
 	t.Run("TestBatchCommitGasAndCalldataSizeEstimation", testBatchCommitGasAndCalldataSizeEstimation)
 	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
+	t.Run("TestBatchProposerMaxChunkNumPerBatchLimit", testBatchProposerMaxChunkNumPerBatchLimit)
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {

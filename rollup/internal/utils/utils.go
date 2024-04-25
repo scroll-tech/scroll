@@ -285,23 +285,3 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion,
 		return nil, fmt.Errorf("unsupported codec version: %v", codecVersion)
 	}
 }
-
-// GetTotalL1MessagePoppedBeforeBatch retrieves the total L1 messages popped before the batch.
-func GetTotalL1MessagePoppedBeforeBatch(parentBatchBytes []byte, codecVersion encoding.CodecVersion) (uint64, error) {
-	switch codecVersion {
-	case encoding.CodecV0:
-		parentDABatch, err := codecv0.NewDABatchFromBytes(parentBatchBytes)
-		if err != nil {
-			return 0, fmt.Errorf("failed to create parent DA batch from bytes using codecv0, err: %w", err)
-		}
-		return parentDABatch.TotalL1MessagePopped, nil
-	case encoding.CodecV1:
-		parentDABatch, err := codecv1.NewDABatchFromBytes(parentBatchBytes)
-		if err != nil {
-			return 0, fmt.Errorf("failed to create parent DA batch from bytes using codecv1, err: %w", err)
-		}
-		return parentDABatch.TotalL1MessagePopped, nil
-	default:
-		return 0, fmt.Errorf("unsupported codec version: %v", codecVersion)
-	}
-}

@@ -30,7 +30,6 @@ type BatchProposer struct {
 	chunkOrm   *orm.Chunk
 	l2BlockOrm *orm.L2Block
 
-	maxChunkNumPerBatch             uint64
 	maxL1CommitGasPerBatch          uint64
 	maxL1CommitCalldataSizePerBatch uint64
 	batchTimeoutSec                 uint64
@@ -55,7 +54,6 @@ type BatchProposer struct {
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
 	forkHeights, forkMap, _ := forks.CollectSortedForkHeights(chainCfg)
 	log.Debug("new batch proposer",
-		"maxChunkNumPerBatch", cfg.MaxChunkNumPerBatch,
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
 		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
 		"batchTimeoutSec", cfg.BatchTimeoutSec,
@@ -68,7 +66,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		batchOrm:                        orm.NewBatch(db),
 		chunkOrm:                        orm.NewChunk(db),
 		l2BlockOrm:                      orm.NewL2Block(db),
-		maxChunkNumPerBatch:             cfg.MaxChunkNumPerBatch,
 		maxL1CommitGasPerBatch:          cfg.MaxL1CommitGasPerBatch,
 		maxL1CommitCalldataSizePerBatch: cfg.MaxL1CommitCalldataSizePerBatch,
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
@@ -154,13 +151,37 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 }
 
 func (p *BatchProposer) proposeBatch() error {
-	unbatchedChunkIndex, err := p.batchOrm.GetFirstUnbatchedChunkIndex(p.ctx)
+	firstUnbatchedChunkIndex, err := p.batchOrm.GetFirstUnbatchedChunkIndex(p.ctx)
 	if err != nil {
 		return err
 	}
 
-	// select at most p.maxChunkNumPerBatch chunks
-	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, unbatchedChunkIndex, int(p.maxChunkNumPerBatch))
+	firstUnbatchedChunk, err := p.chunkOrm.GetChunksByIndex(p.ctx, firstUnbatchedChunkIndex)
+	if err != nil || firstUnbatchedChunk == nil {
+		return err
+	}
+
+	startBlockNum := new(big.Int).SetUint64(firstUnbatchedChunk.StartBlockNumber)
+
+	var codecVersion encoding.CodecVersion
+	if p.chainCfg.IsBernoulli(startBlockNum) {
+		codecVersion = encoding.CodecV1
+	} else {
+		codecVersion = encoding.CodecV0
+	}
+
+	var useCompression bool
+	var maxChunksThisBatch uint64
+	if codecVersion == encoding.CodecV1 && p.chainCfg.IsCurie(startBlockNum) {
+		useCompression = true
+		maxChunksThisBatch = 45
+	} else {
+		useCompression = false
+		maxChunksThisBatch = 15
+	}
+
+	// select at most maxChunkNumPerBatch chunks
+	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, int(maxChunksThisBatch))
 	if err != nil {
 		return err
 	}
@@ -169,7 +190,6 @@ func (p *BatchProposer) proposeBatch() error {
 		return nil
 	}
 
-	maxChunksThisBatch := p.maxChunkNumPerBatch
 	for i, chunk := range dbChunks {
 		// if a chunk is starting at a fork boundary, only consider earlier chunks
 		if i != 0 && p.forkMap[chunk.StartBlockNumber] {
@@ -179,20 +199,6 @@ func (p *BatchProposer) proposeBatch() error {
 			}
 			break
 		}
-	}
-
-	var codecVersion encoding.CodecVersion
-	if p.chainCfg.IsBernoulli(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) {
-		codecVersion = encoding.CodecV1
-	} else {
-		codecVersion = encoding.CodecV0
-	}
-
-	var useCompression bool
-	if codecVersion == encoding.CodecV1 && p.chainCfg.IsCurie(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) {
-		useCompression = true
-	} else {
-		useCompression = false
 	}
 
 	daChunks, err := p.getDAChunks(dbChunks)
@@ -208,16 +214,7 @@ func (p *BatchProposer) proposeBatch() error {
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1
 	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
-	parentBatchEndBlockNumber := daChunks[0].Blocks[0].Header.Number.Uint64() - 1
-	parentBatchCodecVersion := encoding.CodecV0
-	// Genesis batch uses codecv0 encoding, otherwise using bernoulli fork to choose codec version.
-	if dbParentBatch.Index > 0 && p.chainCfg.IsBernoulli(new(big.Int).SetUint64(parentBatchEndBlockNumber)) {
-		parentBatchCodecVersion = encoding.CodecV1
-	}
-	batch.TotalL1MessagePoppedBefore, err = utils.GetTotalL1MessagePoppedBeforeBatch(dbParentBatch.BatchHeader, parentBatchCodecVersion)
-	if err != nil {
-		return err
-	}
+	batch.TotalL1MessagePoppedBefore = firstUnbatchedChunk.TotalL1MessagesPoppedBefore
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
@@ -232,7 +229,7 @@ func (p *BatchProposer) proposeBatch() error {
 			if i == 0 {
 				// The first chunk exceeds hard limits, which indicates a bug in the chunk-proposer, manual fix is needed.
 				return fmt.Errorf("the first chunk exceeds limits; start block number: %v, end block number: %v, limits: %+v, maxChunkNum: %v, maxL1CommitCalldataSize: %v, maxL1CommitGas: %v, maxBlobSize: %v",
-					dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber, metrics, p.maxChunkNumPerBatch, p.maxL1CommitCalldataSizePerBatch, p.maxL1CommitGasPerBatch, maxBlobSize)
+					dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber, metrics, maxChunksThisBatch, p.maxL1CommitCalldataSizePerBatch, p.maxL1CommitGasPerBatch, maxBlobSize)
 			}
 
 			log.Debug("breaking limit condition in batching",
