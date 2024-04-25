@@ -2,10 +2,8 @@ package testcontainers
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"log"
-	"math/big"
 	"os"
 	"path/filepath"
 	"time"
@@ -28,8 +26,7 @@ type TestcontainerApps struct {
 	poSL1Container    compose.ComposeStack
 
 	// common time stamp in nanoseconds.
-	Timestamp     int
-	poSL1GethPort int64
+	Timestamp int
 }
 
 // NewTestcontainerApps returns new instance of TestcontainerApps struct
@@ -120,7 +117,6 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 		rootDir           string
 		hostPath          string
 		found             bool
-		rnd               *big.Int
 		dockerComposeFile string
 		env               = map[string]string{}
 	)
@@ -129,20 +125,11 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 		return fmt.Errorf("failed to find project root directory: %v", err)
 	}
 
-	if rnd, err = rand.Int(rand.Reader, big.NewInt(65536-1024)); err != nil {
-		return fmt.Errorf("failed to generate a random: %v", err)
-	}
-	t.poSL1GethPort = int64(int(rnd.Int64()) + 1024)
-
-	if err = os.Setenv("GETH_HTTP_PORT", fmt.Sprintf("%d", t.poSL1GethPort)); err != nil {
-		return fmt.Errorf("failed to set GETH_HTTP_PORT: %v", err)
-	}
 	dockerComposeFile = filepath.Join(rootDir, "common", "testcontainers", "docker-compose.yml")
 
 	if t.poSL1Container, err = compose.NewDockerCompose([]string{dockerComposeFile}...); err != nil {
 		return err
 	}
-	env["GETH_HTTP_PORT"] = fmt.Sprintf("%d", t.poSL1GethPort)
 	if hostPath, found = os.LookupEnv("HOST_PATH"); found {
 		env["HOST_PATH"] = hostPath
 	}
@@ -153,7 +140,6 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 		Up(context.Background())
 	if err != nil {
 		t.poSL1Container = nil
-		t.poSL1GethPort = 0
 		return fmt.Errorf("failed to start PoS L1 container: %w", err)
 	}
 	return nil
@@ -161,10 +147,14 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 
 // GetPoSL1EndPoint returns the endpoint of the running PoS L1 endpoint
 func (t *TestcontainerApps) GetPoSL1EndPoint() (string, error) {
-	if t.poSL1Container == nil || t.poSL1GethPort == int64(0) {
+	if t.poSL1Container == nil {
 		return "", fmt.Errorf("PoS L1 container is not running")
 	}
-	return fmt.Sprintf("http://127.0.0.1:%d", t.poSL1GethPort), nil
+	contrainer, err := t.poSL1Container.ServiceContainer(context.Background(), "geth")
+	if err != nil {
+		panic(err)
+	}
+	return contrainer.PortEndpoint(context.Background(), "8545/tcp", "http")
 }
 
 // GetPoSL1Client returns a ethclient by dialing running PoS L1 client
@@ -272,7 +262,6 @@ func (t *TestcontainerApps) Free() {
 			log.Printf("failed to stop PoS L1 container: %s", err)
 		} else {
 			t.poSL1Container = nil
-			t.poSL1GethPort = 0
 		}
 	}
 }
