@@ -222,8 +222,8 @@ contract DeployScroll is DeterminsticDeploymentScript {
     // accounts
     address L1_COMMIT_SENDER_ADDR = vm.envAddress("L1_COMMIT_SENDER_ADDR");
     address L1_FINALIZE_SENDER_ADDR = vm.envAddress("L1_FINALIZE_SENDER_ADDR");
-    address L1_GAS_PRICE_ORACLE_SENDER_ADDR = vm.envAddress("L1_GAS_PRICE_ORACLE_SENDER_ADDR");
-    address L2_GAS_PRICE_ORACLE_SENDER_ADDR = vm.envAddress("L2_GAS_PRICE_ORACLE_SENDER_ADDR");
+    address L1_GAS_ORACLE_SENDER_ADDR = vm.envAddress("L1_GAS_ORACLE_SENDER_ADDR");
+    address L2_GAS_ORACLE_SENDER_ADDR = vm.envAddress("L2_GAS_ORACLE_SENDER_ADDR");
 
     address DEPLOYER_ADDR; // implicit, derived from private key / wallet
 
@@ -1047,7 +1047,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     function initializeL1Whitelist() internal {
         address[] memory accounts = new address[](1);
-        accounts[0] = L1_GAS_PRICE_ORACLE_SENDER_ADDR;
+        accounts[0] = L1_GAS_ORACLE_SENDER_ADDR;
         Whitelist(L1_WHITELIST_ADDR).updateWhitelistStatus(accounts, true);
     }
 
@@ -1142,7 +1142,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     function initializeL2Whitelist() internal {
         address[] memory accounts = new address[](1);
-        accounts[0] = L2_GAS_PRICE_ORACLE_SENDER_ADDR;
+        accounts[0] = L2_GAS_ORACLE_SENDER_ADDR;
         Whitelist(L2_WHITELIST_ADDR).updateWhitelistStatus(accounts, true);
     }
 }
