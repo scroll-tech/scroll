@@ -55,7 +55,7 @@ uint256 constant FEE_VAULT_MIN_WITHDRAW_AMOUNT = 1 ether;
 // configuration file paths
 string constant CONFIG_PATH = "./configuration/config.toml";
 string constant CONTRACTS_CONFIG_PATH = "./configuration/config-contracts.toml";
-string constant GENESIS_ALLOC_JSON_PATH = "./configuration/genesis-alloc.json";
+string constant GENESIS_ALLOC_JSON_PATH = "./configuration/__genesis-alloc.json";
 string constant GENESIS_JSON_PATH = "./configuration/genesis.json";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
@@ -87,24 +87,20 @@ contract ScrollStandardERC20FactorySetOwner is ScrollStandardERC20Factory {
     }
 }
 
-contract Configuration is Script {
+/// @notice Configuration allows inheriting contracts to read the TOML configuration file.
+abstract contract Configuration is Script {
     using stdToml for string;
 
-    enum ScriptMode {
-        None,
-        LogAddresses,
-        WriteConfig,
-        VerifyConfig
-    }
+    /*******************
+     * State variables *
+     *******************/
 
     string internal cfg;
     string internal contractsCfg;
 
-    ScriptMode internal mode = ScriptMode.None;
-
-    /***************************
+    /****************************
      * Configuration parameters *
-     ***************************/
+     ****************************/
 
     // general
     uint64 internal CHAIN_ID_L1;
@@ -138,13 +134,11 @@ contract Configuration is Script {
 
     /***************
      * Constructor *
-     **************/
+     ***************/
 
     constructor() {
         cfg = vm.readFile(CONFIG_PATH);
         contractsCfg = vm.readFile(CONTRACTS_CONFIG_PATH);
-
-        DEPLOYMENT_SALT = cfg.readString(".contracts.DEPLOYMENT_SALT");
 
         CHAIN_ID_L1 = uint64(cfg.readUint(".general.CHAIN_ID_L1"));
         CHAIN_ID_L2 = uint64(cfg.readUint(".general.CHAIN_ID_L2"));
@@ -152,7 +146,16 @@ contract Configuration is Script {
         MAX_L1_MESSAGE_GAS_LIMIT = cfg.readUint(".general.MAX_L1_MESSAGE_GAS_LIMIT");
 
         DEPLOYER_PRIVATE_KEY = cfg.readUint(".accounts.DEPLOYER_PRIVATE_KEY");
+
+        L1_COMMIT_SENDER_ADDR = cfg.readAddress(".accounts.L1_COMMIT_SENDER_ADDR");
+        L1_FINALIZE_SENDER_ADDR = cfg.readAddress(".accounts.L1_FINALIZE_SENDER_ADDR");
+        L1_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L1_GAS_ORACLE_SENDER_ADDR");
+        L2_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L2_GAS_ORACLE_SENDER_ADDR");
+
         DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
+        OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
+
+        L2GETH_SIGNER_0_ADDRESS = cfg.readAddress(".accounts.L2GETH_SIGNER_0_ADDRESS");
 
         // config sanity check
         if (vm.addr(DEPLOYER_PRIVATE_KEY) != DEPLOYER_ADDR) {
@@ -160,178 +163,24 @@ contract Configuration is Script {
             revert();
         }
 
-        OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
-
-        L1_COMMIT_SENDER_ADDR = cfg.readAddress(".accounts.L1_COMMIT_SENDER_ADDR");
-        L1_FINALIZE_SENDER_ADDR = cfg.readAddress(".accounts.L1_FINALIZE_SENDER_ADDR");
-        L1_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L1_GAS_ORACLE_SENDER_ADDR");
-        L2_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L2_GAS_ORACLE_SENDER_ADDR");
-        L2GETH_SIGNER_0_ADDRESS = cfg.readAddress(".accounts.L2GETH_SIGNER_0_ADDRESS");
-
-        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
-        L1_PLONK_VERIFIER_ADDR = cfg.readAddress(".contracts.L1_PLONK_VERIFIER_ADDR");
-
         L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
         L2_DEPLOYER_INITIAL_BALANCE = cfg.readUint(".genesis.L2_DEPLOYER_INITIAL_BALANCE");
         L2_SCROLL_MESSENGER_INITIAL_BALANCE = L2_MAX_ETH_SUPPLY - L2_DEPLOYER_INITIAL_BALANCE;
+
+        DEPLOYMENT_SALT = cfg.readString(".contracts.DEPLOYMENT_SALT");
+
+        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
+        L1_PLONK_VERIFIER_ADDR = cfg.readAddress(".contracts.L1_PLONK_VERIFIER_ADDR");
     }
 
-    /*************
-     * Utilities *
-     ************/
-
-    function parseScriptMode(string memory raw) internal pure returns (ScriptMode) {
-        if (keccak256(bytes(raw)) == keccak256(bytes("log-addresses"))) {
-            return ScriptMode.WriteConfig;
-        } else if (keccak256(bytes(raw)) == keccak256(bytes("write-config"))) {
-            return ScriptMode.WriteConfig;
-        } else if (keccak256(bytes(raw)) == keccak256(bytes("verify-config"))) {
-            return ScriptMode.VerifyConfig;
-        } else {
-            return ScriptMode.None;
-        }
-    }
+    /**********************
+     * Internal interface *
+     **********************/
 
     /// @dev Ensure that `addr` is not the zero address.
     ///      This helps catch bugs arising from incorrect deployment order.
     function notnull(address addr) internal pure returns (address) {
         require(addr != address(0), "null address");
-        return addr;
-    }
-
-    function label(string memory name, address addr) internal {
-        vm.label(addr, name);
-
-        if (mode == ScriptMode.LogAddresses) {
-            console.log(string(abi.encodePacked(name, "_ADDR=", vm.toString(address(addr)))));
-        }
-
-        string memory tomlPath = string(abi.encodePacked(".", name, "_ADDR"));
-
-        if (mode == ScriptMode.WriteConfig) {
-            vm.writeToml(vm.toString(addr), CONTRACTS_CONFIG_PATH, tomlPath);
-        }
-
-        if (mode == ScriptMode.VerifyConfig) {
-            address expectedAddr = contractsCfg.readAddress(tomlPath);
-
-            if (addr != expectedAddr) {
-                console.log(
-                    string(
-                        abi.encodePacked(
-                            "[ERROR] unexpected address for ",
-                            name,
-                            ", expected = ",
-                            vm.toString(expectedAddr),
-                            " (from toml config), got = ",
-                            vm.toString(addr)
-                        )
-                    )
-                );
-
-                revert();
-            }
-        }
-    }
-}
-
-contract DeterminsticDeploymentScript is Configuration {
-    using stdToml for string;
-
-    string private SALT_PREFIX;
-    bool internal SKIP_DEPLOY = false;
-
-    constructor() {
-        // salt prefix used for deterministic deployments
-        if (bytes(DEPLOYMENT_SALT).length != 0) {
-            SALT_PREFIX = DEPLOYMENT_SALT;
-        } else {
-            SALT_PREFIX = DEFAULT_DEPLOYMENT_SALT;
-        }
-
-        // sanity check: make sure DeterministicDeploymentProxy exists
-        if (DETERMINISTIC_DEPLOYMENT_PROXY_ADDR.code.length == 0) {
-            console.log(
-                string(
-                    abi.encodePacked(
-                        "[ERROR] DeterministicDeploymentProxy (",
-                        vm.toString(DETERMINISTIC_DEPLOYMENT_PROXY_ADDR),
-                        ") is not available"
-                    )
-                )
-            );
-            revert();
-        }
-    }
-
-    function upgrade(
-        address proxyAdminAddr,
-        address proxyAddr,
-        address implAddr
-    ) internal {
-        if (!SKIP_DEPLOY) {
-            ProxyAdmin(notnull(proxyAdminAddr)).upgrade(
-                ITransparentUpgradeableProxy(notnull(proxyAddr)),
-                notnull(implAddr)
-            );
-        }
-    }
-
-    function deploy(string memory name, bytes memory codeWithArgs) internal returns (address) {
-        return _deploy(name, codeWithArgs);
-    }
-
-    function deploy(
-        string memory name,
-        bytes memory code,
-        bytes memory args
-    ) internal returns (address) {
-        return _deploy(name, abi.encodePacked(code, args));
-    }
-
-    function predict(string memory name, bytes memory codeWithArgs) internal view returns (address) {
-        return _predict(name, codeWithArgs);
-    }
-
-    function predict(
-        string memory name,
-        bytes memory code,
-        bytes memory args
-    ) internal view returns (address) {
-        return _predict(name, abi.encodePacked(code, args));
-    }
-
-    function _deploy(string memory name, bytes memory codeWithArgs) private returns (address) {
-        // check override (mainly used with predeploys)
-        address addr = tryGetOverride(name);
-
-        if (addr != address(0)) {
-            label(name, addr);
-            return addr;
-        }
-
-        // predict determinstic deployment address
-        addr = _predict(name, codeWithArgs);
-        label(name, addr);
-
-        if (SKIP_DEPLOY) {
-            return addr;
-        }
-
-        // return if the contract is already deployed,
-        // in this case the subsequent initialization steps will probably break
-        if (addr.code.length > 0) {
-            console.log(string(abi.encodePacked("[WARN] contract ", name, " is already deployed")));
-            return addr;
-        }
-
-        // deploy contract
-        bytes32 salt = _getSalt(name);
-        bytes memory data = abi.encodePacked(salt, codeWithArgs);
-        (bool success, ) = DETERMINISTIC_DEPLOYMENT_PROXY_ADDR.call(data);
-        require(success, "call failed");
-        require(addr.code.length != 0, "deployment address mismatch");
-
         return addr;
     }
 
@@ -368,9 +217,162 @@ contract DeterminsticDeploymentScript is Configuration {
 
         return addr;
     }
+}
+
+/// @notice DeterminsticDeployment provides utilities for deterministic contract deployments.
+abstract contract DeterminsticDeployment is Configuration {
+    using stdToml for string;
+
+    /*********
+     * Types *
+     *********/
+
+    enum ScriptMode {
+        None,
+        LogAddresses,
+        WriteConfig,
+        VerifyConfig
+    }
+
+    /*******************
+     * State variables *
+     *******************/
+
+    ScriptMode private mode;
+    string private saltPrefix;
+    bool private skipDeploy;
+
+    /***************
+     * Constructor *
+     ***************/
+
+    constructor() {
+        mode = ScriptMode.None;
+        skipDeploy = false;
+
+        // salt prefix used for deterministic deployments
+        if (bytes(DEPLOYMENT_SALT).length != 0) {
+            saltPrefix = DEPLOYMENT_SALT;
+        } else {
+            saltPrefix = DEFAULT_DEPLOYMENT_SALT;
+        }
+
+        // sanity check: make sure DeterministicDeploymentProxy exists
+        if (DETERMINISTIC_DEPLOYMENT_PROXY_ADDR.code.length == 0) {
+            console.log(
+                string(
+                    abi.encodePacked(
+                        "[ERROR] DeterministicDeploymentProxy (",
+                        vm.toString(DETERMINISTIC_DEPLOYMENT_PROXY_ADDR),
+                        ") is not available"
+                    )
+                )
+            );
+            revert();
+        }
+    }
+
+    /**********************
+     * Internal interface *
+     **********************/
+
+    function setScriptMode(ScriptMode scriptMode) internal {
+        mode = scriptMode;
+    }
+
+    function setScriptMode(string memory scriptMode) internal {
+        if (keccak256(bytes(scriptMode)) == keccak256(bytes("log-addresses"))) {
+            mode = ScriptMode.WriteConfig;
+        } else if (keccak256(bytes(scriptMode)) == keccak256(bytes("write-config"))) {
+            mode = ScriptMode.WriteConfig;
+        } else if (keccak256(bytes(scriptMode)) == keccak256(bytes("verify-config"))) {
+            mode = ScriptMode.VerifyConfig;
+        } else {
+            mode = ScriptMode.None;
+        }
+    }
+
+    function skipDeployment() internal {
+        skipDeploy = true;
+    }
+
+    function deploy(string memory name, bytes memory codeWithArgs) internal returns (address) {
+        return _deploy(name, codeWithArgs);
+    }
+
+    function deploy(
+        string memory name,
+        bytes memory code,
+        bytes memory args
+    ) internal returns (address) {
+        return _deploy(name, abi.encodePacked(code, args));
+    }
+
+    function predict(string memory name, bytes memory codeWithArgs) internal view returns (address) {
+        return _predict(name, codeWithArgs);
+    }
+
+    function predict(
+        string memory name,
+        bytes memory code,
+        bytes memory args
+    ) internal view returns (address) {
+        return _predict(name, abi.encodePacked(code, args));
+    }
+
+    function upgrade(
+        address proxyAdminAddr,
+        address proxyAddr,
+        address implAddr
+    ) internal {
+        if (!skipDeploy) {
+            ProxyAdmin(notnull(proxyAdminAddr)).upgrade(
+                ITransparentUpgradeableProxy(notnull(proxyAddr)),
+                notnull(implAddr)
+            );
+        }
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
 
     function _getSalt(string memory name) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(SALT_PREFIX, name));
+        return keccak256(abi.encodePacked(saltPrefix, name));
+    }
+
+    function _deploy(string memory name, bytes memory codeWithArgs) private returns (address) {
+        // check override (mainly used with predeploys)
+        address addr = tryGetOverride(name);
+
+        if (addr != address(0)) {
+            _label(name, addr);
+            return addr;
+        }
+
+        // predict determinstic deployment address
+        addr = _predict(name, codeWithArgs);
+        _label(name, addr);
+
+        if (skipDeploy) {
+            return addr;
+        }
+
+        // return if the contract is already deployed,
+        // in this case the subsequent initialization steps will probably break
+        if (addr.code.length > 0) {
+            console.log(string(abi.encodePacked("[WARN] contract ", name, " is already deployed")));
+            return addr;
+        }
+
+        // deploy contract
+        bytes32 salt = _getSalt(name);
+        bytes memory data = abi.encodePacked(salt, codeWithArgs);
+        (bool success, ) = DETERMINISTIC_DEPLOYMENT_PROXY_ADDR.call(data);
+        require(success, "call failed");
+        require(addr.code.length != 0, "deployment address mismatch");
+
+        return addr;
     }
 
     function _predict(string memory name, bytes memory codeWithArgs) private view returns (address) {
@@ -392,25 +394,70 @@ contract DeterminsticDeploymentScript is Configuration {
                 )
             );
     }
+
+    function _label(string memory name, address addr) internal {
+        vm.label(addr, name);
+
+        if (mode == ScriptMode.None) {
+            return;
+        }
+
+        if (mode == ScriptMode.LogAddresses) {
+            console.log(string(abi.encodePacked(name, "_ADDR=", vm.toString(address(addr)))));
+            return;
+        }
+
+        string memory tomlPath = string(abi.encodePacked(".", name, "_ADDR"));
+
+        if (mode == ScriptMode.WriteConfig) {
+            vm.writeToml(vm.toString(addr), CONTRACTS_CONFIG_PATH, tomlPath);
+            return;
+        }
+
+        if (mode == ScriptMode.VerifyConfig) {
+            address expectedAddr = contractsCfg.readAddress(tomlPath);
+
+            if (addr != expectedAddr) {
+                console.log(
+                    string(
+                        abi.encodePacked(
+                            "[ERROR] unexpected address for ",
+                            name,
+                            ", expected = ",
+                            vm.toString(expectedAddr),
+                            " (from toml config), got = ",
+                            vm.toString(addr)
+                        )
+                    )
+                );
+
+                revert();
+            }
+        }
+    }
 }
 
-contract DeployScroll is DeterminsticDeploymentScript {
+contract DeployScroll is DeterminsticDeployment {
+    /*********
+     * Types *
+     *********/
+
     enum Layer {
         None,
         L1,
         L2
     }
 
-    /***************************
-     * Configuration parameters *
-     ***************************/
+    /*******************
+     * State variables *
+     *******************/
 
     // general configurations
-    Layer internal BROADCAST_LAYER = Layer.None;
+    Layer private broadcastLayer = Layer.None;
 
-    /**********************
+    /***********************
      * Contracts to deploy *
-     **********************/
+     ***********************/
 
     // L1 addresses
     address internal L1_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR;
@@ -471,11 +518,63 @@ contract DeployScroll is DeterminsticDeploymentScript {
     address internal L2_WETH_GATEWAY_PROXY_ADDR;
     address internal L2_WHITELIST_ADDR;
 
-    /************
+    /*************
      * Utilities *
-     ************/
+     *************/
 
-    function parseLayer(string memory raw) internal pure returns (Layer) {
+    /// @dev Only broadcast code block if we run the script on the specified layer.
+    modifier broadcast(Layer layer) {
+        if (broadcastLayer == layer) {
+            vm.startBroadcast(DEPLOYER_PRIVATE_KEY);
+        } else {
+            // make sure we use the correct sender in simulation
+            vm.startPrank(DEPLOYER_ADDR);
+        }
+
+        _;
+
+        if (broadcastLayer == layer) {
+            vm.stopBroadcast();
+        } else {
+            vm.stopPrank();
+        }
+    }
+
+    /// @dev Only execute block if we run the script on the specified layer.
+    modifier only(Layer layer) {
+        if (broadcastLayer != layer) {
+            return;
+        }
+        _;
+    }
+
+    /***************
+     * Entry point *
+     ***************/
+
+    function run(string memory layer, string memory scriptMode) public {
+        broadcastLayer = parseLayer(layer);
+        setScriptMode(scriptMode);
+
+        deployAllContracts();
+        initializeL1Contracts();
+        initializeL2Contracts();
+    }
+
+    /**********************
+     * Internal interface *
+     **********************/
+
+    function predictAllContracts() internal {
+        skipDeployment();
+        deployAllContracts();
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
+
+    function parseLayer(string memory raw) private pure returns (Layer) {
         if (keccak256(bytes(raw)) == keccak256(bytes("L1"))) {
             return Layer.L1;
         } else if (keccak256(bytes(raw)) == keccak256(bytes("L2"))) {
@@ -485,59 +584,15 @@ contract DeployScroll is DeterminsticDeploymentScript {
         }
     }
 
-    /// @dev Only broadcast code block if we run the script on the specified layer.
-    modifier broadcast(Layer layer) {
-        if (BROADCAST_LAYER == layer) {
-            vm.startBroadcast(DEPLOYER_PRIVATE_KEY);
-        } else {
-            // make sure we use the correct sender in simulation
-            vm.startPrank(DEPLOYER_ADDR);
-        }
-
-        _;
-
-        if (BROADCAST_LAYER == layer) {
-            vm.stopBroadcast();
-        } else {
-            vm.stopPrank();
-        }
-    }
-
-    /// @dev Only execute block if we run the script on the specified layer.
-    modifier only(Layer layer) {
-        if (BROADCAST_LAYER != layer) {
-            return;
-        }
-        _;
-    }
-
-    /***************
-     * Entry point *
-     **************/
-
-    function run(string memory layer, string memory scriptMode) public {
-        BROADCAST_LAYER = parseLayer(layer);
-        mode = parseScriptMode(scriptMode);
-
-        deployAllContracts();
-        initializeL1Contracts();
-        initializeL2Contracts();
-    }
-
-    function deployAllContracts() internal {
+    function deployAllContracts() private {
         deployL1Contracts1stPass();
         deployL2Contracts1stPass();
         deployL1Contracts2ndPass();
         deployL2Contracts2ndPass();
     }
 
-    function predictAllContracts() internal {
-        SKIP_DEPLOY = true;
-        deployAllContracts();
-    }
-
     // @notice deployL1Contracts1stPass deploys L1 contracts whose initialization does not depend on any L2 addresses.
-    function deployL1Contracts1stPass() internal broadcast(Layer.L1) {
+    function deployL1Contracts1stPass() private broadcast(Layer.L1) {
         deployL1Weth();
         deployL1ProxyAdmin();
         deployL1PlaceHolder();
@@ -560,7 +615,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
     }
 
     // @notice deployL2Contracts1stPass deploys L2 contracts whose initialization does not depend on any L1 addresses.
-    function deployL2Contracts1stPass() internal broadcast(Layer.L2) {
+    function deployL2Contracts1stPass() private broadcast(Layer.L2) {
         deployL2MessageQueue();
         deployL1GasPriceOracle();
         deployL2Whitelist();
@@ -579,7 +634,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
     }
 
     // @notice deployL1Contracts2ndPass deploys L1 contracts whose initialization depends on some L2 addresses.
-    function deployL1Contracts2ndPass() internal broadcast(Layer.L1) {
+    function deployL1Contracts2ndPass() private broadcast(Layer.L1) {
         deployL1ScrollMessenger();
         deployL1StandardERC20Gateway();
         deployL1ETHGateway();
@@ -590,7 +645,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
     }
 
     // @notice deployL2Contracts2ndPass deploys L2 contracts whose initialization depends on some L1 addresses.
-    function deployL2Contracts2ndPass() internal broadcast(Layer.L2) {
+    function deployL2Contracts2ndPass() private broadcast(Layer.L2) {
         // upgradable
         deployL2ScrollMessenger();
         deployL2GatewayRouter();
@@ -603,7 +658,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
     }
 
     // @notice initializeL1Contracts initializes contracts deployed on L1.
-    function initializeL1Contracts() internal broadcast(Layer.L1) only(Layer.L1) {
+    function initializeL1Contracts() private broadcast(Layer.L1) only(Layer.L1) {
         initializeScrollChain();
         initializeL2GasPriceOracle();
         initializeL1MessageQueue();
@@ -622,7 +677,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
     }
 
     // @notice initializeL2Contracts initializes contracts deployed on L2.
-    function initializeL2Contracts() internal broadcast(Layer.L2) only(Layer.L2) {
+    function initializeL2Contracts() private broadcast(Layer.L2) only(Layer.L2) {
         initializeL2MessageQueue();
         initializeL2TxFeeVault();
         initializeL1GasPriceOracle();
@@ -642,30 +697,30 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     /***************************
      * L1: 1st pass deployment *
-     **************************/
+     ***************************/
 
-    function deployL1Weth() internal {
+    function deployL1Weth() private {
         L1_WETH_ADDR = deploy("L1_WETH", type(WrappedEther).creationCode);
     }
 
-    function deployL1ProxyAdmin() internal {
+    function deployL1ProxyAdmin() private {
         bytes memory args = abi.encode(DEPLOYER_ADDR);
         L1_PROXY_ADMIN_ADDR = deploy("L1_PROXY_ADMIN", type(ProxyAdminSetOwner).creationCode, args);
     }
 
-    function deployL1PlaceHolder() internal {
+    function deployL1PlaceHolder() private {
         L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR = deploy(
             "L1_PROXY_IMPLEMENTATION_PLACEHOLDER",
             type(EmptyContract).creationCode
         );
     }
 
-    function deployL1Whitelist() internal {
+    function deployL1Whitelist() private {
         bytes memory args = abi.encode(DEPLOYER_ADDR);
         L1_WHITELIST_ADDR = deploy("L1_WHITELIST", type(Whitelist).creationCode, args);
     }
 
-    function deployL2GasPriceOracle() internal {
+    function deployL2GasPriceOracle() private {
         L2_GAS_PRICE_ORACLE_IMPLEMENTATION_ADDR = deploy(
             "L2_GAS_PRICE_ORACLE_IMPLEMENTATION",
             type(L2GasPriceOracle).creationCode
@@ -684,7 +739,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1ScrollChainProxy() internal {
+    function deployL1ScrollChainProxy() private {
         bytes memory args = abi.encode(
             notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L1_PROXY_ADMIN_ADDR),
@@ -698,7 +753,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1ScrollMessengerProxy() internal {
+    function deployL1ScrollMessengerProxy() private {
         bytes memory args = abi.encode(
             notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L1_PROXY_ADMIN_ADDR),
@@ -712,7 +767,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1EnforcedTxGateway() internal {
+    function deployL1EnforcedTxGateway() private {
         L1_ENFORCED_TX_GATEWAY_IMPLEMENTATION_ADDR = deploy(
             "L1_ENFORCED_TX_GATEWAY_IMPLEMENTATION",
             type(EnforcedTxGateway).creationCode
@@ -731,12 +786,12 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1ZkEvmVerifierV1() internal {
+    function deployL1ZkEvmVerifierV1() private {
         bytes memory args = abi.encode(notnull(L1_PLONK_VERIFIER_ADDR));
         L1_ZKEVM_VERIFIER_V1_ADDR = deploy("L1_ZKEVM_VERIFIER_V1", type(ZkEvmVerifierV1).creationCode, args);
     }
 
-    function deployL1MultipleVersionRollupVerifier() internal {
+    function deployL1MultipleVersionRollupVerifier() private {
         uint256[] memory _versions = new uint256[](1);
         address[] memory _verifiers = new address[](1);
         _versions[0] = 1;
@@ -751,7 +806,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1MessageQueue() internal {
+    function deployL1MessageQueue() private {
         bytes memory args = abi.encode(
             notnull(L1_SCROLL_MESSENGER_PROXY_ADDR),
             notnull(L1_SCROLL_CHAIN_PROXY_ADDR),
@@ -777,7 +832,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1ScrollChain() internal {
+    function deployL1ScrollChain() private {
         bytes memory args = abi.encode(
             CHAIN_ID_L2,
             notnull(L1_MESSAGE_QUEUE_PROXY_ADDR),
@@ -793,7 +848,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L1_PROXY_ADMIN_ADDR, L1_SCROLL_CHAIN_PROXY_ADDR, L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR);
     }
 
-    function deployL1GatewayRouter() internal {
+    function deployL1GatewayRouter() private {
         L1_GATEWAY_ROUTER_IMPLEMENTATION_ADDR = deploy(
             "L1_GATEWAY_ROUTER_IMPLEMENTATION",
             type(L1GatewayRouter).creationCode
@@ -812,7 +867,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1ETHGatewayProxy() internal {
+    function deployL1ETHGatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L1_PROXY_ADMIN_ADDR),
@@ -826,7 +881,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1WETHGatewayProxy() internal {
+    function deployL1WETHGatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L1_PROXY_ADMIN_ADDR),
@@ -840,7 +895,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1StandardERC20GatewayProxy() internal {
+    function deployL1StandardERC20GatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L1_PROXY_ADMIN_ADDR),
@@ -854,7 +909,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1CustomERC20GatewayProxy() internal {
+    function deployL1CustomERC20GatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L1_PROXY_ADMIN_ADDR),
@@ -868,7 +923,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1ERC721GatewayProxy() internal {
+    function deployL1ERC721GatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L1_PROXY_ADMIN_ADDR),
@@ -882,7 +937,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1ERC1155GatewayProxy() internal {
+    function deployL1ERC1155GatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L1_PROXY_ADMIN_ADDR),
@@ -898,45 +953,45 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     /***************************
      * L2: 1st pass deployment *
-     **************************/
+     ***************************/
 
-    function deployL2MessageQueue() internal {
+    function deployL2MessageQueue() private {
         bytes memory args = abi.encode(DEPLOYER_ADDR);
         L2_MESSAGE_QUEUE_ADDR = deploy("L2_MESSAGE_QUEUE", type(L2MessageQueue).creationCode, args);
     }
 
-    function deployL1GasPriceOracle() internal {
+    function deployL1GasPriceOracle() private {
         bytes memory args = abi.encode(DEPLOYER_ADDR);
         L1_GAS_PRICE_ORACLE_ADDR = deploy("L1_GAS_PRICE_ORACLE", type(L1GasPriceOracle).creationCode, args);
     }
 
-    function deployL2Whitelist() internal {
+    function deployL2Whitelist() private {
         bytes memory args = abi.encode(DEPLOYER_ADDR);
         L2_WHITELIST_ADDR = deploy("L2_WHITELIST", type(Whitelist).creationCode, args);
     }
 
-    function deployL2Weth() internal {
+    function deployL2Weth() private {
         L2_WETH_ADDR = deploy("L2_WETH", type(WrappedEther).creationCode);
     }
 
-    function deployTxFeeVault() internal {
+    function deployTxFeeVault() private {
         bytes memory args = abi.encode(DEPLOYER_ADDR, L1_FEE_VAULT_ADDR, FEE_VAULT_MIN_WITHDRAW_AMOUNT);
         L2_TX_FEE_VAULT_ADDR = deploy("L2_TX_FEE_VAULT", type(L2TxFeeVault).creationCode, args);
     }
 
-    function deployL2ProxyAdmin() internal {
+    function deployL2ProxyAdmin() private {
         bytes memory args = abi.encode(DEPLOYER_ADDR);
         L2_PROXY_ADMIN_ADDR = deploy("L2_PROXY_ADMIN", type(ProxyAdminSetOwner).creationCode, args);
     }
 
-    function deployL2PlaceHolder() internal {
+    function deployL2PlaceHolder() private {
         L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR = deploy(
             "L2_PROXY_IMPLEMENTATION_PLACEHOLDER",
             type(EmptyContract).creationCode
         );
     }
 
-    function deployL2ScrollMessengerProxy() internal {
+    function deployL2ScrollMessengerProxy() private {
         bytes memory args = abi.encode(
             notnull(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L2_PROXY_ADMIN_ADDR),
@@ -950,7 +1005,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL2StandardERC20GatewayProxy() internal {
+    function deployL2StandardERC20GatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L2_PROXY_ADMIN_ADDR),
@@ -964,7 +1019,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL2ETHGatewayProxy() internal {
+    function deployL2ETHGatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L2_PROXY_ADMIN_ADDR),
@@ -978,7 +1033,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL2WETHGatewayProxy() internal {
+    function deployL2WETHGatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L2_PROXY_ADMIN_ADDR),
@@ -992,7 +1047,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL2CustomERC20GatewayProxy() internal {
+    function deployL2CustomERC20GatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L2_PROXY_ADMIN_ADDR),
@@ -1006,7 +1061,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL2ERC721GatewayProxy() internal {
+    function deployL2ERC721GatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L2_PROXY_ADMIN_ADDR),
@@ -1020,7 +1075,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL2ERC1155GatewayProxy() internal {
+    function deployL2ERC1155GatewayProxy() private {
         bytes memory args = abi.encode(
             notnull(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
             notnull(L2_PROXY_ADMIN_ADDR),
@@ -1034,7 +1089,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployScrollStandardERC20Factory() internal {
+    function deployScrollStandardERC20Factory() private {
         L2_SCROLL_STANDARD_ERC20_ADDR = deploy("L2_SCROLL_STANDARD_ERC20", type(ScrollStandardERC20).creationCode);
         bytes memory args = abi.encode(DEPLOYER_ADDR, notnull(L2_SCROLL_STANDARD_ERC20_ADDR));
 
@@ -1047,9 +1102,9 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     /***************************
      * L1: 2nd pass deployment *
-     **************************/
+     ***************************/
 
-    function deployL1ScrollMessenger() internal {
+    function deployL1ScrollMessenger() private {
         bytes memory args = abi.encode(
             notnull(L2_SCROLL_MESSENGER_PROXY_ADDR),
             notnull(L1_SCROLL_CHAIN_PROXY_ADDR),
@@ -1065,7 +1120,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L1_PROXY_ADMIN_ADDR, L1_SCROLL_MESSENGER_PROXY_ADDR, L1_SCROLL_MESSENGER_IMPLEMENTATION_ADDR);
     }
 
-    function deployL1ETHGateway() internal {
+    function deployL1ETHGateway() private {
         bytes memory args = abi.encode(
             notnull(L2_ETH_GATEWAY_PROXY_ADDR),
             notnull(L1_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1081,7 +1136,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L1_PROXY_ADMIN_ADDR, L1_ETH_GATEWAY_PROXY_ADDR, L1_ETH_GATEWAY_IMPLEMENTATION_ADDR);
     }
 
-    function deployL1WETHGateway() internal {
+    function deployL1WETHGateway() private {
         bytes memory args = abi.encode(
             notnull(L1_WETH_ADDR),
             notnull(L2_WETH_ADDR),
@@ -1099,7 +1154,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L1_PROXY_ADMIN_ADDR, L1_WETH_GATEWAY_PROXY_ADDR, L1_WETH_GATEWAY_IMPLEMENTATION_ADDR);
     }
 
-    function deployL1StandardERC20Gateway() internal {
+    function deployL1StandardERC20Gateway() private {
         bytes memory args = abi.encode(
             notnull(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR),
             notnull(L1_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1121,7 +1176,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL1CustomERC20Gateway() internal {
+    function deployL1CustomERC20Gateway() private {
         bytes memory args = abi.encode(
             notnull(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR),
             notnull(L1_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1137,7 +1192,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L1_PROXY_ADMIN_ADDR, L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR, L1_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR);
     }
 
-    function deployL1ERC721Gateway() internal {
+    function deployL1ERC721Gateway() private {
         bytes memory args = abi.encode(notnull(L2_ERC721_GATEWAY_PROXY_ADDR), notnull(L1_SCROLL_MESSENGER_PROXY_ADDR));
 
         L1_ERC721_GATEWAY_IMPLEMENTATION_ADDR = deploy(
@@ -1149,7 +1204,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L1_PROXY_ADMIN_ADDR, L1_ERC721_GATEWAY_PROXY_ADDR, L1_ERC721_GATEWAY_IMPLEMENTATION_ADDR);
     }
 
-    function deployL1ERC1155Gateway() internal {
+    function deployL1ERC1155Gateway() private {
         bytes memory args = abi.encode(notnull(L2_ERC1155_GATEWAY_PROXY_ADDR), notnull(L1_SCROLL_MESSENGER_PROXY_ADDR));
 
         L1_ERC1155_GATEWAY_IMPLEMENTATION_ADDR = deploy(
@@ -1163,9 +1218,9 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     /***************************
      * L2: 2nd pass deployment *
-     **************************/
+     ***************************/
 
-    function deployL2ScrollMessenger() internal {
+    function deployL2ScrollMessenger() private {
         bytes memory args = abi.encode(notnull(L1_SCROLL_MESSENGER_PROXY_ADDR), notnull(L2_MESSAGE_QUEUE_ADDR));
 
         L2_SCROLL_MESSENGER_IMPLEMENTATION_ADDR = deploy(
@@ -1177,7 +1232,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L2_PROXY_ADMIN_ADDR, L2_SCROLL_MESSENGER_PROXY_ADDR, L2_SCROLL_MESSENGER_IMPLEMENTATION_ADDR);
     }
 
-    function deployL2GatewayRouter() internal {
+    function deployL2GatewayRouter() private {
         L2_GATEWAY_ROUTER_IMPLEMENTATION_ADDR = deploy(
             "L2_GATEWAY_ROUTER_IMPLEMENTATION",
             type(L2GatewayRouter).creationCode
@@ -1196,7 +1251,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL2StandardERC20Gateway() internal {
+    function deployL2StandardERC20Gateway() private {
         bytes memory args = abi.encode(
             notnull(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR),
             notnull(L2_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1217,7 +1272,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function deployL2ETHGateway() internal {
+    function deployL2ETHGateway() private {
         bytes memory args = abi.encode(
             notnull(L1_ETH_GATEWAY_PROXY_ADDR),
             notnull(L2_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1233,7 +1288,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L2_PROXY_ADMIN_ADDR, L2_ETH_GATEWAY_PROXY_ADDR, L2_ETH_GATEWAY_IMPLEMENTATION_ADDR);
     }
 
-    function deployL2WETHGateway() internal {
+    function deployL2WETHGateway() private {
         bytes memory args = abi.encode(
             notnull(L2_WETH_ADDR),
             notnull(L1_WETH_ADDR),
@@ -1251,7 +1306,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L2_PROXY_ADMIN_ADDR, L2_WETH_GATEWAY_PROXY_ADDR, L2_WETH_GATEWAY_IMPLEMENTATION_ADDR);
     }
 
-    function deployL2CustomERC20Gateway() internal {
+    function deployL2CustomERC20Gateway() private {
         bytes memory args = abi.encode(
             notnull(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR),
             notnull(L2_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1267,7 +1322,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L2_PROXY_ADMIN_ADDR, L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR, L2_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR);
     }
 
-    function deployL2ERC721Gateway() internal {
+    function deployL2ERC721Gateway() private {
         bytes memory args = abi.encode(notnull(L1_ERC721_GATEWAY_PROXY_ADDR), notnull(L2_SCROLL_MESSENGER_PROXY_ADDR));
 
         L2_ERC721_GATEWAY_IMPLEMENTATION_ADDR = deploy(
@@ -1279,7 +1334,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         upgrade(L2_PROXY_ADMIN_ADDR, L2_ERC721_GATEWAY_PROXY_ADDR, L2_ERC721_GATEWAY_IMPLEMENTATION_ADDR);
     }
 
-    function deployL2ERC1155Gateway() internal {
+    function deployL2ERC1155Gateway() private {
         bytes memory args = abi.encode(notnull(L1_ERC1155_GATEWAY_PROXY_ADDR), notnull(L2_SCROLL_MESSENGER_PROXY_ADDR));
 
         L2_ERC1155_GATEWAY_IMPLEMENTATION_ADDR = deploy(
@@ -1293,9 +1348,9 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     /**********************
      * L1: initialization *
-     *********************/
+     **********************/
 
-    function initializeScrollChain() internal {
+    function initializeScrollChain() private {
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).initialize(
             notnull(L1_MESSAGE_QUEUE_PROXY_ADDR),
             notnull(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR),
@@ -1306,7 +1361,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         ScrollChain(L1_SCROLL_CHAIN_PROXY_ADDR).addProver(L1_FINALIZE_SENDER_ADDR);
     }
 
-    function initializeL2GasPriceOracle() internal {
+    function initializeL2GasPriceOracle() private {
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).initialize(
             21000, // _txGas
             53000, // _txGasContractCreation
@@ -1317,7 +1372,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         L2GasPriceOracle(L2_GAS_PRICE_ORACLE_PROXY_ADDR).updateWhitelist(L1_WHITELIST_ADDR);
     }
 
-    function initializeL1MessageQueue() internal {
+    function initializeL1MessageQueue() private {
         L1MessageQueueWithGasPriceOracle(L1_MESSAGE_QUEUE_PROXY_ADDR).initialize(
             notnull(L1_SCROLL_MESSENGER_PROXY_ADDR),
             notnull(L1_SCROLL_CHAIN_PROXY_ADDR),
@@ -1329,7 +1384,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         L1MessageQueueWithGasPriceOracle(L1_MESSAGE_QUEUE_PROXY_ADDR).initializeV2();
     }
 
-    function initializeL1ScrollMessenger() internal {
+    function initializeL1ScrollMessenger() private {
         L1ScrollMessenger(payable(L1_SCROLL_MESSENGER_PROXY_ADDR)).initialize(
             notnull(L2_SCROLL_MESSENGER_PROXY_ADDR),
             notnull(L1_FEE_VAULT_ADDR),
@@ -1338,7 +1393,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function initializeEnforcedTxGateway() internal {
+    function initializeEnforcedTxGateway() private {
         EnforcedTxGateway(payable(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR)).initialize(
             notnull(L1_MESSAGE_QUEUE_PROXY_ADDR),
             notnull(L1_FEE_VAULT_ADDR)
@@ -1348,14 +1403,14 @@ contract DeployScroll is DeterminsticDeploymentScript {
         EnforcedTxGateway(payable(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR)).setPause(true);
     }
 
-    function initializeL1GatewayRouter() internal {
+    function initializeL1GatewayRouter() private {
         L1GatewayRouter(L1_GATEWAY_ROUTER_PROXY_ADDR).initialize(
             notnull(L1_ETH_GATEWAY_PROXY_ADDR),
             notnull(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR)
         );
     }
 
-    function initializeL1CustomERC20Gateway() internal {
+    function initializeL1CustomERC20Gateway() private {
         L1CustomERC20Gateway(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).initialize(
             notnull(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR),
             notnull(L1_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1363,21 +1418,21 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function initializeL1ERC1155Gateway() internal {
+    function initializeL1ERC1155Gateway() private {
         L1ERC1155Gateway(L1_ERC1155_GATEWAY_PROXY_ADDR).initialize(
             notnull(L2_ERC1155_GATEWAY_PROXY_ADDR),
             notnull(L1_SCROLL_MESSENGER_PROXY_ADDR)
         );
     }
 
-    function initializeL1ERC721Gateway() internal {
+    function initializeL1ERC721Gateway() private {
         L1ERC721Gateway(L1_ERC721_GATEWAY_PROXY_ADDR).initialize(
             notnull(L2_ERC721_GATEWAY_PROXY_ADDR),
             notnull(L1_SCROLL_MESSENGER_PROXY_ADDR)
         );
     }
 
-    function initializeL1ETHGateway() internal {
+    function initializeL1ETHGateway() private {
         L1ETHGateway(L1_ETH_GATEWAY_PROXY_ADDR).initialize(
             notnull(L2_ETH_GATEWAY_PROXY_ADDR),
             notnull(L1_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1385,7 +1440,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function initializeL1StandardERC20Gateway() internal {
+    function initializeL1StandardERC20Gateway() private {
         L1StandardERC20Gateway(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR).initialize(
             notnull(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR),
             notnull(L1_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1395,7 +1450,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function initializeL1WETHGateway() internal {
+    function initializeL1WETHGateway() private {
         L1WETHGateway(payable(L1_WETH_GATEWAY_PROXY_ADDR)).initialize(
             notnull(L2_WETH_GATEWAY_PROXY_ADDR),
             notnull(L1_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1412,13 +1467,13 @@ contract DeployScroll is DeterminsticDeploymentScript {
         }
     }
 
-    function initializeL1Whitelist() internal {
+    function initializeL1Whitelist() private {
         address[] memory accounts = new address[](1);
         accounts[0] = L1_GAS_ORACLE_SENDER_ADDR;
         Whitelist(L1_WHITELIST_ADDR).updateWhitelistStatus(accounts, true);
     }
 
-    function transferL1ContractOwnership() internal {
+    function transferL1ContractOwnership() private {
         Ownable(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L1_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
@@ -1438,32 +1493,32 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     /**********************
      * L2: initialization *
-     *********************/
+     **********************/
 
-    function initializeL2MessageQueue() internal {
+    function initializeL2MessageQueue() private {
         L2MessageQueue(L2_MESSAGE_QUEUE_ADDR).initialize(notnull(L2_SCROLL_MESSENGER_PROXY_ADDR));
     }
 
-    function initializeL2TxFeeVault() internal {
+    function initializeL2TxFeeVault() private {
         L2TxFeeVault(payable(L2_TX_FEE_VAULT_ADDR)).updateMessenger(notnull(L2_SCROLL_MESSENGER_PROXY_ADDR));
     }
 
-    function initializeL1GasPriceOracle() internal {
+    function initializeL1GasPriceOracle() private {
         L1GasPriceOracle(L1_GAS_PRICE_ORACLE_ADDR).updateWhitelist(notnull(L2_WHITELIST_ADDR));
     }
 
-    function initializeL2ScrollMessenger() internal {
+    function initializeL2ScrollMessenger() private {
         L2ScrollMessenger(payable(L2_SCROLL_MESSENGER_PROXY_ADDR)).initialize(notnull(L1_SCROLL_MESSENGER_PROXY_ADDR));
     }
 
-    function initializeL2GatewayRouter() internal {
+    function initializeL2GatewayRouter() private {
         L2GatewayRouter(L2_GATEWAY_ROUTER_PROXY_ADDR).initialize(
             notnull(L2_ETH_GATEWAY_PROXY_ADDR),
             notnull(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR)
         );
     }
 
-    function initializeL2CustomERC20Gateway() internal {
+    function initializeL2CustomERC20Gateway() private {
         L2CustomERC20Gateway(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).initialize(
             notnull(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR),
             notnull(L2_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1471,21 +1526,21 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function initializeL2ERC1155Gateway() internal {
+    function initializeL2ERC1155Gateway() private {
         L2ERC1155Gateway(L2_ERC1155_GATEWAY_PROXY_ADDR).initialize(
             notnull(L1_ERC1155_GATEWAY_PROXY_ADDR),
             notnull(L2_SCROLL_MESSENGER_PROXY_ADDR)
         );
     }
 
-    function initializeL2ERC721Gateway() internal {
+    function initializeL2ERC721Gateway() private {
         L2ERC721Gateway(L2_ERC721_GATEWAY_PROXY_ADDR).initialize(
             notnull(L1_ERC721_GATEWAY_PROXY_ADDR),
             notnull(L2_SCROLL_MESSENGER_PROXY_ADDR)
         );
     }
 
-    function initializeL2ETHGateway() internal {
+    function initializeL2ETHGateway() private {
         L2ETHGateway(L2_ETH_GATEWAY_PROXY_ADDR).initialize(
             notnull(L1_ETH_GATEWAY_PROXY_ADDR),
             notnull(L2_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1493,7 +1548,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function initializeL2StandardERC20Gateway() internal {
+    function initializeL2StandardERC20Gateway() private {
         L2StandardERC20Gateway(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR).initialize(
             notnull(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR),
             notnull(L2_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1502,7 +1557,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         );
     }
 
-    function initializeL2WETHGateway() internal {
+    function initializeL2WETHGateway() private {
         L2WETHGateway(payable(L2_WETH_GATEWAY_PROXY_ADDR)).initialize(
             notnull(L1_WETH_GATEWAY_PROXY_ADDR),
             notnull(L2_GATEWAY_ROUTER_PROXY_ADDR),
@@ -1519,19 +1574,19 @@ contract DeployScroll is DeterminsticDeploymentScript {
         }
     }
 
-    function initializeScrollStandardERC20Factory() internal {
+    function initializeScrollStandardERC20Factory() private {
         ScrollStandardERC20Factory(L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR).transferOwnership(
             notnull(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR)
         );
     }
 
-    function initializeL2Whitelist() internal {
+    function initializeL2Whitelist() private {
         address[] memory accounts = new address[](1);
         accounts[0] = L2_GAS_ORACLE_SENDER_ADDR;
         Whitelist(L2_WHITELIST_ADDR).updateWhitelistStatus(accounts, true);
     }
 
-    function transferL2ContractOwnership() internal {
+    function transferL2ContractOwnership() private {
         Ownable(L1_GAS_PRICE_ORACLE_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L2_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
@@ -1548,26 +1603,30 @@ contract DeployScroll is DeterminsticDeploymentScript {
     }
 }
 
-contract GenerateGenesisAlloc is DeployScroll {
-    /*************
-     * Utilities *
-     ************/
-
-    /// @notice Sorts the allocs by address
-    function sortJsonByKeys(string memory _path) internal {
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat("cat <<< $(jq -S '.' ", _path, ") > ", _path);
-        vm.ffi(commands);
-    }
-
+contract GenerateGenesis is DeployScroll {
     /***************
      * Entry point *
-     **************/
+     ***************/
 
     function run() public {
+        setScriptMode(ScriptMode.VerifyConfig);
         predictAllContracts();
+
+        generateGenesisAlloc();
+        generateGenesisJson();
+
+        // clean up temporary files
+        vm.removeFile(GENESIS_ALLOC_JSON_PATH);
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
+
+    function generateGenesisAlloc() private {
+        if (vm.exists(GENESIS_ALLOC_JSON_PATH)) {
+            vm.removeFile(GENESIS_ALLOC_JSON_PATH);
+        }
 
         // predeploys
         setL2MessageQueue();
@@ -1710,16 +1769,8 @@ contract GenerateGenesisAlloc is DeployScroll {
     function setL2Deployer() internal {
         vm.deal(OWNER_ADDR, L2_DEPLOYER_INITIAL_BALANCE);
     }
-}
 
-contract GenerateGenesis is DeployScroll {
-    /***************
-     * Entry point *
-     **************/
-
-    function run() public {
-        predictAllContracts();
-
+    function generateGenesisJson() private {
         // general config
         vm.writeJson(vm.toString(CHAIN_ID_L2), GENESIS_JSON_PATH, ".config.chainId");
 
@@ -1732,6 +1783,7 @@ contract GenerateGenesis is DeployScroll {
                 "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
             )
         );
+
         vm.writeJson(extraData, GENESIS_JSON_PATH, ".extraData");
 
         // scroll-specific config
@@ -1739,11 +1791,13 @@ contract GenerateGenesis is DeployScroll {
         vm.writeJson(vm.toString(L2_TX_FEE_VAULT_ADDR), GENESIS_JSON_PATH, ".config.scroll.feeVaultAddress");
 
         vm.writeJson(vm.toString(CHAIN_ID_L1), GENESIS_JSON_PATH, ".config.scroll.l1Config.l1ChainId");
+
         vm.writeJson(
             vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR),
             GENESIS_JSON_PATH,
             ".config.scroll.l1Config.l1MessageQueueAddress"
         );
+
         vm.writeJson(
             vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR),
             GENESIS_JSON_PATH,
@@ -1753,5 +1807,15 @@ contract GenerateGenesis is DeployScroll {
         // predeploys and prefunded accounts
         string memory alloc = vm.readFile(GENESIS_ALLOC_JSON_PATH);
         vm.writeJson(alloc, GENESIS_JSON_PATH, ".alloc");
+    }
+
+    /// @notice Sorts the allocs by address
+    // source: https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/scripts/L2Genesis.s.sol
+    function sortJsonByKeys(string memory _path) private {
+        string[] memory commands = new string[](3);
+        commands[0] = "bash";
+        commands[1] = "-c";
+        commands[2] = string.concat("cat <<< $(jq -S '.' ", _path, ") > ", _path);
+        vm.ffi(commands);
     }
 }
