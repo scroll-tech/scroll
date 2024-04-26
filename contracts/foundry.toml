@@ -31,6 +31,11 @@ bytecode_hash = 'none'
 
 # file system permissions
 ffi = true
-fs_permissions = [{ access='read-write', path='./configuration' }]
+
+fs_permissions = [
+  { access='read', path='./data' },
+  { access='read', path='./data/input' },
+  { access='read-write', path='./data/output' },
+]
 
 gas_reports = ["L2GasPriceOracle"]

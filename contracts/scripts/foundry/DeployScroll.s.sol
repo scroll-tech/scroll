@@ -52,11 +52,17 @@ string constant DEFAULT_DEPLOYMENT_SALT = "ScrollStack";
 /// @dev The default minimum withdraw amount configured on L2TxFeeVault.
 uint256 constant FEE_VAULT_MIN_WITHDRAW_AMOUNT = 1 ether;
 
-// configuration file paths
-string constant CONFIG_PATH = "./configuration/config.toml";
-string constant CONTRACTS_CONFIG_PATH = "./configuration/config-contracts.toml";
-string constant GENESIS_ALLOC_JSON_PATH = "./configuration/__genesis-alloc.json";
-string constant GENESIS_JSON_PATH = "./configuration/genesis.json";
+// input files
+string constant CONFIG_PATH = "./data/input/config.toml";
+
+// template files
+string constant CONFIG_CONTRACTS_TEMPLATE_PATH = "./data/config-contracts.toml";
+string constant GENESIS_JSON_TEMPLATE_PATH = "./data/genesis.json";
+
+// output files
+string constant CONFIG_CONTRACTS_PATH = "./data/output/config-contracts.toml";
+string constant GENESIS_ALLOC_JSON_PATH = "./data/output/__genesis-alloc.json";
+string constant GENESIS_JSON_PATH = "./data/output/genesis.json";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
     /// @dev allow setting the owner in the constructor, otherwise
@@ -137,8 +143,13 @@ abstract contract Configuration is Script {
      ***************/
 
     constructor() {
+        if (!vm.exists(CONFIG_CONTRACTS_PATH)) {
+            string memory template = vm.readFile(CONFIG_CONTRACTS_TEMPLATE_PATH);
+            vm.writeFile(CONFIG_CONTRACTS_PATH, template);
+        }
+
         cfg = vm.readFile(CONFIG_PATH);
-        contractsCfg = vm.readFile(CONTRACTS_CONFIG_PATH);
+        contractsCfg = vm.readFile(CONFIG_CONTRACTS_PATH);
 
         CHAIN_ID_L1 = uint64(cfg.readUint(".general.CHAIN_ID_L1"));
         CHAIN_ID_L2 = uint64(cfg.readUint(".general.CHAIN_ID_L2"));
@@ -410,7 +421,7 @@ abstract contract DeterminsticDeployment is Configuration {
         string memory tomlPath = string(abi.encodePacked(".", name, "_ADDR"));
 
         if (mode == ScriptMode.WriteConfig) {
-            vm.writeToml(vm.toString(addr), CONTRACTS_CONFIG_PATH, tomlPath);
+            vm.writeToml(vm.toString(addr), CONFIG_CONTRACTS_PATH, tomlPath);
             return;
         }
 
@@ -1771,6 +1782,14 @@ contract GenerateGenesis is DeployScroll {
     }
 
     function generateGenesisJson() private {
+        // initialize template file
+        if (vm.exists(GENESIS_JSON_PATH)) {
+            vm.removeFile(GENESIS_JSON_PATH);
+        }
+
+        string memory template = vm.readFile(GENESIS_JSON_TEMPLATE_PATH);
+        vm.writeFile(GENESIS_JSON_PATH, template);
+
         // general config
         vm.writeJson(vm.toString(CHAIN_ID_L2), GENESIS_JSON_PATH, ".config.chainId");
 
