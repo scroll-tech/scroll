@@ -56,6 +56,7 @@ uint256 constant FEE_VAULT_MIN_WITHDRAW_AMOUNT = 1 ether;
 string constant CONFIG_PATH = "./configuration/config.toml";
 string constant CONTRACTS_CONFIG_PATH = "./configuration/config-contracts.toml";
 string constant GENESIS_ALLOC_JSON_PATH = "./configuration/genesis-alloc.json";
+string constant GENESIS_JSON_PATH = "./configuration/genesis.json";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
     /// @dev allow setting the owner in the constructor, otherwise
@@ -90,6 +91,7 @@ contract Configuration is Script {
     using stdToml for string;
 
     enum ScriptMode {
+        None,
         LogAddresses,
         WriteConfig,
         VerifyConfig
@@ -112,12 +114,14 @@ contract Configuration is Script {
     }
 
     function parseScriptMode(string memory raw) internal pure returns (ScriptMode) {
-        if (keccak256(bytes(raw)) == keccak256(bytes("write-config"))) {
+        if (keccak256(bytes(raw)) == keccak256(bytes("log-addresses"))) {
+            return ScriptMode.WriteConfig;
+        } else if (keccak256(bytes(raw)) == keccak256(bytes("write-config"))) {
             return ScriptMode.WriteConfig;
         } else if (keccak256(bytes(raw)) == keccak256(bytes("verify-config"))) {
             return ScriptMode.VerifyConfig;
         } else {
-            return ScriptMode.LogAddresses;
+            return ScriptMode.None;
         }
     }
 
@@ -129,6 +133,13 @@ contract Configuration is Script {
         } else {
             return Layer.None;
         }
+    }
+
+    /// @dev Ensure that `addr` is not the zero address.
+    ///      This helps catch bugs arising from incorrect deployment order.
+    function notnull(address addr) internal pure returns (address) {
+        require(addr != address(0), "null address");
+        return addr;
     }
 
     function _label(string memory name, address addr) internal {
@@ -171,6 +182,7 @@ contract DeterminsticDeploymentScript is Configuration {
     using stdToml for string;
 
     string internal saltPrefix = DEFAULT_DEPLOYMENT_SALT;
+    bool internal SKIP_DEPLOY = false;
 
     function deploy(string memory name, bytes memory codeWithArgs) internal returns (address) {
         return _deploy(name, codeWithArgs);
@@ -208,6 +220,10 @@ contract DeterminsticDeploymentScript is Configuration {
         // predict determinstic deployment address
         addr = _predict(name, codeWithArgs);
         _label(name, addr);
+
+        if (SKIP_DEPLOY) {
+            return addr;
+        }
 
         // return if the contract is already deployed,
         // in this case the subsequent initialization steps will probably break
@@ -293,7 +309,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
      ***************************/
 
     // general configurations
-    Layer BROADCAST_LAYER;
+    Layer BROADCAST_LAYER = Layer.None;
 
     uint64 CHAIN_ID_L2;
     uint256 MAX_TX_IN_CHUNK;
@@ -315,6 +331,12 @@ contract DeployScroll is DeterminsticDeploymentScript {
     address L1_PLONK_VERIFIER_ADDR;
 
     function initConfig() private {
+        // salt prefix used for deterministic deployments
+        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
+        if (bytes(_saltPrefix).length != 0) {
+            saltPrefix = _saltPrefix;
+        }
+
         CHAIN_ID_L2 = uint64(cfg.readUint(".general.CHAIN_ID_L2"));
         MAX_TX_IN_CHUNK = cfg.readUint(".general.MAX_TX_IN_CHUNK");
         MAX_L1_MESSAGE_GAS_LIMIT = cfg.readUint(".general.MAX_L1_MESSAGE_GAS_LIMIT");
@@ -337,12 +359,6 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
         L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
         L1_PLONK_VERIFIER_ADDR = cfg.readAddress(".contracts.L1_PLONK_VERIFIER_ADDR");
-
-        // salt prefix used for deterministic deployments
-        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
-        if (bytes(_saltPrefix).length != 0) {
-            saltPrefix = _saltPrefix;
-        }
     }
 
     /**********************
@@ -350,74 +366,67 @@ contract DeployScroll is DeterminsticDeploymentScript {
      **********************/
 
     // L1 addresses
-    address L1_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR;
-    address L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR;
-    address L1_ENFORCED_TX_GATEWAY_IMPLEMENTATION_ADDR;
-    address L1_ENFORCED_TX_GATEWAY_PROXY_ADDR;
-    address L1_ERC1155_GATEWAY_IMPLEMENTATION_ADDR;
-    address L1_ERC1155_GATEWAY_PROXY_ADDR;
-    address L1_ERC721_GATEWAY_IMPLEMENTATION_ADDR;
-    address L1_ERC721_GATEWAY_PROXY_ADDR;
-    address L1_ETH_GATEWAY_IMPLEMENTATION_ADDR;
-    address L1_ETH_GATEWAY_PROXY_ADDR;
-    address L1_GATEWAY_ROUTER_IMPLEMENTATION_ADDR;
-    address L1_GATEWAY_ROUTER_PROXY_ADDR;
-    address L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR;
-    address L1_MESSAGE_QUEUE_PROXY_ADDR;
-    address L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR;
-    address L1_PROXY_ADMIN_ADDR;
-    address L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR;
-    address L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR;
-    address L1_SCROLL_CHAIN_PROXY_ADDR;
-    address L1_SCROLL_MESSENGER_IMPLEMENTATION_ADDR;
-    address L1_SCROLL_MESSENGER_PROXY_ADDR;
-    address L1_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR;
-    address L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR;
-    address L1_WETH_ADDR;
-    address L1_WETH_GATEWAY_IMPLEMENTATION_ADDR;
-    address L1_WETH_GATEWAY_PROXY_ADDR;
-    address L1_WHITELIST_ADDR;
-    address L1_ZKEVM_VERIFIER_V1_ADDR;
-    address L2_GAS_PRICE_ORACLE_IMPLEMENTATION_ADDR;
-    address L2_GAS_PRICE_ORACLE_PROXY_ADDR;
+    address internal L1_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR;
+    address internal L1_ENFORCED_TX_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L1_ENFORCED_TX_GATEWAY_PROXY_ADDR;
+    address internal L1_ERC1155_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L1_ERC1155_GATEWAY_PROXY_ADDR;
+    address internal L1_ERC721_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L1_ERC721_GATEWAY_PROXY_ADDR;
+    address internal L1_ETH_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L1_ETH_GATEWAY_PROXY_ADDR;
+    address internal L1_GATEWAY_ROUTER_IMPLEMENTATION_ADDR;
+    address internal L1_GATEWAY_ROUTER_PROXY_ADDR;
+    address internal L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR;
+    address internal L1_MESSAGE_QUEUE_PROXY_ADDR;
+    address internal L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR;
+    address internal L1_PROXY_ADMIN_ADDR;
+    address internal L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR;
+    address internal L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR;
+    address internal L1_SCROLL_CHAIN_PROXY_ADDR;
+    address internal L1_SCROLL_MESSENGER_IMPLEMENTATION_ADDR;
+    address internal L1_SCROLL_MESSENGER_PROXY_ADDR;
+    address internal L1_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR;
+    address internal L1_WETH_ADDR;
+    address internal L1_WETH_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L1_WETH_GATEWAY_PROXY_ADDR;
+    address internal L1_WHITELIST_ADDR;
+    address internal L1_ZKEVM_VERIFIER_V1_ADDR;
+    address internal L2_GAS_PRICE_ORACLE_IMPLEMENTATION_ADDR;
+    address internal L2_GAS_PRICE_ORACLE_PROXY_ADDR;
 
     // L2 addresses
-    address L1_GAS_PRICE_ORACLE_ADDR;
-    address L2_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR;
-    address L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR;
-    address L2_ERC1155_GATEWAY_IMPLEMENTATION_ADDR;
-    address L2_ERC1155_GATEWAY_PROXY_ADDR;
-    address L2_ERC721_GATEWAY_IMPLEMENTATION_ADDR;
-    address L2_ERC721_GATEWAY_PROXY_ADDR;
-    address L2_ETH_GATEWAY_IMPLEMENTATION_ADDR;
-    address L2_ETH_GATEWAY_PROXY_ADDR;
-    address L2_GATEWAY_ROUTER_IMPLEMENTATION_ADDR;
-    address L2_GATEWAY_ROUTER_PROXY_ADDR;
-    address L2_MESSAGE_QUEUE_ADDR;
-    address L2_PROXY_ADMIN_ADDR;
-    address L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR;
-    address L2_SCROLL_MESSENGER_IMPLEMENTATION_ADDR;
-    address L2_SCROLL_MESSENGER_PROXY_ADDR;
-    address L2_SCROLL_STANDARD_ERC20_ADDR;
-    address L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR;
-    address L2_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR;
-    address L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR;
-    address L2_TX_FEE_VAULT_ADDR;
-    address L2_WETH_ADDR;
-    address L2_WETH_GATEWAY_IMPLEMENTATION_ADDR;
-    address L2_WETH_GATEWAY_PROXY_ADDR;
-    address L2_WHITELIST_ADDR;
+    address internal L1_GAS_PRICE_ORACLE_ADDR;
+    address internal L2_CUSTOM_ERC20_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR;
+    address internal L2_ERC1155_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L2_ERC1155_GATEWAY_PROXY_ADDR;
+    address internal L2_ERC721_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L2_ERC721_GATEWAY_PROXY_ADDR;
+    address internal L2_ETH_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L2_ETH_GATEWAY_PROXY_ADDR;
+    address internal L2_GATEWAY_ROUTER_IMPLEMENTATION_ADDR;
+    address internal L2_GATEWAY_ROUTER_PROXY_ADDR;
+    address internal L2_MESSAGE_QUEUE_ADDR;
+    address internal L2_PROXY_ADMIN_ADDR;
+    address internal L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR;
+    address internal L2_SCROLL_MESSENGER_IMPLEMENTATION_ADDR;
+    address internal L2_SCROLL_MESSENGER_PROXY_ADDR;
+    address internal L2_SCROLL_STANDARD_ERC20_ADDR;
+    address internal L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR;
+    address internal L2_STANDARD_ERC20_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR;
+    address internal L2_TX_FEE_VAULT_ADDR;
+    address internal L2_WETH_ADDR;
+    address internal L2_WETH_GATEWAY_IMPLEMENTATION_ADDR;
+    address internal L2_WETH_GATEWAY_PROXY_ADDR;
+    address internal L2_WHITELIST_ADDR;
 
     /************
      * Utilities *
      ************/
-
-    /// @dev Ensure that `addr` is not the zero address.
-    ///      This helps catch bugs arising from incorrect deployment order.
-    function notnull(address addr) internal pure returns (address) {
-        require(addr != address(0), "null address");
-        return addr;
-    }
 
     /// @dev Only broadcast code block if we run the script on the specified layer.
     modifier broadcast(Layer layer) {
@@ -445,9 +454,9 @@ contract DeployScroll is DeterminsticDeploymentScript {
         _;
     }
 
-    /*************************
-     * Deployment entry point *
-     *************************/
+    /***************
+     * Entry point *
+     **************/
 
     function run(string memory layer, string memory scriptMode) public {
         BROADCAST_LAYER = parseLayer(layer);
@@ -468,12 +477,16 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
         initConfig();
 
+        deployAllContracts();
+        initializeL1Contracts();
+        initializeL2Contracts();
+    }
+
+    function deployAllContracts() internal {
         deployL1Contracts1stPass();
         deployL2Contracts1stPass();
         deployL1Contracts2ndPass();
         deployL2Contracts2ndPass();
-        initializeL1Contracts();
-        initializeL2Contracts();
     }
 
     // @notice deployL1Contracts1stPass deploys L1 contracts whose initialization does not depend on any L2 addresses.
@@ -1553,7 +1566,27 @@ contract GenerateGenesisAlloc is DeterminsticDeploymentScript {
     // generated
     address L2_SCROLL_MESSENGER_PROXY_ADDR;
 
-    function predictL2MessengerAddress() private view returns (address) {
+    function initConfig() private {
+        // salt prefix used for deterministic deployments
+        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
+        if (bytes(_saltPrefix).length != 0) {
+            saltPrefix = _saltPrefix;
+        }
+
+        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
+        OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
+
+        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
+
+        L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
+        L2_DEPLOYER_INITIAL_BALANCE = cfg.readUint(".genesis.L2_DEPLOYER_INITIAL_BALANCE");
+        L2_SCROLL_MESSENGER_INITIAL_BALANCE = L2_MAX_ETH_SUPPLY - L2_DEPLOYER_INITIAL_BALANCE;
+
+        // deterministically predict L2ScrollMessengerProxy address
+        L2_SCROLL_MESSENGER_PROXY_ADDR = predictL2MessengerProxyAddress();
+    }
+
+    function predictL2MessengerProxyAddress() private view returns (address) {
         bytes memory args = abi.encode(DEPLOYER_ADDR);
         address L2_PROXY_ADMIN_ADDR = predict("L2_PROXY_ADMIN", type(ProxyAdminSetOwner).creationCode, args);
 
@@ -1573,26 +1606,6 @@ contract GenerateGenesisAlloc is DeterminsticDeploymentScript {
         return predictedAddr;
     }
 
-    function initConfig() private {
-        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
-        OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
-
-        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
-
-        L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
-        L2_DEPLOYER_INITIAL_BALANCE = cfg.readUint(".genesis.L2_DEPLOYER_INITIAL_BALANCE");
-        L2_SCROLL_MESSENGER_INITIAL_BALANCE = L2_MAX_ETH_SUPPLY - L2_DEPLOYER_INITIAL_BALANCE;
-
-        // salt prefix used for deterministic deployments
-        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
-        if (bytes(_saltPrefix).length != 0) {
-            saltPrefix = _saltPrefix;
-        }
-
-        // deterministically predict L2ScrollMessengerProxy address
-        L2_SCROLL_MESSENGER_PROXY_ADDR = predictL2MessengerAddress();
-    }
-
     /*************
      * Utilities *
      ************/
@@ -1606,9 +1619,9 @@ contract GenerateGenesisAlloc is DeterminsticDeploymentScript {
         vm.ffi(commands);
     }
 
-    /*************************
-     * Deployment entry point *
-     *************************/
+    /***************
+     * Entry point *
+     **************/
 
     function run() public {
         initConfig();
@@ -1753,5 +1766,193 @@ contract GenerateGenesisAlloc is DeterminsticDeploymentScript {
 
     function setL2Deployer() internal {
         vm.deal(OWNER_ADDR, L2_DEPLOYER_INITIAL_BALANCE);
+    }
+}
+
+contract GenerateGenesis is DeterminsticDeploymentScript {
+    using stdToml for string;
+
+    /***************************
+     * Configuration parameters *
+     ***************************/
+
+    // general configurations
+    uint64 CHAIN_ID_L1;
+    uint64 CHAIN_ID_L2;
+    uint256 MAX_TX_IN_CHUNK;
+
+    // accounts
+    address DEPLOYER_ADDR;
+    address L2GETH_SIGNER_0_ADDRESS;
+
+    // contract addresses
+    address L1_FEE_VAULT_ADDR;
+    address L1_MESSAGE_QUEUE_PROXY_ADDR;
+    address L1_SCROLL_CHAIN_PROXY_ADDR;
+    address L2_TX_FEE_VAULT_ADDR;
+
+    function initConfig() private {
+        // salt prefix used for deterministic deployments
+        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
+        if (bytes(_saltPrefix).length != 0) {
+            saltPrefix = _saltPrefix;
+        }
+
+        CHAIN_ID_L1 = uint64(cfg.readUint(".general.CHAIN_ID_L1"));
+        CHAIN_ID_L2 = uint64(cfg.readUint(".general.CHAIN_ID_L2"));
+        MAX_TX_IN_CHUNK = cfg.readUint(".general.MAX_TX_IN_CHUNK");
+
+        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
+        L2GETH_SIGNER_0_ADDRESS = cfg.readAddress(".accounts.L2GETH_SIGNER_0_ADDRESS");
+
+        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
+
+        (
+            L1_SCROLL_CHAIN_PROXY_ADDR,
+            L1_MESSAGE_QUEUE_PROXY_ADDR
+        ) = predictL1ScrollChainProxyAndL1MessageQueueProxyAddr();
+        L2_TX_FEE_VAULT_ADDR = predictL2TxFeeVaultAddr();
+    }
+
+    function predictL1ScrollChainProxyAndL1MessageQueueProxyAddr() private returns (address, address) {
+        bytes memory args = abi.encode(DEPLOYER_ADDR);
+        address L1_PROXY_ADMIN_ADDR = predict("L1_PROXY_ADMIN", type(ProxyAdminSetOwner).creationCode, args);
+
+        address L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR = predict(
+            "L1_PROXY_IMPLEMENTATION_PLACEHOLDER",
+            type(EmptyContract).creationCode
+        );
+
+        args = abi.encode(
+            notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
+            notnull(L1_PROXY_ADMIN_ADDR),
+            new bytes(0)
+        );
+
+        address L1_SCROLL_MESSENGER_PROXY_ADDR = predict(
+            "L1_SCROLL_MESSENGER_PROXY",
+            type(TransparentUpgradeableProxy).creationCode,
+            args
+        );
+
+        address L1_SCROLL_CHAIN_PROXY_ADDR_PREDICTED = predict(
+            "L1_SCROLL_CHAIN_PROXY",
+            type(TransparentUpgradeableProxy).creationCode,
+            args
+        );
+
+        address L1_ENFORCED_TX_GATEWAY_IMPLEMENTATION_ADDR = predict(
+            "L1_ENFORCED_TX_GATEWAY_IMPLEMENTATION",
+            type(EnforcedTxGateway).creationCode
+        );
+
+        args = abi.encode(
+            notnull(L1_ENFORCED_TX_GATEWAY_IMPLEMENTATION_ADDR),
+            notnull(L1_PROXY_ADMIN_ADDR),
+            new bytes(0)
+        );
+
+        address L1_ENFORCED_TX_GATEWAY_PROXY_ADDR = predict(
+            "L1_ENFORCED_TX_GATEWAY_PROXY",
+            type(TransparentUpgradeableProxy).creationCode,
+            args
+        );
+
+        args = abi.encode(
+            notnull(L1_SCROLL_MESSENGER_PROXY_ADDR),
+            notnull(L1_SCROLL_CHAIN_PROXY_ADDR_PREDICTED),
+            notnull(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR)
+        );
+
+        address L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR = predict(
+            "L1_MESSAGE_QUEUE_IMPLEMENTATION",
+            type(L1MessageQueueWithGasPriceOracle).creationCode,
+            args
+        );
+
+        args = abi.encode(notnull(L1_MESSAGE_QUEUE_IMPLEMENTATION_ADDR), notnull(L1_PROXY_ADMIN_ADDR), new bytes(0));
+
+        address L1_MESSAGE_QUEUE_PROXY_ADDR_PREDICTED = predict(
+            "L1_MESSAGE_QUEUE_PROXY",
+            type(TransparentUpgradeableProxy).creationCode,
+            args
+        );
+
+        return (L1_SCROLL_CHAIN_PROXY_ADDR_PREDICTED, L1_MESSAGE_QUEUE_PROXY_ADDR_PREDICTED);
+    }
+
+    function predictL1ScrollChainProxyAddr() private returns (address) {
+        bytes memory args = abi.encode(DEPLOYER_ADDR);
+        address L1_PROXY_ADMIN_ADDR = predict("L1_PROXY_ADMIN", type(ProxyAdminSetOwner).creationCode, args);
+
+        address L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR = predict(
+            "L1_PROXY_IMPLEMENTATION_PLACEHOLDER",
+            type(EmptyContract).creationCode
+        );
+
+        args = abi.encode(
+            notnull(L1_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR),
+            notnull(L1_PROXY_ADMIN_ADDR),
+            new bytes(0)
+        );
+
+        address predictedAddr = predict("L1_SCROLL_CHAIN_PROXY", type(TransparentUpgradeableProxy).creationCode, args);
+
+        return predictedAddr;
+    }
+
+    function predictL2TxFeeVaultAddr() private returns (address) {
+        address predeployAddr = tryGetOverride("L2_TX_FEE_VAULT");
+
+        if (predeployAddr != address(0)) {
+            return predeployAddr;
+        }
+
+        bytes memory args = abi.encode(DEPLOYER_ADDR, L1_FEE_VAULT_ADDR, FEE_VAULT_MIN_WITHDRAW_AMOUNT);
+        address predictedAddr = predict("L2_TX_FEE_VAULT", type(L2TxFeeVault).creationCode, args);
+
+        return predictedAddr;
+    }
+
+    /***************
+     * Entry point *
+     **************/
+
+    function run() public {
+        initConfig();
+
+        // general config
+        vm.writeJson(vm.toString(CHAIN_ID_L2), GENESIS_JSON_PATH, ".config.chainId");
+
+        uint256 timestamp = vm.unixTime() / 1000;
+        vm.writeJson(vm.toString(bytes32(timestamp)), GENESIS_JSON_PATH, ".timestamp");
+
+        string memory extraData = string(
+            abi.encodePacked(
+                vm.toString(L2GETH_SIGNER_0_ADDRESS),
+                "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+            )
+        );
+        vm.writeJson(extraData, GENESIS_JSON_PATH, ".extraData");
+
+        // scroll-specific config
+        vm.writeJson(vm.toString(MAX_TX_IN_CHUNK), GENESIS_JSON_PATH, ".config.scroll.maxTxPerBlock");
+        vm.writeJson(vm.toString(L2_TX_FEE_VAULT_ADDR), GENESIS_JSON_PATH, ".config.scroll.feeVaultAddress");
+
+        vm.writeJson(vm.toString(CHAIN_ID_L1), GENESIS_JSON_PATH, ".config.scroll.l1Config.l1ChainId");
+        vm.writeJson(
+            vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR),
+            GENESIS_JSON_PATH,
+            ".config.scroll.l1Config.l1MessageQueueAddress"
+        );
+        vm.writeJson(
+            vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR),
+            GENESIS_JSON_PATH,
+            ".config.scroll.l1Config.scrollChainAddress"
+        );
+
+        // predeploys and prefunded accounts
+        string memory alloc = vm.readFile(GENESIS_ALLOC_JSON_PATH);
+        vm.writeJson(alloc, GENESIS_JSON_PATH, ".alloc");
     }
 }

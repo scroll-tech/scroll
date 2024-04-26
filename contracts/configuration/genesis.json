@@ -1,0 +1,49 @@
+{
+  "config": {
+    "chainId": null,
+    "homesteadBlock": 0,
+    "eip150Block": 0,
+    "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "eip155Block": 0,
+    "eip158Block": 0,
+    "byzantiumBlock": 0,
+    "constantinopleBlock": 0,
+    "petersburgBlock": 0,
+    "istanbulBlock": 0,
+    "berlinBlock": 0,
+    "londonBlock": 0,
+    "archimedesBlock": 0,
+    "shanghaiBlock": 0,
+    "bernoulliBlock": 0,
+    "clique": {
+      "period": 3,
+      "epoch": 30000
+    },
+    "scroll": {
+      "useZktrie": true,
+      "maxTxPerBlock": null,
+      "maxTxPayloadBytesPerBlock": 122880,
+      "feeVaultAddress": null,
+      "enableEIP2718": false,
+      "enableEIP1559": false,
+      "l1Config": {
+        "l1ChainId": null,
+        "l1MessageQueueAddress": null,
+        "scrollChainAddress": null,
+        "numL1MessagesPerBlock": "10"
+      }
+    }
+  },
+  "nonce": "0x0",
+  "timestamp": null,
+  "extraData": null,
+  "gasLimit": "10000000",
+  "difficulty": "0x1",
+  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "alloc": {},
+  "number": "0x0",
+  "gasUsed": "0x0",
+  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "baseFeePerGas": null
+}
