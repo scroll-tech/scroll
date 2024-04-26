@@ -1,9 +1,11 @@
-ARG CUDA_VERSION=11.7.1
-ARG GO_VERSION=1.21
-ARG RUST_VERSION=nightly-2023-12-03
-ARG CARGO_CHEF_TAG=0.1.41
-
 FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu22.04
+
+ARG CUDA_VERSION
+ARG GO_VERSION
+ARG RUST_VERSION
+ARG CARGO_CHEF_TAG
+ARG PLATFORM
+
 RUN apt-get update
 # Install basic packages
 RUN apt-get install build-essential curl wget git pkg-config --no-install-recommends -y
@@ -29,7 +31,7 @@ RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_TAG} \
 # Install Go
 ARG GO_VERSION
 RUN rm -rf /usr/local/go
-RUN wget https://go.dev/dl/go${GO_VERSION}.1.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go${GO_VERSION}.1.linux-amd64.tar.gz
-RUN rm go${GO_VERSION}.1.linux-amd64.tar.gz
+RUN wget https://go.dev/dl/go${GO_VERSION}.1.linux-${PLATFORM}.tar.gz
+RUN tar -C /usr/local -xzf go${GO_VERSION}.1.linux-${PLATFORM}.tar.gz
+RUN rm go${GO_VERSION}.1.linux-${PLATFORM}.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
