@@ -46,8 +46,8 @@ import {ScrollStandardERC20Factory} from "../../src/libraries/token/ScrollStanda
 ///      See https://github.com/Arachnid/deterministic-deployment-proxy.
 address constant DETERMINISTIC_DEPLOYMENT_PROXY_ADDR = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
 
-/// @dev The default salt prefix used for deriving deterministic deployment addresses.
-string constant DEFAULT_SALT_PREFIX = "ScrollStack";
+/// @dev The default deterministic deployment salt prefix.
+string constant DEFAULT_DEPLOYMENT_SALT = "ScrollStack";
 
 /// @dev The default minimum withdraw amount configured on L2TxFeeVault.
 uint256 constant FEE_VAULT_MIN_WITHDRAW_AMOUNT = 1 ether;
@@ -55,7 +55,7 @@ uint256 constant FEE_VAULT_MIN_WITHDRAW_AMOUNT = 1 ether;
 // configuration file paths
 string constant CONFIG_PATH = "./configuration/config.toml";
 string constant CONTRACTS_CONFIG_PATH = "./configuration/config-contracts.toml";
-string constant GENESIS_ALLOCS_JSON_PATH = "./configuration/genesis.json";
+string constant GENESIS_ALLOC_JSON_PATH = "./configuration/genesis-alloc.json";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
     /// @dev allow setting the owner in the constructor, otherwise
@@ -170,7 +170,7 @@ contract Configuration is Script {
 contract DeterminsticDeploymentScript is Configuration {
     using stdToml for string;
 
-    string internal saltPrefix = DEFAULT_SALT_PREFIX;
+    string internal saltPrefix = DEFAULT_DEPLOYMENT_SALT;
 
     function deploy(string memory name, bytes memory codeWithArgs) internal returns (address) {
         return _deploy(name, codeWithArgs);
@@ -295,7 +295,6 @@ contract DeployScroll is DeterminsticDeploymentScript {
     // general configurations
     Layer BROADCAST_LAYER;
 
-    string SALT_PREFIX;
     uint64 CHAIN_ID_L2;
     uint256 MAX_TX_IN_CHUNK;
     uint256 MAX_L1_MESSAGE_GAS_LIMIT;
@@ -340,7 +339,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
         L1_PLONK_VERIFIER_ADDR = cfg.readAddress(".contracts.L1_PLONK_VERIFIER_ADDR");
 
         // salt prefix used for deterministic deployments
-        string memory _saltPrefix = cfg.readString(".contracts.SALT_PREFIX");
+        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
         if (bytes(_saltPrefix).length != 0) {
             saltPrefix = _saltPrefix;
         }
@@ -865,7 +864,6 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     function deployTxFeeVault() internal {
         bytes memory args = abi.encode(DEPLOYER_ADDR, L1_FEE_VAULT_ADDR, FEE_VAULT_MIN_WITHDRAW_AMOUNT);
-
         L2_TX_FEE_VAULT_ADDR = deploy("L2_TX_FEE_VAULT", type(L2TxFeeVault).creationCode, args);
     }
 
@@ -981,7 +979,6 @@ contract DeployScroll is DeterminsticDeploymentScript {
 
     function deployScrollStandardERC20Factory() internal {
         L2_SCROLL_STANDARD_ERC20_ADDR = deploy("L2_SCROLL_STANDARD_ERC20", type(ScrollStandardERC20).creationCode);
-
         bytes memory args = abi.encode(DEPLOYER_ADDR, notnull(L2_SCROLL_STANDARD_ERC20_ADDR));
 
         L2_SCROLL_STANDARD_ERC20_FACTORY_ADDR = deploy(
@@ -1556,6 +1553,26 @@ contract GenerateGenesisAlloc is DeterminsticDeploymentScript {
     // generated
     address L2_SCROLL_MESSENGER_PROXY_ADDR;
 
+    function predictL2MessengerAddress() private view returns (address) {
+        bytes memory args = abi.encode(DEPLOYER_ADDR);
+        address L2_PROXY_ADMIN_ADDR = predict("L2_PROXY_ADMIN", type(ProxyAdminSetOwner).creationCode, args);
+
+        address L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR = predict(
+            "L2_PROXY_IMPLEMENTATION_PLACEHOLDER",
+            type(EmptyContract).creationCode
+        );
+
+        bytes memory args2 = abi.encode(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR, L2_PROXY_ADMIN_ADDR, new bytes(0));
+
+        address predictedAddr = predict(
+            "L2_SCROLL_MESSENGER_PROXY",
+            type(TransparentUpgradeableProxy).creationCode,
+            args2
+        );
+
+        return predictedAddr;
+    }
+
     function initConfig() private {
         DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
         OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
@@ -1567,24 +1584,13 @@ contract GenerateGenesisAlloc is DeterminsticDeploymentScript {
         L2_SCROLL_MESSENGER_INITIAL_BALANCE = L2_MAX_ETH_SUPPLY - L2_DEPLOYER_INITIAL_BALANCE;
 
         // salt prefix used for deterministic deployments
-        string memory _saltPrefix = cfg.readString(".contracts.SALT_PREFIX");
+        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
         if (bytes(_saltPrefix).length != 0) {
             saltPrefix = _saltPrefix;
         }
 
         // deterministically predict L2ScrollMessengerProxy address
-        bytes memory args = abi.encode(DEPLOYER_ADDR);
-        address L2_PROXY_ADMIN_ADDR = predict("L2_PROXY_ADMIN", type(ProxyAdminSetOwner).creationCode, args);
-        address L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR = predict(
-            "L2_PROXY_IMPLEMENTATION_PLACEHOLDER",
-            type(EmptyContract).creationCode
-        );
-        bytes memory args2 = abi.encode(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR, L2_PROXY_ADMIN_ADDR, new bytes(0));
-        L2_SCROLL_MESSENGER_PROXY_ADDR = predict(
-            "L2_SCROLL_MESSENGER_PROXY",
-            type(TransparentUpgradeableProxy).creationCode,
-            args2
-        );
+        L2_SCROLL_MESSENGER_PROXY_ADDR = predictL2MessengerAddress();
     }
 
     /*************
@@ -1622,8 +1628,8 @@ contract GenerateGenesisAlloc is DeterminsticDeploymentScript {
         setL2Deployer();
 
         // write to file
-        vm.dumpState(GENESIS_ALLOCS_JSON_PATH);
-        sortJsonByKeys(GENESIS_ALLOCS_JSON_PATH);
+        vm.dumpState(GENESIS_ALLOC_JSON_PATH);
+        sortJsonByKeys(GENESIS_ALLOC_JSON_PATH);
     }
 
     function setL2MessageQueue() internal {
