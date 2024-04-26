@@ -97,21 +97,88 @@ contract Configuration is Script {
         VerifyConfig
     }
 
-    enum Layer {
-        None,
-        L1,
-        L2
-    }
-
     string internal cfg;
     string internal contractsCfg;
 
     ScriptMode internal mode = ScriptMode.LogAddresses;
 
+    /***************************
+     * Configuration parameters *
+     ***************************/
+
+    // general
+    uint64 internal CHAIN_ID_L1;
+    uint64 internal CHAIN_ID_L2;
+    uint256 internal MAX_TX_IN_CHUNK;
+    uint256 internal MAX_L1_MESSAGE_GAS_LIMIT;
+
+    // accounts
+    uint256 internal DEPLOYER_PRIVATE_KEY;
+
+    address internal L1_COMMIT_SENDER_ADDR;
+    address internal L1_FINALIZE_SENDER_ADDR;
+    address internal L1_GAS_ORACLE_SENDER_ADDR;
+    address internal L2_GAS_ORACLE_SENDER_ADDR;
+
+    address internal DEPLOYER_ADDR;
+    address internal OWNER_ADDR;
+
+    address internal L2GETH_SIGNER_0_ADDRESS;
+
+    // genesis
+    uint256 internal L2_MAX_ETH_SUPPLY;
+    uint256 internal L2_DEPLOYER_INITIAL_BALANCE;
+    uint256 internal L2_SCROLL_MESSENGER_INITIAL_BALANCE;
+
+    // contracts
+    string internal DEPLOYMENT_SALT;
+
+    address internal L1_FEE_VAULT_ADDR;
+    address internal L1_PLONK_VERIFIER_ADDR;
+
+    /***************
+     * Constructor *
+     **************/
+
     constructor() {
         cfg = vm.readFile(CONFIG_PATH);
         contractsCfg = vm.readFile(CONTRACTS_CONFIG_PATH);
+
+        DEPLOYMENT_SALT = cfg.readString(".contracts.DEPLOYMENT_SALT");
+
+        CHAIN_ID_L1 = uint64(cfg.readUint(".general.CHAIN_ID_L1"));
+        CHAIN_ID_L2 = uint64(cfg.readUint(".general.CHAIN_ID_L2"));
+        MAX_TX_IN_CHUNK = cfg.readUint(".general.MAX_TX_IN_CHUNK");
+        MAX_L1_MESSAGE_GAS_LIMIT = cfg.readUint(".general.MAX_L1_MESSAGE_GAS_LIMIT");
+
+        DEPLOYER_PRIVATE_KEY = cfg.readUint(".accounts.DEPLOYER_PRIVATE_KEY");
+        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
+
+        // config sanity check
+        if (vm.addr(DEPLOYER_PRIVATE_KEY) != DEPLOYER_ADDR) {
+            console.log(string(abi.encodePacked("[ERROR] DEPLOYER_ADDR does not match DEPLOYER_PRIVATE_KEY")));
+            revert();
+        }
+
+        OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
+
+        L1_COMMIT_SENDER_ADDR = cfg.readAddress(".accounts.L1_COMMIT_SENDER_ADDR");
+        L1_FINALIZE_SENDER_ADDR = cfg.readAddress(".accounts.L1_FINALIZE_SENDER_ADDR");
+        L1_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L1_GAS_ORACLE_SENDER_ADDR");
+        L2_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L2_GAS_ORACLE_SENDER_ADDR");
+        L2GETH_SIGNER_0_ADDRESS = cfg.readAddress(".accounts.L2GETH_SIGNER_0_ADDRESS");
+
+        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
+        L1_PLONK_VERIFIER_ADDR = cfg.readAddress(".contracts.L1_PLONK_VERIFIER_ADDR");
+
+        L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
+        L2_DEPLOYER_INITIAL_BALANCE = cfg.readUint(".genesis.L2_DEPLOYER_INITIAL_BALANCE");
+        L2_SCROLL_MESSENGER_INITIAL_BALANCE = L2_MAX_ETH_SUPPLY - L2_DEPLOYER_INITIAL_BALANCE;
     }
+
+    /*************
+     * Utilities *
+     ************/
 
     function parseScriptMode(string memory raw) internal pure returns (ScriptMode) {
         if (keccak256(bytes(raw)) == keccak256(bytes("log-addresses"))) {
@@ -125,16 +192,6 @@ contract Configuration is Script {
         }
     }
 
-    function parseLayer(string memory raw) internal pure returns (Layer) {
-        if (keccak256(bytes(raw)) == keccak256(bytes("L1"))) {
-            return Layer.L1;
-        } else if (keccak256(bytes(raw)) == keccak256(bytes("L2"))) {
-            return Layer.L2;
-        } else {
-            return Layer.None;
-        }
-    }
-
     /// @dev Ensure that `addr` is not the zero address.
     ///      This helps catch bugs arising from incorrect deployment order.
     function notnull(address addr) internal pure returns (address) {
@@ -142,7 +199,7 @@ contract Configuration is Script {
         return addr;
     }
 
-    function _label(string memory name, address addr) internal {
+    function label(string memory name, address addr) internal {
         vm.label(addr, name);
 
         if (mode == ScriptMode.LogAddresses) {
@@ -181,8 +238,31 @@ contract Configuration is Script {
 contract DeterminsticDeploymentScript is Configuration {
     using stdToml for string;
 
-    string internal saltPrefix = DEFAULT_DEPLOYMENT_SALT;
+    string private SALT_PREFIX;
     bool internal SKIP_DEPLOY = false;
+
+    constructor() {
+        // salt prefix used for deterministic deployments
+        if (bytes(DEPLOYMENT_SALT).length != 0) {
+            SALT_PREFIX = DEPLOYMENT_SALT;
+        } else {
+            SALT_PREFIX = DEFAULT_DEPLOYMENT_SALT;
+        }
+
+        // sanity check: make sure DeterministicDeploymentProxy exists
+        if (DETERMINISTIC_DEPLOYMENT_PROXY_ADDR.code.length == 0) {
+            console.log(
+                string(
+                    abi.encodePacked(
+                        "[ERROR] DeterministicDeploymentProxy (",
+                        vm.toString(DETERMINISTIC_DEPLOYMENT_PROXY_ADDR),
+                        ") is not available"
+                    )
+                )
+            );
+            revert();
+        }
+    }
 
     function deploy(string memory name, bytes memory codeWithArgs) internal returns (address) {
         return _deploy(name, codeWithArgs);
@@ -213,13 +293,13 @@ contract DeterminsticDeploymentScript is Configuration {
         address addr = tryGetOverride(name);
 
         if (addr != address(0)) {
-            _label(name, addr);
+            label(name, addr);
             return addr;
         }
 
         // predict determinstic deployment address
         addr = _predict(name, codeWithArgs);
-        _label(name, addr);
+        label(name, addr);
 
         if (SKIP_DEPLOY) {
             return addr;
@@ -277,7 +357,7 @@ contract DeterminsticDeploymentScript is Configuration {
     }
 
     function _getSalt(string memory name) internal view returns (bytes32) {
-        return keccak256(abi.encodePacked(saltPrefix, name));
+        return keccak256(abi.encodePacked(SALT_PREFIX, name));
     }
 
     function _predict(string memory name, bytes memory codeWithArgs) private view returns (address) {
@@ -302,64 +382,18 @@ contract DeterminsticDeploymentScript is Configuration {
 }
 
 contract DeployScroll is DeterminsticDeploymentScript {
-    using stdToml for string;
+    enum Layer {
+        None,
+        L1,
+        L2
+    }
 
     /***************************
      * Configuration parameters *
      ***************************/
 
     // general configurations
-    Layer BROADCAST_LAYER = Layer.None;
-
-    uint64 CHAIN_ID_L2;
-    uint256 MAX_TX_IN_CHUNK;
-    uint256 MAX_L1_MESSAGE_GAS_LIMIT;
-
-    // accounts
-    uint256 DEPLOYER_PRIVATE_KEY;
-    address DEPLOYER_ADDR;
-
-    address OWNER_ADDR;
-
-    address L1_COMMIT_SENDER_ADDR;
-    address L1_FINALIZE_SENDER_ADDR;
-    address L1_GAS_ORACLE_SENDER_ADDR;
-    address L2_GAS_ORACLE_SENDER_ADDR;
-
-    // contracts deployed outside this script
-    address L1_FEE_VAULT_ADDR;
-    address L1_PLONK_VERIFIER_ADDR;
-
-    function initConfig() private {
-        // salt prefix used for deterministic deployments
-        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
-        if (bytes(_saltPrefix).length != 0) {
-            saltPrefix = _saltPrefix;
-        }
-
-        CHAIN_ID_L2 = uint64(cfg.readUint(".general.CHAIN_ID_L2"));
-        MAX_TX_IN_CHUNK = cfg.readUint(".general.MAX_TX_IN_CHUNK");
-        MAX_L1_MESSAGE_GAS_LIMIT = cfg.readUint(".general.MAX_L1_MESSAGE_GAS_LIMIT");
-
-        DEPLOYER_PRIVATE_KEY = cfg.readUint(".accounts.DEPLOYER_PRIVATE_KEY");
-        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
-
-        // config sanity check
-        if (vm.addr(DEPLOYER_PRIVATE_KEY) != DEPLOYER_ADDR) {
-            console.log(string(abi.encodePacked("[ERROR] DEPLOYER_ADDR does not match DEPLOYER_PRIVATE_KEY")));
-            revert();
-        }
-
-        OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
-
-        L1_COMMIT_SENDER_ADDR = cfg.readAddress(".accounts.L1_COMMIT_SENDER_ADDR");
-        L1_FINALIZE_SENDER_ADDR = cfg.readAddress(".accounts.L1_FINALIZE_SENDER_ADDR");
-        L1_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L1_GAS_ORACLE_SENDER_ADDR");
-        L2_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L2_GAS_ORACLE_SENDER_ADDR");
-
-        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
-        L1_PLONK_VERIFIER_ADDR = cfg.readAddress(".contracts.L1_PLONK_VERIFIER_ADDR");
-    }
+    Layer internal BROADCAST_LAYER = Layer.None;
 
     /**********************
      * Contracts to deploy *
@@ -428,6 +462,16 @@ contract DeployScroll is DeterminsticDeploymentScript {
      * Utilities *
      ************/
 
+    function parseLayer(string memory raw) internal pure returns (Layer) {
+        if (keccak256(bytes(raw)) == keccak256(bytes("L1"))) {
+            return Layer.L1;
+        } else if (keccak256(bytes(raw)) == keccak256(bytes("L2"))) {
+            return Layer.L2;
+        } else {
+            return Layer.None;
+        }
+    }
+
     /// @dev Only broadcast code block if we run the script on the specified layer.
     modifier broadcast(Layer layer) {
         if (BROADCAST_LAYER == layer) {
@@ -461,21 +505,6 @@ contract DeployScroll is DeterminsticDeploymentScript {
     function run(string memory layer, string memory scriptMode) public {
         BROADCAST_LAYER = parseLayer(layer);
         mode = parseScriptMode(scriptMode);
-
-        if (DETERMINISTIC_DEPLOYMENT_PROXY_ADDR.code.length == 0) {
-            console.log(
-                string(
-                    abi.encodePacked(
-                        "[ERROR] DeterministicDeploymentProxy (",
-                        vm.toString(DETERMINISTIC_DEPLOYMENT_PROXY_ADDR),
-                        ") is not available"
-                    )
-                )
-            );
-            revert();
-        }
-
-        initConfig();
 
         deployAllContracts();
         initializeL1Contracts();
@@ -1545,43 +1574,10 @@ contract GenerateGenesisAlloc is DeterminsticDeploymentScript {
      * Configuration parameters *
      ***************************/
 
-    // accounts
-    address DEPLOYER_ADDR;
-    address OWNER_ADDR;
-
-    // contracts
-    address L1_FEE_VAULT_ADDR;
-
-    address L2_MESSAGE_QUEUE_OVERRIDE;
-    address L1_GAS_PRICE_ORACLE_OVERRIDE;
-    address L2_WHITELIST_OVERRIDE;
-    address L2_WETH_OVERRIDE;
-    address L2_TX_FEE_VAULT_OVERRIDE;
-
-    // other
-    uint256 L2_MAX_ETH_SUPPLY;
-    uint256 L2_DEPLOYER_INITIAL_BALANCE;
-    uint256 L2_SCROLL_MESSENGER_INITIAL_BALANCE;
-
     // generated
     address L2_SCROLL_MESSENGER_PROXY_ADDR;
 
     function initConfig() private {
-        // salt prefix used for deterministic deployments
-        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
-        if (bytes(_saltPrefix).length != 0) {
-            saltPrefix = _saltPrefix;
-        }
-
-        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
-        OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
-
-        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
-
-        L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
-        L2_DEPLOYER_INITIAL_BALANCE = cfg.readUint(".genesis.L2_DEPLOYER_INITIAL_BALANCE");
-        L2_SCROLL_MESSENGER_INITIAL_BALANCE = L2_MAX_ETH_SUPPLY - L2_DEPLOYER_INITIAL_BALANCE;
-
         // deterministically predict L2ScrollMessengerProxy address
         L2_SCROLL_MESSENGER_PROXY_ADDR = predictL2MessengerProxyAddress();
     }
@@ -1776,37 +1772,11 @@ contract GenerateGenesis is DeterminsticDeploymentScript {
      * Configuration parameters *
      ***************************/
 
-    // general configurations
-    uint64 CHAIN_ID_L1;
-    uint64 CHAIN_ID_L2;
-    uint256 MAX_TX_IN_CHUNK;
-
-    // accounts
-    address DEPLOYER_ADDR;
-    address L2GETH_SIGNER_0_ADDRESS;
-
-    // contract addresses
-    address L1_FEE_VAULT_ADDR;
     address L1_MESSAGE_QUEUE_PROXY_ADDR;
     address L1_SCROLL_CHAIN_PROXY_ADDR;
     address L2_TX_FEE_VAULT_ADDR;
 
     function initConfig() private {
-        // salt prefix used for deterministic deployments
-        string memory _saltPrefix = cfg.readString(".contracts.DEPLOYMENT_SALT");
-        if (bytes(_saltPrefix).length != 0) {
-            saltPrefix = _saltPrefix;
-        }
-
-        CHAIN_ID_L1 = uint64(cfg.readUint(".general.CHAIN_ID_L1"));
-        CHAIN_ID_L2 = uint64(cfg.readUint(".general.CHAIN_ID_L2"));
-        MAX_TX_IN_CHUNK = cfg.readUint(".general.MAX_TX_IN_CHUNK");
-
-        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
-        L2GETH_SIGNER_0_ADDRESS = cfg.readAddress(".accounts.L2GETH_SIGNER_0_ADDRESS");
-
-        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
-
         (
             L1_SCROLL_CHAIN_PROXY_ADDR,
             L1_MESSAGE_QUEUE_PROXY_ADDR
