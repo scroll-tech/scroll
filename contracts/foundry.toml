@@ -13,7 +13,6 @@ solc_version = '0.8.24'                                       # override for the
 optimizer = true                                              # enable or disable the solc optimizer
 optimizer_runs = 200                                          # the number of optimizer runs
 verbosity = 2                                                 # the verbosity of tests
-ignored_error_codes = []                                      # a list of ignored solc error codes
 fuzz_runs = 256                                               # the number of fuzz runs for tests
 sender = '0x00a329c0648769a73afac7f9381e08fb43dbea72'         # the address of `msg.sender` in tests
 tx_origin = '0x00a329c0648769a73afac7f9381e08fb43dbea72'      # the address of `tx.origin` in tests
@@ -25,6 +24,13 @@ block_base_fee_per_gas = 0                                    # the base fee (in
 block_coinbase = '0x0000000000000000000000000000000000000000' # the address of `block.coinbase` in tests
 block_timestamp = 0                                           # the value of `block.timestamp` in tests
 block_difficulty = 0                                          # the value of `block.difficulty` in tests
+
+ignored_error_codes = [
+  "code-size",
+  "func-mutability",
+  "init-code-size",
+  "unused-param",
+]
 
 # remove bytecode hash for reliable deterministic addresses
 bytecode_hash = 'none'

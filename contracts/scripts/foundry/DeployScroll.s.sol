@@ -1832,7 +1832,7 @@ contract GenerateGenesis is DeployScroll {
     // source: https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/scripts/L2Genesis.s.sol
     function sortJsonByKeys(string memory _path) private {
         string[] memory commands = new string[](3);
-        commands[0] = "bash";
+        commands[0] = "/bin/bash";
         commands[1] = "-c";
         commands[2] = string.concat("cat <<< $(jq -S '.' ", _path, ") > ", _path);
         vm.ffi(commands);

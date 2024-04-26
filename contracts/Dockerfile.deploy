@@ -1,0 +1,26 @@
+FROM ghcr.io/foundry-rs/foundry:nightly-19d69f277de96f621d930cdb767a9693c55ae8e1 as foundry
+
+RUN apk add --no-cache bash jq
+
+WORKDIR /contracts
+
+# copy dependencies
+COPY ./lib /contracts/lib
+COPY ./node_modules/@openzeppelin /contracts/node_modules/@openzeppelin
+
+# copy configurations
+COPY foundry.toml /contracts/foundry.toml
+COPY remappings.txt /contracts/remappings.txt
+COPY ./data /contracts/data
+
+# copy source code
+COPY ./src /contracts/src
+COPY ./scripts /contracts/scripts
+
+# compile contracts
+ENV FOUNDRY_EVM_VERSION="cancun"
+ENV FOUNDRY_BYTECODE_HASH="none"
+
+RUN forge build
+
+ENTRYPOINT ["/bin/bash", "/contracts/data/deploy.sh"]
