@@ -49,8 +49,13 @@ address constant DETERMINISTIC_DEPLOYMENT_PROXY_ADDR = 0x4e59b44847b379578588920
 /// @dev The default salt prefix used for deriving deterministic deployment addresses.
 string constant DEFAULT_SALT_PREFIX = "ScrollStack";
 
+/// @dev The default minimum withdraw amount configured on L2TxFeeVault.
+uint256 constant FEE_VAULT_MIN_WITHDRAW_AMOUNT = 1 ether;
+
+// configuration file paths
 string constant CONFIG_PATH = "./configuration/config.toml";
 string constant CONTRACTS_CONFIG_PATH = "./configuration/config-contracts.toml";
+string constant GENESIS_ALLOCS_JSON_PATH = "./configuration/genesis.json";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
     /// @dev allow setting the owner in the constructor, otherwise
@@ -165,7 +170,7 @@ contract Configuration is Script {
 contract DeterminsticDeploymentScript is Configuration {
     using stdToml for string;
 
-    string internal saltPrefix;
+    string internal saltPrefix = DEFAULT_SALT_PREFIX;
 
     function deploy(string memory name, bytes memory codeWithArgs) internal returns (address) {
         return _deploy(name, codeWithArgs);
@@ -221,9 +226,9 @@ contract DeterminsticDeploymentScript is Configuration {
         return addr;
     }
 
-    function tryGetOverride(string memory name) private returns (address) {
+    function tryGetOverride(string memory name) internal returns (address) {
         address addr;
-        string memory key = string(abi.encodePacked(".contracts.", name, "_OVERRIDE"));
+        string memory key = string(abi.encodePacked(".contracts.overrides.", name));
 
         if (!vm.keyExistsToml(cfg, key)) {
             return address(0);
@@ -240,9 +245,9 @@ contract DeterminsticDeploymentScript is Configuration {
                 console.log(
                     string(
                         abi.encodePacked(
-                            "[ERROR] ",
+                            "[ERROR] override ",
                             name,
-                            "_OVERRIDE=",
+                            " = ",
                             vm.toString(addr),
                             " not deployed in broadcast mode"
                         )
@@ -311,12 +316,12 @@ contract DeployScroll is DeterminsticDeploymentScript {
     address L1_PLONK_VERIFIER_ADDR;
 
     function initConfig() private {
-        CHAIN_ID_L2 = uint64(cfg.readUint(".contracts.CHAIN_ID_L2"));
-        MAX_TX_IN_CHUNK = cfg.readUint(".contracts.MAX_TX_IN_CHUNK");
-        MAX_L1_MESSAGE_GAS_LIMIT = cfg.readUint(".contracts.MAX_L1_MESSAGE_GAS_LIMIT");
+        CHAIN_ID_L2 = uint64(cfg.readUint(".general.CHAIN_ID_L2"));
+        MAX_TX_IN_CHUNK = cfg.readUint(".general.MAX_TX_IN_CHUNK");
+        MAX_L1_MESSAGE_GAS_LIMIT = cfg.readUint(".general.MAX_L1_MESSAGE_GAS_LIMIT");
 
-        DEPLOYER_PRIVATE_KEY = cfg.readUint(".contracts.DEPLOYER_PRIVATE_KEY");
-        DEPLOYER_ADDR = cfg.readAddress(".contracts.DEPLOYER_ADDR");
+        DEPLOYER_PRIVATE_KEY = cfg.readUint(".accounts.DEPLOYER_PRIVATE_KEY");
+        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
 
         // config sanity check
         if (vm.addr(DEPLOYER_PRIVATE_KEY) != DEPLOYER_ADDR) {
@@ -324,19 +329,20 @@ contract DeployScroll is DeterminsticDeploymentScript {
             revert();
         }
 
-        OWNER_ADDR = cfg.readAddress(".contracts.OWNER_ADDR");
+        OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
 
-        L1_COMMIT_SENDER_ADDR = cfg.readAddress(".contracts.L1_COMMIT_SENDER_ADDR");
-        L1_FINALIZE_SENDER_ADDR = cfg.readAddress(".contracts.L1_FINALIZE_SENDER_ADDR");
-        L1_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".contracts.L1_GAS_ORACLE_SENDER_ADDR");
-        L2_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".contracts.L2_GAS_ORACLE_SENDER_ADDR");
+        L1_COMMIT_SENDER_ADDR = cfg.readAddress(".accounts.L1_COMMIT_SENDER_ADDR");
+        L1_FINALIZE_SENDER_ADDR = cfg.readAddress(".accounts.L1_FINALIZE_SENDER_ADDR");
+        L1_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L1_GAS_ORACLE_SENDER_ADDR");
+        L2_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L2_GAS_ORACLE_SENDER_ADDR");
 
         L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
         L1_PLONK_VERIFIER_ADDR = cfg.readAddress(".contracts.L1_PLONK_VERIFIER_ADDR");
 
-        saltPrefix = cfg.readString(".contracts.SALT_PREFIX");
-        if (bytes(saltPrefix).length == 0) {
-            saltPrefix = DEFAULT_SALT_PREFIX;
+        // salt prefix used for deterministic deployments
+        string memory _saltPrefix = cfg.readString(".contracts.SALT_PREFIX");
+        if (bytes(_saltPrefix).length != 0) {
+            saltPrefix = _saltPrefix;
         }
     }
 
@@ -858,7 +864,7 @@ contract DeployScroll is DeterminsticDeploymentScript {
     }
 
     function deployTxFeeVault() internal {
-        bytes memory args = abi.encode(DEPLOYER_ADDR, L1_FEE_VAULT_ADDR, 10 ether);
+        bytes memory args = abi.encode(DEPLOYER_ADDR, L1_FEE_VAULT_ADDR, FEE_VAULT_MIN_WITHDRAW_AMOUNT);
 
         L2_TX_FEE_VAULT_ADDR = deploy("L2_TX_FEE_VAULT", type(L2TxFeeVault).creationCode, args);
     }
@@ -1519,5 +1525,227 @@ contract DeployScroll is DeterminsticDeploymentScript {
         Ownable(L2_WETH_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L2_PROXY_ADMIN_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L2_WHITELIST_ADDR).transferOwnership(OWNER_ADDR);
+    }
+}
+
+contract GenerateGenesisAlloc is DeterminsticDeploymentScript {
+    using stdToml for string;
+
+    /***************************
+     * Configuration parameters *
+     ***************************/
+
+    // accounts
+    address DEPLOYER_ADDR;
+    address OWNER_ADDR;
+
+    // contracts
+    address L1_FEE_VAULT_ADDR;
+
+    address L2_MESSAGE_QUEUE_OVERRIDE;
+    address L1_GAS_PRICE_ORACLE_OVERRIDE;
+    address L2_WHITELIST_OVERRIDE;
+    address L2_WETH_OVERRIDE;
+    address L2_TX_FEE_VAULT_OVERRIDE;
+
+    // other
+    uint256 L2_MAX_ETH_SUPPLY;
+    uint256 L2_DEPLOYER_INITIAL_BALANCE;
+    uint256 L2_SCROLL_MESSENGER_INITIAL_BALANCE;
+
+    // generated
+    address L2_SCROLL_MESSENGER_PROXY_ADDR;
+
+    function initConfig() private {
+        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
+        OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
+
+        L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
+
+        L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
+        L2_DEPLOYER_INITIAL_BALANCE = cfg.readUint(".genesis.L2_DEPLOYER_INITIAL_BALANCE");
+        L2_SCROLL_MESSENGER_INITIAL_BALANCE = L2_MAX_ETH_SUPPLY - L2_DEPLOYER_INITIAL_BALANCE;
+
+        // salt prefix used for deterministic deployments
+        string memory _saltPrefix = cfg.readString(".contracts.SALT_PREFIX");
+        if (bytes(_saltPrefix).length != 0) {
+            saltPrefix = _saltPrefix;
+        }
+
+        // deterministically predict L2ScrollMessengerProxy address
+        bytes memory args = abi.encode(DEPLOYER_ADDR);
+        address L2_PROXY_ADMIN_ADDR = predict("L2_PROXY_ADMIN", type(ProxyAdminSetOwner).creationCode, args);
+        address L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR = predict(
+            "L2_PROXY_IMPLEMENTATION_PLACEHOLDER",
+            type(EmptyContract).creationCode
+        );
+        bytes memory args2 = abi.encode(L2_PROXY_IMPLEMENTATION_PLACEHOLDER_ADDR, L2_PROXY_ADMIN_ADDR, new bytes(0));
+        L2_SCROLL_MESSENGER_PROXY_ADDR = predict(
+            "L2_SCROLL_MESSENGER_PROXY",
+            type(TransparentUpgradeableProxy).creationCode,
+            args2
+        );
+    }
+
+    /*************
+     * Utilities *
+     ************/
+
+    /// @notice Sorts the allocs by address
+    function sortJsonByKeys(string memory _path) internal {
+        string[] memory commands = new string[](3);
+        commands[0] = "bash";
+        commands[1] = "-c";
+        commands[2] = string.concat("cat <<< $(jq -S '.' ", _path, ") > ", _path);
+        vm.ffi(commands);
+    }
+
+    /*************************
+     * Deployment entry point *
+     *************************/
+
+    function run() public {
+        initConfig();
+
+        // predeploys
+        setL2MessageQueue();
+        setL2GasPriceOracle();
+        setL2Whitelist();
+        setL2Weth();
+        setL2FeeVault();
+
+        // reset sender
+        vm.resetNonce(msg.sender);
+
+        // prefunded accounts
+        setL2ScrollMessenger();
+        setL2Deployer();
+
+        // write to file
+        vm.dumpState(GENESIS_ALLOCS_JSON_PATH);
+        sortJsonByKeys(GENESIS_ALLOCS_JSON_PATH);
+    }
+
+    function setL2MessageQueue() internal {
+        address predeployAddr = tryGetOverride("L2_MESSAGE_QUEUE");
+
+        if (predeployAddr == address(0)) {
+            return;
+        }
+
+        // set code
+        L2MessageQueue _queue = new L2MessageQueue(OWNER_ADDR);
+        vm.etch(predeployAddr, address(_queue).code);
+
+        // set storage
+        bytes32 _ownerSlot = hex"0000000000000000000000000000000000000000000000000000000000000052";
+        vm.store(predeployAddr, _ownerSlot, vm.load(address(_queue), _ownerSlot));
+
+        // reset so its not included state dump
+        vm.etch(address(_queue), "");
+        vm.resetNonce(address(_queue));
+    }
+
+    function setL2GasPriceOracle() internal {
+        address predeployAddr = tryGetOverride("L1_GAS_PRICE_ORACLE");
+
+        if (predeployAddr == address(0)) {
+            return;
+        }
+
+        // set code
+        L1GasPriceOracle _oracle = new L1GasPriceOracle(OWNER_ADDR);
+        vm.etch(predeployAddr, address(_oracle).code);
+
+        // set storage
+        bytes32 _ownerSlot = hex"0000000000000000000000000000000000000000000000000000000000000000";
+        vm.store(predeployAddr, _ownerSlot, vm.load(address(_oracle), _ownerSlot));
+
+        // reset so its not included state dump
+        vm.etch(address(_oracle), "");
+        vm.resetNonce(address(_oracle));
+    }
+
+    function setL2Whitelist() internal {
+        address predeployAddr = tryGetOverride("L2_WHITELIST");
+
+        if (predeployAddr == address(0)) {
+            return;
+        }
+
+        // set code
+        Whitelist _whitelist = new Whitelist(OWNER_ADDR);
+        vm.etch(predeployAddr, address(_whitelist).code);
+
+        // set storage
+        bytes32 _ownerSlot = hex"0000000000000000000000000000000000000000000000000000000000000000";
+        vm.store(predeployAddr, _ownerSlot, vm.load(address(_whitelist), _ownerSlot));
+
+        // reset so its not included state dump
+        vm.etch(address(_whitelist), "");
+        vm.resetNonce(address(_whitelist));
+    }
+
+    function setL2Weth() internal {
+        address predeployAddr = tryGetOverride("L2_WETH");
+
+        if (predeployAddr == address(0)) {
+            return;
+        }
+
+        // set code
+        WrappedEther _weth = new WrappedEther();
+        vm.etch(predeployAddr, address(_weth).code);
+
+        // set storage
+        bytes32 _nameSlot = hex"0000000000000000000000000000000000000000000000000000000000000003";
+        vm.store(predeployAddr, _nameSlot, vm.load(address(_weth), _nameSlot));
+
+        bytes32 _symbolSlot = hex"0000000000000000000000000000000000000000000000000000000000000004";
+        vm.store(predeployAddr, _symbolSlot, vm.load(address(_weth), _symbolSlot));
+
+        // reset so its not included state dump
+        vm.etch(address(_weth), "");
+        vm.resetNonce(address(_weth));
+    }
+
+    function setL2FeeVault() internal {
+        address predeployAddr = tryGetOverride("L2_TX_FEE_VAULT");
+
+        if (predeployAddr == address(0)) {
+            return;
+        }
+
+        // set code
+        L2TxFeeVault _vault = new L2TxFeeVault(OWNER_ADDR, L1_FEE_VAULT_ADDR, FEE_VAULT_MIN_WITHDRAW_AMOUNT);
+        vm.etch(predeployAddr, address(_vault).code);
+
+        vm.prank(OWNER_ADDR);
+        _vault.updateMessenger(L2_SCROLL_MESSENGER_PROXY_ADDR);
+
+        // set storage
+        bytes32 _ownerSlot = hex"0000000000000000000000000000000000000000000000000000000000000000";
+        vm.store(predeployAddr, _ownerSlot, vm.load(address(_vault), _ownerSlot));
+
+        bytes32 _minWithdrawAmountSlot = hex"0000000000000000000000000000000000000000000000000000000000000001";
+        vm.store(predeployAddr, _minWithdrawAmountSlot, vm.load(address(_vault), _minWithdrawAmountSlot));
+
+        bytes32 _messengerSlot = hex"0000000000000000000000000000000000000000000000000000000000000002";
+        vm.store(predeployAddr, _messengerSlot, vm.load(address(_vault), _messengerSlot));
+
+        bytes32 _recipientSlot = hex"0000000000000000000000000000000000000000000000000000000000000003";
+        vm.store(predeployAddr, _recipientSlot, vm.load(address(_vault), _recipientSlot));
+
+        // reset so its not included state dump
+        vm.etch(address(_vault), "");
+        vm.resetNonce(address(_vault));
+    }
+
+    function setL2ScrollMessenger() internal {
+        vm.deal(L2_SCROLL_MESSENGER_PROXY_ADDR, L2_SCROLL_MESSENGER_INITIAL_BALANCE);
+    }
+
+    function setL2Deployer() internal {
+        vm.deal(OWNER_ADDR, L2_DEPLOYER_INITIAL_BALANCE);
     }
 }
