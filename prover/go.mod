@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/google/uuid v1.6.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240326144132-0f0cd99f7a2e
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240426041101-a860446ebaea
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.25.7
 	go.etcd.io/bbolt v1.3.7
@@ -19,7 +19,7 @@ require (
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
-	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
+	github.com/crate-crypto/go-kzg-4844 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/edsrzf/mmap-go v1.0.0 // indirect
@@ -59,7 +59,7 @@ require (
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.7.1 // indirect
+	github.com/scroll-tech/zktrie v0.8.2 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/supranational/blst v0.3.11-0.20230124161941-ca03e11a3ff2 // indirect

@@ -3,7 +3,7 @@ module scroll-tech/integration-test
 go 1.21
 
 require (
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240326144132-0f0cd99f7a2e
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240426041101-a860446ebaea
 	github.com/stretchr/testify v1.9.0
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
@@ -14,7 +14,7 @@ require (
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
-	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
+	github.com/crate-crypto/go-kzg-4844 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/ethereum/c-kzg-4844/bindings/go v0.0.0-20230126171313-363c7d7593b4 // indirect
@@ -34,7 +34,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
-	github.com/scroll-tech/zktrie v0.7.1 // indirect
+	github.com/scroll-tech/zktrie v0.8.2 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/supranational/blst v0.3.11-0.20230124161941-ca03e11a3ff2 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect

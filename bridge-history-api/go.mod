@@ -8,7 +8,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/pressly/goose/v3 v3.16.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240326144132-0f0cd99f7a2e
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240426041101-a860446ebaea
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.25.7
 	golang.org/x/sync v0.6.0
@@ -28,7 +28,7 @@ require (
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
-	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
+	github.com/crate-crypto/go-kzg-4844 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
@@ -90,7 +90,7 @@ require (
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.7.1 // indirect
+	github.com/scroll-tech/zktrie v0.8.2 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect

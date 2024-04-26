@@ -15,7 +15,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240326144132-0f0cd99f7a2e
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240426041101-a860446ebaea
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.30.0
 	github.com/testcontainers/testcontainers-go/modules/compose v0.30.0
@@ -63,7 +63,7 @@ require (
 	github.com/containerd/typeurl/v2 v2.1.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
-	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
+	github.com/crate-crypto/go-kzg-4844 v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/distribution/reference v0.5.0 // indirect
@@ -183,7 +183,7 @@ require (
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.7.1 // indirect
+	github.com/scroll-tech/zktrie v0.8.2 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.4.0 // indirect
 	github.com/serialx/hashring v0.0.0-20190422032157-8b2912629002 // indirect
 	github.com/shibumi/go-pathspec v1.3.0 // indirect

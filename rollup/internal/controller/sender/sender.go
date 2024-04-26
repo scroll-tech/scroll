@@ -619,12 +619,13 @@ func makeSidecar(blob *kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
 	var proofs []kzg4844.Proof
 
 	for _, b := range blobs {
-		c, err := kzg4844.BlobToCommitment(b)
+		bCopy := b
+		c, err := kzg4844.BlobToCommitment(&bCopy)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get blob commitment, err: %w", err)
 		}
 
-		p, err := kzg4844.ComputeBlobProof(b, c)
+		p, err := kzg4844.ComputeBlobProof(&bCopy, c)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compute blob proof, err: %w", err)
 		}
