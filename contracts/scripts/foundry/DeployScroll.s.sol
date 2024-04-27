@@ -1634,12 +1634,15 @@ contract GenerateGenesis is DeployScroll {
             vm.removeFile(GENESIS_ALLOC_JSON_PATH);
         }
 
-        // predeploys
+        // Scroll predeploys
         setL2MessageQueue();
         setL2GasPriceOracle();
         setL2Whitelist();
         setL2Weth();
         setL2FeeVault();
+
+        // other predeploys
+        setDeterministicDeploymentProxy();
 
         // reset sender
         vm.resetNonce(msg.sender);
@@ -1766,6 +1769,12 @@ contract GenerateGenesis is DeployScroll {
         // reset so its not included state dump
         vm.etch(address(_vault), "");
         vm.resetNonce(address(_vault));
+    }
+
+    function setDeterministicDeploymentProxy() internal {
+        bytes
+            memory code = hex"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3";
+        vm.etch(DETERMINISTIC_DEPLOYMENT_PROXY_ADDR, code);
     }
 
     function setL2ScrollMessenger() internal {
