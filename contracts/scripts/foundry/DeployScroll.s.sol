@@ -369,7 +369,7 @@ abstract contract DeterminsticDeployment is Configuration {
         // revert if the contract is already deployed
         if (addr.code.length > 0) {
             revert(
-                string(abi.encodePacked("[ERROR] contract ", name, "(", vm.toString(addr), ") is already deployed"))
+                string(abi.encodePacked("[ERROR] contract ", name, " (", vm.toString(addr), ") is already deployed"))
             );
         }
 
