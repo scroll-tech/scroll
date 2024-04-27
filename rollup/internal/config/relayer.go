@@ -74,10 +74,6 @@ type GasOracleConfig struct {
 	GasPriceDiff uint64 `json:"gas_price_diff"`
 
 	// The following configs are only for updating L1 gas price, used for sender in L2.
-	// The weight for L1 base fee pre-blob.
-	L1BaseFeeWeightPreBlob float64 `json:"l1_base_fee_weight_pre_blob"`
-	// The weight for L1 blob base fee pre-blob.
-	L1BlobBaseFeeWeightPreBlob float64 `json:"l1_blob_base_fee_weight_pre_blob"`
 	// The weight for L1 base fee.
 	L1BaseFeeWeight float64 `json:"l1_base_fee_weight"`
 	// The weight for L1 blob base fee.

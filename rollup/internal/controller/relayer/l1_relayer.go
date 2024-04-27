@@ -36,13 +36,11 @@ type Layer1Relayer struct {
 	gasOracleSender *sender.Sender
 	l1GasOracleABI  *abi.ABI
 
-	lastGasPrice               uint64
-	minGasPrice                uint64
-	gasPriceDiff               uint64
-	l1BaseFeeWeightPreBlob     float64
-	l1BlobBaseFeeWeightPreBlob float64
-	l1BaseFeeWeight            float64
-	l1BlobBaseFeeWeight        float64
+	lastGasPrice        uint64
+	minGasPrice         uint64
+	gasPriceDiff        uint64
+	l1BaseFeeWeight     float64
+	l1BlobBaseFeeWeight float64
 
 	l1BlockOrm *orm.L1Block
 	l2BlockOrm *orm.L2Block
@@ -91,12 +89,10 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 		gasOracleSender: gasOracleSender,
 		l1GasOracleABI:  bridgeAbi.L1GasPriceOracleABI,
 
-		minGasPrice:                minGasPrice,
-		gasPriceDiff:               gasPriceDiff,
-		l1BaseFeeWeightPreBlob:     cfg.GasOracleConfig.L1BaseFeeWeightPreBlob,
-		l1BlobBaseFeeWeightPreBlob: cfg.GasOracleConfig.L1BlobBaseFeeWeightPreBlob,
-		l1BaseFeeWeight:            cfg.GasOracleConfig.L1BaseFeeWeight,
-		l1BlobBaseFeeWeight:        cfg.GasOracleConfig.L1BlobBaseFeeWeight,
+		minGasPrice:         minGasPrice,
+		gasPriceDiff:        gasPriceDiff,
+		l1BaseFeeWeight:     cfg.GasOracleConfig.L1BaseFeeWeight,
+		l1BlobBaseFeeWeight: cfg.GasOracleConfig.L1BlobBaseFeeWeight,
 	}
 
 	l1Relayer.metrics = initL1RelayerMetrics(reg)
@@ -148,11 +144,9 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 		var isBernoulli = r.chainCfg.IsBernoulli(new(big.Int).SetUint64(latestL2Height))
 
 		var baseFee uint64
-		if isBernoulli && block.BlobBaseFee != 0 { // post-blob L1 block and post-Bernoulli L2 block.
+		if isBernoulli && block.BlobBaseFee != 0 {
 			baseFee = uint64(math.Ceil(r.l1BaseFeeWeight*float64(block.BaseFee) + r.l1BlobBaseFeeWeight*float64(block.BlobBaseFee)))
-		} else if block.BlobBaseFee != 0 { // post-blob L1 block but pre-Bernoulli L2 block.
-			baseFee = uint64(math.Ceil(r.l1BaseFeeWeightPreBlob*float64(block.BaseFee) + r.l1BlobBaseFeeWeightPreBlob*float64(block.BlobBaseFee)))
-		} else { // pre-blob L1 block.
+		} else {
 			baseFee = block.BaseFee
 		}
 
