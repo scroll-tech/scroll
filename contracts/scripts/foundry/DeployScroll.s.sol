@@ -53,16 +53,16 @@ string constant DEFAULT_DEPLOYMENT_SALT = "ScrollStack";
 uint256 constant FEE_VAULT_MIN_WITHDRAW_AMOUNT = 1 ether;
 
 // input files
-string constant CONFIG_PATH = "./data/input/config.toml";
+string constant CONFIG_PATH = "./volume/config.toml";
 
 // template files
-string constant CONFIG_CONTRACTS_TEMPLATE_PATH = "./data/config-contracts.toml";
-string constant GENESIS_JSON_TEMPLATE_PATH = "./data/genesis.json";
+string constant CONFIG_CONTRACTS_TEMPLATE_PATH = "./docker/config-contracts.toml";
+string constant GENESIS_JSON_TEMPLATE_PATH = "./docker/genesis.json";
 
 // output files
-string constant CONFIG_CONTRACTS_PATH = "./data/output/config-contracts.toml";
-string constant GENESIS_ALLOC_JSON_PATH = "./data/output/__genesis-alloc.json";
-string constant GENESIS_JSON_PATH = "./data/output/genesis.json";
+string constant CONFIG_CONTRACTS_PATH = "./volume/config-contracts.toml";
+string constant GENESIS_ALLOC_JSON_PATH = "./volume/__genesis-alloc.json";
+string constant GENESIS_JSON_PATH = "./volume/genesis.json";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
     /// @dev allow setting the owner in the constructor, otherwise
@@ -170,8 +170,7 @@ abstract contract Configuration is Script {
 
         // config sanity check
         if (vm.addr(DEPLOYER_PRIVATE_KEY) != DEPLOYER_ADDR) {
-            console.log(string(abi.encodePacked("[ERROR] DEPLOYER_ADDR does not match DEPLOYER_PRIVATE_KEY")));
-            revert();
+            revert(string(abi.encodePacked("[ERROR] DEPLOYER_ADDR does not match DEPLOYER_PRIVATE_KEY")));
         }
 
         L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
@@ -211,7 +210,7 @@ abstract contract Configuration is Script {
             // if we're ready to start broadcasting transactions, then we
             // must ensure that the override contract has been deployed.
             if (callerMode == VmSafe.CallerMode.Broadcast || callerMode == VmSafe.CallerMode.RecurrentBroadcast) {
-                console.log(
+                revert(
                     string(
                         abi.encodePacked(
                             "[ERROR] override ",
@@ -222,7 +221,6 @@ abstract contract Configuration is Script {
                         )
                     )
                 );
-                revert();
             }
         }
 
@@ -270,7 +268,7 @@ abstract contract DeterminsticDeployment is Configuration {
 
         // sanity check: make sure DeterministicDeploymentProxy exists
         if (DETERMINISTIC_DEPLOYMENT_PROXY_ADDR.code.length == 0) {
-            console.log(
+            revert(
                 string(
                     abi.encodePacked(
                         "[ERROR] DeterministicDeploymentProxy (",
@@ -279,7 +277,6 @@ abstract contract DeterminsticDeployment is Configuration {
                     )
                 )
             );
-            revert();
         }
     }
 
@@ -369,11 +366,11 @@ abstract contract DeterminsticDeployment is Configuration {
             return addr;
         }
 
-        // return if the contract is already deployed,
-        // in this case the subsequent initialization steps will probably break
+        // revert if the contract is already deployed
         if (addr.code.length > 0) {
-            console.log(string(abi.encodePacked("[WARN] contract ", name, " is already deployed")));
-            return addr;
+            revert(
+                string(abi.encodePacked("[ERROR] contract ", name, "(", vm.toString(addr), ") is already deployed"))
+            );
         }
 
         // deploy contract
@@ -429,7 +426,7 @@ abstract contract DeterminsticDeployment is Configuration {
             address expectedAddr = contractsCfg.readAddress(tomlPath);
 
             if (addr != expectedAddr) {
-                console.log(
+                revert(
                     string(
                         abi.encodePacked(
                             "[ERROR] unexpected address for ",
@@ -441,8 +438,6 @@ abstract contract DeterminsticDeployment is Configuration {
                         )
                     )
                 );
-
-                revert();
             }
         }
     }

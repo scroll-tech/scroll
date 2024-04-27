@@ -39,9 +39,8 @@ bytecode_hash = 'none'
 ffi = true
 
 fs_permissions = [
-  { access='read', path='./data' },
-  { access='read', path='./data/input' },
-  { access='read-write', path='./data/output' },
+  { access='read', path='./docker' },
+  { access='read-write', path='./volume' },
 ]
 
 gas_reports = ["L2GasPriceOracle"]

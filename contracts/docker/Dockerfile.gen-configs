@@ -11,7 +11,6 @@ COPY ./node_modules/@openzeppelin /contracts/node_modules/@openzeppelin
 # copy configurations
 COPY foundry.toml /contracts/foundry.toml
 COPY remappings.txt /contracts/remappings.txt
-COPY ./data /contracts/data
 
 # copy source code
 COPY ./src /contracts/src
@@ -23,4 +22,9 @@ ENV FOUNDRY_BYTECODE_HASH="none"
 
 RUN forge build
 
-ENTRYPOINT ["/bin/bash", "/contracts/data/gen-configs.sh"]
+# copy script configs
+COPY ./docker/config-contracts.toml /contracts/docker/config-contracts.toml
+COPY ./docker/gen-configs.sh /contracts/docker/gen-configs.sh
+COPY ./docker/genesis.json /contracts/docker/genesis.json
+
+ENTRYPOINT ["/bin/bash", "/contracts/docker/gen-configs.sh"]
