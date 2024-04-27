@@ -70,7 +70,7 @@ type RelayerConfig struct {
 type GasOracleConfig struct {
 	// MinGasPrice store the minimum gas price to set.
 	MinGasPrice uint64 `json:"min_gas_price"`
-	// GasPriceDiff is the minimum gas price difference to update gas oracle.
+	// GasPriceDiff is the minimum percentage of gas price difference to update gas oracle.
 	GasPriceDiff uint64 `json:"gas_price_diff"`
 
 	// The following configs are only for updating L1 gas price, used for sender in L2.
