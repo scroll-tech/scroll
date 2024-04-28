@@ -191,10 +191,12 @@ func GetChunkHash(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64, code
 
 // BatchMetadata represents the metadata of a batch.
 type BatchMetadata struct {
-	BatchHash      common.Hash
-	BatchBytes     []byte
-	StartChunkHash common.Hash
-	EndChunkHash   common.Hash
+	BatchHash          common.Hash
+	BatchDataHash      common.Hash
+	BatchBlobDataProof []byte
+	BatchBytes         []byte
+	StartChunkHash     common.Hash
+	EndChunkHash       common.Hash
 }
 
 // GetBatchMetadata retrieves the metadata of a batch.
@@ -212,9 +214,11 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 			return nil, fmt.Errorf("failed to create codecv0 DA batch: %w", err)
 		}
 
+		// BatchBlobDataProof is left as empty for codecv0.
 		batchMeta := &BatchMetadata{
-			BatchHash:  daBatch.Hash(),
-			BatchBytes: daBatch.Encode(),
+			BatchHash:     daBatch.Hash(),
+			BatchDataHash: daBatch.DataHash,
+			BatchBytes:    daBatch.Encode(),
 		}
 
 		startDAChunk, err := codecv0.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
@@ -243,9 +247,16 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 			return nil, fmt.Errorf("failed to create codecv1 DA batch: %w", err)
 		}
 
+		blobDataProof, err := daBatch.BlobDataProof()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get codecv1 blob data proof: %w", err)
+		}
+
 		batchMeta := &BatchMetadata{
-			BatchHash:  daBatch.Hash(),
-			BatchBytes: daBatch.Encode(),
+			BatchHash:          daBatch.Hash(),
+			BatchDataHash:      daBatch.DataHash,
+			BatchBlobDataProof: blobDataProof,
+			BatchBytes:         daBatch.Encode(),
 		}
 
 		startDAChunk, err := codecv1.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)

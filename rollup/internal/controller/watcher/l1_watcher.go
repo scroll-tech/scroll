@@ -9,6 +9,7 @@ import (
 	geth "github.com/scroll-tech/go-ethereum"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/consensus/misc"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -135,10 +136,16 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 		baseFee = block.BaseFee.Uint64()
 	}
 
+	var blobBaseFee uint64
+	if excess := block.ExcessBlobGas; excess != nil {
+		blobBaseFee = misc.CalcBlobFee(*excess).Uint64()
+	}
+
 	l1Block := orm.L1Block{
 		Number:          blockHeight,
 		Hash:            block.Hash().String(),
 		BaseFee:         baseFee,
+		BlobBaseFee:     blobBaseFee,
 		GasOracleStatus: int16(types.GasOraclePending),
 	}
 

@@ -1,5 +1,5 @@
 # Download Go dependencies
-FROM golang:1.20-alpine3.16 as base
+FROM golang:1.21-alpine3.19 as base
 
 WORKDIR /src
 COPY go.mod* ./
