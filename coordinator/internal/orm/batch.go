@@ -24,6 +24,7 @@ type Batch struct {
 	// batch
 	Index           uint64 `json:"index" gorm:"column:index"`
 	Hash            string `json:"hash" gorm:"column:hash"`
+	DataHash        string `json:"data_hash" gorm:"column:data_hash"`
 	StartChunkIndex uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
 	StartChunkHash  string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
 	EndChunkIndex   uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
@@ -54,6 +55,10 @@ type Batch struct {
 	OracleStatus int16  `json:"oracle_status" gorm:"column:oracle_status;default:1"`
 	OracleTxHash string `json:"oracle_tx_hash" gorm:"column:oracle_tx_hash;default:NULL"`
 
+	// blob
+	BlobDataProof []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
+	BlobSize      uint64 `json:"blob_size" gorm:"column:blob_size"`
+
 	// metadata
 	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
@@ -73,22 +78,16 @@ func (*Batch) TableName() string {
 // GetUnassignedBatch retrieves unassigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
 func (o *Batch) GetUnassignedBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
-	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
-	db = db.Where("start_chunk_index >= ?", startChunkIndex)
-	db = db.Where("end_chunk_index < ?", endChunkIndex)
-
 	var batch Batch
-	err := db.First(&batch).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
+	db := o.db.WithContext(ctx)
+	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND start_chunk_index >= %d AND end_chunk_index < %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
+		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady), startChunkIndex, endChunkIndex)
+	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
-		return nil, fmt.Errorf("Batch.GetUnassignedBatches error: %w", err)
+		return nil, fmt.Errorf("Batch.GetUnassignedBatch error: %w", err)
+	}
+	if batch.Hash == "" {
+		return nil, nil
 	}
 	return &batch, nil
 }
@@ -96,22 +95,16 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, startChunkIndex, endChun
 // GetAssignedBatch retrieves assigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
 func (o *Batch) GetAssignedBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
-	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
-	db = db.Where("start_chunk_index >= ?", startChunkIndex)
-	db = db.Where("end_chunk_index < ?", endChunkIndex)
-
 	var batch Batch
-	err := db.First(&batch).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
+	db := o.db.WithContext(ctx)
+	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND start_chunk_index >= %d AND end_chunk_index < %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
+		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady), startChunkIndex, endChunkIndex)
+	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
-		return nil, fmt.Errorf("Batch.GetAssignedBatches error: %w", err)
+		return nil, fmt.Errorf("Batch.GetAssignedBatch error: %w", err)
+	}
+	if batch.Hash == "" {
+		return nil, nil
 	}
 	return &batch, nil
 }
@@ -260,6 +253,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	newBatch := Batch{
 		Index:             batch.Index,
 		Hash:              daBatch.Hash().Hex(),
+		DataHash:          daBatch.DataHash.Hex(),
 		StartChunkHash:    startDAChunkHash.Hex(),
 		StartChunkIndex:   startChunkIndex,
 		EndChunkHash:      endDAChunkHash.Hex(),
@@ -274,6 +268,8 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		ActiveAttempts:    0,
 		RollupStatus:      int16(types.RollupPending),
 		OracleStatus:      int16(types.GasOraclePending),
+		BlobDataProof:     nil, // using mock value because this piece of codes is only used in unit tests
+		BlobSize:          0,   // using mock value because this piece of codes is only used in unit tests
 	}
 
 	db := o.db

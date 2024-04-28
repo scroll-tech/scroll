@@ -31,16 +31,17 @@ type BatchProverTask struct {
 
 	batchAttemptsExceedTotal prometheus.Counter
 	batchTaskGetTaskTotal    *prometheus.CounterVec
+	batchTaskGetTaskProver   *prometheus.CounterVec
 }
 
 // NewBatchProverTask new a batch collector
-func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *BatchProverTask {
+func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vkMap map[string]string, reg prometheus.Registerer) *BatchProverTask {
 	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
 	log.Info("new batch prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
 
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
-			vk:                 vk,
+			vkMap:              vkMap,
 			db:                 db,
 			cfg:                cfg,
 			nameForkMap:        nameForkMap,
@@ -58,6 +59,7 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			Name: "coordinator_batch_get_task_total",
 			Help: "Total number of batch get task.",
 		}, []string{"fork_name"}),
+		batchTaskGetTaskProver: newGetTaskCounterVec(promauto.With(reg), "batch"),
 	}
 	return bp
 }
@@ -69,9 +71,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	hardForkNumber, err := bp.getHardForkNumberByName(getTaskParameter.HardForkName)
+	hardForkNumber, err := bp.getHardForkNumberByName(taskCtx.HardForkName)
 	if err != nil {
-		log.Error("batch assign failure because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		log.Error("batch assign failure because of the hard fork name don't exist", "fork name", taskCtx.HardForkName)
 		return nil, err
 	}
 
@@ -81,9 +83,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	var endChunkIndex uint64 = math.MaxInt64
 	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, bp.forkHeights)
 	if fromBlockNum != 0 {
-		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, fromBlockNum)
+		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx.Copy(), fromBlockNum)
 		if chunkErr != nil {
-			log.Error("failed to get fork start chunk index", "forkName", getTaskParameter.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
+			log.Error("failed to get fork start chunk index", "forkName", taskCtx.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if startChunk == nil {
@@ -92,9 +94,9 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		startChunkIndex = startChunk.Index
 	}
 	if toBlockNum != math.MaxInt64 {
-		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, toBlockNum)
-		if err != nil {
-			log.Error("failed to get fork end chunk index", "forkName", getTaskParameter.HardForkName, "toBlockNumber", toBlockNum, "err", chunkErr)
+		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx.Copy(), toBlockNum)
+		if chunkErr != nil {
+			log.Error("failed to get fork end chunk index", "forkName", taskCtx.HardForkName, "toBlockNumber", toBlockNum, "err", chunkErr)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if toChunk != nil {
@@ -110,7 +112,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBatchTask *orm.Batch
-		tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx, startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
+		tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx.Copy(), startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
 			log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
@@ -119,7 +121,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// batch to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpBatchTask == nil {
-			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx, startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
+			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx.Copy(), startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
 				log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
@@ -131,7 +133,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
-		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx, tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
+		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx.Copy(), tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
 		if updateAttemptsErr != nil {
 			log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 			return nil, ErrCoordinatorInternalFailure
@@ -166,20 +168,25 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	// Store session info.
-	if err = bp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
+	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("insert batch prover task info fail", "taskID", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx, &proverTask)
+	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "hash", batchTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	bp.batchTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
+	bp.batchTaskGetTaskTotal.WithLabelValues(taskCtx.HardForkName).Inc()
+	bp.batchTaskGetTaskProver.With(prometheus.Labels{
+		coordinatorType.LabelProverName:      proverTask.ProverName,
+		coordinatorType.LabelProverPublicKey: proverTask.ProverPublicKey,
+		coordinatorType.LabelProverVersion:   proverTask.ProverVersion,
+	}).Inc()
 
 	return taskMsg, nil
 }
@@ -209,6 +216,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			DataHash:      common.HexToHash(chunk.Hash),
 			IsPadding:     false,
 		}
+		if proof.ChunkInfo != nil {
+			chunkInfo.TxBytes = proof.ChunkInfo.TxBytes
+		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
 
@@ -232,7 +242,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 }
 
 func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *orm.Batch) {
-	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx, batchTask.Hash); err != nil {
+	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), batchTask.Hash); err != nil {
 		log.Error("failed to recover batch active attempts", "hash", batchTask.Hash, "error", err)
 	}
 }

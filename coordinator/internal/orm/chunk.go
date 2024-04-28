@@ -48,6 +48,10 @@ type Chunk struct {
 	// batch
 	BatchHash string `json:"batch_hash" gorm:"column:batch_hash;default:NULL"`
 
+	// blob
+	CrcMax   uint64 `json:"crc_max" gorm:"column:crc_max"`
+	BlobSize uint64 `json:"blob_size" gorm:"column:blob_size"`
+
 	// metadata
 	TotalL2TxGas              uint64         `json:"total_l2_tx_gas" gorm:"column:total_l2_tx_gas"`
 	TotalL2TxNum              uint64         `json:"total_l2_tx_num" gorm:"column:total_l2_tx_num"`
@@ -71,22 +75,16 @@ func (*Chunk) TableName() string {
 // GetUnassignedChunk retrieves unassigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetUnassignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Chunk{})
-	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
-	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("start_block_number >= ?", fromBlockNum)
-	db = db.Where("end_block_number < ?", toBlockNum)
-
 	var chunk Chunk
-	err := db.First(&chunk).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
+	db := o.db.WithContext(ctx)
+	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND start_block_number >= %d AND end_block_number < %d AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;",
+		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, fromBlockNum, toBlockNum)
+	err := db.Raw(sql).Scan(&chunk).Error
 	if err != nil {
-		return nil, fmt.Errorf("Chunk.GetUnassignedChunks error: %w", err)
+		return nil, fmt.Errorf("Chunk.GetUnassignedChunk error: %w", err)
+	}
+	if chunk.Hash == "" {
+		return nil, nil
 	}
 	return &chunk, nil
 }
@@ -94,22 +92,16 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, fromBlockNum, toBlockNum
 // GetAssignedChunk retrieves assigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetAssignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Chunk{})
-	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
-	db = db.Where("total_attempts < ?", maxTotalAttempts)
-	db = db.Where("active_attempts < ?", maxActiveAttempts)
-	db = db.Where("start_block_number >= ?", fromBlockNum)
-	db = db.Where("end_block_number < ?", toBlockNum)
-
 	var chunk Chunk
-	err := db.First(&chunk).Error
-	if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
+	db := o.db.WithContext(ctx)
+	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND start_block_number >= %d AND end_block_number < %d AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;",
+		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, fromBlockNum, toBlockNum)
+	err := db.Raw(sql).Scan(&chunk).Error
 	if err != nil {
-		return nil, fmt.Errorf("Chunk.GetAssignedChunks error: %w", err)
+		return nil, fmt.Errorf("Chunk.GetAssignedChunk error: %w", err)
+	}
+	if chunk.Hash == "" {
+		return nil, nil
 	}
 	return &chunk, nil
 }
@@ -312,6 +304,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 		TotalAttempts:                0,
 		ActiveAttempts:               0,
+		CrcMax:                       0, // using mock value because this piece of codes is only used in unit tests
+		BlobSize:                     0, // using mock value because this piece of codes is only used in unit tests
 	}
 
 	db := o.db

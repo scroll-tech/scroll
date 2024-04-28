@@ -29,15 +29,16 @@ type ChunkProverTask struct {
 
 	chunkAttemptsExceedTotal prometheus.Counter
 	chunkTaskGetTaskTotal    *prometheus.CounterVec
+	chunkTaskGetTaskProver   *prometheus.CounterVec
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vk string, reg prometheus.Registerer) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vkMap map[string]string, reg prometheus.Registerer) *ChunkProverTask {
 	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
 	log.Info("new chunk prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
-			vk:                 vk,
+			vkMap:              vkMap,
 			db:                 db,
 			cfg:                cfg,
 			nameForkMap:        nameForkMap,
@@ -55,6 +56,7 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			Name: "coordinator_chunk_get_task_total",
 			Help: "Total number of chunk get task.",
 		}, []string{"fork_name"}),
+		chunkTaskGetTaskProver: newGetTaskCounterVec(promauto.With(reg), "chunk"),
 	}
 	return cp
 }
@@ -66,9 +68,9 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	hardForkNumber, err := cp.getHardForkNumberByName(getTaskParameter.HardForkName)
+	hardForkNumber, err := cp.getHardForkNumberByName(taskCtx.HardForkName)
 	if err != nil {
-		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", getTaskParameter.HardForkName)
+		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", taskCtx.HardForkName)
 		return nil, err
 	}
 
@@ -83,7 +85,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
-		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx, fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
+		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx.Copy(), fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
 			log.Error("failed to get assigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
@@ -92,7 +94,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpChunkTask == nil {
-			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx, fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx.Copy(), fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
 				log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
@@ -104,7 +106,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
-		rowsAffected, updateAttemptsErr := cp.chunkOrm.UpdateChunkAttempts(ctx, tmpChunkTask.Index, tmpChunkTask.ActiveAttempts, tmpChunkTask.TotalAttempts)
+		rowsAffected, updateAttemptsErr := cp.chunkOrm.UpdateChunkAttempts(ctx.Copy(), tmpChunkTask.Index, tmpChunkTask.ActiveAttempts, tmpChunkTask.TotalAttempts)
 		if updateAttemptsErr != nil {
 			log.Error("failed to update chunk attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 			return nil, ErrCoordinatorInternalFailure
@@ -138,20 +140,25 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		AssignedAt: utils.NowUTC(),
 	}
 
-	if err = cp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
+	if err = cp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := cp.formatProverTask(ctx, &proverTask)
+	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask)
 	if err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("format prover task failure", "hash", chunkTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	cp.chunkTaskGetTaskTotal.WithLabelValues(getTaskParameter.HardForkName).Inc()
+	cp.chunkTaskGetTaskTotal.WithLabelValues(taskCtx.HardForkName).Inc()
+	cp.chunkTaskGetTaskProver.With(prometheus.Labels{
+		coordinatorType.LabelProverName:      proverTask.ProverName,
+		coordinatorType.LabelProverPublicKey: proverTask.ProverPublicKey,
+		coordinatorType.LabelProverVersion:   proverTask.ProverVersion,
+	}).Inc()
 
 	return taskMsg, nil
 }

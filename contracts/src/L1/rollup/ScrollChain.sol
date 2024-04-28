@@ -115,11 +115,11 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
      *************/
 
     /// @dev Address of the point evaluation precompile used for EIP-4844 blob verification.
-    address constant POINT_EVALUATION_PRECOMPILE_ADDR = address(0x0A);
+    address private constant POINT_EVALUATION_PRECOMPILE_ADDR = address(0x0A);
 
     /// @dev BLS Modulus value defined in EIP-4844 and the magic value returned from a successful call to the
     /// point evaluation precompile
-    uint256 constant BLS_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513;
+    uint256 private constant BLS_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513;
 
     /// @notice The chain id of the corresponding layer 2 chain.
     uint64 public immutable layer2ChainId;
@@ -236,6 +236,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
      *****************************/
 
     /// @notice Import layer 2 genesis block
+    /// @param _batchHeader The header of the genesis batch.
+    /// @param _stateRoot The state root of the genesis block.
     function importGenesisBatch(bytes calldata _batchHeader, bytes32 _stateRoot) external {
         // check genesis batch header length
         if (_stateRoot == bytes32(0)) revert ErrorStateRootIsZero();
@@ -475,7 +477,8 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _postStateRoot,
                 _withdrawRoot,
                 _dataHash,
-                _blobDataProof[0:64]
+                _blobDataProof[0:64],
+                _blobVersionedHash
             )
         );
 
@@ -877,7 +880,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             uint256 _numTransactionsInBlock = ChunkCodecV1.getNumTransactions(chunkPtr);
             if (_numTransactionsInBlock < _numL1MessagesInBlock) revert ErrorNumTxsLessThanNumL1Msgs();
             unchecked {
-                _totalTransactionsInChunk += dataPtr - startPtr; // number of non-skipped l1 messages
+                _totalTransactionsInChunk += (dataPtr - startPtr) / 32; // number of non-skipped l1 messages
                 _totalTransactionsInChunk += _numTransactionsInBlock - _numL1MessagesInBlock; // number of l2 txs
                 _totalL1MessagesPoppedInBatch += _numL1MessagesInBlock;
                 _totalL1MessagesPoppedOverall += _numL1MessagesInBlock;

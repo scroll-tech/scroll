@@ -21,5 +21,5 @@ func NewLoginLogic(db *gorm.DB) *LoginLogic {
 
 // InsertChallengeString insert and check the challenge string is existed
 func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, challenge string) error {
-	return l.challengeOrm.InsertChallenge(ctx, challenge)
+	return l.challengeOrm.InsertChallenge(ctx.Copy(), challenge)
 }

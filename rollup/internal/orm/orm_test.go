@@ -12,17 +12,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/database"
-	"scroll-tech/common/docker"
+	"scroll-tech/database/migrate"
+
+	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
 	"scroll-tech/common/types/encoding/codecv1"
-	"scroll-tech/database/migrate"
 )
 
 var (
-	base *docker.App
+	testApps *testcontainers.TestcontainerApps
 
 	db                    *gorm.DB
 	l2BlockOrm            *L2Block
@@ -36,23 +36,23 @@ var (
 
 func TestMain(m *testing.M) {
 	t := &testing.T{}
+	defer func() {
+		if testApps != nil {
+			testApps.Free()
+		}
+		tearDownEnv(t)
+	}()
 	setupEnv(t)
-	defer tearDownEnv(t)
 	m.Run()
 }
 
 func setupEnv(t *testing.T) {
-	base = docker.NewDockerApp()
-	base.RunDBImage(t)
 	var err error
-	db, err = database.InitDB(
-		&database.Config{
-			DSN:        base.DBConfig.DSN,
-			DriverName: base.DBConfig.DriverName,
-			MaxOpenNum: base.DBConfig.MaxOpenNum,
-			MaxIdleNum: base.DBConfig.MaxIdleNum,
-		},
-	)
+
+	testApps = testcontainers.NewTestcontainerApps()
+	assert.NoError(t, testApps.StartPostgresContainer())
+
+	db, err = testApps.GetGormDBClient()
 	assert.NoError(t, err)
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
@@ -80,7 +80,6 @@ func tearDownEnv(t *testing.T) {
 	sqlDB, err := db.DB()
 	assert.NoError(t, err)
 	sqlDB.Close()
-	base.Free()
 }
 
 func TestL1BlockOrm(t *testing.T) {
