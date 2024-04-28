@@ -8,30 +8,27 @@ const versionFilePath = new URL(
 
 const versionFileContent = readFileSync(versionFilePath, { encoding: "utf-8" });
 
-const currentVersion = versionFileContent.match(
-  /var tag = "(?<version>v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+))"/
+const currentVersionMatch = versionFileContent.match(
+  /var tag = "(?<version>v(\d+)\.(\d+)\.(\d+))"/
 );
 
-try {
-  parseInt(currentVersion.groups.major);
-  parseInt(currentVersion.groups.minor);
-  parseInt(currentVersion.groups.patch);
-} catch (err) {
-  console.error(new Error("Failed to parse version in version.go file"));
-  throw err;
+if (!currentVersionMatch) {
+  throw new Error("Failed to parse version in version.go file");
 }
 
-// prettier-ignore
-const newVersion = `v${currentVersion.groups.major}.${currentVersion.groups.minor}.${parseInt(currentVersion.groups.patch) + 1}`;
+const [, major, minor, patch] = currentVersionMatch;
+
+const newPatch = parseInt(patch) + 1;
+
+const newVersion = `v${major}.${minor}.${newPatch}`;
 
 console.log(
-  `Bump version from ${currentVersion.groups.version} to ${newVersion}`
+  `Bump version from ${currentVersionMatch[1]} to ${newVersion}`
 );
 
-writeFileSync(
-  versionFilePath,
-  versionFileContent.replace(
-    `var tag = "${currentVersion.groups.version}"`,
-    `var tag = "${newVersion}"`
-  )
+const newVersionFileContent = versionFileContent.replace(
+  currentVersionMatch[0],
+  `var tag = "${newVersion}"`
 );
+
+writeFileSync(versionFilePath, newVersionFileContent);
