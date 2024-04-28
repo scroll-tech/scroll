@@ -9,18 +9,18 @@ import (
 )
 
 var (
-	// ScrollChainABI holds information about ScrollChain's context and available invokable methods.
+	// ScrollChainABI holds information about ScrollChain's context and available invocable methods.
 	ScrollChainABI *abi.ABI
-	// L1MessageQueueABI holds information about L1MessageQueue contract's context and available invokable methods.
+	// L1MessageQueueABI holds information about L1MessageQueue contract's context and available invocable methods.
 	L1MessageQueueABI *abi.ABI
-	// L2GasPriceOracleABI holds information about L2GasPriceOracle's context and available invokable methods.
+	// L2GasPriceOracleABI holds information about L2GasPriceOracle's context and available invocable methods.
 	L2GasPriceOracleABI *abi.ABI
 
-	// L2ScrollMessengerABI holds information about L2ScrollMessenger's context and available invokable methods.
+	// L2ScrollMessengerABI holds information about L2ScrollMessenger's context and available invocable methods.
 	L2ScrollMessengerABI *abi.ABI
-	// L1GasPriceOracleABI holds information about L1GasPriceOracle's context and available invokable methods.
+	// L1GasPriceOracleABI holds information about L1GasPriceOracle's context and available invocable methods.
 	L1GasPriceOracleABI *abi.ABI
-	// L2MessageQueueABI holds information about L2MessageQueue contract's context and available invokable methods.
+	// L2MessageQueueABI holds information about L2MessageQueue contract's context and available invocable methods.
 	L2MessageQueueABI *abi.ABI
 
 	// L1CommitBatchEventSignature = keccak256("CommitBatch(uint256,bytes32)")
