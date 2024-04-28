@@ -3,6 +3,7 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,9 +36,11 @@ type Layer1Relayer struct {
 	gasOracleSender *sender.Sender
 	l1GasOracleABI  *abi.ABI
 
-	lastGasPrice uint64
-	minGasPrice  uint64
-	gasPriceDiff uint64
+	lastGasPrice        uint64
+	minGasPrice         uint64
+	gasPriceDiff        uint64
+	l1BaseFeeWeight     float64
+	l1BlobBaseFeeWeight float64
 
 	l1BlockOrm *orm.L1Block
 	l2BlockOrm *orm.L2Block
@@ -86,8 +89,10 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 		gasOracleSender: gasOracleSender,
 		l1GasOracleABI:  bridgeAbi.L1GasPriceOracleABI,
 
-		minGasPrice:  minGasPrice,
-		gasPriceDiff: gasPriceDiff,
+		minGasPrice:         minGasPrice,
+		gasPriceDiff:        gasPriceDiff,
+		l1BaseFeeWeight:     cfg.GasOracleConfig.L1BaseFeeWeight,
+		l1BlobBaseFeeWeight: cfg.GasOracleConfig.L1BlobBaseFeeWeight,
 	}
 
 	l1Relayer.metrics = initL1RelayerMetrics(reg)
@@ -140,7 +145,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 
 		var baseFee uint64
 		if isBernoulli && block.BlobBaseFee != 0 {
-			baseFee = block.BlobBaseFee
+			baseFee = uint64(math.Ceil(r.l1BaseFeeWeight*float64(block.BaseFee) + r.l1BlobBaseFeeWeight*float64(block.BlobBaseFee)))
 		} else {
 			baseFee = block.BaseFee
 		}

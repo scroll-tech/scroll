@@ -78,36 +78,10 @@ contract L2BatchBridgeGatewayTest is ScrollTestBase {
         batch.initialize();
     }
 
-    function testUpdateTokenMapping(address token1, address token2) external {
-        // call by non-owner, should revert
-        hevm.startPrank(address(1));
-        hevm.expectRevert(
-            "AccessControl: account 0x0000000000000000000000000000000000000001 is missing role 0x0000000000000000000000000000000000000000000000000000000000000000"
-        );
-        batch.updateTokenMapping(token1, token2);
-        hevm.stopPrank();
-
-        // succeed
-        assertEq(address(0), batch.tokenMapping(token2));
-        hevm.expectEmit(true, true, true, true);
-        emit UpdateTokenMapping(token2, address(0), token1);
-        batch.updateTokenMapping(token2, token1);
-        assertEq(token1, batch.tokenMapping(token2));
-    }
-
     function testFinalizeBatchDeposit() external {
         // revert caller not messenger
         hevm.expectRevert(L2BatchBridgeGateway.ErrorCallerNotMessenger.selector);
         batch.finalizeBatchDeposit(address(0), address(0), 0, bytes32(0));
-
-        // revert token not match
-        hevm.expectRevert(L2BatchBridgeGateway.ErrorL1TokenMismatched.selector);
-        messenger.callTarget(
-            address(batch),
-            abi.encodeCall(L2BatchBridgeGateway.finalizeBatchDeposit, (address(1), address(1), 0, bytes32(0)))
-        );
-
-        batch.updateTokenMapping(address(l2Token), address(l1Token));
 
         // revert xDomainMessageSender not counterpart
         hevm.expectRevert(L2BatchBridgeGateway.ErrorMessageSenderNotCounterpart.selector);
@@ -122,6 +96,7 @@ contract L2BatchBridgeGatewayTest is ScrollTestBase {
         messenger.setXDomainMessageSender(address(counterpartBatch));
 
         // emit FinalizeBatchDeposit
+        assertEq(address(0), batch.tokenMapping(address(l2Token)));
         hevm.expectEmit(true, true, true, true);
         emit FinalizeBatchDeposit(address(l1Token), address(l2Token), 1);
         messenger.callTarget(
@@ -131,7 +106,15 @@ contract L2BatchBridgeGatewayTest is ScrollTestBase {
                 (address(l1Token), address(l2Token), 1, bytes32(uint256(1)))
             )
         );
+        assertEq(address(l1Token), batch.tokenMapping(address(l2Token)));
         assertEq(batch.batchHashes(address(l2Token), 1), bytes32(uint256(1)));
+
+        // revert token not match
+        hevm.expectRevert(L2BatchBridgeGateway.ErrorL1TokenMismatched.selector);
+        messenger.callTarget(
+            address(batch),
+            abi.encodeCall(L2BatchBridgeGateway.finalizeBatchDeposit, (address(0), address(l2Token), 0, bytes32(0)))
+        );
     }
 
     function testFinalizeBatchDepositFuzzing(
@@ -140,9 +123,9 @@ contract L2BatchBridgeGatewayTest is ScrollTestBase {
         uint256 batchIndex,
         bytes32 hash
     ) external {
-        batch.updateTokenMapping(token2, token1);
         messenger.setXDomainMessageSender(address(counterpartBatch));
 
+        assertEq(address(0), batch.tokenMapping(token2));
         hevm.expectEmit(true, true, true, true);
         emit FinalizeBatchDeposit(token1, token2, batchIndex);
         messenger.callTarget(
@@ -150,6 +133,7 @@ contract L2BatchBridgeGatewayTest is ScrollTestBase {
             abi.encodeCall(L2BatchBridgeGateway.finalizeBatchDeposit, (token1, token2, batchIndex, hash))
         );
 
+        assertEq(token1, batch.tokenMapping(token2));
         assertEq(batch.batchHashes(token2, batchIndex), hash);
     }
 
@@ -248,8 +232,6 @@ contract L2BatchBridgeGatewayTest is ScrollTestBase {
     }
 
     function testDistributeERC20() external {
-        batch.updateTokenMapping(address(l2Token), address(l1Token));
-
         // revert not keeper
         hevm.startPrank(address(1));
         hevm.expectRevert(
@@ -299,7 +281,6 @@ contract L2BatchBridgeGatewayTest is ScrollTestBase {
         hevm.expectRevert(L2BatchBridgeGateway.ErrorBatchDistributed.selector);
         batch.distribute(address(l2Token), 0, nodes);
 
-        batch.updateTokenMapping(address(maliciousL2Token), address(l1Token));
         maliciousL2Token.mint(address(batch), 1 ether);
 
         // all failed due to revert
@@ -404,7 +385,6 @@ contract L2BatchBridgeGatewayTest is ScrollTestBase {
     }
 
     function testWithdrawFailedAmountERC20() external {
-        batch.updateTokenMapping(address(maliciousL2Token), address(l1Token));
         batch.grantRole(batch.KEEPER_ROLE(), address(this));
 
         // revert not admin

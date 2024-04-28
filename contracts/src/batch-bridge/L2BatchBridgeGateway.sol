@@ -147,12 +147,18 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
         uint256 batchIndex,
         bytes32 hash
     ) external onlyMessenger {
-        // this usually won't happen, check just in case.
-        if (tokenMapping[l2Token] != l1Token) {
-            revert ErrorL1TokenMismatched();
-        }
         if (counterpart != IL2ScrollMessenger(messenger).xDomainMessageSender()) {
             revert ErrorMessageSenderNotCounterpart();
+        }
+
+        // trust the messenger and update `tokenMapping` in first call
+        // another assumption is this function should never fail due to out of gas
+        address storedL1Token = tokenMapping[l2Token];
+        if (storedL1Token == address(0) && l1Token != address(0)) {
+            tokenMapping[l2Token] = l1Token;
+        } else if (storedL1Token != l1Token) {
+            // this usually won't happen, check just in case.
+            revert ErrorL1TokenMismatched();
         }
 
         batchHashes[l2Token][batchIndex] = hash;
@@ -163,16 +169,6 @@ contract L2BatchBridgeGateway is AccessControlEnumerableUpgradeable {
     /************************
      * Restricted Functions *
      ************************/
-
-    /// @notice Update layer 2 to layer 1 token mapping.
-    /// @param l2Token The address of corresponding ERC20 token on layer 2.
-    /// @param l1Token The address of ERC20 token on layer 1.
-    function updateTokenMapping(address l2Token, address l1Token) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        address oldL1Token = tokenMapping[l2Token];
-        tokenMapping[l2Token] = l1Token;
-
-        emit UpdateTokenMapping(l2Token, oldL1Token, l1Token);
-    }
 
     /// @notice Withdraw distribution failed tokens.
     /// @param token The address of token to withdraw.
