@@ -249,6 +249,18 @@ contract L1Blocks is IL1Blocks {
                 }
                 revertWith("Not value")
             }
+            function loadAndCacheValue(memPtr, _ptr) -> ptr {
+                ptr := _ptr
+                let len, offset := decodeValue(ptr)
+                // the value we care must have at most 32 bytes
+                if lt(len, 33) {
+                    let bits := mul(sub(32, len), 8)
+                    let value := calldataload(offset)
+                    value := shr(bits, value)
+                    mstore(memPtr, value)
+                }
+                ptr := add(len, offset)
+            }
 
             let ptr := blockHeaderRlp.offset
             let headerPayloadLength
@@ -274,33 +286,44 @@ contract L1Blocks is IL1Blocks {
             }
 
             let memPtr := mload(0x40)
+            let blockNumber
             calldatacopy(memPtr, blockHeaderRlp.offset, headerPayloadLength)
             blockHash := keccak256(memPtr, headerPayloadLength)
 
-            // load 16 values
+            // load 15 values
             for {
                 let i := 0
-            } lt(i, 16) {
+            } lt(i, 15) {
                 i := add(i, 1)
             } {
-                let len, offset := decodeValue(ptr)
-                // the value we care must have at most 32 bytes
-                if lt(len, 33) {
-                    let bits := mul(sub(32, len), 8)
-                    let value := calldataload(offset)
-                    value := shr(bits, value)
-                    mstore(memPtr, value)
+                ptr := loadAndCacheValue(memPtr, ptr)
+                // load BlockNumber, 8-th entry in `blockHeaderRlp`
+                if eq(i, 8) {
+                    blockNumber := mload(memPtr)
                 }
                 memPtr := add(memPtr, 0x20)
-                ptr := add(len, offset)
+            }
+            // load optional fields after london fork
+            if gt(blockNumber, LONDON_FORK_NUMBER_MINUS_ONE) {
+                ptr := loadAndCacheValue(memPtr, ptr)
+                memPtr := add(memPtr, 0x20)
+            }
+            // load optional fields after cancun fork
+            if gt(blockNumber, CANCUN_FORK_NUMBER_MINUS_ONE) {
+                for {
+                    let i := 0
+                } lt(i, 4) {
+                    i := add(i, 1)
+                } {
+                    ptr := loadAndCacheValue(memPtr, ptr)
+                    memPtr := add(memPtr, 0x20)
+                }
             }
             require(eq(ptr, add(blockHeaderRlp.offset, blockHeaderRlp.length)), "Header RLP length mismatch")
 
             memPtr := mload(0x40)
             // load ParentHash, 0-th entry in `blockHeaderRlp`
             parentHash := mload(memPtr)
-            // load BlockNumber, 8-th entry in `blockHeaderRlp`
-            let blockNumber := mload(add(memPtr, 0x100)) // 0x20 * 8
             mstore(b, blockNumber)
             // load BlockTimestamp, 11-th entry in `blockHeaderRlp`
             mstore(add(b, 0x20), mload(add(memPtr, 0x160))) // 0x20 * 11
