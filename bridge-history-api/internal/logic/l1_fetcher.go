@@ -16,6 +16,7 @@ import (
 	backendabi "scroll-tech/bridge-history-api/abi"
 	"scroll-tech/bridge-history-api/internal/config"
 	"scroll-tech/bridge-history-api/internal/orm"
+	btypes "scroll-tech/bridge-history-api/internal/types"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
@@ -25,11 +26,12 @@ const L1ReorgSafeDepth = 64
 
 // L1FilterResult L1 fetcher result
 type L1FilterResult struct {
-	DepositMessages    []*orm.CrossMessage
-	RelayedMessages    []*orm.CrossMessage
-	BatchEvents        []*orm.BatchEvent
-	MessageQueueEvents []*orm.MessageQueueEvent
-	RevertedTxs        []*orm.CrossMessage
+	DepositMessages          []*orm.CrossMessage
+	RelayedMessages          []*orm.CrossMessage
+	BatchEvents              []*orm.BatchEvent
+	MessageQueueEvents       []*orm.MessageQueueEvent
+	RevertedTxs              []*orm.CrossMessage
+	BridgeBatchDepositEvents []*orm.BridgeBatchDepositEvent
 }
 
 // L1FetcherLogic the L1 fetcher logic
@@ -64,6 +66,8 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		common.HexToAddress(cfg.ScrollChainAddr),
 
 		common.HexToAddress(cfg.MessageQueueAddr),
+
+		common.HexToAddress(cfg.BatchBridgeGatewayAddr),
 	}
 
 	gatewayList := []common.Address{
@@ -80,6 +84,8 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		common.HexToAddress(cfg.MessengerAddr),
 
 		common.HexToAddress(cfg.GatewayRouterAddr),
+
+		common.HexToAddress(cfg.BatchBridgeGatewayAddr),
 	}
 
 	// Optional erc20 gateways.
@@ -183,12 +189,12 @@ func (f *L1FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 
 			l1RevertedTxs = append(l1RevertedTxs, &orm.CrossMessage{
 				L1TxHash:       tx.Hash().String(),
-				MessageType:    int(orm.MessageTypeL1SentMessage),
+				MessageType:    int(btypes.MessageTypeL1SentMessage),
 				Sender:         sender.String(),
 				Receiver:       (*tx.To()).String(),
 				L1BlockNumber:  receipt.BlockNumber.Uint64(),
 				BlockTimestamp: block.Time(),
-				TxStatus:       int(orm.TxStatusTypeSentTxReverted),
+				TxStatus:       int(btypes.TxStatusTypeSentTxReverted),
 			})
 		}
 	}
@@ -203,7 +209,7 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 		Topics:    make([][]common.Hash, 1),
 	}
 
-	query.Topics[0] = make([]common.Hash, 13)
+	query.Topics[0] = make([]common.Hash, 14)
 	query.Topics[0][0] = backendabi.L1DepositETHSig
 	query.Topics[0][1] = backendabi.L1DepositERC20Sig
 	query.Topics[0][2] = backendabi.L1DepositERC721Sig
@@ -217,6 +223,7 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 	query.Topics[0][10] = backendabi.L1QueueTransactionEventSig
 	query.Topics[0][11] = backendabi.L1DequeueTransactionEventSig
 	query.Topics[0][12] = backendabi.L1DropTransactionEventSig
+	query.Topics[0][13] = backendabi.L1BridgeBatchDepositSig
 
 	eventLogs, err := f.client.FilterLogs(ctx, query)
 	if err != nil {
@@ -252,7 +259,7 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, common.Hash{}, nil, err
 	}
 
-	l1DepositMessages, l1RelayedMessages, err := f.parser.ParseL1CrossChainEventLogs(ctx, eventLogs, blockTimestampsMap)
+	l1DepositMessages, l1RelayedMessages, l1BridgeBatchDepositMessages, err := f.parser.ParseL1CrossChainEventLogs(ctx, eventLogs, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L1 cross chain event logs", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err
@@ -271,11 +278,12 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 	}
 
 	res := L1FilterResult{
-		DepositMessages:    l1DepositMessages,
-		RelayedMessages:    l1RelayedMessages,
-		BatchEvents:        l1BatchEvents,
-		MessageQueueEvents: l1MessageQueueEvents,
-		RevertedTxs:        l1RevertedTxs,
+		DepositMessages:          l1DepositMessages,
+		RelayedMessages:          l1RelayedMessages,
+		BatchEvents:              l1BatchEvents,
+		MessageQueueEvents:       l1MessageQueueEvents,
+		RevertedTxs:              l1RevertedTxs,
+		BridgeBatchDepositEvents: l1BridgeBatchDepositMessages,
 	}
 
 	f.updateMetrics(res)
@@ -287,23 +295,23 @@ func (f *L1FetcherLogic) updateMetrics(res L1FilterResult) {
 	f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_gateway_router_transaction").Add(float64(len(res.RevertedTxs)))
 
 	for _, depositMessage := range res.DepositMessages {
-		switch orm.TokenType(depositMessage.TokenType) {
-		case orm.TokenTypeETH:
+		switch btypes.TokenType(depositMessage.TokenType) {
+		case btypes.TokenTypeETH:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_eth").Add(1)
-		case orm.TokenTypeERC20:
+		case btypes.TokenTypeERC20:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_erc20").Add(1)
-		case orm.TokenTypeERC721:
+		case btypes.TokenTypeERC721:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_erc721").Add(1)
-		case orm.TokenTypeERC1155:
+		case btypes.TokenTypeERC1155:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_deposit_erc1155").Add(1)
 		}
 	}
 
 	for _, relayedMessage := range res.RelayedMessages {
-		switch orm.TxStatusType(relayedMessage.TxStatus) {
-		case orm.TxStatusTypeRelayed:
+		switch btypes.TxStatusType(relayedMessage.TxStatus) {
+		case btypes.TxStatusTypeRelayed:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_relayed_message").Add(1)
-		case orm.TxStatusTypeFailedRelayed:
+		case btypes.TxStatusTypeFailedRelayed:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_failed_relayed_message").Add(1)
 		}
 		// Have not tracked L1 relayed message reverted transaction yet.
@@ -312,24 +320,33 @@ func (f *L1FetcherLogic) updateMetrics(res L1FilterResult) {
 	}
 
 	for _, batchEvent := range res.BatchEvents {
-		switch orm.BatchStatusType(batchEvent.BatchStatus) {
-		case orm.BatchStatusTypeCommitted:
+		switch btypes.BatchStatusType(batchEvent.BatchStatus) {
+		case btypes.BatchStatusTypeCommitted:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_commit_batch_event").Add(1)
-		case orm.BatchStatusTypeReverted:
+		case btypes.BatchStatusTypeReverted:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_revert_batch_event").Add(1)
-		case orm.BatchStatusTypeFinalized:
+		case btypes.BatchStatusTypeFinalized:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_finalize_batch_event").Add(1)
 		}
 	}
 
 	for _, messageQueueEvent := range res.MessageQueueEvents {
 		switch messageQueueEvent.EventType {
-		case orm.MessageQueueEventTypeQueueTransaction: // sendMessage is filtered out, only leaving replayMessage or appendEnforcedTransaction.
+		case btypes.MessageQueueEventTypeQueueTransaction: // sendMessage is filtered out, only leaving replayMessage or appendEnforcedTransaction.
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_replay_message_or_enforced_transaction").Add(1)
-		case orm.MessageQueueEventTypeDequeueTransaction:
+		case btypes.MessageQueueEventTypeDequeueTransaction:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_skip_message").Add(1)
-		case orm.MessageQueueEventTypeDropTransaction:
+		case btypes.MessageQueueEventTypeDropTransaction:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_drop_message").Add(1)
+		}
+	}
+
+	for _, bridgeBatchDepositEvent := range res.BridgeBatchDepositEvents {
+		switch btypes.TokenType(bridgeBatchDepositEvent.TokenType) {
+		case btypes.TokenTypeETH:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_bridge_batch_deposit_eth").Add(1)
+		case btypes.TokenTypeERC20:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_bridge_batch_deposit_erc20").Add(1)
 		}
 	}
 }

@@ -2,17 +2,17 @@ package logic
 
 import (
 	"context"
-	"math/big"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
+	"math/big"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
 	"scroll-tech/bridge-history-api/internal/config"
 	"scroll-tech/bridge-history-api/internal/orm"
+	btypes "scroll-tech/bridge-history-api/internal/types"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
@@ -30,8 +30,49 @@ func NewL1EventParser(cfg *config.FetcherConfig, client *ethclient.Client) *L1Ev
 	}
 }
 
-// ParseL1CrossChainEventLogs parses L1 watched cross chain events.
-func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
+// ParseL1CrossChainEventLogs parse l1 cross chain event logs
+func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, []*orm.BridgeBatchDepositEvent, error) {
+	l1CrossChainDepositMessages, l1CrossChainRelayedMessages, err := e.ParseL1SingleCrossChainEventLogs(ctx, logs, blockTimestampsMap)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	l1BridgeBatchDepositMessages, err := e.ParseL1BatchBridgeCrossChainEventLogs(logs, blockTimestampsMap)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	return l1CrossChainDepositMessages, l1CrossChainRelayedMessages, l1BridgeBatchDepositMessages, nil
+}
+
+// ParseL1BatchBridgeCrossChainEventLogs parse L1 watched batch bridge cross chain events.
+func (e *L1EventParser) ParseL1BatchBridgeCrossChainEventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.BridgeBatchDepositEvent, error) {
+	var l1BridgeBatchDepositMessages []*orm.BridgeBatchDepositEvent
+	for _, vlog := range logs {
+		switch vlog.Topics[0] {
+		case backendabi.L1BridgeBatchDepositSig:
+			event := backendabi.L1BatchBridgeGatewayDeposit{}
+			if err := utils.UnpackLog(backendabi.L1BatchBridgeGatewayABI, &event, "Deposit", vlog); err != nil {
+				log.Error("Failed to unpack batch bridge gateway deposit event", "err", err)
+				return nil, err
+			}
+			l1BridgeBatchDepositMessages = append(l1BridgeBatchDepositMessages, &orm.BridgeBatchDepositEvent{
+				TokenType:      0, // TODO
+				Sender:         event.Sender.String(),
+				BatchIndex:     event.BatchIndex.Uint64(),
+				TokenAmount:    event.Amount.String(),
+				Fee:            event.Fee.String(),
+				L1TokenAddress: event.Token.String(),
+				L1BlockNumber:  vlog.BlockNumber,
+				L1TxHash:       vlog.TxHash.String(),
+				TxStatus:       int(btypes.BridgeBatchDeposit),
+				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
+			})
+		}
+	}
+	return l1BridgeBatchDepositMessages, nil
+}
+
+// ParseL1SingleCrossChainEventLogs parses L1 watched single cross chain events.
+func (e *L1EventParser) ParseL1SingleCrossChainEventLogs(ctx context.Context, logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.CrossMessage, []*orm.CrossMessage, error) {
 	var l1DepositMessages []*orm.CrossMessage
 	var l1RelayedMessages []*orm.CrossMessage
 	for _, vlog := range logs {
@@ -45,7 +86,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
-			lastMessage.TokenType = int(orm.TokenTypeETH)
+			lastMessage.TokenType = int(btypes.TokenTypeETH)
 			lastMessage.TokenAmounts = event.Amount.String()
 		case backendabi.L1DepositERC20Sig:
 			event := backendabi.ERC20MessageEvent{}
@@ -57,7 +98,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
-			lastMessage.TokenType = int(orm.TokenTypeERC20)
+			lastMessage.TokenType = int(btypes.TokenTypeERC20)
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenAmounts = event.Amount.String()
@@ -70,7 +111,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
-			lastMessage.TokenType = int(orm.TokenTypeERC721)
+			lastMessage.TokenType = int(btypes.TokenTypeERC721)
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = event.TokenID.String()
@@ -83,7 +124,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
-			lastMessage.TokenType = int(orm.TokenTypeERC721)
+			lastMessage.TokenType = int(btypes.TokenTypeERC721)
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = utils.ConvertBigIntArrayToString(event.TokenIDs)
@@ -96,7 +137,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
-			lastMessage.TokenType = int(orm.TokenTypeERC1155)
+			lastMessage.TokenType = int(btypes.TokenTypeERC1155)
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = event.TokenID.String()
@@ -110,7 +151,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
 			lastMessage.Sender = event.From.String()
 			lastMessage.Receiver = event.To.String()
-			lastMessage.TokenType = int(orm.TokenTypeERC1155)
+			lastMessage.TokenType = int(btypes.TokenTypeERC1155)
 			lastMessage.L1TokenAddress = event.L1Token.String()
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = utils.ConvertBigIntArrayToString(event.TokenIDs)
@@ -130,12 +171,12 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 				L1BlockNumber:  vlog.BlockNumber,
 				Sender:         from,
 				Receiver:       event.Target.String(),
-				TokenType:      int(orm.TokenTypeETH),
+				TokenType:      int(btypes.TokenTypeETH),
 				L1TxHash:       vlog.TxHash.String(),
 				TokenAmounts:   event.Value.String(),
 				MessageNonce:   event.MessageNonce.Uint64(),
-				MessageType:    int(orm.MessageTypeL1SentMessage),
-				TxStatus:       int(orm.TxStatusTypeSent),
+				MessageType:    int(btypes.MessageTypeL1SentMessage),
+				TxStatus:       int(btypes.TxStatusTypeSent),
 				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
 				MessageHash:    utils.ComputeMessageHash(event.Sender, event.Target, event.Value, event.MessageNonce, event.Message).String(),
 			})
@@ -149,8 +190,8 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 				MessageHash:   event.MessageHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
 				L1TxHash:      vlog.TxHash.String(),
-				TxStatus:      int(orm.TxStatusTypeRelayed),
-				MessageType:   int(orm.MessageTypeL2SentMessage),
+				TxStatus:      int(btypes.TxStatusTypeRelayed),
+				MessageType:   int(btypes.MessageTypeL2SentMessage),
 			})
 		case backendabi.L1FailedRelayedMessageEventSig:
 			event := backendabi.L1FailedRelayedMessageEvent{}
@@ -162,8 +203,8 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 				MessageHash:   event.MessageHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
 				L1TxHash:      vlog.TxHash.String(),
-				TxStatus:      int(orm.TxStatusTypeFailedRelayed),
-				MessageType:   int(orm.MessageTypeL2SentMessage),
+				TxStatus:      int(btypes.TxStatusTypeFailedRelayed),
+				MessageType:   int(btypes.MessageTypeL2SentMessage),
 			})
 		}
 	}
@@ -192,7 +233,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				return nil, err
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
-				BatchStatus:      int(orm.BatchStatusTypeCommitted),
+				BatchStatus:      int(btypes.BatchStatusTypeCommitted),
 				BatchIndex:       event.BatchIndex.Uint64(),
 				BatchHash:        event.BatchHash.String(),
 				StartBlockNumber: startBlock,
@@ -206,7 +247,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				return nil, err
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
-				BatchStatus:   int(orm.BatchStatusTypeReverted),
+				BatchStatus:   int(btypes.BatchStatusTypeReverted),
 				BatchIndex:    event.BatchIndex.Uint64(),
 				BatchHash:     event.BatchHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
@@ -218,7 +259,7 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				return nil, err
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
-				BatchStatus:   int(orm.BatchStatusTypeFinalized),
+				BatchStatus:   int(btypes.BatchStatusTypeFinalized),
 				BatchIndex:    event.BatchIndex.Uint64(),
 				BatchHash:     event.BatchHash.String(),
 				L1BlockNumber: vlog.BlockNumber,
@@ -248,7 +289,7 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 			// If the message hash is not found in the map, it's not a replayMessage or enforced tx (omitted); add it to the events.
 			if _, exists := messageHashes[messageHash]; !exists {
 				l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
-					EventType:   orm.MessageQueueEventTypeQueueTransaction,
+					EventType:   btypes.MessageQueueEventTypeQueueTransaction,
 					QueueIndex:  event.QueueIndex,
 					MessageHash: messageHash,
 					TxHash:      vlog.TxHash,
@@ -263,7 +304,7 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 			skippedIndices := utils.GetSkippedQueueIndices(event.StartIndex.Uint64(), event.SkippedBitmap)
 			for _, index := range skippedIndices {
 				l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
-					EventType:  orm.MessageQueueEventTypeDequeueTransaction,
+					EventType:  btypes.MessageQueueEventTypeDequeueTransaction,
 					QueueIndex: index,
 				})
 			}
@@ -274,7 +315,7 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 				return nil, err
 			}
 			l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
-				EventType:  orm.MessageQueueEventTypeDropTransaction,
+				EventType:  btypes.MessageQueueEventTypeDropTransaction,
 				QueueIndex: event.Index.Uint64(),
 				TxHash:     vlog.TxHash,
 			})

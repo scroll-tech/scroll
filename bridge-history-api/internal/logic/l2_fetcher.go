@@ -17,6 +17,7 @@ import (
 	backendabi "scroll-tech/bridge-history-api/abi"
 	"scroll-tech/bridge-history-api/internal/config"
 	"scroll-tech/bridge-history-api/internal/orm"
+	btypes "scroll-tech/bridge-history-api/internal/types"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
@@ -26,9 +27,10 @@ const L2ReorgSafeDepth = 256
 
 // L2FilterResult the L2 filter result
 type L2FilterResult struct {
-	WithdrawMessages []*orm.CrossMessage
-	RelayedMessages  []*orm.CrossMessage // relayed, failed relayed, relay tx reverted.
-	OtherRevertedTxs []*orm.CrossMessage // reverted txs except relay tx reverted.
+	WithdrawMessages          []*orm.CrossMessage
+	RelayedMessages           []*orm.CrossMessage // relayed, failed relayed, relay tx reverted.
+	OtherRevertedTxs          []*orm.CrossMessage // reverted txs except relay tx reverted.
+	BridgeBatchDepositMessage []*orm.BridgeBatchDepositEvent
 }
 
 // L2FetcherLogic the L2 fetcher logic
@@ -59,6 +61,7 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		common.HexToAddress(cfg.ERC1155GatewayAddr),
 
 		common.HexToAddress(cfg.MessengerAddr),
+		common.HexToAddress(cfg.BatchBridgeGatewayAddr),
 	}
 
 	gatewayList := []common.Address{
@@ -75,6 +78,8 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		common.HexToAddress(cfg.MessengerAddr),
 
 		common.HexToAddress(cfg.GatewayRouterAddr),
+
+		common.HexToAddress(cfg.BatchBridgeGatewayAddr),
 	}
 
 	// Optional erc20 gateways.
@@ -164,9 +169,9 @@ func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 					l2RevertedRelayedMessageTxs = append(l2RevertedRelayedMessageTxs, &orm.CrossMessage{
 						MessageHash:   common.BytesToHash(crypto.Keccak256(tx.AsL1MessageTx().Data)).String(),
 						L2TxHash:      tx.Hash().String(),
-						TxStatus:      int(orm.TxStatusTypeRelayTxReverted),
+						TxStatus:      int(btypes.TxStatusTypeRelayTxReverted),
 						L2BlockNumber: receipt.BlockNumber.Uint64(),
-						MessageType:   int(orm.MessageTypeL1SentMessage),
+						MessageType:   int(btypes.MessageTypeL1SentMessage),
 					})
 				}
 				continue
@@ -194,12 +199,12 @@ func (f *L2FetcherLogic) getRevertedTxs(ctx context.Context, from, to uint64, bl
 
 				l2RevertedUserTxs = append(l2RevertedUserTxs, &orm.CrossMessage{
 					L2TxHash:       tx.Hash().String(),
-					MessageType:    int(orm.MessageTypeL2SentMessage),
+					MessageType:    int(btypes.MessageTypeL2SentMessage),
 					Sender:         sender.String(),
 					Receiver:       (*tx.To()).String(),
 					L2BlockNumber:  receipt.BlockNumber.Uint64(),
 					BlockTimestamp: block.Time(),
-					TxStatus:       int(orm.TxStatusTypeSentTxReverted),
+					TxStatus:       int(btypes.TxStatusTypeSentTxReverted),
 				})
 			}
 		}
@@ -214,7 +219,7 @@ func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]
 		Addresses: f.addressList,
 		Topics:    make([][]common.Hash, 1),
 	}
-	query.Topics[0] = make([]common.Hash, 7)
+	query.Topics[0] = make([]common.Hash, 9)
 	query.Topics[0][0] = backendabi.L2WithdrawETHSig
 	query.Topics[0][1] = backendabi.L2WithdrawERC20Sig
 	query.Topics[0][2] = backendabi.L2WithdrawERC721Sig
@@ -222,6 +227,8 @@ func (f *L2FetcherLogic) l2FetcherLogs(ctx context.Context, from, to uint64) ([]
 	query.Topics[0][4] = backendabi.L2SentMessageEventSig
 	query.Topics[0][5] = backendabi.L2RelayedMessageEventSig
 	query.Topics[0][6] = backendabi.L2FailedRelayedMessageEventSig
+	query.Topics[0][7] = backendabi.L2BridgeBatchDistributeSig
+	query.Topics[0][8] = backendabi.L2BridgeBatchDistributeFailedSig
 
 	eventLogs, err := f.client.FilterLogs(ctx, query)
 	if err != nil {
@@ -257,16 +264,17 @@ func (f *L2FetcherLogic) L2Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, common.Hash{}, nil, err
 	}
 
-	l2WithdrawMessages, l2RelayedMessages, err := f.parser.ParseL2EventLogs(ctx, eventLogs, blockTimestampsMap)
+	l2WithdrawMessages, l2RelayedMessages, l2BridgeBatchDepositMessages, err := f.parser.ParseL2EventLogs(ctx, eventLogs, blockTimestampsMap)
 	if err != nil {
 		log.Error("failed to parse L2 event logs", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err
 	}
 
 	res := L2FilterResult{
-		WithdrawMessages: l2WithdrawMessages,
-		RelayedMessages:  append(l2RelayedMessages, revertedRelayMsgs...),
-		OtherRevertedTxs: revertedUserTxs,
+		WithdrawMessages:          l2WithdrawMessages,
+		RelayedMessages:           append(l2RelayedMessages, revertedRelayMsgs...),
+		OtherRevertedTxs:          revertedUserTxs,
+		BridgeBatchDepositMessage: l2BridgeBatchDepositMessages,
 	}
 
 	f.updateMetrics(res)
@@ -278,26 +286,35 @@ func (f *L2FetcherLogic) updateMetrics(res L2FilterResult) {
 	f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_gateway_router_transaction").Add(float64(len(res.OtherRevertedTxs)))
 
 	for _, withdrawMessage := range res.WithdrawMessages {
-		switch orm.TokenType(withdrawMessage.TokenType) {
-		case orm.TokenTypeETH:
+		switch btypes.TokenType(withdrawMessage.TokenType) {
+		case btypes.TokenTypeETH:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_eth").Add(1)
-		case orm.TokenTypeERC20:
+		case btypes.TokenTypeERC20:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_erc20").Add(1)
-		case orm.TokenTypeERC721:
+		case btypes.TokenTypeERC721:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_erc721").Add(1)
-		case orm.TokenTypeERC1155:
+		case btypes.TokenTypeERC1155:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_withdraw_erc1155").Add(1)
 		}
 	}
 
 	for _, relayedMessage := range res.RelayedMessages {
-		switch orm.TxStatusType(relayedMessage.TxStatus) {
-		case orm.TxStatusTypeRelayed:
+		switch btypes.TxStatusType(relayedMessage.TxStatus) {
+		case btypes.TxStatusTypeRelayed:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_relayed_message").Add(1)
-		case orm.TxStatusTypeFailedRelayed:
+		case btypes.TxStatusTypeFailedRelayed:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_failed_relayed_message").Add(1)
-		case orm.TxStatusTypeRelayTxReverted:
+		case btypes.TxStatusTypeRelayTxReverted:
 			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_reverted_relayed_message_transaction").Add(1)
+		}
+	}
+
+	for _, bridgeBatchDepositMessage := range res.BridgeBatchDepositMessage {
+		switch btypes.TxStatusType(bridgeBatchDepositMessage.TxStatus) {
+		case btypes.TxStatusBridgeBatchDistribute:
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_bridge_batch_distribute_message").Add(1)
+		case btypes.TxStatusBridgeBatchDistributeFailed:
+			f.l2FetcherLogicFetchedTotal.WithLabelValues("L2_bridge_batch_distribute_failed_message").Add(1)
 		}
 	}
 }

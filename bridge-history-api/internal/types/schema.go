@@ -86,7 +86,7 @@ type TxHistoryInfo struct {
 	L1TokenAddress     string              `json:"l1_token_address"`
 	L2TokenAddress     string              `json:"l2_token_address"`
 	BlockNumber        uint64              `json:"block_number"`
-	TxStatus           orm.TxStatusType    `json:"tx_status"` // 0: sent, 1: sent failed, 2: relayed, 3: failed relayed, 4: relayed reverted, 5: skipped, 6: dropped
+	TxStatus           TxStatusType        `json:"tx_status"` // 0: sent, 1: sent failed, 2: relayed, 3: failed relayed, 4: relayed reverted, 5: skipped, 6: dropped
 	CounterpartChainTx *CounterpartChainTx `json:"counterpart_chain_tx"`
 	ClaimInfo          *ClaimInfo          `json:"claim_info"`
 	BlockTimestamp     uint64              `json:"block_timestamp"`

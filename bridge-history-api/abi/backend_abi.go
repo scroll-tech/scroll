@@ -9,17 +9,17 @@ import (
 )
 
 var (
-	IL1ETHGatewayABI     *abi.ABI
-	IL1ERC20GatewayABI   *abi.ABI
-	IL1ERC721GatewayABI  *abi.ABI
-	IL1ERC1155GatewayABI *abi.ABI
-	L1BatchBridgeGateway *abi.ABI
+	IL1ETHGatewayABI        *abi.ABI
+	IL1ERC20GatewayABI      *abi.ABI
+	IL1ERC721GatewayABI     *abi.ABI
+	IL1ERC1155GatewayABI    *abi.ABI
+	L1BatchBridgeGatewayABI *abi.ABI
 
-	IL2ETHGatewayABI     *abi.ABI
-	IL2ERC20GatewayABI   *abi.ABI
-	IL2ERC721GatewayABI  *abi.ABI
-	IL2ERC1155GatewayABI *abi.ABI
-	L2BatchBridgeGateway *abi.ABI
+	IL2ETHGatewayABI        *abi.ABI
+	IL2ERC20GatewayABI      *abi.ABI
+	IL2ERC721GatewayABI     *abi.ABI
+	IL2ERC1155GatewayABI    *abi.ABI
+	L2BatchBridgeGatewayABI *abi.ABI
 
 	IL1ScrollMessengerABI *abi.ABI
 	IL2ScrollMessengerABI *abi.ABI
@@ -34,13 +34,16 @@ var (
 	L1BatchDepositERC721Sig  common.Hash
 	L1DepositERC1155Sig      common.Hash
 	L1BatchDepositERC1155Sig common.Hash
+	L1BridgeBatchDepositSig  common.Hash
 
-	L2WithdrawETHSig          common.Hash
-	L2WithdrawERC20Sig        common.Hash
-	L2WithdrawERC721Sig       common.Hash
-	L2BatchWithdrawERC721Sig  common.Hash
-	L2WithdrawERC1155Sig      common.Hash
-	L2BatchWithdrawERC1155Sig common.Hash
+	L2WithdrawETHSig                 common.Hash
+	L2WithdrawERC20Sig               common.Hash
+	L2WithdrawERC721Sig              common.Hash
+	L2BatchWithdrawERC721Sig         common.Hash
+	L2WithdrawERC1155Sig             common.Hash
+	L2BatchWithdrawERC1155Sig        common.Hash
+	L2BridgeBatchDistributeSig       common.Hash
+	L2BridgeBatchDistributeFailedSig common.Hash
 
 	L1SentMessageEventSig          common.Hash
 	L1RelayedMessageEventSig       common.Hash
@@ -63,7 +66,7 @@ func init() {
 	IL1ERC20GatewayABI, _ = IL1ERC20GatewayMetaData.GetAbi()
 	IL1ERC721GatewayABI, _ = IL1ERC721GatewayMetaData.GetAbi()
 	IL1ERC1155GatewayABI, _ = IL1ERC1155GatewayMetaData.GetAbi()
-	L1BatchBridgeGateway, _ = L1BatchBridgeGatewayMetaData.GetAbi()
+	L1BatchBridgeGatewayABI, _ = L1BatchBridgeGatewayMetaData.GetAbi()
 
 	L1DepositETHSig = IL1ETHGatewayABI.Events["DepositETH"].ID
 	L1DepositERC20Sig = IL1ERC20GatewayABI.Events["DepositERC20"].ID
@@ -71,12 +74,13 @@ func init() {
 	L1BatchDepositERC721Sig = IL1ERC721GatewayABI.Events["BatchDepositERC721"].ID
 	L1DepositERC1155Sig = IL1ERC1155GatewayABI.Events["DepositERC1155"].ID
 	L1BatchDepositERC1155Sig = IL1ERC1155GatewayABI.Events["BatchDepositERC1155"].ID
+	L1BridgeBatchDepositSig = L1BatchBridgeGatewayABI.Events["Deposit"].ID
 
 	IL2ETHGatewayABI, _ = IL2ETHGatewayMetaData.GetAbi()
 	IL2ERC20GatewayABI, _ = IL2ERC20GatewayMetaData.GetAbi()
 	IL2ERC721GatewayABI, _ = IL2ERC721GatewayMetaData.GetAbi()
 	IL2ERC1155GatewayABI, _ = IL2ERC1155GatewayMetaData.GetAbi()
-	L2BatchBridgeGateway, _ = L2BatchBridgeGatewayMetaData.GetAbi()
+	L2BatchBridgeGatewayABI, _ = L2BatchBridgeGatewayMetaData.GetAbi()
 
 	L2WithdrawETHSig = IL2ETHGatewayABI.Events["WithdrawETH"].ID
 	L2WithdrawERC20Sig = IL2ERC20GatewayABI.Events["WithdrawERC20"].ID
@@ -84,6 +88,8 @@ func init() {
 	L2BatchWithdrawERC721Sig = IL2ERC721GatewayABI.Events["BatchWithdrawERC721"].ID
 	L2WithdrawERC1155Sig = IL2ERC1155GatewayABI.Events["WithdrawERC1155"].ID
 	L2BatchWithdrawERC1155Sig = IL2ERC1155GatewayABI.Events["BatchWithdrawERC1155"].ID
+	L2BridgeBatchDistributeSig = L2BatchBridgeGatewayABI.Events["BatchDistribute"].ID
+	L2BridgeBatchDistributeFailedSig = L2BatchBridgeGatewayABI.Events["DistributeFailed"].ID
 
 	IL1ScrollMessengerABI, _ = IL1ScrollMessengerMetaData.GetAbi()
 
@@ -282,4 +288,28 @@ type L1DequeueTransactionEvent struct {
 
 type L1DropTransactionEvent struct {
 	Index *big.Int
+}
+
+// L1BatchBridgeGatewayDeposit represents L1 batch bridge Deposit event
+type L1BatchBridgeGatewayDeposit struct {
+	Sender     common.Address
+	Token      common.Address
+	BatchIndex *big.Int
+	Amount     *big.Int
+	Fee        *big.Int
+}
+
+// L2BatchBridgeGatewayBatchDistribute represents a BatchDistribute event
+type L2BatchBridgeGatewayBatchDistribute struct {
+	L1Token    common.Address
+	L2Token    common.Address
+	BatchIndex *big.Int
+}
+
+// L2BatchBridgeGatewayDistributeFailed represents a DistributeFailed event
+type L2BatchBridgeGatewayDistributeFailed struct {
+	L2Token    common.Address
+	BatchIndex *big.Int
+	Receiver   common.Address
+	Amount     *big.Int
 }

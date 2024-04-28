@@ -141,6 +141,11 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			return
 		}
 
+		if updateErr := c.eventUpdateLogic.UpdateL1BridgeBatchDepositEvent(c.ctx, l2FetcherResult.BridgeBatchDepositMessage); updateErr != nil {
+			log.Error("failed to update L1 batch index and status", "from", from, "to", to, "err", updateErr)
+			return
+		}
+
 		c.updateL2SyncHeight(to, lastBlockHash)
 		c.l2MessageFetcherRunningTotal.Inc()
 	}
