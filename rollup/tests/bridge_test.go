@@ -14,7 +14,6 @@ import (
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/common/database"
-	dockercompose "scroll-tech/common/docker-compose/l1"
 	tc "scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 
@@ -34,9 +33,8 @@ import (
 )
 
 var (
-	testApps     *tc.TestcontainerApps
-	rollupApp    *bcmd.MockApp
-	posL1TestEnv *dockercompose.PoSL1TestEnv
+	testApps  *tc.TestcontainerApps
+	rollupApp *bcmd.MockApp
 
 	// clients
 	l1Client *ethclient.Client
@@ -72,9 +70,6 @@ func TestMain(m *testing.M) {
 		if rollupApp != nil {
 			rollupApp.Free()
 		}
-		if posL1TestEnv != nil {
-			posL1TestEnv.Stop()
-		}
 	}()
 	m.Run()
 }
@@ -89,17 +84,14 @@ func setupEnv(t *testing.T) {
 		l1GethChainID *big.Int
 	)
 
-	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
-	assert.NoError(t, err, "failed to create PoS L1 test environment")
-	assert.NoError(t, posL1TestEnv.Start(), "failed to start PoS L1 test environment")
-
 	testApps = tc.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
+	assert.NoError(t, testApps.StartPoSL1Container())
 	rollupApp = bcmd.NewRollupApp(testApps, "../conf/config.json")
 
-	l1Client, err = posL1TestEnv.L1Client()
+	l1Client, err = testApps.GetPoSL1Client()
 	assert.NoError(t, err)
 	l2Client, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
@@ -114,8 +106,10 @@ func setupEnv(t *testing.T) {
 
 	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, l1GethChainID)
 	assert.NoError(t, err)
-	rollupApp.Config.L1Config.Endpoint = posL1TestEnv.Endpoint()
-	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
+	rollupApp.Config.L1Config.Endpoint, err = testApps.GetPoSL1EndPoint()
+	assert.NoError(t, err)
+	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetPoSL1EndPoint()
+	assert.NoError(t, err)
 
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)

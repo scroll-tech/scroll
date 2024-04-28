@@ -8,8 +8,8 @@ services:
               mkdir -p /data/execution &&
               cp -a /execution/* /data/execution/"
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
+      - ${HOST_PATH:-../..}/common/testcontainers/consensus:/consensus
+      - ${HOST_PATH:-../..}/common/testcontainers/execution:/execution
       - data:/data
 
   # Creates a genesis state for the beacon chain using a YAML configuration file and
