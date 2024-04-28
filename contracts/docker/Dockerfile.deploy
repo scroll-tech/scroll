@@ -23,8 +23,9 @@ ENV FOUNDRY_BYTECODE_HASH="none"
 RUN forge build
 
 # copy script configs
-COPY ./docker/config-contracts.toml /contracts/docker/config-contracts.toml
-COPY ./docker/deploy.sh /contracts/docker/deploy.sh
-COPY ./docker/genesis.json /contracts/docker/genesis.json
+COPY ./docker/templates/config-contracts.toml /contracts/docker/templates/config-contracts.toml
+COPY ./docker/templates/genesis.json /contracts/docker/templates/genesis.json
 
-ENTRYPOINT ["/bin/bash", "/contracts/docker/deploy.sh"]
+COPY ./docker/scripts/deploy.sh /contracts/docker/scripts/deploy.sh
+
+ENTRYPOINT ["/bin/bash", "/contracts/docker/scripts/deploy.sh"]

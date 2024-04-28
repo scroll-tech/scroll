@@ -52,12 +52,12 @@ string constant DEFAULT_DEPLOYMENT_SALT = "ScrollStack";
 /// @dev The default minimum withdraw amount configured on L2TxFeeVault.
 uint256 constant FEE_VAULT_MIN_WITHDRAW_AMOUNT = 1 ether;
 
+// template files
+string constant CONFIG_CONTRACTS_TEMPLATE_PATH = "./docker/templates/config-contracts.toml";
+string constant GENESIS_JSON_TEMPLATE_PATH = "./docker/templates/genesis.json";
+
 // input files
 string constant CONFIG_PATH = "./volume/config.toml";
-
-// template files
-string constant CONFIG_CONTRACTS_TEMPLATE_PATH = "./docker/config-contracts.toml";
-string constant GENESIS_JSON_TEMPLATE_PATH = "./docker/genesis.json";
 
 // output files
 string constant CONFIG_CONTRACTS_PATH = "./volume/config-contracts.toml";
