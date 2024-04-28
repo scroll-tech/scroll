@@ -52,6 +52,9 @@ string constant DEFAULT_DEPLOYMENT_SALT = "ScrollStack";
 /// @dev The default minimum withdraw amount configured on L2TxFeeVault.
 uint256 constant FEE_VAULT_MIN_WITHDRAW_AMOUNT = 1 ether;
 
+/// @dev The minimum deployer account balance.
+uint256 constant MINIMUM_DEPLOYER_BALANCE = 0.1 ether;
+
 // template files
 string constant CONFIG_CONTRACTS_TEMPLATE_PATH = "./docker/templates/config-contracts.toml";
 string constant GENESIS_JSON_TEMPLATE_PATH = "./docker/templates/genesis.json";
@@ -170,7 +173,15 @@ abstract contract Configuration is Script {
 
         // config sanity check
         if (vm.addr(DEPLOYER_PRIVATE_KEY) != DEPLOYER_ADDR) {
-            revert(string(abi.encodePacked("[ERROR] DEPLOYER_ADDR does not match DEPLOYER_PRIVATE_KEY")));
+            revert(
+                string(
+                    abi.encodePacked(
+                        "[ERROR] DEPLOYER_ADDR (",
+                        vm.toString(DEPLOYER_ADDR),
+                        ") does not match DEPLOYER_PRIVATE_KEY"
+                    )
+                )
+            );
         }
 
         L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
@@ -562,6 +573,7 @@ contract DeployScroll is DeterminsticDeployment {
         broadcastLayer = parseLayer(layer);
         setScriptMode(scriptMode);
 
+        checkDeployerBalance();
         deployAllContracts();
         initializeL1Contracts();
         initializeL2Contracts();
@@ -587,6 +599,25 @@ contract DeployScroll is DeterminsticDeployment {
             return Layer.L2;
         } else {
             return Layer.None;
+        }
+    }
+
+    function checkDeployerBalance() private view {
+        // ignore balance during simulation
+        if (broadcastLayer == Layer.None) {
+            return;
+        }
+
+        if (DEPLOYER_ADDR.balance < MINIMUM_DEPLOYER_BALANCE) {
+            revert(
+                string(
+                    abi.encodePacked(
+                        "[ERROR] insufficient funds on deployer account (",
+                        vm.toString(DEPLOYER_ADDR),
+                        ")"
+                    )
+                )
+            );
         }
     }
 
@@ -1480,6 +1511,10 @@ contract DeployScroll is DeterminsticDeployment {
     }
 
     function transferL1ContractOwnership() private {
+        if (DEPLOYER_ADDR == OWNER_ADDR) {
+            return;
+        }
+
         Ownable(L1_ENFORCED_TX_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L1_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
@@ -1593,6 +1628,10 @@ contract DeployScroll is DeterminsticDeployment {
     }
 
     function transferL2ContractOwnership() private {
+        if (DEPLOYER_ADDR == OWNER_ADDR) {
+            return;
+        }
+
         Ownable(L1_GAS_PRICE_ORACLE_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
         Ownable(L2_ERC1155_GATEWAY_PROXY_ADDR).transferOwnership(OWNER_ADDR);
