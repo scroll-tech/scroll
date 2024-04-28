@@ -115,10 +115,7 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 	var (
 		err               error
 		rootDir           string
-		hostPath          string
-		found             bool
 		dockerComposeFile string
-		env               = map[string]string{}
 	)
 
 	if rootDir, err = findProjectRootDir(); err != nil {
@@ -130,13 +127,9 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 	if t.poSL1Container, err = compose.NewDockerCompose([]string{dockerComposeFile}...); err != nil {
 		return err
 	}
-	if hostPath, found = os.LookupEnv("HOST_PATH"); found {
-		env["HOST_PATH"] = hostPath
-	}
 	err = t.poSL1Container.WaitForService("geth", wait.NewHTTPStrategy("/").
 		WithPort("8545/tcp").
 		WithStartupTimeout(15*time.Second)).
-		WithEnv(env).
 		Up(context.Background())
 	if err != nil {
 		t.poSL1Container = nil

@@ -8,8 +8,8 @@ services:
               mkdir -p /data/execution &&
               cp -a /execution/* /data/execution/"
     volumes:
-      - ${HOST_PATH:-../..}/common/testcontainers/consensus:/consensus
-      - ${HOST_PATH:-../..}/common/testcontainers/execution:/execution
+      - ../../common/testcontainers/consensus:/consensus
+      - ../../common/testcontainers/execution:/execution
       - data:/data
 
   # Creates a genesis state for the beacon chain using a YAML configuration file and
@@ -96,7 +96,7 @@ services:
       - --nodiscover
       - --syncmode=full
     ports:
-      - 8545
+      - ${GETH_HTTP_PORT:-8545}:8545
     depends_on:
       geth-genesis:
         condition: service_completed_successfully
