@@ -49,4 +49,3 @@ dev_docker: ## build docker images for development/testing usages
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
-
