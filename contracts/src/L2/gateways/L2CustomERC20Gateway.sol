@@ -11,7 +11,7 @@ import {IScrollERC20Upgradeable} from "../../libraries/token/IScrollERC20Upgrade
 /// @title L2ERC20Gateway
 /// @notice The `L2ERC20Gateway` is used to withdraw custom ERC20 compatible tokens on layer 2 and
 /// finalize deposit the tokens from layer 1.
-/// @dev The withdrawn tokens tokens will be burned directly. On finalizing deposit, the corresponding
+/// @dev The withdrawn tokens will be burned directly. On finalizing deposit, the corresponding
 /// tokens will be minted and transferred to the recipient.
 contract L2CustomERC20Gateway is L2ERC20Gateway {
     /**********
