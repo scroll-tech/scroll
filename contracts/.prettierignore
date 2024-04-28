@@ -3,6 +3,3 @@ artifacts
 cache
 coverage*
 gasReporterOutput.json
-src/libraries/verifier/ZkTrieVerifier.sol
-src/libraries/verifier/PatriciaMerkleTrieVerifier.sol
-src/L2/predeploys/L1BlockContainer.sol

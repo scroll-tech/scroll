@@ -3,59 +3,32 @@
 pragma solidity =0.8.24;
 
 import {IL1Blocks} from "./IL1Blocks.sol";
-import {IL1GasPriceOracle} from "./IL1GasPriceOracle.sol";
-
-import {OwnableBase} from "../../libraries/common/OwnableBase.sol";
-import {IWhitelist} from "../../libraries/common/IWhitelist.sol";
-import {ScrollPredeploy} from "../../libraries/constants/ScrollPredeploy.sol";
 
 /// @title L1Blocks
 /// @notice This contract will maintain the list of blocks proposed in L1.
-contract L1Blocks is OwnableBase, IL1Blocks {
-    /**********
-     * Events *
-     **********/
-
-    /// @notice Emitted when owner updates whitelist contract.
-    /// @param _oldWhitelist The address of old whitelist contract.
-    /// @param _newWhitelist The address of new whitelist contract.
-    event UpdateWhitelist(address _oldWhitelist, address _newWhitelist);
-
+contract L1Blocks is IL1Blocks {
     /***********
      * Structs *
      ***********/
 
-    /// @dev Compiler will pack this into single `uint256`.
     struct BlockFields {
         // The block number
-        uint64 number;
+        uint256 number;
         // The block timestamp
-        uint64 timestamp;
-        // The base fee
-        uint64 baseFee;
-        // The blob base fee
-        uint64 blobBaseFee;
+        uint256 timestamp;
         // The block hash
         bytes32 blockHash;
         // The state root
         bytes32 stateRoot;
-        // The parent beacon block root
-        bytes32 parentBeaconRoot;
         // The randao value
         bytes32 Randao;
+        // The base fee
+        uint256 baseFee;
+        // The blob base fee
+        uint256 blobBaseFee;
+        // The parent beacon block root
+        bytes32 parentBeaconRoot;
     }
-
-    // Block fields byte
-    // |   Bytes   |          Field           |
-    // ------------|--------------------------|
-    // | [0:7]     | block number             |
-    // | [8:15]    | timestamp                |
-    // | [16:23]   | base fee                 |
-    // | [24:31]   | blob base fee            |
-    // | [32:63]   | block hash               |
-    // | [64:95]   | state root               |
-    // | [96:127]  | parent beacon block root |
-    // | [128:160] | randao                   |
 
     /*************
      * Variables *
@@ -63,42 +36,31 @@ contract L1Blocks is OwnableBase, IL1Blocks {
 
     address public constant SYSTEM_SENDER = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
 
-    uint32 public constant BLOCK_BUFFER_SIZE = 8192;
+    uint256 private constant LONDON_FORK_NUMBER_MINUS_ONE = 12964999;
 
-    uint32 public constant BLOCK_FIELDS_BYTES = 160;
+    uint256 private constant CANCUN_FORK_NUMBER_MINUS_ONE = 19426586;
+
+    uint256 private constant MIN_BASE_FEE_PER_BLOB_GAS = 1;
+
+    uint256 private constant BLOB_BASE_FEE_UPDATE_FRACTION = 3338477;
+
+    uint256 public constant BLOCK_BUFFER_SIZE = 8192;
+
+    uint256 public constant BLOCK_FIELDS_BYTES = 256;
 
     /// @notice Storage slot with the address of the current block hashes offset.
     /// @dev This is the keccak-256 hash of "l1blocks.block_storage_offset" with 256-bit alignment
     uint256 private constant BLOCK_STORAGE_OFFSET = 0xdb384d0440765c9be19ada21c3d61f9d220d57e5963a1fca370403ac2c4bbb00;
 
     /// @inheritdoc IL1Blocks
-    uint64 public override latestBlockNumber;
+    uint256 public override latestBlockNumber;
 
-    /***************
-     * Constructor *
-     ***************/
+    /*************
+     * Modifiers *
+     *************/
 
-    // function initialize(
-    //     bytes32 _startBlockHash,
-    //     uint64 _startBlockHeight,
-    //     uint64 _startBlockTimestamp,
-    //     uint128 _startBlockBaseFee,
-    //     bytes32 _startStateRoot
-    // ) external onlyOwner {
-    //     require(latestBlockHash == bytes32(0), "already initialized");
-
-    //     latestBlockHash = _startBlockHash;
-    //     stateRoot[_startBlockHash] = _startStateRoot;
-    //     metadata[_startBlockHash] = BlockMetadata(_startBlockHeight, _startBlockTimestamp, _startBlockBaseFee);
-
-    //     emit ImportBlock(_startBlockHash, _startBlockHeight, _startBlockTimestamp, _startBlockBaseFee, _startStateRoot);
-    // }
-
-    /*************************
-     * Public View Functions *
-     *************************/
-    modifier validBlockNumber(uint64 blockNumber) {
-        uint64 _latestBlockNumber = latestBlockNumber;
+    modifier validBlockNumber(uint256 blockNumber) {
+        uint256 _latestBlockNumber = latestBlockNumber;
         require(
             blockNumber <= _latestBlockNumber && blockNumber > _latestBlockNumber - BLOCK_BUFFER_SIZE,
             "invalid block number"
@@ -106,100 +68,73 @@ contract L1Blocks is OwnableBase, IL1Blocks {
         _;
     }
 
+    modifier onlySystem() {
+        if (msg.sender != SYSTEM_SENDER) revert("only system sender allowed");
+        _;
+    }
+
+    /*************************
+     * Public View Functions *
+     *************************/
+
     /// @inheritdoc IL1Blocks
     function latestBlockHash() external view returns (bytes32) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        return _loadBlockHash(blockPtr);
+        return _getBlockFields(latestBlockNumber, false).blockHash;
     }
 
     /// @inheritdoc IL1Blocks
-    function getBlockHash(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        uint64 _blockNumber = _loadBlockNumber(blockPtr);
-        if (_blockNumber != blockNumber) {
-            revert ErrorBlockUnavailable();
-        }
-        return _loadBlockHash(blockPtr);
+    function getBlockHash(uint256 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {
+        return _getBlockFields(blockNumber, true).blockHash;
     }
 
     /// @inheritdoc IL1Blocks
     function latestStateRoot() external view returns (bytes32) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        return _loadStateRoot(blockPtr);
+        return _getBlockFields(latestBlockNumber, false).stateRoot;
     }
 
     /// @inheritdoc IL1Blocks
-    function getStateRoot(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        uint64 _blockNumber = _loadBlockNumber(blockPtr);
-        if (_blockNumber != blockNumber) {
-            revert ErrorBlockUnavailable();
-        }
-        return _loadStateRoot(blockPtr);
+    function getStateRoot(uint256 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {
+        return _getBlockFields(blockNumber, true).stateRoot;
     }
 
     /// @inheritdoc IL1Blocks
     function latestBlockTimestamp() external view returns (uint256) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        return _loadTimestamp(blockPtr);
+        return _getBlockFields(latestBlockNumber, false).timestamp;
     }
 
     /// @inheritdoc IL1Blocks
-    function getBlockTimestamp(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (uint256) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        uint64 _blockNumber = _loadBlockNumber(blockPtr);
-        if (_blockNumber != blockNumber) {
-            revert ErrorBlockUnavailable();
-        }
-        return _loadTimestamp(blockPtr);
+    function getBlockTimestamp(uint256 blockNumber) external view validBlockNumber(blockNumber) returns (uint256) {
+        return _getBlockFields(blockNumber, true).timestamp;
     }
 
     /// @inheritdoc IL1Blocks
     function latestBaseFee() external view returns (uint256) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        return _loadBaseFee(blockPtr);
+        return _getBlockFields(latestBlockNumber, false).baseFee;
     }
 
     /// @inheritdoc IL1Blocks
-    function getBaseFee(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (uint256) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        uint64 _blockNumber = _loadBlockNumber(blockPtr);
-        if (_blockNumber != blockNumber) {
-            revert ErrorBlockUnavailable();
-        }
-        return _loadBaseFee(blockPtr);
+    function getBaseFee(uint256 blockNumber) external view validBlockNumber(blockNumber) returns (uint256) {
+        return _getBlockFields(blockNumber, true).baseFee;
     }
 
     /// @inheritdoc IL1Blocks
     function latestBlobBaseFee() external view returns (uint256) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        return _loadBlobBaseFee(blockPtr);
+        return _getBlockFields(latestBlockNumber, false).blobBaseFee;
     }
 
     /// @inheritdoc IL1Blocks
-    function getBlobBaseFee(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (uint256) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        uint64 _blockNumber = _loadBlockNumber(blockPtr);
-        if (_blockNumber != blockNumber) {
-            revert ErrorBlockUnavailable();
-        }
-        return _loadBlobBaseFee(blockPtr);
+    function getBlobBaseFee(uint256 blockNumber) external view validBlockNumber(blockNumber) returns (uint256) {
+        return _getBlockFields(blockNumber, true).blobBaseFee;
     }
 
     /// @inheritdoc IL1Blocks
     function latestParentBeaconRoot() external view returns (bytes32) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (latestBlockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        return _loadParentBeaconRoot(blockPtr);
+        return _getBlockFields(latestBlockNumber, false).parentBeaconRoot;
     }
 
     /// @inheritdoc IL1Blocks
-    function getParentBeaconRoot(uint64 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {
-        uint256 blockPtr = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
-        uint64 _blockNumber = _loadBlockNumber(blockPtr);
-        if (_blockNumber != blockNumber) {
-            revert ErrorBlockUnavailable();
-        }
-        return _loadParentBeaconRoot(blockPtr);
+    function getParentBeaconRoot(uint256 blockNumber) external view validBlockNumber(blockNumber) returns (bytes32) {
+        return _getBlockFields(blockNumber, true).parentBeaconRoot;
     }
 
     /*****************************
@@ -207,80 +142,246 @@ contract L1Blocks is OwnableBase, IL1Blocks {
      *****************************/
 
     /// @inheritdoc IL1Blocks
-    function setL1BlockHeader(bytes32 blockHash, bytes calldata blockHeaderRlp) external {
-        require(msg.sender == SYSTEM_SENDER, "only system sender allowed");
+    /// @dev The encoding order in block header is
+    /// ```text
+    /// | Field            |  Bytes  |          Notes          |
+    /// | ParentHash       |      32 |                required |
+    /// | UncleHash        |      32 |                required |
+    /// | Coinbase         |      20 |                required |
+    /// | StateRoot        |      32 |                required |
+    /// | TransactionsRoot |      32 |                required |
+    /// | ReceiptsRoot     |      32 |                required |
+    /// | LogsBloom        |     256 |                required |
+    /// | Difficulty       |      32 |                required |
+    /// | BlockNumber      |      32 |                required |
+    /// | GasLimit         |       8 |                required |
+    /// | GasUsed          |       8 |                required |
+    /// | BlockTimestamp   |       8 |                required |
+    /// | ExtraData        | dynamic |                required |
+    /// | MixHash/Randao   |      32 |                required |
+    /// | BlockNonce       |       8 |                required |
+    /// | BaseFee          |      32 | optional after 12965000 |
+    /// | WithdrawalsHash  |      32 | optional after 19426587 |
+    /// | BlobGasUsed      |       8 | optional after 19426587 |
+    /// | ExcessBlobGas    |       8 | optional after 19426587 |
+    /// | ParentBeaconRoot |      32 | optional after 19426587 |
+    /// ```
+    function setL1BlockHeader(bytes calldata blockHeaderRlp) external onlySystem returns (bytes32 blockHash) {
+        // Block fields byte
+        // |   Bytes   |          Field           |
+        // ------------|--------------------------|
+        // | [0:31]    | block number             |
+        // | [32:63]   | timestamp                |
+        // | [64:95]   | block hash               |
+        // | [96:127]  | state root               |
+        // | [128:150] | randao                   |
+        // | [160:191] | base fee                 |
+        // | [192:223] | blob base fee            |
+        // | [224:255] | parent beacon block root |
+        BlockFields memory b;
+        bytes32 parentHash;
+        assembly {
+            // reverts with error `msg`.
+            // make sure the length of error string <= 32
+            function revertWith(msg) {
+                // keccak("Error(string)")
+                mstore(0x00, shl(224, 0x08c379a0))
+                mstore(0x04, 0x20) // str.offset
+                mstore(0x44, msg)
+                let msgLen
+                for {
 
-        // The encoding order in block header is
-        // 1. ParentHash: 32 bytes
-        // 2. UncleHash: 32 bytes
-        // 3. Coinbase: 20 bytes
-        // 4. StateRoot: 32 bytes
-        // 5. TransactionsRoot: 32 bytes
-        // 6. ReceiptsRoot: 32 bytes
-        // 7. LogsBloom: 256 bytes
-        // 8. Difficulty: uint256
-        // 9. BlockNumber: uint256
-        // 10. GasLimit: uint64
-        // 11. GasUsed: uint64
-        // 12. BlockTimestamp: uint64
-        // 13. ExtraData: variable bytes
-        // 14. MixHash/Randao: 32 bytes
-        // 15. BlockNonce: 8 bytes
-        // 16. BaseFee: uint256 // optional
-        // 17. WithdrawalsHash: 32 bytes // optional
-        // 18. BlobGasUsed: uint64 // optional
-        // 19. ExcessBlobGas: uint64 // optional
-        // 20. ParentBeaconRoot: 32 bytes // optional
+                } msg {
+
+                } {
+                    msg := shl(8, msg)
+                    msgLen := add(msgLen, 1)
+                }
+                mstore(0x24, msgLen) // str.length
+                revert(0x00, 0x64)
+            }
+            // reverts with `msg` when condition is not matched.
+            // make sure the length of error string <= 32
+            function require(cond, msg) {
+                if iszero(cond) {
+                    revertWith(msg)
+                }
+            }
+            // returns the calldata offset of the value and the length in bytes
+            // for the RLP encoded data item at `ptr`. used in `decodeFlat`
+            function decodeValue(ptr) -> dataLen, valueOffset {
+                let b0 := byte(0, calldataload(ptr))
+                // 0x00 - 0x7f, single byte
+                if lt(b0, 0x80) {
+                    // for a single byte whose value is in the [0x00, 0x7f] range,
+                    // that byte is its own RLP encoding.
+                    dataLen := 1
+                    valueOffset := ptr
+                    leave
+                }
+                // 0x80 - 0xb7, short string/bytes, length <= 55
+                if lt(b0, 0xb8) {
+                    // the RLP encoding consists of a single byte with value 0x80
+                    // plus the length of the string followed by the string.
+                    dataLen := sub(b0, 0x80)
+                    valueOffset := add(ptr, 1)
+                    leave
+                }
+                // 0xb8 - 0xbf, long string/bytes, length > 55
+                if lt(b0, 0xc0) {
+                    // the RLP encoding consists of a single byte with value 0xb7
+                    // plus the length in bytes of the length of the string in binary form,
+                    // followed by the length of the string, followed by the string.
+                    let lengthBytes := sub(b0, 0xb7)
+                    if gt(lengthBytes, 4) {
+                        invalid()
+                    }
+
+                    // load the extended length
+                    valueOffset := add(ptr, 1)
+                    let extendedLen := calldataload(valueOffset)
+                    let bits := sub(256, mul(lengthBytes, 8))
+                    extendedLen := shr(bits, extendedLen)
+
+                    dataLen := extendedLen
+                    valueOffset := add(valueOffset, lengthBytes)
+                    leave
+                }
+                revertWith("Not value")
+            }
+
+            let ptr := blockHeaderRlp.offset
+            let headerPayloadLength
+            {
+                let b0 := byte(0, calldataload(ptr))
+                // the input should be a long list
+                if lt(b0, 0xf8) {
+                    invalid()
+                }
+                let lengthBytes := sub(b0, 0xf7)
+                if gt(lengthBytes, 32) {
+                    invalid()
+                }
+                // load the extended length
+                ptr := add(ptr, 1)
+                headerPayloadLength := calldataload(ptr)
+                let bits := sub(256, mul(lengthBytes, 8))
+                // compute payload length: extended length + length bytes + 1
+                headerPayloadLength := shr(bits, headerPayloadLength)
+                headerPayloadLength := add(headerPayloadLength, lengthBytes)
+                headerPayloadLength := add(headerPayloadLength, 1)
+                ptr := add(ptr, lengthBytes)
+            }
+
+            let memPtr := mload(0x40)
+            calldatacopy(memPtr, blockHeaderRlp.offset, headerPayloadLength)
+            blockHash := keccak256(memPtr, headerPayloadLength)
+
+            // load 16 values
+            for {
+                let i := 0
+            } lt(i, 16) {
+                i := add(i, 1)
+            } {
+                let len, offset := decodeValue(ptr)
+                // the value we care must have at most 32 bytes
+                if lt(len, 33) {
+                    let bits := mul(sub(32, len), 8)
+                    let value := calldataload(offset)
+                    value := shr(bits, value)
+                    mstore(memPtr, value)
+                }
+                memPtr := add(memPtr, 0x20)
+                ptr := add(len, offset)
+            }
+            require(eq(ptr, add(blockHeaderRlp.offset, blockHeaderRlp.length)), "Header RLP length mismatch")
+
+            memPtr := mload(0x40)
+            // load ParentHash, 0-th entry in `blockHeaderRlp`
+            parentHash := mload(memPtr)
+            // load BlockNumber, 8-th entry in `blockHeaderRlp`
+            let blockNumber := mload(add(memPtr, 0x100)) // 0x20 * 8
+            mstore(b, blockNumber)
+            // load BlockTimestamp, 11-th entry in `blockHeaderRlp`
+            mstore(add(b, 0x20), mload(add(memPtr, 0x160))) // 0x20 * 11
+            // load StateRoot, 3-th entry in `blockHeaderRlp`
+            mstore(add(b, 0x60), mload(add(memPtr, 0x60))) // 0x20 * 3
+            // load Randao, 13-th entry in `blockHeaderRlp`
+            mstore(add(b, 0x80), mload(add(memPtr, 0x1a0))) // 0x20 * 13
+            switch gt(blockNumber, LONDON_FORK_NUMBER_MINUS_ONE)
+            case 1 {
+                // load BaseFee, 15-th entry in `blockHeaderRlp`
+                mstore(add(b, 0xa0), mload(add(memPtr, 0x1e0))) // 0x20 * 15
+            }
+            default {
+                mstore(add(b, 0xa0), 0)
+            }
+            if gt(blockNumber, CANCUN_FORK_NUMBER_MINUS_ONE) {
+                // load ExcessBlobGas, 18-th entry in `blockHeaderRlp`
+                mstore(add(b, 0xc0), mload(add(memPtr, 0x240))) // 0x20 * 18
+                // load ParentBeaconRoot, 19-th entry in `blockHeaderRlp`
+                mstore(add(b, 0xe0), mload(add(memPtr, 0x260))) // 0x20 * 19
+            }
+        }
+        b.blockHash = blockHash;
+        if (b.number > CANCUN_FORK_NUMBER_MINUS_ONE) {
+            b.blobBaseFee = _exp(MIN_BASE_FEE_PER_BLOB_GAS, b.blobBaseFee, BLOB_BASE_FEE_UPDATE_FRACTION);
+        }
+
+        uint256 _latestBlockNumber = latestBlockNumber;
+        // validate fields when not first block.
+        if (_latestBlockNumber != 0) {
+            if (_latestBlockNumber + 1 != b.number) revert();
+            BlockFields storage s = _getBlockFields(_latestBlockNumber, false);
+            if (s.blockHash != parentHash) revert();
+        }
+
+        latestBlockNumber = b.number;
+        _setBlockFields(b);
     }
 
     /**********************
      * Internal Functions *
      **********************/
-    function _loadBlockNumber(uint256 blockPtr) internal pure returns (uint64 _blockNumber) {
+
+    /// @dev Internal function to return the `BlockFields` storage for the given `blockNumber`.
+    /// @param blockNumber The block number to load.
+    /// @param validateBlockNumber Whether to check the block number.
+    function _getBlockFields(
+        uint256 blockNumber,
+        bool validateBlockNumber
+    ) private view returns (BlockFields storage b) {
+        uint256 slot = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
         assembly {
-            _blockNumber := shr(192, mload(blockPtr))
+            b.slot := slot
+        }
+        if (validateBlockNumber && b.number != blockNumber) {
+            revert ErrorBlockUnavailable();
         }
     }
 
-    function _loadTimestamp(uint256 blockPtr) internal pure returns (uint256 _timestamp) {
-        assembly {
-            _timestamp := and(shr(128, mload(blockPtr)), 0xffffffffffffffff)
-        }
+    /// @dev Internal function to update the `BlockFields`.
+    function _setBlockFields(BlockFields memory b) private {
+        BlockFields storage s = _getBlockFields(b.number, false);
+        s.number = b.number;
+        s.timestamp = b.timestamp;
+        s.blockHash = b.blockHash;
+        s.stateRoot = b.stateRoot;
+        s.Randao = b.Randao;
+        s.baseFee = b.baseFee;
+        s.blobBaseFee = b.blobBaseFee;
+        s.parentBeaconRoot = b.parentBeaconRoot;
     }
 
-    function _loadBaseFee(uint256 blockPtr) internal pure returns (uint256 _basefee) {
-        assembly {
-            _basefee := and(shr(64, mload(blockPtr)), 0xffffffffffffffff)
+    /// @dev Approximates factor * e ** (numerator / denominator) using Taylor expansion:
+    /// based on `fake_exponential` in https://eips.ethereum.org/EIPS/eip-4844
+    function _exp(uint256 factor, uint256 numerator, uint256 denominator) private pure returns (uint256) {
+        uint256 output;
+        uint256 numerator_accum = factor * denominator;
+        for (uint256 i = 1; numerator_accum > 0; i++) {
+            output += numerator_accum;
+            numerator_accum = (numerator_accum * numerator) / (denominator * i);
         }
-    }
-
-    function _loadBlobBaseFee(uint256 blockPtr) internal pure returns (uint256 _blobbasefee) {
-        assembly {
-            _blobbasefee := and(mload(blockPtr), 0xffffffffffffffff)
-        }
-    }
-
-    function _loadBlockHash(uint256 blockPtr) internal pure returns (bytes32 _blockhash) {
-        assembly {
-            _blockhash := mload(add(blockPtr, 32))
-        }
-    }
-
-    function _loadStateRoot(uint256 blockPtr) internal pure returns (bytes32 _stateroot) {
-        assembly {
-            _stateroot := mload(add(blockPtr, 64))
-        }
-    }
-
-    function _loadParentBeaconRoot(uint256 blockPtr) internal pure returns (bytes32 _beaconRoot) {
-        assembly {
-            _beaconRoot := mload(add(blockPtr, 96))
-        }
-    }
-
-    function _loadRandao(uint256 blockPtr) internal pure returns (bytes32 _randao) {
-        assembly {
-            _randao := mload(add(blockPtr, 128))
-        }
+        return output / denominator;
     }
 }
