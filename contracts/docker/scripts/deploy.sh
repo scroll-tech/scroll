@@ -25,7 +25,7 @@ forge script scripts/foundry/DeployScroll.s.sol:DeployScroll --rpc-url "$L1_RPC_
 # simulate L2
 echo ""
 echo "simulating on L2"
-forge script scripts/foundry/DeployScroll.s.sol:DeployScroll --rpc-url "$L2_RPC_ENDPOINT" --sig "run(string,string)" "L2" "verify-config" || exit 1
+forge script scripts/foundry/DeployScroll.s.sol:DeployScroll --rpc-url "$L2_RPC_ENDPOINT" --sig "run(string,string)" "L2" "verify-config" --legacy || exit 1
 
 # deploy L1
 echo ""
@@ -35,4 +35,4 @@ forge script scripts/foundry/DeployScroll.s.sol:DeployScroll --rpc-url "$L1_RPC_
 # deploy L2
 echo ""
 echo "deploying on L2"
-forge script scripts/foundry/DeployScroll.s.sol:DeployScroll --rpc-url "$L2_RPC_ENDPOINT" --sig "run(string,string)" "L2" "verify-config" --broadcast || exit 1
+forge script scripts/foundry/DeployScroll.s.sol:DeployScroll --rpc-url "$L2_RPC_ENDPOINT" --sig "run(string,string)" "L2" "verify-config" --broadcast --legacy || exit 1
