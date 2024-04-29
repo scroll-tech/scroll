@@ -3,6 +3,7 @@
 latest_commit=$(git log -1 --pretty=format:%h)
 tag=${latest_commit:0:8}
 echo "Using Docker image tag: $tag"
+echo ""
 
 docker build -f docker/Dockerfile.gen-configs -t scrolltech/scroll-stack-contracts:gen-configs-$tag --platform linux/amd64 .
 
