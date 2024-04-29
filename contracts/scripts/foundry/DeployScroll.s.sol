@@ -1852,7 +1852,9 @@ contract GenerateGenesis is DeployScroll {
         vm.writeJson(vm.toString(MAX_TX_IN_CHUNK), GENESIS_JSON_PATH, ".config.scroll.maxTxPerBlock");
         vm.writeJson(vm.toString(L2_TX_FEE_VAULT_ADDR), GENESIS_JSON_PATH, ".config.scroll.feeVaultAddress");
 
-        vm.writeJson(vm.toString(CHAIN_ID_L1), GENESIS_JSON_PATH, ".config.scroll.l1Config.l1ChainId");
+        // serialize explicitly as string, otherwise foundry will serialize it as number
+        string memory l1ChainId = string(abi.encodePacked('"', vm.toString(CHAIN_ID_L1), '"'));
+        vm.writeJson(l1ChainId, GENESIS_JSON_PATH, ".config.scroll.l1Config.l1ChainId");
 
         vm.writeJson(
             vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR),
