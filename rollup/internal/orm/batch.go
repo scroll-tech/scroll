@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 

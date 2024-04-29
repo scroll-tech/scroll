@@ -5,12 +5,12 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common/math"
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
-	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -363,8 +363,8 @@ func testChunkProposerCodecv1BlobSizeLimit(t *testing.T) {
 		var expectedNumChunks int
 		var numBlocksMultiplier uint64
 		if compressed {
-			expectedNumChunks = 2
-			numBlocksMultiplier = 1666
+			expectedNumChunks = 4
+			numBlocksMultiplier = 551
 		} else {
 			expectedNumChunks = 4
 			numBlocksMultiplier = 551

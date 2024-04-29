@@ -7,6 +7,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/da-codec/encoding/codecv0"
+	"github.com/scroll-tech/da-codec/encoding/codecv1"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -16,9 +19,6 @@ import (
 
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
-	"scroll-tech/common/types/encoding/codecv1"
 )
 
 var (

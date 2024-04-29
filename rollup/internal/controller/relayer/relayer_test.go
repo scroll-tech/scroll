@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/da-codec/encoding/codecv0"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -16,8 +18,6 @@ import (
 	"scroll-tech/common/database"
 	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/testcontainers"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
 
 	"scroll-tech/rollup/internal/config"
 )

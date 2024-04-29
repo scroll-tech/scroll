@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,6 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/testcontainers"
-	"scroll-tech/common/types/encoding"
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/rollup/internal/config"

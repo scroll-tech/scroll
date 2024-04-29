@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/params"
@@ -12,7 +13,6 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"

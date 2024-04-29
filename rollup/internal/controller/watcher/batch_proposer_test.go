@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/params"
@@ -13,7 +14,6 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -451,8 +451,8 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 		var expectedNumBatches int
 		var numChunksMultiplier uint64
 		if compressed {
-			expectedNumBatches = 1
-			numChunksMultiplier = 20
+			expectedNumBatches = 20
+			numChunksMultiplier = 1
 		} else {
 			expectedNumBatches = 20
 			numChunksMultiplier = 1
@@ -534,7 +534,7 @@ func testBatchProposerMaxChunkNumPerBatchLimit(t *testing.T) {
 
 		var expectedChunkNum uint64
 		if compressed {
-			expectedChunkNum = 45
+			expectedChunkNum = 22
 		} else {
 			expectedChunkNum = 15
 		}

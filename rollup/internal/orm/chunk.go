@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
-
-	"scroll-tech/rollup/internal/utils"
-
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
+
+	"scroll-tech/common/types"
+
+	"scroll-tech/rollup/internal/utils"
 )
 
 // Chunk represents a chunk of blocks in the database.

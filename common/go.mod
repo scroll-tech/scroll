@@ -6,7 +6,6 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/bits-and-blooms/bitset v1.12.0
 	github.com/cloudflare/cfssl v1.6.5
-	github.com/colinlyguo/zstd v0.0.0-20240423170159-1544a0f648ac
 	github.com/docker/docker v26.1.0+incompatible
 	github.com/gin-contrib/pprof v1.4.0
 	github.com/gin-gonic/gin v1.9.1
@@ -193,6 +192,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/viper v1.4.0 // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect

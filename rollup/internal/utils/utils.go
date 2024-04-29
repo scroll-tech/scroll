@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/da-codec/encoding/codecv0"
+	"github.com/scroll-tech/da-codec/encoding/codecv1"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
-
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
-	"scroll-tech/common/types/encoding/codecv1"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 )

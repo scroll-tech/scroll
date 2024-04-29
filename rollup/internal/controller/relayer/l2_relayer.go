@@ -9,6 +9,9 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/da-codec/encoding/codecv0"
+	"github.com/scroll-tech/da-codec/encoding/codecv1"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -20,9 +23,6 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
-	"scroll-tech/common/types/encoding/codecv1"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 
@@ -32,7 +32,7 @@ import (
 	"scroll-tech/rollup/internal/orm"
 )
 
-// Layer2Relayer is responsible for
+// Layer2Relayer is responsible forw
 //  1. Committing and finalizing L2 blocks on L1
 //  2. Relaying messages from L2 to L1
 //

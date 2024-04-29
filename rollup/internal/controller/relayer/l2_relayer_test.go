@@ -11,6 +11,7 @@ import (
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
@@ -21,7 +22,6 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 

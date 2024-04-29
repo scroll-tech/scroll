@@ -8,13 +8,13 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/forks"
-	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -130,15 +130,14 @@ func (p *BatchProposer) TryProposeBatch() {
 
 func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, useCompression bool) error {
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		batch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, useCompression, dbTX)
+		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, useCompression, dbTX)
 		if dbErr != nil {
-			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure",
-				"start chunk index", batch.StartChunkIndex, "end chunk index", batch.EndChunkIndex, "error", dbErr)
+			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "error", dbErr)
 			return dbErr
 		}
-		dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, batch.StartChunkIndex, batch.EndChunkIndex, batch.Hash, dbTX)
+		dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex, dbBatch.Hash, dbTX)
 		if dbErr != nil {
-			log.Warn("BatchProposer.UpdateBatchHashInRange update the chunk's batch hash failure", "hash", batch.Hash, "error", dbErr)
+			log.Warn("BatchProposer.UpdateBatchHashInRange update the chunk's batch hash failure", "hash", dbBatch.Hash, "error", dbErr)
 			return dbErr
 		}
 		return nil
