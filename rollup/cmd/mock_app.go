@@ -85,7 +85,7 @@ func (b *MockApp) MockConfig(store bool) error {
 		return err
 	}
 
-	l1GethEndpoint, err := b.testApps.GetL1GethEndPoint()
+	l1GethEndpoint, err := b.testApps.GetPoSL1EndPoint()
 	if err != nil {
 		return err
 	}
