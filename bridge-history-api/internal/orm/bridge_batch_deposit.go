@@ -42,19 +42,30 @@ func NewBridgeBatchDepositEvent(db *gorm.DB) *BridgeBatchDepositEvent {
 	return &BridgeBatchDepositEvent{db: db}
 }
 
-// GetBatchEventSyncedHeightInDB returns the maximum l1_block_number from the batch_event_v2 table.
-func (c *BridgeBatchDepositEvent) GetBatchEventSyncedHeightInDB(ctx context.Context) (uint64, error) {
-	var batch BatchEvent
+// GetTxsByAddress returns the txs by address
+func (c *BridgeBatchDepositEvent) GetTxsByAddress(ctx context.Context, sender string) ([]*BridgeBatchDepositEvent, error) {
+	var messages []*BridgeBatchDepositEvent
 	db := c.db.WithContext(ctx)
-	db = db.Model(&BatchEvent{})
-	db = db.Order("l1_block_number desc")
-	if err := db.First(&batch).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("failed to get batch synced height in db, error: %w", err)
+	db = db.Model(&BridgeBatchDepositEvent{})
+	db = db.Where("sender = ?", sender)
+	db = db.Order("block_timestamp desc")
+	db = db.Limit(500)
+	if err := db.Find(&messages).Error; err != nil {
+		return nil, fmt.Errorf("failed to get all txs by sender address, sender: %v, error: %w", sender, err)
 	}
-	return batch.L1BlockNumber, nil
+	return messages, nil
+}
+
+// GetMessagesByTxHashes retrieves all BridgeBatchDepositEvent from the database that match the provided transaction hashes.
+func (c *BridgeBatchDepositEvent) GetMessagesByTxHashes(ctx context.Context, txHashes []string) ([]*BridgeBatchDepositEvent, error) {
+	var messages []*BridgeBatchDepositEvent
+	db := c.db.WithContext(ctx)
+	db = db.Model(&BridgeBatchDepositEvent{})
+	db = db.Where("l1_tx_hash in (?)", txHashes)
+	if err := db.Find(&messages).Error; err != nil {
+		return nil, fmt.Errorf("failed to GetMessagesByTxHashes by tx hashes, tx hashes: %v, error: %w", txHashes, err)
+	}
+	return messages, nil
 }
 
 // InsertBridgeBatchDepositEvent inserts a new BridgeBatchDepositEvent
