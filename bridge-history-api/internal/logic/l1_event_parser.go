@@ -2,12 +2,13 @@ package logic
 
 import (
 	"context"
+	"math/big"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"math/big"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
 	"scroll-tech/bridge-history-api/internal/config"

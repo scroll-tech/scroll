@@ -2,15 +2,16 @@ package logic
 
 import (
 	"context"
+
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	btypes "scroll-tech/bridge-history-api/internal/types"
 
 	backendabi "scroll-tech/bridge-history-api/abi"
 	"scroll-tech/bridge-history-api/internal/config"
 	"scroll-tech/bridge-history-api/internal/orm"
+	btypes "scroll-tech/bridge-history-api/internal/types"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	
 	"scroll-tech/bridge-history-api/internal/types"
 )
 
