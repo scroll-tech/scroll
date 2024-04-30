@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"scroll-tech/common/database"
-	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/encoding/codecv0"
@@ -26,9 +25,7 @@ var (
 	// config
 	cfg *config.Config
 
-	testApps     *testcontainers.TestcontainerApps
-	posL1TestEnv *dockercompose.PoSL1TestEnv
-
+	testApps *testcontainers.TestcontainerApps
 	// l2geth client
 	l2Cli *ethclient.Client
 
@@ -53,15 +50,13 @@ func setupEnv(t *testing.T) {
 	cfg, err = config.NewConfig("../../../conf/config.json")
 	assert.NoError(t, err)
 
-	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
-	assert.NoError(t, err, "failed to create PoS L1 test environment")
-	assert.NoError(t, posL1TestEnv.Start(), "failed to start PoS L1 test environment")
-
 	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
+	assert.NoError(t, testApps.StartPoSL1Container())
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetPoSL1EndPoint()
+	assert.NoError(t, err)
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL2GethEndPoint()
 	assert.NoError(t, err)
 
@@ -109,9 +104,6 @@ func TestMain(m *testing.M) {
 	defer func() {
 		if testApps != nil {
 			testApps.Free()
-		}
-		if posL1TestEnv != nil {
-			posL1TestEnv.Stop()
 		}
 	}()
 	m.Run()

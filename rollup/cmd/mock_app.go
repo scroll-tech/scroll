@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"scroll-tech/rollup/internal/config"
-
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
+
+	"scroll-tech/rollup/internal/config"
 )
 
 // MockApp mockApp-test client manager.
