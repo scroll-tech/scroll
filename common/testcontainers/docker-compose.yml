@@ -96,7 +96,7 @@ services:
       - --nodiscover
       - --syncmode=full
     ports:
-      - ${GETH_HTTP_PORT:-8545}:8545
+      - 8545
     depends_on:
       geth-genesis:
         condition: service_completed_successfully
