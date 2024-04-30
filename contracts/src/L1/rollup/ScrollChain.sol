@@ -310,7 +310,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 batchPtr,
                 BatchHeaderV0Codec.BATCH_HEADER_FIXED_LENGTH + _skippedL1MessageBitmap.length
             );
-        } else if (_version == 1) {
+        } else if (_version >= 1) {
             bytes32 blobVersionedHash;
             (blobVersionedHash, _dataHash, _totalL1MessagesPoppedInBatch) = _commitChunksV1(
                 _totalL1MessagesPoppedOverall,
@@ -322,7 +322,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedOverall := add(_totalL1MessagesPoppedOverall, _totalL1MessagesPoppedInBatch)
             }
             // store entries, the order matters
-            BatchHeaderV1Codec.storeVersion(batchPtr, 1);
+            BatchHeaderV1Codec.storeVersion(batchPtr, _version);
             BatchHeaderV1Codec.storeBatchIndex(batchPtr, _batchIndex);
             BatchHeaderV1Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
             BatchHeaderV1Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
@@ -335,8 +335,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 batchPtr,
                 BatchHeaderV1Codec.BATCH_HEADER_FIXED_LENGTH + _skippedL1MessageBitmap.length
             );
-        } else {
-            revert ErrorInvalidBatchHeaderVersion();
         }
 
         // check the length of bitmap
