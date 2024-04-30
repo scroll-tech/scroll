@@ -28,14 +28,6 @@ func TestNewTestcontainerApps(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, gormDBclient)
 
-	assert.NoError(t, testApps.StartL1GethContainer())
-	endpoint, err = testApps.GetL1GethEndPoint()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, endpoint)
-	ethclient, err = testApps.GetL1GethClient()
-	assert.NoError(t, err)
-	assert.NotNil(t, ethclient)
-
 	assert.NoError(t, testApps.StartL2GethContainer())
 	endpoint, err = testApps.GetL2GethEndPoint()
 	assert.NoError(t, err)
@@ -56,10 +48,6 @@ func TestNewTestcontainerApps(t *testing.T) {
 	testApps.Free()
 	endpoint, err = testApps.GetDBEndPoint()
 	assert.EqualError(t, err, "postgres is not running")
-	assert.Empty(t, endpoint)
-
-	endpoint, err = testApps.GetL1GethEndPoint()
-	assert.EqualError(t, err, "l1 geth is not running")
 	assert.Empty(t, endpoint)
 
 	endpoint, err = testApps.GetL2GethEndPoint()
