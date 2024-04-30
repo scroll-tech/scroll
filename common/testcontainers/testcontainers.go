@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/gorm"
@@ -20,6 +23,7 @@ type TestcontainerApps struct {
 	postgresContainer *postgres.PostgresContainer
 	l1GethContainer   *testcontainers.DockerContainer
 	l2GethContainer   *testcontainers.DockerContainer
+	poSL1Container    compose.ComposeStack
 
 	// common time stamp in nanoseconds.
 	Timestamp int
@@ -104,6 +108,55 @@ func (t *TestcontainerApps) StartL2GethContainer() error {
 	}
 	t.l2GethContainer, _ = container.(*testcontainers.DockerContainer)
 	return nil
+}
+
+// StartPoSL1Container starts the PoS L1 container by running the associated Docker Compose configuration
+func (t *TestcontainerApps) StartPoSL1Container() error {
+	var (
+		err               error
+		rootDir           string
+		dockerComposeFile string
+	)
+
+	if rootDir, err = findProjectRootDir(); err != nil {
+		return fmt.Errorf("failed to find project root directory: %v", err)
+	}
+
+	dockerComposeFile = filepath.Join(rootDir, "common", "testcontainers", "docker-compose.yml")
+
+	if t.poSL1Container, err = compose.NewDockerCompose([]string{dockerComposeFile}...); err != nil {
+		return err
+	}
+	err = t.poSL1Container.WaitForService("geth", wait.NewHTTPStrategy("/").
+		WithPort("8545/tcp").
+		WithStartupTimeout(15*time.Second)).
+		Up(context.Background())
+	if err != nil {
+		t.poSL1Container = nil
+		return fmt.Errorf("failed to start PoS L1 container: %w", err)
+	}
+	return nil
+}
+
+// GetPoSL1EndPoint returns the endpoint of the running PoS L1 endpoint
+func (t *TestcontainerApps) GetPoSL1EndPoint() (string, error) {
+	if t.poSL1Container == nil {
+		return "", fmt.Errorf("PoS L1 container is not running")
+	}
+	contrainer, err := t.poSL1Container.ServiceContainer(context.Background(), "geth")
+	if err != nil {
+		panic(err)
+	}
+	return contrainer.PortEndpoint(context.Background(), "8545/tcp", "http")
+}
+
+// GetPoSL1Client returns a ethclient by dialing running PoS L1 client
+func (t *TestcontainerApps) GetPoSL1Client() (*ethclient.Client, error) {
+	endpoint, err := t.GetPoSL1EndPoint()
+	if err != nil {
+		return nil, err
+	}
+	return ethclient.Dial(endpoint)
 }
 
 // GetDBEndPoint returns the endpoint of the running postgres container
@@ -196,5 +249,34 @@ func (t *TestcontainerApps) Free() {
 		if err := t.l2GethContainer.Terminate(ctx); err != nil {
 			log.Printf("failed to stop scroll_l2geth container: %s", err)
 		}
+	}
+	if t.poSL1Container != nil {
+		if err := t.poSL1Container.Down(context.Background(), compose.RemoveOrphans(true), compose.RemoveVolumes(true), compose.RemoveImagesLocal); err != nil {
+			log.Printf("failed to stop PoS L1 container: %s", err)
+		} else {
+			t.poSL1Container = nil
+		}
+	}
+}
+
+// findProjectRootDir find project root directory
+func findProjectRootDir() (string, error) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("failed to get working directory: %w", err)
+	}
+
+	for {
+		_, err := os.Stat(filepath.Join(currentDir, "go.work"))
+		if err == nil {
+			return currentDir, nil
+		}
+
+		parentDir := filepath.Dir(currentDir)
+		if parentDir == currentDir {
+			return "", fmt.Errorf("go.work file not found in any parent directory")
+		}
+
+		currentDir = parentDir
 	}
 }

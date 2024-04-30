@@ -9,12 +9,12 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/rpc"
 
-	"scroll-tech/prover/config"
-
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
+
+	"scroll-tech/prover/config"
 )
 
 var (
