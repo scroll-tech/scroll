@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
-	
+	"gorm.io/gorm/clause"
+
 	"scroll-tech/bridge-history-api/internal/types"
 )
 
@@ -69,8 +70,8 @@ func (c *BridgeBatchDepositEvent) GetMessagesByTxHashes(ctx context.Context, txH
 	return messages, nil
 }
 
-// InsertBridgeBatchDepositEvent inserts a new BridgeBatchDepositEvent
-func (c *BridgeBatchDepositEvent) InsertBridgeBatchDepositEvent(ctx context.Context, l1BatchDepositEvents []*BridgeBatchDepositEvent) error {
+// InsertOrUpdateBridgeBatchDepositEvent inserts or updates a new BridgeBatchDepositEvent
+func (c *BridgeBatchDepositEvent) InsertOrUpdateBridgeBatchDepositEvent(ctx context.Context, l1BatchDepositEvents []*BridgeBatchDepositEvent) error {
 	for _, l1BatchEvent := range l1BatchDepositEvents {
 		db := c.db
 		db = db.WithContext(ctx)
@@ -78,6 +79,22 @@ func (c *BridgeBatchDepositEvent) InsertBridgeBatchDepositEvent(ctx context.Cont
 		if err := db.Create(l1BatchEvent).Error; err != nil {
 			return fmt.Errorf("failed to InsertBridgeBatchDepositEvent, error: %w", err)
 		}
+	}
+
+	if len(l1BatchDepositEvents) == 0 {
+		return nil
+	}
+
+	db := c.db
+	db = db.WithContext(ctx)
+	db = db.Model(&BridgeBatchDepositEvent{})
+	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
+	db = db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "sender"}, {Name: "batch_index"}},
+		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_nonce"}),
+	})
+	if err := db.Create(messages).Error; err != nil {
+		return fmt.Errorf("failed to insert message, error: %w", err)
 	}
 	return nil
 }
