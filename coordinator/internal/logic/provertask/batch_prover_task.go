@@ -83,7 +83,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	var endChunkIndex uint64 = math.MaxInt64
 	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, bp.forkHeights)
 	if fromBlockNum != 0 {
-		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, fromBlockNum)
+		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx.Copy(), fromBlockNum)
 		if chunkErr != nil {
 			log.Error("failed to get fork start chunk index", "forkName", taskCtx.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
 			return nil, ErrCoordinatorInternalFailure
@@ -94,7 +94,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		startChunkIndex = startChunk.Index
 	}
 	if toBlockNum != math.MaxInt64 {
-		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx, toBlockNum)
+		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx.Copy(), toBlockNum)
 		if chunkErr != nil {
 			log.Error("failed to get fork end chunk index", "forkName", taskCtx.HardForkName, "toBlockNumber", toBlockNum, "err", chunkErr)
 			return nil, ErrCoordinatorInternalFailure
@@ -112,7 +112,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBatchTask *orm.Batch
-		tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx, startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
+		tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx.Copy(), startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
 			log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
@@ -121,7 +121,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// batch to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpBatchTask == nil {
-			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx, startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
+			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx.Copy(), startChunkIndex, endChunkIndex, maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
 				log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
@@ -133,7 +133,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, nil
 		}
 
-		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx, tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
+		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx.Copy(), tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
 		if updateAttemptsErr != nil {
 			log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 			return nil, ErrCoordinatorInternalFailure
@@ -168,13 +168,13 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	// Store session info.
-	if err = bp.proverTaskOrm.InsertProverTask(ctx, &proverTask); err != nil {
+	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("insert batch prover task info fail", "taskID", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx, &proverTask)
+	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "hash", batchTask.Hash, "err", err)
@@ -242,7 +242,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 }
 
 func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *orm.Batch) {
-	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx, batchTask.Hash); err != nil {
+	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), batchTask.Hash); err != nil {
 		log.Error("failed to recover batch active attempts", "hash", batchTask.Hash, "error", err)
 	}
 }
