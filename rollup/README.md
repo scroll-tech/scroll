@@ -16,7 +16,7 @@ go install -v github.com/scroll-tech/go-ethereum/cmd/abigen
 
 2. `solc`
 
-Ensure you install the version of solc required by [MockBridge.sol](./rollup/mock_bridge/MockBridge.sol) (e.g., 0.8.24). See https://docs.soliditylang.org/en/latest/installing-solidity.html
+Ensure you install the version of solc required by [MockBridge.sol](./mock_bridge/MockBridge.sol) (e.g., 0.8.24). See https://docs.soliditylang.org/en/latest/installing-solidity.html
 
 ## Build
 
