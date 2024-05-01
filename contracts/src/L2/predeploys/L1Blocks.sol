@@ -36,10 +36,6 @@ contract L1Blocks is IL1Blocks {
 
     address public constant SYSTEM_SENDER = 0xffffFFFfFFffffffffffffffFfFFFfffFFFfFFfE;
 
-    uint256 private constant LONDON_FORK_NUMBER_MINUS_ONE = 12964999;
-
-    uint256 private constant CANCUN_FORK_NUMBER_MINUS_ONE = 19426586;
-
     uint256 private constant MIN_BASE_FEE_PER_BLOB_GAS = 1;
 
     uint256 private constant BLOB_BASE_FEE_UPDATE_FRACTION = 3338477;
@@ -49,8 +45,8 @@ contract L1Blocks is IL1Blocks {
     uint256 public constant BLOCK_FIELDS_BYTES = 256;
 
     /// @notice Storage slot with the address of the current block hashes offset.
-    /// @dev This is the keccak-256 hash of "l1blocks.block_storage_offset" with 256-bit alignment
-    uint256 private constant BLOCK_STORAGE_OFFSET = 0xdb384d0440765c9be19ada21c3d61f9d220d57e5963a1fca370403ac2c4bbb00;
+    /// @dev This is the keccak-256 hash of "l1blocks.block_storage_offset"
+    uint256 private constant BLOCK_STORAGE_OFFSET = 0xdb384d0440765c9be19ada21c3d61f9d220d57e5963a1fca370403ac2c4bbbad;
 
     /// @inheritdoc IL1Blocks
     uint256 public override latestBlockNumber;
@@ -144,27 +140,27 @@ contract L1Blocks is IL1Blocks {
     /// @inheritdoc IL1Blocks
     /// @dev The encoding order in block header is
     /// ```text
-    /// | Field            |  Bytes  |          Notes          |
-    /// | ParentHash       |      32 |                required |
-    /// | UncleHash        |      32 |                required |
-    /// | Coinbase         |      20 |                required |
-    /// | StateRoot        |      32 |                required |
-    /// | TransactionsRoot |      32 |                required |
-    /// | ReceiptsRoot     |      32 |                required |
-    /// | LogsBloom        |     256 |                required |
-    /// | Difficulty       |      32 |                required |
-    /// | BlockNumber      |      32 |                required |
-    /// | GasLimit         |       8 |                required |
-    /// | GasUsed          |       8 |                required |
-    /// | BlockTimestamp   |       8 |                required |
-    /// | ExtraData        | dynamic |                required |
-    /// | MixHash/Randao   |      32 |                required |
-    /// | BlockNonce       |       8 |                required |
-    /// | BaseFee          |      32 | optional after 12965000 |
-    /// | WithdrawalsHash  |      32 | optional after 19426587 |
-    /// | BlobGasUsed      |       8 | optional after 19426587 |
-    /// | ExcessBlobGas    |       8 | optional after 19426587 |
-    /// | ParentBeaconRoot |      32 | optional after 19426587 |
+    /// | Idx | Field            |  Bytes  |          Notes          |
+    /// |   0 | ParentHash       |      32 |                required |
+    /// |   1 | UncleHash        |      32 |                required |
+    /// |   2 | Coinbase         |      20 |                required |
+    /// |   3 | StateRoot        |      32 |                required |
+    /// |   4 | TransactionsRoot |      32 |                required |
+    /// |   5 | ReceiptsRoot     |      32 |                required |
+    /// |   6 | LogsBloom        |     256 |                required |
+    /// |   7 | Difficulty       |      32 |                required |
+    /// |   8 | BlockNumber      |      32 |                required |
+    /// |   9 | GasLimit         |       8 |                required |
+    /// |  10 | BlockTimestamp   |       8 |                required |
+    /// |  11 | GasUsed          |       8 |                required |
+    /// |  12 | ExtraData        | dynamic |                required |
+    /// |  13 | MixHash/Randao   |      32 |                required |
+    /// |  14 | BlockNonce       |       8 |                required |
+    /// |  15 | BaseFee          |      32 |   optional after London |
+    /// |  16 | WithdrawalsHash  |      32 | optional after Shanghai |
+    /// |  17 | BlobGasUsed      |       8 |   optional after Cancun |
+    /// |  18 | ExcessBlobGas    |       8 |   optional after Cancun |
+    /// |  19 | ParentBeaconRoot |      32 |   optional after Cancun |
     /// ```
     function setL1BlockHeader(bytes calldata blockHeaderRlp) external onlySystem returns (bytes32 blockHash) {
         // Block fields byte
@@ -206,6 +202,27 @@ contract L1Blocks is IL1Blocks {
                 if iszero(cond) {
                     revertWith(msg)
                 }
+            }
+            function decodePayloadLength(_ptr) -> payloadLength, ptr {
+                ptr := _ptr
+                let b0 := byte(0, calldataload(ptr))
+                // the input should be a long list
+                if lt(b0, 0xf8) {
+                    invalid()
+                }
+                let lengthBytes := sub(b0, 0xf7)
+                if gt(lengthBytes, 32) {
+                    invalid()
+                }
+                // load the extended length
+                ptr := add(ptr, 1)
+                payloadLength := calldataload(ptr)
+                let bits := sub(256, mul(lengthBytes, 8))
+                // compute payload length: extended length + length bytes + 1
+                payloadLength := shr(bits, payloadLength)
+                payloadLength := add(payloadLength, lengthBytes)
+                payloadLength := add(payloadLength, 1)
+                ptr := add(ptr, lengthBytes)
             }
             // returns the calldata offset of the value and the length in bytes
             // for the RLP encoded data item at `ptr`. used in `decodeFlat`
@@ -262,94 +279,42 @@ contract L1Blocks is IL1Blocks {
                 ptr := add(len, offset)
             }
 
-            let ptr := blockHeaderRlp.offset
-            let headerPayloadLength
-            {
-                let b0 := byte(0, calldataload(ptr))
-                // the input should be a long list
-                if lt(b0, 0xf8) {
-                    invalid()
-                }
-                let lengthBytes := sub(b0, 0xf7)
-                if gt(lengthBytes, 32) {
-                    invalid()
-                }
-                // load the extended length
-                ptr := add(ptr, 1)
-                headerPayloadLength := calldataload(ptr)
-                let bits := sub(256, mul(lengthBytes, 8))
-                // compute payload length: extended length + length bytes + 1
-                headerPayloadLength := shr(bits, headerPayloadLength)
-                headerPayloadLength := add(headerPayloadLength, lengthBytes)
-                headerPayloadLength := add(headerPayloadLength, 1)
-                ptr := add(ptr, lengthBytes)
-            }
-
+            let headerPayloadLength, ptr := decodePayloadLength(blockHeaderRlp.offset)
             let memPtr := mload(0x40)
-            let blockNumber
             calldatacopy(memPtr, blockHeaderRlp.offset, headerPayloadLength)
             blockHash := keccak256(memPtr, headerPayloadLength)
 
-            // load 15 values
+            // load 20 fields in the block header
             for {
                 let i := 0
-            } lt(i, 15) {
+            } lt(i, 20) {
                 i := add(i, 1)
             } {
                 ptr := loadAndCacheValue(memPtr, ptr)
-                // load BlockNumber, 8-th entry in `blockHeaderRlp`
-                if eq(i, 8) {
-                    blockNumber := mload(memPtr)
-                }
                 memPtr := add(memPtr, 0x20)
-            }
-            // load optional fields after london fork
-            if gt(blockNumber, LONDON_FORK_NUMBER_MINUS_ONE) {
-                ptr := loadAndCacheValue(memPtr, ptr)
-                memPtr := add(memPtr, 0x20)
-            }
-            // load optional fields after cancun fork
-            if gt(blockNumber, CANCUN_FORK_NUMBER_MINUS_ONE) {
-                for {
-                    let i := 0
-                } lt(i, 4) {
-                    i := add(i, 1)
-                } {
-                    ptr := loadAndCacheValue(memPtr, ptr)
-                    memPtr := add(memPtr, 0x20)
-                }
             }
             require(eq(ptr, add(blockHeaderRlp.offset, blockHeaderRlp.length)), "Header RLP length mismatch")
 
             memPtr := mload(0x40)
             // load ParentHash, 0-th entry in `blockHeaderRlp`
             parentHash := mload(memPtr)
-            mstore(b, blockNumber)
+            // load BlockNumber, 8-th entry in `blockHeaderRlp`
+            mstore(b, mload(add(memPtr, 0x100))) // 0x20 * 8
             // load BlockTimestamp, 11-th entry in `blockHeaderRlp`
             mstore(add(b, 0x20), mload(add(memPtr, 0x160))) // 0x20 * 11
             // load StateRoot, 3-th entry in `blockHeaderRlp`
             mstore(add(b, 0x60), mload(add(memPtr, 0x60))) // 0x20 * 3
             // load Randao, 13-th entry in `blockHeaderRlp`
             mstore(add(b, 0x80), mload(add(memPtr, 0x1a0))) // 0x20 * 13
-            switch gt(blockNumber, LONDON_FORK_NUMBER_MINUS_ONE)
-            case 1 {
-                // load BaseFee, 15-th entry in `blockHeaderRlp`
-                mstore(add(b, 0xa0), mload(add(memPtr, 0x1e0))) // 0x20 * 15
-            }
-            default {
-                mstore(add(b, 0xa0), 0)
-            }
-            if gt(blockNumber, CANCUN_FORK_NUMBER_MINUS_ONE) {
-                // load ExcessBlobGas, 18-th entry in `blockHeaderRlp`
-                mstore(add(b, 0xc0), mload(add(memPtr, 0x240))) // 0x20 * 18
-                // load ParentBeaconRoot, 19-th entry in `blockHeaderRlp`
-                mstore(add(b, 0xe0), mload(add(memPtr, 0x260))) // 0x20 * 19
-            }
+            // load BaseFee, 15-th entry in `blockHeaderRlp`
+            mstore(add(b, 0xa0), mload(add(memPtr, 0x1e0))) // 0x20 * 15
+            // load ExcessBlobGas, 18-th entry in `blockHeaderRlp`
+            mstore(add(b, 0xc0), mload(add(memPtr, 0x240))) // 0x20 * 18
+            // load ParentBeaconRoot, 19-th entry in `blockHeaderRlp`
+            mstore(add(b, 0xe0), mload(add(memPtr, 0x260))) // 0x20 * 19
         }
         b.blockHash = blockHash;
-        if (b.number > CANCUN_FORK_NUMBER_MINUS_ONE) {
-            b.blobBaseFee = _exp(MIN_BASE_FEE_PER_BLOB_GAS, b.blobBaseFee, BLOB_BASE_FEE_UPDATE_FRACTION);
-        }
+        b.blobBaseFee = _exp(MIN_BASE_FEE_PER_BLOB_GAS, b.blobBaseFee, BLOB_BASE_FEE_UPDATE_FRACTION);
 
         uint256 _latestBlockNumber = latestBlockNumber;
         // validate fields when not first block.
@@ -370,10 +335,11 @@ contract L1Blocks is IL1Blocks {
     /// @dev Internal function to return the `BlockFields` storage for the given `blockNumber`.
     /// @param blockNumber The block number to load.
     /// @param validateBlockNumber Whether to check the block number.
-    function _getBlockFields(
-        uint256 blockNumber,
-        bool validateBlockNumber
-    ) private view returns (BlockFields storage b) {
+    function _getBlockFields(uint256 blockNumber, bool validateBlockNumber)
+        private
+        view
+        returns (BlockFields storage b)
+    {
         uint256 slot = BLOCK_STORAGE_OFFSET + (blockNumber % BLOCK_BUFFER_SIZE) * BLOCK_FIELDS_BYTES;
         assembly {
             b.slot := slot
@@ -398,7 +364,11 @@ contract L1Blocks is IL1Blocks {
 
     /// @dev Approximates factor * e ** (numerator / denominator) using Taylor expansion:
     /// based on `fake_exponential` in https://eips.ethereum.org/EIPS/eip-4844
-    function _exp(uint256 factor, uint256 numerator, uint256 denominator) private pure returns (uint256) {
+    function _exp(
+        uint256 factor,
+        uint256 numerator,
+        uint256 denominator
+    ) private pure returns (uint256) {
         uint256 output;
         uint256 numerator_accum = factor * denominator;
         for (uint256 i = 1; numerator_accum > 0; i++) {
