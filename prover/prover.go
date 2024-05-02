@@ -282,7 +282,7 @@ func (r *Prover) prove(task *store.ProvingTask) (*message.ProofDetail, error) {
 
 func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error) {
 	if task.Task.ChunkTaskDetail == nil {
-		return nil, fmt.Errorf("ChunkTaskDetail is empty")
+		return nil, errors.New("ChunkTaskDetail is empty")
 	}
 	traces, err := r.getSortedTracesByHashes(task.Task.ChunkTaskDetail.BlockHashes)
 	if err != nil {
@@ -293,7 +293,7 @@ func (r *Prover) proveChunk(task *store.ProvingTask) (*message.ChunkProof, error
 
 func (r *Prover) proveBatch(task *store.ProvingTask) (*message.BatchProof, error) {
 	if task.Task.BatchTaskDetail == nil {
-		return nil, fmt.Errorf("BatchTaskDetail is empty")
+		return nil, errors.New("BatchTaskDetail is empty")
 	}
 	return r.proverCore.ProveBatch(task.Task.ID, task.Task.BatchTaskDetail.ChunkInfos, task.Task.BatchTaskDetail.ChunkProofs)
 }
@@ -378,7 +378,7 @@ func (r *Prover) submitErr(task *store.ProvingTask, proofFailureType message.Pro
 
 func (r *Prover) getSortedTracesByHashes(blockHashes []common.Hash) ([]*types.BlockTrace, error) {
 	if len(blockHashes) == 0 {
-		return nil, fmt.Errorf("blockHashes is empty")
+		return nil, errors.New("blockHashes is empty")
 	}
 
 	var traces []*types.BlockTrace
