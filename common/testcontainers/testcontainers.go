@@ -31,6 +31,11 @@ type TestcontainerApps struct {
 // NewTestcontainerApps returns new instance of TestcontainerApps struct
 func NewTestcontainerApps() *TestcontainerApps {
 	timestamp := time.Now().Nanosecond()
+	// In order to solve the problem of "creating reaper failed: failed to create container"
+	// refer to https://github.com/testcontainers/testcontainers-go/issues/2172
+	if err := os.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true"); err != nil {
+		panic("set env failed: " + err.Error())
+	}
 	return &TestcontainerApps{
 		Timestamp: timestamp,
 	}
