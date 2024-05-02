@@ -63,7 +63,7 @@ func (b *MockApp) RunApp(t *testing.T, name utils.MockAppName, args ...string) {
 	b.mockApps[name] = appAPI
 }
 
-// WaitExit wait util all processes exit.
+// WaitExit wait until all processes exit.
 func (b *MockApp) WaitExit() {
 	for _, app := range b.mockApps {
 		app.WaitExit()
