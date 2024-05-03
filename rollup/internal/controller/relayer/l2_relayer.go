@@ -387,7 +387,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				log.Error("failed to construct commitBatch payload codecv1", "index", dbBatch.Index, "err", err)
 				return
 			}
-		} else {
+		} else { // codecv2
 			calldata, blob, err = r.constructCommitBatchPayloadCodecV2(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
 				log.Error("failed to construct commitBatch payload codecv2", "index", dbBatch.Index, "err", err)
@@ -547,7 +547,7 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 		if err != nil {
 			return fmt.Errorf("failed to construct commitBatch payload codecv0, index: %v, err: %w", dbBatch.Index, err)
 		}
-	} else if !r.chainCfg.IsCurie(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv2
+	} else if !r.chainCfg.IsCurie(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv1
 		chunks := make([]*encoding.Chunk, len(dbChunks))
 		for i, c := range dbChunks {
 			blocks, dbErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
@@ -561,7 +561,7 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 		if err != nil {
 			return fmt.Errorf("failed to construct commitBatch payload codecv1, index: %v, err: %w", dbBatch.Index, err)
 		}
-	} else {
+	} else { // codecv2
 		chunks := make([]*encoding.Chunk, len(dbChunks))
 		for i, c := range dbChunks {
 			blocks, dbErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
