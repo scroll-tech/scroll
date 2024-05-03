@@ -109,7 +109,7 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 				Blocks: []*encoding.Block{block},
 			}
 			chunkOrm := orm.NewChunk(db)
-			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, false)
+			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0)
 			assert.NoError(t, err)
 			batch := &encoding.Batch{
 				Index:                      0,
@@ -118,7 +118,7 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 				Chunks:                     []*encoding.Chunk{chunk},
 			}
 			batchOrm := orm.NewBatch(db)
-			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false)
+			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
 			assert.NoError(t, err)
 
 			l2BlockOrm := orm.NewL2Block(db)
@@ -227,7 +227,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				Blocks: []*encoding.Block{block},
 			}
 			chunkOrm := orm.NewChunk(db)
-			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV1, false)
+			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV1)
 			assert.NoError(t, err)
 			batch := &encoding.Batch{
 				Index:                      0,
@@ -236,7 +236,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				Chunks:                     []*encoding.Chunk{chunk},
 			}
 			batchOrm := orm.NewBatch(db)
-			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV1, false)
+			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV1)
 			assert.NoError(t, err)
 
 			l2BlockOrm := orm.NewL2Block(db)
@@ -311,7 +311,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		Blocks: []*encoding.Block{block},
 	}
 	chunkOrm := orm.NewChunk(db)
-	_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, false)
+	_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0)
 	assert.NoError(t, err)
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -320,7 +320,7 @@ func testBatchCommitGasAndCalldataSizeEstimation(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 	}
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false)
+	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
 	assert.NoError(t, err)
 
 	l2BlockOrm := orm.NewL2Block(db)
@@ -391,7 +391,7 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 			Blocks: []*encoding.Block{block},
 		}
 		chunkOrm := orm.NewChunk(db)
-		_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, false)
+		_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0)
 		assert.NoError(t, err)
 		batch := &encoding.Batch{
 			Index:                      0,
@@ -400,7 +400,7 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 			Chunks:                     []*encoding.Chunk{chunk},
 		}
 		batchOrm := orm.NewBatch(db)
-		_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false)
+		_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
 		assert.NoError(t, err)
 
 		var chainConfig *params.ChainConfig
@@ -482,7 +482,7 @@ func testBatchProposerMaxChunkNumPerBatchLimit(t *testing.T) {
 			Blocks: []*encoding.Block{block},
 		}
 		chunkOrm := orm.NewChunk(db)
-		_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, false)
+		_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0)
 		assert.NoError(t, err)
 		batch := &encoding.Batch{
 			Index:                      0,
@@ -491,7 +491,7 @@ func testBatchProposerMaxChunkNumPerBatchLimit(t *testing.T) {
 			Chunks:                     []*encoding.Chunk{chunk},
 		}
 		batchOrm := orm.NewBatch(db)
-		_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false)
+		_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
 		assert.NoError(t, err)
 
 		var chainConfig *params.ChainConfig

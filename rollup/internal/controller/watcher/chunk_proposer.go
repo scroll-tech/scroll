@@ -144,14 +144,14 @@ func (p *ChunkProposer) TryProposeChunk() {
 	}
 }
 
-func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, useCompression bool) error {
+func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) error {
 	if chunk == nil {
 		return nil
 	}
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, useCompression, dbTX)
+		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, dbTX)
 		if err != nil {
 			log.Warn("ChunkProposer.InsertChunk failed", "err", err)
 			return err
@@ -193,24 +193,19 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	var codecVersion encoding.CodecVersion
-	if p.chainCfg.IsBernoulli(blocks[0].Header.Number) {
+	if !p.chainCfg.IsBernoulli(blocks[0].Header.Number) {
+		codecVersion = encoding.CodecV0
+	} else if !p.chainCfg.IsCurie(blocks[0].Header.Number) {
 		codecVersion = encoding.CodecV1
 	} else {
-		codecVersion = encoding.CodecV0
-	}
-
-	var useCompression bool
-	if codecVersion == encoding.CodecV1 && p.chainCfg.IsCurie(blocks[0].Header.Number) {
-		useCompression = true
-	} else {
-		useCompression = false
+		codecVersion = encoding.CodecV2
 	}
 
 	var chunk encoding.Chunk
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)
 
-		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion, useCompression)
+		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 		}
@@ -242,17 +237,17 @@ func (p *ChunkProposer) proposeChunk() error {
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
 
-			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion, useCompression)
+			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 			if calcErr != nil {
 				return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 			}
 
 			p.recordChunkMetrics(metrics)
-			return p.updateDBChunkInfo(&chunk, codecVersion, useCompression)
+			return p.updateDBChunkInfo(&chunk, codecVersion)
 		}
 	}
 
-	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion, useCompression)
+	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 	}
@@ -268,7 +263,7 @@ func (p *ChunkProposer) proposeChunk() error {
 
 		p.chunkFirstBlockTimeoutReached.Inc()
 		p.recordChunkMetrics(metrics)
-		return p.updateDBChunkInfo(&chunk, codecVersion, useCompression)
+		return p.updateDBChunkInfo(&chunk, codecVersion)
 	}
 
 	log.Debug("pending blocks do not reach one of the constraints or contain a timeout block")

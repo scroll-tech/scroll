@@ -175,7 +175,7 @@ func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, useCompression bool, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -200,7 +200,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
-	metrics, err := utils.CalculateChunkMetrics(chunk, codecVersion, useCompression)
+	metrics, err := utils.CalculateChunkMetrics(chunk, codecVersion)
 	if err != nil {
 		log.Error("failed to calculate chunk metrics", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
