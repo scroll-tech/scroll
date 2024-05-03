@@ -37,7 +37,7 @@ We welcome community contributions to this repository. Before you submit any iss
 To run the tests, it is essential to first pull or build the required Docker images. Execute the following commands in the root directory of the repository to do this:
 
 ```bash
-docker pull postgres
+ggggggg
 make dev_docker
 ```
 
