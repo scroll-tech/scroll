@@ -177,7 +177,7 @@ contract MockBridge {
                 _totalL1MessagesPoppedOverall := add(_totalL1MessagesPoppedOverall, _totalL1MessagesPoppedInBatch)
             }
             // store entries, the order matters
-            BatchHeaderV1Codec.storeVersion(batchPtr, 1);
+            BatchHeaderV1Codec.storeVersion(batchPtr, _version);
             BatchHeaderV1Codec.storeBatchIndex(batchPtr, _batchIndex);
             BatchHeaderV1Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
             BatchHeaderV1Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);

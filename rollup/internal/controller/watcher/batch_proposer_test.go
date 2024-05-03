@@ -651,7 +651,7 @@ func testBatchProposerMaxChunkNumPerBatchLimit(t *testing.T) {
 
 		var expectedChunkNum uint64
 		if compressed {
-			expectedChunkNum = 22
+			expectedChunkNum = 45
 		} else {
 			expectedChunkNum = 15
 		}
