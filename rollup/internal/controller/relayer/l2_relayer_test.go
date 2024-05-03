@@ -50,7 +50,7 @@ func testCreateNewRelayer(t *testing.T) {
 }
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
 	for _, codecVersion := range codecVersions {
 		db := setupL2RelayerDB(t)
 		defer database.CloseDB(db)
@@ -100,7 +100,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 }
 
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
 	for _, codecVersion := range codecVersions {
 		db := setupL2RelayerDB(t)
 		defer database.CloseDB(db)
@@ -163,7 +163,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 }
 
 func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
 	for _, codecVersion := range codecVersions {
 		db := setupL2RelayerDB(t)
 		defer database.CloseDB(db)

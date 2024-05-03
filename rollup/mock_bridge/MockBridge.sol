@@ -166,7 +166,7 @@ contract MockBridge {
                 batchPtr,
                 BatchHeaderV0Codec.BATCH_HEADER_FIXED_LENGTH
             );
-        } else if (_version == 1) {
+        } else {
             bytes32 blobVersionedHash;
             (blobVersionedHash, _dataHash, _totalL1MessagesPoppedInBatch) = _commitChunksV1(
                 _totalL1MessagesPoppedOverall,
@@ -189,8 +189,6 @@ contract MockBridge {
                 batchPtr,
                 BatchHeaderV1Codec.BATCH_HEADER_FIXED_LENGTH
             );
-        } else {
-            revert ErrorInvalidBatchHeaderVersion();
         }
 
         committedBatches[_batchIndex] = _batchHash;
@@ -421,12 +419,10 @@ contract MockBridge {
             (batchPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, _length);
             _batchIndex = BatchHeaderV0Codec.getBatchIndex(batchPtr);
-        } else if (version == 1) {
+        } else {
             (batchPtr, _length) = BatchHeaderV1Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV1Codec.computeBatchHash(batchPtr, _length);
             _batchIndex = BatchHeaderV1Codec.getBatchIndex(batchPtr);
-        } else {
-            revert ErrorInvalidBatchHeaderVersion();
         }
         // only check when genesis is imported
         if (committedBatches[_batchIndex] != _batchHash && finalizedStateRoots[0] != bytes32(0)) {
