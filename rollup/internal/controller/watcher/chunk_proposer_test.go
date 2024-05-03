@@ -323,7 +323,129 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 	}
 }
 
-func testChunkProposerCodecv1BlobSizeLimit(t *testing.T) {
+func testChunkProposerCodecv2Limits(t *testing.T) {
+	tests := []struct {
+		name                       string
+		maxBlockNum                uint64
+		maxTxNum                   uint64
+		maxRowConsumption          uint64
+		chunkTimeoutSec            uint64
+		forkBlock                  *big.Int
+		expectedChunksLen          int
+		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
+	}{
+		{
+			name:              "NoLimitReached",
+			maxBlockNum:       100,
+			maxTxNum:          10000,
+			maxRowConsumption: 1000000,
+			chunkTimeoutSec:   1000000000000,
+			expectedChunksLen: 0,
+		},
+		{
+			name:                       "Timeout",
+			maxBlockNum:                100,
+			maxTxNum:                   10000,
+			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            0,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 2,
+		},
+		{
+			name:              "MaxTxNumPerChunkIs0",
+			maxBlockNum:       10,
+			maxTxNum:          0,
+			maxRowConsumption: 1000000,
+			chunkTimeoutSec:   1000000000000,
+			expectedChunksLen: 0,
+		},
+		{
+			name:              "MaxRowConsumptionPerChunkIs0",
+			maxBlockNum:       100,
+			maxTxNum:          10000,
+			maxRowConsumption: 0,
+			chunkTimeoutSec:   1000000000000,
+			expectedChunksLen: 0,
+		},
+		{
+			name:                       "MaxBlockNumPerChunkIs1",
+			maxBlockNum:                1,
+			maxTxNum:                   10000,
+			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+		},
+		{
+			name:                       "MaxTxNumPerChunkIsFirstBlock",
+			maxBlockNum:                10,
+			maxTxNum:                   2,
+			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+		},
+		{
+			name:                       "MaxRowConsumptionPerChunkIs1",
+			maxBlockNum:                10,
+			maxTxNum:                   10000,
+			maxRowConsumption:          1,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+		},
+		{
+			name:                       "ForkBlockReached",
+			maxBlockNum:                100,
+			maxTxNum:                   10000,
+			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+			forkBlock:                  big.NewInt(2),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := setupDB(t)
+			defer database.CloseDB(db)
+
+			l2BlockOrm := orm.NewL2Block(db)
+			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+			assert.NoError(t, err)
+
+			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+				MaxBlockNumPerChunk:             tt.maxBlockNum,
+				MaxTxNumPerChunk:                tt.maxTxNum,
+				MaxL1CommitGasPerChunk:          1,
+				MaxL1CommitCalldataSizePerChunk: 100000,
+				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
+				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
+				GasCostIncreaseMultiplier:       1.2,
+			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock}, db, nil)
+			cp.TryProposeChunk()
+
+			chunkOrm := orm.NewChunk(db)
+			chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
+			assert.NoError(t, err)
+			assert.Len(t, chunks, tt.expectedChunksLen)
+
+			if len(chunks) > 0 {
+				blockOrm := orm.NewL2Block(db)
+				chunkHashes, err := blockOrm.GetChunkHashes(context.Background(), tt.expectedBlocksInFirstChunk)
+				assert.NoError(t, err)
+				assert.Len(t, chunkHashes, tt.expectedBlocksInFirstChunk)
+				firstChunkHash := chunks[0].Hash
+				for _, chunkHash := range chunkHashes {
+					assert.Equal(t, firstChunkHash, chunkHash)
+				}
+			}
+		})
+	}
+}
+
+func testChunkProposerBlobSizeLimit(t *testing.T) {
 	compressionTests := []bool{false, true} // false for uncompressed, true for compressed
 	for _, compressed := range compressionTests {
 		db := setupDB(t)
@@ -363,8 +485,8 @@ func testChunkProposerCodecv1BlobSizeLimit(t *testing.T) {
 		var expectedNumChunks int
 		var numBlocksMultiplier uint64
 		if compressed {
-			expectedNumChunks = 4
-			numBlocksMultiplier = 551
+			expectedNumChunks = 2
+			numBlocksMultiplier = 1666
 		} else {
 			expectedNumChunks = 4
 			numBlocksMultiplier = 551

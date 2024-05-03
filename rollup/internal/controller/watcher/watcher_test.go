@@ -107,11 +107,13 @@ func TestFunction(t *testing.T) {
 	// Run chunk proposer test cases.
 	t.Run("TestChunkProposerCodecv0Limits", testChunkProposerCodecv0Limits)
 	t.Run("TestChunkProposerCodecv1Limits", testChunkProposerCodecv1Limits)
-	t.Run("TestChunkProposerCodecv1BlobSizeLimit", testChunkProposerCodecv1BlobSizeLimit)
+	t.Run("TestChunkProposerCodecv2Limits", testChunkProposerCodecv2Limits)
+	t.Run("TestChunkProposerBlobSizeLimit", testChunkProposerBlobSizeLimit)
 
 	// Run chunk proposer test cases.
 	t.Run("TestBatchProposerCodecv0Limits", testBatchProposerCodecv0Limits)
 	t.Run("TestBatchProposerCodecv1Limits", testBatchProposerCodecv1Limits)
+	t.Run("TestBatchProposerCodecv2Limits", testBatchProposerCodecv2Limits)
 	t.Run("TestBatchCommitGasAndCalldataSizeEstimation", testBatchCommitGasAndCalldataSizeEstimation)
 	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
 	t.Run("TestBatchProposerMaxChunkNumPerBatchLimit", testBatchProposerMaxChunkNumPerBatchLimit)
