@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -70,17 +71,46 @@ func (c *BridgeBatchDepositEvent) GetMessagesByTxHashes(ctx context.Context, txH
 	return messages, nil
 }
 
-// InsertOrUpdateBridgeBatchDepositEvent inserts or updates a new BridgeBatchDepositEvent
-func (c *BridgeBatchDepositEvent) InsertOrUpdateBridgeBatchDepositEvent(ctx context.Context, l1BatchDepositEvents []*BridgeBatchDepositEvent) error {
-	for _, l1BatchEvent := range l1BatchDepositEvents {
-		db := c.db
-		db = db.WithContext(ctx)
-		db = db.Model(&BridgeBatchDepositEvent{})
-		if err := db.Create(l1BatchEvent).Error; err != nil {
-			return fmt.Errorf("failed to InsertBridgeBatchDepositEvent, error: %w", err)
-		}
+// GetMessageL1SyncedHeightInDB returns the l1 latest bridge batch deposit message height from the database
+func (c *BridgeBatchDepositEvent) GetMessageL1SyncedHeightInDB(ctx context.Context) (uint64, error) {
+	var message BridgeBatchDepositEvent
+	db := c.db.WithContext(ctx)
+	db = db.Model(&BridgeBatchDepositEvent{})
+	db = db.Order("l1_block_number desc")
+
+	err := db.First(&message).Error
+	if err != nil && errors.Is(gorm.ErrRecordNotFound, err) {
+		return 0, nil
 	}
 
+	if err != nil {
+		return 0, fmt.Errorf("failed to get l1 latest processed height, error: %w", err)
+	}
+
+	return message.L1BlockNumber, nil
+}
+
+// GetMessageL2SyncedHeightInDB returns the l2 latest bridge batch deposit message height from the database
+func (c *BridgeBatchDepositEvent) GetMessageL2SyncedHeightInDB(ctx context.Context) (uint64, error) {
+	var message BridgeBatchDepositEvent
+	db := c.db.WithContext(ctx)
+	db = db.Model(&BridgeBatchDepositEvent{})
+	db = db.Order("l2_block_number desc")
+
+	err := db.First(&message).Error
+	if err != nil && errors.Is(gorm.ErrRecordNotFound, err) {
+		return 0, nil
+	}
+
+	if err != nil {
+		return 0, fmt.Errorf("failed to get l2 latest processed height, error: %w", err)
+	}
+
+	return message.L2BlockNumber, nil
+}
+
+// InsertOrUpdateBridgeBatchDepositEvent inserts or updates a new BridgeBatchDepositEvent
+func (c *BridgeBatchDepositEvent) InsertOrUpdateBridgeBatchDepositEvent(ctx context.Context, l1BatchDepositEvents []*BridgeBatchDepositEvent) error {
 	if len(l1BatchDepositEvents) == 0 {
 		return nil
 	}
@@ -88,12 +118,11 @@ func (c *BridgeBatchDepositEvent) InsertOrUpdateBridgeBatchDepositEvent(ctx cont
 	db := c.db
 	db = db.WithContext(ctx)
 	db = db.Model(&BridgeBatchDepositEvent{})
-	// 'tx_status' column is not explicitly assigned during the update to prevent a later status from being overwritten back to "sent".
 	db = db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "sender"}, {Name: "batch_index"}},
-		DoUpdates: clause.AssignmentColumns([]string{"sender", "receiver", "token_type", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "token_ids", "token_amounts", "message_type", "block_timestamp", "message_nonce"}),
+		Columns:   []clause.Column{{Name: "sender"}, {Name: "batch_index"}, {Name: "token_type"}},
+		DoUpdates: clause.AssignmentColumns([]string{"token_amount", "fee", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "tx_status", "block_timestamp"}),
 	})
-	if err := db.Create(messages).Error; err != nil {
+	if err := db.Create(l1BatchDepositEvents).Error; err != nil {
 		return fmt.Errorf("failed to insert message, error: %w", err)
 	}
 	return nil

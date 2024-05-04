@@ -37,10 +37,12 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	l1BridgeBatchDepositMessages, err := e.ParseL1BatchBridgeCrossChainEventLogs(logs, blockTimestampsMap)
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
 	return l1CrossChainDepositMessages, l1CrossChainRelayedMessages, l1BridgeBatchDepositMessages, nil
 }
 

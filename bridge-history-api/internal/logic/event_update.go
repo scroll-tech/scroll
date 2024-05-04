@@ -51,30 +51,42 @@ func NewEventUpdateLogic(db *gorm.DB, isL1 bool) *EventUpdateLogic {
 }
 
 // GetL1SyncHeight gets the l1 sync height from db
-func (b *EventUpdateLogic) GetL1SyncHeight(ctx context.Context) (uint64, uint64, error) {
+func (b *EventUpdateLogic) GetL1SyncHeight(ctx context.Context) (uint64, uint64, uint64, error) {
 	messageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, btypes.MessageTypeL1SentMessage)
 	if err != nil {
 		log.Error("failed to get L1 cross message synced height", "error", err)
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	batchSyncedHeight, err := b.batchEventOrm.GetBatchEventSyncedHeightInDB(ctx)
 	if err != nil {
 		log.Error("failed to get L1 batch event synced height", "error", err)
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
-	return messageSyncedHeight, batchSyncedHeight, nil
+	bridgeBatchDepositSyncedHeight, err := b.bridgeBatchDepositEventOrm.GetMessageL1SyncedHeightInDB(ctx)
+	if err != nil {
+		log.Error("failed to get l1 bridge batch deposit synced height", "error", err)
+		return 0, 0, 0, err
+	}
+
+	return messageSyncedHeight, batchSyncedHeight, bridgeBatchDepositSyncedHeight, nil
 }
 
 // GetL2MessageSyncedHeightInDB gets L2 messages synced height
-func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (uint64, error) {
+func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (uint64, uint64, error) {
 	l2SentMessageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, btypes.MessageTypeL2SentMessage)
 	if err != nil {
 		log.Error("failed to get L2 cross message processed height", "err", err)
-		return 0, err
+		return 0, 0, err
 	}
-	return l2SentMessageSyncedHeight, nil
+
+	l2BridgeBatchDepositSyncHeight, err := b.bridgeBatchDepositEventOrm.GetMessageL2SyncedHeightInDB(ctx)
+	if err != nil {
+		log.Error("failed to get bridge batch deposit processed height", "err", err)
+		return 0, 0, err
+	}
+	return l2SentMessageSyncedHeight, l2BridgeBatchDepositSyncHeight, nil
 }
 
 // L1InsertOrUpdate inserts or updates l1 messages
@@ -104,7 +116,7 @@ func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult
 		return err
 	}
 
-	if err := b.bridgeBatchDepositEventOrm.InsertBridgeBatchDepositEvent(ctx, l1FetcherResult.BridgeBatchDepositEvents); err != nil {
+	if err := b.bridgeBatchDepositEventOrm.InsertOrUpdateBridgeBatchDepositEvent(ctx, l1FetcherResult.BridgeBatchDepositEvents); err != nil {
 		log.Error("failed to insert L1 bridge batch deposit transactions", "err", err)
 		return err
 	}
