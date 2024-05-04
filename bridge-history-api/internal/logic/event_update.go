@@ -198,11 +198,11 @@ func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, heig
 
 // UpdateL1BridgeBatchDepositEvent update l1 bridge batch deposit status
 func (b *EventUpdateLogic) UpdateL1BridgeBatchDepositEvent(ctx context.Context, l2BatchDistributes []*orm.BridgeBatchDepositEvent) error {
-	batchIndexMap := make(map[uint64]struct{})
+	batchIndexMap := make(map[uint64]*orm.BridgeBatchDepositEvent)
 	distributeFailedMap := make(map[uint64][]string)
 	for _, l2BatchDistribute := range l2BatchDistributes {
-		if _, exist := batchIndexMap[l2BatchDistribute.BatchIndex]; exist {
-			batchIndexMap[l2BatchDistribute.BatchIndex] = struct{}{}
+		if _, exist := batchIndexMap[l2BatchDistribute.BatchIndex]; !exist {
+			batchIndexMap[l2BatchDistribute.BatchIndex] = l2BatchDistribute
 		}
 
 		if btypes.TxStatusType(l2BatchDistribute.TxStatus) == btypes.TxStatusBridgeBatchDistributeFailed {
@@ -210,9 +210,9 @@ func (b *EventUpdateLogic) UpdateL1BridgeBatchDepositEvent(ctx context.Context, 
 		}
 	}
 
-	for batchIndex := range batchIndexMap {
-		if err := b.bridgeBatchDepositEventOrm.UpdateBatchEventStatus(ctx, batchIndex); err != nil {
-			log.Error("failed to update L1 bridge batch distribute event", "batchIndex", batchIndex, "err", err)
+	for _, l2BatchDistribute := range batchIndexMap {
+		if err := b.bridgeBatchDepositEventOrm.UpdateBatchEventStatus(ctx, l2BatchDistribute); err != nil {
+			log.Error("failed to update L1 bridge batch distribute event", "batchIndex", l2BatchDistribute.BatchIndex, "err", err)
 			return err
 		}
 	}

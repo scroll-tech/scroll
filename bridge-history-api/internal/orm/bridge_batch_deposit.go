@@ -120,7 +120,7 @@ func (c *BridgeBatchDepositEvent) InsertOrUpdateBridgeBatchDepositEvent(ctx cont
 	db = db.Model(&BridgeBatchDepositEvent{})
 	db = db.Clauses(clause.OnConflict{
 		Columns:   []clause.Column{{Name: "l1_tx_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"token_amount", "fee", "l1_block_number", "l1_token_address", "l2_token_address", "tx_status", "block_timestamp"}),
+		DoUpdates: clause.AssignmentColumns([]string{"token_amount", "fee", "l1_block_number", "l1_token_address", "tx_status", "block_timestamp"}),
 	})
 	if err := db.Create(l1BatchDepositEvents).Error; err != nil {
 		return fmt.Errorf("failed to insert message, error: %w", err)
@@ -129,12 +129,15 @@ func (c *BridgeBatchDepositEvent) InsertOrUpdateBridgeBatchDepositEvent(ctx cont
 }
 
 // UpdateBatchEventStatus updates the tx_status of BridgeBatchDepositEvent given batch index
-func (c *BridgeBatchDepositEvent) UpdateBatchEventStatus(ctx context.Context, batchIndex uint64) error {
+func (c *BridgeBatchDepositEvent) UpdateBatchEventStatus(ctx context.Context, distributeMessage *BridgeBatchDepositEvent) error {
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BridgeBatchDepositEvent{})
-	db = db.Where("batch_index = ?", batchIndex)
+	db = db.Where("batch_index = ?", distributeMessage.BatchIndex)
 	updateFields := map[string]interface{}{
-		"tx_status": types.TxStatusBridgeBatchDistribute,
+		"l2_token_address": distributeMessage.L2TokenAddress,
+		"l2_block_number":  distributeMessage.L2BlockNumber,
+		"l2_tx_hash":       distributeMessage.L2TxHash,
+		"tx_status":        types.TxStatusBridgeBatchDistribute,
 	}
 	if err := db.Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("failed to UpdateBatchEventStatus, batchIndex: %d, error: %w", batchIndex, err)
