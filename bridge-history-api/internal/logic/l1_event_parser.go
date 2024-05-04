@@ -57,8 +57,16 @@ func (e *L1EventParser) ParseL1BatchBridgeCrossChainEventLogs(logs []types.Log, 
 				log.Error("Failed to unpack batch bridge gateway deposit event", "err", err)
 				return nil, err
 			}
+
+			var tokenType btypes.TokenType
+			if event.Token == common.HexToAddress("0") {
+				tokenType = btypes.TokenTypeETH
+			} else {
+				tokenType = btypes.TokenTypeERC20
+			}
+
 			l1BridgeBatchDepositMessages = append(l1BridgeBatchDepositMessages, &orm.BridgeBatchDepositEvent{
-				TokenType:      0, // TODO
+				TokenType:      int(tokenType), // TODO
 				Sender:         event.Sender.String(),
 				BatchIndex:     event.BatchIndex.Uint64(),
 				TokenAmount:    event.Amount.String(),
@@ -68,6 +76,7 @@ func (e *L1EventParser) ParseL1BatchBridgeCrossChainEventLogs(logs []types.Log, 
 				L1TxHash:       vlog.TxHash.String(),
 				TxStatus:       int(btypes.TxStatusBridgeBatchDeposit),
 				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
+				MessageHash:    "", // TODO,
 			})
 		}
 	}

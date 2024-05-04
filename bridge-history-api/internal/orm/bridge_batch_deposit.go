@@ -17,6 +17,7 @@ type BridgeBatchDepositEvent struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	ID             uint64     `json:"id" gorm:"column:id;primary_key"`
+	MessageHash    string     `json:"message_hash" gorm:"column:message_hash"`
 	TokenType      int        `json:"token_type" gorm:"column:token_type"`
 	Sender         string     `json:"sender" gorm:"column:sender"`
 	BatchIndex     uint64     `json:"batch_index" gorm:"column:batch_index"`
@@ -119,7 +120,7 @@ func (c *BridgeBatchDepositEvent) InsertOrUpdateBridgeBatchDepositEvent(ctx cont
 	db = db.WithContext(ctx)
 	db = db.Model(&BridgeBatchDepositEvent{})
 	db = db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "sender"}, {Name: "batch_index"}, {Name: "token_type"}},
+		Columns:   []clause.Column{{Name: "message_hash"}},
 		DoUpdates: clause.AssignmentColumns([]string{"token_amount", "fee", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "tx_status", "block_timestamp"}),
 	})
 	if err := db.Create(l1BatchDepositEvents).Error; err != nil {
@@ -147,7 +148,7 @@ func (c *BridgeBatchDepositEvent) UpdateDistributeFailedStatus(ctx context.Conte
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BridgeBatchDepositEvent{})
 	db = db.Where("batch_index = ?", batchIndex)
-	db = db.Where("senders in (?)", senders)
+	db = db.Where("sender in (?)", senders)
 	updateFields := map[string]interface{}{
 		"tx_status": types.TxStatusBridgeBatchDistributeFailed,
 	}
