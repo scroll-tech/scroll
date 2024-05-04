@@ -17,7 +17,6 @@ type BridgeBatchDepositEvent struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	ID             uint64     `json:"id" gorm:"column:id;primary_key"`
-	MessageHash    string     `json:"message_hash" gorm:"column:message_hash"`
 	TokenType      int        `json:"token_type" gorm:"column:token_type"`
 	Sender         string     `json:"sender" gorm:"column:sender"`
 	BatchIndex     uint64     `json:"batch_index" gorm:"column:batch_index"`
@@ -120,8 +119,8 @@ func (c *BridgeBatchDepositEvent) InsertOrUpdateBridgeBatchDepositEvent(ctx cont
 	db = db.WithContext(ctx)
 	db = db.Model(&BridgeBatchDepositEvent{})
 	db = db.Clauses(clause.OnConflict{
-		Columns:   []clause.Column{{Name: "message_hash"}},
-		DoUpdates: clause.AssignmentColumns([]string{"token_amount", "fee", "l1_block_number", "l1_tx_hash", "l1_token_address", "l2_token_address", "tx_status", "block_timestamp"}),
+		Columns:   []clause.Column{{Name: "l1_tx_hash"}},
+		DoUpdates: clause.AssignmentColumns([]string{"token_amount", "fee", "l1_block_number", "l1_token_address", "l2_token_address", "tx_status", "block_timestamp"}),
 	})
 	if err := db.Create(l1BatchDepositEvents).Error; err != nil {
 		return fmt.Errorf("failed to insert message, error: %w", err)

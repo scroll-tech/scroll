@@ -3,7 +3,6 @@
 CREATE TABLE bridge_batch_deposit_event_v2
 (
     id                  BIGSERIAL    PRIMARY KEY,
-    message_hash        VARCHAR      DEFAULT NULL, -- NULL for failed txs
     token_type          SMALLINT     NOT NULL,
     sender              VARCHAR      NOT NULL,
     batch_index         BIGINT       DEFAULT NULL,
@@ -22,13 +21,11 @@ CREATE TABLE bridge_batch_deposit_event_v2
     deleted_at          TIMESTAMP(0)  DEFAULT NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS idx_bbde_message_hash ON bridge_batch_deposit_event_v2 (message_hash);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bbde_l1txhash ON bridge_batch_deposit_event_v2 (l1_tx_hash);
 CREATE INDEX IF NOT EXISTS idx_bbde_batchidx_sender ON bridge_batch_deposit_event_v2 (batch_index, sender)
 CREATE INDEX IF NOT EXISTS idx_bbde_l1_block_number ON bridge_batch_deposit_event_v2 (l1_block_number DESC);
 CREATE INDEX IF NOT EXISTS idx_bbde_l2_block_number ON bridge_batch_deposit_event_v2 (l2_block_number DESC);
-CREATE INDEX IF NOT EXISTS idx_bbde_l1_tx_hash ON bridge_batch_deposit_event_v2 (l1_tx_hash);
 CREATE INDEX IF NOT EXISTS idx_bbde_sender_block_timestamp ON bridge_batch_deposit_event_v2 (sender, block_timestamp DESC);
-
 
 -- +goose StatementEnd
 
