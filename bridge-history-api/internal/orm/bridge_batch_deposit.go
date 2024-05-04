@@ -140,7 +140,7 @@ func (c *BridgeBatchDepositEvent) UpdateBatchEventStatus(ctx context.Context, di
 		"tx_status":        types.TxStatusBridgeBatchDistribute,
 	}
 	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("failed to UpdateBatchEventStatus, batchIndex: %d, error: %w", batchIndex, err)
+		return fmt.Errorf("failed to UpdateBatchEventStatus, batchIndex: %d, error: %w", distributeMessage.BatchIndex, err)
 	}
 	return nil
 }
