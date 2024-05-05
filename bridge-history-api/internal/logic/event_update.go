@@ -116,7 +116,7 @@ func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult
 		return err
 	}
 
-	if err := b.bridgeBatchDepositEventOrm.InsertOrUpdateBridgeBatchDepositEvent(ctx, l1FetcherResult.BridgeBatchDepositEvents); err != nil {
+	if err := b.bridgeBatchDepositEventOrm.InsertOrUpdateL1BridgeBatchDepositEvent(ctx, l1FetcherResult.BridgeBatchDepositEvents); err != nil {
 		log.Error("failed to insert L1 bridge batch deposit transactions", "err", err)
 		return err
 	}
