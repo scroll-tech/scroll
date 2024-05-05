@@ -76,6 +76,7 @@ func (e *L1EventParser) ParseL1BatchBridgeCrossChainEventLogs(logs []types.Log, 
 				L1TxHash:       vlog.TxHash.String(),
 				TxStatus:       int(btypes.TxStatusBridgeBatchDeposit),
 				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
+				L1LogIndex:     vlog.Index,
 			})
 		}
 	}
