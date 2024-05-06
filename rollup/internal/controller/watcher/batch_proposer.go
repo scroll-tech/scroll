@@ -154,7 +154,7 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	firstUnbatchedChunk, err := p.chunkOrm.GetChunksByIndex(p.ctx, firstUnbatchedChunkIndex)
+	firstUnbatchedChunk, err := p.chunkOrm.GetChunkByIndex(p.ctx, firstUnbatchedChunkIndex)
 	if err != nil || firstUnbatchedChunk == nil {
 		return err
 	}
