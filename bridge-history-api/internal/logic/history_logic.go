@@ -370,7 +370,7 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 		return nil, 0, false, nil
 	}
 
-	values, err := h.redis.ZRange(ctx, cacheKey, start, end).Result()
+	values, err := h.redis.ZRevRange(ctx, cacheKey, start, end).Result()
 	if err != nil {
 		log.Error("failed to get zrange result", "error", err)
 		return nil, 0, false, err
