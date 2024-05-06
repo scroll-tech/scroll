@@ -53,7 +53,6 @@ make libzstd
 Follow these steps to run unit tests, in the repo's root dir:
 
 ```
-export LD_LIBRARY_PATH=${PWD}/rollup/libzstd:$LD_LIBRARY_PATH
-cd rollup
+export LD_LIBRARY_PATH=${PWD}/libzstd:$LD_LIBRARY_PATH
 go test -v -race ./...
 ```

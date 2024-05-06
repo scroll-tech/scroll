@@ -33,7 +33,7 @@ import (
 	"scroll-tech/rollup/internal/orm"
 )
 
-// Layer2Relayer is responsible forw
+// Layer2Relayer is responsible for
 //  1. Committing and finalizing L2 blocks on L1
 //  2. Relaying messages from L2 to L1
 //
