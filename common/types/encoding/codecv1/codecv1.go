@@ -364,7 +364,7 @@ func constructBlobPayload(chunks []*encoding.Chunk) (*kzg4844.Blob, common.Hash,
 func makeBlobCanonical(blobBytes []byte) (*kzg4844.Blob, error) {
 	// blob contains 131072 bytes but we can only utilize 31/32 of these
 	if len(blobBytes) > 126976 {
-		return nil, fmt.Errorf("oversized batch payload")
+		return nil, fmt.Errorf("oversized batch payload, blob bytes length: %v, max length: %v", len(blobBytes), 126976)
 	}
 
 	// the canonical (padded) blob payload
