@@ -24,7 +24,7 @@ CREATE TABLE bridge_batch_deposit_event_v2
 );
 
 CREATE UNIQUE INDEX idx_l1hash_l1logindex ON bridge_batch_deposit_event_v2 (l1_tx_hash, l1_log_index);
-CREATE INDEX IF NOT EXISTS idx_bbde_batchidx_sender ON bridge_batch_deposit_event_v2 (batch_index, sender)
+CREATE INDEX IF NOT EXISTS idx_bbde_batchidx_sender ON bridge_batch_deposit_event_v2 (batch_index, sender);
 CREATE INDEX IF NOT EXISTS idx_bbde_l1_block_number ON bridge_batch_deposit_event_v2 (l1_block_number DESC);
 CREATE INDEX IF NOT EXISTS idx_bbde_l2_block_number ON bridge_batch_deposit_event_v2 (l2_block_number DESC);
 CREATE INDEX IF NOT EXISTS idx_bbde_l1_tx_hash ON bridge_batch_deposit_event_v2 (l1_tx_hash DESC);

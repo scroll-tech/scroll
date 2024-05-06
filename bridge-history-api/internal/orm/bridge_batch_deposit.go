@@ -39,7 +39,7 @@ type BridgeBatchDepositEvent struct {
 
 // TableName returns the table name for the BridgeBatchDepositEvent model.
 func (*BridgeBatchDepositEvent) TableName() string {
-	return "bridge_batch_deposit_events_v2"
+	return "bridge_batch_deposit_event_v2"
 }
 
 // NewBridgeBatchDepositEvent returns a new instance of BridgeBatchDepositEvent.
