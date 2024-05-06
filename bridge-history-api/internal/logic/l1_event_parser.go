@@ -66,7 +66,7 @@ func (e *L1EventParser) ParseL1BatchBridgeCrossChainEventLogs(logs []types.Log, 
 			}
 
 			l1BridgeBatchDepositMessages = append(l1BridgeBatchDepositMessages, &orm.BridgeBatchDepositEvent{
-				TokenType:      int(tokenType), // TODO
+				TokenType:      int(tokenType),
 				Sender:         event.Sender.String(),
 				BatchIndex:     event.BatchIndex.Uint64(),
 				TokenAmount:    event.Amount.String(),
