@@ -196,8 +196,8 @@ func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, heig
 	return nil
 }
 
-// UpdateL1BridgeBatchDepositEvent update l1 bridge batch deposit status
-func (b *EventUpdateLogic) UpdateL1BridgeBatchDepositEvent(ctx context.Context, l2BatchDistributes []*orm.BridgeBatchDepositEvent) error {
+// UpdateL2BridgeBatchDepositEvent update l2 bridge batch deposit status
+func (b *EventUpdateLogic) UpdateL2BridgeBatchDepositEvent(ctx context.Context, l2BatchDistributes []*orm.BridgeBatchDepositEvent) error {
 	batchIndexMap := make(map[uint64]*orm.BridgeBatchDepositEvent)
 	distributeFailedMap := make(map[uint64][]string)
 	for _, l2BatchDistribute := range l2BatchDistributes {

@@ -135,6 +135,7 @@ func (c *BridgeBatchDepositEvent) UpdateBatchEventStatus(ctx context.Context, di
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BridgeBatchDepositEvent{})
 	db = db.Where("batch_index = ?", distributeMessage.BatchIndex)
+	db = db.Where("token_type = ?", distributeMessage.TokenType)
 	updateFields := map[string]interface{}{
 		"l2_token_address": distributeMessage.L2TokenAddress,
 		"l2_block_number":  distributeMessage.L2BlockNumber,
