@@ -34,5 +34,5 @@ RUN if [ "$(uname -m)" = "x86_64" ]; then \
     fi
 RUN wget https://go.dev/dl/go${GO_VERSION}.1.linux-$(cat /tmp/arch).tar.gz
 RUN tar -C /usr/local -xzf go${GO_VERSION}.1.linux-$(cat /tmp/arch).tar.gz
-RUN rm go${GO_VERSION}.linux-$(cat /tmp/arch).1.tar.gz && rm /tmp/arch
+RUN rm go${GO_VERSION}.1.linux-$(cat /tmp/arch).tar.gz && rm /tmp/arch
 ENV PATH="/usr/local/go/bin:${PATH}"
