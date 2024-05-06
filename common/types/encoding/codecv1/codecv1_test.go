@@ -592,7 +592,7 @@ func TestCodecV1BatchChallengeWithStandardTestCases(t *testing.T) {
 		actualZ := hex.EncodeToString(z[:])
 		assert.Equal(t, tc.expectedz, actualZ)
 
-		_, y, err := kzg4844.ComputeProof(*b, *z)
+		_, y, err := kzg4844.ComputeProof(b, *z)
 		assert.NoError(t, err)
 		actualY := hex.EncodeToString(y[:])
 		assert.Equal(t, tc.expectedy, actualY)
