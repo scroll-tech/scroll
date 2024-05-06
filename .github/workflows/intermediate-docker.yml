@@ -34,14 +34,6 @@ on:
           - "11.7.1"
           - "12.2.2"
         default: "11.7.1"
-      CARGO_CHEF_TAG:
-        description: "Cargo chef version"
-        required: true
-        default: "0.1.41"
-        type: choice
-        options:
-          - 0.1.41
-
       BASE_IMAGE:
         description: "which intermediate image you want to update"
         required: true
@@ -94,37 +86,17 @@ jobs:
           else
             echo "no BASE_IMAGE match"
           fi
-
-      - name: Build amd64 image
-        id: build-amd64
+      - name: Build image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           file: build/dockerfiles/intermediate/${{ github.event.inputs.BASE_IMAGE }}.Dockerfile
-          platforms: linux/amd64
-          tags: scrolltech/${{ github.event.inputs.BASE_IMAGE }}:${{ env.TAG }}-amd64
+          platforms: linux/amd64,linux/arm64
+          tags: scrolltech/${{ github.event.inputs.BASE_IMAGE }}:${{ env.TAG }}
           build-args: |
             CUDA_VERSION=${{ github.event.inputs.CUDA_VERSION }}
             GO_VERSION=${{ github.event.inputs.GO_VERSION }}
             RUST_VERSION=${{ github.event.inputs.RUST_VERSION }}
             PYTHON_VERSION=${{ github.event.inputs.PYTHON_VERSION }}
-            CARGO_CHEF_TAG=${{ github.event.inputs.CARGO_CHEF_TAG }}
-            PLATFORM=amd64
-
-      - name: Build arm64 image
-        id: build-arm64
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          file: build/dockerfiles/intermediate/${{ github.event.inputs.BASE_IMAGE }}.Dockerfile
-          platforms: linux/arm64
-          tags: scrolltech/${{ github.event.inputs.BASE_IMAGE }}:${{ env.TAG }}-arm64
-          build-args: |
-            CUDA_VERSION=${{ github.event.inputs.CUDA_VERSION }}
-            GO_VERSION=${{ github.event.inputs.GO_VERSION }}
-            RUST_VERSION=${{ github.event.inputs.RUST_VERSION }}
-            PYTHON_VERSION=${{ github.event.inputs.PYTHON_VERSION }}
-            CARGO_CHEF_TAG=${{ github.event.inputs.CARGO_CHEF_TAG }}
-            PLATFORM=arm64
