@@ -2,7 +2,7 @@ package logic
 
 import (
 	"context"
-
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -55,7 +55,16 @@ func (e *L2EventParser) ParseL2BridgeBatchDepositCrossChainEventLogs(logs []type
 				log.Error("Failed to unpack BatchDistribute event", "err", err)
 				return nil, err
 			}
+
+			var tokenType btypes.TokenType
+			if event.L1Token == common.HexToAddress("0") {
+				tokenType = btypes.TokenTypeETH
+			} else {
+				tokenType = btypes.TokenTypeERC20
+			}
+
 			l2BridgeBatchDepositEvents = append(l2BridgeBatchDepositEvents, &orm.BridgeBatchDepositEvent{
+				TokenType:      int(tokenType),
 				BatchIndex:     event.BatchIndex.Uint64(),
 				L2TokenAddress: event.L2Token.String(),
 				L2BlockNumber:  vlog.BlockNumber,
