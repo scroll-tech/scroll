@@ -472,8 +472,7 @@ func EstimateChunkL1CommitBlobSize(c *encoding.Chunk) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	paddedSize := ((metadataSize + chunkDataSize + 30) / 31) * 32
-	return paddedSize, nil
+	return calculatePaddedBlobSize(metadataSize + chunkDataSize), nil
 }
 
 // EstimateBatchL1CommitBlobSize estimates the total size of the L1 commit blob for a batch.
@@ -487,8 +486,7 @@ func EstimateBatchL1CommitBlobSize(b *encoding.Batch) (uint64, error) {
 		}
 		batchDataSize += chunkDataSize
 	}
-	paddedSize := ((metadataSize + batchDataSize + 30) / 31) * 32
-	return paddedSize, nil
+	return calculatePaddedBlobSize(metadataSize + batchDataSize), nil
 }
 
 func chunkL1CommitBlobDataSize(c *encoding.Chunk) (uint64, error) {
@@ -505,4 +503,135 @@ func chunkL1CommitBlobDataSize(c *encoding.Chunk) (uint64, error) {
 		}
 	}
 	return dataSize, nil
+}
+
+// CalldataNonZeroByteGas is the gas consumption per non zero byte in calldata.
+const CalldataNonZeroByteGas = 16
+
+// GetKeccak256Gas calculates the gas cost for computing the keccak256 hash of a given size.
+func GetKeccak256Gas(size uint64) uint64 {
+	return GetMemoryExpansionCost(size) + 30 + 6*((size+31)/32)
+}
+
+// GetMemoryExpansionCost calculates the cost of memory expansion for a given memoryByteSize.
+func GetMemoryExpansionCost(memoryByteSize uint64) uint64 {
+	memorySizeWord := (memoryByteSize + 31) / 32
+	memoryCost := (memorySizeWord*memorySizeWord)/512 + (3 * memorySizeWord)
+	return memoryCost
+}
+
+// EstimateBlockL1CommitGas calculates the total L1 commit gas for this block approximately.
+func EstimateBlockL1CommitGas(b *encoding.Block) uint64 {
+	var total uint64
+	var numL1Messages uint64
+	for _, txData := range b.Transactions {
+		if txData.Type == types.L1MessageTxType {
+			numL1Messages++
+			continue
+		}
+	}
+
+	// 60 bytes BlockContext calldata
+	total += CalldataNonZeroByteGas * 60
+
+	// sload
+	total += 2100 * numL1Messages // numL1Messages times cold sload in L1MessageQueue
+
+	// staticcall
+	total += 100 * numL1Messages // numL1Messages times call to L1MessageQueue
+	total += 100 * numL1Messages // numL1Messages times warm address access to L1MessageQueue
+
+	total += GetMemoryExpansionCost(36) * numL1Messages // staticcall to proxy
+	total += 100 * numL1Messages                        // read admin in proxy
+	total += 100 * numL1Messages                        // read impl in proxy
+	total += 100 * numL1Messages                        // access impl
+	total += GetMemoryExpansionCost(36) * numL1Messages // delegatecall to impl
+
+	return total
+}
+
+// EstimateChunkL1CommitCalldataSize calculates the calldata size needed for committing a chunk to L1 approximately.
+func EstimateChunkL1CommitCalldataSize(c *encoding.Chunk) uint64 {
+	return uint64(60 * len(c.Blocks))
+}
+
+// EstimateChunkL1CommitGas calculates the total L1 commit gas for this chunk approximately.
+func EstimateChunkL1CommitGas(c *encoding.Chunk) uint64 {
+	var totalTxNum uint64
+	var totalL1CommitGas uint64
+	for _, block := range c.Blocks {
+		totalTxNum += uint64(len(block.Transactions))
+		blockL1CommitGas := EstimateBlockL1CommitGas(block)
+		totalL1CommitGas += blockL1CommitGas
+	}
+
+	numBlocks := uint64(len(c.Blocks))
+	totalL1CommitGas += 100 * numBlocks                         // numBlocks times warm sload
+	totalL1CommitGas += CalldataNonZeroByteGas                  // numBlocks field of chunk encoding in calldata
+	totalL1CommitGas += CalldataNonZeroByteGas * numBlocks * 60 // numBlocks of BlockContext in chunk
+
+	totalL1CommitGas += GetKeccak256Gas(58*numBlocks + 32*totalTxNum) // chunk hash
+	return totalL1CommitGas
+}
+
+// EstimateBatchL1CommitGas calculates the total L1 commit gas for this batch approximately.
+func EstimateBatchL1CommitGas(b *encoding.Batch) uint64 {
+	var totalL1CommitGas uint64
+
+	// Add extra gas costs
+	totalL1CommitGas += 100000                 // constant to account for ops like _getAdmin, _implementation, _requireNotPaused, etc
+	totalL1CommitGas += 4 * 2100               // 4 one-time cold sload for commitBatch
+	totalL1CommitGas += 20000                  // 1 time sstore
+	totalL1CommitGas += 21000                  // base fee for tx
+	totalL1CommitGas += CalldataNonZeroByteGas // version in calldata
+
+	// adjusting gas:
+	// add 1 time cold sload (2100 gas) for L1MessageQueue
+	// add 1 time cold address access (2600 gas) for L1MessageQueue
+	// minus 1 time warm sload (100 gas) & 1 time warm address access (100 gas)
+	totalL1CommitGas += (2100 + 2600 - 100 - 100)
+	totalL1CommitGas += GetKeccak256Gas(89 + 32)           // parent batch header hash, length is estimated as 89 (constant part)+ 32 (1 skippedL1MessageBitmap)
+	totalL1CommitGas += CalldataNonZeroByteGas * (89 + 32) // parent batch header in calldata
+
+	// adjust batch data hash gas cost
+	totalL1CommitGas += GetKeccak256Gas(uint64(32 * len(b.Chunks)))
+
+	totalL1MessagePoppedBefore := b.TotalL1MessagePoppedBefore
+
+	for _, chunk := range b.Chunks {
+		chunkL1CommitGas := EstimateChunkL1CommitGas(chunk)
+		totalL1CommitGas += chunkL1CommitGas
+
+		totalL1MessagePoppedInChunk := chunk.NumL1Messages(totalL1MessagePoppedBefore)
+		totalL1MessagePoppedBefore += totalL1MessagePoppedInChunk
+
+		totalL1CommitGas += CalldataNonZeroByteGas * (32 * (totalL1MessagePoppedInChunk + 255) / 256)
+		totalL1CommitGas += GetKeccak256Gas(89 + 32*(totalL1MessagePoppedInChunk+255)/256)
+
+		totalL1CommitCalldataSize := EstimateChunkL1CommitCalldataSize(chunk)
+		totalL1CommitGas += GetMemoryExpansionCost(totalL1CommitCalldataSize)
+	}
+
+	return totalL1CommitGas
+}
+
+// EstimateBatchL1CommitCalldataSize calculates the calldata size in l1 commit for this batch approximately.
+func EstimateBatchL1CommitCalldataSize(b *encoding.Batch) uint64 {
+	var totalL1CommitCalldataSize uint64
+	for _, chunk := range b.Chunks {
+		totalL1CommitCalldataSize += EstimateChunkL1CommitCalldataSize(chunk)
+	}
+	return totalL1CommitCalldataSize
+}
+
+// calculatePaddedBlobSize calculates the required size on blob storage
+// where every 32 bytes can store only 31 bytes of actual data, with the first byte being zero.
+func calculatePaddedBlobSize(dataSize uint64) uint64 {
+	paddedSize := (dataSize / 31) * 32
+
+	if dataSize%31 != 0 {
+		paddedSize += 1 + dataSize%31 // Add 1 byte for the first empty byte plus the remainder bytes
+	}
+
+	return paddedSize
 }
