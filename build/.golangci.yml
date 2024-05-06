@@ -108,6 +108,8 @@ linters-settings:
       main:
         files:
           - $all
+        deny:
+          - pkg: "github.com/davecgh/go-spew/spew"
   misspell:
     # Correct spellings using locale preferences for US or UK.
     # Default is to use a neutral variety of English.
