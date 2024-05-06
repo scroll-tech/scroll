@@ -2,7 +2,7 @@ ARG GO_VERSION=1.21
 ARG RUST_VERSION=nightly-2023-12-03
 ARG CARGO_CHEF_TAG=0.1.41
 
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 RUN apt-get update && ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
@@ -25,7 +25,14 @@ RUN cargo install cargo-chef --locked --version ${CARGO_CHEF_TAG} \
 # Install Go
 ARG GO_VERSION
 RUN rm -rf /usr/local/go
-RUN wget https://go.dev/dl/go${GO_VERSION}.1.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go${GO_VERSION}.1.linux-amd64.tar.gz
-RUN rm go${GO_VERSION}.1.linux-amd64.tar.gz
+RUN if [ "$(uname -m)" = "x86_64" ]; then \
+    echo amd64 >/tmp/arch; \
+    elif [ "$(uname -m)" = "aarch64" ]; then \
+    echo arm64 >/tmp/arch; \
+    else \
+    echo "Unsupported architecture"; exit 1; \
+    fi
+RUN wget https://go.dev/dl/go${GO_VERSION}.1.linux-$(cat /tmp/arch).tar.gz
+RUN tar -C /usr/local -xzf go${GO_VERSION}.1.linux-$(cat /tmp/arch).tar.gz
+RUN rm go${GO_VERSION}.linux-$(cat /tmp/arch).tar.gz /tmp/arch
 ENV PATH="/usr/local/go/bin:${PATH}"

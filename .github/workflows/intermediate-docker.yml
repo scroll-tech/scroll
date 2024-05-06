@@ -34,6 +34,13 @@ on:
           - "11.7.1"
           - "12.2.2"
         default: "11.7.1"
+      CARGO_CHEF_TAG:
+        description: "Cargo chef version"
+        required: true
+        default: "0.1.41"
+        type: choice
+        options:
+          - 0.1.41
       BASE_IMAGE:
         description: "which intermediate image you want to update"
         required: true
@@ -100,3 +107,4 @@ jobs:
             GO_VERSION=${{ github.event.inputs.GO_VERSION }}
             RUST_VERSION=${{ github.event.inputs.RUST_VERSION }}
             PYTHON_VERSION=${{ github.event.inputs.PYTHON_VERSION }}
+            CARGO_CHEF_TAG=${{ github.event.inputs.CARGO_CHEF_TAG }}
