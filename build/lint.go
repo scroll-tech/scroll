@@ -51,7 +51,7 @@ func lint() {
 	}
 
 	cmd = exec.Command(filepath.Join(goBin(), "golangci-lint"))
-	cmd.Args = append(cmd.Args, "run", "--config", "../build/.golangci.yml", "--timeout", "10m")
+	cmd.Args = append(cmd.Args, "run", "--config", "../build/.golangci.yml")
 
 	if *v {
 		cmd.Args = append(cmd.Args, "-v")
