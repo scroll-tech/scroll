@@ -557,10 +557,10 @@ func EstimateChunkL1CommitCalldataSize(c *encoding.Chunk) uint64 {
 
 // EstimateChunkL1CommitGas calculates the total L1 commit gas for this chunk approximately.
 func EstimateChunkL1CommitGas(c *encoding.Chunk) uint64 {
-	var totalTxNum uint64
+	var totalNonSkippedL1Messages uint64
 	var totalL1CommitGas uint64
 	for _, block := range c.Blocks {
-		totalTxNum += uint64(len(block.Transactions))
+		totalNonSkippedL1Messages += uint64(len(block.Transactions)) - block.NumL2Transactions()
 		blockL1CommitGas := EstimateBlockL1CommitGas(block)
 		totalL1CommitGas += blockL1CommitGas
 	}
@@ -570,7 +570,7 @@ func EstimateChunkL1CommitGas(c *encoding.Chunk) uint64 {
 	totalL1CommitGas += CalldataNonZeroByteGas                  // numBlocks field of chunk encoding in calldata
 	totalL1CommitGas += CalldataNonZeroByteGas * numBlocks * 60 // numBlocks of BlockContext in chunk
 
-	totalL1CommitGas += GetKeccak256Gas(58*numBlocks + 32*totalTxNum) // chunk hash
+	totalL1CommitGas += GetKeccak256Gas(58*numBlocks + 32*totalNonSkippedL1Messages) // chunk hash
 	return totalL1CommitGas
 }
 
