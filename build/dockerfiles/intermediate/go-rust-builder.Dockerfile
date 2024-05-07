@@ -2,7 +2,7 @@ ARG GO_VERSION=1.21
 ARG RUST_VERSION=nightly-2023-12-03
 ARG CARGO_CHEF_TAG=0.1.41
 
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
 RUN apt-get update && ln -fs /usr/share/zoneinfo/America/New_York /etc/localtime
 
