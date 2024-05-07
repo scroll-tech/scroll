@@ -59,20 +59,20 @@ func testResetDB(t *testing.T) {
 	cur, err := Current(pgDB)
 	assert.NoError(t, err)
 	// total number of tables.
-	assert.Equal(t, int64(19), cur)
+	assert.Equal(t, int64(20), cur)
 }
 
 func testMigrate(t *testing.T) {
 	assert.NoError(t, Migrate(pgDB))
 	cur, err := Current(pgDB)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(19), cur)
+	assert.Equal(t, int64(20), cur)
 }
 
 func testRollback(t *testing.T) {
 	version, err := Current(pgDB)
 	assert.NoError(t, err)
-	assert.Equal(t, int64(19), version)
+	assert.Equal(t, int64(20), version)
 
 	assert.NoError(t, Rollback(pgDB, nil))
 

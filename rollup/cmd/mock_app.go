@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"scroll-tech/rollup/internal/config"
-
 	"scroll-tech/common/cmd"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
+
+	"scroll-tech/rollup/internal/config"
 )
 
 // MockApp mockApp-test client manager.
@@ -85,7 +85,7 @@ func (b *MockApp) MockConfig(store bool) error {
 		return err
 	}
 
-	l1GethEndpoint, err := b.testApps.GetL1GethEndPoint()
+	l1GethEndpoint, err := b.testApps.GetPoSL1EndPoint()
 	if err != nil {
 		return err
 	}
