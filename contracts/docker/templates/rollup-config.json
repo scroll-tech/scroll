@@ -1,0 +1,87 @@
+{
+  "l1_config": {
+    "confirmations": "0x0",
+    "endpoint": null,
+    "l1_message_queue_address": null,
+    "scroll_chain_address": null,
+    "start_height": 0,
+    "relayer_config": {
+      "gas_price_oracle_contract_address": null,
+      "sender_config": {
+        "endpoint": null,
+        "escalate_blocks": 100,
+        "escalate_multiple_num": 11,
+        "escalate_multiple_den": 10,
+        "max_gas_price": 10000000000000,
+        "tx_type": "LegacyTx",
+        "check_pending_time": 3,
+        "confirmations": "0x0"
+      },
+      "gas_oracle_config": {
+        "min_gas_price": 0,
+        "gas_price_diff": 50000,
+        "l1_base_fee_weight": 0.086,
+        "l1_blob_base_fee_weight": 0.030
+      },
+      "gas_oracle_sender_private_key": null
+    }
+  },
+  "l2_config": {
+    "confirmations": "0x0",
+    "endpoint": null,
+    "l2_message_queue_address": null,
+    "relayer_config": {
+      "rollup_contract_address": null,
+      "gas_price_oracle_contract_address": null,
+      "sender_config": {
+        "endpoint": null,
+        "escalate_blocks": 4,
+        "escalate_multiple_num": 12,
+        "escalate_multiple_den": 10,
+        "max_gas_price": 200000000000,
+        "max_blob_gas_price": 200000000000,
+        "tx_type": "DynamicFeeTx",
+        "check_pending_time": 10,
+        "confirmations": "0x0"
+      },
+      "gas_oracle_config": {
+        "min_gas_price": 0,
+        "gas_price_diff": 50000
+      },
+      "chain_monitor": {
+        "enabled": true,
+        "timeout": 3,
+        "try_times": 5,
+        "base_url": "http://chain-monitorv2:8080"
+      },
+      "enable_test_env_bypass_features": true,
+      "finalize_batch_without_proof_timeout_sec": 3600,
+      "gas_oracle_sender_private_key": null,
+      "commit_sender_private_key": null,
+      "finalize_sender_private_key": null,
+      "l1_commit_gas_limit_multiplier": 1.2
+    },
+    "chunk_proposer_config": {
+      "max_block_num_per_chunk": null,
+      "max_tx_num_per_chunk": null,
+      "max_l1_commit_gas_per_chunk": 5000000,
+      "max_l1_commit_calldata_size_per_chunk": 110000,
+      "chunk_timeout_sec": 2700,
+      "max_row_consumption_per_chunk": 1000000,
+      "gas_cost_increase_multiplier": 1.2
+    },
+    "batch_proposer_config": {
+      "max_chunk_num_per_batch": 15,
+      "max_l1_commit_gas_per_batch": 5000000,
+      "max_l1_commit_calldata_size_per_batch": 110000,
+      "batch_timeout_sec": 2700,
+      "gas_cost_increase_multiplier": 1.2
+    }
+  },
+  "db_config": {
+    "driver_name": "postgres",
+    "dsn": null,
+    "maxOpenNum": 50,
+    "maxIdleNum": 20
+  }
+}

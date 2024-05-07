@@ -58,6 +58,8 @@ uint256 constant MINIMUM_DEPLOYER_BALANCE = 0.1 ether;
 // template files
 string constant CONFIG_CONTRACTS_TEMPLATE_PATH = "./docker/templates/config-contracts.toml";
 string constant GENESIS_JSON_TEMPLATE_PATH = "./docker/templates/genesis.json";
+string constant ROLLUP_CONFIG_TEMPLATE_PATH = "./docker/templates/rollup-config.json";
+string constant BRIDGE_HISTORY_CONFIG_TEMPLATE_PATH = "./docker/templates/bridge-history-config.json";
 
 // input files
 string constant CONFIG_PATH = "./volume/config.toml";
@@ -66,6 +68,8 @@ string constant CONFIG_PATH = "./volume/config.toml";
 string constant CONFIG_CONTRACTS_PATH = "./volume/config-contracts.toml";
 string constant GENESIS_ALLOC_JSON_PATH = "./volume/__genesis-alloc.json";
 string constant GENESIS_JSON_PATH = "./volume/genesis.json";
+string constant ROLLUP_CONFIG_PATH = "./volume/rollup-config.json";
+string constant BRIDGE_HISTORY_CONFIG_PATH = "./volume/bridge-history-config.json";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
     /// @dev allow setting the owner in the constructor, otherwise
@@ -112,23 +116,36 @@ abstract contract Configuration is Script {
      ****************************/
 
     // general
+    string internal L1_RPC_ENDPOINT;
+    string internal L2_RPC_ENDPOINT;
+
     uint64 internal CHAIN_ID_L1;
     uint64 internal CHAIN_ID_L2;
+
     uint256 internal MAX_TX_IN_CHUNK;
+    uint256 internal MAX_BLOCK_IN_CHUNK;
     uint256 internal MAX_L1_MESSAGE_GAS_LIMIT;
 
     // accounts
     uint256 internal DEPLOYER_PRIVATE_KEY;
+    uint256 internal L1_COMMIT_SENDER_PRIVATE_KEY;
+    uint256 internal L1_FINALIZE_SENDER_PRIVATE_KEY;
+    uint256 internal L1_GAS_ORACLE_SENDER_PRIVATE_KEY;
+    uint256 internal L2_GAS_ORACLE_SENDER_PRIVATE_KEY;
 
+    address internal DEPLOYER_ADDR;
     address internal L1_COMMIT_SENDER_ADDR;
     address internal L1_FINALIZE_SENDER_ADDR;
     address internal L1_GAS_ORACLE_SENDER_ADDR;
     address internal L2_GAS_ORACLE_SENDER_ADDR;
 
-    address internal DEPLOYER_ADDR;
     address internal OWNER_ADDR;
 
     address internal L2GETH_SIGNER_0_ADDRESS;
+
+    // db
+    string internal SCROLL_DB_CONNECTION_STRING;
+    string internal BRIDGE_HISTORY_DB_CONNECTION_STRING;
 
     // genesis
     uint256 internal L2_MAX_ETH_SUPPLY;
@@ -154,35 +171,34 @@ abstract contract Configuration is Script {
         cfg = vm.readFile(CONFIG_PATH);
         contractsCfg = vm.readFile(CONFIG_CONTRACTS_PATH);
 
+        L1_RPC_ENDPOINT = cfg.readString(".general.L1_RPC_ENDPOINT");
+        L2_RPC_ENDPOINT = cfg.readString(".general.L2_RPC_ENDPOINT");
+
         CHAIN_ID_L1 = uint64(cfg.readUint(".general.CHAIN_ID_L1"));
         CHAIN_ID_L2 = uint64(cfg.readUint(".general.CHAIN_ID_L2"));
+
         MAX_TX_IN_CHUNK = cfg.readUint(".general.MAX_TX_IN_CHUNK");
+        MAX_BLOCK_IN_CHUNK = cfg.readUint(".general.MAX_BLOCK_IN_CHUNK");
         MAX_L1_MESSAGE_GAS_LIMIT = cfg.readUint(".general.MAX_L1_MESSAGE_GAS_LIMIT");
 
         DEPLOYER_PRIVATE_KEY = cfg.readUint(".accounts.DEPLOYER_PRIVATE_KEY");
+        L1_COMMIT_SENDER_PRIVATE_KEY = cfg.readUint(".accounts.L1_COMMIT_SENDER_PRIVATE_KEY");
+        L1_FINALIZE_SENDER_PRIVATE_KEY = cfg.readUint(".accounts.L1_FINALIZE_SENDER_PRIVATE_KEY");
+        L1_GAS_ORACLE_SENDER_PRIVATE_KEY = cfg.readUint(".accounts.L1_GAS_ORACLE_SENDER_PRIVATE_KEY");
+        L2_GAS_ORACLE_SENDER_PRIVATE_KEY = cfg.readUint(".accounts.L2_GAS_ORACLE_SENDER_PRIVATE_KEY");
 
+        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
         L1_COMMIT_SENDER_ADDR = cfg.readAddress(".accounts.L1_COMMIT_SENDER_ADDR");
         L1_FINALIZE_SENDER_ADDR = cfg.readAddress(".accounts.L1_FINALIZE_SENDER_ADDR");
         L1_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L1_GAS_ORACLE_SENDER_ADDR");
         L2_GAS_ORACLE_SENDER_ADDR = cfg.readAddress(".accounts.L2_GAS_ORACLE_SENDER_ADDR");
 
-        DEPLOYER_ADDR = cfg.readAddress(".accounts.DEPLOYER_ADDR");
         OWNER_ADDR = cfg.readAddress(".accounts.OWNER_ADDR");
 
         L2GETH_SIGNER_0_ADDRESS = cfg.readAddress(".accounts.L2GETH_SIGNER_0_ADDRESS");
 
-        // config sanity check
-        if (vm.addr(DEPLOYER_PRIVATE_KEY) != DEPLOYER_ADDR) {
-            revert(
-                string(
-                    abi.encodePacked(
-                        "[ERROR] DEPLOYER_ADDR (",
-                        vm.toString(DEPLOYER_ADDR),
-                        ") does not match DEPLOYER_PRIVATE_KEY"
-                    )
-                )
-            );
-        }
+        SCROLL_DB_CONNECTION_STRING = cfg.readString(".db.SCROLL_DB_CONNECTION_STRING");
+        BRIDGE_HISTORY_DB_CONNECTION_STRING = cfg.readString(".db.BRIDGE_HISTORY_DB_CONNECTION_STRING");
 
         L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
         L2_DEPLOYER_INITIAL_BALANCE = cfg.readUint(".genesis.L2_DEPLOYER_INITIAL_BALANCE");
@@ -192,6 +208,8 @@ abstract contract Configuration is Script {
 
         L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
         L1_PLONK_VERIFIER_ADDR = cfg.readAddress(".contracts.L1_PLONK_VERIFIER_ADDR");
+
+        runSanityCheck();
     }
 
     /**********************
@@ -236,6 +254,40 @@ abstract contract Configuration is Script {
         }
 
         return addr;
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
+
+    function runSanityCheck() private view {
+        verifyAccount("DEPLOYER", DEPLOYER_PRIVATE_KEY, DEPLOYER_ADDR);
+        verifyAccount("L1_COMMIT_SENDER", L1_COMMIT_SENDER_PRIVATE_KEY, L1_COMMIT_SENDER_ADDR);
+        verifyAccount("L1_FINALIZE_SENDER", L1_FINALIZE_SENDER_PRIVATE_KEY, L1_FINALIZE_SENDER_ADDR);
+        verifyAccount("L1_GAS_ORACLE_SENDER", L1_GAS_ORACLE_SENDER_PRIVATE_KEY, L1_GAS_ORACLE_SENDER_ADDR);
+        verifyAccount("L2_GAS_ORACLE_SENDER", L2_GAS_ORACLE_SENDER_PRIVATE_KEY, L2_GAS_ORACLE_SENDER_ADDR);
+    }
+
+    function verifyAccount(
+        string memory name,
+        uint256 privateKey,
+        address addr
+    ) private pure {
+        if (vm.addr(privateKey) != addr) {
+            revert(
+                string(
+                    abi.encodePacked(
+                        "[ERROR] ",
+                        name,
+                        "_ADDR (",
+                        vm.toString(addr),
+                        ") does not match ",
+                        name,
+                        "_PRIVATE_KEY"
+                    )
+                )
+            );
+        }
     }
 }
 
@@ -1882,5 +1934,171 @@ contract GenerateGenesis is DeployScroll {
         commands[1] = "-c";
         commands[2] = string.concat("cat <<< $(jq -S '.' ", _path, ") > ", _path);
         vm.ffi(commands);
+    }
+}
+
+contract GenerateRollupConfig is DeployScroll {
+    /***************
+     * Entry point *
+     ***************/
+
+    function run() public {
+        setScriptMode(ScriptMode.VerifyConfig);
+        predictAllContracts();
+
+        generateRollupConfig();
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
+
+    function generateRollupConfig() private {
+        // initialize template file
+        if (vm.exists(ROLLUP_CONFIG_PATH)) {
+            vm.removeFile(ROLLUP_CONFIG_PATH);
+        }
+
+        string memory template = vm.readFile(ROLLUP_CONFIG_TEMPLATE_PATH);
+        vm.writeFile(ROLLUP_CONFIG_PATH, template);
+
+        // endpoints
+        vm.writeJson(L1_RPC_ENDPOINT, ROLLUP_CONFIG_PATH, ".l1_config.endpoint");
+        vm.writeJson(L2_RPC_ENDPOINT, ROLLUP_CONFIG_PATH, ".l1_config.relayer_config.sender_config.endpoint");
+        vm.writeJson(L2_RPC_ENDPOINT, ROLLUP_CONFIG_PATH, ".l2_config.endpoint");
+        vm.writeJson(L1_RPC_ENDPOINT, ROLLUP_CONFIG_PATH, ".l2_config.relayer_config.sender_config.endpoint");
+
+        // contracts
+        vm.writeJson(
+            vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR),
+            ROLLUP_CONFIG_PATH,
+            ".l1_config.l1_message_queue_address"
+        );
+        vm.writeJson(vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR), ROLLUP_CONFIG_PATH, ".l1_config.scroll_chain_address");
+        vm.writeJson(
+            vm.toString(L1_GAS_PRICE_ORACLE_ADDR),
+            ROLLUP_CONFIG_PATH,
+            ".l1_config.relayer_config.gas_price_oracle_contract_address"
+        );
+        vm.writeJson(vm.toString(L2_MESSAGE_QUEUE_ADDR), ROLLUP_CONFIG_PATH, ".l2_config.l2_message_queue_address");
+        vm.writeJson(
+            vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR),
+            ROLLUP_CONFIG_PATH,
+            ".l2_config.relayer_config.rollup_contract_address"
+        );
+        vm.writeJson(
+            vm.toString(L2_GAS_PRICE_ORACLE_PROXY_ADDR),
+            ROLLUP_CONFIG_PATH,
+            ".l2_config.relayer_config.gas_price_oracle_contract_address"
+        );
+
+        // private keys
+        vm.writeJson(
+            vm.toString(bytes32(L1_GAS_ORACLE_SENDER_PRIVATE_KEY)),
+            ROLLUP_CONFIG_PATH,
+            ".l2_config.relayer_config.gas_oracle_sender_private_key"
+        );
+        vm.writeJson(
+            vm.toString(bytes32(L1_COMMIT_SENDER_PRIVATE_KEY)),
+            ROLLUP_CONFIG_PATH,
+            ".l2_config.relayer_config.commit_sender_private_key"
+        );
+        vm.writeJson(
+            vm.toString(bytes32(L1_FINALIZE_SENDER_PRIVATE_KEY)),
+            ROLLUP_CONFIG_PATH,
+            ".l2_config.relayer_config.finalize_sender_private_key"
+        );
+        vm.writeJson(
+            vm.toString(bytes32(L2_GAS_ORACLE_SENDER_PRIVATE_KEY)),
+            ROLLUP_CONFIG_PATH,
+            ".l1_config.relayer_config.gas_oracle_sender_private_key"
+        );
+
+        // other
+        vm.writeJson(
+            vm.toString(MAX_BLOCK_IN_CHUNK),
+            ROLLUP_CONFIG_PATH,
+            ".l2_config.chunk_proposer_config.max_block_num_per_chunk"
+        );
+        vm.writeJson(
+            vm.toString(MAX_TX_IN_CHUNK),
+            ROLLUP_CONFIG_PATH,
+            ".l2_config.chunk_proposer_config.max_tx_num_per_chunk"
+        );
+
+        vm.writeJson(SCROLL_DB_CONNECTION_STRING, ROLLUP_CONFIG_PATH, ".db_config.dsn");
+    }
+}
+
+contract GenerateBridgeHistoryConfig is DeployScroll {
+    /***************
+     * Entry point *
+     ***************/
+
+    function run() public {
+        setScriptMode(ScriptMode.VerifyConfig);
+        predictAllContracts();
+
+        generateRollupConfig();
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
+
+    function generateRollupConfig() private {
+        // initialize template file
+        if (vm.exists(BRIDGE_HISTORY_CONFIG_PATH)) {
+            vm.removeFile(BRIDGE_HISTORY_CONFIG_PATH);
+        }
+
+        string memory template = vm.readFile(BRIDGE_HISTORY_CONFIG_TEMPLATE_PATH);
+        vm.writeFile(BRIDGE_HISTORY_CONFIG_PATH, template);
+
+        // L1 contracts
+        vm.writeJson(vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.MessageQueueAddr");
+        vm.writeJson(vm.toString(L1_SCROLL_MESSENGER_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.MessengerAddr");
+        vm.writeJson(vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.ScrollChainAddr");
+        vm.writeJson(vm.toString(L1_GATEWAY_ROUTER_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.GatewayRouterAddr");
+        vm.writeJson(vm.toString(L1_ETH_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.ETHGatewayAddr");
+        vm.writeJson(vm.toString(L1_WETH_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.WETHGatewayAddr");
+        vm.writeJson(
+            vm.toString(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR),
+            BRIDGE_HISTORY_CONFIG_PATH,
+            ".L1.StandardERC20GatewayAddr"
+        );
+        vm.writeJson(
+            vm.toString(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR),
+            BRIDGE_HISTORY_CONFIG_PATH,
+            ".L1.CustomERC20GatewayAddr"
+        );
+        vm.writeJson(vm.toString(L1_ERC721_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.ERC721GatewayAddr");
+        vm.writeJson(vm.toString(L1_ERC1155_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.ERC1155GatewayAddr");
+
+        // L2 contracts
+        vm.writeJson(vm.toString(L2_MESSAGE_QUEUE_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.MessageQueueAddr");
+        vm.writeJson(vm.toString(L2_SCROLL_MESSENGER_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.MessengerAddr");
+        vm.writeJson(vm.toString(L2_GATEWAY_ROUTER_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.GatewayRouterAddr");
+        vm.writeJson(vm.toString(L2_ETH_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.ETHGatewayAddr");
+        vm.writeJson(vm.toString(L2_WETH_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.WETHGatewayAddr");
+        vm.writeJson(
+            vm.toString(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR),
+            BRIDGE_HISTORY_CONFIG_PATH,
+            ".L2.StandardERC20GatewayAddr"
+        );
+        vm.writeJson(
+            vm.toString(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR),
+            BRIDGE_HISTORY_CONFIG_PATH,
+            ".L2.CustomERC20GatewayAddr"
+        );
+        vm.writeJson(vm.toString(L2_ERC721_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.ERC721GatewayAddr");
+        vm.writeJson(vm.toString(L2_ERC1155_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.ERC1155GatewayAddr");
+
+        // endpoints
+        vm.writeJson(L1_RPC_ENDPOINT, BRIDGE_HISTORY_CONFIG_PATH, ".L1.endpoint");
+        vm.writeJson(L2_RPC_ENDPOINT, BRIDGE_HISTORY_CONFIG_PATH, ".L2.endpoint");
+
+        // others
+        vm.writeJson(BRIDGE_HISTORY_DB_CONNECTION_STRING, BRIDGE_HISTORY_CONFIG_PATH, ".db.dsn");
     }
 }

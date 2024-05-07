@@ -1,0 +1,56 @@
+{
+  "L1": {
+    "confirmation": 0,
+    "endpoint": null,
+    "startHeight": 0,
+    "blockTime": 12,
+    "fetchLimit": 16,
+    "MessageQueueAddr": null,
+    "MessengerAddr": null,
+    "ScrollChainAddr": null,
+    "GatewayRouterAddr": null,
+    "ETHGatewayAddr": null,
+    "WETHGatewayAddr": null,
+    "StandardERC20GatewayAddr": null,
+    "CustomERC20GatewayAddr": null,
+    "ERC721GatewayAddr": null,
+    "ERC1155GatewayAddr": null,
+    "USDCGatewayAddr": "0x0000000000000000000000000000000000000000",
+    "LIDOGatewayAddr": "0x0000000000000000000000000000000000000000",
+    "DAIGatewayAddr": "0x0000000000000000000000000000000000000000",
+    "PufferGatewayAddr": "0x0000000000000000000000000000000000000000"
+  },
+  "L2": {
+    "confirmation": 0,
+    "endpoint": null,
+    "blockTime": 3,
+    "fetchLimit": 64,
+    "MessageQueueAddr": null,
+    "MessengerAddr": null,
+    "GatewayRouterAddr": null,
+    "ETHGatewayAddr": null,
+    "WETHGatewayAddr": null,
+    "StandardERC20GatewayAddr": null,
+    "CustomERC20GatewayAddr": null,
+    "ERC721GatewayAddr": null,
+    "ERC1155GatewayAddr": null,
+    "USDCGatewayAddr": "0x0000000000000000000000000000000000000000",
+    "LIDOGatewayAddr": "0x0000000000000000000000000000000000000000",
+    "DAIGatewayAddr": "0x0000000000000000000000000000000000000000",
+    "PufferGatewayAddr": "0x0000000000000000000000000000000000000000"
+  },
+  "db": {
+    "dsn": null,
+    "driverName": "postgres",
+    "maxOpenNum": 200,
+    "maxIdleNum": 20
+  },
+  "redis": {
+    "address": null,
+    "username": null,
+    "password": null,
+    "local":null,
+    "minIdleConns": 10,
+    "readTimeoutMs": 500
+  }
+}
