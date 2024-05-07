@@ -21,7 +21,7 @@ services:
       - generate-genesis
       - --fork=deneb
       - --num-validators=64
-      - --genesis-time-delay=15
+      - --genesis-time-delay=60
       - --output-ssz=/data/consensus/genesis.ssz
       - --chain-config-file=/data/consensus/config.yml
       - --geth-genesis-json-in=/data/execution/genesis.json
