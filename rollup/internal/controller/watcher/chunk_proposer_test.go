@@ -178,7 +178,6 @@ func testChunkProposerCodecv0Limits(t *testing.T) {
 				GasCostIncreaseMultiplier:       1.2,
 			}, &params.ChainConfig{
 				HomesteadBlock: tt.forkBlock,
-				CurieBlock:     big.NewInt(0),
 			}, db, nil)
 			cp.TryProposeChunk()
 
@@ -301,7 +300,7 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 			name:                       "MaxL1CommitGasPerChunkIsFirstBlock",
 			maxBlockNum:                10,
 			maxTxNum:                   10000,
-			maxL1CommitGas:             2522,
+			maxL1CommitGas:             2500,
 			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
 			chunkTimeoutSec:            1000000000000,
@@ -356,8 +355,8 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             tt.maxBlockNum,
 				MaxTxNumPerChunk:                tt.maxTxNum,
-				MaxL1CommitGasPerChunk:          1,
-				MaxL1CommitCalldataSizePerChunk: 100000,
+				MaxL1CommitGasPerChunk:          tt.maxL1CommitGas,
+				MaxL1CommitCalldataSizePerChunk: tt.maxL1CommitCalldataSize,
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
@@ -390,6 +389,8 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 		name                       string
 		maxBlockNum                uint64
 		maxTxNum                   uint64
+		maxL1CommitGas             uint64
+		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
 		forkBlock                  *big.Int
@@ -397,42 +398,72 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
 		{
-			name:              "NoLimitReached",
-			maxBlockNum:       100,
-			maxTxNum:          10000,
-			maxRowConsumption: 1000000,
-			chunkTimeoutSec:   1000000000000,
-			expectedChunksLen: 0,
+			name:                    "NoLimitReached",
+			maxBlockNum:             100,
+			maxTxNum:                10000,
+			maxL1CommitGas:          50000000000,
+			maxL1CommitCalldataSize: 1000000,
+			maxRowConsumption:       1000000,
+			chunkTimeoutSec:         1000000000000,
+			expectedChunksLen:       0,
 		},
 		{
 			name:                       "Timeout",
 			maxBlockNum:                100,
 			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
 			chunkTimeoutSec:            0,
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 2,
 		},
 		{
-			name:              "MaxTxNumPerChunkIs0",
-			maxBlockNum:       10,
-			maxTxNum:          0,
-			maxRowConsumption: 1000000,
-			chunkTimeoutSec:   1000000000000,
-			expectedChunksLen: 0,
+			name:                    "MaxTxNumPerChunkIs0",
+			maxBlockNum:             10,
+			maxTxNum:                0,
+			maxL1CommitGas:          50000000000,
+			maxL1CommitCalldataSize: 1000000,
+			maxRowConsumption:       1000000,
+			chunkTimeoutSec:         1000000000000,
+			expectedChunksLen:       0,
 		},
 		{
-			name:              "MaxRowConsumptionPerChunkIs0",
-			maxBlockNum:       100,
-			maxTxNum:          10000,
-			maxRowConsumption: 0,
-			chunkTimeoutSec:   1000000000000,
-			expectedChunksLen: 0,
+			name:                    "MaxL1CommitGasPerChunkIs0",
+			maxBlockNum:             10,
+			maxTxNum:                10000,
+			maxL1CommitGas:          0,
+			maxL1CommitCalldataSize: 1000000,
+			maxRowConsumption:       1000000,
+			chunkTimeoutSec:         1000000000000,
+			expectedChunksLen:       0,
+		},
+		{
+			name:                    "MaxL1CommitCalldataSizePerChunkIs0",
+			maxBlockNum:             10,
+			maxTxNum:                10000,
+			maxL1CommitGas:          50000000000,
+			maxL1CommitCalldataSize: 0,
+			maxRowConsumption:       1000000,
+			chunkTimeoutSec:         1000000000000,
+			expectedChunksLen:       0,
+		},
+		{
+			name:                    "MaxRowConsumptionPerChunkIs0",
+			maxBlockNum:             100,
+			maxTxNum:                10000,
+			maxL1CommitGas:          50000000000,
+			maxL1CommitCalldataSize: 1000000,
+			maxRowConsumption:       0,
+			chunkTimeoutSec:         1000000000000,
+			expectedChunksLen:       0,
 		},
 		{
 			name:                       "MaxBlockNumPerChunkIs1",
 			maxBlockNum:                1,
 			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
 			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
@@ -442,6 +473,30 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 			name:                       "MaxTxNumPerChunkIsFirstBlock",
 			maxBlockNum:                10,
 			maxTxNum:                   2,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+		},
+		{
+			name:                       "MaxL1CommitGasPerChunkIsFirstBlock",
+			maxBlockNum:                10,
+			maxTxNum:                   10000,
+			maxL1CommitGas:             2500,
+			maxL1CommitCalldataSize:    1000000,
+			maxRowConsumption:          1000000,
+			chunkTimeoutSec:            1000000000000,
+			expectedChunksLen:          1,
+			expectedBlocksInFirstChunk: 1,
+		},
+		{
+			name:                       "MaxL1CommitCalldataSizePerChunkIsFirstBlock",
+			maxBlockNum:                10,
+			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    60,
 			maxRowConsumption:          1000000,
 			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
@@ -451,6 +506,8 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 			name:                       "MaxRowConsumptionPerChunkIs1",
 			maxBlockNum:                10,
 			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1,
 			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
@@ -460,6 +517,8 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 			name:                       "ForkBlockReached",
 			maxBlockNum:                100,
 			maxTxNum:                   10000,
+			maxL1CommitGas:             50000000000,
+			maxL1CommitCalldataSize:    1000000,
 			maxRowConsumption:          1000000,
 			chunkTimeoutSec:            1000000000000,
 			expectedChunksLen:          1,
@@ -480,8 +539,8 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             tt.maxBlockNum,
 				MaxTxNumPerChunk:                tt.maxTxNum,
-				MaxL1CommitGasPerChunk:          1,
-				MaxL1CommitCalldataSizePerChunk: 100000,
+				MaxL1CommitGasPerChunk:          tt.maxL1CommitGas,
+				MaxL1CommitCalldataSizePerChunk: tt.maxL1CommitCalldataSize,
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
@@ -529,8 +588,8 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 			MaxBlockNumPerChunk:             math.MaxUint64,
 			MaxTxNumPerChunk:                math.MaxUint64,
-			MaxL1CommitGasPerChunk:          1,
-			MaxL1CommitCalldataSizePerChunk: 100000,
+			MaxL1CommitGasPerChunk:          math.MaxUint64,
+			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 			MaxRowConsumptionPerChunk:       math.MaxUint64,
 			ChunkTimeoutSec:                 math.MaxUint64,
 			GasCostIncreaseMultiplier:       1,
@@ -547,8 +606,8 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 		var expectedNumChunks int
 		var numBlocksMultiplier uint64
 		if compressed {
-			expectedNumChunks = 2
-			numBlocksMultiplier = 1666
+			expectedNumChunks = 1
+			numBlocksMultiplier = 2000
 		} else {
 			expectedNumChunks = 4
 			numBlocksMultiplier = 551

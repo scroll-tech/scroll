@@ -36,23 +36,15 @@ make rollup_bins
 ./build/bin/rollup_relayer --config ./conf/config.json
 ```
 
-## libzstd
-
-### Building `libscroll_zstd.so` File.
-
-Follow these steps to build the `.so` file:
-
-```
-cd libzstd
-export CARGO_NET_GIT_FETCH_WITH_CLI=true
-make libzstd
-```
-
 ### Running unit tests
 
 Follow these steps to run unit tests, in the repo's root dir:
 
 ```
-export LD_LIBRARY_PATH=${PWD}/libzstd:$LD_LIBRARY_PATH
+wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
+sudo mv libzktrie.so /usr/local/lib
+wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
+sudo mv libscroll_zstd.so /usr/local/lib
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 go test -v -race ./...
 ```

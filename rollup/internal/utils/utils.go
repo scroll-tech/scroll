@@ -115,6 +115,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 		}
 		return metrics, nil
 	case encoding.CodecV2:
+		metrics.L1CommitGas = codecv2.EstimateChunkL1CommitGas(chunk)
 		metrics.L1CommitCalldataSize = codecv2.EstimateChunkL1CommitCalldataSize(chunk)
 		metrics.L1CommitBlobSize, err = codecv2.EstimateChunkL1CommitBlobSize(chunk)
 		if err != nil {
@@ -166,6 +167,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 		}
 		return metrics, nil
 	case encoding.CodecV2:
+		metrics.L1CommitGas = codecv2.EstimateBatchL1CommitGas(batch)
 		metrics.L1CommitCalldataSize = codecv2.EstimateBatchL1CommitCalldataSize(batch)
 		metrics.L1CommitBlobSize, err = codecv2.EstimateBatchL1CommitBlobSize(batch)
 		if err != nil {

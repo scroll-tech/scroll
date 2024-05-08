@@ -212,7 +212,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 		},
 		{
 			name:                       "MaxL1CommitGasPerBatchIsFirstChunk",
-			maxL1CommitGas:             190352,
+			maxL1CommitGas:             190330,
 			maxL1CommitCalldataSize:    1000000,
 			batchTimeoutSec:            1000000000000,
 			expectedBatchesLen:         1,
@@ -365,7 +365,7 @@ func testBatchProposerCodecv2Limits(t *testing.T) {
 		},
 		{
 			name:                       "MaxL1CommitGasPerBatchIsFirstChunk",
-			maxL1CommitGas:             190352,
+			maxL1CommitGas:             190330,
 			maxL1CommitCalldataSize:    1000000,
 			batchTimeoutSec:            1000000000000,
 			expectedBatchesLen:         1,
@@ -432,6 +432,7 @@ func testBatchProposerCodecv2Limits(t *testing.T) {
 				GasCostIncreaseMultiplier:       1.2,
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0),
+				CurieBlock:     big.NewInt(0),
 				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
@@ -753,8 +754,8 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 			MaxBlockNumPerChunk:             math.MaxUint64,
 			MaxTxNumPerChunk:                math.MaxUint64,
-			MaxL1CommitGasPerChunk:          1,
-			MaxL1CommitCalldataSizePerChunk: 100000,
+			MaxL1CommitGasPerChunk:          math.MaxUint64,
+			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 			MaxRowConsumptionPerChunk:       math.MaxUint64,
 			ChunkTimeoutSec:                 0,
 			GasCostIncreaseMultiplier:       1,
@@ -774,8 +775,8 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 		}
 
 		bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-			MaxL1CommitGasPerBatch:          1,
-			MaxL1CommitCalldataSizePerBatch: 100000,
+			MaxL1CommitGasPerBatch:          math.MaxUint64,
+			MaxL1CommitCalldataSizePerBatch: math.MaxUint64,
 			BatchTimeoutSec:                 math.MaxUint64,
 			GasCostIncreaseMultiplier:       1,
 		}, chainConfig, db, nil)
@@ -844,8 +845,8 @@ func testBatchProposerMaxChunkNumPerBatchLimit(t *testing.T) {
 		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 			MaxBlockNumPerChunk:             math.MaxUint64,
 			MaxTxNumPerChunk:                math.MaxUint64,
-			MaxL1CommitGasPerChunk:          1,
-			MaxL1CommitCalldataSizePerChunk: 100000,
+			MaxL1CommitGasPerChunk:          math.MaxUint64,
+			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 			MaxRowConsumptionPerChunk:       math.MaxUint64,
 			ChunkTimeoutSec:                 0,
 			GasCostIncreaseMultiplier:       1,
@@ -860,8 +861,8 @@ func testBatchProposerMaxChunkNumPerBatchLimit(t *testing.T) {
 		}
 
 		bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
-			MaxL1CommitGasPerBatch:          1,
-			MaxL1CommitCalldataSizePerBatch: 100000,
+			MaxL1CommitGasPerBatch:          math.MaxUint64,
+			MaxL1CommitCalldataSizePerBatch: math.MaxUint64,
 			BatchTimeoutSec:                 math.MaxUint64,
 			GasCostIncreaseMultiplier:       1,
 		}, chainConfig, db, nil)
