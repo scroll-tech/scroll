@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.24;
+pragma solidity ^0.8.24;
 
 import {BatchHeaderV0Codec} from "../../../contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
 import {BatchHeaderV1Codec} from "../../../contracts/src/libraries/codec/BatchHeaderV1Codec.sol";

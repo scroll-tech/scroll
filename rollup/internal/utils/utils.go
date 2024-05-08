@@ -76,7 +76,6 @@ type ChunkMetrics struct {
 	CrcMax              uint64
 	FirstBlockTimestamp uint64
 
-	// codecv0 metrics, default 0 for codecv1
 	L1CommitCalldataSize uint64
 	L1CommitGas          uint64
 
@@ -108,6 +107,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 		}
 		return metrics, nil
 	case encoding.CodecV1:
+		metrics.L1CommitGas = codecv1.EstimateChunkL1CommitGas(chunk)
 		metrics.L1CommitCalldataSize = codecv1.EstimateChunkL1CommitCalldataSize(chunk)
 		metrics.L1CommitBlobSize, err = codecv1.EstimateChunkL1CommitBlobSize(chunk)
 		if err != nil {
@@ -132,7 +132,6 @@ type BatchMetrics struct {
 	NumChunks           uint64
 	FirstBlockTimestamp uint64
 
-	// codecv0 metrics, default 0 for codecv1
 	L1CommitCalldataSize uint64
 	L1CommitGas          uint64
 
@@ -159,6 +158,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 		}
 		return metrics, nil
 	case encoding.CodecV1:
+		metrics.L1CommitGas = codecv1.EstimateBatchL1CommitGas(batch)
 		metrics.L1CommitCalldataSize = codecv1.EstimateBatchL1CommitCalldataSize(batch)
 		metrics.L1CommitBlobSize, err = codecv1.EstimateBatchL1CommitBlobSize(batch)
 		if err != nil {

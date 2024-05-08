@@ -41,7 +41,7 @@ docker pull postgres
 make dev_docker
 ```
 
-## Testing Rollup & Coordinator
+## Unit Tests
 
 Run the tests using the following commands:
 
@@ -50,6 +50,36 @@ go test -v -race -covermode=atomic scroll-tech/rollup/...
 go test -tags="mock_verifier" -v -race -covermode=atomic scroll-tech/coordinator/...
 go test -v -race -covermode=atomic scroll-tech/database/...
 go test -v -race -covermode=atomic scroll-tech/common/...
+```
+
+### Rollup-Relayer Unit Tests for Apple Silicon (M1/M2) Macs
+
+To run unit tests of rollup-relayer on Apple Silicon Macs, build and execute the Docker image as outlined below:
+
+#### Build a Docker Image for Testing
+
+Use the following command to build a Docker image:
+
+```bash
+make build_test_docker
+```
+
+This command builds a Docker image named `scroll_test_image` using the Dockerfile found at `./build/dockerfiles/local_test.Dockerfile`.
+
+#### Run Docker Image
+
+After the image is built, run a Docker container from it:
+
+```bash
+make run_test_docker
+```
+
+This command runs a Docker container named `scroll_test_container` from the `scroll_test_image` image. The container uses the host network and has access to the Docker socket and the current directory.
+
+Once the Docker container is running, execute the tests using the following commands:
+
+```bash
+go test -v -race -covermode=atomic scroll-tech/rollup/...
 ```
 
 ## Testing Contracts
