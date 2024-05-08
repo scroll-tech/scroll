@@ -14,9 +14,9 @@ libzstd:
 	@sudo mv libscroll_zstd.so /usr/local/lib
 
 rollup_bins: ## Builds the Rollup bins.
-	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
-	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
 	$(MAKE) libzstd
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib && go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib && go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
 	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib && go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
 
 event_watcher: ## Builds the event_watcher bin
