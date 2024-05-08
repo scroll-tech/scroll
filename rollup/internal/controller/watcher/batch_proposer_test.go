@@ -676,7 +676,7 @@ func testBatchCommitGasAndCalldataSizeCodecv2Estimation(t *testing.T) {
 		MaxRowConsumptionPerChunk:       1000000,
 		ChunkTimeoutSec:                 300,
 		GasCostIncreaseMultiplier:       1.2,
-	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}, db, nil)
 	cp.TryProposeChunk() // chunk1 contains block1
 	cp.TryProposeChunk() // chunk2 contains block2
 
@@ -692,7 +692,7 @@ func testBatchCommitGasAndCalldataSizeCodecv2Estimation(t *testing.T) {
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1.2,
-	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}, db, nil)
 	bp.TryProposeBatch()
 
 	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
