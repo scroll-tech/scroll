@@ -1,4 +1,4 @@
-.PHONY: mock_abi rollup_bins event_watcher gas_oracle rollup_relayer test lint clean docker
+.PHONY: mock_abi libzstd rollup_bins event_watcher gas_oracle rollup_relayer test lint clean docker
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
@@ -7,10 +7,17 @@ mock_abi:
 	cd .. && solc --evm-version cancun --bin --abi --optimize --overwrite -o ./build/bin ./rollup/mock_bridge/MockBridge.sol
 	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --bin=./build/bin/MockBridge.bin --abi=./build/bin/MockBridge.abi --pkg=mock_bridge --out=./rollup/mock_bridge/MockBridge.go
 
+libzstd:
+	@wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
+	@sudo mv libzktrie.so /usr/local/lib
+	@wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
+	@sudo mv libscroll_zstd.so /usr/local/lib
+
 rollup_bins: ## Builds the Rollup bins.
 	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
 	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
-	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
+	$(MAKE) libzstd
+	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib && go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
 
 event_watcher: ## Builds the event_watcher bin
 	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
