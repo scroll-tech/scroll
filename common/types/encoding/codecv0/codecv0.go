@@ -302,8 +302,6 @@ func GetMemoryExpansionCost(memoryByteSize uint64) uint64 {
 }
 
 // EstimateBlockL1CommitCalldataSize calculates the calldata size in l1 commit for this block approximately.
-// TODO: The calculation could be more accurate by using 58 + len(l2TxDataBytes) (see Chunk).
-// This needs to be adjusted in the future.
 func EstimateBlockL1CommitCalldataSize(b *encoding.Block) (uint64, error) {
 	var size uint64
 	for _, txData := range b.Transactions {
