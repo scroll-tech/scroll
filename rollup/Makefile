@@ -13,8 +13,7 @@ libzstd:
 	@wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
 	@sudo mv libscroll_zstd.so /usr/local/lib
 
-rollup_bins: ## Builds the Rollup bins.
-	$(MAKE) libzstd
+rollup_bins: libzstd ## Builds the Rollup bins.
 	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib && go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
 	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib && go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
 	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib && go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
