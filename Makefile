@@ -44,7 +44,7 @@ fmt: ## format the code
 
 dev_docker: ## build docker images for development/testing usages
 	docker pull postgres
-	docker build -t scroll_l1geth ./common/testcontainers/docker/l1geth/
+	docker build -t scroll_l1anvil ./common/testcontainers/docker/l1anvil/
 	docker build -t scroll_l2geth ./common/testcontainers/docker/l2geth/
 
 clean: ## Empty out the bin folder

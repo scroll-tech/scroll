@@ -53,9 +53,9 @@ func setupEnv(t *testing.T) {
 	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
-	assert.NoError(t, testApps.StartPoSL1Container())
+	assert.NoError(t, testApps.StartL1AnvilContainer())
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetPoSL1EndPoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL1AnvilEndPoint()
 	assert.NoError(t, err)
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL2GethEndPoint()
 	assert.NoError(t, err)

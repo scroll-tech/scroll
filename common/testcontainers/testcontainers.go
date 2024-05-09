@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/compose"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gorm.io/gorm"
@@ -22,7 +20,7 @@ import (
 type TestcontainerApps struct {
 	postgresContainer *postgres.PostgresContainer
 	l2GethContainer   *testcontainers.DockerContainer
-	poSL1Container    compose.ComposeStack
+	l1AnvilContainer  *testcontainers.DockerContainer
 
 	// common time stamp in nanoseconds.
 	Timestamp int
@@ -68,10 +66,9 @@ func (t *TestcontainerApps) StartL2GethContainer() error {
 	}
 	req := testcontainers.ContainerRequest{
 		Image:        "scroll_l2geth",
-		ExposedPorts: []string{"8546/tcp", "8545/tcp"},
+		ExposedPorts: []string{"8545/tcp"},
 		WaitingFor: wait.ForAll(
-			wait.ForListeningPort("8546").WithStartupTimeout(100*time.Second),
-			wait.ForListeningPort("8545").WithStartupTimeout(100*time.Second),
+			wait.ForListeningPort("8545").WithStartupTimeout(100 * time.Second),
 		),
 	}
 	genericContainerReq := testcontainers.GenericContainerRequest{
@@ -88,48 +85,45 @@ func (t *TestcontainerApps) StartL2GethContainer() error {
 }
 
 // StartPoSL1Container starts the PoS L1 container by running the associated Docker Compose configuration
-func (t *TestcontainerApps) StartPoSL1Container() error {
-	var (
-		err               error
-		rootDir           string
-		dockerComposeFile string
-	)
-
-	if rootDir, err = findProjectRootDir(); err != nil {
-		return fmt.Errorf("failed to find project root directory: %v", err)
+func (t *TestcontainerApps) StartL1AnvilContainer() error {
+	if t.l1AnvilContainer != nil && t.l1AnvilContainer.IsRunning() {
+		return nil
 	}
-
-	dockerComposeFile = filepath.Join(rootDir, "common", "testcontainers", "docker-compose.yml")
-
-	if t.poSL1Container, err = compose.NewDockerCompose([]string{dockerComposeFile}...); err != nil {
+	req := testcontainers.ContainerRequest{
+		Image:        "scroll_l1anvil",
+		ExposedPorts: []string{"8545/tcp"},
+		WaitingFor: wait.ForAll(
+			wait.ForListeningPort("8545").WithStartupTimeout(100 * time.Second),
+		),
+	}
+	genericContainerReq := testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	}
+	container, err := testcontainers.GenericContainer(context.Background(), genericContainerReq)
+	if err != nil {
+		log.Printf("failed to start scroll_l1anvil container: %s", err)
 		return err
 	}
-	err = t.poSL1Container.WaitForService("geth", wait.NewHTTPStrategy("/").
-		WithPort("8545/tcp").
-		WithStartupTimeout(15*time.Second)).
-		Up(context.Background())
-	if err != nil {
-		t.poSL1Container = nil
-		return fmt.Errorf("failed to start PoS L1 container: %w", err)
-	}
+	t.l1AnvilContainer, _ = container.(*testcontainers.DockerContainer)
 	return nil
 }
 
-// GetPoSL1EndPoint returns the endpoint of the running PoS L1 endpoint
-func (t *TestcontainerApps) GetPoSL1EndPoint() (string, error) {
-	if t.poSL1Container == nil {
-		return "", fmt.Errorf("PoS L1 container is not running")
+// GetL1AnvilEndPoint returns the endpoint of the running PoS L1 endpoint
+func (t *TestcontainerApps) GetL1AnvilEndPoint() (string, error) {
+	if t.l1AnvilContainer == nil || !t.l1AnvilContainer.IsRunning() {
+		return "", fmt.Errorf("l1 anvil is not running")
 	}
-	contrainer, err := t.poSL1Container.ServiceContainer(context.Background(), "geth")
+	endpoint, err := t.l1AnvilContainer.PortEndpoint(context.Background(), "8545/tcp", "http")
 	if err != nil {
 		return "", err
 	}
-	return contrainer.PortEndpoint(context.Background(), "8545/tcp", "http")
+	return endpoint, nil
 }
 
 // GetPoSL1Client returns a ethclient by dialing running PoS L1 client
-func (t *TestcontainerApps) GetPoSL1Client() (*ethclient.Client, error) {
-	endpoint, err := t.GetPoSL1EndPoint()
+func (t *TestcontainerApps) GetL1AnvilClient() (*ethclient.Client, error) {
+	endpoint, err := t.GetL1AnvilEndPoint()
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +143,7 @@ func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 	if t.l2GethContainer == nil || !t.l2GethContainer.IsRunning() {
 		return "", fmt.Errorf("l2 geth is not running")
 	}
-	endpoint, err := t.l2GethContainer.PortEndpoint(context.Background(), "8546/tcp", "ws")
+	endpoint, err := t.l2GethContainer.PortEndpoint(context.Background(), "8545/tcp", "http")
 	if err != nil {
 		return "", err
 	}
@@ -197,33 +191,9 @@ func (t *TestcontainerApps) Free() {
 			log.Printf("failed to stop scroll_l2geth container: %s", err)
 		}
 	}
-	if t.poSL1Container != nil {
-		if err := t.poSL1Container.Down(context.Background(), compose.RemoveOrphans(true), compose.RemoveVolumes(true), compose.RemoveImagesLocal); err != nil {
-			log.Printf("failed to stop PoS L1 container: %s", err)
-		} else {
-			t.poSL1Container = nil
+	if t.l1AnvilContainer != nil && t.l1AnvilContainer.IsRunning() {
+		if err := t.l1AnvilContainer.Terminate(ctx); err != nil {
+			log.Printf("failed to stop scroll_l1anvil container: %s", err)
 		}
-	}
-}
-
-// findProjectRootDir find project root directory
-func findProjectRootDir() (string, error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return "", fmt.Errorf("failed to get working directory: %w", err)
-	}
-
-	for {
-		_, err := os.Stat(filepath.Join(currentDir, "go.work"))
-		if err == nil {
-			return currentDir, nil
-		}
-
-		parentDir := filepath.Dir(currentDir)
-		if parentDir == currentDir {
-			return "", fmt.Errorf("go.work file not found in any parent directory")
-		}
-
-		currentDir = parentDir
 	}
 }

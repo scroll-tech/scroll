@@ -87,10 +87,10 @@ func setupEnv(t *testing.T) {
 	testApps = tc.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
-	assert.NoError(t, testApps.StartPoSL1Container())
+	assert.NoError(t, testApps.StartL1AnvilContainer())
 	rollupApp = bcmd.NewRollupApp(testApps, "../conf/config.json")
 
-	l1Client, err = testApps.GetPoSL1Client()
+	l1Client, err = testApps.GetL1AnvilClient()
 	assert.NoError(t, err)
 	l2Client, err = testApps.GetL2GethClient()
 	assert.NoError(t, err)
@@ -105,9 +105,9 @@ func setupEnv(t *testing.T) {
 
 	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, l1GethChainID)
 	assert.NoError(t, err)
-	rollupApp.Config.L1Config.Endpoint, err = testApps.GetPoSL1EndPoint()
+	rollupApp.Config.L1Config.Endpoint, err = testApps.GetL1AnvilEndPoint()
 	assert.NoError(t, err)
-	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetPoSL1EndPoint()
+	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL1AnvilEndPoint()
 	assert.NoError(t, err)
 
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))

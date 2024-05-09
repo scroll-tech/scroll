@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -71,9 +73,9 @@ func setupEnv(t *testing.T) {
 	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
-	assert.NoError(t, testApps.StartPoSL1Container())
+	assert.NoError(t, testApps.StartL1AnvilContainer())
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetPoSL1EndPoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL1AnvilEndPoint()
 	assert.NoError(t, err)
 
 	db, err = testApps.GetGormDBClient()
@@ -82,7 +84,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	l1Client, err := testApps.GetPoSL1Client()
+	l1Client, err := testApps.GetL1AnvilClient()
 	assert.NoError(t, err)
 
 	chainID, err := l1Client.ChainID(context.Background())
@@ -102,8 +104,24 @@ func setupEnv(t *testing.T) {
 	err = l1Client.SendTransaction(context.Background(), signedTx)
 	assert.NoError(t, err)
 
+	txData, err := json.MarshalIndent(signedTx, "", "  ")
+	if err != nil {
+		log.Crit("failed to JSON marshal transaction", "err", err)
+		return
+	}
+	fmt.Println("contract deployment transaction:\n", string(txData))
+
+	txByte, err := signedTx.MarshalBinary()
+	if err != nil {
+		log.Crit("failed to marshal transaction to RLP encoding", "err", err)
+		return
+	}
+	txHex := hex.EncodeToString(txByte)
+	fmt.Println("rlp-encoding of contract deployment transaction:", txHex)
+
 	assert.Eventually(t, func() bool {
 		_, isPending, err := l1Client.TransactionByHash(context.Background(), signedTx.Hash())
+		fmt.Println("TransactionByHash", "isPending", isPending, "err", err)
 		return err == nil && !isPending
 	}, 30*time.Second, time.Second)
 

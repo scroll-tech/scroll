@@ -36,11 +36,11 @@ func TestNewTestcontainerApps(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, ethclient)
 
-	assert.NoError(t, testApps.StartPoSL1Container())
-	endpoint, err = testApps.GetPoSL1EndPoint()
+	assert.NoError(t, testApps.StartL1AnvilContainer())
+	endpoint, err = testApps.GetL1AnvilEndPoint()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, endpoint)
-	ethclient, err = testApps.GetPoSL1Client()
+	ethclient, err = testApps.GetL1AnvilClient()
 	assert.NoError(t, err)
 	assert.NotNil(t, ethclient)
 
@@ -54,7 +54,7 @@ func TestNewTestcontainerApps(t *testing.T) {
 	assert.EqualError(t, err, "l2 geth is not running")
 	assert.Empty(t, endpoint)
 
-	endpoint, err = testApps.GetPoSL1EndPoint()
-	assert.EqualError(t, err, "PoS L1 container is not running")
+	endpoint, err = testApps.GetL1AnvilEndPoint()
+	assert.EqualError(t, err, "l1 anvil is not running")
 	assert.Empty(t, endpoint)
 }
