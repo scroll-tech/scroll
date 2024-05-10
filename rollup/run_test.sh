@@ -5,11 +5,11 @@ wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu
 wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
 
 # Set the environment variable
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(PWD)
-export CGO_LDFLAGS="-L$(PWD) -Wl,-rpath=$(PWD)"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
+export CGO_LDFLAGS="-L$(pwd) -Wl,-rpath=$(pwd)"
 
 # Print the values of the variables
-echo "Current directory: $(PWD)"
+echo "Current directory: $(pwd)"
 echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
 echo "CGO_LDFLAGS: $CGO_LDFLAGS"
 
