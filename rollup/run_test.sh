@@ -8,5 +8,10 @@ wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(PWD)
 export CGO_LDFLAGS="-L$(PWD) -Wl,-rpath=$(PWD)"
 
+# Print the values of the variables
+echo "Current directory: $(PWD)"
+echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+echo "CGO_LDFLAGS: $CGO_LDFLAGS"
+
 # Run module tests
 go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...
