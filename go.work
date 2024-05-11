@@ -5,6 +5,7 @@ use (
 	./common
 	./coordinator
 	./database
+	./l2geth
 	./prover
 	./rollup
 	./tests/integration-test

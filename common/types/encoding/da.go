@@ -145,6 +145,13 @@ func ConvertTxDataToRLPEncoding(txData *types.TransactionData) ([]byte, error) {
 			S:          txData.S.ToInt(),
 		})
 
+	case types.SystemTxType:
+		tx = types.NewTx(&types.SystemTx{
+			Sender: txData.From,
+			To:     *txData.To,
+			Data:   data,
+		})
+
 	case txTypeTest:
 		// in the tests, we simply use `data` as the RLP-encoded transaction
 		return data, nil
