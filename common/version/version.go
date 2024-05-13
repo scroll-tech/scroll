@@ -5,7 +5,11 @@ import (
 	"runtime/debug"
 )
 
+<<<<<<< feat/history_batch_deposit
 var tag = "v4.4.4"
+=======
+var tag = "v4.4.5"
+>>>>>>> develop
 
 var commit = func() string {
 	if info, ok := debug.ReadBuildInfo(); ok {

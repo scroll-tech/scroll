@@ -221,16 +221,16 @@ func testCommitBatchAndFinalizeBatch4844(t *testing.T) {
 	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 		MaxBlockNumPerChunk:             100,
 		MaxTxNumPerChunk:                10000,
-		MaxL1CommitGasPerChunk:          1,
-		MaxL1CommitCalldataSizePerChunk: 1,
+		MaxL1CommitGasPerChunk:          1000000,
+		MaxL1CommitCalldataSizePerChunk: 100000,
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
 	}, chainConfig, db, nil)
 
 	bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		MaxChunkNumPerBatch:             10,
-		MaxL1CommitGasPerBatch:          1,
-		MaxL1CommitCalldataSizePerBatch: 1,
+		MaxL1CommitGasPerBatch:          1000000,
+		MaxL1CommitCalldataSizePerBatch: 100000,
 		BatchTimeoutSec:                 300,
 	}, chainConfig, db, nil)
 
