@@ -35,15 +35,3 @@ make rollup_bins
 ./build/bin/gas_oracle --config ./conf/config.json
 ./build/bin/rollup_relayer --config ./conf/config.json
 ```
-
-### Running unit tests
-
-Follow these steps to run unit tests, in the repo's root dir:
-
-```
-wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
-wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(PWD)
-export CGO_LDFLAGS="-L$(PWD) -Wl,-rpath=$(PWD)"
-go test -v -race ./...
-```

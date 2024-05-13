@@ -8,13 +8,22 @@ mock_abi:
 	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --bin=./build/bin/MockBridge.bin --abi=./build/bin/MockBridge.abi --pkg=mock_bridge --out=./rollup/mock_bridge/MockBridge.go
 
 libzstd:
-	@wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
-	@wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
+	mkdir -p /scroll/lib
+	wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
+	wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
 
 rollup_bins: libzstd ## Builds the Rollup bins.
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(PWD) && export CGO_LDFLAGS="-L$(PWD) -Wl,-rpath=$(PWD)" && go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(PWD) && export CGO_LDFLAGS="-L$(PWD) -Wl,-rpath=$(PWD)" && go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
-	export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(PWD) && export CGO_LDFLAGS="-L$(PWD) -Wl,-rpath=$(PWD)" && go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
+	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:/scroll/lib && \
+	export CGO_LDFLAGS="-L/scroll/lib -Wl,-rpath=/scroll/lib" && \
+	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
+
+	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:/scroll/lib && \
+	export CGO_LDFLAGS="-L/scroll/lib -Wl,-rpath=/scroll/lib" && \
+	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
+
+	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:/scroll/lib && \
+	export CGO_LDFLAGS="-L/scroll/lib -Wl,-rpath=/scroll/lib" && \
+	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
 
 event_watcher: ## Builds the event_watcher bin
 	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/

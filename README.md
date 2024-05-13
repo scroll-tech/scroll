@@ -46,10 +46,11 @@ make dev_docker
 Run the tests using the following commands:
 
 ```bash
-wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
-wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(PWD)
-export CGO_LDFLAGS="-L$(PWD) -Wl,-rpath=$(PWD)"
+mkdir -p /scroll/lib
+wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
+wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/scroll/lib/
+export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath=/scroll/lib/"
 go test -v -race -covermode=atomic scroll-tech/rollup/...
 
 go test -tags="mock_verifier" -v -race -covermode=atomic scroll-tech/coordinator/...
