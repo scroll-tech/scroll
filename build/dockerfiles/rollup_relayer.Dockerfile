@@ -15,7 +15,7 @@ RUN go mod download -x
 # Build rollup_relayer
 FROM base as builder
 
-RUN mkdir /scroll/lib
+RUN mkdir -p /scroll/lib/
 RUN apt-get -qq update && apt-get -qq install -y wget
 RUN wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
 RUN wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
@@ -29,7 +29,7 @@ RUN --mount=target=. \
 # Pull rollup_relayer into a second stage deploy alpine container
 FROM ubuntu:20.04
 
-RUN mkdir /scroll/lib
+RUN mkdir -p /scroll/lib/
 RUN apt-get -qq update && apt-get -qq install -y wget
 RUN wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
 RUN wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
