@@ -8,11 +8,11 @@ import (
 )
 
 var (
-	// TxByAddressCtl the TxsByAddressController instance
-	TxByAddressCtl *TxsByAddressController
+	// TxsByAddressCtl the TxsByAddressController instance
+	TxsByAddressCtl *TxsByAddressController
 
-	// TxByHashesCtl the TxsByHashesController instance
-	TxByHashesCtl *TxsByHashesController
+	// TxsByHashesCtl the TxsByHashesController instance
+	TxsByHashesCtl *TxsByHashesController
 
 	// L2UnClaimedWithdrawalsByAddressCtl the L2UnclaimedWithdrawalsByAddressController instance
 	L2UnClaimedWithdrawalsByAddressCtl *L2UnclaimedWithdrawalsByAddressController
@@ -26,8 +26,8 @@ var (
 // InitController inits Controller with database
 func InitController(db *gorm.DB, redis *redis.Client) {
 	initControllerOnce.Do(func() {
-		TxByAddressCtl = NewTxsByAddressController(db, redis)
-		TxByHashesCtl = NewTxsByHashesController(db, redis)
+		TxsByAddressCtl = NewTxsByAddressController(db, redis)
+		TxsByHashesCtl = NewTxsByHashesController(db, redis)
 		L2UnClaimedWithdrawalsByAddressCtl = NewL2UnclaimedWithdrawalsByAddressController(db, redis)
 		L2WithdrawalsByAddressCtl = NewL2WithdrawalsByAddressController(db, redis)
 	})
