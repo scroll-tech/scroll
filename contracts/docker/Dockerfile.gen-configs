@@ -23,8 +23,10 @@ ENV FOUNDRY_BYTECODE_HASH="none"
 RUN forge build
 
 # copy script configs
+COPY ./docker/templates/bridge-history-config.json /contracts/docker/templates/bridge-history-config.json
 COPY ./docker/templates/config-contracts.toml /contracts/docker/templates/config-contracts.toml
 COPY ./docker/templates/genesis.json /contracts/docker/templates/genesis.json
+COPY ./docker/templates/rollup-config.json /contracts/docker/templates/rollup-config.json
 
 COPY ./docker/scripts/gen-configs.sh /contracts/docker/scripts/gen-configs.sh
 
