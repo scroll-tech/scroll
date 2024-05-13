@@ -77,11 +77,10 @@ func (h *HistoryLogic) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, a
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
 		var txHistoryInfos []*types.TxHistoryInfo
-		crossMessages, err := h.crossMessageOrm.GetL2UnclaimedWithdrawalsByAddress(ctx, address)
-		if err != nil {
-			return nil, err
+		crossMessages, getErr := h.crossMessageOrm.GetL2UnclaimedWithdrawalsByAddress(ctx, address)
+		if getErr != nil {
+			return nil, getErr
 		}
-
 		for _, message := range crossMessages {
 			txHistoryInfos = append(txHistoryInfos, getTxHistoryInfoFromCrossMessage(message))
 		}
@@ -121,9 +120,9 @@ func (h *HistoryLogic) GetL2WithdrawalsByAddress(ctx context.Context, address st
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
 		var txHistoryInfos []*types.TxHistoryInfo
-		crossMessages, err := h.crossMessageOrm.GetL2WithdrawalsByAddress(ctx, address)
-		if err != nil {
-			return nil, err
+		crossMessages, getErr := h.crossMessageOrm.GetL2WithdrawalsByAddress(ctx, address)
+		if getErr != nil {
+			return nil, getErr
 		}
 		for _, message := range crossMessages {
 			txHistoryInfos = append(txHistoryInfos, getTxHistoryInfoFromCrossMessage(message))
@@ -164,17 +163,17 @@ func (h *HistoryLogic) GetTxsByAddress(ctx context.Context, address string, page
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
 		var txHistoryInfos []*types.TxHistoryInfo
-		crossMessages, getTxsByAddressErr := h.crossMessageOrm.GetTxsByAddress(ctx, address)
-		if getTxsByAddressErr != nil {
-			return nil, getTxsByAddressErr
+		crossMessages, getErr := h.crossMessageOrm.GetTxsByAddress(ctx, address)
+		if getErr != nil {
+			return nil, getErr
 		}
 		for _, message := range crossMessages {
 			txHistoryInfos = append(txHistoryInfos, getTxHistoryInfoFromCrossMessage(message))
 		}
 
-		batchDepositMessages, getTxsByAddressErr := h.bridgeBatchDepositOrm.GetTxsByAddress(ctx, address)
-		if getTxsByAddressErr != nil {
-			return nil, getTxsByAddressErr
+		batchDepositMessages, getErr := h.bridgeBatchDepositOrm.GetTxsByAddress(ctx, address)
+		if getErr != nil {
+			return nil, getErr
 		}
 		for _, message := range batchDepositMessages {
 			txHistoryInfos = append(txHistoryInfos, getTxHistoryInfoFromBridgeBatchDepositMessage(message))
