@@ -6,7 +6,7 @@ import (
 )
 
 <<<<<<< feat/history_batch_deposit
-var tag = "v4.4.4"
+var tag = "v4.4.5"
 =======
 var tag = "v4.4.5"
 >>>>>>> develop
