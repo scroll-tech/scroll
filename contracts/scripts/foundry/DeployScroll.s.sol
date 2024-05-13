@@ -2039,14 +2039,14 @@ contract GenerateBridgeHistoryConfig is DeployScroll {
         setScriptMode(ScriptMode.VerifyConfig);
         predictAllContracts();
 
-        generateRollupConfig();
+        generateBridgeHistoryConfig();
     }
 
     /*********************
      * Private functions *
      *********************/
 
-    function generateRollupConfig() private {
+    function generateBridgeHistoryConfig() private {
         // initialize template file
         if (vm.exists(BRIDGE_HISTORY_CONFIG_PATH)) {
             vm.removeFile(BRIDGE_HISTORY_CONFIG_PATH);
