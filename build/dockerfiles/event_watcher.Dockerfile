@@ -15,7 +15,7 @@ RUN go mod download -x
 # Build event_watcher
 FROM base as builder
 
-RUN mkdir -p /scroll/lib
+RUN mkdir -p /scroll/lib/
 RUN apt-get -qq update && apt-get -qq install -y wget
 RUN wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
 RUN wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so

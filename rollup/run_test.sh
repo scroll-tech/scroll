@@ -1,17 +1,13 @@
 #!/bin/bash
 
 # Download .so files
-wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
-wget https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
+sudo mkdir -p /scroll/lib/
+sudo wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
+sudo wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
 
 # Set the environment variable
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$(pwd)
-export CGO_LDFLAGS="-L$(pwd) -Wl,-rpath=$(pwd)"
-
-# Print the values of the variables
-echo "Current directory: $(pwd)"
-echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
-echo "CGO_LDFLAGS: $CGO_LDFLAGS"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/scroll/lib/
+export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath=/scroll/lib/"
 
 # Run module tests
 go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...
