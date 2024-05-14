@@ -209,7 +209,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     }
 
     /// @notice Deposit ETH.
-    function depositETH() external payable {
+    function depositETH() external payable nonReentrant {
         // no safe cast check here, since no one has so much ETH yet.
         _deposit(address(0), _msgSender(), uint96(msg.value));
     }
@@ -218,7 +218,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     ///
     /// @param token The address of token.
     /// @param amount The amount of token to deposit. We use type `uint96`, since it is enough for most of the major tokens.
-    function depositERC20(address token, uint96 amount) external {
+    function depositERC20(address token, uint96 amount) external nonReentrant {
         if (token == address(0)) revert ErrorIncorrectMethodForETHDeposit();
 
         // common practice to handle fee on transfer token.
@@ -345,7 +345,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         address token,
         address sender,
         uint96 amount
-    ) internal nonReentrant {
+    ) internal {
         BatchConfig memory cachedBatchConfig = configs[token];
         TokenState memory cachedTokenState = tokens[token];
         _tryFinalizeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
