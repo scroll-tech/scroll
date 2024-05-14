@@ -27,7 +27,7 @@ type BridgeBatchDepositEvent struct {
 	L1BlockNumber  uint64     `json:"l1_block_number" gorm:"column:l1_block_number"`
 	L2BlockNumber  uint64     `json:"l2_block_number" gorm:"column:l2_block_number"`
 	L1TxHash       string     `json:"l1_tx_hash" gorm:"column:l1_tx_hash"`
-	L1LogIndex     uint       `json:"l1_log_index" gorm:"l1_log_index"`
+	L1LogIndex     uint       `json:"l1_log_index" gorm:"column:l1_log_index"`
 	L2TxHash       string     `json:"l2_tx_hash" gorm:"column:l2_tx_hash"`
 	TxStatus       int        `json:"tx_status" gorm:"column:tx_status"`
 	BlockTimestamp uint64     `json:"block_timestamp" gorm:"column:block_timestamp"`
