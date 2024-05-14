@@ -83,7 +83,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     /// @notice The safe gas limit for batch bridge.
     uint256 private constant SAFE_BATCH_BRIDGE_GAS_LIMIT = 200000;
 
-    /// @notice The address of corresponding `L2BatchDepositGateway` contract.
+    /// @notice The address of corresponding `L2BatchBridgeGateway` contract.
     address public immutable counterpart;
 
     /// @notice The address of `L1GatewayRouter` contract.
@@ -166,7 +166,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
      * Constructor *
      ***************/
 
-    /// @param _counterpart The address of `L2BatchDepositGateway` contract in L2.
+    /// @param _counterpart The address of `L2BatchBridgeGateway` contract in L2.
     /// @param _router The address of `L1GatewayRouter` contract in L1.
     /// @param _messenger The address of `L1ScrollMessenger` contract in L1.
     /// @param _queue The address of `L1MessageQueue` contract in L1.
@@ -184,7 +184,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         queue = _queue;
     }
 
-    /// @notice Initialize the storage of `L1BatchDepositGateway`.
+    /// @notice Initialize the storage of `L1BatchBridgeGateway`.
     /// @param _feeVault The address of fee vault contract.
     function initialize(address _feeVault) external initializer {
         __Context_init(); // from ContextUpgradeable
