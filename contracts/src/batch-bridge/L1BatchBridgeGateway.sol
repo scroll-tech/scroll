@@ -239,7 +239,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     ///
     /// @param token The address of token to update.
     /// @param newConfig The new config.
-    function setBatchConfig(address token, BatchConfig memory newConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setBatchConfig(address token, BatchConfig calldata newConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (
             newConfig.maxTxsPerBatch == 0 ||
             newConfig.maxDelayPerBatch == 0 ||
@@ -350,10 +350,10 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         TokenState memory cachedTokenState = tokens[token];
         _tryFinalizeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
 
-        BatchState memory cachedBatchState = batches[token][cachedTokenState.currentBatchIndex];
         if (amount < cachedBatchConfig.minAmountPerTx) {
             revert ErrorDepositAmountTooSmall();
         }
+        BatchState memory cachedBatchState = batches[token][cachedTokenState.currentBatchIndex];
 
         emit Deposit(sender, token, cachedTokenState.currentBatchIndex, amount, cachedBatchConfig.feeAmountPerTx);
 
