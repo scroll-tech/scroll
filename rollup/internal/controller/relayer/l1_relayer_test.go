@@ -32,7 +32,7 @@ func setupL1RelayerDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// testCreateNewRelayer test create new relayer instance and stop
+// testCreateNewL1Relayer test create new relayer instance and stop
 func testCreateNewL1Relayer(t *testing.T) {
 	db := setupL1RelayerDB(t)
 	defer database.CloseDB(db)
