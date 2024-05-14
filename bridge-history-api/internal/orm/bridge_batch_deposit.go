@@ -29,7 +29,6 @@ type BridgeBatchDepositEvent struct {
 	L1TxHash       string     `json:"l1_tx_hash" gorm:"column:l1_tx_hash"`
 	L1LogIndex     uint       `json:"l1_log_index" gorm:"l1_log_index"`
 	L2TxHash       string     `json:"l2_tx_hash" gorm:"column:l2_tx_hash"`
-	L2LogIndex     uint       `json:"l2_log_index" gorm:"l2_log_index"`
 	TxStatus       int        `json:"tx_status" gorm:"column:tx_status"`
 	BlockTimestamp uint64     `json:"block_timestamp" gorm:"column:block_timestamp"`
 	CreatedAt      time.Time  `json:"created_at" gorm:"column:created_at"`
@@ -66,7 +65,7 @@ func (c *BridgeBatchDepositEvent) GetMessagesByTxHashes(ctx context.Context, txH
 	var messages []*BridgeBatchDepositEvent
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BridgeBatchDepositEvent{})
-	db = db.Where("l1_tx_hash in (?)", txHashes)
+	db = db.Where("l1_tx_hash in (?) or l2_tx_hash in (?)", txHashes, txHashes)
 	if err := db.Find(&messages).Error; err != nil {
 		return nil, fmt.Errorf("failed to GetMessagesByTxHashes by tx hashes, tx hashes: %v, error: %w", txHashes, err)
 	}
@@ -140,7 +139,6 @@ func (c *BridgeBatchDepositEvent) UpdateBatchEventStatus(ctx context.Context, di
 		"l2_token_address": distributeMessage.L2TokenAddress,
 		"l2_block_number":  distributeMessage.L2BlockNumber,
 		"l2_tx_hash":       distributeMessage.L2TxHash,
-		"l2_log_index":     distributeMessage.L2LogIndex,
 		"tx_status":        types.TxStatusBridgeBatchDistribute,
 	}
 	if err := db.Updates(updateFields).Error; err != nil {

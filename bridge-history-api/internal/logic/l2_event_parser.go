@@ -72,7 +72,6 @@ func (e *L2EventParser) ParseL2BridgeBatchDepositCrossChainEventLogs(logs []type
 				L2TxHash:       vlog.TxHash.String(),
 				TxStatus:       int(btypes.TxStatusBridgeBatchDistribute),
 				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
-				L2LogIndex:     vlog.Index,
 			})
 		case backendabi.L2BridgeBatchDistributeFailedSig:
 			event := backendabi.L2BatchBridgeGatewayDistributeFailed{}
@@ -89,7 +88,6 @@ func (e *L2EventParser) ParseL2BridgeBatchDepositCrossChainEventLogs(logs []type
 				TxStatus:       int(btypes.TxStatusBridgeBatchDistributeFailed),
 				BlockTimestamp: blockTimestampsMap[vlog.BlockNumber],
 				Sender:         event.Receiver.String(),
-				L2LogIndex:     vlog.Index,
 			})
 		}
 	}
