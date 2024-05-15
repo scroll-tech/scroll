@@ -6,7 +6,6 @@ import {AccessControlEnumerableUpgradeable} from "@openzeppelin/contracts-upgrad
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {AddressUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
 import {IL1ERC20Gateway} from "../L1/gateways/IL1ERC20Gateway.sol";
 import {IL1GatewayRouter} from "../L1/gateways/IL1GatewayRouter.sol";
@@ -83,7 +82,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     /// @notice The safe gas limit for batch bridge.
     uint256 private constant SAFE_BATCH_BRIDGE_GAS_LIMIT = 200000;
 
-    /// @notice The address of corresponding `L2BatchDepositGateway` contract.
+    /// @notice The address of corresponding `L2BatchBridgeGateway` contract.
     address public immutable counterpart;
 
     /// @notice The address of `L1GatewayRouter` contract.
@@ -166,7 +165,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
      * Constructor *
      ***************/
 
-    /// @param _counterpart The address of `L2BatchDepositGateway` contract in L2.
+    /// @param _counterpart The address of `L2BatchBridgeGateway` contract in L2.
     /// @param _router The address of `L1GatewayRouter` contract in L1.
     /// @param _messenger The address of `L1ScrollMessenger` contract in L1.
     /// @param _queue The address of `L1MessageQueue` contract in L1.
@@ -184,7 +183,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         queue = _queue;
     }
 
-    /// @notice Initialize the storage of `L1BatchDepositGateway`.
+    /// @notice Initialize the storage of `L1BatchBridgeGateway`.
     /// @param _feeVault The address of fee vault contract.
     function initialize(address _feeVault) external initializer {
         __Context_init(); // from ContextUpgradeable
@@ -209,7 +208,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     }
 
     /// @notice Deposit ETH.
-    function depositETH() external payable {
+    function depositETH() external payable nonReentrant {
         // no safe cast check here, since no one has so much ETH yet.
         _deposit(address(0), _msgSender(), uint96(msg.value));
     }
@@ -218,7 +217,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     ///
     /// @param token The address of token.
     /// @param amount The amount of token to deposit. We use type `uint96`, since it is enough for most of the major tokens.
-    function depositERC20(address token, uint96 amount) external {
+    function depositERC20(address token, uint96 amount) external nonReentrant {
         if (token == address(0)) revert ErrorIncorrectMethodForETHDeposit();
 
         // common practice to handle fee on transfer token.
@@ -239,7 +238,7 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
     ///
     /// @param token The address of token to update.
     /// @param newConfig The new config.
-    function setBatchConfig(address token, BatchConfig memory newConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setBatchConfig(address token, BatchConfig calldata newConfig) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (
             newConfig.maxTxsPerBatch == 0 ||
             newConfig.maxDelayPerBatch == 0 ||
@@ -345,15 +344,15 @@ contract L1BatchBridgeGateway is AccessControlEnumerableUpgradeable, ReentrancyG
         address token,
         address sender,
         uint96 amount
-    ) internal nonReentrant {
+    ) internal {
         BatchConfig memory cachedBatchConfig = configs[token];
         TokenState memory cachedTokenState = tokens[token];
         _tryFinalizeCurrentBatch(token, cachedBatchConfig, cachedTokenState);
 
-        BatchState memory cachedBatchState = batches[token][cachedTokenState.currentBatchIndex];
         if (amount < cachedBatchConfig.minAmountPerTx) {
             revert ErrorDepositAmountTooSmall();
         }
+        BatchState memory cachedBatchState = batches[token][cachedTokenState.currentBatchIndex];
 
         emit Deposit(sender, token, cachedTokenState.currentBatchIndex, amount, cachedBatchConfig.feeAmountPerTx);
 
