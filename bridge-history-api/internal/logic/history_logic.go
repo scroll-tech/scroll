@@ -349,8 +349,8 @@ func getTxHistoryInfoFromBridgeBatchDepositMessage(message *orm.BridgeBatchDepos
 			Hash:        message.L2TxHash,
 			BlockNumber: message.L2BlockNumber,
 		},
-		BlockTimestamp: message.BlockTimestamp,
-		Fee:            message.Fee,
+		BlockTimestamp:  message.BlockTimestamp,
+		BatchDepositFee: message.Fee,
 	}
 }
 
