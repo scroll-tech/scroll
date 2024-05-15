@@ -88,6 +88,7 @@ type TxHistoryInfo struct {
 	CounterpartChainTx *CounterpartChainTx `json:"counterpart_chain_tx"`
 	ClaimInfo          *ClaimInfo          `json:"claim_info"`
 	BlockTimestamp     uint64              `json:"block_timestamp"`
+	Fee                string              `json:"fee"` // only for bridge batch deposit
 }
 
 // RenderJSON renders response with json
