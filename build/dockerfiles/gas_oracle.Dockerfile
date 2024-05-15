@@ -20,7 +20,7 @@ RUN apt-get -qq update && apt-get -qq install -y wget
 RUN wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
 RUN wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
 ENV LD_LIBRARY_PATH=/scroll/lib/
-ENV CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath=/scroll/lib/"
+ENV CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/"
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
@@ -34,7 +34,7 @@ RUN apt-get -qq update && apt-get -qq install -y wget
 RUN wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
 RUN wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
 ENV LD_LIBRARY_PATH=/scroll/lib/
-ENV CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath=/scroll/lib/"
+ENV CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/"
 
 COPY --from=builder /bin/gas_oracle /bin/
 WORKDIR /app

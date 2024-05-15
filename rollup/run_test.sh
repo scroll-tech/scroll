@@ -7,7 +7,7 @@ sudo wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-cod
 
 # Set the environment variable
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/scroll/lib/
-export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath=/scroll/lib/"
+export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/"
 
 # Run module tests
 go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...

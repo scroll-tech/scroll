@@ -14,15 +14,15 @@ libzstd:
 
 rollup_bins: libzstd ## Builds the Rollup bins.
 	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:/scroll/lib/ && \
-	export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath=/scroll/lib/" && \
+	export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/" && \
 	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
 
 	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:/scroll/lib/ && \
-	export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath=/scroll/lib/" && \
+	export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/" && \
 	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
 
 	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:/scroll/lib/ && \
-	export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath=/scroll/lib/" && \
+	export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/" && \
 	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
 
 event_watcher: ## Builds the event_watcher bin
