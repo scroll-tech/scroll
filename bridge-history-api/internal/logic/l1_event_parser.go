@@ -38,7 +38,7 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 		return nil, nil, nil, err
 	}
 
-	l1BridgeBatchDepositMessages, err := e.ParseL1BatchBridgeCrossChainEventLogs(logs, blockTimestampsMap)
+	l1BridgeBatchDepositMessages, err := e.ParseL1BridgeBatchDepositCrossChainEventLogs(logs, blockTimestampsMap)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -46,8 +46,8 @@ func (e *L1EventParser) ParseL1CrossChainEventLogs(ctx context.Context, logs []t
 	return l1CrossChainDepositMessages, l1CrossChainRelayedMessages, l1BridgeBatchDepositMessages, nil
 }
 
-// ParseL1BatchBridgeCrossChainEventLogs parse L1 watched batch bridge cross chain events.
-func (e *L1EventParser) ParseL1BatchBridgeCrossChainEventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.BridgeBatchDepositEvent, error) {
+// ParseL1BridgeBatchDepositCrossChainEventLogs parse L1 watched batch bridge cross chain events.
+func (e *L1EventParser) ParseL1BridgeBatchDepositCrossChainEventLogs(logs []types.Log, blockTimestampsMap map[uint64]uint64) ([]*orm.BridgeBatchDepositEvent, error) {
 	var l1BridgeBatchDepositMessages []*orm.BridgeBatchDepositEvent
 	for _, vlog := range logs {
 		switch vlog.Topics[0] {
