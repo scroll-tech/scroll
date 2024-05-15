@@ -1,7 +1,6 @@
 mod types;
 mod base;
 
-
 use types::{ChunkProof, BatchProof, BlockTrace, ChunkHash};
 use anyhow::Result;
 use std::collections::HashMap;

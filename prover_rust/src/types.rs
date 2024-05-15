@@ -1,4 +1,4 @@
-use prover::BatchProof;
+use prover::{BatchProof, ChunkProof, ChunkHash};
 use serde::{Deserialize, Serialize, Serializer, Deserializer};
 use eth_types::H256;
 
@@ -55,36 +55,14 @@ impl Default for ProofType {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct ChunkInfo {
-    pub chain_id: u64,
-    pub prev_state_root: CommonHash,
-    pub post_state_root: CommonHash,
-    pub withdraw_root: CommonHash,
-    pub data_hash: CommonHash,
-    pub is_padding: bool,
-    pub tx_bytes: Bytes,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ChunkProof {
-    pub storage_trace: Bytes,
-    pub protocol: Bytes,
-    pub proof: Bytes,
-    pub instances: Bytes,
-    pub vk: Bytes,
-    pub chunk_info: ChunkInfo,
-    pub git_version: String,
-}
-
-#[derive(Serialize, Deserialize)]
 pub struct BatchTaskDetail {
-    chunk_infos: Vec<ChunkInfo>,
-    chunk_proofs: Vec<ChunkProof>,
+    pub chunk_infos: Vec<ChunkHash>,
+    pub chunk_proofs: Vec<ChunkProof>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct ChunkTaskDetail {
-    block_hashes: Vec<CommonHash>,
+    pub block_hashes: Vec<CommonHash>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -97,6 +75,17 @@ pub struct Task {
     pub batch_task_detail: Option<BatchTaskDetail>,
     #[serde(default)]
     pub chunk_task_detail: Option<ChunkTaskDetail>,
+    #[serde(default)]
+    pub hard_fork_name: Option<String>,
+}
+
+impl Task {
+    pub fn get_version(&self) -> String {
+        match self.hard_fork_name {
+            Some(v) => v,
+            None => "".to_string(),
+        }
+    }
 }
 
 impl TryFrom<&GetTaskResponseData> for Task {
@@ -109,6 +98,7 @@ impl TryFrom<&GetTaskResponseData> for Task {
             task_type: value.task_type,
             chunk_task_detail: None,
             batch_task_detail: None,
+            hard_fork_name: None,
         };
         match task.task_type {
             ProofType::ProofTypeBatch => {
@@ -123,13 +113,102 @@ impl TryFrom<&GetTaskResponseData> for Task {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct ProofDetail {
     pub id: String,
     #[serde(rename = "type", default)]
     pub proof_type: ProofType,
-    pub status: u32,
+    pub status: ProofStatus,
     pub chunk_proof: Option<ChunkProof>,
     pub batch_proof: Option<BatchProof>,
     pub error: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ProofFailureType {
+    Undefined,
+    Panic,
+    NoPanic
+}
+
+impl ProofFailureType {
+    fn from_u8(v: u8) -> Self {
+        match v {
+            1 => ProofFailureType::Panic,
+            2 => ProofFailureType::NoPanic,
+            _ => ProofFailureType::Undefined,
+        }
+    }
+}
+
+impl Serialize for ProofFailureType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            ProofFailureType::Undefined => serializer.serialize_u8(0),
+            ProofFailureType::Panic => serializer.serialize_u8(1),
+            ProofFailureType::NoPanic => serializer.serialize_u8(2),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ProofFailureType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: u8 = u8::deserialize(deserializer)?;
+        Ok(ProofFailureType::from_u8(v))
+    }
+}
+
+impl Default for ProofFailureType {
+    fn default() -> Self {
+        Self::Undefined
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ProofStatus {
+    Ok,
+    Error,
+}
+
+impl ProofStatus {
+    fn from_u8(v: u8) -> Self {
+        match v {
+            0 => ProofStatus::Ok,
+            _ => ProofStatus::Error,
+        }
+    }
+}
+
+impl Serialize for ProofStatus {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            ProofStatus::Ok => serializer.serialize_u8(0),
+            ProofStatus::Error => serializer.serialize_u8(1),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ProofStatus {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: u8 = u8::deserialize(deserializer)?;
+        Ok(ProofStatus::from_u8(v))
+    }
+}
+
+impl Default for ProofStatus {
+    fn default() -> Self {
+        Self::Ok
+    }
 }

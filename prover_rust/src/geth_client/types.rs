@@ -19,6 +19,10 @@ pub struct BlockTrace {
     pub mpt_witness: Vec<u8>,
 }
 
+pub fn get_block_number(block_trace: &ProverBlockTrace) -> Option<u64> {
+    block_trace.header.number.map(|n| n.as_u64())
+}
+
 pub type TxHash = H256;
 
 /// this struct is tracked to https://github.com/scroll-tech/go-ethereum/blob/0f0cd99f7a2e/core/types/block.go#Header

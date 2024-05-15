@@ -52,7 +52,7 @@ impl API {
     pub async fn get_task(&self, req: &GetTaskRequest, token: &String) -> Result<Response<GetTaskResponseData>> {
         let method = "/coordinator/v1/get_task";
         let url = self.build_url(method)?;
-        let request_body = serde_json::to_string(&req)?;
+        let request_body = serde_json::to_string(req)?;
 
         let response = self.client
             .post(url)
@@ -67,11 +67,11 @@ impl API {
         serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
     }
 
-    pub async fn submit_proof(&self, req: SubmitProofRequest, token: &String)  -> Result<Response<SubmitProofResponseData>> {
+    pub async fn submit_proof(&self, req: &SubmitProofRequest, token: &String)  -> Result<Response<SubmitProofResponseData>> {
         let method = "/coordinator/v1/submit_proof";
 
         let url = self.build_url(method)?;
-        let request_body = serde_json::to_string(&req)?;
+        let request_body = serde_json::to_string(req)?;
 
         let response = self.client
             .post(url)

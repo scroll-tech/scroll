@@ -1,6 +1,7 @@
-
+mod version;
 mod types;
 mod config;
+mod key_signer;
 mod prover;
 mod zk_circuits_handler;
 mod coordinator_client;
@@ -36,9 +37,14 @@ impl<'a> TaskProcesser<'a> {
     fn prove_and_submit(&self) -> Result<()> {
         let task = self.prover.fetch_task()?;
 
-        let proof_detail = self.prover.prove_task(&task)?;
-
-        self.prover.submit_proof(&proof_detail, task.uuid)
+        match self.prover.prove_task(&task) {
+            Ok(proof_detail) => {
+                self.prover.submit_proof(&proof_detail, task.uuid)
+            },
+            Err(error) => {
+                self.prover.submit_error(&task, types::ProofFailureType::NoPanic, error)
+            },
+        }
     }
 }
 

@@ -2991,17 +2991,23 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.13.1",
+ "eth-keystore",
  "eth-types",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
  "ethers-providers 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
  "futures",
  "halo2_proofs",
+ "hex",
  "log",
+ "once_cell",
  "prover",
+ "rand",
  "reqwest 0.12.4",
+ "rlp",
  "serde",
  "serde_json",
  "snark-verifier-sdk",
+ "tiny-keccak",
 ]
 
 [[package]]

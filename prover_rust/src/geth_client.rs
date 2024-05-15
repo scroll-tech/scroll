@@ -1,4 +1,4 @@
-mod types;
+pub mod types;
 
 use anyhow::Result;
 use crate::types::CommonHash;

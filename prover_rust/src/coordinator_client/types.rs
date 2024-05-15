@@ -1,4 +1,7 @@
+use eth_types::Bytes;
 use serde::{Deserialize, Serialize};
+use crate::types::{ProofStatus, ProofFailureType};
+use rlp::RlpStream;
 
 #[derive(Serialize, Deserialize)]
 pub struct Response<T> {
@@ -16,12 +19,15 @@ pub struct LoginMessage {
 }
 
 impl LoginMessage {
-    pub fn hash() -> Result<Vec<u8>> {
-
-    }
-
-    pub fn sign_with_key() -> Result<String> {
-
+    pub fn rlp(&self) -> Vec<u8> {
+        let mut rlp = RlpStream::new();
+        let num_fields = 4;
+        rlp.begin_list(num_fields);
+        rlp.append(&self.prover_name);
+        rlp.append(&self.prover_version);
+        rlp.append(&self.challenge);
+        rlp.append(&self.hard_fork_name);
+        rlp.out().freeze().into()
     }
 }
 
@@ -52,16 +58,17 @@ pub struct GetTaskResponseData {
     pub task_id: String,
     pub task_type: crate::types::ProofType,
     pub task_data: String,
+    pub hard_fork_name: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct SubmitProofRequest {
     pub uuid: String,
     pub task_id: String,
-    pub task_type: i32,
-    pub status: i32,
+    pub task_type: crate::types::ProofType,
+    pub status: ProofStatus,
     pub proof: String,
-    pub failure_type: Option<i32>,
+    pub failure_type: Option<ProofFailureType>,
     pub failure_msg: Option<String>,
 }
 
