@@ -61,7 +61,6 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		common.HexToAddress(cfg.ERC1155GatewayAddr),
 
 		common.HexToAddress(cfg.MessengerAddr),
-		common.HexToAddress(cfg.BatchBridgeGatewayAddr),
 	}
 
 	gatewayList := []common.Address{
@@ -78,11 +77,9 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		common.HexToAddress(cfg.MessengerAddr),
 
 		common.HexToAddress(cfg.GatewayRouterAddr),
-
-		common.HexToAddress(cfg.BatchBridgeGatewayAddr),
 	}
 
-	// Optional erc20 gateways.
+	// Optional gateways.
 	if common.HexToAddress(cfg.USDCGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.USDCGatewayAddr))
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.USDCGatewayAddr))
@@ -96,6 +93,11 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 	if common.HexToAddress(cfg.PufferGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.PufferGatewayAddr))
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.PufferGatewayAddr))
+	}
+
+	if common.HexToAddress(cfg.BatchBridgeGatewayAddr) != (common.Address{}) {
+		addressList = append(addressList, common.HexToAddress(cfg.BatchBridgeGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.BatchBridgeGatewayAddr))
 	}
 
 	log.Info("L2 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)
