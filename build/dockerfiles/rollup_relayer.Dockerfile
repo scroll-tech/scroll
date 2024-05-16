@@ -18,6 +18,9 @@ RUN go mod download -x
 # Build rollup_relayer
 FROM base as builder
 
+ARG LIBSCROLL_ZSTD_VERSION
+ARG SCROLL_LIB_PATH
+
 RUN mkdir -p $SCROLL_LIB_PATH
 
 RUN apt-get -qq update && apt-get -qq install -y wget
@@ -34,6 +37,9 @@ RUN --mount=target=. \
 
 # Pull rollup_relayer into a second stage deploy alpine container
 FROM ubuntu:20.04
+
+ARG LIBSCROLL_ZSTD_VERSION
+ARG SCROLL_LIB_PATH
 
 RUN mkdir -p $SCROLL_LIB_PATH
 
