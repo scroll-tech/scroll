@@ -2,27 +2,29 @@
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
+LIBSCROLL_ZSTD_VERSION=v0.0.0-rc0-ubuntu20.04
+SCROLL_LIB_PATH=/scroll/lib
 
 mock_abi:
 	cd .. && solc --evm-version cancun --bin --abi --optimize --overwrite -o ./build/bin ./rollup/mock_bridge/MockBridge.sol
 	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --bin=./build/bin/MockBridge.bin --abi=./build/bin/MockBridge.abi --pkg=mock_bridge --out=./rollup/mock_bridge/MockBridge.go
 
 libzstd:
-	sudo mkdir -p /scroll/lib/
-	sudo wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
-	sudo wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
+	sudo mkdir -p $(SCROLL_LIB_PATH)/
+	wget -O $(SCROLL_LIB_PATH)/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
+	wget -O $(SCROLL_LIB_PATH)/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
 
 rollup_bins: libzstd ## Builds the Rollup bins.
-	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:/scroll/lib/ && \
-	export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/" && \
+	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(SCROLL_LIB_PATH) && \
+	export CGO_LDFLAGS="-L$(SCROLL_LIB_PATH) -Wl,-rpath,$(SCROLL_LIB_PATH)" && \
 	go build -o $(PWD)/build/bin/event_watcher ./cmd/event_watcher/
 
-	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:/scroll/lib/ && \
-	export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/" && \
+	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(SCROLL_LIB_PATH) && \
+	export CGO_LDFLAGS="-L$(SCROLL_LIB_PATH) -Wl,-rpath,$(SCROLL_LIB_PATH)" && \
 	go build -o $(PWD)/build/bin/gas_oracle ./cmd/gas_oracle/
 
-	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:/scroll/lib/ && \
-	export CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/" && \
+	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(SCROLL_LIB_PATH) && \
+	export CGO_LDFLAGS="-L$(SCROLL_LIB_PATH) -Wl,-rpath,$(SCROLL_LIB_PATH)" && \
 	go build -o $(PWD)/build/bin/rollup_relayer ./cmd/rollup_relayer/
 
 event_watcher: ## Builds the event_watcher bin

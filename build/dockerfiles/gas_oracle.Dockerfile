@@ -1,3 +1,6 @@
+ARG LIBSCROLL_ZSTD_VERSION=v0.0.0-rc0-ubuntu20.04
+ARG SCROLL_LIB_PATH=/scroll/lib
+
 # Download Go dependencies
 FROM scrolltech/go-rust-builder:go-1.21-rust-nightly-2023-12-03 as base
 
@@ -15,12 +18,18 @@ RUN go mod download -x
 # Build gas_oracle
 FROM base as builder
 
-RUN mkdir -p /scroll/lib/
+ARG LIBSCROLL_ZSTD_VERSION
+ARG SCROLL_LIB_PATH
+
+RUN mkdir -p $SCROLL_LIB_PATH
+
 RUN apt-get -qq update && apt-get -qq install -y wget
-RUN wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
-RUN wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
-ENV LD_LIBRARY_PATH=/scroll/lib/
-ENV CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/"
+
+RUN wget -O $SCROLL_LIB_PATH/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libzktrie.so
+RUN wget -O $SCROLL_LIB_PATH/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libscroll_zstd.so
+
+ENV LD_LIBRARY_PATH=$SCROLL_LIB_PATH
+ENV CGO_LDFLAGS="-L$SCROLL_LIB_PATH -Wl,-rpath,$SCROLL_LIB_PATH"
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
@@ -29,12 +38,18 @@ RUN --mount=target=. \
 # Pull gas_oracle into a second stage deploy alpine container
 FROM ubuntu:20.04
 
-RUN mkdir -p /scroll/lib/
+ARG LIBSCROLL_ZSTD_VERSION
+ARG SCROLL_LIB_PATH
+
+RUN mkdir -p $SCROLL_LIB_PATH
+
 RUN apt-get -qq update && apt-get -qq install -y wget
-RUN wget -O /scroll/lib/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libzktrie.so
-RUN wget -O /scroll/lib/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc0-ubuntu20.04/libscroll_zstd.so
-ENV LD_LIBRARY_PATH=/scroll/lib/
-ENV CGO_LDFLAGS="-L/scroll/lib/ -Wl,-rpath,/scroll/lib/"
+
+RUN wget -O $SCROLL_LIB_PATH/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libzktrie.so
+RUN wget -O $SCROLL_LIB_PATH/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libscroll_zstd.so
+
+ENV LD_LIBRARY_PATH=$SCROLL_LIB_PATH
+ENV CGO_LDFLAGS="-L$SCROLL_LIB_PATH -Wl,-rpath,$SCROLL_LIB_PATH"
 
 COPY --from=builder /bin/gas_oracle /bin/
 WORKDIR /app
