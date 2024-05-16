@@ -337,14 +337,13 @@ func getTxHistoryInfoFromCrossMessage(message *orm.CrossMessage) *types.TxHistor
 }
 
 func getTxHistoryInfoFromBridgeBatchDepositMessage(message *orm.BridgeBatchDepositEvent) *types.TxHistoryInfo {
-	return &types.TxHistoryInfo{
-		Hash:           message.L1TxHash,
-		TokenType:      btypes.TokenType(message.TokenType),
-		TokenAmounts:   utils.ConvertStringToStringArray(message.TokenAmount),
-		L1TokenAddress: message.L1TokenAddress,
-		L2TokenAddress: message.L2TokenAddress,
-		BlockNumber:    message.L1BlockNumber,
-		TxStatus:       btypes.TxStatusType(message.TxStatus),
+	txHistory := &types.TxHistoryInfo{
+		Hash:         message.L1TxHash,
+		TokenType:    btypes.TokenType(message.TokenType),
+		TokenAmounts: utils.ConvertStringToStringArray(message.TokenAmount),
+		BlockNumber:  message.L1BlockNumber,
+		MessageType:  btypes.MessageTypeL1BatchDeposit,
+		TxStatus:     btypes.TxStatusType(message.TxStatus),
 		CounterpartChainTx: &types.CounterpartChainTx{
 			Hash:        message.L2TxHash,
 			BlockNumber: message.L2BlockNumber,
@@ -352,6 +351,11 @@ func getTxHistoryInfoFromBridgeBatchDepositMessage(message *orm.BridgeBatchDepos
 		BlockTimestamp:  message.BlockTimestamp,
 		BatchDepositFee: message.Fee,
 	}
+	if txHistory.TokenType != btypes.TokenTypeETH {
+		txHistory.L1TokenAddress = message.L1TokenAddress
+		txHistory.L2TokenAddress = message.L2TokenAddress
+	}
+	return txHistory
 }
 
 func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pageNum, pageSize uint64) ([]*types.TxHistoryInfo, uint64, bool, error) {

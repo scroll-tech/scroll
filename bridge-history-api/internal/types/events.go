@@ -49,6 +49,7 @@ const (
 	MessageTypeUnknown MessageType = iota
 	MessageTypeL1SentMessage
 	MessageTypeL2SentMessage
+	MessageTypeL1BatchDeposit
 )
 
 // RollupStatusType represents the status of a rollup.
