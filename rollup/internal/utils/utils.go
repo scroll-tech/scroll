@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/da-codec/encoding/codecv0"
@@ -81,6 +82,11 @@ type ChunkMetrics struct {
 
 	// codecv1 metrics, default 0 for codecv0
 	L1CommitBlobSize uint64
+
+	// timing metrics
+	EstimateGasTime          time.Duration
+	EstimateCalldataSizeTime time.Duration
+	EstimateBlobSizeTime     time.Duration
 }
 
 // CalculateChunkMetrics calculates chunk metrics.
@@ -97,27 +103,48 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 	}
 	switch codecVersion {
 	case encoding.CodecV0:
-		metrics.L1CommitCalldataSize, err = codecv0.EstimateChunkL1CommitCalldataSize(chunk)
-		if err != nil {
-			return nil, fmt.Errorf("failed to estimate codecv0 chunk L1 commit calldata size: %w", err)
-		}
+		start := time.Now()
 		metrics.L1CommitGas, err = codecv0.EstimateChunkL1CommitGas(chunk)
+		metrics.EstimateGasTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv0 chunk L1 commit gas: %w", err)
 		}
+
+		start = time.Now()
+		metrics.L1CommitCalldataSize, err = codecv0.EstimateChunkL1CommitCalldataSize(chunk)
+		metrics.EstimateCalldataSizeTime = time.Since(start)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate codecv0 chunk L1 commit calldata size: %w", err)
+		}
 		return metrics, nil
 	case encoding.CodecV1:
+		start := time.Now()
 		metrics.L1CommitGas = codecv1.EstimateChunkL1CommitGas(chunk)
+		metrics.EstimateGasTime = time.Since(start)
+
+		start = time.Now()
 		metrics.L1CommitCalldataSize = codecv1.EstimateChunkL1CommitCalldataSize(chunk)
+		metrics.EstimateCalldataSizeTime = time.Since(start)
+
+		start = time.Now()
 		metrics.L1CommitBlobSize, err = codecv1.EstimateChunkL1CommitBlobSize(chunk)
+		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv1 chunk L1 commit blob size: %w", err)
 		}
 		return metrics, nil
 	case encoding.CodecV2:
+		start := time.Now()
 		metrics.L1CommitGas = codecv2.EstimateChunkL1CommitGas(chunk)
+		metrics.EstimateGasTime = time.Since(start)
+
+		start = time.Now()
 		metrics.L1CommitCalldataSize = codecv2.EstimateChunkL1CommitCalldataSize(chunk)
+		metrics.EstimateCalldataSizeTime = time.Since(start)
+
+		start = time.Now()
 		metrics.L1CommitBlobSize, err = codecv2.EstimateChunkL1CommitBlobSize(chunk)
+		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv2 chunk L1 commit blob size: %w", err)
 		}
@@ -138,6 +165,11 @@ type BatchMetrics struct {
 
 	// codecv1 metrics, default 0 for codecv0
 	L1CommitBlobSize uint64
+
+	// timing metrics
+	EstimateGasTime          time.Duration
+	EstimateCalldataSizeTime time.Duration
+	EstimateBlobSizeTime     time.Duration
 }
 
 // CalculateBatchMetrics calculates batch metrics.
@@ -149,27 +181,47 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 	}
 	switch codecVersion {
 	case encoding.CodecV0:
+		start := time.Now()
 		metrics.L1CommitGas, err = codecv0.EstimateBatchL1CommitGas(batch)
+		metrics.EstimateGasTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv0 batch L1 commit gas: %w", err)
 		}
+		start = time.Now()
 		metrics.L1CommitCalldataSize, err = codecv0.EstimateBatchL1CommitCalldataSize(batch)
+		metrics.EstimateCalldataSizeTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv0 batch L1 commit calldata size: %w", err)
 		}
 		return metrics, nil
 	case encoding.CodecV1:
+		start := time.Now()
 		metrics.L1CommitGas = codecv1.EstimateBatchL1CommitGas(batch)
+		metrics.EstimateGasTime = time.Since(start)
+
+		start = time.Now()
 		metrics.L1CommitCalldataSize = codecv1.EstimateBatchL1CommitCalldataSize(batch)
+		metrics.EstimateCalldataSizeTime = time.Since(start)
+
+		start = time.Now()
 		metrics.L1CommitBlobSize, err = codecv1.EstimateBatchL1CommitBlobSize(batch)
+		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv1 batch L1 commit blob size: %w", err)
 		}
 		return metrics, nil
 	case encoding.CodecV2:
+		start := time.Now()
 		metrics.L1CommitGas = codecv2.EstimateBatchL1CommitGas(batch)
+		metrics.EstimateGasTime = time.Since(start)
+
+		start = time.Now()
 		metrics.L1CommitCalldataSize = codecv2.EstimateBatchL1CommitCalldataSize(batch)
+		metrics.EstimateCalldataSizeTime = time.Since(start)
+
+		start = time.Now()
 		metrics.L1CommitBlobSize, err = codecv2.EstimateBatchL1CommitBlobSize(batch)
+		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv2 batch L1 commit blob size: %w", err)
 		}

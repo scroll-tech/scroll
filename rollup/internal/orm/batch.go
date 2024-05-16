@@ -224,7 +224,7 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
 	if batch == nil {
 		return nil, errors.New("invalid args: batch is nil")
 	}
@@ -232,13 +232,6 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 	numChunks := uint64(len(batch.Chunks))
 	if numChunks == 0 {
 		return nil, errors.New("invalid args: batch contains 0 chunk")
-	}
-
-	metrics, err := rutils.CalculateBatchMetrics(batch, codecVersion)
-	if err != nil {
-		log.Error("failed to calculate batch metrics",
-			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
 	}
 
 	var startChunkIndex uint64

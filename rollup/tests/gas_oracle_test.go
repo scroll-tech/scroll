@@ -17,6 +17,7 @@ import (
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"
 	"scroll-tech/rollup/internal/orm"
+	"scroll-tech/rollup/internal/utils"
 )
 
 func testImportL1GasPrice(t *testing.T) {
@@ -98,7 +99,7 @@ func testImportL2GasPrice(t *testing.T) {
 	}
 
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
+	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	// check db status

@@ -48,6 +48,9 @@ type BatchProposer struct {
 	batchChunksNum                     prometheus.Gauge
 	batchFirstBlockTimeoutReached      prometheus.Counter
 	batchChunksProposeNotEnoughTotal   prometheus.Counter
+	batchEstimateGasTime               prometheus.Gauge
+	batchEstimateCalldataSizeTime      prometheus.Gauge
+	batchEstimateBlobSizeTime          prometheus.Gauge
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
@@ -113,6 +116,18 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 			Name: "rollup_propose_batch_chunks_propose_not_enough_total",
 			Help: "Total number of batch chunk propose not enough",
 		}),
+		batchEstimateGasTime: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_propose_batch_estimate_gas_time",
+			Help: "Time taken to estimate gas for the chunk.",
+		}),
+		batchEstimateCalldataSizeTime: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_propose_batch_estimate_calldata_size_time",
+			Help: "Time taken to estimate calldata size for the chunk.",
+		}),
+		batchEstimateBlobSizeTime: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_propose_batch_estimate_blob_size_time",
+			Help: "Time taken to estimate blob size for the chunk.",
+		}),
 	}
 
 	return p
@@ -128,9 +143,9 @@ func (p *BatchProposer) TryProposeBatch() {
 	}
 }
 
-func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion) error {
+func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics utils.BatchMetrics) error {
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, dbTX)
+		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, metrics, dbTX)
 		if dbErr != nil {
 			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "error", dbErr)
 			return dbErr
@@ -216,6 +231,9 @@ func (p *BatchProposer) proposeBatch() error {
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
+
+		p.recordTimerBatchMetrics(metrics)
+
 		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(metrics.L1CommitGas))
 		if metrics.L1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch ||
@@ -242,8 +260,8 @@ func (p *BatchProposer) proposeBatch() error {
 				return fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
 
-			p.recordBatchMetrics(metrics)
-			return p.updateDBBatchInfo(&batch, codecVersion)
+			p.recordAllBatchMetrics(metrics)
+			return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
 		}
 	}
 
@@ -260,11 +278,12 @@ func (p *BatchProposer) proposeBatch() error {
 			"current time", currentTimeSec)
 
 		p.batchFirstBlockTimeoutReached.Inc()
-		p.recordBatchMetrics(metrics)
-		return p.updateDBBatchInfo(&batch, codecVersion)
+		p.recordAllBatchMetrics(metrics)
+		return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
 	}
 
 	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")
+	p.recordTimerBatchMetrics(metrics)
 	p.batchChunksProposeNotEnoughTotal.Inc()
 	return nil
 }
@@ -284,9 +303,18 @@ func (p *BatchProposer) getDAChunks(dbChunks []*orm.Chunk) ([]*encoding.Chunk, e
 	return chunks, nil
 }
 
-func (p *BatchProposer) recordBatchMetrics(metrics *utils.BatchMetrics) {
+func (p *BatchProposer) recordAllBatchMetrics(metrics *utils.BatchMetrics) {
 	p.totalL1CommitGas.Set(float64(metrics.L1CommitGas))
 	p.totalL1CommitCalldataSize.Set(float64(metrics.L1CommitCalldataSize))
 	p.batchChunksNum.Set(float64(metrics.NumChunks))
 	p.totalL1CommitBlobSize.Set(float64(metrics.L1CommitBlobSize))
+	p.batchEstimateGasTime.Set(float64(metrics.EstimateGasTime))
+	p.batchEstimateCalldataSizeTime.Set(float64(metrics.EstimateCalldataSizeTime))
+	p.batchEstimateBlobSizeTime.Set(float64(metrics.EstimateBlobSizeTime))
+}
+
+func (p *BatchProposer) recordTimerBatchMetrics(metrics *utils.BatchMetrics) {
+	p.batchEstimateGasTime.Set(float64(metrics.EstimateGasTime))
+	p.batchEstimateCalldataSizeTime.Set(float64(metrics.EstimateCalldataSizeTime))
+	p.batchEstimateBlobSizeTime.Set(float64(metrics.EstimateBlobSizeTime))
 }

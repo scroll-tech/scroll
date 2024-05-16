@@ -52,6 +52,9 @@ type ChunkProposer struct {
 	chunkBlocksNum                     prometheus.Gauge
 	chunkFirstBlockTimeoutReached      prometheus.Counter
 	chunkBlocksProposeNotEnoughTotal   prometheus.Counter
+	chunkEstimateGasTime               prometheus.Gauge
+	chunkEstimateCalldataSizeTime      prometheus.Gauge
+	chunkEstimateBlobSizeTime          prometheus.Gauge
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
@@ -129,6 +132,18 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 			Name: "rollup_propose_chunk_blocks_propose_not_enough_total",
 			Help: "Total number of chunk block propose not enough",
 		}),
+		chunkEstimateGasTime: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_propose_chunk_estimate_gas_time",
+			Help: "Time taken to estimate gas for the chunk.",
+		}),
+		chunkEstimateCalldataSizeTime: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_propose_chunk_estimate_calldata_size_time",
+			Help: "Time taken to estimate calldata size for the chunk.",
+		}),
+		chunkEstimateBlobSizeTime: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_propose_chunk_estimate_blob_size_time",
+			Help: "Time taken to estimate blob size for the chunk.",
+		}),
 	}
 
 	return p
@@ -144,14 +159,14 @@ func (p *ChunkProposer) TryProposeChunk() {
 	}
 }
 
-func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) error {
+func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, metrics utils.ChunkMetrics) error {
 	if chunk == nil {
 		return nil
 	}
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, dbTX)
+		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, metrics, dbTX)
 		if err != nil {
 			log.Warn("ChunkProposer.InsertChunk failed", "err", err)
 			return err
@@ -210,6 +225,8 @@ func (p *ChunkProposer) proposeChunk() error {
 			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 		}
 
+		p.recordTimerChunkMetrics(metrics)
+
 		overEstimatedL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(metrics.L1CommitGas))
 		if metrics.TxNum > p.maxTxNumPerChunk ||
 			metrics.L1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
@@ -242,8 +259,8 @@ func (p *ChunkProposer) proposeChunk() error {
 				return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 			}
 
-			p.recordChunkMetrics(metrics)
-			return p.updateDBChunkInfo(&chunk, codecVersion)
+			p.recordAllChunkMetrics(metrics)
+			return p.updateDBChunkInfo(&chunk, codecVersion, *metrics)
 		}
 	}
 
@@ -262,20 +279,30 @@ func (p *ChunkProposer) proposeChunk() error {
 			"current time", currentTimeSec)
 
 		p.chunkFirstBlockTimeoutReached.Inc()
-		p.recordChunkMetrics(metrics)
-		return p.updateDBChunkInfo(&chunk, codecVersion)
+		p.recordAllChunkMetrics(metrics)
+		return p.updateDBChunkInfo(&chunk, codecVersion, *metrics)
 	}
 
 	log.Debug("pending blocks do not reach one of the constraints or contain a timeout block")
+	p.recordTimerChunkMetrics(metrics)
 	p.chunkBlocksProposeNotEnoughTotal.Inc()
 	return nil
 }
 
-func (p *ChunkProposer) recordChunkMetrics(metrics *utils.ChunkMetrics) {
+func (p *ChunkProposer) recordAllChunkMetrics(metrics *utils.ChunkMetrics) {
 	p.chunkTxNum.Set(float64(metrics.TxNum))
 	p.maxTxConsumption.Set(float64(metrics.CrcMax))
 	p.chunkBlocksNum.Set(float64(metrics.NumBlocks))
 	p.totalL1CommitCalldataSize.Set(float64(metrics.L1CommitCalldataSize))
 	p.chunkEstimateL1CommitGas.Set(float64(metrics.L1CommitGas))
 	p.totalL1CommitBlobSize.Set(float64(metrics.L1CommitBlobSize))
+	p.chunkEstimateGasTime.Set(float64(metrics.EstimateGasTime))
+	p.chunkEstimateCalldataSizeTime.Set(float64(metrics.EstimateCalldataSizeTime))
+	p.chunkEstimateBlobSizeTime.Set(float64(metrics.EstimateBlobSizeTime))
+}
+
+func (p *ChunkProposer) recordTimerChunkMetrics(metrics *utils.ChunkMetrics) {
+	p.chunkEstimateGasTime.Set(float64(metrics.EstimateGasTime))
+	p.chunkEstimateCalldataSizeTime.Set(float64(metrics.EstimateCalldataSizeTime))
+	p.chunkEstimateBlobSizeTime.Set(float64(metrics.EstimateBlobSizeTime))
 }
