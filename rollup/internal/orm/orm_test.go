@@ -18,6 +18,7 @@ import (
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
+
 	"scroll-tech/rollup/internal/utils"
 )
 
