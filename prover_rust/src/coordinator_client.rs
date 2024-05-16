@@ -3,6 +3,7 @@ pub mod types;
 mod api;
 
 use anyhow::{bail, Context, Ok, Result};
+use std::rc::Rc;
 
 use types::*;
 use errors::*;
@@ -18,17 +19,18 @@ pub struct Config {
     pub prover_version: String,
     pub hard_fork_name: String,
 }
-pub struct CoordinatorClient<'a> {
+
+pub struct CoordinatorClient {
     api: API,
     token: Option<String>,
     config: Config,
-    key_signer: &'a KeySigner,
+    key_signer: Rc<KeySigner>,
 }
 
-impl<'a> CoordinatorClient<'a> {
-    pub fn new(config: Config, key_signer: &'a KeySigner) -> Result<Self> {
+impl CoordinatorClient {
+    pub fn new(config: Config, key_signer: Rc<KeySigner>) -> Result<Self> {
         let mut client = Self {
-            api: API::new(config.endpoint)?,
+            api: API::new(&config.endpoint)?,
             token: None,
             config,
             key_signer,
@@ -38,7 +40,7 @@ impl<'a> CoordinatorClient<'a> {
     }
 
     fn login(&mut self) -> Result<()> {
-        let api = self.api;
+        let api = &self.api;
         let challenge_response = block_on(api.challenge())?;
         if challenge_response.errcode != Success {
             bail!("challenge failed: {}", challenge_response.errmsg)
@@ -51,10 +53,10 @@ impl<'a> CoordinatorClient<'a> {
         }
 
         let login_message = LoginMessage {
-            challenge: token,
-            prover_name: self.config.prover_name,
-            prover_version: self.config.prover_version,
-            hard_fork_name: self.config.hard_fork_name,
+            challenge: token.clone(),
+            prover_name: self.config.prover_name.clone(),
+            prover_version: self.config.prover_version.clone(),
+            hard_fork_name: self.config.hard_fork_name.clone(),
         };
 
         let buffer = login_message.rlp();
@@ -77,7 +79,7 @@ impl<'a> CoordinatorClient<'a> {
     }
 
     pub fn get_task(&mut self, req: &GetTaskRequest) -> Result<Response<GetTaskResponseData>> {
-        let response = block_on(self.api.get_task(req, &self.token.unwrap()))?;
+        let response = block_on(self.api.get_task(req, self.token.as_ref().unwrap()))?;
         
         if response.errcode == ErrJWTTokenExpired {
             log::info!("JWT expired, attempting to re-login");
@@ -90,7 +92,7 @@ impl<'a> CoordinatorClient<'a> {
     }
 
     pub fn submit_proof(&mut self, req: &SubmitProofRequest) -> Result<Response<SubmitProofResponseData>> {
-        let response = block_on(self.api.submit_proof(req, &self.token.unwrap()))?;
+        let response = block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))?;
         
         if response.errcode == ErrJWTTokenExpired {
             log::info!("JWT expired, attempting to re-login");

@@ -3,6 +3,8 @@ use ethers_core::types::BlockNumber;
 use eth_types::U64;
 use once_cell::sync::Lazy;
 use std::cmp::Ordering;
+use std::rc::Rc;
+use std::cell::RefCell;
 use std::env;
 
 use crate::types::{CommonHash, ProofFailureType, ProofStatus};
@@ -22,9 +24,9 @@ pub(crate) static OUTPUT_DIR: Lazy<Option<String>> =
 
 pub struct Prover<'a> {
     config: &'a Config,
-    key_signer: KeySigner,
+    key_signer: Rc<KeySigner>,
     circuits_handler_provider: CircuitsHandlerProvider,
-    coordinator_client: CoordinatorClient<'a>,
+    coordinator_client: RefCell<CoordinatorClient>,
     geth_client: GethClient,
 }
 
@@ -36,25 +38,26 @@ fn is_positive(n: &U64) -> bool {
 impl<'a> Prover<'a> {
     pub fn new(config: &'a Config) -> Result<Self> {
         let proof_type = config.core.proof_type;
-        let params_path = config.core.params_path;
-        let assets_path = config.core.assets_path;
-        let keystore_path = config.keystore_path;
-        let keystore_password = config.keystore_password;
+        let params_path = &config.core.params_path;
+        let assets_path = &config.core.assets_path;
+        let keystore_path = &config.keystore_path;
+        let keystore_password = &config.keystore_password;
 
         let coordinator_config = CoordinatorConfig {
-            endpoint: config.coordinator.base_url,
-            prover_name: config.prover_name,
+            endpoint: config.coordinator.base_url.clone(),
+            prover_name: config.prover_name.clone(),
             prover_version: crate::version::get_version(),
-            hard_fork_name: config.hard_fork_name,
+            hard_fork_name: config.hard_fork_name.clone(),
         };
 
-        let key_signer = KeySigner::new(&keystore_path, &keystore_password)?;
+        let key_signer = Rc::new(KeySigner::new(&keystore_path, &keystore_password)?);
+        let coordinator_client = CoordinatorClient::new(coordinator_config, Rc::clone(&key_signer))?;
 
         let prover = Prover {
             config,
-            key_signer,
-            circuits_handler_provider: CircuitsHandlerProvider::new(proof_type, &params_path, &assets_path)?,
-            coordinator_client: CoordinatorClient::new(coordinator_config, &key_signer)?,
+            key_signer: Rc::clone(&key_signer),
+            circuits_handler_provider: CircuitsHandlerProvider::new(proof_type, params_path, assets_path)?,
+            coordinator_client: RefCell::new(coordinator_client),
             geth_client: GethClient::new("test", &config.l2geth.endpoint)?,
         };
 
@@ -87,7 +90,7 @@ impl<'a> Prover<'a> {
 
             unreachable!()
         }
-        let resp = self.coordinator_client.get_task(&req)?;
+        let resp = self.coordinator_client.borrow_mut().get_task(&req)?;
         
         Task::try_from(&resp.data.unwrap()).map_err(|e| anyhow::anyhow!(e))
     }
@@ -103,7 +106,7 @@ impl<'a> Prover<'a> {
 
     fn do_prove(&self, task: &Task, handler: &Box<dyn CircuitsHandler>) -> Result<ProofDetail> {
         let mut proof_detail = ProofDetail {
-            id: task.id,
+            id: task.id.clone(),
             proof_type: task.task_type,
             status: ProofStatus::Error,
             ..Default::default()
@@ -135,41 +138,41 @@ impl<'a> Prover<'a> {
     pub fn submit_proof(&self, proof_detail: &ProofDetail, uuid: String) -> Result<()> {
         let proof_data = match proof_detail.proof_type {
             ProofType::ProofTypeBatch => {
-                serde_json::to_string(&proof_detail.batch_proof.unwrap())?
+                serde_json::to_string(proof_detail.batch_proof.as_ref().unwrap())?
             },
             ProofType::ProofTypeChunk => {
-                serde_json::to_string(&proof_detail.chunk_proof.unwrap())?
+                serde_json::to_string(proof_detail.chunk_proof.as_ref().unwrap())?
             },
             _ => unreachable!()
         };
 
         let request = SubmitProofRequest {
             uuid,
-            task_id: proof_detail.id,
+            task_id: proof_detail.id.clone(),
             task_type: proof_detail.proof_type,
             status: proof_detail.status,
             proof: proof_data,
             ..Default::default()
         };
-        Ok(())
+
+        self.do_submit(&request)
     }
 
     pub fn submit_error(&self, task: &Task, failure_type: ProofFailureType, error: Error) -> Result<()> {
         let request = SubmitProofRequest {
-            uuid: task.uuid,
-            task_id: task.id,
+            uuid: task.uuid.clone(),
+            task_id: task.id.clone(),
             task_type: task.task_type,
             status: ProofStatus::Error,
-            proof: todo!(),
-            failure_type: todo!(),
-            failure_msg: todo!(),
+            failure_type: Some(failure_type),
+            failure_msg: Some(error.to_string()),
+            ..Default::default()
         };
-
+        self.do_submit(&request)
     }
 
     fn do_submit(&self, request: &SubmitProofRequest) -> Result<()> {
-        self.coordinator_client.submit_proof(request)?;
-
+        self.coordinator_client.borrow_mut().submit_proof(request)?;
         Ok(())
     }
 
@@ -203,22 +206,22 @@ impl<'a> Prover<'a> {
     }
 
     fn gen_chunk_traces(&self, task: &Task) -> Result<Vec<BlockTrace>> {
-        if let Some(chunk_detail) = task.chunk_task_detail {
-            self.get_sorted_traces_by_hashes(chunk_detail.block_hashes)
+        if let Some(chunk_detail) = task.chunk_task_detail.as_ref() {
+            self.get_sorted_traces_by_hashes(&chunk_detail.block_hashes)
         } else {
             bail!("invalid task")
         }
     }
 
     fn gen_chunk_hashes_proofs(&self, task: &Task) -> Result<Vec<(ChunkHash, ChunkProof)>> {
-        if let Some(batch_detail) = task.batch_task_detail {
-            Ok(batch_detail.chunk_infos.into_iter().zip(batch_detail.chunk_proofs).collect())
+        if let Some(batch_detail) = task.batch_task_detail.as_ref() {
+            Ok(batch_detail.chunk_infos.clone().into_iter().zip(batch_detail.chunk_proofs.clone()).collect())
         } else {
             bail!("invalid task")
         }
     }
 
-    fn get_sorted_traces_by_hashes(&self, block_hashes: Vec<CommonHash>) -> Result<Vec<BlockTrace>> {
+    fn get_sorted_traces_by_hashes(&self, block_hashes: &Vec<CommonHash>) -> Result<Vec<BlockTrace>> {
         if block_hashes.len() == 0 {
             bail!("blockHashes is empty")
         }

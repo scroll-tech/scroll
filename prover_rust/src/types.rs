@@ -81,8 +81,8 @@ pub struct Task {
 
 impl Task {
     pub fn get_version(&self) -> String {
-        match self.hard_fork_name {
-            Some(v) => v,
+        match self.hard_fork_name.as_ref() {
+            Some(v) => v.clone(),
             None => "".to_string(),
         }
     }
@@ -93,19 +93,19 @@ impl TryFrom<&GetTaskResponseData> for Task {
 
     fn try_from(value: &GetTaskResponseData) -> Result<Self, Self::Error> {
         let mut task = Task {
-            uuid: value.uuid,
-            id: value.task_id,
+            uuid: value.uuid.clone(),
+            id: value.task_id.clone(),
             task_type: value.task_type,
             chunk_task_detail: None,
             batch_task_detail: None,
-            hard_fork_name: None,
+            hard_fork_name: value.hard_fork_name.clone(),
         };
         match task.task_type {
             ProofType::ProofTypeBatch => {
-                task.batch_task_detail = serde_json::from_str(&value.task_data)?;
+                task.batch_task_detail = Some(serde_json::from_str(&value.task_data)?);
             },
             ProofType::ProofTypeChunk => {
-                task.chunk_task_detail = serde_json::from_str(&value.task_data)?;
+                task.chunk_task_detail = Some(serde_json::from_str(&value.task_data)?);
             },
             _ => unreachable!()
         }

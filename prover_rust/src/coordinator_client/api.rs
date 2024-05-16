@@ -8,8 +8,7 @@ pub struct API {
 }
 
 impl API {
-    pub fn new(url_base: String) -> Result<Self> {
-        let mut headers = header::HeaderMap::new();
+    pub fn new(url_base: &String) -> Result<Self> {
         Ok(Self {
             url_base: Url::parse(&url_base)?,
             client: reqwest::Client::new(),

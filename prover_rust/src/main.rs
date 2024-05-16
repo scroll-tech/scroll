@@ -39,7 +39,7 @@ impl<'a> TaskProcesser<'a> {
 
         match self.prover.prove_task(&task) {
             Ok(proof_detail) => {
-                self.prover.submit_proof(&proof_detail, task.uuid)
+                self.prover.submit_proof(&proof_detail, task.uuid.clone())
             },
             Err(error) => {
                 self.prover.submit_error(&task, types::ProofFailureType::NoPanic, error)

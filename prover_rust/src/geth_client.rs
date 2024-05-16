@@ -32,7 +32,7 @@ impl GethClient {
         })
     }
 
-    pub fn get_block_trace_by_hash(&self, hash: CommonHash) -> Result<BlockTrace> {
+    pub fn get_block_trace_by_hash(&self, hash: &CommonHash) -> Result<BlockTrace> {
         log::info!("{}: calling get_block_trace_by_hash, hash: {}", self.id, hash);
 
         let trace_future = self

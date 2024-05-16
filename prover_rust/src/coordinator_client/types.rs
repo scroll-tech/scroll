@@ -58,7 +58,7 @@ pub struct GetTaskResponseData {
     pub task_id: String,
     pub task_type: crate::types::ProofType,
     pub task_data: String,
-    pub hard_fork_name: String,
+    pub hard_fork_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
