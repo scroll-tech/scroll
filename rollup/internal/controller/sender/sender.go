@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/holiman/uint256"
@@ -80,6 +81,8 @@ type Sender struct {
 	stopCh    chan struct{}
 
 	metrics *senderMetrics
+
+	mu sync.Mutex
 }
 
 // NewSender returns a new instance of transaction sender
@@ -171,6 +174,9 @@ func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTy
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (common.Hash, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	var (
 		feeData *FeeData
