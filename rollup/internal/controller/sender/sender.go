@@ -277,7 +277,7 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 		log.Error("failed to send tx", "tx hash", signedTx.Hash().String(), "from", s.auth.From.String(), "nonce", signedTx.Nonce(), "err", err)
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
-		if strings.Contains(err.Error(), "nonce") && overrideNonce == nil {
+		if strings.Contains(err.Error(), "nonce too low") && overrideNonce == nil {
 			s.resetNonce(context.Background())
 		}
 		return nil, err
