@@ -8,75 +8,15 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-)
 
-// TokenType represents the type of token.
-type TokenType int
+	"scroll-tech/bridge-history-api/internal/types"
 
-// Constants for TokenType.
-const (
-	TokenTypeUnknown TokenType = iota
-	TokenTypeETH
-	TokenTypeERC20
-	TokenTypeERC721
-	TokenTypeERC1155
-)
-
-// MessageType represents the type of message.
-type MessageType int
-
-// Constants for MessageType.
-const (
-	MessageTypeUnknown MessageType = iota
-	MessageTypeL1SentMessage
-	MessageTypeL2SentMessage
-)
-
-// TxStatusType represents the status of a transaction.
-type TxStatusType int
-
-// Constants for TxStatusType.
-const (
-	// TxStatusTypeSent is one of the initial statuses for cross-chain messages.
-	// It is used as the default value to prevent overwriting the transaction status in scenarios where the message status might change
-	// from a later status (e.g., relayed) back to "sent".
-	// Example flow (L1 -> L2 message, and L1 fetcher is slower than L2 fetcher):
-	// 1. The relayed message is first tracked and processed, setting tx_status to TxStatusTypeRelayed.
-	// 2. The sent message is later processed (same cross-chain message), the tx_status should not over-write TxStatusTypeRelayed.
-	TxStatusTypeSent           TxStatusType = iota
-	TxStatusTypeSentTxReverted              // Not track message hash, thus will not be processed again anymore.
-	TxStatusTypeRelayed                     // Terminal status.
-	// Retry: this often occurs due to an out of gas (OOG) issue if the transaction was initiated via the frontend.
-	TxStatusTypeFailedRelayed
-	// Retry: this often occurs due to an out of gas (OOG) issue if the transaction was initiated via the frontend.
-	TxStatusTypeRelayTxReverted
-	TxStatusTypeSkipped
-	TxStatusTypeDropped // Terminal status.
-)
-
-// RollupStatusType represents the status of a rollup.
-type RollupStatusType int
-
-// Constants for RollupStatusType.
-const (
-	RollupStatusTypeUnknown   RollupStatusType = iota
-	RollupStatusTypeFinalized                  // only batch finalized status is used.
-)
-
-// MessageQueueEventType represents the type of message queue event.
-type MessageQueueEventType int
-
-// Constants for MessageQueueEventType.
-const (
-	MessageQueueEventTypeUnknown MessageQueueEventType = iota
-	MessageQueueEventTypeQueueTransaction
-	MessageQueueEventTypeDequeueTransaction
-	MessageQueueEventTypeDropTransaction
+	btypes "scroll-tech/bridge-history-api/internal/types"
 )
 
 // MessageQueueEvent struct represents the details of a batch event.
 type MessageQueueEvent struct {
-	EventType  MessageQueueEventType
+	EventType  btypes.MessageQueueEventType
 	QueueIndex uint64
 
 	// Track replay tx hash and refund tx hash.
@@ -132,15 +72,15 @@ func NewCrossMessage(db *gorm.DB) *CrossMessage {
 }
 
 // GetMessageSyncedHeightInDB returns the latest synced cross message height from the database for a given message type.
-func (c *CrossMessage) GetMessageSyncedHeightInDB(ctx context.Context, messageType MessageType) (uint64, error) {
+func (c *CrossMessage) GetMessageSyncedHeightInDB(ctx context.Context, messageType btypes.MessageType) (uint64, error) {
 	var message CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
 	db = db.Where("message_type = ?", messageType)
 	switch {
-	case messageType == MessageTypeL1SentMessage:
+	case messageType == btypes.MessageTypeL1SentMessage:
 		db = db.Order("l1_block_number desc")
-	case messageType == MessageTypeL2SentMessage:
+	case messageType == btypes.MessageTypeL2SentMessage:
 		db = db.Order("l2_block_number desc")
 	}
 	if err := db.First(&message).Error; err != nil {
@@ -150,9 +90,9 @@ func (c *CrossMessage) GetMessageSyncedHeightInDB(ctx context.Context, messageTy
 		return 0, fmt.Errorf("failed to get latest processed height, type: %v, error: %w", messageType, err)
 	}
 	switch {
-	case messageType == MessageTypeL1SentMessage:
+	case messageType == btypes.MessageTypeL1SentMessage:
 		return message.L1BlockNumber, nil
-	case messageType == MessageTypeL2SentMessage:
+	case messageType == btypes.MessageTypeL2SentMessage:
 		return message.L2BlockNumber, nil
 	default:
 		return 0, fmt.Errorf("invalid message type: %v", messageType)
@@ -164,8 +104,8 @@ func (c *CrossMessage) GetL2LatestFinalizedWithdrawal(ctx context.Context) (*Cro
 	var message CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
-	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
-	db = db.Where("rollup_status = ?", RollupStatusTypeFinalized)
+	db = db.Where("message_type = ?", btypes.MessageTypeL2SentMessage)
+	db = db.Where("rollup_status = ?", btypes.RollupStatusTypeFinalized)
 	db = db.Order("message_nonce desc")
 	if err := db.First(&message).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -183,8 +123,8 @@ func (c *CrossMessage) GetL2WithdrawalsByBlockRange(ctx context.Context, startBl
 	db = db.Model(&CrossMessage{})
 	db = db.Where("l2_block_number >= ?", startBlock)
 	db = db.Where("l2_block_number <= ?", endBlock)
-	db = db.Where("tx_status != ?", TxStatusTypeSentTxReverted)
-	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
+	db = db.Where("tx_status != ?", types.TxStatusTypeSentTxReverted)
+	db = db.Where("message_type = ?", btypes.MessageTypeL2SentMessage)
 	db = db.Order("message_nonce asc")
 	if err := db.Find(&messages).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -212,8 +152,8 @@ func (c *CrossMessage) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, s
 	var messages []*CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
-	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
-	db = db.Where("tx_status = ?", TxStatusTypeSent)
+	db = db.Where("message_type = ?", btypes.MessageTypeL2SentMessage)
+	db = db.Where("tx_status = ?", types.TxStatusTypeSent)
 	db = db.Where("sender = ?", sender)
 	db = db.Order("block_timestamp desc")
 	db = db.Limit(500)
@@ -228,7 +168,7 @@ func (c *CrossMessage) GetL2WithdrawalsByAddress(ctx context.Context, sender str
 	var messages []*CrossMessage
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
-	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
+	db = db.Where("message_type = ?", btypes.MessageTypeL2SentMessage)
 	db = db.Where("sender = ?", sender)
 	db = db.Order("block_timestamp desc")
 	db = db.Limit(500)
@@ -261,22 +201,22 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		db = db.Model(&CrossMessage{})
 		txStatusUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
-		case MessageQueueEventTypeQueueTransaction:
+		case btypes.MessageQueueEventTypeQueueTransaction:
 			continue
-		case MessageQueueEventTypeDequeueTransaction:
+		case btypes.MessageQueueEventTypeDequeueTransaction:
 			// do not over-write terminal statuses.
-			db = db.Where("tx_status != ?", TxStatusTypeRelayed)
-			db = db.Where("tx_status != ?", TxStatusTypeDropped)
+			db = db.Where("tx_status != ?", types.TxStatusTypeRelayed)
+			db = db.Where("tx_status != ?", types.TxStatusTypeDropped)
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
-			txStatusUpdateFields["tx_status"] = TxStatusTypeSkipped
-		case MessageQueueEventTypeDropTransaction:
+			db = db.Where("message_type = ?", btypes.MessageTypeL1SentMessage)
+			txStatusUpdateFields["tx_status"] = types.TxStatusTypeSkipped
+		case btypes.MessageQueueEventTypeDropTransaction:
 			// do not over-write terminal statuses.
-			db = db.Where("tx_status != ?", TxStatusTypeRelayed)
-			db = db.Where("tx_status != ?", TxStatusTypeDropped)
+			db = db.Where("tx_status != ?", types.TxStatusTypeRelayed)
+			db = db.Where("tx_status != ?", types.TxStatusTypeDropped)
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
-			txStatusUpdateFields["tx_status"] = TxStatusTypeDropped
+			db = db.Where("message_type = ?", btypes.MessageTypeL1SentMessage)
+			txStatusUpdateFields["tx_status"] = types.TxStatusTypeDropped
 		}
 		if err := db.Updates(txStatusUpdateFields).Error; err != nil {
 			return fmt.Errorf("failed to update tx statuses of L1 message queue events, update fields: %v, error: %w", txStatusUpdateFields, err)
@@ -290,9 +230,9 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		db = db.Model(&CrossMessage{})
 		txHashUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
-		case MessageQueueEventTypeDequeueTransaction:
+		case btypes.MessageQueueEventTypeDequeueTransaction:
 			continue
-		case MessageQueueEventTypeQueueTransaction:
+		case btypes.MessageQueueEventTypeQueueTransaction:
 			// only replayMessages or enforced txs (whose message hashes would not be found), sendMessages have been filtered out.
 			// replayMessage case:
 			// First SentMessage in L1: https://sepolia.etherscan.io/tx/0xbee4b631312448fcc2caac86e4dccf0a2ae0a88acd6c5fd8764d39d746e472eb
@@ -304,9 +244,9 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			// Ref: https://github.com/scroll-tech/scroll/blob/v4.3.44/contracts/src/L1/L1ScrollMessenger.sol#L187-L190
 			db = db.Where("message_hash = ?", l1MessageQueueEvent.MessageHash.String())
 			txHashUpdateFields["l1_replay_tx_hash"] = l1MessageQueueEvent.TxHash.String()
-		case MessageQueueEventTypeDropTransaction:
+		case btypes.MessageQueueEventTypeDropTransaction:
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
-			db = db.Where("message_type = ?", MessageTypeL1SentMessage)
+			db = db.Where("message_type = ?", btypes.MessageTypeL1SentMessage)
 			txHashUpdateFields["l1_refund_tx_hash"] = l1MessageQueueEvent.TxHash.String()
 		}
 		if err := db.Updates(txHashUpdateFields).Error; err != nil {
@@ -320,12 +260,12 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 func (c *CrossMessage) UpdateBatchStatusOfL2Withdrawals(ctx context.Context, startBlockNumber, endBlockNumber, batchIndex uint64) error {
 	db := c.db.WithContext(ctx)
 	db = db.Model(&CrossMessage{})
-	db = db.Where("message_type = ?", MessageTypeL2SentMessage)
+	db = db.Where("message_type = ?", btypes.MessageTypeL2SentMessage)
 	db = db.Where("l2_block_number >= ?", startBlockNumber)
 	db = db.Where("l2_block_number <= ?", endBlockNumber)
 	updateFields := make(map[string]interface{})
 	updateFields["batch_index"] = batchIndex
-	updateFields["rollup_status"] = RollupStatusTypeFinalized
+	updateFields["rollup_status"] = btypes.RollupStatusTypeFinalized
 	if err := db.Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("failed to update batch status of L2 sent messages, start: %v, end: %v, index: %v, error: %w", startBlockNumber, endBlockNumber, batchIndex, err)
 	}
@@ -462,7 +402,7 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 	mergedL2RelayedMessages := make(map[string]*CrossMessage)
 	for _, message := range l2RelayedMessages {
 		if existing, found := mergedL2RelayedMessages[message.MessageHash]; found {
-			if TxStatusType(message.TxStatus) == TxStatusTypeRelayed || message.L2BlockNumber > existing.L2BlockNumber {
+			if types.TxStatusType(message.TxStatus) == types.TxStatusTypeRelayed || message.L2BlockNumber > existing.L2BlockNumber {
 				mergedL2RelayedMessages[message.MessageHash] = message
 			}
 		} else {
@@ -489,8 +429,8 @@ func (c *CrossMessage) InsertOrUpdateL2RelayedMessagesOfL1Deposits(ctx context.C
 			Exprs: []clause.Expression{
 				clause.And(
 					// do not over-write terminal statuses.
-					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeRelayed},
-					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeDropped},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: types.TxStatusTypeRelayed},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: types.TxStatusTypeDropped},
 				),
 			},
 		},
@@ -520,7 +460,7 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 	mergedL1RelayedMessages := make(map[string]*CrossMessage)
 	for _, message := range l1RelayedMessages {
 		if existing, found := mergedL1RelayedMessages[message.MessageHash]; found {
-			if TxStatusType(message.TxStatus) == TxStatusTypeRelayed || message.L1BlockNumber > existing.L1BlockNumber {
+			if types.TxStatusType(message.TxStatus) == types.TxStatusTypeRelayed || message.L1BlockNumber > existing.L1BlockNumber {
 				mergedL1RelayedMessages[message.MessageHash] = message
 			}
 		} else {
@@ -541,8 +481,8 @@ func (c *CrossMessage) InsertOrUpdateL1RelayedMessagesOfL2Withdrawals(ctx contex
 			Exprs: []clause.Expression{
 				clause.And(
 					// do not over-write terminal statuses.
-					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeRelayed},
-					clause.Neq{Column: "cross_message_v2.tx_status", Value: TxStatusTypeDropped},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: types.TxStatusTypeRelayed},
+					clause.Neq{Column: "cross_message_v2.tx_status", Value: types.TxStatusTypeDropped},
 				),
 			},
 		},
