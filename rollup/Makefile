@@ -24,16 +24,16 @@ rollup_relayer: ## Builds the rollup_relayer bin
 test:
 	go test -v -race -coverprofile=coverage.txt -covermode=atomic -p 1 $(PWD)/...
 
-lint: ## Lint the files - used for CI
+lint: mock_abi ## Lint the files - used for CI
 	GOBIN=$(PWD)/build/bin go run ../build/lint.go
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
 docker_push:
-	docker docker push scrolltech/gas-oracle:${IMAGE_VERSION}
-	docker docker push scrolltech/event-watcher:${IMAGE_VERSION}
-	docker docker push scrolltech/rollup-relayer:${IMAGE_VERSION}
+	docker push scrolltech/gas-oracle:${IMAGE_VERSION}
+	docker push scrolltech/event-watcher:${IMAGE_VERSION}
+	docker push scrolltech/rollup-relayer:${IMAGE_VERSION}
 
 docker:
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/gas-oracle:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/gas_oracle.Dockerfile

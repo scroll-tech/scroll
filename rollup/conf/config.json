@@ -15,11 +15,14 @@
         "escalate_multiple_den": 1,
         "max_gas_price": 1000000000000,
         "tx_type": "LegacyTx",
-        "check_pending_time": 1
+        "check_pending_time": 1,
+        "min_gas_tip": 100000000
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
-        "gas_price_diff": 50000
+        "gas_price_diff": 50000,
+        "l1_base_fee_weight": 0.132,
+        "l1_blob_base_fee_weight":  0.145
       },
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }
@@ -40,7 +43,8 @@
         "max_gas_price": 1000000000000,
         "max_blob_gas_price": 10000000000000,
         "tx_type": "DynamicFeeTx",
-        "check_pending_time": 1
+        "check_pending_time": 1,
+        "min_gas_tip": 100000000
       },
       "gas_oracle_config": {
         "min_gas_price": 0,

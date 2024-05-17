@@ -38,7 +38,7 @@ make lint
 
 ## Configure
 
-The coordinator behavior can be configured using [`config.json`](config.json). Check the code comments under `ProverManager` in [`config/config.go`](config/config.go) for more details.
+The coordinator behavior can be configured using [`conf/config.json`](conf/config.json). Check the code comments under `ProverManager` in [`internal/config/config.go`](internal/config/config.go) for more details.
 
 
 ## Start

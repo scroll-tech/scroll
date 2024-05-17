@@ -34,7 +34,7 @@ jobs:
       with:
         go-version: 1.21.x
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Test
       run: |
         go test -tags="mock_prover" -v -coverprofile=coverage.txt ./...
@@ -50,7 +50,7 @@ jobs:
     steps:
     - uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly-2022-12-10
+        toolchain: nightly-2023-12-03
         override: true
         components: rustfmt, clippy
     - name: Install Go
@@ -58,7 +58,7 @@ jobs:
       with:
         go-version: 1.21.x
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Cache cargo
       uses: Swatinem/rust-cache@v2
       with:
@@ -75,7 +75,7 @@ jobs:
       with:
         go-version: 1.21.x
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Lint
       run: |
         rm -rf $HOME/.cache/golangci-lint
@@ -89,7 +89,7 @@ jobs:
       with:
         go-version: 1.21.x
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Install goimports
       run: go install golang.org/x/tools/cmd/goimports
     - run: goimports -local scroll-tech/prover/ -w .

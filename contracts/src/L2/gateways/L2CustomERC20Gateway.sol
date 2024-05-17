@@ -11,7 +11,7 @@ import {IScrollERC20Upgradeable} from "../../libraries/token/IScrollERC20Upgrade
 /// @title L2ERC20Gateway
 /// @notice The `L2ERC20Gateway` is used to withdraw custom ERC20 compatible tokens on layer 2 and
 /// finalize deposit the tokens from layer 1.
-/// @dev The withdrawn tokens tokens will be burned directly. On finalizing deposit, the corresponding
+/// @dev The withdrawn tokens will be burned directly. On finalizing deposit, the corresponding
 /// tokens will be minted and transferred to the recipient.
 contract L2CustomERC20Gateway is L2ERC20Gateway {
     /**********
@@ -58,11 +58,7 @@ contract L2CustomERC20Gateway is L2ERC20Gateway {
     /// @param _counterpart The address of `L1CustomERC20Gateway` contract in L1.
     /// @param _router The address of `L2GatewayRouter` contract in L2.
     /// @param _messenger The address of `L2ScrollMessenger` contract in L2.
-    function initialize(
-        address _counterpart,
-        address _router,
-        address _messenger
-    ) external initializer {
+    function initialize(address _counterpart, address _router, address _messenger) external initializer {
         ScrollGatewayBase._initialize(_counterpart, _router, _messenger);
     }
 

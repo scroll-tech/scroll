@@ -43,10 +43,10 @@ func setupEnv(t *testing.T) (err error) {
 
 	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
-	assert.NoError(t, testApps.StartL1GethContainer())
+	assert.NoError(t, testApps.StartPoSL1Container())
 	assert.NoError(t, testApps.StartL2GethContainer())
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL1GethEndPoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetPoSL1EndPoint()
 	assert.NoError(t, err)
 	cfg.L1Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetL2GethEndPoint()
 	assert.NoError(t, err)
@@ -109,10 +109,11 @@ func TestFunction(t *testing.T) {
 	t.Run("TestChunkProposerCodecv1Limits", testChunkProposerCodecv1Limits)
 	t.Run("TestChunkProposerCodecv1BlobSizeLimit", testChunkProposerCodecv1BlobSizeLimit)
 
-	// Run chunk proposer test cases.
+	// Run batch proposer test cases.
 	t.Run("TestBatchProposerCodecv0Limits", testBatchProposerCodecv0Limits)
 	t.Run("TestBatchProposerCodecv1Limits", testBatchProposerCodecv1Limits)
-	t.Run("TestBatchCommitGasAndCalldataSizeEstimation", testBatchCommitGasAndCalldataSizeEstimation)
+	t.Run("TestBatchCommitGasAndCalldataSizeCodecv0Estimation", testBatchCommitGasAndCalldataSizeCodecv0Estimation)
+	t.Run("TestBatchCommitGasAndCalldataSizeCodecv1Estimation", testBatchCommitGasAndCalldataSizeCodecv1Estimation)
 	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
 }
 

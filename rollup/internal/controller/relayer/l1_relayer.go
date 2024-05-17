@@ -3,12 +3,14 @@ package relayer
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -28,21 +30,26 @@ import (
 type Layer1Relayer struct {
 	ctx context.Context
 
-	cfg *config.RelayerConfig
+	cfg      *config.RelayerConfig
+	chainCfg *params.ChainConfig
 
 	gasOracleSender *sender.Sender
 	l1GasOracleABI  *abi.ABI
 
-	lastGasPrice uint64
-	minGasPrice  uint64
-	gasPriceDiff uint64
+	lastGasPrice        uint64
+	minGasPrice         uint64
+	gasPriceDiff        uint64
+	l1BaseFeeWeight     float64
+	l1BlobBaseFeeWeight float64
 
 	l1BlockOrm *orm.L1Block
-	metrics    *l1RelayerMetrics
+	l2BlockOrm *orm.L2Block
+
+	metrics *l1RelayerMetrics
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, serviceType ServiceType, reg prometheus.Registerer) (*Layer1Relayer, error) {
+func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, serviceType ServiceType, reg prometheus.Registerer) (*Layer1Relayer, error) {
 	var gasOracleSender *sender.Sender
 	var err error
 
@@ -74,14 +81,18 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 	l1Relayer := &Layer1Relayer{
 		cfg:        cfg,
+		chainCfg:   chainCfg,
 		ctx:        ctx,
 		l1BlockOrm: orm.NewL1Block(db),
+		l2BlockOrm: orm.NewL2Block(db),
 
 		gasOracleSender: gasOracleSender,
 		l1GasOracleABI:  bridgeAbi.L1GasPriceOracleABI,
 
-		minGasPrice:  minGasPrice,
-		gasPriceDiff: gasPriceDiff,
+		minGasPrice:         minGasPrice,
+		gasPriceDiff:        gasPriceDiff,
+		l1BaseFeeWeight:     cfg.GasOracleConfig.L1BaseFeeWeight,
+		l1BlobBaseFeeWeight: cfg.GasOracleConfig.L1BlobBaseFeeWeight,
 	}
 
 	l1Relayer.metrics = initL1RelayerMetrics(reg)
@@ -123,12 +134,27 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 		if r.lastGasPrice > 0 && expectedDelta == 0 {
 			expectedDelta = 1
 		}
-		// last is undefine or (block.BaseFee >= minGasPrice && exceed diff)
-		if r.lastGasPrice == 0 || (block.BaseFee >= r.minGasPrice && (block.BaseFee >= r.lastGasPrice+expectedDelta || block.BaseFee <= r.lastGasPrice-expectedDelta)) {
-			baseFee := big.NewInt(int64(block.BaseFee))
-			data, err := r.l1GasOracleABI.Pack("setL1BaseFee", baseFee)
+
+		latestL2Height, err := r.l2BlockOrm.GetL2BlocksLatestHeight(r.ctx)
+		if err != nil {
+			log.Warn("Failed to fetch latest L2 block height from db", "err", err)
+			return
+		}
+
+		var isBernoulli = r.chainCfg.IsBernoulli(new(big.Int).SetUint64(latestL2Height))
+
+		var baseFee uint64
+		if isBernoulli && block.BlobBaseFee != 0 {
+			baseFee = uint64(math.Ceil(r.l1BaseFeeWeight*float64(block.BaseFee) + r.l1BlobBaseFeeWeight*float64(block.BlobBaseFee)))
+		} else {
+			baseFee = block.BaseFee
+		}
+
+		// last is undefined or (baseFee >= minGasPrice && exceed diff)
+		if r.lastGasPrice == 0 || (baseFee >= r.minGasPrice && (baseFee >= r.lastGasPrice+expectedDelta || baseFee <= r.lastGasPrice-expectedDelta)) {
+			data, err := r.l1GasOracleABI.Pack("setL1BaseFee", new(big.Int).SetUint64(baseFee))
 			if err != nil {
-				log.Error("Failed to pack setL1BaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", block.BaseFee, "err", err)
+				log.Error("Failed to pack setL1BaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "isBernoulli", isBernoulli, "err", err)
 				return
 			}
 
@@ -143,9 +169,9 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
 			}
-			r.lastGasPrice = block.BaseFee
+			r.lastGasPrice = baseFee
 			r.metrics.rollupL1RelayerLastGasPrice.Set(float64(r.lastGasPrice))
-			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee)
+			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee, "isBernoulli", isBernoulli)
 		}
 	}
 }
