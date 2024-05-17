@@ -64,13 +64,17 @@ func NewL2MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gor
 
 // Start starts the L2 message fetching process.
 func (c *L2MessageFetcher) Start() {
-	l2SentMessageSyncedHeight, dbErr := c.eventUpdateLogic.GetL2MessageSyncedHeightInDB(c.ctx)
+	l2SentMessageSyncedHeight, l2BridgeBatchDepositSyncedHeight, dbErr := c.eventUpdateLogic.GetL2MessageSyncedHeightInDB(c.ctx)
 	if dbErr != nil {
 		log.Crit("failed to get L2 cross message processed height", "err", dbErr)
 		return
 	}
 
 	l2SyncHeight := l2SentMessageSyncedHeight
+	if l2BridgeBatchDepositSyncedHeight > l2SyncHeight {
+		l2SyncHeight = l2BridgeBatchDepositSyncedHeight
+	}
+
 	// Sync from an older block to prevent reorg during restart.
 	if l2SyncHeight < logic.L2ReorgSafeDepth {
 		l2SyncHeight = 0
@@ -86,7 +90,8 @@ func (c *L2MessageFetcher) Start() {
 
 	c.updateL2SyncHeight(l2SyncHeight, header.Hash())
 
-	log.Info("Start L2 message fetcher", "message synced height", l2SentMessageSyncedHeight, "sync start height", l2SyncHeight+1)
+	log.Info("Start L2 message fetcher", "l2 sent message synced height", l2SentMessageSyncedHeight,
+		"bridge batch deposit synced height", l2BridgeBatchDepositSyncedHeight, "sync start height", l2SyncHeight+1)
 
 	tick := time.NewTicker(time.Duration(c.cfg.BlockTime) * time.Second)
 	go func() {
@@ -137,6 +142,11 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 		}
 
 		if updateErr := c.eventUpdateLogic.UpdateL1BatchIndexAndStatus(c.ctx, c.l2SyncHeight); updateErr != nil {
+			log.Error("failed to update L1 batch index and status", "from", from, "to", to, "err", updateErr)
+			return
+		}
+
+		if updateErr := c.eventUpdateLogic.UpdateL2BridgeBatchDepositEvent(c.ctx, l2FetcherResult.BridgeBatchDepositMessage); updateErr != nil {
 			log.Error("failed to update L1 batch index and status", "from", from, "to", to, "err", updateErr)
 			return
 		}

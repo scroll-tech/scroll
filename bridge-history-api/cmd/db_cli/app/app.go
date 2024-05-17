@@ -26,32 +26,27 @@ func init() {
 			Name:   "reset",
 			Usage:  "Clean and reset database.",
 			Action: resetDB,
-			Flags:  []cli.Flag{&utils.ConfigFileFlag},
 		},
 		{
 			Name:   "status",
 			Usage:  "Check migration status.",
 			Action: checkDBStatus,
-			Flags:  []cli.Flag{&utils.ConfigFileFlag},
 		},
 		{
 			Name:   "version",
 			Usage:  "Display the current database version.",
 			Action: dbVersion,
-			Flags:  []cli.Flag{&utils.ConfigFileFlag},
 		},
 		{
 			Name:   "migrate",
 			Usage:  "Migrate the database to the latest version.",
 			Action: migrateDB,
-			Flags:  []cli.Flag{&utils.ConfigFileFlag},
 		},
 		{
 			Name:   "rollback",
 			Usage:  "Roll back the database to a previous <version>. Rolls back a single migration if no version specified.",
 			Action: rollbackDB,
 			Flags: []cli.Flag{
-				&utils.ConfigFileFlag,
 				&cli.IntFlag{
 					Name:  "version",
 					Usage: "Rollback to the specified version.",
