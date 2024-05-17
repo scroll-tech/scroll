@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/holiman/uint256"
@@ -81,8 +80,6 @@ type Sender struct {
 	stopCh    chan struct{}
 
 	metrics *senderMetrics
-
-	mu sync.Mutex
 }
 
 // NewSender returns a new instance of transaction sender
@@ -174,9 +171,6 @@ func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTy
 
 // SendTransaction send a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (common.Hash, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	var (
 		feeData *FeeData
@@ -283,7 +277,7 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 		log.Error("failed to send tx", "tx hash", signedTx.Hash().String(), "from", s.auth.From.String(), "nonce", signedTx.Nonce(), "err", err)
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
-		if strings.Contains(err.Error(), "nonce") && overrideNonce == nil {
+		if strings.Contains(err.Error(), "nonce too low") && overrideNonce == nil {
 			s.resetNonce(context.Background())
 		}
 		return nil, err
