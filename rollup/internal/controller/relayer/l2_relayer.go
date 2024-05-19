@@ -472,8 +472,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", batch.Hash)
 		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
-		if err := r.finalizeBatch(batch, true); err != nil {
-			log.Error("Failed to finalize batch with proof", "index", batch.Index, "hash", batch.Hash, "err", err)
+		skipProof := r.cfg.EnableTestEnvSamplingFeature && ((batch.Index % 100) >= r.cfg.SamplingPercentage)
+		if err := r.finalizeBatch(batch, !skipProof); err != nil {
+			log.Error("Failed to finalize batch", "index", batch.Index, "hash", batch.Hash, "withProof", !skipProof, "err", err)
 		}
 
 	case types.ProvingTaskFailed:
@@ -606,23 +607,6 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 	if err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, dbBatch.Hash, txHash.String(), types.RollupFinalizing); err != nil {
 		log.Error("UpdateFinalizeTxHashAndRollupStatus failed", "index", dbBatch.Index, "batch hash", dbBatch.Hash, "tx hash", txHash.String(), "err", err)
 		return err
-	}
-
-	// Updating the proving status when finalizing without proof, thus the coordinator could omit this task.
-	// it isn't a necessary step, so don't put in a transaction with UpdateFinalizeTxHashAndRollupStatus
-	if !withProof {
-		txErr := r.db.Transaction(func(tx *gorm.DB) error {
-			if updateErr := r.batchOrm.UpdateProvingStatus(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
-				return updateErr
-			}
-			if updateErr := r.chunkOrm.UpdateProvingStatusByBatchHash(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
-				return updateErr
-			}
-			return nil
-		})
-		if txErr != nil {
-			log.Error("Updating chunk and batch proving status when finalizing without proof failure", "batchHash", dbBatch.Hash, "err", txErr)
-		}
 	}
 
 	r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal.Inc()

@@ -15,6 +15,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/forks"
+	"scroll-tech/common/types"
 
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
@@ -35,6 +36,9 @@ type BatchProposer struct {
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	forkMap                         map[uint64]bool
+
+	enableTestEnvSamplingFeature bool
+	samplingPercentage           uint64
 
 	chainCfg *params.ChainConfig
 
@@ -74,6 +78,8 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		forkMap:                         forkMap,
+		enableTestEnvSamplingFeature:    cfg.EnableTestEnvSamplingFeature,
+		samplingPercentage:              cfg.SamplingPercentage,
 		chainCfg:                        chainCfg,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -153,6 +159,25 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 		if dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex, dbBatch.Hash, dbTX); dbErr != nil {
 			log.Warn("BatchProposer.UpdateBatchHashInRange update the chunk's batch hash failure", "hash", dbBatch.Hash, "error", dbErr)
 			return dbErr
+		}
+		skipProof := false
+		if p.enableTestEnvSamplingFeature && ((batch.Index % 100) >= p.samplingPercentage) {
+			skipProof = true
+		}
+		if skipProof {
+			dbErr = p.batchOrm.UpdateProvingStatus(p.ctx, dbBatch.Hash, types.ProvingTaskVerified, dbTX)
+			if dbErr != nil {
+				log.Warn("BatchProposer.updateBatchInfoInDB update batch proving_status failure",
+					"batch hash", dbBatch.Hash, "error", dbErr)
+				return dbErr
+			}
+			dbErr = p.chunkOrm.UpdateProvingStatusInRange(p.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex, types.ProvingTaskVerified, dbTX)
+			if dbErr != nil {
+				log.Warn("BatchProposer.updateBatchInfoInDB update chunk proving_status failure",
+					"start chunk index", dbBatch.StartChunkIndex, "end chunk index", dbBatch.EndChunkIndex,
+					"batch hash", dbBatch.Hash, "error", dbErr)
+				return dbErr
+			}
 		}
 		return nil
 	})

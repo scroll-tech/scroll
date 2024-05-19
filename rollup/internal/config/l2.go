@@ -41,4 +41,7 @@ type BatchProposerConfig struct {
 	MaxL1CommitCalldataSizePerBatch uint64  `json:"max_l1_commit_calldata_size_per_batch"`
 	BatchTimeoutSec                 uint64  `json:"batch_timeout_sec"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
+
+	EnableTestEnvSamplingFeature bool   `json:"enable_test_env_sampling_feature"`
+	SamplingPercentage           uint64 `json:"sampling_percentage"`
 }

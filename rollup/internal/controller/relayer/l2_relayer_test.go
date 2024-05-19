@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/gin-gonic/gin"
@@ -159,75 +158,6 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 1, len(statuses))
 		assert.Equal(t, types.RollupFinalizing, statuses[0])
-		relayer.StopSenders()
-	}
-}
-
-func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
-	for _, codecVersion := range codecVersions {
-		db := setupL2RelayerDB(t)
-		defer database.CloseDB(db)
-
-		l2Cfg := cfg.L2Config
-		l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
-		l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
-		chainConfig := &params.ChainConfig{}
-		if codecVersion == encoding.CodecV0 {
-			chainConfig.BernoulliBlock = big.NewInt(0)
-		}
-		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
-		assert.NoError(t, err)
-
-		l2BlockOrm := orm.NewL2Block(db)
-		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
-		assert.NoError(t, err)
-		chunkOrm := orm.NewChunk(db)
-		chunkDB1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, rutils.ChunkMetrics{})
-		assert.NoError(t, err)
-		chunkDB2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, rutils.ChunkMetrics{})
-		assert.NoError(t, err)
-
-		batch := &encoding.Batch{
-			Index:                      1,
-			TotalL1MessagePoppedBefore: 0,
-			ParentBatchHash:            common.Hash{},
-			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
-		}
-
-		batchOrm := orm.NewBatch(db)
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
-		assert.NoError(t, err)
-
-		err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
-		assert.NoError(t, err)
-
-		err = chunkOrm.UpdateBatchHashInRange(context.Background(), chunkDB1.Index, chunkDB2.Index, dbBatch.Hash, nil)
-		assert.NoError(t, err)
-
-		// Check the database for the updated status using TryTimes.
-		ok := utils.TryTimes(5, func() bool {
-			relayer.ProcessCommittedBatches()
-			time.Sleep(time.Second)
-
-			batchInDB, batchErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": dbBatch.Hash}, nil, 0)
-			if batchErr != nil {
-				return false
-			}
-			chunks, chunkErr := chunkOrm.GetChunksByBatchHash(context.Background(), dbBatch.Hash)
-			if chunkErr != nil {
-				return false
-			}
-
-			batchStatus := len(batchInDB) == 1 && types.RollupStatus(batchInDB[0].RollupStatus) == types.RollupFinalizing &&
-				types.ProvingStatus(batchInDB[0].ProvingStatus) == types.ProvingTaskVerified
-
-			chunkStatus := len(chunks) == 2 && types.ProvingStatus(chunks[0].ProvingStatus) == types.ProvingTaskVerified &&
-				types.ProvingStatus(chunks[1].ProvingStatus) == types.ProvingTaskVerified
-
-			return batchStatus && chunkStatus
-		})
-		assert.True(t, ok)
 		relayer.StopSenders()
 	}
 }
