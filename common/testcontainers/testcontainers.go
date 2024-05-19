@@ -104,9 +104,7 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 	if t.poSL1Container, err = compose.NewDockerCompose([]string{dockerComposeFile}...); err != nil {
 		return err
 	}
-	err = t.poSL1Container.WaitForService("geth", wait.NewHTTPStrategy("/").
-		WithPort("8545/tcp").
-		WithStartupTimeout(15*time.Second)).
+	err = t.poSL1Container.WaitForService("redis", wait.ForListeningPort("8545").WithStartupTimeout(15*time.Second)).
 		Up(context.Background())
 	if err != nil {
 		t.poSL1Container = nil
