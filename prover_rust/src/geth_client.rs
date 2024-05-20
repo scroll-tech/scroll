@@ -4,7 +4,7 @@ use anyhow::Result;
 use crate::types::CommonHash;
 use ethers_core::types::BlockNumber;
 use types::{BlockTrace, Header};
-use futures::executor;
+use tokio::runtime::Runtime;
 
 use ethers_providers::{Http, Provider};
 
@@ -20,19 +20,24 @@ pub fn serialize<T: serde::Serialize>(t: &T) -> serde_json::Value {
 pub struct GethClient {
     id: String,
     provider: Provider<Http>,
+    rt: Runtime,
 }
 
 impl GethClient {
     pub fn new(id: &str, api_url: &str) -> Result<Self> {
         let provider = Provider::<Http>::try_from(api_url)?;
+        let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
 
         Ok(Self {
             id: id.to_string(),
             provider,
+            rt,
         })
     }
 
-    pub fn get_block_trace_by_hash(&self, hash: &CommonHash) -> Result<BlockTrace> {
+    pub fn get_block_trace_by_hash(&mut self, hash: &CommonHash) -> Result<BlockTrace> {
         log::info!("{}: calling get_block_trace_by_hash, hash: {}", self.id, hash);
 
         let trace_future = self
@@ -42,11 +47,11 @@ impl GethClient {
                 [format!("{hash:#x}")],
             );
         
-        let trace = executor::block_on(trace_future)?;
+        let trace = self.rt.block_on(trace_future)?;
         Ok(trace)
     }
 
-    pub fn header_by_number(&self, block_number: &BlockNumber) -> Result<Header> {
+    pub fn header_by_number(&mut self, block_number: &BlockNumber) -> Result<Header> {
         log::info!("{}: calling header_by_number, hash: {}", self.id, block_number);
 
         let hash = serialize(block_number);
@@ -59,11 +64,11 @@ impl GethClient {
                 [hash, include_txs],
             );
         
-        let trace = executor::block_on(trace_future)?;
+        let trace = self.rt.block_on(trace_future)?;
         Ok(trace)
     }
 
-    pub fn block_number(&self) -> Result<BlockNumber> {
+    pub fn block_number(&mut self) -> Result<BlockNumber> {
         log::info!("{}: calling block_number", self.id);
 
         let trace_future = self
@@ -73,7 +78,7 @@ impl GethClient {
                 (),
             );
         
-        let trace = executor::block_on(trace_future)?;
+        let trace = self.rt.block_on(trace_future)?;
         Ok(trace)
     }
 }

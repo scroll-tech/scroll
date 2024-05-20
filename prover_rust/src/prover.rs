@@ -27,12 +27,12 @@ pub struct Prover<'a> {
     key_signer: Rc<KeySigner>,
     circuits_handler_provider: CircuitsHandlerProvider,
     coordinator_client: RefCell<CoordinatorClient>,
-    geth_client: GethClient,
+    geth_client: RefCell<GethClient>,
 }
 
-// a u64 is positive when it's 0 index bit not set
+// a u64 is positive when it's 63th index bit not set
 fn is_positive(n: &U64) -> bool {
-    !n.bit(0)
+    !n.bit(63)
 }
 
 impl<'a> Prover<'a> {
@@ -58,7 +58,7 @@ impl<'a> Prover<'a> {
             key_signer: Rc::clone(&key_signer),
             circuits_handler_provider: CircuitsHandlerProvider::new(proof_type, params_path, assets_path)?,
             coordinator_client: RefCell::new(coordinator_client),
-            geth_client: GethClient::new("test", &config.l2geth.endpoint)?,
+            geth_client: RefCell::new(GethClient::new("test", &config.l2geth.endpoint)?),
         };
 
         Ok(prover)
@@ -86,12 +86,12 @@ impl<'a> Prover<'a> {
             let latest_block_number = self.get_configured_block_number_value()?;
             if let Some(v) = latest_block_number {
                 if v.as_u64() == 0 {
-                    unreachable!()
+                    bail!("omit to prove task of the genesis block")
                 }
                 req.prover_height = Some(v.as_u64());
+            } else {
+                bail!("failed to fetch latest confirmed block number, got None")
             }
-
-            unreachable!()
         }
         let resp = self.coordinator_client.borrow_mut().get_task(&req)?;
         
@@ -186,21 +186,21 @@ impl<'a> Prover<'a> {
     fn get_block_number_value(&self, block_number: &BlockNumber) -> Result<Option<U64>> {
         match block_number {
             BlockNumber::Safe | BlockNumber::Finalized => {
-                let header = self.geth_client.header_by_number(block_number)?;
+                let header = self.geth_client.borrow_mut().header_by_number(block_number)?;
                 Ok(header.get_number())
             },
             BlockNumber::Latest => {
-                let number = self.geth_client.block_number()?;
+                let number = self.geth_client.borrow_mut().block_number()?;
                 Ok(number.as_number())
             },
             BlockNumber::Number(n) if is_positive(n) => {
-                let number = self.geth_client.block_number()?;
+                let number = self.geth_client.borrow_mut().block_number()?;
                 let diff = number.as_number()
                     .filter(|m| m.as_u64() >= n.as_u64())
                     .map(|m| U64::from(m.as_u64() - n.as_u64()));
                 Ok(diff)
             },
-            _ => unreachable!(),
+            _ => bail!("unknown confirmation type"),
         }
     }
 
@@ -231,7 +231,7 @@ impl<'a> Prover<'a> {
 
         let mut block_traces = Vec::new();
         for (_, hash) in block_hashes.into_iter().enumerate() {
-            let trace = self.geth_client.get_block_trace_by_hash(hash)?;
+            let trace = self.geth_client.borrow_mut().get_block_trace_by_hash(hash)?;
             block_traces.push(trace.block_trace);
         }
 
