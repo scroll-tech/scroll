@@ -6,6 +6,7 @@ mod prover;
 mod zk_circuits_handler;
 mod coordinator_client;
 mod geth_client;
+mod utils_log;
 
 use config::Config;
 use prover::Prover;
@@ -49,6 +50,7 @@ impl<'a> TaskProcesser<'a> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    utils_log::log_init();
 
     let file_name = "config.json";
     let config: Config = Config::from_file(file_name.to_string())?;

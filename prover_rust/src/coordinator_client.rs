@@ -8,7 +8,7 @@ use std::rc::Rc;
 use types::*;
 use errors::*;
 use api::API;
-use futures::executor::block_on;
+use tokio::runtime::Runtime;
 use log;
 
 use crate::key_signer::KeySigner;
@@ -25,15 +25,21 @@ pub struct CoordinatorClient {
     token: Option<String>,
     config: Config,
     key_signer: Rc<KeySigner>,
+    rt: Runtime,
 }
 
 impl CoordinatorClient {
     pub fn new(config: Config, key_signer: Rc<KeySigner>) -> Result<Self> {
+        let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
         let mut client = Self {
             api: API::new(&config.endpoint)?,
             token: None,
             config,
             key_signer,
+            rt,
         };
         client.login()?;
         Ok(client)
@@ -41,7 +47,7 @@ impl CoordinatorClient {
 
     fn login(&mut self) -> Result<()> {
         let api = &self.api;
-        let challenge_response = block_on(api.challenge())?;
+        let challenge_response = self.rt.block_on(api.challenge())?;
         if challenge_response.errcode != Success {
             bail!("challenge failed: {}", challenge_response.errmsg)
         }
@@ -65,7 +71,7 @@ impl CoordinatorClient {
             message: login_message,
             signature: signature,
         };
-        let login_response = block_on(api.login(&login_request, &token))?;
+        let login_response = self.rt.block_on(api.login(&login_request, &token))?;
         if login_response.errcode != Success {
             bail!("login failed: {}", login_response.errmsg)
         }
@@ -79,7 +85,7 @@ impl CoordinatorClient {
     }
 
     pub fn get_task(&mut self, req: &GetTaskRequest) -> Result<Response<GetTaskResponseData>> {
-        let response = block_on(self.api.get_task(req, self.token.as_ref().unwrap()))?;
+        let response = self.rt.block_on(self.api.get_task(req, self.token.as_ref().unwrap()))?;
         
         if response.errcode == ErrJWTTokenExpired {
             log::info!("JWT expired, attempting to re-login");
@@ -92,7 +98,7 @@ impl CoordinatorClient {
     }
 
     pub fn submit_proof(&mut self, req: &SubmitProofRequest) -> Result<Response<SubmitProofResponseData>> {
-        let response = block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))?;
+        let response = self.rt.block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))?;
         
         if response.errcode == ErrJWTTokenExpired {
             log::info!("JWT expired, attempting to re-login");
