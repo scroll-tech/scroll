@@ -83,12 +83,9 @@ func main() {
 			log.Crit("failed to get batch", "index", batchIndex, "err", err)
 		}
 
-		var dbParentBatch *orm.Batch
-		if batchIndex >= 1 { // Skip fetching parent batch for the first batch
-			dbParentBatch, err = batchOrm.GetBatchByIndex(context.Background(), batchIndex-1)
-			if err != nil {
-				log.Crit("failed to get parent batch", "index", batchIndex-1, "err", err)
-			}
+		dbParentBatch, err := batchOrm.GetBatchByIndex(context.Background(), batchIndex-1)
+		if err != nil {
+			log.Crit("failed to get parent batch", "index", batchIndex-1, "err", err)
 		}
 
 		dbChunks, err := chunkOrm.GetChunksInRange(context.Background(), dbBatch.StartChunkIndex, dbBatch.EndChunkIndex)
