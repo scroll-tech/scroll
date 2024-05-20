@@ -50,6 +50,7 @@ pub struct GetTaskRequest {
     pub task_type: crate::types::ProofType,
     pub prover_height: Option<u64>,
     pub vks: Vec<String>,
+    pub vk: String,
 }
 
 #[derive(Serialize, Deserialize)]

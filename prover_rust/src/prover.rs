@@ -73,10 +73,13 @@ impl<'a> Prover<'a> {
     }
 
     pub fn fetch_task(&self) -> Result<Task> {
+        let vks = self.circuits_handler_provider.get_vks();
+        let vk = vks[0].clone();
         let mut req = GetTaskRequest {
             task_type: self.get_proof_type(),
             prover_height: None,
-            vks: self.circuits_handler_provider.get_vks(),
+            vks,
+            vk,
         };
 
         if self.get_proof_type() == ProofType::ProofTypeChunk {
