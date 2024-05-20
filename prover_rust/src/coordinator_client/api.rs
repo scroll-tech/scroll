@@ -1,6 +1,7 @@
 use super::types::*;
 use anyhow::Result;
-use reqwest::{header::{self, CONTENT_TYPE}, Url};
+use reqwest::{header::CONTENT_TYPE, Url};
+use serde::Serialize;
 
 pub struct API {
     url_base: Url,
@@ -32,46 +33,28 @@ impl API {
 
     pub async fn login(&self, req: &LoginRequest, token: &String) -> Result<Response<LoginResponseData>> {
         let method = "/coordinator/v1/login";
-        let url = self.build_url(method)?;
-        let request_body = serde_json::to_string(&req)?;
-
-        let response = self.client
-            .post(url)
-            .header(CONTENT_TYPE, "application/json")
-            .bearer_auth(token)
-            .body(request_body)
-            .send()
-            .await?;
-
-        let response_body = response.text().await?;
-
-        serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
+        self.post_with_token(&method, req, token).await
     }
 
     pub async fn get_task(&self, req: &GetTaskRequest, token: &String) -> Result<Response<GetTaskResponseData>> {
         let method = "/coordinator/v1/get_task";
-        let url = self.build_url(method)?;
-        let request_body = serde_json::to_string(req)?;
-
-        let response = self.client
-            .post(url)
-            .header(CONTENT_TYPE, "application/json")
-            .bearer_auth(token)
-            .body(request_body)
-            .send()
-            .await?;
-
-        let response_body = response.text().await?;
-
-        serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
+        self.post_with_token(&method, req, token).await
     }
 
     pub async fn submit_proof(&self, req: &SubmitProofRequest, token: &String)  -> Result<Response<SubmitProofResponseData>> {
         let method = "/coordinator/v1/submit_proof";
+        self.post_with_token(&method, req, token).await
+    }
 
+    async fn post_with_token<Req, Resp>(&self, method: &str, req: &Req, token: &String) -> Result<Resp>
+    where
+        Req: ?Sized + Serialize,
+        Resp: serde::de::DeserializeOwned
+    {
         let url = self.build_url(method)?;
         let request_body = serde_json::to_string(req)?;
 
+        log::info!("[coordinator client], {method}, request: {request_body}");
         let response = self.client
             .post(url)
             .header(CONTENT_TYPE, "application/json")
@@ -82,6 +65,7 @@ impl API {
 
         let response_body = response.text().await?;
 
+        log::info!("[coordinator client], {method}, response: {response_body}");
         serde_json::from_str(&response_body).map_err(|e| anyhow::anyhow!(e))
     }
 
