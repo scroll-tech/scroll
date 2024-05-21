@@ -46,7 +46,7 @@ pub struct Config {
     pub db_path: String,
     pub core: ProverCoreConfig,
     pub coordinator: CoordinatorConfig,
-    pub l2geth: L2GethConfig,
+    pub l2geth: Option<L2GethConfig>,
 }
 
 impl Config {

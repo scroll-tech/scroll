@@ -1,5 +1,5 @@
 
-use anyhow::{Ok, Result};
+use anyhow::{bail, Ok, Result};
 use crate::types::ProofType;
 use super::CircuitsHandler;
 use super::types::{ChunkProof, BatchProof, BlockTrace, ChunkHash};
@@ -27,8 +27,7 @@ impl BaseCircuitsHandler {
                 batch_prover: Some(RefCell::new(BatchProver::from_dirs(params_dir, assets_dir))),
                 ..Default::default()
             }),
-            // TODO: add custom error system and change unreachable to error
-            _ => unreachable!()
+            _ => bail!("proof type invalid")
         }
     }
 }
@@ -47,8 +46,7 @@ impl CircuitsHandler for BaseCircuitsHandler {
             if let Some(prover) = self.chunk_prover.as_ref() {
                 return prover.borrow_mut().gen_chunk_proof(chunk_trace, name, inner_id, output_dir)
             }
-            // TODO: add custom error system and change unreachable to error
-            unreachable!()
+            unreachable!("please check errors in proof_type logic")
         }
 
     // api of aggregator::Prover
@@ -63,15 +61,13 @@ impl CircuitsHandler for BaseCircuitsHandler {
             if let Some(prover) = self.batch_prover.as_ref() {
                 return prover.borrow_mut().gen_agg_evm_proof(chunk_hashes_proofs, name, output_dir)
             }
-            // TODO: add custom error system and change unreachable to error
-            unreachable!()
+            unreachable!("please check errors in proof_type logic")
         }
 
     fn aggregator_check_chunk_proofs(&self, chunk_proofs: &[ChunkProof]) -> bool {
         if let Some(prover) = self.batch_prover.as_ref() {
             return prover.borrow_mut().check_chunk_proofs(chunk_proofs)
         }
-        // TODO: add custom error system and change unreachable to error
-        unreachable!()
+        unreachable!("please check errors in proof_type logic")
     }
 }
