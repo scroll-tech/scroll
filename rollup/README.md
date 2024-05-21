@@ -16,7 +16,7 @@ go install -v github.com/scroll-tech/go-ethereum/cmd/abigen
 
 2. `solc`
 
-See https://docs.soliditylang.org/en/latest/installing-solidity.html
+Ensure you install the version of solc required by [MockBridge.sol](./mock_bridge/MockBridge.sol#L2) (e.g., 0.8.24). See https://docs.soliditylang.org/en/latest/installing-solidity.html
 
 ## Build
 
@@ -31,7 +31,7 @@ make rollup_bins
 (Note: make sure you use different private keys for different senders in config.json.)
 
 ```bash
-./build/bin/event_watcher --config ./config.json
-./build/bin/gas_oracle --config ./config.json
-./build/bin/rollup_relayer --config ./config.json
+./build/bin/event_watcher --config ./conf/config.json
+./build/bin/gas_oracle --config ./conf/config.json
+./build/bin/rollup_relayer --config ./conf/config.json
 ```

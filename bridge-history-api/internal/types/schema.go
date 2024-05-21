@@ -4,8 +4,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-
-	"scroll-tech/bridge-history-api/internal/orm"
 )
 
 const (
@@ -79,17 +77,18 @@ type TxHistoryInfo struct {
 	ReplayTxHash       string              `json:"replay_tx_hash"`
 	RefundTxHash       string              `json:"refund_tx_hash"`
 	MessageHash        string              `json:"message_hash"`
-	TokenType          orm.TokenType       `json:"token_type"`    // 0: unknown, 1: eth, 2: erc20, 3: erc721, 4: erc1155
+	TokenType          TokenType           `json:"token_type"`    // 0: unknown, 1: eth, 2: erc20, 3: erc721, 4: erc1155
 	TokenIDs           []string            `json:"token_ids"`     // only for erc721 and erc1155
 	TokenAmounts       []string            `json:"token_amounts"` // for eth and erc20, the length is 1, for erc721 and erc1155, the length could be > 1
-	MessageType        orm.MessageType     `json:"message_type"`  // 0: unknown, 1: layer 1 message, 2: layer 2 message
+	MessageType        MessageType         `json:"message_type"`  // 0: unknown, 1: layer 1 message, 2: layer 2 message
 	L1TokenAddress     string              `json:"l1_token_address"`
 	L2TokenAddress     string              `json:"l2_token_address"`
 	BlockNumber        uint64              `json:"block_number"`
-	TxStatus           orm.TxStatusType    `json:"tx_status"` // 0: sent, 1: sent failed, 2: relayed, 3: failed relayed, 4: relayed reverted, 5: skipped, 6: dropped
+	TxStatus           TxStatusType        `json:"tx_status"` // 0: sent, 1: sent failed, 2: relayed, 3: failed relayed, 4: relayed reverted, 5: skipped, 6: dropped
 	CounterpartChainTx *CounterpartChainTx `json:"counterpart_chain_tx"`
 	ClaimInfo          *ClaimInfo          `json:"claim_info"`
 	BlockTimestamp     uint64              `json:"block_timestamp"`
+	BatchDepositFee    string              `json:"batch_deposit_fee"` // only for bridge batch deposit
 }
 
 // RenderJSON renders response with json
