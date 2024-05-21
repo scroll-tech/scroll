@@ -135,7 +135,6 @@ func action(ctx *cli.Context) error {
 				return
 			default:
 				l2relayer.ProcessPendingBatches()
-				time.Sleep(2 * time.Second)
 			}
 		}
 	}(subCtx)
@@ -147,7 +146,6 @@ func action(ctx *cli.Context) error {
 				return
 			default:
 				l2relayer.ProcessCommittedBatches()
-				time.Sleep(15 * time.Second)
 			}
 		}
 	}(subCtx)
