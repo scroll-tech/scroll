@@ -1,17 +1,17 @@
-mod version;
-mod types;
 mod config;
-mod key_signer;
-mod prover;
-mod zk_circuits_handler;
 mod coordinator_client;
 mod geth_client;
+mod key_signer;
+mod prover;
+mod types;
 mod utils_log;
+mod version;
+mod zk_circuits_handler;
 
-use config::Config;
-use prover::Prover;
 use anyhow::Result;
+use config::Config;
 use log;
+use prover::Prover;
 
 struct TaskProcesser<'a> {
     prover: &'a Prover<'a>,
@@ -19,9 +19,7 @@ struct TaskProcesser<'a> {
 
 impl<'a> TaskProcesser<'a> {
     pub fn new(prover: &'a Prover) -> Self {
-        TaskProcesser {
-            prover: prover,
-        }
+        TaskProcesser { prover: prover }
     }
 
     pub fn start(&self) {
@@ -39,12 +37,10 @@ impl<'a> TaskProcesser<'a> {
         let task = self.prover.fetch_task()?;
 
         match self.prover.prove_task(&task) {
-            Ok(proof_detail) => {
-                self.prover.submit_proof(&proof_detail, task.uuid.clone())
-            },
-            Err(error) => {
-                self.prover.submit_error(&task, types::ProofFailureType::NoPanic, error)
-            },
+            Ok(proof_detail) => self.prover.submit_proof(&proof_detail, task.uuid.clone()),
+            Err(error) => self
+                .prover
+                .submit_error(&task, types::ProofFailureType::NoPanic, error),
         }
     }
 }
@@ -56,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config: Config = Config::from_file(file_name.to_string())?;
 
     println!("{:?}", config);
-    
+
     let prover = Prover::new(&config)?;
 
     let task_processer = TaskProcesser::new(&prover);

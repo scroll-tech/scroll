@@ -1,15 +1,15 @@
+mod api;
 mod errors;
 pub mod types;
-mod api;
 
 use anyhow::{bail, Context, Ok, Result};
 use std::rc::Rc;
 
-use types::*;
-use errors::*;
 use api::API;
-use tokio::runtime::Runtime;
+use errors::*;
 use log;
+use tokio::runtime::Runtime;
+use types::*;
 
 use crate::key_signer::KeySigner;
 
@@ -31,8 +31,8 @@ pub struct CoordinatorClient {
 impl CoordinatorClient {
     pub fn new(config: Config, key_signer: Rc<KeySigner>) -> Result<Self> {
         let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()?;
+            .enable_all()
+            .build()?;
 
         let mut client = Self {
             api: API::new(&config.endpoint)?,
@@ -85,8 +85,10 @@ impl CoordinatorClient {
     }
 
     pub fn get_task(&mut self, req: &GetTaskRequest) -> Result<Response<GetTaskResponseData>> {
-        let response = self.rt.block_on(self.api.get_task(req, self.token.as_ref().unwrap()))?;
-        
+        let response = self
+            .rt
+            .block_on(self.api.get_task(req, self.token.as_ref().unwrap()))?;
+
         if response.errcode == ErrJWTTokenExpired {
             log::info!("JWT expired, attempting to re-login");
             self.login().context("JWT expired, re-login failed")?;
@@ -97,9 +99,14 @@ impl CoordinatorClient {
         Ok(response)
     }
 
-    pub fn submit_proof(&mut self, req: &SubmitProofRequest) -> Result<Response<SubmitProofResponseData>> {
-        let response = self.rt.block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))?;
-        
+    pub fn submit_proof(
+        &mut self,
+        req: &SubmitProofRequest,
+    ) -> Result<Response<SubmitProofResponseData>> {
+        let response = self
+            .rt
+            .block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))?;
+
         if response.errcode == ErrJWTTokenExpired {
             log::info!("JWT expired, attempting to re-login");
             self.login().context("JWT expired, re-login failed")?;

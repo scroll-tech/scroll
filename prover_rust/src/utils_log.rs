@@ -1,7 +1,6 @@
 use env_logger::Env;
 use std::sync::Once;
 
-
 static LOG_INIT: Once = Once::new();
 
 /// Initialize log

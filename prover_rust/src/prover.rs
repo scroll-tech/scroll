@@ -1,22 +1,20 @@
 use anyhow::{bail, Error, Ok, Result};
-use ethers_core::types::BlockNumber;
 use eth_types::U64;
+use ethers_core::types::BlockNumber;
 use once_cell::sync::Lazy;
-use std::cmp::Ordering;
-use std::rc::Rc;
-use std::cell::RefCell;
-use std::env;
+use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
-use crate::types::{CommonHash, ProofFailureType, ProofStatus};
-use crate::{config::Config, types::ProofType};
-use crate::zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider};
-use crate::coordinator_client::{CoordinatorClient, Config as CoordinatorConfig};
-use crate::coordinator_client::types::*;
-use crate::geth_client::{types::get_block_number, GethClient};
-use crate::key_signer::KeySigner;
+use crate::{
+    config::Config,
+    coordinator_client::{types::*, Config as CoordinatorConfig, CoordinatorClient},
+    geth_client::{types::get_block_number, GethClient},
+    key_signer::KeySigner,
+    types::{CommonHash, ProofFailureType, ProofStatus, ProofType},
+    zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
+};
 
-use super::types::{Task, ProofDetail};
-use prover::{ChunkProof, ChunkHash, BlockTrace};
+use super::types::{ProofDetail, Task};
+use prover::{BlockTrace, ChunkHash, ChunkProof};
 
 // Only used for debugging.
 pub(crate) static OUTPUT_DIR: Lazy<Option<String>> =
@@ -51,18 +49,26 @@ impl<'a> Prover<'a> {
         };
 
         let key_signer = Rc::new(KeySigner::new(&keystore_path, &keystore_password)?);
-        let coordinator_client = CoordinatorClient::new(coordinator_config, Rc::clone(&key_signer))?;
+        let coordinator_client =
+            CoordinatorClient::new(coordinator_config, Rc::clone(&key_signer))?;
 
         let mut prover = Prover {
             config,
             key_signer: Rc::clone(&key_signer),
-            circuits_handler_provider: CircuitsHandlerProvider::new(proof_type, params_path, assets_path)?,
+            circuits_handler_provider: CircuitsHandlerProvider::new(
+                proof_type,
+                params_path,
+                assets_path,
+            )?,
             coordinator_client: RefCell::new(coordinator_client),
             geth_client: None,
         };
 
         if config.core.proof_type == ProofType::ProofTypeChunk {
-            prover.geth_client =  Some(RefCell::new(GethClient::new("test", &config.l2geth.as_ref().unwrap().endpoint)?));
+            prover.geth_client = Some(RefCell::new(GethClient::new(
+                "test",
+                &config.l2geth.as_ref().unwrap().endpoint,
+            )?));
         }
 
         Ok(prover)
@@ -98,11 +104,11 @@ impl<'a> Prover<'a> {
             }
         }
         let resp = self.coordinator_client.borrow_mut().get_task(&req)?;
-        
+
         Task::try_from(&resp.data.unwrap()).map_err(|e| anyhow::anyhow!(e))
     }
 
-    pub fn prove_task(&self, task: &Task) -> Result<ProofDetail>  {
+    pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
         let version = task.get_version();
         if let Some(handler) = self.circuits_handler_provider.get_circuits_client(version) {
             self.do_prove(task, handler)
@@ -121,24 +127,28 @@ impl<'a> Prover<'a> {
         match task.task_type {
             ProofType::ProofTypeBatch => {
                 let chunk_hashes_proofs = self.gen_chunk_hashes_proofs(task)?;
-                let batch_proof = handler.aggregator_gen_agg_evm_proof(chunk_hashes_proofs,
+                let batch_proof = handler.aggregator_gen_agg_evm_proof(
+                    chunk_hashes_proofs,
                     None,
-                    self.get_output_dir())?;
+                    self.get_output_dir(),
+                )?;
 
                 proof_detail.batch_proof = Some(batch_proof);
                 Ok(proof_detail)
-            },
+            }
             ProofType::ProofTypeChunk => {
                 let chunk_trace = self.gen_chunk_traces(task)?;
-                let chunk_proof = handler.prover_gen_chunk_proof(chunk_trace,
+                let chunk_proof = handler.prover_gen_chunk_proof(
+                    chunk_trace,
                     None,
                     None,
-                    self.get_output_dir())?;
+                    self.get_output_dir(),
+                )?;
 
                 proof_detail.chunk_proof = Some(chunk_proof);
                 Ok(proof_detail)
-            },
-            _ => bail!("task type invalid")
+            }
+            _ => bail!("task type invalid"),
         }
     }
 
@@ -146,11 +156,11 @@ impl<'a> Prover<'a> {
         let proof_data = match proof_detail.proof_type {
             ProofType::ProofTypeBatch => {
                 serde_json::to_string(proof_detail.batch_proof.as_ref().unwrap())?
-            },
+            }
             ProofType::ProofTypeChunk => {
                 serde_json::to_string(proof_detail.chunk_proof.as_ref().unwrap())?
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         };
 
         let request = SubmitProofRequest {
@@ -165,7 +175,12 @@ impl<'a> Prover<'a> {
         self.do_submit(&request)
     }
 
-    pub fn submit_error(&self, task: &Task, failure_type: ProofFailureType, error: Error) -> Result<()> {
+    pub fn submit_error(
+        &self,
+        task: &Task,
+        failure_type: ProofFailureType,
+        error: Error,
+    ) -> Result<()> {
         let request = SubmitProofRequest {
             uuid: task.uuid.clone(),
             task_id: task.id.clone(),
@@ -184,7 +199,12 @@ impl<'a> Prover<'a> {
     }
 
     fn get_latest_block_number_value(&self) -> Result<Option<U64>> {
-        let number = self.geth_client.as_ref().unwrap().borrow_mut().block_number()?;
+        let number = self
+            .geth_client
+            .as_ref()
+            .unwrap()
+            .borrow_mut()
+            .block_number()?;
         Ok(number.as_number())
     }
 
@@ -195,7 +215,8 @@ impl<'a> Prover<'a> {
     // fn get_block_number_value(&self, block_number: &BlockNumber) -> Result<Option<U64>> {
     //     match block_number {
     //         BlockNumber::Safe | BlockNumber::Finalized => {
-    //             let header = self.geth_client.as_ref().unwrap().borrow_mut().header_by_number(block_number)?;
+    //             let header =
+    // self.geth_client.as_ref().unwrap().borrow_mut().header_by_number(block_number)?;
     //             Ok(header.get_number())
     //         },
     //         BlockNumber::Latest => {
@@ -227,20 +248,33 @@ impl<'a> Prover<'a> {
 
     fn gen_chunk_hashes_proofs(&self, task: &Task) -> Result<Vec<(ChunkHash, ChunkProof)>> {
         if let Some(batch_detail) = task.batch_task_detail.as_ref() {
-            Ok(batch_detail.chunk_infos.clone().into_iter().zip(batch_detail.chunk_proofs.clone()).collect())
+            Ok(batch_detail
+                .chunk_infos
+                .clone()
+                .into_iter()
+                .zip(batch_detail.chunk_proofs.clone())
+                .collect())
         } else {
             bail!("invalid task")
         }
     }
 
-    fn get_sorted_traces_by_hashes(&self, block_hashes: &Vec<CommonHash>) -> Result<Vec<BlockTrace>> {
+    fn get_sorted_traces_by_hashes(
+        &self,
+        block_hashes: &Vec<CommonHash>,
+    ) -> Result<Vec<BlockTrace>> {
         if block_hashes.len() == 0 {
             bail!("blockHashes is empty")
         }
 
         let mut block_traces = Vec::new();
         for (_, hash) in block_hashes.into_iter().enumerate() {
-            let trace = self.geth_client.as_ref().unwrap().borrow_mut().get_block_trace_by_hash(hash)?;
+            let trace = self
+                .geth_client
+                .as_ref()
+                .unwrap()
+                .borrow_mut()
+                .get_block_trace_by_hash(hash)?;
             block_traces.push(trace.block_trace);
         }
 
@@ -250,20 +284,27 @@ impl<'a> Prover<'a> {
             } else if get_block_number(b) == None {
                 Ordering::Greater
             } else {
-                get_block_number(a).unwrap().cmp(&get_block_number(b).unwrap())
+                get_block_number(a)
+                    .unwrap()
+                    .cmp(&get_block_number(b).unwrap())
             }
         });
 
-        let block_numbers: Vec<u64> = block_traces.iter().map(|trace| {
-            match get_block_number(trace) {
+        let block_numbers: Vec<u64> = block_traces
+            .iter()
+            .map(|trace| match get_block_number(trace) {
                 Some(v) => v,
-                None => 0
-            }
-        }).collect();
+                None => 0,
+            })
+            .collect();
         let mut i = 0;
         while i < block_numbers.len() - 1 {
-            if block_numbers[i] + 1 != block_numbers[i+1] {
-                bail!("block numbers are not continuous, got {} and {}", block_numbers[i], block_numbers[i+1])
+            if block_numbers[i] + 1 != block_numbers[i + 1] {
+                bail!(
+                    "block numbers are not continuous, got {} and {}",
+                    block_numbers[i],
+                    block_numbers[i + 1]
+                )
             }
             i += 1;
         }

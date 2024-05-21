@@ -1,20 +1,18 @@
 use std::path::Path;
 
 use anyhow::Result;
-use ethers_core::k256::{
-    ecdsa::{signature::hazmat::PrehashSigner, RecoveryId, Signature, SigningKey},
-    elliptic_curve::{sec1::ToEncodedPoint, FieldBytes},
-    Secp256k1,
-    PublicKey,
-    SecretKey
+use ethers_core::{
+    k256::{
+        ecdsa::{signature::hazmat::PrehashSigner, RecoveryId, Signature, SigningKey},
+        elliptic_curve::{sec1::ToEncodedPoint, FieldBytes},
+        PublicKey, Secp256k1, SecretKey,
+    },
+    types::Signature as EthSignature,
 };
 
+use eth_types::{H256, U256};
 use hex::ToHex;
 use tiny_keccak::{Hasher, Keccak};
-use eth_types::{H256, U256};
-
-use ethers_core::types::Signature as EthSignature;
-
 
 pub struct KeySigner {
     public_key: PublicKey,
@@ -24,7 +22,7 @@ pub struct KeySigner {
 impl KeySigner {
     pub fn new(key_path: &str, passwd: &str) -> Result<Self> {
         let p = Path::new(key_path);
-        
+
         let secret = if !p.exists() {
             let dir = p.parent().unwrap();
             let name = p.file_name().and_then(|s| s.to_str());
@@ -35,12 +33,11 @@ impl KeySigner {
             eth_keystore::decrypt_key(key_path, passwd).map_err(|e| anyhow::anyhow!(e))?
         };
 
-        
         let secret_key = SecretKey::from_bytes(secret.as_slice().into())?;
 
         let signer = SigningKey::from(secret_key.clone());
 
-        Ok(Self{
+        Ok(Self {
             public_key: secret_key.public_key(),
             signer: signer,
         })
@@ -68,7 +65,7 @@ impl KeySigner {
 
     pub fn sign_buffer<T>(&self, buffer: &T) -> Result<String>
     where
-    T: AsRef<[u8]>,
+        T: AsRef<[u8]>,
     {
         let pre_hash = keccak256(buffer);
 
@@ -85,7 +82,7 @@ impl KeySigner {
 fn buffer_to_hex<T>(buffer: &T, has_prefix: bool) -> String
 where
     T: AsRef<[u8]>,
-{   
+{
     if has_prefix {
         format!("0x{}", buffer.encode_hex::<String>())
     } else {

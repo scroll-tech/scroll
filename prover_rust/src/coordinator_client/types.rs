@@ -1,7 +1,7 @@
+use crate::types::{ProofFailureType, ProofStatus};
 use eth_types::Bytes;
-use serde::{Deserialize, Serialize};
-use crate::types::{ProofStatus, ProofFailureType};
 use rlp::RlpStream;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Response<T> {

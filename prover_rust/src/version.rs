@@ -13,7 +13,5 @@ fn init_version() -> String {
 }
 
 pub fn get_version() -> String {
-    unsafe {
-        VERSION.get_or_init(init_version).clone()
-    }
+    unsafe { VERSION.get_or_init(init_version).clone() }
 }

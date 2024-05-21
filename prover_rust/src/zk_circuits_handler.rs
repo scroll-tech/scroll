@@ -1,10 +1,10 @@
-mod types;
 mod base;
+mod types;
 
-use types::{ChunkProof, BatchProof, BlockTrace, ChunkHash};
 use anyhow::Result;
-use std::collections::HashMap;
 use base::BaseCircuitsHandler;
+use std::collections::HashMap;
+use types::{BatchProof, BlockTrace, ChunkHash, ChunkProof};
 
 use crate::types::ProofType;
 
@@ -19,20 +19,23 @@ pub mod utils {
 pub trait CircuitsHandler {
     // api of zkevm::Prover
     fn prover_get_vk(&self) -> Option<Vec<u8>>;
-    fn prover_gen_chunk_proof(&self,
+    fn prover_gen_chunk_proof(
+        &self,
         chunk_trace: Vec<BlockTrace>,
         name: Option<&str>,
         inner_id: Option<&str>,
-        output_dir: Option<&str>) -> Result<ChunkProof>;
+        output_dir: Option<&str>,
+    ) -> Result<ChunkProof>;
 
     // api of aggregator::Prover
     fn aggregator_get_vk(&self) -> Option<Vec<u8>>;
-    fn aggregator_gen_agg_evm_proof(&self,
+    fn aggregator_gen_agg_evm_proof(
+        &self,
         chunk_hashes_proofs: Vec<(ChunkHash, ChunkProof)>,
         name: Option<&str>,
-        output_dir: Option<&str>) -> Result<BatchProof>;
-    fn aggregator_check_chunk_proofs(&self,
-        chunk_proofs: &[ChunkProof]) -> bool;
+        output_dir: Option<&str>,
+    ) -> Result<BatchProof>;
+    fn aggregator_check_chunk_proofs(&self, chunk_proofs: &[ChunkProof]) -> bool;
 }
 
 pub struct CircuitsHandlerProvider {
@@ -58,19 +61,23 @@ impl CircuitsHandlerProvider {
 
     pub fn get_vks(&self) -> Vec<String> {
         match self.proof_type {
-            ProofType::ProofTypeBatch => {
-                self.circuits_handler_map.values().map(|h| {
+            ProofType::ProofTypeBatch => self
+                .circuits_handler_map
+                .values()
+                .map(|h| {
                     h.aggregator_get_vk()
-                    .map_or("".to_string(), |vk| utils::encode_vk(vk))
-                }).collect::<Vec<String>>()
-            },
-            ProofType::ProofTypeChunk => {
-                self.circuits_handler_map.values().map(|h| {
+                        .map_or("".to_string(), |vk| utils::encode_vk(vk))
+                })
+                .collect::<Vec<String>>(),
+            ProofType::ProofTypeChunk => self
+                .circuits_handler_map
+                .values()
+                .map(|h| {
                     h.prover_get_vk()
-                    .map_or("".to_string(), |vk| utils::encode_vk(vk))
-                }).collect::<Vec<String>>()
-            },
-            _ => unreachable!()
+                        .map_or("".to_string(), |vk| utils::encode_vk(vk))
+                })
+                .collect::<Vec<String>>(),
+            _ => unreachable!(),
         }
-    }    
+    }
 }

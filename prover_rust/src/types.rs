@@ -1,6 +1,6 @@
-use prover::{BatchProof, ChunkProof, ChunkHash};
-use serde::{Deserialize, Serialize, Serializer, Deserializer};
 use eth_types::H256;
+use prover::{BatchProof, ChunkHash, ChunkProof};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::coordinator_client::types::GetTaskResponseData;
 
@@ -103,11 +103,11 @@ impl TryFrom<&GetTaskResponseData> for Task {
         match task.task_type {
             ProofType::ProofTypeBatch => {
                 task.batch_task_detail = Some(serde_json::from_str(&value.task_data)?);
-            },
+            }
             ProofType::ProofTypeChunk => {
                 task.chunk_task_detail = Some(serde_json::from_str(&value.task_data)?);
-            },
-            _ => unreachable!()
+            }
+            _ => unreachable!(),
         }
         Ok(task)
     }
@@ -128,7 +128,7 @@ pub struct ProofDetail {
 pub enum ProofFailureType {
     Undefined,
     Panic,
-    NoPanic
+    NoPanic,
 }
 
 impl ProofFailureType {

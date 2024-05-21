@@ -1,1 +1,1 @@
-pub use prover::{ChunkProof, BatchProof, BlockTrace, ChunkHash};
+pub use prover::{BatchProof, BlockTrace, ChunkHash, ChunkProof};
