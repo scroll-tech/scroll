@@ -16,6 +16,7 @@ import (
 	"unsafe"
 
 	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/da-codec/encoding/codecv1"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -109,13 +110,13 @@ func main() {
 			Chunks:                     chunks,
 		}
 
-		raw, compressed, err := estimateBatchL1CommitBlobSize(batch)
+		raw, compressed, blobSize, err := estimateBatchL1CommitBlobSize(batch)
 		if err != nil {
 			log.Crit("failed to estimate batch l1 commit blob size", "err", err)
 		}
 
 		// compression_ratio = preimage_bytes / compressed_bytes
-		log.Info("compression ratio", "raw length", raw, "compressed length", compressed, "ratio", 1.0*raw/compressed)
+		log.Info("compression ratio", "batch index", batch.Index, "raw length", raw, "compressed length", compressed, "blobSize", blobSize, "ratio", float64(raw)/float64(compressed))
 
 		totalRawSize += raw
 		totalCompressedSize += compressed
@@ -128,16 +129,16 @@ func main() {
 	log.Info("Average compression ratio", "average raw length", averageRawSize, "average compressed length", averageCompressedSize, "ratio", averageRawSize/averageCompressedSize)
 }
 
-func estimateBatchL1CommitBlobSize(b *encoding.Batch) (uint64, uint64, error) {
+func estimateBatchL1CommitBlobSize(b *encoding.Batch) (uint64, uint64, uint64, error) {
 	batchBytes, err := constructBatchPayload(b.Chunks)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	blobBytes, err := compressScrollBatchBytes(batchBytes)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
-	return uint64(len(batchBytes)), uint64(len(blobBytes)), nil
+	return uint64(len(batchBytes)), uint64(len(blobBytes)), codecv1.CalculatePaddedBlobSize(uint64(len(blobBytes))), nil
 }
 
 // constructBatchPayload constructs the batch payload.
