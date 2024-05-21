@@ -84,36 +84,48 @@ impl CoordinatorClient {
         Ok(())
     }
 
-    pub fn get_task(&mut self, req: &GetTaskRequest) -> Result<Response<GetTaskResponseData>> {
-        let response = self
-            .rt
-            .block_on(self.api.get_task(req, self.token.as_ref().unwrap()))?;
-
+    fn action_with_re_login<T, F, R>(&mut self, req: &R, mut f: F) -> Result<Response<T>>
+    where F: FnMut(&mut Self, &R) -> Result<Response<T>>
+    {
+        let response = f(self, req)?;
         if response.errcode == ErrJWTTokenExpired {
             log::info!("JWT expired, attempting to re-login");
             self.login().context("JWT expired, re-login failed")?;
             log::info!("re-login success");
+            return f(self, req);
         } else if response.errcode != Success {
             bail!("get task failed: {}", response.errmsg)
         }
         Ok(response)
     }
 
+    fn do_get_task(&mut self, req: &GetTaskRequest) -> Result<Response<GetTaskResponseData>> {
+        self
+        .rt
+        .block_on(self.api.get_task(req, self.token.as_ref().unwrap()))
+    }
+
+    pub fn get_task(&mut self, req: &GetTaskRequest) -> Result<Response<GetTaskResponseData>> {
+        self.action_with_re_login(req, |s, req| {
+            s.do_get_task(req)
+        })
+    }
+
+    fn do_submit_proof(
+        &mut self,
+        req: &SubmitProofRequest,
+    ) -> Result<Response<SubmitProofResponseData>> {
+        self
+        .rt
+        .block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))
+    }
+
     pub fn submit_proof(
         &mut self,
         req: &SubmitProofRequest,
     ) -> Result<Response<SubmitProofResponseData>> {
-        let response = self
-            .rt
-            .block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))?;
-
-        if response.errcode == ErrJWTTokenExpired {
-            log::info!("JWT expired, attempting to re-login");
-            self.login().context("JWT expired, re-login failed")?;
-            log::info!("re-login success");
-        } else if response.errcode != Success {
-            bail!("submit proof failed: {}", response.errmsg)
-        }
-        Ok(response)
+        self.action_with_re_login(req, |s, req| {
+            s.do_submit_proof(req)
+        })
     }
 }
