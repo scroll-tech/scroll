@@ -1,6 +1,6 @@
 .PHONY: fmt dev_docker build_test_docker run_test_docker clean update
 
-L2GETH_TAG=scroll-v5.1.6
+L2GETH_TAG=scroll-v5.3.0
 
 help: ## Display this help message
 	@grep -h \
@@ -44,8 +44,8 @@ fmt: ## format the code
 
 dev_docker: ## build docker images for development/testing usages
 	docker pull postgres
-	docker build -t scroll_l1geth ./common/docker/l1geth/
-	docker build -t scroll_l2geth ./common/docker/l2geth/
+	docker build -t scroll_l1geth ./common/testcontainers/docker/l1geth/
+	docker build -t scroll_l2geth ./common/testcontainers/docker/l2geth/
 
 clean: ## Empty out the bin folder
 	@rm -rf build/bin

@@ -79,7 +79,7 @@ library BatchHeaderV1Codec {
 
     /// @notice Get the number of L1 messages popped before this batch.
     /// @param batchPtr The start memory offset of the batch header in memory.
-    /// @return _totalL1MessagePopped The the number of L1 messages popped before this batch.
+    /// @return _totalL1MessagePopped The number of L1 messages popped before this batch.
     function getTotalL1MessagePopped(uint256 batchPtr) internal pure returns (uint256 _totalL1MessagePopped) {
         assembly {
             _totalL1MessagePopped := shr(192, mload(add(batchPtr, 17)))

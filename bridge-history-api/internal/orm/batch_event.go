@@ -7,26 +7,8 @@ import (
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
-)
 
-// BatchStatusType represents the type of batch status.
-type BatchStatusType int
-
-// Constants for BatchStatusType.
-const (
-	BatchStatusTypeUnknown BatchStatusType = iota
-	BatchStatusTypeCommitted
-	BatchStatusTypeReverted
-	BatchStatusTypeFinalized
-)
-
-// UpdateStatusType represents the whether batch info is updated in message table.
-type UpdateStatusType int
-
-// Constants for UpdateStatusType.
-const (
-	UpdateStatusTypeUnupdated UpdateStatusType = iota
-	UpdateStatusTypeUpdated
+	btypes "scroll-tech/bridge-history-api/internal/types"
 )
 
 // BatchEvent represents a batch event.
@@ -77,8 +59,8 @@ func (c *BatchEvent) GetFinalizedBatchesLEBlockHeight(ctx context.Context, block
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BatchEvent{})
 	db = db.Where("end_block_number <= ?", blockHeight)
-	db = db.Where("batch_status = ?", BatchStatusTypeFinalized)
-	db = db.Where("update_status = ?", UpdateStatusTypeUnupdated)
+	db = db.Where("batch_status = ?", btypes.BatchStatusTypeFinalized)
+	db = db.Where("update_status = ?", btypes.UpdateStatusTypeUnupdated)
 	db = db.Order("batch_index asc")
 	if err := db.Find(&batches).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -96,8 +78,8 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 		db = db.WithContext(ctx)
 		db = db.Model(&BatchEvent{})
 		updateFields := make(map[string]interface{})
-		switch BatchStatusType(l1BatchEvent.BatchStatus) {
-		case BatchStatusTypeCommitted:
+		switch btypes.BatchStatusType(l1BatchEvent.BatchStatus) {
+		case btypes.BatchStatusTypeCommitted:
 			// Use the clause to either insert or ignore on conflict
 			db = db.Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "batch_hash"}},
@@ -106,17 +88,17 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 			if err := db.Create(l1BatchEvent).Error; err != nil {
 				return fmt.Errorf("failed to insert or ignore batch event, error: %w", err)
 			}
-		case BatchStatusTypeFinalized:
+		case btypes.BatchStatusTypeFinalized:
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
 			db = db.Where("batch_hash = ?", l1BatchEvent.BatchHash)
-			updateFields["batch_status"] = BatchStatusTypeFinalized
+			updateFields["batch_status"] = btypes.BatchStatusTypeFinalized
 			if err := db.Updates(updateFields).Error; err != nil {
 				return fmt.Errorf("failed to update batch event, error: %w", err)
 			}
-		case BatchStatusTypeReverted:
+		case btypes.BatchStatusTypeReverted:
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
 			db = db.Where("batch_hash = ?", l1BatchEvent.BatchHash)
-			updateFields["batch_status"] = BatchStatusTypeReverted
+			updateFields["batch_status"] = btypes.BatchStatusTypeReverted
 			if err := db.Updates(updateFields).Error; err != nil {
 				return fmt.Errorf("failed to update batch event, error: %w", err)
 			}
@@ -135,7 +117,7 @@ func (c *BatchEvent) UpdateBatchEventStatus(ctx context.Context, batchIndex uint
 	db = db.Model(&BatchEvent{})
 	db = db.Where("batch_index = ?", batchIndex)
 	updateFields := map[string]interface{}{
-		"update_status": UpdateStatusTypeUpdated,
+		"update_status": btypes.UpdateStatusTypeUpdated,
 	}
 	if err := db.Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("failed to update batch event status, batchIndex: %d, error: %w", batchIndex, err)

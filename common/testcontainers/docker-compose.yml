@@ -8,14 +8,14 @@ services:
               mkdir -p /data/execution &&
               cp -a /execution/* /data/execution/"
     volumes:
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/consensus:/consensus
-      - ${HOST_PATH:-../../..}/common/docker-compose/l1/execution:/execution
+      - ../../common/testcontainers/consensus:/consensus
+      - ../../common/testcontainers/execution:/execution
       - data:/data
 
   # Creates a genesis state for the beacon chain using a YAML configuration file and
   # a deterministic set of 64 validators.
   create-beacon-chain-genesis:
-    image: "gcr.io/prysmaticlabs/prysm/cmd/prysmctl:latest"
+    image: "gcr.io/prysmaticlabs/prysm/cmd/prysmctl:HEAD-263557"
     command:
       - testnet
       - generate-genesis
@@ -96,7 +96,7 @@ services:
       - --nodiscover
       - --syncmode=full
     ports:
-      - ${GETH_HTTP_PORT:-8545}:8545
+      - 8545
     depends_on:
       geth-genesis:
         condition: service_completed_successfully

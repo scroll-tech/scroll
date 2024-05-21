@@ -26,6 +26,8 @@ type SenderConfig struct {
 	EscalateMultipleDen uint64 `json:"escalate_multiple_den"`
 	// The maximum gas price can be used to send transaction.
 	MaxGasPrice uint64 `json:"max_gas_price"`
+	// The minimum gas tip can be used to send transaction.
+	MinGasTip uint64 `json:"min_gas_tip"`
 	// The maximum blob gas price can be used to send transaction.
 	MaxBlobGasPrice uint64 `json:"max_blob_gas_price"`
 	// The transaction type to use: LegacyTx, DynamicFeeTx, BlobTx
@@ -70,8 +72,14 @@ type RelayerConfig struct {
 type GasOracleConfig struct {
 	// MinGasPrice store the minimum gas price to set.
 	MinGasPrice uint64 `json:"min_gas_price"`
-	// GasPriceDiff store the percentage of gas price difference.
+	// GasPriceDiff is the minimum percentage of gas price difference to update gas oracle.
 	GasPriceDiff uint64 `json:"gas_price_diff"`
+
+	// The following configs are only for updating L1 gas price, used for sender in L2.
+	// The weight for L1 base fee.
+	L1BaseFeeWeight float64 `json:"l1_base_fee_weight"`
+	// The weight for L1 blob base fee.
+	L1BlobBaseFeeWeight float64 `json:"l1_blob_base_fee_weight"`
 }
 
 // relayerConfigAlias RelayerConfig alias name
