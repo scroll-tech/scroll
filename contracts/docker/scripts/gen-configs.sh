@@ -13,5 +13,9 @@ echo "generating rollup-config.json"
 forge script scripts/foundry/DeployScroll.s.sol:GenerateRollupConfig || exit 1
 
 echo ""
+echo "generating coordinator-config.json"
+forge script scripts/foundry/DeployScroll.s.sol:GenerateCoordinatorConfig || exit 1
+
+echo ""
 echo "generating bridge-history-config.json"
 forge script scripts/foundry/DeployScroll.s.sol:GenerateBridgeHistoryConfig || exit 1

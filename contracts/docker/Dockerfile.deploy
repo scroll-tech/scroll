@@ -24,7 +24,6 @@ RUN forge build
 
 # copy script configs
 COPY ./docker/templates/config-contracts.toml /contracts/docker/templates/config-contracts.toml
-COPY ./docker/templates/genesis.json /contracts/docker/templates/genesis.json
 
 COPY ./docker/scripts/deploy.sh /contracts/docker/scripts/deploy.sh
 

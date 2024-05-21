@@ -59,6 +59,7 @@ uint256 constant MINIMUM_DEPLOYER_BALANCE = 0.1 ether;
 string constant CONFIG_CONTRACTS_TEMPLATE_PATH = "./docker/templates/config-contracts.toml";
 string constant GENESIS_JSON_TEMPLATE_PATH = "./docker/templates/genesis.json";
 string constant ROLLUP_CONFIG_TEMPLATE_PATH = "./docker/templates/rollup-config.json";
+string constant COORDINATOR_CONFIG_TEMPLATE_PATH = "./docker/templates/coordinator-config.json";
 string constant BRIDGE_HISTORY_CONFIG_TEMPLATE_PATH = "./docker/templates/bridge-history-config.json";
 
 // input files
@@ -69,6 +70,7 @@ string constant CONFIG_CONTRACTS_PATH = "./volume/config-contracts.toml";
 string constant GENESIS_ALLOC_JSON_PATH = "./volume/__genesis-alloc.json";
 string constant GENESIS_JSON_PATH = "./volume/genesis.json";
 string constant ROLLUP_CONFIG_PATH = "./volume/rollup-config.json";
+string constant COORDINATOR_CONFIG_PATH = "./volume/coordinator-config.json";
 string constant BRIDGE_HISTORY_CONFIG_PATH = "./volume/bridge-history-config.json";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
@@ -158,6 +160,9 @@ abstract contract Configuration is Script {
     address internal L1_FEE_VAULT_ADDR;
     address internal L1_PLONK_VERIFIER_ADDR;
 
+    // coordinator
+    string internal COORDINATOR_JWT_SECRET_KEY;
+
     /***************
      * Constructor *
      ***************/
@@ -208,6 +213,8 @@ abstract contract Configuration is Script {
 
         L1_FEE_VAULT_ADDR = cfg.readAddress(".contracts.L1_FEE_VAULT_ADDR");
         L1_PLONK_VERIFIER_ADDR = cfg.readAddress(".contracts.L1_PLONK_VERIFIER_ADDR");
+
+        COORDINATOR_JWT_SECRET_KEY = cfg.readString(".coordinator.COORDINATOR_JWT_SECRET_KEY");
 
         runSanityCheck();
     }
@@ -2027,6 +2034,37 @@ contract GenerateRollupConfig is DeployScroll {
         );
 
         vm.writeJson(SCROLL_DB_CONNECTION_STRING, ROLLUP_CONFIG_PATH, ".db_config.dsn");
+    }
+}
+
+contract GenerateCoordinatorConfig is DeployScroll {
+    /***************
+     * Entry point *
+     ***************/
+
+    function run() public {
+        setScriptMode(ScriptMode.VerifyConfig);
+        predictAllContracts();
+
+        generateCoordinatorConfig();
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
+
+    function generateCoordinatorConfig() private {
+        // initialize template file
+        if (vm.exists(COORDINATOR_CONFIG_PATH)) {
+            vm.removeFile(COORDINATOR_CONFIG_PATH);
+        }
+
+        string memory template = vm.readFile(COORDINATOR_CONFIG_TEMPLATE_PATH);
+        vm.writeFile(COORDINATOR_CONFIG_PATH, template);
+
+        vm.writeJson(vm.toString(CHAIN_ID_L2), COORDINATOR_CONFIG_PATH, ".l2.chain_id");
+        vm.writeJson(SCROLL_DB_CONNECTION_STRING, COORDINATOR_CONFIG_PATH, ".db.dsn");
+        vm.writeJson(COORDINATOR_JWT_SECRET_KEY, COORDINATOR_CONFIG_PATH, ".auth.secret");
     }
 }
 

@@ -1,0 +1,30 @@
+{
+  "prover_manager": {
+    "provers_per_session": 1,
+    "session_attempts": 100,
+    "chunk_collection_time_sec": 3600,
+    "batch_collection_time_sec": 600,
+    "verifier": {
+      "fork_name": "bernoulli",
+      "mock_mode": false,
+      "params_path": "/verifier/params",
+      "assets_path": "/verifier/assets"
+    },
+    "max_verifier_workers": 4,
+    "min_prover_version": "v4.3.41"
+  },
+  "db": {
+    "driver_name": "postgres",
+    "dsn": null,
+    "maxOpenNum": 200,
+    "maxIdleNum": 20
+  },
+  "l2": {
+    "chain_id": null
+  },
+  "auth": {
+    "secret": null,
+    "challenge_expire_duration_sec": 10,
+    "login_expire_duration_sec": 3600
+  }
+}
