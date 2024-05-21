@@ -106,13 +106,51 @@ func action(ctx *cli.Context) error {
 		l2watcher.TryFetchRunningMissingBlocks(number)
 	})
 
-	go utils.Loop(subCtx, 2*time.Second, chunkProposer.TryProposeChunk)
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				chunkProposer.TryProposeChunk()
+			}
+		}
+	}(subCtx)
 
-	go utils.Loop(subCtx, 10*time.Second, batchProposer.TryProposeBatch)
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				batchProposer.TryProposeBatch()
+			}
+		}
+	}(subCtx)
 
-	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				l2relayer.ProcessPendingBatches()
+				time.Sleep(2 * time.Second)
+			}
+		}
+	}(subCtx)
 
-	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessCommittedBatches)
+	go func(ctx context.Context) {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				l2relayer.ProcessCommittedBatches()
+				time.Sleep(15 * time.Second)
+			}
+		}
+	}(subCtx)
 
 	// Finish start all rollup relayer functions.
 	log.Info("Start rollup-relayer successfully", "version", version.Version)
