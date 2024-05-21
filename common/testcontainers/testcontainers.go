@@ -120,7 +120,7 @@ func (t *TestcontainerApps) GetPoSL1EndPoint() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return contrainer.PortEndpoint(context.Background(), "8545/tcp", "http")
+	return contrainer.PortEndpoint(context.Background(), "8546/tcp", "ws")
 }
 
 // GetPoSL1Client returns a ethclient by dialing running PoS L1 client

@@ -96,6 +96,7 @@ services:
       - --nodiscover
       - --syncmode=full
     ports:
+      - 8546
       - 8545
     depends_on:
       geth-genesis:
