@@ -22,4 +22,4 @@ else
 endif
 
 prover:
-	GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build
+	GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release

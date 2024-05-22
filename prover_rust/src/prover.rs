@@ -134,6 +134,7 @@ impl<'a> Prover<'a> {
                 )?;
 
                 proof_detail.batch_proof = Some(batch_proof);
+                proof_detail.status = ProofStatus::Ok;
                 Ok(proof_detail)
             }
             ProofType::ProofTypeChunk => {
@@ -146,6 +147,7 @@ impl<'a> Prover<'a> {
                 )?;
 
                 proof_detail.chunk_proof = Some(chunk_proof);
+                proof_detail.status = ProofStatus::Ok;
                 Ok(proof_detail)
             }
             _ => bail!("task type invalid"),
