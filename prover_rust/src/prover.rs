@@ -125,7 +125,12 @@ impl<'a> Prover<'a> {
         };
         match task.task_type {
             ProofType::ProofTypeBatch => {
-                let chunk_hashes_proofs = self.gen_chunk_hashes_proofs(task)?;
+                let chunk_hashes_proofs: Vec<(ChunkHash, ChunkProof)> = self.gen_chunk_hashes_proofs(task)?;
+                let chunk_proofs: Vec<ChunkProof> = chunk_hashes_proofs.iter().map(|t| t.1.clone()).collect();
+                let is_valid = handler.aggregator_check_chunk_proofs(&chunk_proofs)?;
+                if !is_valid {
+                    bail!("non-match chunk protocol, task-id: {}", &task.id)
+                }
                 let batch_proof = handler.aggregator_gen_agg_evm_proof(
                     chunk_hashes_proofs,
                     None,

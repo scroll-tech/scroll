@@ -76,9 +76,9 @@ impl CircuitsHandler for BaseCircuitsHandler {
         unreachable!("please check errors in proof_type logic")
     }
 
-    fn aggregator_check_chunk_proofs(&self, chunk_proofs: &[ChunkProof]) -> bool {
+    fn aggregator_check_chunk_proofs(&self, chunk_proofs: &[ChunkProof]) -> Result<bool> {
         if let Some(prover) = self.batch_prover.as_ref() {
-            return prover.borrow_mut().check_chunk_proofs(chunk_proofs);
+            return Ok(prover.borrow_mut().check_chunk_proofs(chunk_proofs));
         }
         unreachable!("please check errors in proof_type logic")
     }

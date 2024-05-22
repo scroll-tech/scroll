@@ -1,5 +1,6 @@
-mod base;
 mod types;
+mod base;
+mod next;
 
 use anyhow::Result;
 use base::BaseCircuitsHandler;
@@ -7,6 +8,8 @@ use std::collections::HashMap;
 use types::{BatchProof, BlockTrace, ChunkHash, ChunkProof};
 
 use crate::types::ProofType;
+
+use self::next::NextCircuitsHandler;
 
 type CiruitsVersion = String;
 
@@ -35,7 +38,7 @@ pub trait CircuitsHandler {
         name: Option<&str>,
         output_dir: Option<&str>,
     ) -> Result<BatchProof>;
-    fn aggregator_check_chunk_proofs(&self, chunk_proofs: &[ChunkProof]) -> bool;
+    fn aggregator_check_chunk_proofs(&self, chunk_proofs: &[ChunkProof]) -> Result<bool>;
 }
 
 pub struct CircuitsHandlerProvider {
@@ -48,6 +51,9 @@ impl CircuitsHandlerProvider {
         let mut m: HashMap<CiruitsVersion, Box<dyn CircuitsHandler>> = HashMap::new();
         let handler = BaseCircuitsHandler::new(proof_type, params_dir, assets_dir)?;
         m.insert("".to_string(), Box::new(handler));
+
+        // let next_handler: NextCircuitsHandler = NextCircuitsHandler::new(proof_type, params_dir, assets_dir)?;
+        // m.insert("next".to_string(), Box::new(next_handler));
 
         Ok(CircuitsHandlerProvider {
             proof_type: proof_type,

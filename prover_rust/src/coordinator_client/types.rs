@@ -1,5 +1,4 @@
 use crate::types::{ProofFailureType, ProofStatus};
-use eth_types::Bytes;
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
 
