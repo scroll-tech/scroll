@@ -121,7 +121,6 @@ impl<'a> Prover<'a> {
         let mut proof_detail = ProofDetail {
             id: task.id.clone(),
             proof_type: task.task_type,
-            status: ProofStatus::Error,
             ..Default::default()
         };
         match task.task_type {
@@ -134,7 +133,6 @@ impl<'a> Prover<'a> {
                 )?;
 
                 proof_detail.batch_proof = Some(batch_proof);
-                proof_detail.status = ProofStatus::Ok;
                 Ok(proof_detail)
             }
             ProofType::ProofTypeChunk => {
@@ -147,7 +145,6 @@ impl<'a> Prover<'a> {
                 )?;
 
                 proof_detail.chunk_proof = Some(chunk_proof);
-                proof_detail.status = ProofStatus::Ok;
                 Ok(proof_detail)
             }
             _ => bail!("task type invalid"),
@@ -169,7 +166,7 @@ impl<'a> Prover<'a> {
             uuid,
             task_id: proof_detail.id.clone(),
             task_type: proof_detail.proof_type,
-            status: proof_detail.status,
+            status: ProofStatus::Ok,
             proof: proof_data,
             ..Default::default()
         };
