@@ -46,10 +46,10 @@
     "maxIdleNum": 20
   },
   "redis": {
-    "address": null,
-    "username": null,
-    "password": null,
-    "local":null,
+    "address": "localhost:6379",
+    "username": "default",
+    "password": "",
+    "local": true,
     "minIdleConns": 10,
     "readTimeoutMs": 500
   }
