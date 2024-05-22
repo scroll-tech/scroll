@@ -1,0 +1,56 @@
+{
+  "l1_config": {
+    "l1_url": null,
+    "confirm": "0x20",
+    "start_number": null,
+    "l1_contracts": {
+        "l1_gateways": {
+          "eth_gateway": null,
+          "weth_gateway": null,
+          "standard_erc20_gateway": null,
+          "custom_erc20_gateway": null,
+          "erc721_gateway": null,
+          "erc1155_gateway": null,
+          "dai_gateway": "0x0000000000000000000000000000000000000000",
+          "usdc_gateway": "0x0000000000000000000000000000000000000000",
+          "lido_gateway": "0x0000000000000000000000000000000000000000",
+          "puffer_gateway": "0x0000000000000000000000000000000000000000"
+        },
+        "scroll_messenger": null,
+        "message_queue": null,
+        "scroll_chain": null
+    },
+    "start_messenger_balance": null
+  },
+  "l2_config": {
+    "l2_url": null,
+    "confirm": "0x80",
+    "l2_contracts": {
+        "l2_gateways": {
+          "eth_gateway": null,
+          "weth_gateway": null,
+          "standard_erc20_gateway": null,
+          "custom_erc20_gateway": null,
+          "erc721_gateway": null,
+          "erc1155_gateway": null,
+          "dai_gateway": "0x0000000000000000000000000000000000000000",
+          "usdc_gateway": "0x0000000000000000000000000000000000000000",
+          "lido_gateway": "0x0000000000000000000000000000000000000000",
+          "puffer_gateway": "0x0000000000000000000000000000000000000000"
+        },
+        "scroll_messenger": null,
+        "message_queue": null
+    }
+  },
+  "slack_webhook_config": {
+    "webhook_url": "http://localhost:1234",
+    "worker_count": 5,
+    "worker_buffer_size": 1000
+  },
+  "db_config": {
+    "driver_name": "postgres",
+    "dsn": null,
+    "maxOpenNum": 100,
+    "maxIdleNum": 20
+  }
+}

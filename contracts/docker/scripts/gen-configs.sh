@@ -17,5 +17,13 @@ echo "generating coordinator-config.json"
 forge script scripts/foundry/DeployScroll.s.sol:GenerateCoordinatorConfig || exit 1
 
 echo ""
+echo "generating chain-monitor-config.json"
+forge script scripts/foundry/DeployScroll.s.sol:GenerateChainMonitorConfig || exit 1
+
+echo ""
 echo "generating bridge-history-config.json"
 forge script scripts/foundry/DeployScroll.s.sol:GenerateBridgeHistoryConfig || exit 1
+
+echo ""
+echo "generating balance-checker-config.json"
+forge script scripts/foundry/DeployScroll.s.sol:GenerateBalanceCheckerConfig || exit 1

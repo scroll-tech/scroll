@@ -23,7 +23,9 @@ ENV FOUNDRY_BYTECODE_HASH="none"
 RUN forge build
 
 # copy script configs
+COPY ./docker/templates/balance-checker-config.json /contracts/docker/templates/balance-checker-config.json
 COPY ./docker/templates/bridge-history-config.json /contracts/docker/templates/bridge-history-config.json
+COPY ./docker/templates/chain-monitor-config.json /contracts/docker/templates/chain-monitor-config.json
 COPY ./docker/templates/config-contracts.toml /contracts/docker/templates/config-contracts.toml
 COPY ./docker/templates/coordinator-config.json /contracts/docker/templates/coordinator-config.json
 COPY ./docker/templates/genesis.json /contracts/docker/templates/genesis.json

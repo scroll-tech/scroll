@@ -1,0 +1,42 @@
+{
+  "addresses": [
+    {
+      "rpc_url": "${SCROLL_L1_RPC}",
+      "min_balance_ether": "10",
+      "address": "${L1_COMMIT_SENDER_ADDRESS}",
+      "name": "L1_COMMIT_SENDER"
+    },
+    {
+      "rpc_url": "${SCROLL_L1_RPC}",
+      "min_balance_ether": "10",
+      "address": "${L1_FINALIZE_SENDER_ADDRESS}",
+      "name": "L1_FINALIZE_SENDER"
+    },
+    {
+      "rpc_url": "${SCROLL_L1_RPC}",
+      "min_balance_ether": "1.1",
+      "address": "${L1_GAS_ORACLE_SENDER_ADDRESS}",
+      "name": "L1_GAS_ORACLE_SENDER"
+    },
+    {
+      "rpc_url": "${SCROLL_L1_RPC}",
+      "min_balance_ether": "0",
+      "address": "${L1_SCROLL_FEE_VAULT_ADDRESS}",
+      "name": "L1_SCROLL_FEE_VAULT"
+    },
+    {
+      "rpc_url": "${SCROLL_L2_RPC}",
+      "min_balance_ether": "1.1",
+      "address": "${L2_GAS_ORACLE_SENDER_ADDRESS}",
+      "name": "L2_GAS_ORACLE_SENDER"
+    },
+    {
+      "rpc_url": "${SCROLL_L2_RPC}",
+      "min_balance_ether": "0",
+      "address": "${L2_TX_FEE_VAULT_ADDR}",
+      "name": "L2_TX_FEE_VAULT"
+    }
+  ],
+  "JOB_INTERVAL_SECS": 60,
+  "BIND_PORT": 8080
+}

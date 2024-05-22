@@ -60,7 +60,9 @@ string constant CONFIG_CONTRACTS_TEMPLATE_PATH = "./docker/templates/config-cont
 string constant GENESIS_JSON_TEMPLATE_PATH = "./docker/templates/genesis.json";
 string constant ROLLUP_CONFIG_TEMPLATE_PATH = "./docker/templates/rollup-config.json";
 string constant COORDINATOR_CONFIG_TEMPLATE_PATH = "./docker/templates/coordinator-config.json";
+string constant CHAIN_MONITOR_CONFIG_TEMPLATE_PATH = "./docker/templates/chain-monitor-config.json";
 string constant BRIDGE_HISTORY_CONFIG_TEMPLATE_PATH = "./docker/templates/bridge-history-config.json";
+string constant BALANCE_CHECKER_CONFIG_TEMPLATE_PATH = "./docker/templates/balance-checker-config.json";
 
 // input files
 string constant CONFIG_PATH = "./volume/config.toml";
@@ -71,7 +73,9 @@ string constant GENESIS_ALLOC_JSON_PATH = "./volume/__genesis-alloc.json";
 string constant GENESIS_JSON_PATH = "./volume/genesis.json";
 string constant ROLLUP_CONFIG_PATH = "./volume/rollup-config.json";
 string constant COORDINATOR_CONFIG_PATH = "./volume/coordinator-config.json";
+string constant CHAIN_MONITOR_CONFIG_PATH = "./volume/chain-monitor-config.json";
 string constant BRIDGE_HISTORY_CONFIG_PATH = "./volume/bridge-history-config.json";
+string constant BALANCE_CHECKER_CONFIG_PATH = "./volume/balance-checker-config.json";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
     /// @dev allow setting the owner in the constructor, otherwise
@@ -128,6 +132,8 @@ abstract contract Configuration is Script {
     uint256 internal MAX_BLOCK_IN_CHUNK;
     uint256 internal MAX_L1_MESSAGE_GAS_LIMIT;
 
+    uint256 internal L1_CONTRACT_DEPLOYMENT_BLOCK;
+
     // accounts
     uint256 internal DEPLOYER_PRIVATE_KEY;
     uint256 internal L1_COMMIT_SENDER_PRIVATE_KEY;
@@ -147,6 +153,7 @@ abstract contract Configuration is Script {
 
     // db
     string internal SCROLL_DB_CONNECTION_STRING;
+    string internal CHAIN_MONITOR_DB_CONNECTION_STRING;
     string internal BRIDGE_HISTORY_DB_CONNECTION_STRING;
 
     // genesis
@@ -186,6 +193,8 @@ abstract contract Configuration is Script {
         MAX_BLOCK_IN_CHUNK = cfg.readUint(".general.MAX_BLOCK_IN_CHUNK");
         MAX_L1_MESSAGE_GAS_LIMIT = cfg.readUint(".general.MAX_L1_MESSAGE_GAS_LIMIT");
 
+        L1_CONTRACT_DEPLOYMENT_BLOCK = cfg.readUint(".general.L1_CONTRACT_DEPLOYMENT_BLOCK");
+
         DEPLOYER_PRIVATE_KEY = cfg.readUint(".accounts.DEPLOYER_PRIVATE_KEY");
         L1_COMMIT_SENDER_PRIVATE_KEY = cfg.readUint(".accounts.L1_COMMIT_SENDER_PRIVATE_KEY");
         L1_FINALIZE_SENDER_PRIVATE_KEY = cfg.readUint(".accounts.L1_FINALIZE_SENDER_PRIVATE_KEY");
@@ -203,6 +212,7 @@ abstract contract Configuration is Script {
         L2GETH_SIGNER_0_ADDRESS = cfg.readAddress(".accounts.L2GETH_SIGNER_0_ADDRESS");
 
         SCROLL_DB_CONNECTION_STRING = cfg.readString(".db.SCROLL_DB_CONNECTION_STRING");
+        CHAIN_MONITOR_DB_CONNECTION_STRING = cfg.readString(".db.CHAIN_MONITOR_DB_CONNECTION_STRING");
         BRIDGE_HISTORY_DB_CONNECTION_STRING = cfg.readString(".db.BRIDGE_HISTORY_DB_CONNECTION_STRING");
 
         L2_MAX_ETH_SUPPLY = cfg.readUint(".genesis.L2_MAX_ETH_SUPPLY");
@@ -1960,6 +1970,7 @@ contract GenerateRollupConfig is DeployScroll {
      * Private functions *
      *********************/
 
+    // prettier-ignore
     function generateRollupConfig() private {
         // initialize template file
         if (vm.exists(ROLLUP_CONFIG_PATH)) {
@@ -1976,62 +1987,22 @@ contract GenerateRollupConfig is DeployScroll {
         vm.writeJson(L1_RPC_ENDPOINT, ROLLUP_CONFIG_PATH, ".l2_config.relayer_config.sender_config.endpoint");
 
         // contracts
-        vm.writeJson(
-            vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR),
-            ROLLUP_CONFIG_PATH,
-            ".l1_config.l1_message_queue_address"
-        );
+        vm.writeJson(vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR), ROLLUP_CONFIG_PATH, ".l1_config.l1_message_queue_address");
         vm.writeJson(vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR), ROLLUP_CONFIG_PATH, ".l1_config.scroll_chain_address");
-        vm.writeJson(
-            vm.toString(L1_GAS_PRICE_ORACLE_ADDR),
-            ROLLUP_CONFIG_PATH,
-            ".l1_config.relayer_config.gas_price_oracle_contract_address"
-        );
+        vm.writeJson(vm.toString(L1_GAS_PRICE_ORACLE_ADDR), ROLLUP_CONFIG_PATH, ".l1_config.relayer_config.gas_price_oracle_contract_address");
         vm.writeJson(vm.toString(L2_MESSAGE_QUEUE_ADDR), ROLLUP_CONFIG_PATH, ".l2_config.l2_message_queue_address");
-        vm.writeJson(
-            vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR),
-            ROLLUP_CONFIG_PATH,
-            ".l2_config.relayer_config.rollup_contract_address"
-        );
-        vm.writeJson(
-            vm.toString(L2_GAS_PRICE_ORACLE_PROXY_ADDR),
-            ROLLUP_CONFIG_PATH,
-            ".l2_config.relayer_config.gas_price_oracle_contract_address"
-        );
+        vm.writeJson(vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR), ROLLUP_CONFIG_PATH, ".l2_config.relayer_config.rollup_contract_address");
+        vm.writeJson(vm.toString(L2_GAS_PRICE_ORACLE_PROXY_ADDR), ROLLUP_CONFIG_PATH, ".l2_config.relayer_config.gas_price_oracle_contract_address");
 
         // private keys
-        vm.writeJson(
-            vm.toString(bytes32(L1_GAS_ORACLE_SENDER_PRIVATE_KEY)),
-            ROLLUP_CONFIG_PATH,
-            ".l2_config.relayer_config.gas_oracle_sender_private_key"
-        );
-        vm.writeJson(
-            vm.toString(bytes32(L1_COMMIT_SENDER_PRIVATE_KEY)),
-            ROLLUP_CONFIG_PATH,
-            ".l2_config.relayer_config.commit_sender_private_key"
-        );
-        vm.writeJson(
-            vm.toString(bytes32(L1_FINALIZE_SENDER_PRIVATE_KEY)),
-            ROLLUP_CONFIG_PATH,
-            ".l2_config.relayer_config.finalize_sender_private_key"
-        );
-        vm.writeJson(
-            vm.toString(bytes32(L2_GAS_ORACLE_SENDER_PRIVATE_KEY)),
-            ROLLUP_CONFIG_PATH,
-            ".l1_config.relayer_config.gas_oracle_sender_private_key"
-        );
+        vm.writeJson(vm.toString(bytes32(L1_GAS_ORACLE_SENDER_PRIVATE_KEY)), ROLLUP_CONFIG_PATH, ".l2_config.relayer_config.gas_oracle_sender_private_key");
+        vm.writeJson(vm.toString(bytes32(L1_COMMIT_SENDER_PRIVATE_KEY)), ROLLUP_CONFIG_PATH, ".l2_config.relayer_config.commit_sender_private_key");
+        vm.writeJson(vm.toString(bytes32(L1_FINALIZE_SENDER_PRIVATE_KEY)), ROLLUP_CONFIG_PATH, ".l2_config.relayer_config.finalize_sender_private_key");
+        vm.writeJson(vm.toString(bytes32(L2_GAS_ORACLE_SENDER_PRIVATE_KEY)), ROLLUP_CONFIG_PATH, ".l1_config.relayer_config.gas_oracle_sender_private_key");
 
         // other
-        vm.writeJson(
-            vm.toString(MAX_BLOCK_IN_CHUNK),
-            ROLLUP_CONFIG_PATH,
-            ".l2_config.chunk_proposer_config.max_block_num_per_chunk"
-        );
-        vm.writeJson(
-            vm.toString(MAX_TX_IN_CHUNK),
-            ROLLUP_CONFIG_PATH,
-            ".l2_config.chunk_proposer_config.max_tx_num_per_chunk"
-        );
+        vm.writeJson(vm.toString(MAX_BLOCK_IN_CHUNK), ROLLUP_CONFIG_PATH, ".l2_config.chunk_proposer_config.max_block_num_per_chunk");
+        vm.writeJson(vm.toString(MAX_TX_IN_CHUNK), ROLLUP_CONFIG_PATH, ".l2_config.chunk_proposer_config.max_tx_num_per_chunk");
 
         vm.writeJson(SCROLL_DB_CONNECTION_STRING, ROLLUP_CONFIG_PATH, ".db_config.dsn");
     }
@@ -2068,6 +2039,62 @@ contract GenerateCoordinatorConfig is DeployScroll {
     }
 }
 
+contract GenerateChainMonitorConfig is DeployScroll {
+    /***************
+     * Entry point *
+     ***************/
+
+    function run() public {
+        setScriptMode(ScriptMode.VerifyConfig);
+        predictAllContracts();
+
+        generateChainMonitorConfig();
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
+
+    // prettier-ignore
+    function generateChainMonitorConfig() private {
+        // initialize template file
+        if (vm.exists(CHAIN_MONITOR_CONFIG_PATH)) {
+            vm.removeFile(CHAIN_MONITOR_CONFIG_PATH);
+        }
+
+        string memory template = vm.readFile(CHAIN_MONITOR_CONFIG_TEMPLATE_PATH);
+        vm.writeFile(CHAIN_MONITOR_CONFIG_PATH, template);
+
+        // L1
+        vm.writeJson(L1_RPC_ENDPOINT, CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_url");
+        vm.writeJson(vm.toString(L1_CONTRACT_DEPLOYMENT_BLOCK), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.start_number");
+        vm.writeJson(vm.toString(L1_ETH_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_contracts.l1_gateways.eth_gateway");
+        vm.writeJson(vm.toString(L1_WETH_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_contracts.l1_gateways.weth_gateway");
+        vm.writeJson(vm.toString(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_contracts.l1_gateways.standard_erc20_gateway");
+        vm.writeJson(vm.toString(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_contracts.l1_gateways.custom_erc20_gateway");
+        vm.writeJson(vm.toString(L1_ERC721_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_contracts.l1_gateways.erc721_gateway");
+        vm.writeJson(vm.toString(L1_ERC1155_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_contracts.l1_gateways.erc1155_gateway");
+        vm.writeJson(vm.toString(L1_SCROLL_MESSENGER_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_contracts.scroll_messenger");
+        vm.writeJson(vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_contracts.message_queue");
+        vm.writeJson(vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.l1_contracts.scroll_chain");
+        vm.writeJson(vm.toString(L2_DEPLOYER_INITIAL_BALANCE), CHAIN_MONITOR_CONFIG_PATH, ".l1_config.start_messenger_balance");
+
+        // L2
+        vm.writeJson(L2_RPC_ENDPOINT, CHAIN_MONITOR_CONFIG_PATH, ".l2_config.l2_url");
+        vm.writeJson(vm.toString(L2_ETH_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l2_config.l2_contracts.l2_gateways.eth_gateway");
+        vm.writeJson(vm.toString(L2_WETH_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l2_config.l2_contracts.l2_gateways.weth_gateway");
+        vm.writeJson(vm.toString(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l2_config.l2_contracts.l2_gateways.standard_erc20_gateway");
+        vm.writeJson(vm.toString(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l2_config.l2_contracts.l2_gateways.custom_erc20_gateway");
+        vm.writeJson(vm.toString(L2_ERC721_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l2_config.l2_contracts.l2_gateways.erc721_gateway");
+        vm.writeJson(vm.toString(L2_ERC1155_GATEWAY_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l2_config.l2_contracts.l2_gateways.erc1155_gateway");
+        vm.writeJson(vm.toString(L2_SCROLL_MESSENGER_PROXY_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l2_config.l2_contracts.scroll_messenger");
+        vm.writeJson(vm.toString(L2_MESSAGE_QUEUE_ADDR), CHAIN_MONITOR_CONFIG_PATH, ".l2_config.l2_contracts.message_queue");
+
+        // misc
+        vm.writeJson(CHAIN_MONITOR_DB_CONNECTION_STRING, CHAIN_MONITOR_CONFIG_PATH, ".db_config.dsn");
+    }
+}
+
 contract GenerateBridgeHistoryConfig is DeployScroll {
     /***************
      * Entry point *
@@ -2084,6 +2111,7 @@ contract GenerateBridgeHistoryConfig is DeployScroll {
      * Private functions *
      *********************/
 
+    // prettier-ignore
     function generateBridgeHistoryConfig() private {
         // initialize template file
         if (vm.exists(BRIDGE_HISTORY_CONFIG_PATH)) {
@@ -2100,16 +2128,8 @@ contract GenerateBridgeHistoryConfig is DeployScroll {
         vm.writeJson(vm.toString(L1_GATEWAY_ROUTER_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.GatewayRouterAddr");
         vm.writeJson(vm.toString(L1_ETH_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.ETHGatewayAddr");
         vm.writeJson(vm.toString(L1_WETH_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.WETHGatewayAddr");
-        vm.writeJson(
-            vm.toString(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR),
-            BRIDGE_HISTORY_CONFIG_PATH,
-            ".L1.StandardERC20GatewayAddr"
-        );
-        vm.writeJson(
-            vm.toString(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR),
-            BRIDGE_HISTORY_CONFIG_PATH,
-            ".L1.CustomERC20GatewayAddr"
-        );
+        vm.writeJson(vm.toString(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.StandardERC20GatewayAddr");
+        vm.writeJson(vm.toString(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.CustomERC20GatewayAddr");
         vm.writeJson(vm.toString(L1_ERC721_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.ERC721GatewayAddr");
         vm.writeJson(vm.toString(L1_ERC1155_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L1.ERC1155GatewayAddr");
 
@@ -2119,16 +2139,8 @@ contract GenerateBridgeHistoryConfig is DeployScroll {
         vm.writeJson(vm.toString(L2_GATEWAY_ROUTER_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.GatewayRouterAddr");
         vm.writeJson(vm.toString(L2_ETH_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.ETHGatewayAddr");
         vm.writeJson(vm.toString(L2_WETH_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.WETHGatewayAddr");
-        vm.writeJson(
-            vm.toString(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR),
-            BRIDGE_HISTORY_CONFIG_PATH,
-            ".L2.StandardERC20GatewayAddr"
-        );
-        vm.writeJson(
-            vm.toString(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR),
-            BRIDGE_HISTORY_CONFIG_PATH,
-            ".L2.CustomERC20GatewayAddr"
-        );
+        vm.writeJson(vm.toString(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.StandardERC20GatewayAddr");
+        vm.writeJson(vm.toString(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.CustomERC20GatewayAddr");
         vm.writeJson(vm.toString(L2_ERC721_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.ERC721GatewayAddr");
         vm.writeJson(vm.toString(L2_ERC1155_GATEWAY_PROXY_ADDR), BRIDGE_HISTORY_CONFIG_PATH, ".L2.ERC1155GatewayAddr");
 
@@ -2138,5 +2150,50 @@ contract GenerateBridgeHistoryConfig is DeployScroll {
 
         // others
         vm.writeJson(BRIDGE_HISTORY_DB_CONNECTION_STRING, BRIDGE_HISTORY_CONFIG_PATH, ".db.dsn");
+    }
+}
+
+contract GenerateBalanceCheckerConfig is DeployScroll {
+    /***************
+     * Entry point *
+     ***************/
+
+    function run() public {
+        setScriptMode(ScriptMode.VerifyConfig);
+        predictAllContracts();
+
+        generateBalanceCheckerConfig();
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
+
+    function generateBalanceCheckerConfig() private {
+        // initialize template file
+        if (vm.exists(BALANCE_CHECKER_CONFIG_PATH)) {
+            vm.removeFile(BALANCE_CHECKER_CONFIG_PATH);
+        }
+
+        string memory template = vm.readFile(BALANCE_CHECKER_CONFIG_TEMPLATE_PATH);
+        vm.writeFile(BALANCE_CHECKER_CONFIG_PATH, template);
+
+        vm.writeJson(L1_RPC_ENDPOINT, BALANCE_CHECKER_CONFIG_PATH, ".addresses[0].rpc_url");
+        vm.writeJson(vm.toString(L1_COMMIT_SENDER_ADDR), BALANCE_CHECKER_CONFIG_PATH, ".addresses[0].address");
+
+        vm.writeJson(L1_RPC_ENDPOINT, BALANCE_CHECKER_CONFIG_PATH, ".addresses[1].rpc_url");
+        vm.writeJson(vm.toString(L1_FINALIZE_SENDER_ADDR), BALANCE_CHECKER_CONFIG_PATH, ".addresses[1].address");
+
+        vm.writeJson(L1_RPC_ENDPOINT, BALANCE_CHECKER_CONFIG_PATH, ".addresses[2].rpc_url");
+        vm.writeJson(vm.toString(L1_GAS_ORACLE_SENDER_ADDR), BALANCE_CHECKER_CONFIG_PATH, ".addresses[2].address");
+
+        vm.writeJson(L1_RPC_ENDPOINT, BALANCE_CHECKER_CONFIG_PATH, ".addresses[3].rpc_url");
+        vm.writeJson(vm.toString(L1_FEE_VAULT_ADDR), BALANCE_CHECKER_CONFIG_PATH, ".addresses[3].address");
+
+        vm.writeJson(L2_RPC_ENDPOINT, BALANCE_CHECKER_CONFIG_PATH, ".addresses[4].rpc_url");
+        vm.writeJson(vm.toString(L2_GAS_ORACLE_SENDER_ADDR), BALANCE_CHECKER_CONFIG_PATH, ".addresses[4].address");
+
+        vm.writeJson(L2_RPC_ENDPOINT, BALANCE_CHECKER_CONFIG_PATH, ".addresses[5].rpc_url");
+        vm.writeJson(vm.toString(L2_TX_FEE_VAULT_ADDR), BALANCE_CHECKER_CONFIG_PATH, ".addresses[5].address");
     }
 }
