@@ -33,6 +33,7 @@ impl NextCircuitsHandler {
 impl CircuitsHandler for NextCircuitsHandler {
     // api of zkevm::Prover
     fn prover_get_vk(&self) -> Option<Vec<u8>> {
+        log::info!("[circuit handler], [next], [chunk] get_vk");
         self.chunk_prover
             .as_ref()
             .and_then(|prover| prover.borrow().get_vk())
@@ -45,6 +46,7 @@ impl CircuitsHandler for NextCircuitsHandler {
         inner_id: Option<&str>,
         output_dir: Option<&str>,
     ) -> Result<ChunkProof> {
+        log::info!("[circuit handler], [next], [chunk] gen_chunk_proof");
         if let Some(prover) = self.chunk_prover.as_ref() {
             let next_chunk_trace = chunk_trace.into_iter()
             .map(|block_trace| block_trace_base_to_next(block_trace))
@@ -61,6 +63,7 @@ impl CircuitsHandler for NextCircuitsHandler {
 
     // api of aggregator::Prover
     fn aggregator_get_vk(&self) -> Option<Vec<u8>> {
+        log::info!("[circuit handler], [next], [batch] get_vk");
         self.batch_prover
             .as_ref()
             .and_then(|prover| prover.borrow().get_vk())
@@ -72,6 +75,7 @@ impl CircuitsHandler for NextCircuitsHandler {
         name: Option<&str>,
         output_dir: Option<&str>,
     ) -> Result<BatchProof> {
+        log::info!("[circuit handler], [next], [batch] gen_agg_evm_proof");
         if let Some(prover) = self.batch_prover.as_ref() {
             let next_chunk_hashes_proofs = chunk_hashes_proofs.into_iter().map(|t| {
                 let next_chunk_hash = chunk_hash_base_to_next(t.0);
@@ -92,6 +96,7 @@ impl CircuitsHandler for NextCircuitsHandler {
     }
 
     fn aggregator_check_chunk_proofs(&self, chunk_proofs: &[ChunkProof]) -> Result<bool> {
+        log::info!("[circuit handler], [next], [batch] check_chunk_proofs");
         if let Some(prover) = self.batch_prover.as_ref() {
             let next_chunk_proofs = chunk_proofs.into_iter().map(|chunk_proof| {
                 chunk_proof_base_to_next(chunk_proof)
