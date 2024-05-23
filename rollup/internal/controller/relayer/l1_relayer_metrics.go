@@ -9,7 +9,7 @@ import (
 
 type l1RelayerMetrics struct {
 	rollupL1RelayerGasPriceOraclerRunTotal      prometheus.Counter
-	rollupL1RelayerLastestBaseFee               prometheus.Gauge
+	rollupL1RelayerLatestBaseFee                prometheus.Gauge
 	rollupL1RelayerLastestBlobBaseFee           prometheus.Gauge
 	rollupL1UpdateGasOracleConfirmedTotal       prometheus.Counter
 	rollupL1UpdateGasOracleConfirmedFailedTotal prometheus.Counter
@@ -27,7 +27,7 @@ func initL1RelayerMetrics(reg prometheus.Registerer) *l1RelayerMetrics {
 				Name: "rollup_layer1_gas_price_oracler_total",
 				Help: "The total number of layer1 gas price oracler run total",
 			}),
-			rollupL1RelayerLastestBaseFee: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			rollupL1RelayerLatestBaseFee: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 				Name: "rollup_layer1_latest_base_fee",
 				Help: "The latest base fee of l1 rollup relayer",
 			}),

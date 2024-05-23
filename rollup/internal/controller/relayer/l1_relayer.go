@@ -181,7 +181,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 
 			r.lastBaseFee = baseFee
 			r.lastBlobBaseFee = blobBaseFee
-			r.metrics.rollupL1RelayerLastestBaseFee.Set(float64(r.lastBaseFee))
+			r.metrics.rollupL1RelayerLatestBaseFee.Set(float64(r.lastBaseFee))
 			r.metrics.rollupL1RelayerLastestBlobBaseFee.Set(float64(r.lastBlobBaseFee))
 			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee, "blobBaseFee", blobBaseFee, "isBernoulli", isBernoulli, "isCurie", isCurie)
 		}
@@ -246,6 +246,11 @@ func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64
 	// Omitting blob base fee checks before Curie.
 	if !isCurie {
 		return false
+	}
+
+	// Right after enabling Curie.
+	if r.lastBlobBaseFee == 0 {
+		return true
 	}
 
 	expectedBlobBaseFeeDelta := r.lastBlobBaseFee * r.gasPriceDiff / gasPriceDiffPrecision
