@@ -40,8 +40,8 @@ var (
 	l1Client *ethclient.Client
 	l2Client *ethclient.Client
 
-	// l1Auth
 	l1Auth *bind.TransactOpts
+	l2Auth *bind.TransactOpts
 )
 
 func setupDB(t *testing.T) *gorm.DB {
@@ -82,6 +82,7 @@ func setupEnv(t *testing.T) {
 	var (
 		err           error
 		l1GethChainID *big.Int
+		l2GethChainID *big.Int
 	)
 
 	testApps = tc.NewTestcontainerApps()
@@ -96,6 +97,8 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	l1GethChainID, err = l1Client.ChainID(context.Background())
 	assert.NoError(t, err)
+	l2GethChainID, err = l2Client.ChainID(context.Background())
+	assert.NoError(t, err)
 
 	l1Cfg, l2Cfg := rollupApp.Config.L1Config, rollupApp.Config.L2Config
 	l1Cfg.Confirmations = 0
@@ -103,17 +106,16 @@ func setupEnv(t *testing.T) {
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
-	l1Auth, err = bind.NewKeyedTransactorWithChainID(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey, l1GethChainID)
+	l1Auth, err = bind.NewKeyedTransactorWithChainID(l2Cfg.RelayerConfig.CommitSenderPrivateKey, l1GethChainID)
 	assert.NoError(t, err)
-	rollupApp.Config.L1Config.Endpoint, err = testApps.GetPoSL1EndPoint()
-	assert.NoError(t, err)
-	rollupApp.Config.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetPoSL1EndPoint()
+
+	l2Auth, err = bind.NewKeyedTransactorWithChainID(l1Cfg.RelayerConfig.GasOracleSenderPrivateKey, l2GethChainID)
 	assert.NoError(t, err)
 
 	port, err := rand.Int(rand.Reader, big.NewInt(10000))
 	assert.NoError(t, err)
 	svrPort := strconv.FormatInt(port.Int64()+40000, 10)
-	rollupApp.Config.L2Config.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
+	l2Cfg.RelayerConfig.ChainMonitor.BaseURL = "http://localhost:" + svrPort
 }
 
 func mockChainMonitorServer(baseURL string) (*http.Server, error) {
@@ -137,7 +139,7 @@ func prepareContracts(t *testing.T) {
 	// L1 ScrolChain contract
 	nonce, err := l1Client.PendingNonceAt(context.Background(), l1Auth.From)
 	assert.NoError(t, err)
-	scrollChainAddress := crypto.CreateAddress(l1Auth.From, nonce)
+	mockL1ContractAddress := crypto.CreateAddress(l1Auth.From, nonce)
 	tx := types.NewContractCreation(nonce, big.NewInt(0), 10000000, big.NewInt(1000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
 	signedTx, err := l1Auth.Signer(l1Auth.From, tx)
 	assert.NoError(t, err)
@@ -155,13 +157,41 @@ func prepareContracts(t *testing.T) {
 	}, 30*time.Second, time.Second)
 
 	assert.Eventually(t, func() bool {
-		code, err := l1Client.CodeAt(context.Background(), scrollChainAddress, nil)
+		code, err := l1Client.CodeAt(context.Background(), mockL1ContractAddress, nil)
+		return err == nil && len(code) > 0
+	}, 30*time.Second, time.Second)
+
+	// L2 ScrolChain contract
+	nonce, err = l2Client.PendingNonceAt(context.Background(), l2Auth.From)
+	assert.NoError(t, err)
+	mockL2ContractAddress := crypto.CreateAddress(l2Auth.From, nonce)
+	tx = types.NewContractCreation(nonce, big.NewInt(0), 2000000, big.NewInt(1000000000), common.FromHex(mock_bridge.MockBridgeMetaData.Bin))
+	signedTx, err = l2Auth.Signer(l2Auth.From, tx)
+	assert.NoError(t, err)
+	err = l2Client.SendTransaction(context.Background(), signedTx)
+	assert.NoError(t, err)
+
+	assert.Eventually(t, func() bool {
+		_, isPending, err := l2Client.TransactionByHash(context.Background(), signedTx.Hash())
+		return err == nil && !isPending
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		receipt, err := l2Client.TransactionReceipt(context.Background(), signedTx.Hash())
+		return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
+	}, 30*time.Second, time.Second)
+
+	assert.Eventually(t, func() bool {
+		code, err := l2Client.CodeAt(context.Background(), mockL2ContractAddress, nil)
 		return err == nil && len(code) > 0
 	}, 30*time.Second, time.Second)
 
 	l1Config, l2Config := rollupApp.Config.L1Config, rollupApp.Config.L2Config
-	l1Config.ScrollChainContractAddress = scrollChainAddress
-	l2Config.RelayerConfig.RollupContractAddress = scrollChainAddress
+	l1Config.ScrollChainContractAddress = mockL1ContractAddress
+	l2Config.RelayerConfig.RollupContractAddress = mockL1ContractAddress
+
+	l2Config.RelayerConfig.GasPriceOracleContractAddress = mockL1ContractAddress
+	l1Config.RelayerConfig.GasPriceOracleContractAddress = mockL2ContractAddress
 }
 
 func TestFunction(t *testing.T) {
@@ -182,5 +212,6 @@ func TestFunction(t *testing.T) {
 
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
+	t.Run("TestImportL1GasPriceAfterCurie", testImportL1GasPriceAfterCurie)
 	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
 }
