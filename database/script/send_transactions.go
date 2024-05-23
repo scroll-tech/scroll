@@ -3,18 +3,18 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 )
-
-var chainID = new(big.Int).SetUint64(222222)
 
 func main() {
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
@@ -37,59 +37,173 @@ func main() {
 		log.Crit("failed to connect to network", "err", err)
 	}
 
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, new(big.Int).SetUint64(222222))
+	if err != nil {
+		log.Crit("failed to initialize keyed transactor with chain ID", "err", err)
+	}
+
+	abiJSON, err := os.ReadFile("abi.json")
+	if err != nil {
+		log.Crit("failed to read ABI file", "err", err)
+	}
+
+	var abiStr string
+	if err = json.Unmarshal(abiJSON, &abiStr); err != nil {
+		log.Crit("failed to parse ABI JSON", "err", err)
+	}
+
+	l2TestCurieOpcodesMetaData := &bind.MetaData{ABI: abiStr}
+	l2TestCurieOpcodesAbi, err := l2TestCurieOpcodesMetaData.GetAbi()
+	if err != nil {
+		log.Crit("failed to get abi", "err", err)
+	}
+
 	nonce, err := client.PendingNonceAt(context.Background(), fromAddress)
 	if err != nil {
 		log.Crit("failed to get pending nonce", "err", err)
 	}
 
-	contractAddress := common.HexToAddress(os.Getenv("L2_TEST_CURIE_OPCODES_ADDR"))
-
-	contractABI, err := bind.BindABI(common.ReadFile("abi.json"))
+	useTloadTstoreCalldata, err := l2TestCurieOpcodesAbi.Pack("useTloadTstore", new(big.Int).SetUint64(9876543210))
 	if err != nil {
-		log.Crit("failed to bind ABI", "err", err)
+		log.Crit("failed to pack useTloadTstore calldata", "err", err)
 	}
 
-	// 创建合约实例
-	contract := bind.NewBoundContract(contractAddress, contractABI, client, client)
-
-	// 创建 transactor
-	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, chainID)
+	useMcopyCalldata, err := l2TestCurieOpcodesAbi.Pack("useMcopy")
 	if err != nil {
-		log.Crit("failed to create transactor", "chainID", chainID, "err", err)
+		log.Crit("failed to pack useMcopy calldata", "err", err)
 	}
-	auth.Nonce = new(big.Int).SetUint64(nonce)
-	auth.Value = big.NewInt(0)
-	auth.GasLimit = uint64(300000)
-	auth.GasPrice = new(big.Int).SetUint64(1000000000) // 1 Gwei
+
+	useBaseFee, err := l2TestCurieOpcodesAbi.Pack("useBaseFee")
+	if err != nil {
+		log.Crit("failed to pack useBaseFee calldata", "err", err)
+	}
+
+	l2TestCurieOpcodesAddr := common.HexToAddress(os.Getenv("L2_TEST_CURIE_OPCODES_ADDR"))
+
+	txTypes := []int{
+		LegacyTxType,
+		AccessListTxType,
+		DynamicFeeTxType,
+	}
+
+	accessLists := []types.AccessList{
+		nil,
+		{
+			{Address: common.HexToAddress("0x1000000000000000000000000000000000000000"), StorageKeys: []common.Hash{common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001")}},
+		},
+		{
+			{Address: common.HexToAddress("0x1000000000000000000000000000000000000000"), StorageKeys: []common.Hash{
+				common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"),
+				common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000002"),
+			}},
+			{Address: common.HexToAddress("0x2000000000000000000000000000000000000000"), StorageKeys: []common.Hash{
+				common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000003"),
+			}},
+		},
+		{
+			{Address: common.HexToAddress("0x1000000000000000000000000000000000000000"), StorageKeys: []common.Hash{
+				common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"),
+				common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"), // repetitive storage key
+			}},
+		},
+		{
+			{Address: common.HexToAddress("0x0000000000000000000000000000000000000000"), StorageKeys: []common.Hash{
+				common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000001"),
+			}},
+		},
+	}
 
 	for i := 0; i < 1000; i++ {
-		// useTloadTstore
-		tx, err := contract.Transact(auth, "useTloadTstore", new(big.Int).SetUint64(9876543210))
-		if err != nil {
-			log.Error("failed to send useTloadTstore transaction", "err", err)
-		} else {
-			fmt.Printf("Sent useTloadTstore transaction with nonce: %d, tx hash: %s\n", auth.Nonce.Uint64(), tx.Hash().String())
-		}
-		auth.Nonce.Add(auth.Nonce, big.NewInt(1))
+		for _, txType := range txTypes {
+			for _, accessList := range accessLists {
+				if err := sendTransaction(client, auth, txType, &l2TestCurieOpcodesAddr, nonce, accessList, nil, useTloadTstoreCalldata); err != nil {
+					log.Crit("failed to send transaction", "nonce", nonce, "err", err)
+				}
+				nonce += 1
 
-		// useMcopy
-		tx, err = contract.Transact(auth, "useMcopy")
-		if err != nil {
-			log.Error("failed to send useMcopy transaction", "err", err)
-		} else {
-			fmt.Printf("Sent useMcopy transaction with nonce: %d, tx hash: %s\n", auth.Nonce.Uint64(), tx.Hash().String())
-		}
-		auth.Nonce.Add(auth.Nonce, big.NewInt(1))
+				if err := sendTransaction(client, auth, txType, &l2TestCurieOpcodesAddr, nonce, accessList, nil, useMcopyCalldata); err != nil {
+					log.Crit("failed to send transaction", "nonce", nonce, "err", err)
+				}
+				nonce += 1
 
-		// useBaseFee
-		tx, err = contract.Transact(auth, "useBaseFee")
-		if err != nil {
-			log.Error("failed to send useBaseFee transaction", "err", err)
-		} else {
-			fmt.Printf("Sent useBaseFee transaction with nonce: %d, tx hash: %s\n", auth.Nonce.Uint64(), tx.Hash().String())
+				if err := sendTransaction(client, auth, txType, &l2TestCurieOpcodesAddr, nonce, accessList, nil, useBaseFee); err != nil {
+					log.Crit("failed to send transaction", "nonce", nonce, "err", err)
+				}
+				nonce += 1
+
+				if err := sendTransaction(client, auth, txType, &fromAddress, nonce, accessList, nil, []byte{0x01, 0x02, 0x03, 0x04}); err != nil {
+					log.Crit("failed to send transaction", "nonce", nonce, "err", err)
+				}
+				nonce += 1
+
+				if err := sendTransaction(client, auth, txType, &fromAddress, nonce, accessList, new(big.Int).SetUint64(1), []byte{0x01, 0x02, 0x03, 0x04}); err != nil {
+					log.Crit("failed to send transaction", "nonce", nonce, "err", err)
+				}
+				nonce += 1
+
+				if err := sendTransaction(client, auth, txType, &fromAddress, nonce, accessList, new(big.Int).SetUint64(1), nil); err != nil {
+					log.Crit("failed to send transaction", "nonce", nonce, "err", err)
+				}
+				nonce += 1
+			}
 		}
-		auth.Nonce.Add(auth.Nonce, big.NewInt(1))
+	}
+}
+
+const (
+	LegacyTxType     = 1
+	AccessListTxType = 2
+	DynamicFeeTxType = 3
+)
+
+func sendTransaction(client *ethclient.Client, auth *bind.TransactOpts, txType int, to *common.Address, nonce uint64, accessList types.AccessList, value *big.Int, data []byte) error {
+	var txData types.TxData
+	switch txType {
+	case LegacyTxType:
+		txData = &types.LegacyTx{
+			Nonce:    nonce,
+			GasPrice: new(big.Int).SetUint64(1000000000),
+			Gas:      300000,
+			To:       to,
+			Value:    value,
+			Data:     data,
+		}
+	case AccessListTxType:
+		txData = &types.AccessListTx{
+			ChainID:    new(big.Int).SetUint64(222222),
+			Nonce:      nonce,
+			GasPrice:   new(big.Int).SetUint64(1000000000),
+			Gas:        300000,
+			To:         to,
+			Value:      value,
+			Data:       data,
+			AccessList: accessList,
+		}
+	case DynamicFeeTxType:
+		txData = &types.DynamicFeeTx{
+			ChainID:    new(big.Int).SetUint64(222222),
+			Nonce:      nonce,
+			GasTipCap:  new(big.Int).SetUint64(1000000000),
+			GasFeeCap:  new(big.Int).SetUint64(1000000000),
+			Gas:        300000,
+			To:         to,
+			Value:      value,
+			Data:       data,
+			AccessList: accessList,
+		}
+	default:
+		return fmt.Errorf("invalid transaction type: %d", txType)
 	}
 
-	fmt.Println("Done")
+	signedTx, err := auth.Signer(auth.From, types.NewTx(txData))
+	if err != nil {
+		return fmt.Errorf("failed to sign tx: %w", err)
+	}
+
+	if err = client.SendTransaction(context.Background(), signedTx); err != nil {
+		return fmt.Errorf("failed to send tx: %w", err)
+	}
+
+	log.Info("Sent transaction: tx hash = %s, from = %s, nonce = %d, to = %s", signedTx.Hash().Hex(), auth.From.Hex(), signedTx.Nonce(), to.Hex())
+	return nil
 }
