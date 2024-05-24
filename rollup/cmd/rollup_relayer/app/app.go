@@ -106,6 +106,8 @@ func action(ctx *cli.Context) error {
 		l2watcher.TryFetchRunningMissingBlocks(number)
 	})
 
+	time.Sleep(180 * time.Second)
+
 	go func(ctx context.Context) {
 		for {
 			select {
