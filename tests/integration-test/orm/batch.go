@@ -179,6 +179,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	}
 
 	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
 
 	if err := db.Create(&newBatch).Error; err != nil {
 		log.Error("failed to insert batch", "batch", newBatch, "err", err)
