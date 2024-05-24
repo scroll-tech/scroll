@@ -751,7 +751,7 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	pointBigInt := new(big.Int).SetBytes(pointHash.Bytes())
 	point := kzg4844.Point(new(big.Int).Mod(pointBigInt, blsModulo).Bytes())
 	commitment := sideCar.Commitments[0]
-	proof, claim, err := kzg4844.ComputeProof(*blob, point)
+	proof, claim, err := kzg4844.ComputeProof(blob, point)
 	assert.NoError(t, err)
 
 	var claimArray [32]byte
