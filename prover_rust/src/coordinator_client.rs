@@ -1,5 +1,6 @@
 mod api;
 mod errors;
+pub mod listener;
 pub mod types;
 
 use anyhow::{bail, Context, Ok, Result};
@@ -7,6 +8,7 @@ use std::rc::Rc;
 
 use api::API;
 use errors::*;
+use listener::Listener;
 use log;
 use tokio::runtime::Runtime;
 use types::*;
@@ -26,10 +28,15 @@ pub struct CoordinatorClient {
     config: Config,
     key_signer: Rc<KeySigner>,
     rt: Runtime,
+    listener: Box<dyn Listener>,
 }
 
 impl CoordinatorClient {
-    pub fn new(config: Config, key_signer: Rc<KeySigner>) -> Result<Self> {
+    pub fn new(
+        config: Config,
+        key_signer: Rc<KeySigner>,
+        listener: Box<dyn Listener>,
+    ) -> Result<Self> {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()?;
@@ -40,6 +47,7 @@ impl CoordinatorClient {
             config,
             key_signer,
             rt,
+            listener,
         };
         client.login()?;
         Ok(client)
@@ -85,7 +93,8 @@ impl CoordinatorClient {
     }
 
     fn action_with_re_login<T, F, R>(&mut self, req: &R, mut f: F) -> Result<Response<T>>
-    where F: FnMut(&mut Self, &R) -> Result<Response<T>>
+    where
+        F: FnMut(&mut Self, &R) -> Result<Response<T>>,
     {
         let response = f(self, req)?;
         if response.errcode == ErrJWTTokenExpired {
@@ -94,38 +103,35 @@ impl CoordinatorClient {
             log::info!("re-login success");
             return f(self, req);
         } else if response.errcode != Success {
-            bail!("get task failed: {}", response.errmsg)
+            bail!("action failed: {}", response.errmsg)
         }
         Ok(response)
     }
 
     fn do_get_task(&mut self, req: &GetTaskRequest) -> Result<Response<GetTaskResponseData>> {
-        self
-        .rt
-        .block_on(self.api.get_task(req, self.token.as_ref().unwrap()))
+        self.rt
+            .block_on(self.api.get_task(req, self.token.as_ref().unwrap()))
     }
 
     pub fn get_task(&mut self, req: &GetTaskRequest) -> Result<Response<GetTaskResponseData>> {
-        self.action_with_re_login(req, |s, req| {
-            s.do_get_task(req)
-        })
+        self.action_with_re_login(req, |s, req| s.do_get_task(req))
     }
 
     fn do_submit_proof(
         &mut self,
         req: &SubmitProofRequest,
     ) -> Result<Response<SubmitProofResponseData>> {
-        self
-        .rt
-        .block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))
+        let response = self
+            .rt
+            .block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))?;
+        self.listener.on_proof_submitted(req);
+        Ok(response)
     }
 
     pub fn submit_proof(
         &mut self,
         req: &SubmitProofRequest,
     ) -> Result<Response<SubmitProofResponseData>> {
-        self.action_with_re_login(req, |s, req| {
-            s.do_submit_proof(req)
-        })
+        self.action_with_re_login(req, |s, req| s.do_submit_proof(req))
     }
 }

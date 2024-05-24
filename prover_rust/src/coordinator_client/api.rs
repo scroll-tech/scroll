@@ -1,5 +1,5 @@
 use super::types::*;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use reqwest::{header::CONTENT_TYPE, Url};
 use serde::Serialize;
 
@@ -81,6 +81,17 @@ impl API {
             .body(request_body)
             .send()
             .await?;
+
+        if response.status() != http::status::StatusCode::OK {
+            log::error!(
+                "[coordinator client], {method}, status not ok: {}",
+                response.status()
+            );
+            bail!(
+                "[coordinator client], {method}, status not ok: {}",
+                response.status()
+            )
+        }
 
         let response_body = response.text().await?;
 

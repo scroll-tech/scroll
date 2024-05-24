@@ -1,12 +1,13 @@
 use anyhow::{bail, Error, Ok, Result};
 use eth_types::U64;
-use ethers_core::types::BlockNumber;
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
 use crate::{
     config::Config,
-    coordinator_client::{types::*, Config as CoordinatorConfig, CoordinatorClient},
+    coordinator_client::{
+        listener::Listener, types::*, Config as CoordinatorConfig, CoordinatorClient,
+    },
     geth_client::{types::get_block_number, GethClient},
     key_signer::KeySigner,
     types::{CommonHash, ProofFailureType, ProofStatus, ProofType},
@@ -34,7 +35,7 @@ fn is_positive(n: &U64) -> bool {
 }
 
 impl<'a> Prover<'a> {
-    pub fn new(config: &'a Config) -> Result<Self> {
+    pub fn new(config: &'a Config, coordinator_listener: Box<dyn Listener>) -> Result<Self> {
         let proof_type = config.core.proof_type;
         let params_path = &config.core.params_path;
         let assets_path = &config.core.assets_path;
@@ -49,8 +50,11 @@ impl<'a> Prover<'a> {
         };
 
         let key_signer = Rc::new(KeySigner::new(&keystore_path, &keystore_password)?);
-        let coordinator_client =
-            CoordinatorClient::new(coordinator_config, Rc::clone(&key_signer))?;
+        let coordinator_client = CoordinatorClient::new(
+            coordinator_config,
+            Rc::clone(&key_signer),
+            coordinator_listener,
+        )?;
 
         let mut prover = Prover {
             config,
@@ -125,8 +129,10 @@ impl<'a> Prover<'a> {
         };
         match task.task_type {
             ProofType::ProofTypeBatch => {
-                let chunk_hashes_proofs: Vec<(ChunkHash, ChunkProof)> = self.gen_chunk_hashes_proofs(task)?;
-                let chunk_proofs: Vec<ChunkProof> = chunk_hashes_proofs.iter().map(|t| t.1.clone()).collect();
+                let chunk_hashes_proofs: Vec<(ChunkHash, ChunkProof)> =
+                    self.gen_chunk_hashes_proofs(task)?;
+                let chunk_proofs: Vec<ChunkProof> =
+                    chunk_hashes_proofs.iter().map(|t| t.1.clone()).collect();
                 let is_valid = handler.aggregator_check_chunk_proofs(&chunk_proofs)?;
                 if !is_valid {
                     bail!("non-match chunk protocol, task-id: {}", &task.id)

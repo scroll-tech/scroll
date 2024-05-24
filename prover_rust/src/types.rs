@@ -1,3 +1,5 @@
+use core::fmt;
+
 use eth_types::H256;
 use prover::{BatchProof, ChunkHash, ChunkProof};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -110,6 +112,28 @@ impl TryFrom<&GetTaskResponseData> for Task {
             _ => unreachable!(),
         }
         Ok(task)
+    }
+}
+
+#[derive(Serialize, Deserialize, Default)]
+pub struct TaskWrapper {
+    pub task: Task,
+    count: usize,
+}
+
+impl TaskWrapper {
+    pub fn increment_count(&mut self) {
+        self.count += 1;
+    }
+
+    pub fn get_count(&self) -> usize {
+        self.count
+    }
+}
+
+impl From<Task> for TaskWrapper {
+    fn from(task: Task) -> Self {
+        TaskWrapper { task, count: 0 }
     }
 }
 

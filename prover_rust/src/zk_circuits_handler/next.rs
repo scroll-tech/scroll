@@ -1,11 +1,8 @@
-use std::cell::RefCell;
-use anyhow::{bail, Ok, Result};
+use super::{types::*, CircuitsHandler};
 use crate::types::ProofType;
-use super::{
-    types::*,
-    CircuitsHandler,
-};
+use anyhow::{bail, Ok, Result};
 use prover_next::{aggregator::Prover as NextBatchProver, zkevm::Prover as NextChunkProver};
+use std::cell::RefCell;
 
 #[derive(Default)]
 pub struct NextCircuitsHandler {
@@ -17,12 +14,16 @@ impl NextCircuitsHandler {
     pub fn new(proof_type: ProofType, params_dir: &str, assets_dir: &str) -> Result<Self> {
         match proof_type {
             ProofType::ProofTypeChunk => Ok(Self {
-                chunk_prover: Some(RefCell::new(NextChunkProver::from_dirs(params_dir, assets_dir))),
+                chunk_prover: Some(RefCell::new(NextChunkProver::from_dirs(
+                    params_dir, assets_dir,
+                ))),
                 ..Default::default()
             }),
 
             ProofType::ProofTypeBatch => Ok(Self {
-                batch_prover: Some(RefCell::new(NextBatchProver::from_dirs(params_dir, assets_dir))),
+                batch_prover: Some(RefCell::new(NextBatchProver::from_dirs(
+                    params_dir, assets_dir,
+                ))),
                 ..Default::default()
             }),
             _ => bail!("proof type invalid"),
@@ -48,13 +49,17 @@ impl CircuitsHandler for NextCircuitsHandler {
     ) -> Result<ChunkProof> {
         log::info!("[circuit handler], [next], [chunk] gen_chunk_proof");
         if let Some(prover) = self.chunk_prover.as_ref() {
-            let next_chunk_trace = chunk_trace.into_iter()
-            .map(|block_trace| block_trace_base_to_next(block_trace))
-            .collect::<Result<Vec<NextBlockTrace>>>()?;
+            let next_chunk_trace = chunk_trace
+                .into_iter()
+                .map(|block_trace| block_trace_base_to_next(block_trace))
+                .collect::<Result<Vec<NextBlockTrace>>>()?;
 
-            let next_chunk_proof = prover
-            .borrow_mut()
-            .gen_chunk_proof(next_chunk_trace, name, inner_id, output_dir)?;
+            let next_chunk_proof = prover.borrow_mut().gen_chunk_proof(
+                next_chunk_trace,
+                name,
+                inner_id,
+                output_dir,
+            )?;
 
             return chunk_proof_next_to_base(next_chunk_proof);
         }
@@ -77,18 +82,23 @@ impl CircuitsHandler for NextCircuitsHandler {
     ) -> Result<BatchProof> {
         log::info!("[circuit handler], [next], [batch] gen_agg_evm_proof");
         if let Some(prover) = self.batch_prover.as_ref() {
-            let next_chunk_hashes_proofs = chunk_hashes_proofs.into_iter().map(|t| {
-                let next_chunk_hash = chunk_hash_base_to_next(t.0);
-                let next_chunk_proof = chunk_proof_base_to_next(&t.1);
-                match next_chunk_proof {
-                    Result::Ok(proof) => Ok((next_chunk_hash, proof)),
-                    Err(err) => Err(err)
-                }
-            }).collect::<Result<Vec<(NextChunkHash, NextChunkProof)>>>()?;
+            let next_chunk_hashes_proofs = chunk_hashes_proofs
+                .into_iter()
+                .map(|t| {
+                    let next_chunk_hash = chunk_hash_base_to_next(t.0);
+                    let next_chunk_proof = chunk_proof_base_to_next(&t.1);
+                    match next_chunk_proof {
+                        Result::Ok(proof) => Ok((next_chunk_hash, proof)),
+                        Err(err) => Err(err),
+                    }
+                })
+                .collect::<Result<Vec<(NextChunkHash, NextChunkProof)>>>()?;
 
-            let next_batch_proof = prover
-            .borrow_mut()
-            .gen_agg_evm_proof(next_chunk_hashes_proofs, name, output_dir)?;
+            let next_batch_proof = prover.borrow_mut().gen_agg_evm_proof(
+                next_chunk_hashes_proofs,
+                name,
+                output_dir,
+            )?;
 
             return batch_proof_next_to_base(next_batch_proof);
         }
@@ -98,9 +108,10 @@ impl CircuitsHandler for NextCircuitsHandler {
     fn aggregator_check_chunk_proofs(&self, chunk_proofs: &[ChunkProof]) -> Result<bool> {
         log::info!("[circuit handler], [next], [batch] check_chunk_proofs");
         if let Some(prover) = self.batch_prover.as_ref() {
-            let next_chunk_proofs = chunk_proofs.into_iter().map(|chunk_proof| {
-                chunk_proof_base_to_next(chunk_proof)
-            }).collect::<Result<Vec<NextChunkProof>>>()?;
+            let next_chunk_proofs = chunk_proofs
+                .into_iter()
+                .map(|chunk_proof| chunk_proof_base_to_next(chunk_proof))
+                .collect::<Result<Vec<NextChunkProof>>>()?;
 
             return Ok(prover.borrow_mut().check_chunk_proofs(&next_chunk_proofs));
         }
