@@ -36,7 +36,7 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
     /// @dev Thrown when the caller is not whitelisted.
     error ErrCallerNotWhitelisted();
 
-    /// @dev Thrown when we enable Curie fork in Curie fork.
+    /// @dev Thrown when we enable Curie fork after Curie fork.
     error ErrAlreadyInCurieFork();
 
     /*************
