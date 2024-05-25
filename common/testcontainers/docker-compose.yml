@@ -86,6 +86,9 @@ services:
       - --http.api=eth,net,web3
       - --http.addr=0.0.0.0
       - --http.corsdomain=*
+      - --ws
+      - --ws.api=eth,net,web3
+      - --ws.addr=0.0.0.0
       - --authrpc.vhosts=*
       - --authrpc.addr=0.0.0.0
       - --authrpc.jwtsecret=/data/execution/jwtsecret
