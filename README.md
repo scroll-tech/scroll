@@ -46,7 +46,7 @@ make dev_docker
 Run the tests using the following commands:
 
 ```bash
-export LIBSCROLL_ZSTD_VERSION=v0.0.0-rc0-ubuntu20.04
+export LIBSCROLL_ZSTD_VERSION=v0.0.0-rc1-ubuntu20.04
 export SCROLL_LIB_PATH=/scroll/lib
 
 sudo mkdir -p $SCROLL_LIB_PATH
