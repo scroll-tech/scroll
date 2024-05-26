@@ -100,7 +100,6 @@ services:
       - --syncmode=full
     ports:
       - 8546
-      - 8545
     depends_on:
       geth-genesis:
         condition: service_completed_successfully
