@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -21,7 +21,7 @@ func main() {
 	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
-	privateKey, err := crypto.HexToECDSA(os.Getenv("L2_DEPLOYER_PRIVATE_KEY"))
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(os.Getenv("L2_DEPLOYER_PRIVATE_KEY"), "0x"))
 	if err != nil {
 		log.Crit("failed to create private key", "err", err)
 	}
@@ -47,12 +47,7 @@ func main() {
 		log.Crit("failed to read ABI file", "err", err)
 	}
 
-	var abiStr string
-	if err = json.Unmarshal(abiJSON, &abiStr); err != nil {
-		log.Crit("failed to parse ABI JSON", "err", err)
-	}
-
-	l2TestCurieOpcodesMetaData := &bind.MetaData{ABI: abiStr}
+	l2TestCurieOpcodesMetaData := &bind.MetaData{ABI: string(abiJSON)}
 	l2TestCurieOpcodesAbi, err := l2TestCurieOpcodesMetaData.GetAbi()
 	if err != nil {
 		log.Crit("failed to get abi", "err", err)
@@ -204,6 +199,6 @@ func sendTransaction(client *ethclient.Client, auth *bind.TransactOpts, txType i
 		return fmt.Errorf("failed to send tx: %w", err)
 	}
 
-	log.Info("Sent transaction: tx hash = %s, from = %s, nonce = %d, to = %s", signedTx.Hash().Hex(), auth.From.Hex(), signedTx.Nonce(), to.Hex())
+	log.Info("Sent transaction", "txHash", signedTx.Hash().Hex(), "from", auth.From.Hex(), "nonce", signedTx.Nonce(), "to", to.Hex())
 	return nil
 }
