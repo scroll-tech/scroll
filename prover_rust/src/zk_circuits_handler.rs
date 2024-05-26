@@ -49,11 +49,11 @@ pub struct CircuitsHandlerProvider {
 impl CircuitsHandlerProvider {
     pub fn new(proof_type: ProofType, params_dir: &str, assets_dir: &str) -> Result<Self> {
         let mut m: HashMap<CiruitsVersion, Box<dyn CircuitsHandler>> = HashMap::new();
-        let handler = BaseCircuitsHandler::new(proof_type, params_dir, assets_dir)?;
-        m.insert("".to_string(), Box::new(handler));
+        // let handler = BaseCircuitsHandler::new(proof_type, params_dir, assets_dir)?;
+        // m.insert("".to_string(), Box::new(handler));
 
-        // let next_handler: NextCircuitsHandler = NextCircuitsHandler::new(proof_type, params_dir,
-        // assets_dir)?; m.insert("next".to_string(), Box::new(next_handler));
+        let next_handler: NextCircuitsHandler = NextCircuitsHandler::new(proof_type, params_dir,
+        assets_dir)?; m.insert("".to_string(), Box::new(next_handler));
 
         Ok(CircuitsHandlerProvider {
             proof_type: proof_type,
