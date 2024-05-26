@@ -82,10 +82,6 @@ services:
   geth:
     image: "ethereum/client-go:v1.13.14"
     command:
-      - --http
-      - --http.api=eth,net,web3
-      - --http.addr=0.0.0.0
-      - --http.corsdomain=*
       - --ws
       - --ws.api=eth,net,web3
       - --ws.addr=0.0.0.0
