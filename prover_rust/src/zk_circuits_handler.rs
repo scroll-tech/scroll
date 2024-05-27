@@ -9,7 +9,7 @@ use types::{BatchProof, BlockTrace, ChunkHash, ChunkProof};
 
 use crate::types::ProofType;
 
-// use self::next::NextCircuitsHandler;
+use self::next::NextCircuitsHandler;
 
 type CiruitsVersion = String;
 
