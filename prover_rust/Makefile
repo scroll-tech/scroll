@@ -23,3 +23,5 @@ endif
 
 prover:
 	GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release
+	rm -rf ./lib && mkdir ./lib
+	find target/ -name "libzktrie.so" | xargs -I{} cp {} ./lib
