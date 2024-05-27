@@ -1,8 +1,6 @@
+use super::{prover::Prover, task_cache::TaskCache, types::TaskWrapper};
 use anyhow::{Context, Result};
 use log;
-use super::prover::Prover;
-use super::task_cache::TaskCache;
-use super::types::TaskWrapper;
 use std::rc::Rc;
 
 pub struct TaskProcessor<'a> {

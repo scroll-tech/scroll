@@ -4,19 +4,18 @@ mod geth_client;
 mod key_signer;
 mod prover;
 mod task_cache;
+mod task_processor;
 mod types;
 mod utils_log;
 mod version;
 mod zk_circuits_handler;
-mod task_processor;
 
 use anyhow::Result;
 use config::Config;
 use prover::Prover;
 use std::rc::Rc;
-use task_cache::{TaskCache, ClearCacheCoordinatorListener};
+use task_cache::{ClearCacheCoordinatorListener, TaskCache};
 use task_processor::TaskProcessor;
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     utils_log::log_init();

@@ -1,10 +1,9 @@
 use anyhow::{Ok, Result};
 
+use super::coordinator_client::{listener::Listener, types::SubmitProofRequest};
 use crate::types::TaskWrapper;
 use sled::{Config, Db};
 use std::rc::Rc;
-use super::coordinator_client::types::SubmitProofRequest;
-use super::coordinator_client::listener::Listener;
 
 pub struct TaskCache {
     db: Db,
@@ -14,7 +13,7 @@ impl TaskCache {
     pub fn new(db_path: &String) -> Result<Self> {
         let config = Config::new().path(db_path);
         let db = config.open()?;
-        Ok(Self{db})
+        Ok(Self { db })
     }
 
     pub fn put_task(&self, task_wrapper: &TaskWrapper) -> Result<()> {
@@ -61,4 +60,3 @@ impl Listener for ClearCacheCoordinatorListener {
         }
     }
 }
-
