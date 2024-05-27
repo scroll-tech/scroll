@@ -104,7 +104,7 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 	if t.poSL1Container, err = compose.NewDockerCompose([]string{dockerComposeFile}...); err != nil {
 		return err
 	}
-	if err = t.poSL1Container.WaitForService("geth", wait.ForListeningPort("8545").WithStartupTimeout(15*time.Second)).Up(context.Background()); err != nil {
+	if err = t.poSL1Container.WaitForService("geth", wait.ForListeningPort("8546").WithStartupTimeout(15*time.Second)).Up(context.Background()); err != nil {
 		t.poSL1Container = nil
 		return fmt.Errorf("failed to start PoS L1 container: %w", err)
 	}
@@ -120,7 +120,7 @@ func (t *TestcontainerApps) GetPoSL1EndPoint() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return contrainer.PortEndpoint(context.Background(), "8545/tcp", "http")
+	return contrainer.PortEndpoint(context.Background(), "8546/tcp", "ws")
 }
 
 // GetPoSL1Client returns a ethclient by dialing running PoS L1 client
