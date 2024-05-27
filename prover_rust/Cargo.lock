@@ -47,7 +47,7 @@ dependencies = [
  "num-bigint",
  "once_cell",
  "rand",
- "revm-precompile 2.0.0",
+ "revm-precompile",
  "revm-primitives 3.1.1",
  "serde",
  "serde_json",
@@ -59,15 +59,13 @@ dependencies = [
 [[package]]
 name = "aggregator"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
  "ark-std 0.3.0",
- "bitstream-io",
  "c-kzg",
  "env_logger 0.10.2",
- "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
- "gadgets 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
  "halo2-base",
  "halo2-ecc",
  "halo2_proofs",
@@ -77,16 +75,13 @@ dependencies = [
  "num-bigint",
  "once_cell",
  "rand",
- "revm-precompile 7.0.0",
- "revm-primitives 4.0.0",
+ "revm-precompile",
+ "revm-primitives 3.1.1",
  "serde",
  "serde_json",
  "snark-verifier",
  "snark-verifier-sdk",
- "strum 0.25.0",
- "strum_macros 0.25.3",
- "zkevm-circuits 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
- "zstd",
+ "zkevm-circuits 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
 ]
 
 [[package]]
@@ -395,16 +390,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
-name = "aurora-engine-modexp"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0aef7712851e524f35fbbb74fa6599c5cd8692056a1c36f9ca0d2001b670e7e5"
-dependencies = [
- "hex",
- "num",
-]
-
-[[package]]
 name = "auto_impl"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -513,12 +498,6 @@ name = "bitflags"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf4b9d6a944f767f8e5e0db018570623c85f3d925ac718db4e06d0187adb21c1"
-
-[[package]]
-name = "bitstream-io"
-version = "2.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c12d1856e42f0d817a835fe55853957c85c8c8a470114029143d3f12671446e"
 
 [[package]]
 name = "bitvec"
@@ -637,7 +616,7 @@ dependencies = [
  "num",
  "poseidon-circuit",
  "rand",
- "revm-precompile 2.0.0",
+ "revm-precompile",
  "serde",
  "serde_json",
  "strum 0.25.0",
@@ -647,24 +626,23 @@ dependencies = [
 [[package]]
 name = "bus-mapping"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
- "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
  "ethers-providers 2.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethers-signers",
- "external-tracer 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
- "gadgets 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "gadgets 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "halo2_proofs",
  "hex",
  "itertools 0.11.0",
  "log",
- "mock 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
- "mpt-zktrie 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "mock 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
+ "mpt-zktrie 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "num",
  "poseidon-circuit",
  "rand",
- "revm-precompile 7.0.0",
+ "revm-precompile",
  "serde",
  "serde_json",
  "strum 0.25.0",
@@ -711,11 +689,6 @@ name = "cc"
 version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41c270e7540d725e65ac7f1b212ac8ce349719624d7bcff99f8e2e488e8cf03f"
-dependencies = [
- "jobserver",
- "libc",
- "once_cell",
-]
 
 [[package]]
 name = "cfg-if"
@@ -1309,21 +1282,19 @@ dependencies = [
 [[package]]
 name = "eth-types"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
  "base64 0.13.1",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
  "ethers-signers",
- "halo2curves",
+ "halo2-base",
+ "halo2_proofs",
  "hex",
  "itertools 0.11.0",
- "log",
  "num",
  "num-bigint",
- "poseidon-base",
+ "poseidon-circuit",
  "regex",
- "revm-precompile 7.0.0",
- "revm-primitives 4.0.0",
  "serde",
  "serde_json",
  "serde_with",
@@ -1542,10 +1513,10 @@ dependencies = [
 [[package]]
 name = "external-tracer"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
- "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
- "geth-utils 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
+ "geth-utils 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "log",
  "serde",
  "serde_json",
@@ -1770,9 +1741,9 @@ dependencies = [
 [[package]]
 name = "gadgets"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
- "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "halo2_proofs",
  "sha3 0.10.8",
  "strum 0.25.0",
@@ -1802,7 +1773,7 @@ dependencies = [
 [[package]]
 name = "geth-utils"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
  "env_logger 0.10.2",
  "gobuild",
@@ -2467,15 +2438,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
-name = "jobserver"
-version = "0.1.31"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2b099aaa34a9751c5bf0878add70444e1ed2dd73f347be99003d4577277de6e"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "js-sys"
 version = "0.3.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2537,6 +2499,20 @@ source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.3#5776
 dependencies = [
  "env_logger 0.10.2",
  "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.3)",
+ "halo2_proofs",
+ "itertools 0.11.0",
+ "log",
+ "num-bigint",
+ "num-traits",
+]
+
+[[package]]
+name = "keccak256"
+version = "0.1.0"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
+dependencies = [
+ "env_logger 0.10.2",
+ "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "halo2_proofs",
  "itertools 0.11.0",
  "log",
@@ -2690,12 +2666,12 @@ dependencies = [
 [[package]]
 name = "mock"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
- "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
  "ethers-signers",
- "external-tracer 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "external-tracer 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "itertools 0.11.0",
  "log",
  "rand",
@@ -2714,21 +2690,22 @@ dependencies = [
  "log",
  "num-bigint",
  "poseidon-circuit",
- "zktrie 0.2.0",
+ "zktrie",
 ]
 
 [[package]]
 name = "mpt-zktrie"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
- "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
- "halo2curves",
+ "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
+ "halo2-mpt-circuits",
+ "halo2_proofs",
  "hex",
  "log",
  "num-bigint",
- "poseidon-base",
- "zktrie 0.3.0",
+ "poseidon-circuit",
+ "zktrie",
 ]
 
 [[package]]
@@ -2781,17 +2758,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
 dependencies = [
  "num-traits",
-]
-
-[[package]]
-name = "num-derive"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -3313,16 +3279,16 @@ dependencies = [
 [[package]]
 name = "prover"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
- "aggregator 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "aggregator 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "anyhow",
  "base64 0.13.1",
  "blake2",
- "bus-mapping 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "bus-mapping 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "chrono",
  "dotenvy",
- "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
  "git-version",
  "halo2_proofs",
@@ -3330,7 +3296,7 @@ dependencies = [
  "itertools 0.11.0",
  "log",
  "log4rs",
- "mpt-zktrie 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "mpt-zktrie 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "num-bigint",
  "rand",
  "rand_xorshift",
@@ -3341,7 +3307,7 @@ dependencies = [
  "sha2",
  "snark-verifier",
  "snark-verifier-sdk",
- "zkevm-circuits 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "zkevm-circuits 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
 ]
 
 [[package]]
@@ -3362,7 +3328,7 @@ dependencies = [
  "log",
  "once_cell",
  "prover 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.3)",
- "prover 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "prover 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "rand",
  "reqwest 0.12.4",
  "rlp",
@@ -3627,22 +3593,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "revm-precompile"
-version = "7.0.0"
-source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor/v36#8543dd627348907773d8057807b6a310b276bb30"
-dependencies = [
- "aurora-engine-modexp",
- "c-kzg",
- "k256 0.13.3",
- "once_cell",
- "revm-primitives 4.0.0",
- "ripemd",
- "secp256k1 0.29.0",
- "sha2",
- "substrate-bn",
-]
-
-[[package]]
 name = "revm-primitives"
 version = "1.0.0"
 source = "git+https://github.com/scroll-tech/revm?branch=scroll-fix#aebf2e591e622e6bcce2c5d4bf3336935a68cf11"
@@ -3678,28 +3628,6 @@ dependencies = [
  "hashbrown 0.14.5",
  "hex",
  "once_cell",
- "serde",
-]
-
-[[package]]
-name = "revm-primitives"
-version = "4.0.0"
-source = "git+https://github.com/scroll-tech/revm?branch=scroll-evm-executor/v36#8543dd627348907773d8057807b6a310b276bb30"
-dependencies = [
- "alloy-primitives",
- "auto_impl",
- "bitflags 2.5.0",
- "bitvec",
- "c-kzg",
- "cfg-if 1.0.0",
- "derive_more",
- "dyn-clone",
- "enumn",
- "halo2curves",
- "hashbrown 0.14.5",
- "hex",
- "once_cell",
- "poseidon-base",
  "serde",
 ]
 
@@ -4079,16 +4007,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "secp256k1"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e0cc0f1cf93f4969faf3ea1c7d8a9faed25918d96affa959720823dfe86d4f3"
-dependencies = [
- "rand",
- "secp256k1-sys 0.10.0",
-]
-
-[[package]]
 name = "secp256k1-sys"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4102,15 +4020,6 @@ name = "secp256k1-sys"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70a129b9e9efbfb223753b9163c4ab3b13cff7fd9c7f010fbac25ab4099fa07e"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "secp256k1-sys"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1433bd67156263443f14d603720b082dd3121779323fce20cba2aa07b874bc1b"
 dependencies = [
  "cc",
 ]
@@ -4366,7 +4275,7 @@ checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
 [[package]]
 name = "snark-verifier"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/snark-verifier?branch=develop#18715050bfd0fc55b51daa87a0ff1d5c692727b3"
+source = "git+https://github.com/scroll-tech/snark-verifier?branch=develop#114cea6cd025f7daf66b8f0038126a796653e207"
 dependencies = [
  "bytes",
  "ethereum-types",
@@ -4389,7 +4298,7 @@ dependencies = [
 [[package]]
 name = "snark-verifier-sdk"
 version = "0.0.1"
-source = "git+https://github.com/scroll-tech/snark-verifier?branch=develop#18715050bfd0fc55b51daa87a0ff1d5c692727b3"
+source = "git+https://github.com/scroll-tech/snark-verifier?branch=develop#114cea6cd025f7daf66b8f0038126a796653e207"
 dependencies = [
  "bincode",
  "ethereum-types",
@@ -5391,7 +5300,7 @@ dependencies = [
  "halo2_proofs",
  "hex",
  "itertools 0.11.0",
- "keccak256",
+ "keccak256 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.3)",
  "log",
  "misc-precompiled-circuit",
  "mock 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.3)",
@@ -5416,28 +5325,28 @@ dependencies = [
 [[package]]
 name = "zkevm-circuits"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1#ff64b16cb7396585838bb902637def6a5f37743d"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4#67461a9fb1d596821c72e2ca37eea5597955c802"
 dependencies = [
  "array-init",
- "bus-mapping 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "bus-mapping 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "either",
  "env_logger 0.10.2",
- "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "eth-types 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
  "ethers-signers",
  "ff 0.13.0",
- "gadgets 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "gadgets 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "halo2-base",
  "halo2-ecc",
- "halo2-mpt-circuits",
  "halo2_gadgets",
  "halo2_proofs",
  "hex",
  "itertools 0.11.0",
+ "keccak256 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "log",
  "misc-precompiled-circuit",
- "mock 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
- "mpt-zktrie 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.0rc1)",
+ "mock 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
+ "mpt-zktrie 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.10.4)",
  "num",
  "num-bigint",
  "poseidon-circuit",
@@ -5461,52 +5370,4 @@ version = "0.2.0"
 source = "git+https://github.com/scroll-tech/zktrie.git?tag=v0.7.1#a12f2f262ad3e82301e39ecdf9bfe235befc7074"
 dependencies = [
  "gobuild",
-]
-
-[[package]]
-name = "zktrie"
-version = "0.3.0"
-source = "git+https://github.com/scroll-tech/zktrie.git?branch=main#23181f209e94137f74337b150179aeb80c72e7c8"
-dependencies = [
- "gobuild",
- "zktrie_rust",
-]
-
-[[package]]
-name = "zktrie_rust"
-version = "0.3.0"
-source = "git+https://github.com/scroll-tech/zktrie.git?branch=main#23181f209e94137f74337b150179aeb80c72e7c8"
-dependencies = [
- "hex",
- "lazy_static",
- "num",
- "num-derive",
- "num-traits",
- "strum 0.24.1",
- "strum_macros 0.24.3",
-]
-
-[[package]]
-name = "zstd"
-version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zstd-rs?branch=hack/mul-block#5c0892b6567dab31394d701477183ce9d6a32aca"
-dependencies = [
- "zstd-safe",
-]
-
-[[package]]
-name = "zstd-safe"
-version = "7.0.0"
-source = "git+https://github.com/scroll-tech/zstd-rs?branch=hack/mul-block#5c0892b6567dab31394d701477183ce9d6a32aca"
-dependencies = [
- "zstd-sys",
-]
-
-[[package]]
-name = "zstd-sys"
-version = "2.0.9+zstd.1.5.5"
-source = "git+https://github.com/scroll-tech/zstd-rs?branch=hack/mul-block#5c0892b6567dab31394d701477183ce9d6a32aca"
-dependencies = [
- "cc",
- "pkg-config",
 ]

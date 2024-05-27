@@ -8,7 +8,7 @@ use crate::{
     coordinator_client::{
         listener::Listener, types::*, Config as CoordinatorConfig, CoordinatorClient,
     },
-    geth_client::{types::get_block_number, GethClient},
+    geth_client::{get_block_number, GethClient},
     key_signer::KeySigner,
     types::{CommonHash, ProofFailureType, ProofStatus, ProofType},
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},

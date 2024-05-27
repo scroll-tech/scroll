@@ -2,6 +2,9 @@ use anyhow::{Ok, Result};
 
 use crate::types::TaskWrapper;
 use sled::{Config, Db};
+use std::rc::Rc;
+use super::coordinator_client::types::SubmitProofRequest;
+use super::coordinator_client::listener::Listener;
 
 pub struct TaskCache {
     db: Db,
@@ -38,3 +41,24 @@ impl TaskCache {
         Ok(())
     }
 }
+
+// ========================= listener ===========================
+
+pub struct ClearCacheCoordinatorListener {
+    pub task_cache: Rc<TaskCache>,
+}
+
+impl Listener for ClearCacheCoordinatorListener {
+    fn on_proof_submitted(&self, req: &SubmitProofRequest) {
+        let result = self.task_cache.delete_task(req.task_id.clone());
+        if let Err(e) = result {
+            log::error!("delete task from embed db failed, {}", e.to_string());
+        } else {
+            log::info!(
+                "delete task from embed db successfully, task_id: {}",
+                &req.task_id
+            );
+        }
+    }
+}
+
