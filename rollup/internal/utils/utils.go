@@ -83,6 +83,9 @@ type ChunkMetrics struct {
 	// codecv1 metrics, default 0 for codecv0
 	L1CommitBlobSize uint64
 
+	// codecv2 metrics, default 0 for codecv0 & codecv1
+	L1CommitBatchSize uint64
+
 	// timing metrics
 	EstimateGasTime          time.Duration
 	EstimateCalldataSizeTime time.Duration
@@ -143,7 +146,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 		metrics.EstimateCalldataSizeTime = time.Since(start)
 
 		start = time.Now()
-		metrics.L1CommitBlobSize, err = codecv2.EstimateChunkL1CommitBlobSize(chunk)
+		metrics.L1CommitBatchSize, metrics.L1CommitBlobSize, err = codecv2.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk)
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv2 chunk L1 commit blob size: %w", err)
@@ -165,6 +168,9 @@ type BatchMetrics struct {
 
 	// codecv1 metrics, default 0 for codecv0
 	L1CommitBlobSize uint64
+
+	// codecv2 metrics, default 0 for codecv0 & codecv1
+	L1CommitBatchSize uint64
 
 	// timing metrics
 	EstimateGasTime          time.Duration
@@ -220,7 +226,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 		metrics.EstimateCalldataSizeTime = time.Since(start)
 
 		start = time.Now()
-		metrics.L1CommitBlobSize, err = codecv2.EstimateBatchL1CommitBlobSize(batch)
+		metrics.L1CommitBatchSize, metrics.L1CommitBlobSize, err = codecv2.EstimateBatchL1CommitBatchSizeAndBlobSize(batch)
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv2 batch L1 commit blob size: %w", err)
