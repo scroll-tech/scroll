@@ -230,14 +230,14 @@ func testCommitBatchAndFinalizeBatch4844(t *testing.T) {
 			MaxL1CommitCalldataSizePerChunk: 100000,
 			MaxRowConsumptionPerChunk:       1048319,
 			ChunkTimeoutSec:                 300,
-			MaxUncompressedBatchSize:        math.MaxUint64,
+			MaxUncompressedBatchBytesSize:   math.MaxUint64,
 		}, chainConfig, db, nil)
 
 		bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 			MaxL1CommitGasPerBatch:          1,
 			MaxL1CommitCalldataSizePerBatch: 100000,
 			BatchTimeoutSec:                 300,
-			MaxUncompressedBatchSize:        math.MaxUint64,
+			MaxUncompressedBatchBytesSize:   math.MaxUint64,
 		}, chainConfig, db, nil)
 
 		cp.TryProposeChunk()
@@ -369,14 +369,14 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfter4844(t *testing.T) {
 			MaxL1CommitCalldataSizePerChunk: 1000000,
 			MaxRowConsumptionPerChunk:       1048319,
 			ChunkTimeoutSec:                 300,
-			MaxUncompressedBatchSize:        math.MaxUint64,
+			MaxUncompressedBatchBytesSize:   math.MaxUint64,
 		}, chainConfig, db, nil)
 
 		bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 			MaxL1CommitGasPerBatch:          50000000000,
 			MaxL1CommitCalldataSizePerBatch: 1000000,
 			BatchTimeoutSec:                 300,
-			MaxUncompressedBatchSize:        math.MaxUint64,
+			MaxUncompressedBatchBytesSize:   math.MaxUint64,
 		}, chainConfig, db, nil)
 
 		cp.TryProposeChunk()
@@ -498,14 +498,14 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfterCompression(t *testing.T) {
 		MaxL1CommitCalldataSizePerChunk: 1000000,
 		MaxRowConsumptionPerChunk:       1048319,
 		ChunkTimeoutSec:                 300,
-		MaxUncompressedBatchSize:        math.MaxUint64,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
 	}, chainConfig, db, nil)
 
 	bp := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		MaxL1CommitGasPerBatch:          50000000000,
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 300,
-		MaxUncompressedBatchSize:        math.MaxUint64,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
 	}, chainConfig, db, nil)
 
 	cp.TryProposeChunk()

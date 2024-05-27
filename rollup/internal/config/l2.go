@@ -33,7 +33,7 @@ type ChunkProposerConfig struct {
 	ChunkTimeoutSec                 uint64  `json:"chunk_timeout_sec"`
 	MaxRowConsumptionPerChunk       uint64  `json:"max_row_consumption_per_chunk"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
-	MaxUncompressedBatchSize        uint64  `json:"max_uncompressed_batch_size"`
+	MaxUncompressedBatchBytesSize   uint64  `json:"max_uncompressed_batch_bytes_size"`
 }
 
 // BatchProposerConfig loads batch_proposer configuration items.
@@ -42,5 +42,5 @@ type BatchProposerConfig struct {
 	MaxL1CommitCalldataSizePerBatch uint64  `json:"max_l1_commit_calldata_size_per_batch"`
 	BatchTimeoutSec                 uint64  `json:"batch_timeout_sec"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
-	MaxUncompressedBatchSize        uint64  `json:"max_uncompressed_batch_size"`
+	MaxUncompressedBatchBytesSize   uint64  `json:"max_uncompressed_batch_bytes_size"`
 }
