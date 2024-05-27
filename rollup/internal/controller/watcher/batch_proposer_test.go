@@ -799,8 +799,8 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 		var expectedNumBatches int
 		var numChunksMultiplier uint64
 		if compressed {
-			expectedNumBatches = 4
-			numChunksMultiplier = 5
+			expectedNumBatches = 1
+			numChunksMultiplier = 20
 		} else {
 			expectedNumBatches = 20
 			numChunksMultiplier = 1
