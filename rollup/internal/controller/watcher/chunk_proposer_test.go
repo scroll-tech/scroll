@@ -176,7 +176,6 @@ func testChunkProposerCodecv0Limits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
-				MaxUncompressedBatchSize:        math.MaxUint64,
 			}, &params.ChainConfig{
 				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
@@ -361,7 +360,6 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
-				MaxUncompressedBatchSize:        math.MaxUint64,
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock,
 			}, db, nil)
