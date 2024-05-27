@@ -237,11 +237,11 @@ func (p *BatchProposer) proposeBatch() error {
 		totalOverEstimateL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(metrics.L1CommitGas))
 		if metrics.L1CommitCalldataSize > p.maxL1CommitCalldataSizePerBatch ||
 			totalOverEstimateL1CommitGas > p.maxL1CommitGasPerBatch ||
-			metrics.L1CommitBlobSize > maxBlobSize {
+			metrics.L1CommitBlobSize > maxBlobSize || metrics.L1CommitBatchSize > maxBatchBytesSize {
 			if i == 0 {
 				// The first chunk exceeds hard limits, which indicates a bug in the chunk-proposer, manual fix is needed.
-				return fmt.Errorf("the first chunk exceeds limits; start block number: %v, end block number: %v, limits: %+v, maxChunkNum: %v, maxL1CommitCalldataSize: %v, maxL1CommitGas: %v, maxBlobSize: %v",
-					dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber, metrics, maxChunksThisBatch, p.maxL1CommitCalldataSizePerBatch, p.maxL1CommitGasPerBatch, maxBlobSize)
+				return fmt.Errorf("the first chunk exceeds limits; start block number: %v, end block number: %v, limits: %+v, maxChunkNum: %v, maxL1CommitCalldataSize: %v, maxL1CommitGas: %v, maxBlobSize: %v, maxBatchBytesSize: %v",
+					dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber, metrics, maxChunksThisBatch, p.maxL1CommitCalldataSizePerBatch, p.maxL1CommitGasPerBatch, maxBlobSize, maxBatchBytesSize)
 			}
 
 			log.Debug("breaking limit condition in batching",
@@ -251,7 +251,9 @@ func (p *BatchProposer) proposeBatch() error {
 				"overEstimateL1CommitGas", totalOverEstimateL1CommitGas,
 				"maxL1CommitGas", p.maxL1CommitGasPerBatch,
 				"l1CommitBlobSize", metrics.L1CommitBlobSize,
-				"maxBlobSize", maxBlobSize)
+				"maxBlobSize", maxBlobSize,
+				"L1CommitBatchSize", metrics.L1CommitBatchSize,
+				"maxBatchBytesSize", maxBatchBytesSize)
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 
