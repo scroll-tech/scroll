@@ -11,7 +11,6 @@ mock_abi:
 
 libzstd:
 	sudo mkdir -p $(SCROLL_LIB_PATH)/
-	sudo wget -O $(SCROLL_LIB_PATH)/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc1-ubuntu20.04/libzktrie.so
 	sudo wget -O $(SCROLL_LIB_PATH)/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc1-ubuntu20.04/libscroll_zstd.so
 
 rollup_bins: libzstd ## Builds the Rollup bins.

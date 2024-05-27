@@ -51,7 +51,6 @@ export SCROLL_LIB_PATH=/scroll/lib
 
 sudo mkdir -p $SCROLL_LIB_PATH
 
-sudo wget -O $SCROLL_LIB_PATH/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libzktrie.so
 sudo wget -O $SCROLL_LIB_PATH/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libscroll_zstd.so
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCROLL_LIB_PATH
