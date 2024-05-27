@@ -2,7 +2,7 @@
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
-LIBSCROLL_ZSTD_VERSION=v0.0.0-rc1-ubuntu20.04
+LIBSCROLL_ZSTD_VERSION=v0.1.0-rc0-ubuntu20.04
 SCROLL_LIB_PATH=/scroll/lib
 
 mock_abi:
@@ -11,8 +11,7 @@ mock_abi:
 
 libzstd:
 	sudo mkdir -p $(SCROLL_LIB_PATH)/
-	sudo wget -O $(SCROLL_LIB_PATH)/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc1-ubuntu20.04/libzktrie.so
-	sudo wget -O $(SCROLL_LIB_PATH)/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.0.0-rc1-ubuntu20.04/libscroll_zstd.so
+	sudo wget -O $(SCROLL_LIB_PATH)/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/v0.1.0-rc0-ubuntu20.04/libscroll_zstd.so
 
 rollup_bins: libzstd ## Builds the Rollup bins.
 	export LD_LIBRARY_PATH=$$LD_LIBRARY_PATH:$(SCROLL_LIB_PATH) && \
