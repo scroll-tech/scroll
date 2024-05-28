@@ -130,11 +130,21 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if len(pk) == 0 {
 		return fmt.Errorf("get public key from context failed")
 	}
-	pv := ctx.GetString(coordinatorType.ProverVersion)
+	// use prover_version from parameter first
+	// if prover support multi hard_forks, the real hard_fork_name is not set to the gin context
+	pv := proofParameter.ProverVersion
+	if pv == "" {
+		pv = ctx.GetString(coordinatorType.ProverVersion)
+	}
 	if len(pv) == 0 {
 		return fmt.Errorf("get ProverVersion from context failed")
 	}
-	hardForkName := ctx.GetString(coordinatorType.HardForkName)
+	// use hard_fork_name from parameter first
+	// if prover support multi hard_forks, the real hard_fork_name is not set to the gin context
+	hardForkName := proofParameter.HardForkName
+	if hardForkName == "" {
+		hardForkName = ctx.GetString(coordinatorType.HardForkName)
+	}
 
 	var proverTask *orm.ProverTask
 	var err error

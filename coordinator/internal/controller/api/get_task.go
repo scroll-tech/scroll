@@ -55,15 +55,27 @@ func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
 	if !proverNameExist {
 		return fmt.Errorf("get prover name from context failed")
 	}
+	var pv string
 	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
 	if !proverVersionExist {
-		return fmt.Errorf("get prover version from context failed")
+		acceptVersions, acceptVersionsExist := ctx.Get(coordinatorType.AcceptVersions)
+		if !acceptVersionsExist {
+			return fmt.Errorf("get prover version from context failed")
+		}
+		versions := acceptVersions.([]coordinatorType.AcceptVersion)
+		if len(versions) == 0 || versions[0].ProverVersion == "" {
+			return fmt.Errorf("get prover version from context failed")
+		}
+		// use the first version here
+		pv = versions[0].ProverVersion
+	} else {
+		pv = proverVersion.(string)
 	}
 
 	ptc.getTaskAccessCounter.With(prometheus.Labels{
 		coordinatorType.LabelProverPublicKey: publicKey.(string),
 		coordinatorType.LabelProverName:      proverName.(string),
-		coordinatorType.LabelProverVersion:   proverVersion.(string),
+		coordinatorType.LabelProverVersion:   pv,
 	}).Inc()
 	return nil
 }
