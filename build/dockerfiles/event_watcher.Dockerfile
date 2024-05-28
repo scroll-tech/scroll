@@ -1,4 +1,4 @@
-ARG LIBSCROLL_ZSTD_VERSION=v0.0.0-rc1-ubuntu20.04
+ARG LIBSCROLL_ZSTD_VERSION=v0.1.0-rc0-ubuntu20.04
 ARG SCROLL_LIB_PATH=/scroll/lib
 
 # Download Go dependencies
