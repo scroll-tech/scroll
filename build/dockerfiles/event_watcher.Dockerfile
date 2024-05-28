@@ -1,4 +1,4 @@
-ARG LIBSCROLL_ZSTD_VERSION=v0.0.0-rc1-ubuntu20.04
+ARG LIBSCROLL_ZSTD_VERSION=v0.1.0-rc0-ubuntu20.04
 ARG SCROLL_LIB_PATH=/scroll/lib
 
 # Download Go dependencies
@@ -25,7 +25,6 @@ RUN mkdir -p $SCROLL_LIB_PATH
 
 RUN apt-get -qq update && apt-get -qq install -y wget
 
-RUN wget -O $SCROLL_LIB_PATH/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libzktrie.so
 RUN wget -O $SCROLL_LIB_PATH/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libscroll_zstd.so
 
 ENV LD_LIBRARY_PATH=$SCROLL_LIB_PATH
@@ -45,7 +44,6 @@ RUN mkdir -p $SCROLL_LIB_PATH
 
 RUN apt-get -qq update && apt-get -qq install -y wget
 
-RUN wget -O $SCROLL_LIB_PATH/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libzktrie.so
 RUN wget -O $SCROLL_LIB_PATH/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libscroll_zstd.so
 
 ENV LD_LIBRARY_PATH=$SCROLL_LIB_PATH

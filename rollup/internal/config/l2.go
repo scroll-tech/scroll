@@ -33,6 +33,7 @@ type ChunkProposerConfig struct {
 	ChunkTimeoutSec                 uint64  `json:"chunk_timeout_sec"`
 	MaxRowConsumptionPerChunk       uint64  `json:"max_row_consumption_per_chunk"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
+	MaxUncompressedBatchBytesSize   uint64  `json:"max_uncompressed_batch_bytes_size"`
 }
 
 // BatchProposerConfig loads batch_proposer configuration items.
@@ -44,4 +45,5 @@ type BatchProposerConfig struct {
 
 	EnableTestEnvSamplingFeature bool   `json:"enable_test_env_sampling_feature"`
 	SamplingPercentage           uint64 `json:"sampling_percentage"`
+	MaxUncompressedBatchBytesSize   uint64  `json:"max_uncompressed_batch_bytes_size"`
 }

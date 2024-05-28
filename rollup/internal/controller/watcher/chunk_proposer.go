@@ -19,8 +19,6 @@ import (
 	"scroll-tech/rollup/internal/utils"
 )
 
-const maxBlobSize = uint64(131072)
-
 // ChunkProposer proposes chunks based on available unchunked blocks.
 type ChunkProposer struct {
 	ctx context.Context
@@ -36,6 +34,7 @@ type ChunkProposer struct {
 	maxRowConsumptionPerChunk       uint64
 	chunkTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
+	maxUncompressedBatchBytesSize   uint64
 	forkHeights                     []uint64
 
 	chainCfg *params.ChainConfig
@@ -67,6 +66,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
 		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
 		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
+		"maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize,
 		"forkHeights", forkHeights)
 
 	p := &ChunkProposer{
@@ -81,6 +81,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		maxRowConsumptionPerChunk:       cfg.MaxRowConsumptionPerChunk,
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
+		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
 		forkHeights:                     forkHeights,
 		chainCfg:                        chainCfg,
 
@@ -232,11 +233,12 @@ func (p *ChunkProposer) proposeChunk() error {
 			metrics.L1CommitCalldataSize > p.maxL1CommitCalldataSizePerChunk ||
 			overEstimatedL1CommitGas > p.maxL1CommitGasPerChunk ||
 			metrics.CrcMax > p.maxRowConsumptionPerChunk ||
-			metrics.L1CommitBlobSize > maxBlobSize {
+			metrics.L1CommitBlobSize > maxBlobSize ||
+			metrics.L1CommitUncompressedBatchBytesSize > p.maxUncompressedBatchBytesSize {
 			if i == 0 {
 				// The first block exceeds hard limits, which indicates a bug in the sequencer, manual fix is needed.
-				return fmt.Errorf("the first block exceeds limits; block number: %v, limits: %+v, maxTxNum: %v, maxL1CommitCalldataSize: %v, maxL1CommitGas: %v, maxRowConsumption: %v, maxBlobSize: %v",
-					block.Header.Number, metrics, p.maxTxNumPerChunk, p.maxL1CommitCalldataSizePerChunk, p.maxL1CommitGasPerChunk, p.maxRowConsumptionPerChunk, maxBlobSize)
+				return fmt.Errorf("the first block exceeds limits; block number: %v, limits: %+v, maxTxNum: %v, maxL1CommitCalldataSize: %v, maxL1CommitGas: %v, maxRowConsumption: %v, maxBlobSize: %v, maxUncompressedBatchBytesSize: %v",
+					block.Header.Number, metrics, p.maxTxNumPerChunk, p.maxL1CommitCalldataSizePerChunk, p.maxL1CommitGasPerChunk, p.maxRowConsumptionPerChunk, maxBlobSize, p.maxUncompressedBatchBytesSize)
 			}
 
 			log.Debug("breaking limit condition in chunking",
@@ -250,7 +252,9 @@ func (p *ChunkProposer) proposeChunk() error {
 				"rowConsumption", metrics.CrcMax,
 				"maxRowConsumption", p.maxRowConsumptionPerChunk,
 				"l1CommitBlobSize", metrics.L1CommitBlobSize,
-				"maxBlobSize", maxBlobSize)
+				"maxBlobSize", maxBlobSize,
+				"L1CommitUncompressedBatchBytesSize", metrics.L1CommitUncompressedBatchBytesSize,
+				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
 

@@ -378,6 +378,8 @@ github.com/sclevine/agouti v3.0.0+incompatible h1:8IBJS6PWz3uTlMP3YBIR5f+KAldcGu
 github.com/sclevine/agouti v3.0.0+incompatible/go.mod h1:b4WX9W9L1sfQKXeJf1mUTLZKJ48R1S7H23Ji7oFO5Bw=
 github.com/scroll-tech/da-codec v0.0.0-20240515170552-2e5286688fce h1:SN43TBs7VaJt9q737eWWqGz0OCg4v+PtUn3RbJcG1o0=
 github.com/scroll-tech/da-codec v0.0.0-20240515170552-2e5286688fce/go.mod h1:1wWYii0OPwd5kw+xrz0PFgS420xNadrNF1x/ELJT+TM=
+github.com/scroll-tech/da-codec v0.0.0-20240527110002-d7bcb621a61a h1:5uWQHo/+cXexQGeSrywtXM2z29zRFctmux2vXs3JLrM=
+github.com/scroll-tech/da-codec v0.0.0-20240527110002-d7bcb621a61a/go.mod h1:1wWYii0OPwd5kw+xrz0PFgS420xNadrNF1x/ELJT+TM=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20221202061207-804e7edc23ba/go.mod h1:jurIpDQ0hqtp9//xxeWzr8X9KMP/+TYn+vz3K1wZrv0=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20221213034543-78c1f57fcfea/go.mod h1:jurIpDQ0hqtp9//xxeWzr8X9KMP/+TYn+vz3K1wZrv0=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20221221073256-5ca70bf3a257/go.mod h1:jurIpDQ0hqtp9//xxeWzr8X9KMP/+TYn+vz3K1wZrv0=

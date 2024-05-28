@@ -46,12 +46,11 @@ make dev_docker
 Run the tests using the following commands:
 
 ```bash
-export LIBSCROLL_ZSTD_VERSION=v0.0.0-rc1-ubuntu20.04
+export LIBSCROLL_ZSTD_VERSION=v0.1.0-rc0-ubuntu20.04
 export SCROLL_LIB_PATH=/scroll/lib
 
 sudo mkdir -p $SCROLL_LIB_PATH
 
-sudo wget -O $SCROLL_LIB_PATH/libzktrie.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libzktrie.so
 sudo wget -O $SCROLL_LIB_PATH/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libscroll_zstd.so
 
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$SCROLL_LIB_PATH
