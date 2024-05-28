@@ -14,6 +14,7 @@ use config::Config;
 use coordinator_client::listener::Listener;
 use log;
 use prover::Prover;
+use core::time;
 use std::rc::Rc;
 use task_cache::TaskCache;
 use types::TaskWrapper;
@@ -68,7 +69,7 @@ impl<'a> TaskProcessor<'a> {
             None => {
                 let fetch_result = self.prover.fetch_task();
                 if let Err(err) = fetch_result {
-                    // TODO: time.sleep
+                    std::thread::sleep(time::Duration::from_secs(10));
                     return Err(err).context("failed to fetch task from coordinator");
                 }
                 let task_wrapper: TaskWrapper = fetch_result.unwrap().into();
