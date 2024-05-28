@@ -13,7 +13,6 @@ RUN cargo chef cook --release --recipe-path recipe.json
 
 COPY ./common/libzkp/impl .
 RUN cargo build --release
-RUN find ./ | grep libzktrie.so | xargs -I{} cp {} /app/target/release/
 
 
 # Download Go dependencies
@@ -35,7 +34,6 @@ FROM base as builder
 COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/logic/verifier/lib/
-COPY --from=zkp-builder /app/target/release/libzktrie.so ./coordinator/internal/logic/verifier/lib/
 RUN cd ./coordinator && make coordinator_api_skip_libzkp && mv ./build/bin/coordinator_api /bin/coordinator_api && mv internal/logic/verifier/lib /bin/
 
 # Pull coordinator into a second stage deploy alpine container
