@@ -187,6 +187,7 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 }
 
 func (p *ChunkProposer) proposeChunk() error {
+	// unchunkedBlockHeight >= 1, assuming genesis batch with chunk 0, block 0 is committed.
 	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
 	if err != nil {
 		return err
@@ -218,7 +219,7 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	// Including Curie block in a sole chunk.
-	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number == p.chainCfg.CurieBlock {
+	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number.Cmp(p.chainCfg.CurieBlock) == 0 {
 		chunk := encoding.Chunk{Blocks: blocks[:1]}
 		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 		if calcErr != nil {

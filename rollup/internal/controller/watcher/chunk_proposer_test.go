@@ -627,7 +627,7 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 	}
 }
 
-func testChunkProposerCurieBlockInOneChunk(t *testing.T) {
+func testChunkProposerIncludeCurieBlockInOneChunk(t *testing.T) {
 	db := setupDB(t)
 	block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
 	for i := int64(0); i < 10; i++ {
@@ -646,7 +646,7 @@ func testChunkProposerCurieBlockInOneChunk(t *testing.T) {
 		ChunkTimeoutSec:                 math.MaxUint64,
 		GasCostIncreaseMultiplier:       1,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
-	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(1)}, db, nil)
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(1), CurieBlock: big.NewInt(2)}, db, nil)
 
 	for i := 0; i < 2; i++ {
 		cp.TryProposeChunk()
