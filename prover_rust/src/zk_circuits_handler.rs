@@ -7,7 +7,7 @@ use base::BaseCircuitsHandler;
 use std::collections::HashMap;
 use types::{BatchProof, BlockTrace, ChunkHash, ChunkProof};
 
-use crate::types::ProofType;
+use crate::{config::Config, types::ProofType};
 
 use self::next::NextCircuitsHandler;
 
@@ -47,13 +47,18 @@ pub struct CircuitsHandlerProvider {
 }
 
 impl CircuitsHandlerProvider {
-    pub fn new(proof_type: ProofType, params_dir: &str, assets_dir: &str) -> Result<Self> {
+    pub fn new(proof_type: ProofType, config: &Config) -> Result<Self> {
         let mut m: HashMap<CiruitsVersion, Box<dyn CircuitsHandler>> = HashMap::new();
-        let handler = BaseCircuitsHandler::new(proof_type, params_dir, assets_dir)?;
-        m.insert("".to_string(), Box::new(handler));
 
-        // let next_handler: NextCircuitsHandler = NextCircuitsHandler::new(proof_type, params_dir,
-        // assets_dir)?; m.insert("".to_string(), Box::new(next_handler));
+        let handler = BaseCircuitsHandler::new(proof_type,
+            &config.low_version_circuit.params_path,
+            &config.low_version_circuit.assets_path)?;
+        m.insert(config.low_version_circuit.hard_fork_name.clone(), Box::new(handler));
+
+        let next_handler = NextCircuitsHandler::new(proof_type,
+            &config.high_version_circuit.params_path,
+            &config.high_version_circuit.assets_path)?;
+        m.insert(config.high_version_circuit.hard_fork_name.clone(), Box::new(next_handler));
 
         Ok(CircuitsHandlerProvider {
             proof_type: proof_type,
@@ -61,8 +66,8 @@ impl CircuitsHandlerProvider {
         })
     }
 
-    pub fn get_circuits_client(&self, version: String) -> Option<&Box<dyn CircuitsHandler>> {
-        self.circuits_handler_map.get(&version)
+    pub fn get_circuits_client(&self, hard_fork_name: &String) -> Option<&Box<dyn CircuitsHandler>> {
+        self.circuits_handler_map.get(hard_fork_name)
     }
 
     pub fn get_vks(&self) -> Vec<String> {

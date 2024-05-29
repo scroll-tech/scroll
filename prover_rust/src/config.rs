@@ -1,4 +1,3 @@
-use ethers_core::types::BlockNumber;
 use serde::{Deserialize, Serialize};
 // use serde_json::Error;
 use std::{error::Error, fs::File};
@@ -6,14 +5,10 @@ use std::{error::Error, fs::File};
 use crate::types::ProofType;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ProverCoreConfig {
+pub struct CircuitConfig {
+    pub hard_fork_name: String,
     pub params_path: String,
     pub assets_path: String,
-
-    #[serde(default)]
-    pub proof_type: ProofType,
-    #[serde(default)]
-    pub dump_dir: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -32,11 +27,13 @@ pub struct L2GethConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     pub prover_name: String,
-    pub hard_fork_name: String,
     pub keystore_path: String,
     pub keystore_password: String,
     pub db_path: String,
-    pub core: ProverCoreConfig,
+    #[serde(default)]
+    pub proof_type: ProofType,
+    pub low_version_circuit: CircuitConfig,
+    pub high_version_circuit: CircuitConfig,
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
 }

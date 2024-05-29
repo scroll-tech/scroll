@@ -27,13 +27,12 @@ pub struct Prover<'a> {
     circuits_handler_provider: CircuitsHandlerProvider,
     coordinator_client: RefCell<CoordinatorClient>,
     geth_client: Option<RefCell<GethClient>>,
+    vks: Vec<String>,
 }
 
 impl<'a> Prover<'a> {
     pub fn new(config: &'a Config, coordinator_listener: Box<dyn Listener>) -> Result<Self> {
-        let proof_type = config.core.proof_type;
-        let params_path = &config.core.params_path;
-        let assets_path = &config.core.assets_path;
+        let proof_type = config.proof_type;
         let keystore_path = &config.keystore_path;
         let keystore_password = &config.keystore_password;
 
@@ -41,7 +40,6 @@ impl<'a> Prover<'a> {
             endpoint: config.coordinator.base_url.clone(),
             prover_name: config.prover_name.clone(),
             prover_version: crate::version::get_version(),
-            hard_fork_name: config.hard_fork_name.clone(),
         };
 
         let key_signer = Rc::new(KeySigner::new(&keystore_path, &keystore_password)?);
@@ -51,19 +49,22 @@ impl<'a> Prover<'a> {
             coordinator_listener,
         )?;
 
+        let provider = CircuitsHandlerProvider::new(
+            proof_type,
+            config
+        )?;
+        let vks = provider.get_vks();
+
         let mut prover = Prover {
             config,
             key_signer: Rc::clone(&key_signer),
-            circuits_handler_provider: CircuitsHandlerProvider::new(
-                proof_type,
-                params_path,
-                assets_path,
-            )?,
+            circuits_handler_provider: provider,
             coordinator_client: RefCell::new(coordinator_client),
             geth_client: None,
+            vks,
         };
 
-        if config.core.proof_type == ProofType::ProofTypeChunk {
+        if config.proof_type == ProofType::ProofTypeChunk {
             prover.geth_client = Some(RefCell::new(GethClient::new(
                 "test",
                 &config.l2geth.as_ref().unwrap().endpoint,
@@ -74,7 +75,7 @@ impl<'a> Prover<'a> {
     }
 
     pub fn get_proof_type(&self) -> ProofType {
-        self.config.core.proof_type
+        self.config.proof_type
     }
 
     pub fn get_public_key(&self) -> String {
@@ -82,7 +83,7 @@ impl<'a> Prover<'a> {
     }
 
     pub fn fetch_task(&self) -> Result<Task> {
-        let vks = self.circuits_handler_provider.get_vks();
+        let vks = self.vks.clone();
         let vk = vks[0].clone();
         let mut req = GetTaskRequest {
             task_type: self.get_proof_type(),
@@ -108,8 +109,7 @@ impl<'a> Prover<'a> {
     }
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
-        let version = task.get_version();
-        if let Some(handler) = self.circuits_handler_provider.get_circuits_client(version) {
+        if let Some(handler) = self.circuits_handler_provider.get_circuits_client(&task.hard_fork_name) {
             self.do_prove(task, handler)
         } else {
             bail!("failed to get a circuit handler")

@@ -14,7 +14,7 @@ pub struct LoginMessage {
     pub challenge: String,
     pub prover_name: String,
     pub prover_version: String,
-    pub hard_fork_name: String,
+    // pub hard_fork_name: String,
 }
 
 impl LoginMessage {
@@ -25,7 +25,7 @@ impl LoginMessage {
         rlp.append(&self.prover_name);
         rlp.append(&self.prover_version);
         rlp.append(&self.challenge);
-        rlp.append(&self.hard_fork_name);
+        // rlp.append(&self.hard_fork_name);
         rlp.out().freeze().into()
     }
 }
@@ -58,7 +58,7 @@ pub struct GetTaskResponseData {
     pub task_id: String,
     pub task_type: crate::types::ProofType,
     pub task_data: String,
-    pub hard_fork_name: Option<String>,
+    pub hard_fork_name: String,
 }
 
 #[derive(Serialize, Deserialize, Default)]

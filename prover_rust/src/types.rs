@@ -78,16 +78,7 @@ pub struct Task {
     #[serde(default)]
     pub chunk_task_detail: Option<ChunkTaskDetail>,
     #[serde(default)]
-    pub hard_fork_name: Option<String>,
-}
-
-impl Task {
-    pub fn get_version(&self) -> String {
-        match self.hard_fork_name.as_ref() {
-            Some(v) => v.clone(),
-            None => "".to_string(),
-        }
-    }
+    pub hard_fork_name: String,
 }
 
 impl TryFrom<&GetTaskResponseData> for Task {

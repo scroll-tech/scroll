@@ -8,8 +8,9 @@ pub const DEFAULT_ZK_VERSION: &str = "000000-000000";
 
 fn init_version() -> String {
     let commit = option_env!("GIT_REV").unwrap_or(DEFAULT_COMMIT);
+    let tag = option_env!("GO_TAG").unwrap_or(TAG);
     let zk_version = option_env!("ZK_VERSION").unwrap_or(DEFAULT_ZK_VERSION);
-    format!("{TAG}-{commit}-{zk_version}")
+    format!("{tag}-{commit}-{zk_version}")
 }
 
 pub fn get_version() -> String {

@@ -19,7 +19,6 @@ pub struct Config {
     pub endpoint: String,
     pub prover_name: String,
     pub prover_version: String,
-    pub hard_fork_name: String,
 }
 
 pub struct CoordinatorClient {
@@ -70,14 +69,13 @@ impl CoordinatorClient {
             challenge: token.clone(),
             prover_name: self.config.prover_name.clone(),
             prover_version: self.config.prover_version.clone(),
-            hard_fork_name: self.config.hard_fork_name.clone(),
         };
 
         let buffer = login_message.rlp();
         let signature = self.key_signer.sign_buffer(&buffer)?;
         let login_request = LoginRequest {
             message: login_message,
-            signature: signature,
+            signature,
         };
         let login_response = self.rt.block_on(api.login(&login_request, &token))?;
         if login_response.errcode != Success {
