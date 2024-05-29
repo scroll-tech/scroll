@@ -319,10 +319,10 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 
 		if txType == LegacyTxType { // Legacy transactions can not have an access list.
-			assert.Equal(t, uint64(43956), gasLimit)
+			assert.Equal(t, uint64(43935), gasLimit)
 			assert.Nil(t, accessList)
 		} else { // Dynamic fee and blob transactions can have an access list.
-			assert.Equal(t, uint64(43479), gasLimit)
+			assert.Equal(t, uint64(43458), gasLimit)
 			assert.NotNil(t, accessList)
 		}
 

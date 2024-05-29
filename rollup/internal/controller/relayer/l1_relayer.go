@@ -36,7 +36,8 @@ type Layer1Relayer struct {
 	gasOracleSender *sender.Sender
 	l1GasOracleABI  *abi.ABI
 
-	lastGasPrice        uint64
+	lastBaseFee         uint64
+	lastBlobBaseFee     uint64
 	minGasPrice         uint64
 	gasPriceDiff        uint64
 	l1BaseFeeWeight     float64
@@ -130,37 +131,45 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 	block := blocks[0]
 
 	if types.GasOracleStatus(block.GasOracleStatus) == types.GasOraclePending {
-		expectedDelta := r.lastGasPrice * r.gasPriceDiff / gasPriceDiffPrecision
-		if r.lastGasPrice > 0 && expectedDelta == 0 {
-			expectedDelta = 1
-		}
-
 		latestL2Height, err := r.l2BlockOrm.GetL2BlocksLatestHeight(r.ctx)
 		if err != nil {
 			log.Warn("Failed to fetch latest L2 block height from db", "err", err)
 			return
 		}
 
-		var isBernoulli = r.chainCfg.IsBernoulli(new(big.Int).SetUint64(latestL2Height))
+		var isBernoulli = block.BlobBaseFee > 0 && r.chainCfg.IsBernoulli(new(big.Int).SetUint64(latestL2Height))
+		var isCurie = block.BlobBaseFee > 0 && r.chainCfg.IsCurie(new(big.Int).SetUint64(latestL2Height))
 
 		var baseFee uint64
-		if isBernoulli && block.BlobBaseFee != 0 {
+		var blobBaseFee uint64
+		if isCurie {
+			baseFee = block.BaseFee
+			blobBaseFee = block.BlobBaseFee
+		} else if isBernoulli {
 			baseFee = uint64(math.Ceil(r.l1BaseFeeWeight*float64(block.BaseFee) + r.l1BlobBaseFeeWeight*float64(block.BlobBaseFee)))
 		} else {
 			baseFee = block.BaseFee
 		}
 
-		// last is undefined or (baseFee >= minGasPrice && exceed diff)
-		if r.lastGasPrice == 0 || (baseFee >= r.minGasPrice && (baseFee >= r.lastGasPrice+expectedDelta || baseFee <= r.lastGasPrice-expectedDelta)) {
-			data, err := r.l1GasOracleABI.Pack("setL1BaseFee", new(big.Int).SetUint64(baseFee))
-			if err != nil {
-				log.Error("Failed to pack setL1BaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "isBernoulli", isBernoulli, "err", err)
-				return
+		if r.shouldUpdateGasOracle(baseFee, blobBaseFee, isCurie) {
+			var data []byte
+			if isCurie {
+				data, err = r.l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", new(big.Int).SetUint64(baseFee), new(big.Int).SetUint64(blobBaseFee))
+				if err != nil {
+					log.Error("Failed to pack setL1BaseFeeAndBlobBaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "isBernoulli", isBernoulli, "isCurie", isCurie, "err", err)
+					return
+				}
+			} else {
+				data, err = r.l1GasOracleABI.Pack("setL1BaseFee", new(big.Int).SetUint64(baseFee))
+				if err != nil {
+					log.Error("Failed to pack setL1BaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "isBernoulli", isBernoulli, "isCurie", isCurie, "err", err)
+					return
+				}
 			}
 
 			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil, 0)
 			if err != nil {
-				log.Error("Failed to send setL1BaseFee tx to layer2 ", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
+				log.Error("Failed to send gas oracle update tx to layer2", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "isBernoulli", isBernoulli, "isCurie", isCurie, "err", err)
 				return
 			}
 
@@ -169,9 +178,12 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				log.Error("UpdateGasOracleStatusAndOracleTxHash failed", "block.Hash", block.Hash, "block.Height", block.Number, "err", err)
 				return
 			}
-			r.lastGasPrice = baseFee
-			r.metrics.rollupL1RelayerLastGasPrice.Set(float64(r.lastGasPrice))
-			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee, "isBernoulli", isBernoulli)
+
+			r.lastBaseFee = baseFee
+			r.lastBlobBaseFee = blobBaseFee
+			r.metrics.rollupL1RelayerLatestBaseFee.Set(float64(r.lastBaseFee))
+			r.metrics.rollupL1RelayerLatestBlobBaseFee.Set(float64(r.lastBlobBaseFee))
+			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee, "blobBaseFee", blobBaseFee, "isBernoulli", isBernoulli, "isCurie", isCurie)
 		}
 	}
 }
@@ -218,4 +230,35 @@ func (r *Layer1Relayer) StopSenders() {
 	if r.gasOracleSender != nil {
 		r.gasOracleSender.Stop()
 	}
+}
+
+func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64, isCurie bool) bool {
+	// Right after restarting.
+	if r.lastBaseFee == 0 {
+		return true
+	}
+
+	expectedBaseFeeDelta := r.lastBaseFee*r.gasPriceDiff/gasPriceDiffPrecision + 1
+	if baseFee >= r.minGasPrice && (baseFee >= r.lastBaseFee+expectedBaseFeeDelta || baseFee+expectedBaseFeeDelta <= r.lastBaseFee) {
+		return true
+	}
+
+	// Omitting blob base fee checks before Curie.
+	if !isCurie {
+		return false
+	}
+
+	// Right after enabling Curie.
+	if r.lastBlobBaseFee == 0 {
+		return true
+	}
+
+	expectedBlobBaseFeeDelta := r.lastBlobBaseFee * r.gasPriceDiff / gasPriceDiffPrecision
+	// Plus a minimum of 0.01 gwei, since the blob base fee is usually low, preventing short-time flunctuation.
+	expectedBlobBaseFeeDelta += 10000000
+	if blobBaseFee >= r.minGasPrice && (blobBaseFee >= r.lastBlobBaseFee+expectedBlobBaseFeeDelta || blobBaseFee+expectedBlobBaseFeeDelta <= r.lastBlobBaseFee) {
+		return true
+	}
+
+	return false
 }
