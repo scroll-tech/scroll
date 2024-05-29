@@ -10,24 +10,6 @@ interface IL1Blocks {
     /// @dev Thrown when the given block number is not available in the storage;
     error ErrorBlockUnavailable();
 
-    /**********
-     * Events *
-     **********/
-
-    /// @notice Emitted when a block is imported.
-    /// @param blockHash The hash of the imported block.
-    /// @param blockHeight The height of the imported block.
-    /// @param blockTimestamp The timestamp of the imported block.
-    /// @param baseFee The base fee of the imported block.
-    /// @param stateRoot The state root of the imported block.
-    event ImportBlock(
-        bytes32 indexed blockHash,
-        uint256 blockHeight,
-        uint256 blockTimestamp,
-        uint256 baseFee,
-        bytes32 stateRoot
-    );
-
     /*************************
      * Public View Functions *
      *************************/
