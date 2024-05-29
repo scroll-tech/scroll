@@ -55,34 +55,6 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 
 	var publicKey string
 	var err error
-	if len(v.Message.AcceptVersions) > 0 {
-		var acceptVersions = make([]message.AcceptVersion, 0, len(v.Message.AcceptVersions))
-		for _, v := range v.Message.AcceptVersions {
-			acceptVersions = append(acceptVersions, message.AcceptVersion{
-				ProverVersion: v.ProverVersion,
-				HardForkName:  v.HardForkName,
-			})
-		}
-		authMsg := message.MultiAuthMsg{
-			Identity: &message.MultiIdentity{
-				Challenge:      v.Message.Challenge,
-				ProverName:     v.Message.ProverName,
-				AcceptVersions: acceptVersions,
-			},
-			Signature: v.Signature,
-		}
-		publicKey, err = authMsg.PublicKey()
-		if err != nil {
-			return jwt.MapClaims{}
-		}
-		return jwt.MapClaims{
-			types.PublicKey:  publicKey,
-			types.ProverName: v.Message.ProverName,
-			// types.ProverVersion: v.Message.ProverVersion,
-			// types.HardForkName:  v.Message.HardForkName,
-			types.AcceptVersions: v.Message.AcceptVersions,
-		}
-	}
 	if v.Message.HardForkName != "" {
 		authMsg := message.AuthMsg{
 			Identity: &message.Identity{
@@ -139,10 +111,6 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 
 	if hardForkName, ok := claims[types.HardForkName]; ok {
 		c.Set(types.HardForkName, hardForkName)
-	}
-
-	if acceptVersions, ok := claims[types.AcceptVersions]; ok {
-		c.Set(types.AcceptVersions, acceptVersions)
 	}
 	return nil
 }

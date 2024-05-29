@@ -39,6 +39,7 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			vkMap:              vkMap,
+			reverseVkMap:       reverseMap(vkMap),
 			db:                 db,
 			cfg:                cfg,
 			nameForkMap:        nameForkMap,
@@ -129,7 +130,6 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 			log.Error("failed to get version by chunk", "error", err.Error())
 			return nil, ErrCoordinatorInternalFailure
 		}
-		proverVersion = taskCtx.getProverVersion(hardForkName)
 	}
 
 	proverTask := orm.ProverTask{
@@ -167,7 +167,7 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) assignWithHardForkName(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) assignWithSingleCircuit(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	blockRange, err := cp.getBlockRangeByName(taskCtx.HardForkName)
 	if err != nil {
 		return nil, err
@@ -175,13 +175,14 @@ func (cp *ChunkProverTask) assignWithHardForkName(ctx *gin.Context, taskCtx *pro
 	return cp.doAssignTaskWithinBlockRange(ctx, taskCtx, blockRange, getTaskParameter, nil)
 }
 
-func (cp *ChunkProverTask) assignWithoutHardForkName(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	var (
-		hardForkNames = taskCtx.hardForkNames()
+		hardForkNames [2]string
 		blockRanges   [2]*blockRange
 		err           error
 	)
 	for i := 0; i < 2; i++ {
+		hardForkNames[i] = cp.reverseVkMap[getTaskParameter.VKs[i]]
 		blockRanges[i], err = cp.getBlockRangeByName(hardForkNames[i])
 		if err != nil {
 			return nil, err
@@ -249,10 +250,11 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	if len(taskCtx.AcceptVersions) > 0 {
-		return cp.assignWithoutHardForkName(ctx, taskCtx, getTaskParameter)
+	if len(getTaskParameter.VKs) > 0 {
+
+		return cp.assignWithTwoCircuits(ctx, taskCtx, getTaskParameter)
 	}
-	return cp.assignWithHardForkName(ctx, taskCtx, getTaskParameter)
+	return cp.assignWithSingleCircuit(ctx, taskCtx, getTaskParameter)
 }
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {

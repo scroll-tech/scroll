@@ -29,14 +29,25 @@ type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
 }
 
+func reverseMap(input map[string]string) map[string]string {
+	output := make(map[string]string, len(input))
+	for k, v := range input {
+		output[v] = k
+	}
+	return output
+}
+
 // BaseProverTask a base prover task which contain series functions
 type BaseProverTask struct {
 	cfg *config.Config
 	db  *gorm.DB
 
-	vkMap       map[string]string
-	nameForkMap map[string]uint64
-	forkHeights []uint64
+	// key is hardForkName, value is vk
+	vkMap map[string]string
+	// key is vk, value is hardForkName
+	reverseVkMap map[string]string
+	nameForkMap  map[string]uint64
+	forkHeights  []uint64
 
 	batchOrm           *orm.Batch
 	chunkOrm           *orm.Chunk
@@ -50,42 +61,6 @@ type proverTaskContext struct {
 	ProverName    string
 	ProverVersion string
 	HardForkName  string
-	// Warning: after setting AcceptVersions, the ProverVersion and HardForkName above should not exist
-	// since these fields can only get concrete value after get_task is called.
-	// using above fields shall take a lot of care.
-	AcceptVersions [2]coordinatorType.AcceptVersion
-}
-
-func (c *proverTaskContext) hardForkNames() [2]string {
-	return [2]string{c.AcceptVersions[0].HardForkName, c.AcceptVersions[1].HardForkName}
-}
-
-func (c *proverTaskContext) getProverVersion(hardForkName string) string {
-	for i := 0; i < 2; i++ {
-		if hardForkName == c.AcceptVersions[i].HardForkName {
-			return c.AcceptVersions[i].ProverVersion
-		}
-	}
-	return c.ProverVersion
-}
-
-func (b *BaseProverTask) checkVK(hardForkName string, vkInParam string) error {
-	vk, vkExist := b.vkMap[hardForkName]
-	if !vkExist {
-		return fmt.Errorf("can't get vk for hard fork:%s, vkMap:%v", hardForkName, b.vkMap)
-	}
-
-	// if the prover has a different vk
-	if vkInParam != vk {
-		log.Error("vk inconsistency", "prover vk", vkInParam, "vk", vk, "hardForkName", hardForkName)
-		// if the prover reports a different prover version
-		// if !version.CheckScrollProverVersion(proverVersion.(string)) {
-		// 	return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
-		// }
-		// if the prover reports a same prover version
-		return fmt.Errorf("incompatible vk. please check your params files or config files")
-	}
-	return nil
 }
 
 // checkParameter check the prover task parameter illegal
@@ -104,41 +79,37 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 	}
 	ptc.ProverName = proverName.(string)
 
-	acceptVersions, acceptVersionsExist := ctx.Get(coordinatorType.AcceptVersions)
-	if acceptVersionsExist {
-		versions := acceptVersions.([]coordinatorType.AcceptVersion)
-		if len(versions) != 2 {
-			return nil, fmt.Errorf("there must exists two accept versions")
+	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
+	if !proverVersionExist {
+		return nil, fmt.Errorf("get prover version from context failed")
+	}
+	ptc.ProverVersion = proverVersion.(string)
+
+	if !version.CheckScrollRepoVersion(proverVersion.(string), b.cfg.ProverManager.MinProverVersion) {
+		return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", b.cfg.ProverManager.MinProverVersion, proverVersion.(string))
+	}
+
+	// signals that the prover is multi-circuits version
+	if len(getTaskParameter.VKs) > 0 {
+		if len(getTaskParameter.VKs) != 2 {
+			return nil, fmt.Errorf("parameter vks length must be 2")
 		}
-		if len(getTaskParameter.VKs) != len(versions) {
-			return nil, fmt.Errorf("parameter lack vks")
+		// min prover version supporting multi circuits, maybe put it to config file?
+		var minMultiCircuitsProverVersion = "v4.4.7"
+		if !version.CheckScrollRepoVersion(ptc.ProverVersion, minMultiCircuitsProverVersion) {
+			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", minMultiCircuitsProverVersion, ptc.ProverVersion)
 		}
-		ptc.AcceptVersions = [2]coordinatorType.AcceptVersion{versions[0], versions[1]}
-		// only check the first is enough
-		if !version.CheckScrollRepoVersion(ptc.AcceptVersions[0].ProverVersion, b.cfg.ProverManager.MinProverVersion) {
-			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", b.cfg.ProverManager.MinProverVersion, ptc.AcceptVersions[0].ProverVersion)
-		}
-		for i, version := range ptc.AcceptVersions {
-			if err := b.checkVK(version.HardForkName, getTaskParameter.VKs[i]); err != nil {
-				return nil, err
+		for _, vk := range getTaskParameter.VKs {
+			if _, exists := b.reverseVkMap[vk]; !exists {
+				return nil, fmt.Errorf("incompatible vk. vk %s is invalid", vk)
 			}
 		}
 	} else {
-		proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
-		if !proverVersionExist {
-			return nil, fmt.Errorf("get prover version from context failed")
-		}
-		ptc.ProverVersion = proverVersion.(string)
-
 		hardForkName, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
 		if !hardForkNameExist {
 			return nil, fmt.Errorf("get hard fork name from context failed")
 		}
 		ptc.HardForkName = hardForkName.(string)
-
-		if !version.CheckScrollRepoVersion(proverVersion.(string), b.cfg.ProverManager.MinProverVersion) {
-			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", b.cfg.ProverManager.MinProverVersion, proverVersion.(string))
-		}
 
 		vk, vkExist := b.vkMap[ptc.HardForkName]
 		if !vkExist {

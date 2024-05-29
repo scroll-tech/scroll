@@ -42,6 +42,7 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
 			vkMap:              vkMap,
+			reverseVkMap:       reverseMap(vkMap),
 			db:                 db,
 			cfg:                cfg,
 			nameForkMap:        nameForkMap,
@@ -148,7 +149,6 @@ func (bp *BatchProverTask) doAssignTaskWithinChunkRange(ctx *gin.Context, taskCt
 			log.Error("failed to get version by chunk", "error", err.Error())
 			return nil, ErrCoordinatorInternalFailure
 		}
-		proverVersion = taskCtx.getProverVersion(hardForkName)
 	}
 
 	proverTask := orm.ProverTask{
@@ -225,7 +225,7 @@ func (bp *BatchProverTask) getChunkRangeByName(ctx *gin.Context, hardForkName st
 	return &chunkIndexRange{startChunkIndex, endChunkIndex}, nil
 }
 
-func (bp *BatchProverTask) assignWithHardForkName(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BatchProverTask) assignWithSingleCircuit(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	chunkRange, err := bp.getChunkRangeByName(ctx, taskCtx.HardForkName)
 	if err != nil {
 		return nil, err
@@ -233,13 +233,14 @@ func (bp *BatchProverTask) assignWithHardForkName(ctx *gin.Context, taskCtx *pro
 	return bp.doAssignTaskWithinChunkRange(ctx, taskCtx, chunkRange, getTaskParameter, nil)
 }
 
-func (bp *BatchProverTask) assignWithoutHardForkName(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BatchProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	var (
-		hardForkNames = taskCtx.hardForkNames()
+		hardForkNames [2]string
 		chunkRanges   [2]*chunkIndexRange
 		err           error
 	)
 	for i := 0; i < 2; i++ {
+		hardForkNames[i] = bp.reverseVkMap[getTaskParameter.VKs[i]]
 		chunkRanges[i], err = bp.getChunkRangeByName(ctx, hardForkNames[i])
 		if err != nil {
 			return nil, err
@@ -275,10 +276,10 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	if len(taskCtx.AcceptVersions) > 0 {
-		return bp.assignWithoutHardForkName(ctx, taskCtx, getTaskParameter)
+	if len(getTaskParameter.VKs) > 0 {
+		return bp.assignWithTwoCircuits(ctx, taskCtx, getTaskParameter)
 	}
-	return bp.assignWithHardForkName(ctx, taskCtx, getTaskParameter)
+	return bp.assignWithSingleCircuit(ctx, taskCtx, getTaskParameter)
 }
 
 func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {

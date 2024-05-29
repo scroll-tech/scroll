@@ -11,23 +11,14 @@ const (
 	ProverVersion = "prover_version"
 	// HardForkName the fork name for context
 	HardForkName = "hard_fork_name"
-	// AcceptVersions accept versions for context
-	AcceptVersions = "accept_versions"
 )
-
-// AcceptVersion accept version
-type AcceptVersion struct {
-	ProverVersion string `form:"prover_version" json:"prover_version"`
-	HardForkName  string `form:"hard_fork_name" json:"hard_fork_name"`
-}
 
 // Message the login message struct
 type Message struct {
-	Challenge      string          `form:"challenge" json:"challenge" binding:"required"`
-	ProverVersion  string          `form:"prover_version" json:"prover_version" binding:"required"`
-	ProverName     string          `form:"prover_name" json:"prover_name" binding:"required"`
-	HardForkName   string          `form:"hard_fork_name" json:"hard_fork_name"`
-	AcceptVersions []AcceptVersion `form:"accept_versions" json:"accept_versions"`
+	Challenge     string `form:"challenge" json:"challenge" binding:"required"`
+	ProverVersion string `form:"prover_version" json:"prover_version" binding:"required"`
+	ProverName    string `form:"prover_name" json:"prover_name" binding:"required"`
+	HardForkName  string `form:"hard_fork_name" json:"hard_fork_name"`
 }
 
 // LoginParameter for /login api
