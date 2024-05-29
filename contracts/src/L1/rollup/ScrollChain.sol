@@ -74,9 +74,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @dev Thrown when the previous state root doesn't match stored one.
     error ErrorIncorrectPreviousStateRoot();
 
-    /// @dev Thrown when the batch header version is invalid.
-    error ErrorInvalidBatchHeaderVersion();
-
     /// @dev Thrown when the last message is skipped.
     error ErrorLastL1MessageSkipped();
 
@@ -311,7 +308,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 batchPtr,
                 BatchHeaderV0Codec.BATCH_HEADER_FIXED_LENGTH + _skippedL1MessageBitmap.length
             );
-        } else if (_version == 1) {
+        } else if (_version >= 1) {
+            // versions 1 and 2 both use ChunkCodecV1 and BatchHeaderV1Codec,
+            // but they use different blob encoding and different verifiers.
+
             bytes32 blobVersionedHash;
             (blobVersionedHash, _dataHash, _totalL1MessagesPoppedInBatch) = _commitChunksV1(
                 _totalL1MessagesPoppedOverall,
@@ -323,7 +323,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 _totalL1MessagesPoppedOverall := add(_totalL1MessagesPoppedOverall, _totalL1MessagesPoppedInBatch)
             }
             // store entries, the order matters
-            BatchHeaderV1Codec.storeVersion(batchPtr, 1);
+            BatchHeaderV1Codec.storeVersion(batchPtr, _version);
             BatchHeaderV1Codec.storeBatchIndex(batchPtr, _batchIndex);
             BatchHeaderV1Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
             BatchHeaderV1Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
@@ -336,8 +336,6 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
                 batchPtr,
                 BatchHeaderV1Codec.BATCH_HEADER_FIXED_LENGTH + _skippedL1MessageBitmap.length
             );
-        } else {
-            revert ErrorInvalidBatchHeaderVersion();
         }
 
         // check the length of bitmap
@@ -810,18 +808,15 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
             version := shr(248, calldataload(_batchHeader.offset))
         }
 
-        // version should be always 0 or 1 in current code
         uint256 _length;
         if (version == 0) {
             (batchPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, _length);
             _batchIndex = BatchHeaderV0Codec.getBatchIndex(batchPtr);
-        } else if (version == 1) {
+        } else if (version >= 1) {
             (batchPtr, _length) = BatchHeaderV1Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV1Codec.computeBatchHash(batchPtr, _length);
             _batchIndex = BatchHeaderV1Codec.getBatchIndex(batchPtr);
-        } else {
-            revert ErrorInvalidBatchHeaderVersion();
         }
         // only check when genesis is imported
         if (committedBatches[_batchIndex] != _batchHash && finalizedStateRoots[0] != bytes32(0)) {

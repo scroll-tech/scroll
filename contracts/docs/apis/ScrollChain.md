@@ -921,17 +921,6 @@ error ErrorIncorrectPreviousStateRoot()
 *Thrown when the previous state root doesn&#39;t match stored one.*
 
 
-### ErrorInvalidBatchHeaderVersion
-
-```solidity
-error ErrorInvalidBatchHeaderVersion()
-```
-
-
-
-*Thrown when the batch header version is invalid.*
-
-
 ### ErrorLastL1MessageSkipped
 
 ```solidity
