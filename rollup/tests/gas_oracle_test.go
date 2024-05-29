@@ -65,6 +65,51 @@ func testImportL1GasPrice(t *testing.T) {
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOracleImporting)
 }
 
+func testImportL1GasPriceAfterCurie(t *testing.T) {
+	db := setupDB(t)
+	defer database.CloseDB(db)
+
+	prepareContracts(t)
+
+	l1Cfg := rollupApp.Config.L1Config
+
+	// Create L1Relayer
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}, relayer.ServiceTypeL1GasOracle, nil)
+	assert.NoError(t, err)
+	defer l1Relayer.StopSenders()
+
+	// Create L1Watcher
+	startHeight, err := l1Client.BlockNumber(context.Background())
+	assert.NoError(t, err)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, 0, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
+
+	// fetch new blocks
+	number, err := l1Client.BlockNumber(context.Background())
+	assert.Greater(t, number, startHeight-1)
+	assert.NoError(t, err)
+	err = l1Watcher.FetchBlockHeader(number)
+	assert.NoError(t, err)
+
+	l1BlockOrm := orm.NewL1Block(db)
+	// check db status
+	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, number, latestBlockHeight)
+	blocks, err := l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
+	assert.NoError(t, err)
+	assert.Equal(t, len(blocks), 1)
+	assert.Empty(t, blocks[0].OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
+
+	// relay gas price
+	l1Relayer.ProcessGasPriceOracle()
+	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
+	assert.NoError(t, err)
+	assert.Equal(t, len(blocks), 1)
+	assert.NotEmpty(t, blocks[0].OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOracleImporting)
+}
+
 func testImportL2GasPrice(t *testing.T) {
 	db := setupDB(t)
 	defer database.CloseDB(db)

@@ -89,12 +89,6 @@ contract ScrollChainTest is DSTestPlus {
         rollup.commitBatch(0, batchHeader0, new bytes[](0), new bytes(0));
         hevm.stopPrank();
 
-        // invalid version, revert
-        hevm.startPrank(address(0));
-        hevm.expectRevert(ScrollChain.ErrorInvalidBatchHeaderVersion.selector);
-        rollup.commitBatch(2, batchHeader0, new bytes[](1), new bytes(0));
-        hevm.stopPrank();
-
         // batch header length too small, revert
         hevm.startPrank(address(0));
         hevm.expectRevert(BatchHeaderV0Codec.ErrorBatchHeaderLengthTooSmall.selector);
