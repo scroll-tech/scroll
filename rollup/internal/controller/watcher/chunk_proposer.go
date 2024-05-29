@@ -217,6 +217,17 @@ func (p *ChunkProposer) proposeChunk() error {
 		codecVersion = encoding.CodecV2
 	}
 
+	// Including Curie block in a sole chunk.
+	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number == p.chainCfg.CurieBlock {
+		chunk := encoding.Chunk{Blocks: blocks[:1]}
+		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
+		if calcErr != nil {
+			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
+		}
+		p.recordTimerChunkMetrics(metrics)
+		return p.updateDBChunkInfo(&chunk, codecVersion, *metrics)
+	}
+
 	var chunk encoding.Chunk
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)

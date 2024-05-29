@@ -109,6 +109,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestChunkProposerCodecv1Limits", testChunkProposerCodecv1Limits)
 	t.Run("TestChunkProposerCodecv2Limits", testChunkProposerCodecv2Limits)
 	t.Run("TestChunkProposerBlobSizeLimit", testChunkProposerBlobSizeLimit)
+	t.Run("TestChunkProposerCurieBlockInOneChunk", testChunkProposerCurieBlockInOneChunk)
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerCodecv0Limits", testBatchProposerCodecv0Limits)
