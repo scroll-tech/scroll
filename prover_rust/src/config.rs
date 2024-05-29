@@ -27,7 +27,6 @@ pub struct CoordinatorConfig {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct L2GethConfig {
     pub endpoint: String,
-    pub confirmations: BlockNumber,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

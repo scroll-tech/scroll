@@ -6,7 +6,7 @@ mod prover;
 mod task_cache;
 mod task_processor;
 mod types;
-mod utils_log;
+mod utils;
 mod version;
 mod zk_circuits_handler;
 
@@ -18,7 +18,7 @@ use task_cache::{ClearCacheCoordinatorListener, TaskCache};
 use task_processor::TaskProcessor;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    utils_log::log_init();
+    utils::log_init();
 
     let file_name = "config.json";
     let config: Config = Config::from_file(file_name.to_string())?;

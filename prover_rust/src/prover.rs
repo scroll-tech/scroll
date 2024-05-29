@@ -29,11 +29,6 @@ pub struct Prover<'a> {
     geth_client: Option<RefCell<GethClient>>,
 }
 
-// a u64 is positive when it's 63th index bit not set
-fn is_positive(n: &U64) -> bool {
-    !n.bit(63)
-}
-
 impl<'a> Prover<'a> {
     pub fn new(config: &'a Config, coordinator_listener: Box<dyn Listener>) -> Result<Self> {
         let proof_type = config.core.proof_type;
@@ -217,32 +212,6 @@ impl<'a> Prover<'a> {
             .block_number()?;
         Ok(number.as_number())
     }
-
-    // fn get_configured_block_number_value(&self) -> Result<Option<U64>> {
-    //     self.get_block_number_value(&self.config.l2geth.as_ref().unwrap().confirmations)
-    // }
-
-    // fn get_block_number_value(&self, block_number: &BlockNumber) -> Result<Option<U64>> {
-    //     match block_number {
-    //         BlockNumber::Safe | BlockNumber::Finalized => {
-    //             let header =
-    // self.geth_client.as_ref().unwrap().borrow_mut().header_by_number(block_number)?;
-    //             Ok(header.get_number())
-    //         },
-    //         BlockNumber::Latest => {
-    //             let number = self.geth_client.as_ref().unwrap().borrow_mut().block_number()?;
-    //             Ok(number.as_number())
-    //         },
-    //         BlockNumber::Number(n) if is_positive(n) => {
-    //             let number = self.geth_client.as_ref().unwrap().borrow_mut().block_number()?;
-    //             let diff = number.as_number()
-    //                 .filter(|m| m.as_u64() >= n.as_u64())
-    //                 .map(|m| U64::from(m.as_u64() - n.as_u64()));
-    //             Ok(diff)
-    //         },
-    //         _ => bail!("unknown confirmation type"),
-    //     }
-    // }
 
     fn get_output_dir(&self) -> Option<&str> {
         OUTPUT_DIR.as_deref()
