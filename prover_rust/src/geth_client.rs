@@ -3,7 +3,7 @@ use anyhow::Result;
 use ethers_core::types::BlockNumber;
 use tokio::runtime::Runtime;
 
-use eth_types::{H256, U64};
+use ethers_core::types::{H256, U64};
 use serde::{Deserialize, Serialize};
 
 use ethers_providers::{Http, Provider};
@@ -32,12 +32,12 @@ pub fn get_block_number(block_trace: &ProverBlockTrace) -> Option<u64> {
 pub type TxHash = H256;
 
 /// this struct is tracked to https://github.com/scroll-tech/go-ethereum/blob/0f0cd99f7a2e/core/types/block.go#Header
-/// the detail fields of struct are not 100% same as eth_types::Block so this needs to be changed in
+/// the detail fields of struct are not 100% same as ethers_core::types::Block so this needs to be changed in
 /// some time currently only the `number` field is required
 #[derive(Debug, Deserialize, Serialize, Default)]
 pub struct Header {
     #[serde(flatten)]
-    block: eth_types::Block<TxHash>,
+    block: ethers_core::types::Block<TxHash>,
 }
 
 impl Header {

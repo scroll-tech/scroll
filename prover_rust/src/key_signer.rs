@@ -10,7 +10,7 @@ use ethers_core::{
     types::Signature as EthSignature,
 };
 
-use eth_types::{H256, U256};
+use ethers_core::types::{H256, U256};
 use hex::ToHex;
 use tiny_keccak::{Hasher, Keccak};
 

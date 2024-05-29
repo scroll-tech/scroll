@@ -1,6 +1,4 @@
-use core::fmt;
-
-use eth_types::H256;
+use ethers_core::types::H256;
 use prover::{BatchProof, ChunkHash, ChunkProof};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 

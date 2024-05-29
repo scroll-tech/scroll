@@ -1,5 +1,5 @@
 use anyhow::{bail, Error, Ok, Result};
-use eth_types::U64;
+use ethers_core::types::U64;
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
