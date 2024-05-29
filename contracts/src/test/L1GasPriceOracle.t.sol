@@ -4,14 +4,15 @@ pragma solidity =0.8.24;
 
 import {DSTestPlus} from "solmate/test/utils/DSTestPlus.sol";
 
-import {L1BlockContainer} from "../L2/predeploys/L1BlockContainer.sol";
 import {L1GasPriceOracle} from "../L2/predeploys/L1GasPriceOracle.sol";
 import {Whitelist} from "../L2/predeploys/Whitelist.sol";
 
 contract L1GasPriceOracleTest is DSTestPlus {
     uint256 private constant PRECISION = 1e9;
     uint256 private constant MAX_OVERHEAD = 30000000 / 16;
-    uint256 private constant MAX_SCALE = 1000 * PRECISION;
+    uint256 private constant MAX_SCALAR = 1000 * PRECISION;
+    uint256 private constant MAX_COMMIT_SCALAR = 10 ** 18 * PRECISION;
+    uint256 private constant MAX_BLOB_SCALAR = 10 ** 18 * PRECISION;
 
     L1GasPriceOracle private oracle;
     Whitelist private whitelist;
@@ -36,7 +37,7 @@ contract L1GasPriceOracleTest is DSTestPlus {
         hevm.stopPrank();
 
         // overhead is too large
-        hevm.expectRevert("exceed maximum overhead");
+        hevm.expectRevert(L1GasPriceOracle.ErrExceedMaxOverhead.selector);
         oracle.setOverhead(MAX_OVERHEAD + 1);
 
         // call by owner, should succeed
@@ -46,7 +47,7 @@ contract L1GasPriceOracleTest is DSTestPlus {
     }
 
     function testSetScalar(uint256 _scalar) external {
-        _scalar = bound(_scalar, 0, MAX_SCALE);
+        _scalar = bound(_scalar, 0, MAX_SCALAR);
 
         // call by non-owner, should revert
         hevm.startPrank(address(1));
@@ -55,13 +56,51 @@ contract L1GasPriceOracleTest is DSTestPlus {
         hevm.stopPrank();
 
         // scale is too large
-        hevm.expectRevert("exceed maximum scale");
-        oracle.setScalar(MAX_SCALE + 1);
+        hevm.expectRevert(L1GasPriceOracle.ErrExceedMaxScalar.selector);
+        oracle.setScalar(MAX_SCALAR + 1);
 
         // call by owner, should succeed
         assertEq(oracle.scalar(), 0);
         oracle.setScalar(_scalar);
         assertEq(oracle.scalar(), _scalar);
+    }
+
+    function testSetCommitScalar(uint256 _scalar) external {
+        _scalar = bound(_scalar, 0, MAX_COMMIT_SCALAR);
+
+        // call by non-owner, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("caller is not the owner");
+        oracle.setCommitScalar(_scalar);
+        hevm.stopPrank();
+
+        // scale is too large
+        hevm.expectRevert(L1GasPriceOracle.ErrExceedMaxCommitScalar.selector);
+        oracle.setCommitScalar(MAX_COMMIT_SCALAR + 1);
+
+        // call by owner, should succeed
+        assertEq(oracle.commitScalar(), 0);
+        oracle.setCommitScalar(_scalar);
+        assertEq(oracle.commitScalar(), _scalar);
+    }
+
+    function testSetBlobScalar(uint256 _scalar) external {
+        _scalar = bound(_scalar, 0, MAX_BLOB_SCALAR);
+
+        // call by non-owner, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("caller is not the owner");
+        oracle.setBlobScalar(_scalar);
+        hevm.stopPrank();
+
+        // scale is too large
+        hevm.expectRevert(L1GasPriceOracle.ErrExceedMaxBlobScalar.selector);
+        oracle.setBlobScalar(MAX_COMMIT_SCALAR + 1);
+
+        // call by owner, should succeed
+        assertEq(oracle.blobScalar(), 0);
+        oracle.setBlobScalar(_scalar);
+        assertEq(oracle.blobScalar(), _scalar);
     }
 
     function testUpdateWhitelist(address _newWhitelist) external {
@@ -79,12 +118,29 @@ contract L1GasPriceOracleTest is DSTestPlus {
         assertEq(address(oracle.whitelist()), _newWhitelist);
     }
 
+    function testEnableCurie() external {
+        // call by non-owner, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert("caller is not the owner");
+        oracle.enableCurie();
+        hevm.stopPrank();
+
+        // call by owner, should succeed
+        assertBoolEq(oracle.isCurie(), false);
+        oracle.enableCurie();
+        assertBoolEq(oracle.isCurie(), true);
+
+        // enable twice, should revert
+        hevm.expectRevert(L1GasPriceOracle.ErrAlreadyInCurieFork.selector);
+        oracle.enableCurie();
+    }
+
     function testSetL1BaseFee(uint256 _baseFee) external {
         _baseFee = bound(_baseFee, 0, 1e9 * 20000); // max 20k gwei
 
         // call by non-owner, should revert
         hevm.startPrank(address(1));
-        hevm.expectRevert("Not whitelisted sender");
+        hevm.expectRevert(L1GasPriceOracle.ErrCallerNotWhitelisted.selector);
         oracle.setL1BaseFee(_baseFee);
         hevm.stopPrank();
 
@@ -94,7 +150,25 @@ contract L1GasPriceOracleTest is DSTestPlus {
         assertEq(oracle.l1BaseFee(), _baseFee);
     }
 
-    function testGetL1GasUsed(uint256 _overhead, bytes memory _data) external {
+    function testSetL1BaseFeeAndBlobBaseFee(uint256 _baseFee, uint256 _blobBaseFee) external {
+        _baseFee = bound(_baseFee, 0, 1e9 * 20000); // max 20k gwei
+        _blobBaseFee = bound(_blobBaseFee, 0, 1e9 * 20000); // max 20k gwei
+
+        // call by non-owner, should revert
+        hevm.startPrank(address(1));
+        hevm.expectRevert(L1GasPriceOracle.ErrCallerNotWhitelisted.selector);
+        oracle.setL1BaseFeeAndBlobBaseFee(_baseFee, _blobBaseFee);
+        hevm.stopPrank();
+
+        // call by owner, should succeed
+        assertEq(oracle.l1BaseFee(), 0);
+        assertEq(oracle.l1BlobBaseFee(), 0);
+        oracle.setL1BaseFeeAndBlobBaseFee(_baseFee, _blobBaseFee);
+        assertEq(oracle.l1BaseFee(), _baseFee);
+        assertEq(oracle.l1BlobBaseFee(), _blobBaseFee);
+    }
+
+    function testGetL1GasUsedBeforeCurie(uint256 _overhead, bytes memory _data) external {
         _overhead = bound(_overhead, 0, MAX_OVERHEAD);
 
         oracle.setOverhead(_overhead);
@@ -108,14 +182,14 @@ contract L1GasPriceOracleTest is DSTestPlus {
         assertEq(oracle.getL1GasUsed(_data), _gasUsed);
     }
 
-    function testGetL1Fee(
+    function testGetL1FeeBeforeCurie(
         uint256 _baseFee,
         uint256 _overhead,
         uint256 _scalar,
         bytes memory _data
     ) external {
         _overhead = bound(_overhead, 0, MAX_OVERHEAD);
-        _scalar = bound(_scalar, 0, MAX_SCALE);
+        _scalar = bound(_scalar, 0, MAX_SCALAR);
         _baseFee = bound(_baseFee, 0, 1e9 * 20000); // max 20k gwei
 
         oracle.setOverhead(_overhead);
@@ -129,5 +203,33 @@ contract L1GasPriceOracleTest is DSTestPlus {
         }
 
         assertEq(oracle.getL1Fee(_data), (_gasUsed * _baseFee * _scalar) / PRECISION);
+    }
+
+    function testGetL1GasUsedCurie(bytes memory _data) external {
+        oracle.enableCurie();
+        assertEq(oracle.getL1GasUsed(_data), 0);
+    }
+
+    function testGetL1FeeCurie(
+        uint256 _baseFee,
+        uint256 _blobBaseFee,
+        uint256 _commitScalar,
+        uint256 _blobScalar,
+        bytes memory _data
+    ) external {
+        _baseFee = bound(_baseFee, 0, 1e9 * 20000); // max 20k gwei
+        _blobBaseFee = bound(_blobBaseFee, 0, 1e9 * 20000); // max 20k gwei
+        _commitScalar = bound(_commitScalar, 0, MAX_COMMIT_SCALAR);
+        _blobScalar = bound(_blobScalar, 0, MAX_BLOB_SCALAR);
+
+        oracle.enableCurie();
+        oracle.setCommitScalar(_commitScalar);
+        oracle.setBlobScalar(_blobScalar);
+        oracle.setL1BaseFeeAndBlobBaseFee(_baseFee, _blobBaseFee);
+
+        assertEq(
+            oracle.getL1Fee(_data),
+            (_commitScalar * _baseFee + _blobScalar * _blobBaseFee * _data.length) / PRECISION
+        );
     }
 }
