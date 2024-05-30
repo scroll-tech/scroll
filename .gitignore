@@ -4,8 +4,6 @@ assets/seed
 
 # Built binaries
 build/bin
-verifier.test
-core.test
 
 coverage.txt
 *.integration.txt

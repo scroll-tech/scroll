@@ -21,6 +21,7 @@ endif
 libzkp:
 	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
 	rm -rf ./core/lib && cp -r ../common/libzkp/interface ./core/lib
+	find ../common | grep libzktrie.so | xargs -I{} cp {} ./core/lib/
 
 prover: libzkp ## Build the Prover instance.
 	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/prover ./cmd
