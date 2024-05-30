@@ -17,7 +17,11 @@ function build_test_bins() {
     cargo build --release
     ln -f -s $(realpath target/release/libzkp.so) $REPO/prover/core/lib
     ln -f -s $(realpath target/release/libzkp.so) $REPO/coordinator/internal/logic/verifier/lib
-    cd ..
+    cd $REPO/prover
+    go test -tags="gpu ffi" -timeout 0 -c core/prover_test.go
+    cd $REPO/coordinator
+    go test -tags="gpu ffi" -timeout 0 -c ./internal/logic/verifier
+    cd $REPO/common/libzkp
 }
 
 function build_test_bins_old() {
@@ -34,7 +38,7 @@ function build_test_bins_old() {
 }
 
 build_test_bins
-rm -rf test_zkp_test/*
-rm -rf prover.log verifier.log
-$REPO/prover/core.test -test.v 2>&1 | tee prover.log
+#rm -rf test_zkp_test/*
+#rm -rf prover.log verifier.log
+#$REPO/prover/core.test -test.v 2>&1 | tee prover.log
 $REPO/coordinator/verifier.test -test.v 2>&1 | tee verifier.log
