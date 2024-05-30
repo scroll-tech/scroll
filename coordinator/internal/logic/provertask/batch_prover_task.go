@@ -230,6 +230,9 @@ func (bp *BatchProverTask) assignWithSingleCircuit(ctx *gin.Context, taskCtx *pr
 	if err != nil {
 		return nil, err
 	}
+	if chunkRange == nil {
+		return nil, nil
+	}
 	return bp.doAssignTaskWithinChunkRange(ctx, taskCtx, chunkRange, getTaskParameter, nil)
 }
 
@@ -244,6 +247,9 @@ func (bp *BatchProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *prov
 		chunkRanges[i], err = bp.getChunkRangeByName(ctx, hardForkNames[i])
 		if err != nil {
 			return nil, err
+		}
+		if chunkRanges[i] == nil {
+			return nil, nil
 		}
 	}
 	chunkRange := chunkRanges[0].merge(*chunkRanges[1])

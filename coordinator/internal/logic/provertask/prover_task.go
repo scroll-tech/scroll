@@ -133,7 +133,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		return nil, fmt.Errorf("failed to check whether the public key %s is blocked before assigning a chunk task, err: %w, proverName: %s", publicKey, err, proverName)
 	}
 	if isBlocked {
-		return nil, fmt.Errorf("public key %s is blocked from fetching tasks. ProverName: %s", publicKey, proverName)
+		return nil, fmt.Errorf("public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", publicKey, proverName, ptc.ProverVersion)
 	}
 
 	isAssigned, err := b.proverTaskOrm.IsProverAssigned(ctx.Copy(), publicKey.(string))
