@@ -10,6 +10,7 @@ mod utils;
 mod version;
 mod zk_circuits_handler;
 
+use clap::{Parser, ArgAction};
 use anyhow::Result;
 use config::Config;
 use prover::Prover;
@@ -17,13 +18,34 @@ use std::rc::Rc;
 use task_cache::{ClearCacheCoordinatorListener, TaskCache};
 use task_processor::TaskProcessor;
 
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[clap(disable_version_flag = true)]
+struct Args {
+    /// Path of config file
+    #[arg(long = "config", default_value = "conf/config.json")]
+    config_file: String,
+
+    /// Version of this prover
+    #[arg(short, long, action = ArgAction::SetTrue)]
+    version: bool,
+
+    /// Path of config file
+    #[arg(long = "log.file")]
+    log_file: Option<String>,
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    utils::log_init();
+    let args = Args::parse();
 
-    let file_name = "config.json";
-    let config: Config = Config::from_file(file_name.to_string())?;
+    if args.version {
+        println!("version is {}", version::get_version());
+        std::process::exit(0);
+    }
 
-    println!("{:?}", config);
+    utils::log_init(args.log_file);
+
+    let config: Config = Config::from_file(args.config_file)?;
 
     let task_cache = Rc::new(TaskCache::new(&config.db_path)?);
 
