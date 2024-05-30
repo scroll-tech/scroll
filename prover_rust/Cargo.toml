@@ -33,7 +33,7 @@ snark-verifier-sdk = { git = "https://github.com/scroll-tech/snark-verifier", br
 prover = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.11.0rc2", default-features = false, features = ["parallel_syn", "scroll"] }
 eth-types = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.10.3" }
 base64 = "0.13.1"
-reqwest = "0.12.4"
+reqwest = { version = "0.12.4", features = ["gzip"] }
 once_cell = "1.19.0"
 hex = "0.4.3"
 tiny-keccak = { version = "2.0.0", features = ["sha3", "keccak"] }
