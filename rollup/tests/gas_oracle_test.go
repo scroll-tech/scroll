@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/params"
@@ -12,11 +13,11 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
 
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"
 	"scroll-tech/rollup/internal/orm"
+	"scroll-tech/rollup/internal/utils"
 )
 
 func testImportL1GasPrice(t *testing.T) {
@@ -143,7 +144,7 @@ func testImportL2GasPrice(t *testing.T) {
 	}
 
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
+	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	// check db status

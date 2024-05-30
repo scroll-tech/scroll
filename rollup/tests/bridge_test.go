@@ -208,7 +208,8 @@ func TestFunction(t *testing.T) {
 	t.Run("TestCommitAndFinalizeGenesisBatch", testCommitAndFinalizeGenesisBatch)
 	t.Run("TestCommitBatchAndFinalizeBatch", testCommitBatchAndFinalizeBatch)
 	t.Run("TestCommitBatchAndFinalizeBatch4844", testCommitBatchAndFinalizeBatch4844)
-	t.Run("TestCommitBatchAndFinalizeBatchBeforeAndPost4844", testCommitBatchAndFinalizeBatchBeforeAndPost4844)
+	t.Run("TestCommitBatchAndFinalizeBatchBeforeAndAfter4844", testCommitBatchAndFinalizeBatchBeforeAndAfter4844)
+	t.Run("TestCommitBatchAndFinalizeBatchBeforeAndAfterCompression", testCommitBatchAndFinalizeBatchBeforeAndAfterCompression)
 
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)

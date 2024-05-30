@@ -166,7 +166,7 @@ contract MockBridge {
                 _totalL1MessagesPoppedOverall := add(_totalL1MessagesPoppedOverall, _totalL1MessagesPoppedInBatch)
             }
             // store entries, the order matters
-            BatchHeaderV0Codec.storeVersion(batchPtr, 0);
+            BatchHeaderV0Codec.storeVersion(batchPtr, _version);
             BatchHeaderV0Codec.storeBatchIndex(batchPtr, _batchIndex);
             BatchHeaderV0Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
             BatchHeaderV0Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
@@ -177,7 +177,7 @@ contract MockBridge {
                 batchPtr,
                 BatchHeaderV0Codec.BATCH_HEADER_FIXED_LENGTH
             );
-        } else if (_version == 1) {
+        } else {
             bytes32 blobVersionedHash;
             (blobVersionedHash, _dataHash, _totalL1MessagesPoppedInBatch) = _commitChunksV1(
                 _totalL1MessagesPoppedOverall,
@@ -188,7 +188,7 @@ contract MockBridge {
                 _totalL1MessagesPoppedOverall := add(_totalL1MessagesPoppedOverall, _totalL1MessagesPoppedInBatch)
             }
             // store entries, the order matters
-            BatchHeaderV1Codec.storeVersion(batchPtr, 1);
+            BatchHeaderV1Codec.storeVersion(batchPtr, _version);
             BatchHeaderV1Codec.storeBatchIndex(batchPtr, _batchIndex);
             BatchHeaderV1Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
             BatchHeaderV1Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
@@ -200,8 +200,6 @@ contract MockBridge {
                 batchPtr,
                 BatchHeaderV1Codec.BATCH_HEADER_FIXED_LENGTH
             );
-        } else {
-            revert ErrorInvalidBatchHeaderVersion();
         }
 
         committedBatches[_batchIndex] = _batchHash;
@@ -432,12 +430,10 @@ contract MockBridge {
             (batchPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, _length);
             _batchIndex = BatchHeaderV0Codec.getBatchIndex(batchPtr);
-        } else if (version == 1) {
+        } else {
             (batchPtr, _length) = BatchHeaderV1Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV1Codec.computeBatchHash(batchPtr, _length);
             _batchIndex = BatchHeaderV1Codec.getBatchIndex(batchPtr);
-        } else {
-            revert ErrorInvalidBatchHeaderVersion();
         }
         // only check when genesis is imported
         if (committedBatches[_batchIndex] != _batchHash && finalizedStateRoots[0] != bytes32(0)) {
