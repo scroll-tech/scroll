@@ -626,3 +626,39 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 		database.CloseDB(db)
 	}
 }
+
+func testChunkProposerIncludeCurieBlockInOneChunk(t *testing.T) {
+	db := setupDB(t)
+	block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	for i := int64(0); i < 10; i++ {
+		l2BlockOrm := orm.NewL2Block(db)
+		block.Header.Number = big.NewInt(i)
+		err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
+		assert.NoError(t, err)
+	}
+
+	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+		MaxBlockNumPerChunk:             math.MaxUint64,
+		MaxTxNumPerChunk:                math.MaxUint64,
+		MaxL1CommitGasPerChunk:          math.MaxUint64,
+		MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
+		MaxRowConsumptionPerChunk:       math.MaxUint64,
+		ChunkTimeoutSec:                 math.MaxUint64,
+		GasCostIncreaseMultiplier:       1,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(1), CurieBlock: big.NewInt(2)}, db, nil)
+
+	for i := 0; i < 2; i++ {
+		cp.TryProposeChunk()
+	}
+
+	chunkOrm := orm.NewChunk(db)
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
+	assert.NoError(t, err)
+
+	assert.Len(t, chunks, 2)
+	for i, chunk := range chunks {
+		assert.Equal(t, uint64(i+1), chunk.EndBlockNumber)
+	}
+	database.CloseDB(db)
+}
