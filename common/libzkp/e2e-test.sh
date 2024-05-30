@@ -34,6 +34,7 @@ function build_test_bins_old() {
 }
 
 build_test_bins
+rm -rf test_zkp_test/*
 rm -rf prover.log verifier.log
 $REPO/prover/core.test -test.v 2>&1 | tee prover.log
 $REPO/coordinator/verifier.test -test.v 2>&1 | tee verifier.log
