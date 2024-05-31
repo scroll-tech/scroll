@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-// use serde_json::Error;
 use std::{error::Error, fs::File};
 
 use crate::types::ProofType;
