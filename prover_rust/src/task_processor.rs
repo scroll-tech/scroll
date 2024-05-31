@@ -9,7 +9,7 @@ pub struct TaskProcessor<'a> {
 }
 
 impl<'a> TaskProcessor<'a> {
-    pub fn new(prover: &'a Prover, task_cache: Rc<TaskCache>) -> Self {
+    pub fn new(prover: &'a Prover<'a>, task_cache: Rc<TaskCache>) -> Self {
         TaskProcessor { prover, task_cache }
     }
 

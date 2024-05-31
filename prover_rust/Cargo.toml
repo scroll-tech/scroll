@@ -32,6 +32,8 @@ prover = { git = "https://github.com/scroll-tech/zkevm-circuits.git", branch = "
 prover_next = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.11.0rc4", package = "prover", default-features = false, features = ["parallel_syn", "scroll"] }
 base64 = "0.13.1"
 reqwest = { version = "0.12.4", features = ["gzip"] }
+reqwest-middleware = "0.3"
+reqwest-retry = "0.5"
 once_cell = "1.19.0"
 hex = "0.4.3"
 tiny-keccak = { version = "2.0.0", features = ["sha3", "keccak"] }

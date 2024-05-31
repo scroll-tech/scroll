@@ -14,25 +14,20 @@ use tokio::runtime::Runtime;
 use types::*;
 
 use crate::key_signer::KeySigner;
+use crate::config::Config;
 
-pub struct Config {
-    pub endpoint: String,
-    pub prover_name: String,
-    pub prover_version: String,
-}
-
-pub struct CoordinatorClient {
+pub struct CoordinatorClient<'a> {
     api: API,
     token: Option<String>,
-    config: Config,
+    config: &'a Config,
     key_signer: Rc<KeySigner>,
     rt: Runtime,
     listener: Box<dyn Listener>,
 }
 
-impl CoordinatorClient {
+impl<'a> CoordinatorClient<'a> {
     pub fn new(
-        config: Config,
+        config: &'a Config,
         key_signer: Rc<KeySigner>,
         listener: Box<dyn Listener>,
     ) -> Result<Self> {
@@ -40,8 +35,13 @@ impl CoordinatorClient {
             .enable_all()
             .build()?;
 
+        let api = API::new(&config.coordinator.base_url,
+            core::time::Duration::from_secs(config.coordinator.connection_timeout_sec),
+            config.coordinator.retry_count,
+            config.coordinator.retry_wait_time_sec
+        )?;
         let mut client = Self {
-            api: API::new(&config.endpoint)?,
+            api,
             token: None,
             config,
             key_signer,
@@ -68,7 +68,7 @@ impl CoordinatorClient {
         let login_message = LoginMessage {
             challenge: token.clone(),
             prover_name: self.config.prover_name.clone(),
-            prover_version: self.config.prover_version.clone(),
+            prover_version: crate::version::get_version(),
         };
 
         let buffer = login_message.rlp();

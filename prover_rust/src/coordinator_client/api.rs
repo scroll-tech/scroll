@@ -2,17 +2,31 @@ use super::types::*;
 use anyhow::{bail, Result};
 use reqwest::{header::CONTENT_TYPE, Url};
 use serde::Serialize;
+use core::time::Duration;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
+use reqwest_retry::{RetryTransientMiddleware, policies::ExponentialBackoff};
 
 pub struct API {
     url_base: Url,
-    pub client: reqwest::Client,
+    send_timeout: Duration,
+    pub client: ClientWithMiddleware,
 }
 
 impl API {
-    pub fn new(url_base: &String) -> Result<Self> {
+    pub fn new(url_base: &String, send_timeout: Duration, retry_count: u32, retry_wait_time_sec: u64) -> Result<Self> {
+        let retry_wait_duration = core::time::Duration::from_secs(retry_wait_time_sec);
+        let retry_policy = ExponentialBackoff::builder()
+        .retry_bounds(retry_wait_duration / 2, retry_wait_duration)
+        .build_with_max_retries(retry_count);
+
+        let client = ClientBuilder::new(reqwest::Client::new())
+        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+        .build();
+
         Ok(Self {
             url_base: Url::parse(&url_base)?,
-            client: reqwest::Client::new(),
+            send_timeout,
+            client,
         })
     }
 
@@ -24,6 +38,7 @@ impl API {
             .client
             .get(url)
             .header(CONTENT_TYPE, "application/json")
+            .timeout(self.send_timeout)
             .send()
             .await?;
 
@@ -79,6 +94,7 @@ impl API {
             .header(CONTENT_TYPE, "application/json")
             .bearer_auth(token)
             .body(request_body)
+            .timeout(self.send_timeout)
             .send()
             .await?;
 

@@ -6,7 +6,7 @@ use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 use crate::{
     config::Config,
     coordinator_client::{
-        listener::Listener, types::*, Config as CoordinatorConfig, CoordinatorClient,
+        listener::Listener, types::*, CoordinatorClient,
     },
     geth_client::{get_block_number, GethClient},
     key_signer::KeySigner,
@@ -25,7 +25,7 @@ pub struct Prover<'a> {
     config: &'a Config,
     key_signer: Rc<KeySigner>,
     circuits_handler_provider: CircuitsHandlerProvider,
-    coordinator_client: RefCell<CoordinatorClient>,
+    coordinator_client: RefCell<CoordinatorClient<'a>>,
     geth_client: Option<RefCell<GethClient>>,
     vks: Vec<String>,
 }
@@ -36,15 +36,9 @@ impl<'a> Prover<'a> {
         let keystore_path = &config.keystore_path;
         let keystore_password = &config.keystore_password;
 
-        let coordinator_config = CoordinatorConfig {
-            endpoint: config.coordinator.base_url.clone(),
-            prover_name: config.prover_name.clone(),
-            prover_version: crate::version::get_version(),
-        };
-
         let key_signer = Rc::new(KeySigner::new(&keystore_path, &keystore_password)?);
         let coordinator_client = CoordinatorClient::new(
-            coordinator_config,
+            config,
             Rc::clone(&key_signer),
             coordinator_listener,
         )?;
