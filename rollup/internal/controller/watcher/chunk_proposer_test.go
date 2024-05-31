@@ -565,45 +565,6 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 			}
 		})
 	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			db := setupDB(t)
-			defer database.CloseDB(db)
-
-			l2BlockOrm := orm.NewL2Block(db)
-			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
-			assert.NoError(t, err)
-
-			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-				MaxBlockNumPerChunk:             tt.maxBlockNum,
-				MaxTxNumPerChunk:                tt.maxTxNum,
-				MaxL1CommitGasPerChunk:          tt.maxL1CommitGas,
-				MaxL1CommitCalldataSizePerChunk: tt.maxL1CommitCalldataSize,
-				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
-				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
-				GasCostIncreaseMultiplier:       1.2,
-				MaxUncompressedBatchBytesSize:   math.MaxUint64,
-			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock}, db, nil)
-			cp.TryProposeChunk()
-
-			chunkOrm := orm.NewChunk(db)
-			chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
-			assert.NoError(t, err)
-			assert.Len(t, chunks, tt.expectedChunksLen)
-
-			if len(chunks) > 0 {
-				blockOrm := orm.NewL2Block(db)
-				chunkHashes, err := blockOrm.GetChunkHashes(context.Background(), tt.expectedBlocksInFirstChunk)
-				assert.NoError(t, err)
-				assert.Len(t, chunkHashes, tt.expectedBlocksInFirstChunk)
-				firstChunkHash := chunks[0].Hash
-				for _, chunkHash := range chunkHashes {
-					assert.Equal(t, firstChunkHash, chunkHash)
-				}
-			}
-		})
-	}
 }
 
 func testChunkProposerBlobSizeLimit(t *testing.T) {
