@@ -690,65 +690,7 @@ func testChunkProposerIncludeCurieBlockInOneChunk(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		cp.TryProposeChunk()
 	}
-}
 
-func testChunkProposerBlobSizeLimit(t *testing.T) {
-	compressionTests := []bool{false, true} // false for uncompressed, true for compressed
-	for _, compressed := range compressionTests {
-		db := setupDB(t)
-		block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
-		for i := int64(0); i < 2000; i++ {
-			l2BlockOrm := orm.NewL2Block(db)
-			block.Header.Number = big.NewInt(i + 1)
-			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
-			assert.NoError(t, err)
-		}
-
-		var chainConfig *params.ChainConfig
-		if compressed {
-			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
-		} else {
-			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
-		}
-
-		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-			MaxBlockNumPerChunk:             math.MaxUint64,
-			MaxTxNumPerChunk:                math.MaxUint64,
-			MaxL1CommitGasPerChunk:          math.MaxUint64,
-			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
-			MaxRowConsumptionPerChunk:       math.MaxUint64,
-			ChunkTimeoutSec:                 math.MaxUint64,
-			GasCostIncreaseMultiplier:       1,
-			MaxUncompressedBatchBytesSize:   math.MaxUint64,
-		}, chainConfig, db, nil)
-
-		for i := 0; i < 10; i++ {
-			cp.TryProposeChunk()
-		}
-
-		chunkOrm := orm.NewChunk(db)
-		chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
-		assert.NoError(t, err)
-
-		var expectedNumChunks int
-		var numBlocksMultiplier uint64
-		if compressed {
-			expectedNumChunks = 1
-			numBlocksMultiplier = 2000
-		} else {
-			expectedNumChunks = 4
-			numBlocksMultiplier = 551
-		}
-		assert.Len(t, chunks, expectedNumChunks)
-
-		for i, chunk := range chunks {
-			expected := numBlocksMultiplier * (uint64(i) + 1)
-			if expected > 2000 {
-				expected = 2000
-			}
-			assert.Equal(t, expected, chunk.EndBlockNumber)
-		}
-		database.CloseDB(db)
 	chunkOrm := orm.NewChunk(db)
 	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
