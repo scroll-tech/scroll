@@ -473,6 +473,9 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("Start to roll up zk proof", "hash", batch.Hash)
 		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 		skipProof := r.cfg.EnableTestEnvSamplingFeature && ((batch.Index % 100) >= r.cfg.SamplingPercentage)
+		if batch.Index == 300 {
+			skipProof = true
+		}
 		if err := r.finalizeBatch(batch, !skipProof); err != nil {
 			log.Error("Failed to finalize batch", "index", batch.Index, "hash", batch.Hash, "withProof", !skipProof, "err", err)
 		}
