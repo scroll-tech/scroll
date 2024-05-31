@@ -587,14 +587,6 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 			"index", dbBatch.Index,
 			"hash", dbBatch.Hash,
 			"RollupContractAddress", r.cfg.RollupContractAddress,
-			"err", err,
-		)
-		log.Debug(
-			"finalizeBatch in layer1 failed",
-			"with proof", withProof,
-			"index", dbBatch.Index,
-			"hash", dbBatch.Hash,
-			"RollupContractAddress", r.cfg.RollupContractAddress,
 			"calldata", common.Bytes2Hex(calldata),
 			"err", err,
 		)
