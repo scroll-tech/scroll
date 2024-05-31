@@ -35,7 +35,7 @@ impl<'a> TaskProcessor<'a> {
             None => {
                 let fetch_result = self.prover.fetch_task();
                 if let Err(err) = fetch_result {
-                    // TODO: time.sleep
+                    std::thread::sleep(core::time::Duration::from_secs(10));
                     return Err(err).context("failed to fetch task from coordinator");
                 }
                 let task_wrapper: TaskWrapper = fetch_result.unwrap().into();
