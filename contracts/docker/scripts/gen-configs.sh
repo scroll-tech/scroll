@@ -27,3 +27,7 @@ forge script scripts/foundry/DeployScroll.s.sol:GenerateBridgeHistoryConfig || e
 echo ""
 echo "generating balance-checker-config.json"
 forge script scripts/foundry/DeployScroll.s.sol:GenerateBalanceCheckerConfig || exit 1
+
+echo ""
+echo "generating .env.frontend"
+forge script scripts/foundry/DeployScroll.s.sol:GenerateFrontendConfig || exit 1

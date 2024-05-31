@@ -76,6 +76,7 @@ string constant COORDINATOR_CONFIG_PATH = "./volume/coordinator-config.json";
 string constant CHAIN_MONITOR_CONFIG_PATH = "./volume/chain-monitor-config.json";
 string constant BRIDGE_HISTORY_CONFIG_PATH = "./volume/bridge-history-config.json";
 string constant BALANCE_CHECKER_CONFIG_PATH = "./volume/balance-checker-config.json";
+string constant FRONTEND_ENV_PATH = "./volume/.env.frontend";
 
 contract ProxyAdminSetOwner is ProxyAdmin {
     /// @dev allow setting the owner in the constructor, otherwise
@@ -2195,5 +2196,81 @@ contract GenerateBalanceCheckerConfig is DeployScroll {
 
         vm.writeJson(L2_RPC_ENDPOINT, BALANCE_CHECKER_CONFIG_PATH, ".addresses[5].rpc_url");
         vm.writeJson(vm.toString(L2_TX_FEE_VAULT_ADDR), BALANCE_CHECKER_CONFIG_PATH, ".addresses[5].address");
+    }
+}
+
+contract GenerateFrontendConfig is DeployScroll {
+    /***************
+     * Entry point *
+     ***************/
+
+    function run() public {
+        setScriptMode(ScriptMode.VerifyConfig);
+        predictAllContracts();
+
+        generateFrontendConfig();
+    }
+
+    /*********************
+     * Private functions *
+     *********************/
+
+    // prettier-ignore
+    function generateFrontendConfig() private {
+        // use writeFile to start a new file
+        vm.writeFile(FRONTEND_ENV_PATH, "REACT_APP_ETH_SYMBOL = \"ETH\"\n");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_BASE_CHAIN = \"Ethereum\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_ROLLUP = \"Scroll Stack\"");
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_CHAIN_ID_L1 = \"", vm.toString(CHAIN_ID_L1), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_CHAIN_ID_L2 = \"", vm.toString(CHAIN_ID_L2), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_CONNECT_WALLET_PROJECT_ID = \"14efbaafcf5232a47d93a68229b71028\"");
+
+        // API endpoints
+        vm.writeLine(FRONTEND_ENV_PATH, "");
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_EXTERNAL_RPC_URI_L1 = \"", L1_RPC_ENDPOINT, "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_EXTERNAL_RPC_URI_L2 = \"", L2_RPC_ENDPOINT, "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_BRIDGE_API_URI = \"https://sepolia-api-bridge-v2.scroll.io/api\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_ROLLUPSCAN_API_URI = \"https://sepolia-api-re.scroll.io/api\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_EXPLORER_URI_L1 = \"https://sepolia.etherscan.io\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_EXPLORER_URI_L2 = \"https://sepolia.scrollscan.com\"");
+
+        // L1 contracts
+        vm.writeLine(FRONTEND_ENV_PATH, "");
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = \"", vm.toString(L1_CUSTOM_ERC20_GATEWAY_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L1_ETH_GATEWAY_PROXY_ADDR = \"", vm.toString(L1_ETH_GATEWAY_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L1_GAS_PRICE_ORACLE = \"", vm.toString(L1_GAS_PRICE_ORACLE_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L1_GATEWAY_ROUTER_PROXY_ADDR = \"", vm.toString(L1_GATEWAY_ROUTER_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L1_MESSAGE_QUEUE = \"", vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L1_MESSAGE_QUEUE_WITH_GAS_PRICE_ORACLE = \"", vm.toString(L1_MESSAGE_QUEUE_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L1_SCROLL_MESSENGER = \"", vm.toString(L1_SCROLL_MESSENGER_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR = \"", vm.toString(L1_STANDARD_ERC20_GATEWAY_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L1_WETH_GATEWAY_PROXY_ADDR = \"", vm.toString(L1_WETH_GATEWAY_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_SCROLL_CHAIN = \"", vm.toString(L1_SCROLL_CHAIN_PROXY_ADDR), "\""));
+
+        // L2 contracts
+        vm.writeLine(FRONTEND_ENV_PATH, "");
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR = \"", vm.toString(L2_CUSTOM_ERC20_GATEWAY_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L2_ETH_GATEWAY_PROXY_ADDR = \"", vm.toString(L2_ETH_GATEWAY_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L2_GATEWAY_ROUTER_PROXY_ADDR = \"", vm.toString(L2_GATEWAY_ROUTER_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L2_SCROLL_MESSENGER = \"", vm.toString(L2_SCROLL_MESSENGER_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR = \"", vm.toString(L2_STANDARD_ERC20_GATEWAY_PROXY_ADDR), "\""));
+        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_L2_WETH_GATEWAY_PROXY_ADDR = \"", vm.toString(L2_WETH_GATEWAY_PROXY_ADDR), "\""));
+
+        // custom token gateways (currently not set)
+        vm.writeLine(FRONTEND_ENV_PATH, "");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_L1_USDC_GATEWAY_PROXY_ADDR = \"\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_L2_USDC_GATEWAY_PROXY_ADDR = \"\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_L1_DAI_GATEWAY_PROXY_ADDR = \"\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_L2_DAI_GATEWAY_PROXY_ADDR = \"\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_L1_LIDO_GATEWAY_PROXY_ADDR = \"\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_L2_LIDO_GATEWAY_PROXY_ADDR = \"\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_L1_PUFFER_GATEWAY_PROXY_ADDR = \"\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_L2_PUFFER_GATEWAY_PROXY_ADDR = \"\"");
+
+        // misc
+        vm.writeLine(FRONTEND_ENV_PATH, "");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_SCROLL_ORIGINS_NFT = \"\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_SCROLL_ORIGINS_NFT_V2 = \"\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_L1_BATCH_BRIDGE_GATEWAY_PROXY_ADDR = \"\"");
     }
 }
