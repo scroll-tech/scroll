@@ -55,7 +55,7 @@ impl CoordinatorClient {
     fn login(&mut self) -> Result<()> {
         let api = &self.api;
         let challenge_response = self.rt.block_on(api.challenge())?;
-        if challenge_response.errcode != Success {
+        if challenge_response.errcode != ErrorCode::Success {
             bail!("challenge failed: {}", challenge_response.errmsg)
         }
         let mut token: String;
@@ -78,7 +78,7 @@ impl CoordinatorClient {
             signature,
         };
         let login_response = self.rt.block_on(api.login(&login_request, &token))?;
-        if login_response.errcode != Success {
+        if login_response.errcode != ErrorCode::Success {
             bail!("login failed: {}", login_response.errmsg)
         }
         if let Some(r) = login_response.data {
@@ -95,12 +95,12 @@ impl CoordinatorClient {
         F: FnMut(&mut Self, &R) -> Result<Response<T>>,
     {
         let response = f(self, req)?;
-        if response.errcode == ErrJWTTokenExpired {
+        if response.errcode == ErrorCode::ErrJWTTokenExpired {
             log::info!("JWT expired, attempting to re-login");
             self.login().context("JWT expired, re-login failed")?;
             log::info!("re-login success");
             return f(self, req);
-        } else if response.errcode != Success {
+        } else if response.errcode != ErrorCode::Success {
             bail!("action failed: {}", response.errmsg)
         }
         Ok(response)

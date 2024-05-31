@@ -1,10 +1,11 @@
 use crate::types::{ProofFailureType, ProofStatus};
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
+use super::errors::ErrorCode;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct Response<T> {
-    pub errcode: i32,
+    pub errcode: ErrorCode,
     pub errmsg: String,
     pub data: Option<T>,
 }
