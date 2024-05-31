@@ -463,7 +463,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		if r.cfg.EnableTestEnvBypassFeatures && utils.NowUTC().Sub(*batch.CommittedAt) > time.Duration(r.cfg.FinalizeBatchWithoutProofTimeoutSec)*time.Second {
+		if batch.Index == 300 || (r.cfg.EnableTestEnvBypassFeatures && utils.NowUTC().Sub(*batch.CommittedAt) > time.Duration(r.cfg.FinalizeBatchWithoutProofTimeoutSec)*time.Second) {
 			if err := r.finalizeBatch(batch, false); err != nil {
 				log.Error("Failed to finalize timeout batch without proof", "index", batch.Index, "hash", batch.Hash, "err", err)
 			}
@@ -473,9 +473,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		log.Info("Start to roll up zk proof", "hash", batch.Hash)
 		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 		skipProof := r.cfg.EnableTestEnvSamplingFeature && ((batch.Index % 100) >= r.cfg.SamplingPercentage)
-		if batch.Index == 300 {
-			skipProof = true
-		}
 		if err := r.finalizeBatch(batch, !skipProof); err != nil {
 			log.Error("Failed to finalize batch", "index", batch.Index, "hash", batch.Hash, "withProof", !skipProof, "err", err)
 		}
