@@ -82,14 +82,25 @@ contract MockBridge {
     /// point evaluation precompile
     uint256 constant BLS_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513;
 
+    uint256 public l1BaseFee;
+    uint256 public l1BlobBaseFee;
     uint256 public l2BaseFee;
     uint256 public lastFinalizedBatchIndex;
     mapping(uint256 => bytes32) public committedBatches;
     mapping(uint256 => bytes32) public finalizedStateRoots;
     mapping(uint256 => bytes32) public withdrawRoots;
 
-    function setL2BaseFee(uint256 _newL2BaseFee) external {
-      l2BaseFee = _newL2BaseFee;
+    function setL1BaseFee(uint256 _l1BaseFee) external {
+        l1BaseFee = _l1BaseFee;
+    }
+
+    function setL1BaseFeeAndBlobBaseFee(uint256 _l1BaseFee, uint256 _l1BlobBaseFee) external {
+        l1BaseFee = _l1BaseFee;
+        l1BlobBaseFee = _l1BlobBaseFee;
+    }
+
+    function setL2BaseFee(uint256 _l2BaseFee) external {
+        l2BaseFee = _l2BaseFee;
     }
 
     /*****************************

@@ -565,6 +565,45 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 			}
 		})
 	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := setupDB(t)
+			defer database.CloseDB(db)
+
+			l2BlockOrm := orm.NewL2Block(db)
+			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+			assert.NoError(t, err)
+
+			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+				MaxBlockNumPerChunk:             tt.maxBlockNum,
+				MaxTxNumPerChunk:                tt.maxTxNum,
+				MaxL1CommitGasPerChunk:          tt.maxL1CommitGas,
+				MaxL1CommitCalldataSizePerChunk: tt.maxL1CommitCalldataSize,
+				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
+				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
+				GasCostIncreaseMultiplier:       1.2,
+				MaxUncompressedBatchBytesSize:   math.MaxUint64,
+			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock}, db, nil)
+			cp.TryProposeChunk()
+
+			chunkOrm := orm.NewChunk(db)
+			chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
+			assert.NoError(t, err)
+			assert.Len(t, chunks, tt.expectedChunksLen)
+
+			if len(chunks) > 0 {
+				blockOrm := orm.NewL2Block(db)
+				chunkHashes, err := blockOrm.GetChunkHashes(context.Background(), tt.expectedBlocksInFirstChunk)
+				assert.NoError(t, err)
+				assert.Len(t, chunkHashes, tt.expectedBlocksInFirstChunk)
+				firstChunkHash := chunks[0].Hash
+				for _, chunkHash := range chunkHashes {
+					assert.Equal(t, firstChunkHash, chunkHash)
+				}
+			}
+		})
+	}
 }
 
 func testChunkProposerBlobSizeLimit(t *testing.T) {
@@ -625,4 +664,98 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 		}
 		database.CloseDB(db)
 	}
+}
+
+func testChunkProposerIncludeCurieBlockInOneChunk(t *testing.T) {
+	db := setupDB(t)
+	block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	for i := int64(0); i < 10; i++ {
+		l2BlockOrm := orm.NewL2Block(db)
+		block.Header.Number = big.NewInt(i)
+		err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
+		assert.NoError(t, err)
+	}
+
+	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+		MaxBlockNumPerChunk:             math.MaxUint64,
+		MaxTxNumPerChunk:                math.MaxUint64,
+		MaxL1CommitGasPerChunk:          math.MaxUint64,
+		MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
+		MaxRowConsumptionPerChunk:       math.MaxUint64,
+		ChunkTimeoutSec:                 math.MaxUint64,
+		GasCostIncreaseMultiplier:       1,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(1), CurieBlock: big.NewInt(2)}, db, nil)
+
+	for i := 0; i < 2; i++ {
+		cp.TryProposeChunk()
+	}
+}
+
+func testChunkProposerBlobSizeLimit(t *testing.T) {
+	compressionTests := []bool{false, true} // false for uncompressed, true for compressed
+	for _, compressed := range compressionTests {
+		db := setupDB(t)
+		block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+		for i := int64(0); i < 2000; i++ {
+			l2BlockOrm := orm.NewL2Block(db)
+			block.Header.Number = big.NewInt(i + 1)
+			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
+			assert.NoError(t, err)
+		}
+
+		var chainConfig *params.ChainConfig
+		if compressed {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
+		} else {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
+		}
+
+		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+			MaxBlockNumPerChunk:             math.MaxUint64,
+			MaxTxNumPerChunk:                math.MaxUint64,
+			MaxL1CommitGasPerChunk:          math.MaxUint64,
+			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
+			MaxRowConsumptionPerChunk:       math.MaxUint64,
+			ChunkTimeoutSec:                 math.MaxUint64,
+			GasCostIncreaseMultiplier:       1,
+			MaxUncompressedBatchBytesSize:   math.MaxUint64,
+		}, chainConfig, db, nil)
+
+		for i := 0; i < 10; i++ {
+			cp.TryProposeChunk()
+		}
+
+		chunkOrm := orm.NewChunk(db)
+		chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
+		assert.NoError(t, err)
+
+		var expectedNumChunks int
+		var numBlocksMultiplier uint64
+		if compressed {
+			expectedNumChunks = 1
+			numBlocksMultiplier = 2000
+		} else {
+			expectedNumChunks = 4
+			numBlocksMultiplier = 551
+		}
+		assert.Len(t, chunks, expectedNumChunks)
+
+		for i, chunk := range chunks {
+			expected := numBlocksMultiplier * (uint64(i) + 1)
+			if expected > 2000 {
+				expected = 2000
+			}
+			assert.Equal(t, expected, chunk.EndBlockNumber)
+		}
+		database.CloseDB(db)
+	chunkOrm := orm.NewChunk(db)
+	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
+	assert.NoError(t, err)
+
+	assert.Len(t, chunks, 2)
+	for i, chunk := range chunks {
+		assert.Equal(t, uint64(i+1), chunk.EndBlockNumber)
+	}
+	database.CloseDB(db)
 }

@@ -43,7 +43,7 @@ type BatchProposerConfig struct {
 	BatchTimeoutSec                 uint64  `json:"batch_timeout_sec"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
 
-	EnableTestEnvSamplingFeature bool   `json:"enable_test_env_sampling_feature"`
-	SamplingPercentage           uint64 `json:"sampling_percentage"`
+	EnableTestEnvSamplingFeature    bool    `json:"enable_test_env_sampling_feature"`
+	SamplingPercentage              uint64  `json:"sampling_percentage"`
 	MaxUncompressedBatchBytesSize   uint64  `json:"max_uncompressed_batch_bytes_size"`
 }

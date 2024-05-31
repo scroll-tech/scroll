@@ -214,7 +214,7 @@ func (p *BatchProposer) proposeBatch() error {
 		maxChunksThisBatch = 15
 	} else {
 		codecVersion = encoding.CodecV2
-		maxChunksThisBatch = 15
+		maxChunksThisBatch = 45
 	}
 
 	// select at most maxChunkNumPerBatch chunks
