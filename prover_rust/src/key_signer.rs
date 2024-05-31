@@ -24,12 +24,14 @@ impl KeySigner {
         let p = Path::new(key_path);
 
         let secret = if !p.exists() {
+            log::info!("[key_signer] key_path not exists, create one");
             let dir = p.parent().unwrap();
             let name = p.file_name().and_then(|s| s.to_str());
             let mut rng = rand::thread_rng();
             let (secret, _) = eth_keystore::new(dir, &mut rng, passwd, name)?;
             secret
         } else {
+            log::info!("[key_signer] key_path already exists, load it");
             eth_keystore::decrypt_key(key_path, passwd).map_err(|e| anyhow::anyhow!(e))?
         };
 
@@ -39,7 +41,7 @@ impl KeySigner {
 
         Ok(Self {
             public_key: secret_key.public_key(),
-            signer: signer,
+            signer,
         })
     }
 
@@ -69,8 +71,8 @@ impl KeySigner {
     {
         let pre_hash = keccak256(buffer);
 
-        let hash_str = buffer_to_hex(&pre_hash, true);
-        println!("hash is {hash_str}");
+        // let hash_str = buffer_to_hex(&pre_hash, true);
+        // println!("hash is {hash_str}");
 
         let hash = H256::from(pre_hash);
         let sig = self.sign_hash(hash)?;
@@ -93,7 +95,6 @@ where
 /// Compute the Keccak-256 hash of input bytes.
 ///
 /// Note that strings are interpreted as UTF-8 bytes,
-// TODO: Add Solidity Keccak256 packing support
 pub fn keccak256<T: AsRef<[u8]>>(bytes: T) -> [u8; 32] {
     let mut output = [0u8; 32];
 

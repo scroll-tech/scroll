@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::{error::Error, fs::File};
+use std::fs::File;
+use anyhow::Result;
 
 use crate::types::ProofType;
 
@@ -38,14 +39,14 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_reader<R>(reader: R) -> Result<Self, Box<dyn Error>>
+    pub fn from_reader<R>(reader: R) -> Result<Self>
     where
         R: std::io::Read,
     {
-        serde_json::from_reader(reader).map_err(|e| Box::new(e) as Box<dyn Error>)
+        serde_json::from_reader(reader).map_err(|e| anyhow::anyhow!(e))
     }
 
-    pub fn from_file(file_name: String) -> Result<Self, Box<dyn Error>> {
+    pub fn from_file(file_name: String) -> Result<Self> {
         let file = File::open(file_name)?;
         Config::from_reader(&file)
     }

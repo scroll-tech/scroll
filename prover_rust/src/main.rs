@@ -17,6 +17,7 @@ use prover::Prover;
 use std::rc::Rc;
 use task_cache::{ClearCacheCoordinatorListener, TaskCache};
 use task_processor::TaskProcessor;
+use log;
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]
@@ -54,6 +55,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let prover = Prover::new(&config, coordinator_listener)?;
+
+    log::info!("prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",
+        config.prover_name,
+        config.proof_type,
+        prover.get_public_key(),
+        version::get_version(),
+    );
 
     let task_processer = TaskProcessor::new(&prover, task_cache);
 

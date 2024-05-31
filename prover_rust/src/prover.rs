@@ -1,7 +1,8 @@
-use anyhow::{bail, Error, Ok, Result};
+use anyhow::{bail, Context, Error, Ok, Result};
 use ethers_core::types::U64;
 use once_cell::sync::Lazy;
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
+use log;
 
 use crate::{
     config::Config,
@@ -41,12 +42,12 @@ impl<'a> Prover<'a> {
             config,
             Rc::clone(&key_signer),
             coordinator_listener,
-        )?;
+        ).context("failed to create coordinator_client")?;
 
         let provider = CircuitsHandlerProvider::new(
             proof_type,
             config
-        )?;
+        ).context("failed to create circuits handler provider")?;
         let vks = provider.get_vks();
 
         let mut prover = Prover {
@@ -60,9 +61,9 @@ impl<'a> Prover<'a> {
 
         if config.proof_type == ProofType::ProofTypeChunk {
             prover.geth_client = Some(RefCell::new(GethClient::new(
-                "test",
+                &config.prover_name,
                 &config.l2geth.as_ref().unwrap().endpoint,
-            )?));
+            ).context("failed to create l2 geth_client")?));
         }
 
         Ok(prover)
@@ -77,6 +78,7 @@ impl<'a> Prover<'a> {
     }
 
     pub fn fetch_task(&self) -> Result<Task> {
+        log::info!("[prover] start to fetch_task");
         let vks = self.vks.clone();
         let vk = vks[0].clone();
         let mut req = GetTaskRequest {
@@ -94,6 +96,7 @@ impl<'a> Prover<'a> {
                 }
                 req.prover_height = Some(v.as_u64());
             } else {
+                log::error!("[prover] failed to fetch latest confirmed block number, got None");
                 bail!("failed to fetch latest confirmed block number, got None")
             }
         }
@@ -103,9 +106,11 @@ impl<'a> Prover<'a> {
     }
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
+        log::info!("[prover] start to prove_task, task id: {}", task.id);
         if let Some(handler) = self.circuits_handler_provider.get_circuits_client(&task.hard_fork_name) {
             self.do_prove(task, handler)
         } else {
+            log::error!("failed to get a circuit handler");
             bail!("failed to get a circuit handler")
         }
     }
@@ -152,6 +157,7 @@ impl<'a> Prover<'a> {
     }
 
     pub fn submit_proof(&self, proof_detail: &ProofDetail, uuid: String) -> Result<()> {
+        log::info!("[prover] start to submit_proof, task id: {}", proof_detail.id);
         let proof_data = match proof_detail.proof_type {
             ProofType::ProofTypeBatch => {
                 serde_json::to_string(proof_detail.batch_proof.as_ref().unwrap())?
@@ -180,6 +186,7 @@ impl<'a> Prover<'a> {
         failure_type: ProofFailureType,
         error: Error,
     ) -> Result<()> {
+        log::info!("[prover] start to submit_error, task id: {}", task.id);
         let request = SubmitProofRequest {
             uuid: task.uuid.clone(),
             task_id: task.id.clone(),
@@ -215,6 +222,7 @@ impl<'a> Prover<'a> {
         if let Some(chunk_detail) = task.chunk_task_detail.as_ref() {
             self.get_sorted_traces_by_hashes(&chunk_detail.block_hashes)
         } else {
+            log::error!("[prover] failed to get chunk_detail from task");
             bail!("invalid task")
         }
     }
@@ -228,6 +236,7 @@ impl<'a> Prover<'a> {
                 .zip(batch_detail.chunk_proofs.clone())
                 .collect())
         } else {
+            log::error!("[prover] failed to get batch_detail from task");
             bail!("invalid task")
         }
     }
@@ -237,7 +246,8 @@ impl<'a> Prover<'a> {
         block_hashes: &Vec<CommonHash>,
     ) -> Result<Vec<BlockTrace>> {
         if block_hashes.len() == 0 {
-            bail!("blockHashes is empty")
+            log::error!("[prover] failed to get sorted traces: block_hashes are empty");
+            bail!("block_hashes are empty")
         }
 
         let mut block_traces = Vec::new();
@@ -273,6 +283,7 @@ impl<'a> Prover<'a> {
         let mut i = 0;
         while i < block_numbers.len() - 1 {
             if block_numbers[i] + 1 != block_numbers[i + 1] {
+                log::error!("[prover] block numbers are not continuous, got {} and {}", block_numbers[i], block_numbers[i + 1]);
                 bail!(
                     "block numbers are not continuous, got {} and {}",
                     block_numbers[i],
