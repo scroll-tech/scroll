@@ -59,16 +59,16 @@ contract L1GasPriceOracle is OwnableBase, IL1GasPriceOracle {
     /// ```
     /// commit_scalar = commit_gas_per_tx * fluctuation_multiplier * 1e9
     /// ```
-    /// So, the value should not exceed 10^18 * 1e9 normally.
-    uint256 private constant MAX_COMMIT_SCALAR = 10 ** 18 * PRECISION;
+    /// So, the value should not exceed 10^9 * 1e9 normally.
+    uint256 private constant MAX_COMMIT_SCALAR = 10 ** 9 * PRECISION;
 
     /// @dev The maximum possible l1 blob fee scalar after Curie.
     /// We derive the blob scalar by
     /// ```
     /// blob_scalar = fluctuation_multiplier / compression_ratio / blob_util_ratio * 1e9
     /// ```
-    /// So, the value should not exceed 10^18 * 1e9 normally.
-    uint256 private constant MAX_BLOB_SCALAR = 10 ** 18 * PRECISION;
+    /// So, the value should not exceed 10^9 * 1e9 normally.
+    uint256 private constant MAX_BLOB_SCALAR = 10 ** 9 * PRECISION;
 
     /*************
      * Variables *
