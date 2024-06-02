@@ -7,6 +7,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/da-codec/encoding/codecv0"
+	"github.com/scroll-tech/da-codec/encoding/codecv1"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -14,10 +17,9 @@ import (
 
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
-	"scroll-tech/common/types/encoding/codecv1"
 	"scroll-tech/database/migrate"
+
+	"scroll-tech/rollup/internal/utils"
 )
 
 var (
@@ -194,11 +196,11 @@ func TestChunkOrm(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
+		dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, utils.ChunkMetrics{})
 		assert.NoError(t, err)
 		assert.Equal(t, dbChunk1.Hash, chunkHash1.Hex())
 
-		dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
+		dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, utils.ChunkMetrics{})
 		assert.NoError(t, err)
 		assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
@@ -250,7 +252,7 @@ func TestBatchOrm(t *testing.T) {
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk1},
 		}
-		batch1, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
+		batch1, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, utils.BatchMetrics{})
 		assert.NoError(t, err)
 		hash1 := batch1.Hash
 
@@ -275,7 +277,7 @@ func TestBatchOrm(t *testing.T) {
 			ParentBatchHash:            common.Hash{},
 			Chunks:                     []*encoding.Chunk{chunk2},
 		}
-		batch2, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
+		batch2, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, utils.BatchMetrics{})
 		assert.NoError(t, err)
 		hash2 := batch2.Hash
 
