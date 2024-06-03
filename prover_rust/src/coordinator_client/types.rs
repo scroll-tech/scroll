@@ -15,18 +15,16 @@ pub struct LoginMessage {
     pub challenge: String,
     pub prover_name: String,
     pub prover_version: String,
-    // pub hard_fork_name: String,
 }
 
 impl LoginMessage {
     pub fn rlp(&self) -> Vec<u8> {
         let mut rlp = RlpStream::new();
-        let num_fields = 4;
+        let num_fields = 3;
         rlp.begin_list(num_fields);
         rlp.append(&self.prover_name);
         rlp.append(&self.prover_version);
         rlp.append(&self.challenge);
-        // rlp.append(&self.hard_fork_name);
         rlp.out().freeze().into()
     }
 }
@@ -50,7 +48,6 @@ pub struct GetTaskRequest {
     pub task_type: crate::types::ProofType,
     pub prover_height: Option<u64>,
     pub vks: Vec<String>,
-    pub vk: String,
 }
 
 #[derive(Serialize, Deserialize)]
