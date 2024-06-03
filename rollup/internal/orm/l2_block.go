@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types/encoding"
 )
 
 // L2Block represents a l2 block in the database.

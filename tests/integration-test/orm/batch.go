@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/da-codec/encoding/codecv0"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
 )
 
 // Batch represents a batch of chunks.
@@ -177,7 +177,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-	db.WithContext(ctx)
+	db = db.WithContext(ctx)
 	db = db.Model(&Batch{})
 
 	if err := db.Create(&newBatch).Error; err != nil {
