@@ -127,7 +127,7 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 	if getHardForkName != nil {
 		hardForkName, err = getHardForkName(chunkTask)
 		if err != nil {
-			log.Error("failed to get version by chunk", "error", err.Error())
+			log.Error("failed to get hard fork name by chunk", "error", err.Error())
 			return nil, ErrCoordinatorInternalFailure
 		}
 	}
