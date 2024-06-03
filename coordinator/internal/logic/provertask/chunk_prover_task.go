@@ -229,7 +229,7 @@ func (r *blockRange) merge(o blockRange) (*blockRange, error) {
 }
 
 func (r *blockRange) contains(start, end uint64) bool {
-	return r.from <= start && r.to >= end
+	return r.from <= start && r.to >= end+1
 }
 
 func (cp *ChunkProverTask) getBlockRangeByName(hardForkName string) (*blockRange, error) {

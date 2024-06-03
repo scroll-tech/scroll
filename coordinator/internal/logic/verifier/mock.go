@@ -12,17 +12,17 @@ import (
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	batchVKMap := map[string]string{
 		"shanghai":  "",
-		"bernoulli": "",
-		"london":    "",
-		"istanbul":  "",
+		"bernoulli": "bernoulli",
+		"london":    "london",
+		"istanbul":  "istanbul",
 		"homestead": "",
 		"eip155":    "",
 	}
 	chunkVKMap := map[string]string{
 		"shanghai":  "",
-		"bernoulli": "",
-		"london":    "",
-		"istanbul":  "",
+		"bernoulli": "bernoulli",
+		"london":    "london",
+		"istanbul":  "istanbul",
 		"homestead": "",
 		"eip155":    "",
 	}

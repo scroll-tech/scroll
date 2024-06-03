@@ -154,10 +154,11 @@ func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 
 // GetGormDBClient returns a gorm.DB by connecting to the running postgres container
 func (t *TestcontainerApps) GetGormDBClient() (*gorm.DB, error) {
-	endpoint, err := t.GetDBEndPoint()
-	if err != nil {
-		return nil, err
-	}
+	// endpoint, err := t.GetDBEndPoint()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	endpoint := "postgres://lmr:@localhost:5432/unittest?sslmode=disable"
 	dbCfg := &database.Config{
 		DSN:        endpoint,
 		DriverName: "postgres",

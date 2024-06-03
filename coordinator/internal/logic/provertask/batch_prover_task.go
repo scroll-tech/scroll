@@ -82,7 +82,7 @@ func (r *chunkIndexRange) merge(o chunkIndexRange) *chunkIndexRange {
 }
 
 func (r *chunkIndexRange) contains(start, end uint64) bool {
-	return r.start <= start && r.end >= end
+	return r.start <= start && r.end >= end+1
 }
 
 type getHardForkNameByBatchFunc func(*orm.Batch) (string, error)
@@ -222,6 +222,7 @@ func (bp *BatchProverTask) getChunkRangeByName(ctx *gin.Context, hardForkName st
 			endChunkIndex = toChunk.Index
 		}
 	}
+	fmt.Printf("%s index range %+v\n", hardForkName, &chunkIndexRange{startChunkIndex, endChunkIndex})
 	return &chunkIndexRange{startChunkIndex, endChunkIndex}, nil
 }
 

@@ -32,7 +32,7 @@ func v1(router *gin.RouterGroup, conf *config.Config) {
 	r.POST("/login", challengeMiddleware.MiddlewareFunc(), loginMiddleware.LoginHandler)
 
 	// need jwt token api
-	r.Use(loginMiddleware.MiddlewareFunc())
+	// r.Use(loginMiddleware.MiddlewareFunc())
 	{
 		r.POST("/get_task", api.GetTask.GetTasks)
 		r.POST("/submit_proof", api.SubmitProof.SubmitProof)

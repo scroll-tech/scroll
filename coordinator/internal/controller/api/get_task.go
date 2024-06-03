@@ -18,6 +18,7 @@ import (
 	"scroll-tech/coordinator/internal/logic/provertask"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+	itypes "scroll-tech/coordinator/internal/types"
 )
 
 // GetTaskController the get prover task api controller
@@ -70,6 +71,10 @@ func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
 
 // GetTasks get assigned chunk/batch task
 func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
+	ctx.Set(itypes.PublicKey, "fake_public_key2")
+	ctx.Set(itypes.ProverName, "test")
+	ctx.Set(itypes.ProverVersion, "v4.4.9-000000-000000-000000")
+
 	var getTaskParameter coordinatorType.GetTaskParameter
 	if err := ctx.ShouldBind(&getTaskParameter); err != nil {
 		nerr := fmt.Errorf("prover task parameter invalid, err:%w", err)

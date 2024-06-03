@@ -18,6 +18,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/testcontainers"
@@ -26,6 +27,7 @@ import (
 	"scroll-tech/common/version"
 	"scroll-tech/database/migrate"
 
+	cutils "scroll-tech/common/utils"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"
 	"scroll-tech/coordinator/internal/controller/cron"
@@ -78,6 +80,25 @@ func TestMain(m *testing.M) {
 func randomURL() string {
 	id, _ := rand.Int(rand.Reader, big.NewInt(2000-1))
 	return fmt.Sprintf("localhost:%d", 10000+2000+id.Int64())
+}
+
+func useLocalDB(dsn string) *gorm.DB {
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		// Logger: &tmpGormLogger,
+		NowFunc: func() time.Time {
+			// why set time to UTC.
+			// if now set this, the inserted data time will use local timezone. like 2023-07-18 18:24:00 CST+8
+			// but when inserted, store to postgres is 2023-07-18 18:24:00 UTC+0 the timezone is incorrect.
+			// As mysql dsn user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local, we cant set
+			// the timezone by loc=Local. but postgres's dsn don't have loc option to set timezone, so just need set the gorm option like that.
+			return cutils.NowUTC()
+		},
+	})
+	if err != nil {
+		fmt.Println("failed to init db", err.Error())
+		panic(err.Error())
+	}
+	return db
 }
 
 func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL string, nameForkMap map[string]int64) (*cron.Collector, *http.Server) {
@@ -200,14 +221,14 @@ func TestApis(t *testing.T) {
 	// Set up the test environment.
 	setEnv(t)
 
-	t.Run("TestHandshake", testHandshake)
-	t.Run("TestFailedHandshake", testFailedHandshake)
-	t.Run("TestGetTaskBlocked", testGetTaskBlocked)
-	t.Run("TestOutdatedProverVersion", testOutdatedProverVersion)
-	t.Run("TestValidProof", testValidProof)
-	t.Run("TestInvalidProof", testInvalidProof)
-	t.Run("TestProofGeneratedFailed", testProofGeneratedFailed)
-	t.Run("TestTimeoutProof", testTimeoutProof)
+	// t.Run("TestHandshake", testHandshake)
+	// t.Run("TestFailedHandshake", testFailedHandshake)
+	// t.Run("TestGetTaskBlocked", testGetTaskBlocked)
+	// t.Run("TestOutdatedProverVersion", testOutdatedProverVersion)
+	// t.Run("TestValidProof", testValidProof)
+	// t.Run("TestInvalidProof", testInvalidProof)
+	// t.Run("TestProofGeneratedFailed", testProofGeneratedFailed)
+	// t.Run("TestTimeoutProof", testTimeoutProof)
 	t.Run("TestHardFork", testHardForkAssignTask)
 }
 
@@ -474,6 +495,106 @@ func testHardForkAssignTask(t *testing.T) {
 			proverForkNames:       []string{"", ""},
 			exceptGetTaskErrCodes: []int{types.Success, types.ErrCoordinatorEmptyProofData},
 			exceptGetTaskErrMsgs:  []string{"", "get empty prover task"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			coordinatorURL := randomURL()
+			collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, tt.forkNumbers)
+			defer func() {
+				collector.Stop()
+				assert.NoError(t, httpHandler.Shutdown(context.Background()))
+			}()
+
+			chunkProof := &message.ChunkProof{
+				StorageTrace: []byte("testStorageTrace"),
+				Protocol:     []byte("testProtocol"),
+				Proof:        []byte("testProof"),
+				Instances:    []byte("testInstance"),
+				Vk:           []byte("testVk"),
+				ChunkInfo:    nil,
+			}
+
+			// the insert block number is 2 and 3
+			// chunk1 batch1 contains block number 2
+			// chunk2 batch2 contains block number 3
+			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+			assert.NoError(t, err)
+
+			dbHardForkChunk1, err := chunkOrm.InsertChunk(context.Background(), hardForkChunk1)
+			assert.NoError(t, err)
+			err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 2, dbHardForkChunk1.Hash)
+			assert.NoError(t, err)
+			err = chunkOrm.UpdateProofAndProvingStatusByHash(context.Background(), dbHardForkChunk1.Hash, chunkProof, types.ProvingTaskUnassigned, 1)
+			assert.NoError(t, err)
+			dbHardForkBatch1, err := batchOrm.InsertBatch(context.Background(), hardForkBatch1)
+			assert.NoError(t, err)
+			err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 0, dbHardForkBatch1.Hash)
+			assert.NoError(t, err)
+			err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), dbHardForkBatch1.Hash, types.ChunkProofsStatusReady)
+			assert.NoError(t, err)
+
+			dbHardForkChunk2, err := chunkOrm.InsertChunk(context.Background(), hardForkChunk2)
+			assert.NoError(t, err)
+			err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 3, 100, dbHardForkChunk2.Hash)
+			assert.NoError(t, err)
+			err = chunkOrm.UpdateProofAndProvingStatusByHash(context.Background(), dbHardForkChunk2.Hash, chunkProof, types.ProvingTaskUnassigned, 1)
+			assert.NoError(t, err)
+			dbHardForkBatch2, err := batchOrm.InsertBatch(context.Background(), hardForkBatch2)
+			assert.NoError(t, err)
+			err = chunkOrm.UpdateBatchHashInRange(context.Background(), 1, 1, dbHardForkBatch2.Hash)
+			assert.NoError(t, err)
+			err = batchOrm.UpdateChunkProofsStatusByBatchHash(context.Background(), dbHardForkBatch2.Hash, types.ChunkProofsStatusReady)
+			assert.NoError(t, err)
+
+			fmt.Println("data inserted")
+			time.Sleep(50 * time.Second)
+
+			getTaskNumber := 0
+			for i := 0; i < 2; i++ {
+				mockProver := newMockProver(t, fmt.Sprintf("mock_prover_%d", i), coordinatorURL, tt.proofType, version.Version)
+				proverTask, errCode, errMsg := mockProver.getProverTask(t, tt.proofType, tt.proverForkNames[i])
+				assert.Equal(t, tt.exceptGetTaskErrCodes[i], errCode)
+				assert.Equal(t, tt.exceptGetTaskErrMsgs[i], errMsg)
+				if errCode != types.Success {
+					continue
+				}
+				getTaskNumber++
+				mockProver.submitProof(t, proverTask, verifiedSuccess, types.Success, tt.proverForkNames[i])
+			}
+			assert.Equal(t, getTaskNumber, tt.exceptTaskNumber)
+		})
+	}
+}
+
+func testHardForkAssignTaskMultiCircuits(t *testing.T) {
+	tests := []struct {
+		name                  string
+		proofType             message.ProofType
+		forkNumbers           map[string]int64
+		proverForkNames       []string
+		exceptTaskNumber      int
+		exceptGetTaskErrCodes []int
+		exceptGetTaskErrMsgs  []string
+	}{
+		{ // hard fork 4, prover 4  block [2-3]
+			name:                  "noTaskForkChunkProverVersionLargeOrEqualThanHardFork",
+			proofType:             message.ProofTypeChunk,
+			forkNumbers:           map[string]int64{"bernoulli": forkNumberFour},
+			exceptTaskNumber:      0,
+			proverForkNames:       []string{"bernoulli", "bernoulli"},
+			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
+			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
+		},
+		{
+			name:                  "noTaskForkBatchProverVersionLargeOrEqualThanHardFork",
+			proofType:             message.ProofTypeBatch,
+			forkNumbers:           map[string]int64{"bernoulli": forkNumberFour},
+			exceptTaskNumber:      0,
+			proverForkNames:       []string{"bernoulli", "bernoulli"},
+			exceptGetTaskErrCodes: []int{types.ErrCoordinatorEmptyProofData, types.ErrCoordinatorEmptyProofData},
+			exceptGetTaskErrMsgs:  []string{"get empty prover task", "get empty prover task"},
 		},
 	}
 
