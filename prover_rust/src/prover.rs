@@ -80,12 +80,10 @@ impl<'a> Prover<'a> {
     pub fn fetch_task(&self) -> Result<Task> {
         log::info!("[prover] start to fetch_task");
         let vks = self.vks.clone();
-        let vk = vks[0].clone();
         let mut req = GetTaskRequest {
             task_type: self.get_proof_type(),
             prover_height: None,
             vks,
-            vk,
         };
 
         if self.get_proof_type() == ProofType::ProofTypeChunk {
@@ -156,7 +154,7 @@ impl<'a> Prover<'a> {
         }
     }
 
-    pub fn submit_proof(&self, proof_detail: &ProofDetail, uuid: String) -> Result<()> {
+    pub fn submit_proof(&self, proof_detail: &ProofDetail, task: &Task) -> Result<()> {
         log::info!("[prover] start to submit_proof, task id: {}", proof_detail.id);
         let proof_data = match proof_detail.proof_type {
             ProofType::ProofTypeBatch => {
@@ -169,11 +167,12 @@ impl<'a> Prover<'a> {
         };
 
         let request = SubmitProofRequest {
-            uuid,
+            uuid: task.uuid.clone(),
             task_id: proof_detail.id.clone(),
             task_type: proof_detail.proof_type,
             status: ProofStatus::Ok,
             proof: proof_data,
+            hard_fork_name: task.hard_fork_name.clone(),
             ..Default::default()
         };
 
@@ -194,6 +193,7 @@ impl<'a> Prover<'a> {
             status: ProofStatus::Error,
             failure_type: Some(failure_type),
             failure_msg: Some(error.to_string()),
+            hard_fork_name: task.hard_fork_name.clone(),
             ..Default::default()
         };
         self.do_submit(&request)

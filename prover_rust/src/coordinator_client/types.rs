@@ -68,6 +68,7 @@ pub struct SubmitProofRequest {
     pub proof: String,
     pub failure_type: Option<ProofFailureType>,
     pub failure_msg: Option<String>,
+    pub hard_fork_name: String,
 }
 
 #[derive(Serialize, Deserialize)]

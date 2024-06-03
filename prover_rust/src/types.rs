@@ -6,8 +6,6 @@ use crate::coordinator_client::types::GetTaskResponseData;
 
 pub type CommonHash = H256;
 
-pub type Bytes = Vec<u8>;
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ProofType {
     ProofTypeUndefined,
