@@ -8,9 +8,10 @@ use crate::{
 use libc::c_char;
 use prover::{
     aggregator::{Prover, Verifier},
+    check_chunk_hashes,
     consts::AGG_VK_FILENAME,
     utils::{chunk_trace_to_witness_block, init_env_and_log},
-    BatchProof, BlockTrace, ChunkHash, ChunkProof,
+    BatchProof, BatchProvingTask, BlockTrace, ChunkInfo, ChunkProof,
 };
 use snark_verifier_sdk::verify_evm_calldata;
 use std::{cell::OnceCell, env, ptr::null};
@@ -79,7 +80,7 @@ pub unsafe extern "C" fn check_chunk_proofs(chunk_proofs: *const c_char) -> *con
 
         let prover_ref = PROVER.get().expect("failed to get reference to PROVER.");
 
-        let valid = prover_ref.check_chunk_proofs(&chunk_proofs);
+        let valid = prover_ref.check_protocol_of_chunks(&chunk_proofs);
         Ok(valid)
     })
     .unwrap_or_else(|e| Err(format!("unwind error: {e:?}")));
@@ -108,7 +109,7 @@ pub unsafe extern "C" fn gen_batch_proof(
         let chunk_hashes = c_char_to_vec(chunk_hashes);
         let chunk_proofs = c_char_to_vec(chunk_proofs);
 
-        let chunk_hashes = serde_json::from_slice::<Vec<ChunkHash>>(&chunk_hashes)
+        let chunk_hashes = serde_json::from_slice::<Vec<ChunkInfo>>(&chunk_hashes)
             .map_err(|e| format!("failed to deserialize chunk hashes: {e:?}"))?;
         let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
             .map_err(|e| format!("failed to deserialize chunk proofs: {e:?}"))?;
@@ -118,15 +119,19 @@ pub unsafe extern "C" fn gen_batch_proof(
                 chunk_hashes.len(), chunk_proofs.len()));
         }
 
-        let chunk_hashes_proofs = chunk_hashes
+        let chunk_hashes_proofs: Vec<(_,_)> = chunk_hashes
             .into_iter()
-            .zip(chunk_proofs)
+            .zip(chunk_proofs.clone())
             .collect();
+        check_chunk_hashes("", &chunk_hashes_proofs).map_err(|e| format!("failed to check chunk info: {e:?}"))?;
 
+        let batch = BatchProvingTask {
+            chunk_proofs
+        };
         let proof = PROVER
             .get_mut()
             .expect("failed to get mutable reference to PROVER.")
-            .gen_agg_evm_proof(chunk_hashes_proofs, None, OUTPUT_DIR.as_deref())
+            .gen_agg_evm_proof(batch, None, OUTPUT_DIR.as_deref())
             .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 
         serde_json::to_vec(&proof).map_err(|e| format!("failed to serialize the proof: {e:?}"))
@@ -187,7 +192,7 @@ pub unsafe extern "C" fn block_traces_to_chunk_info(block_traces: *const c_char)
     let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces).unwrap();
 
     let witness_block = chunk_trace_to_witness_block(block_traces).unwrap();
-    let chunk_info = ChunkHash::from_witness_block(&witness_block, false);
+    let chunk_info = ChunkInfo::from_witness_block(&witness_block, false);
 
     let chunk_info_bytes = serde_json::to_vec(&chunk_info).unwrap();
     vec_to_c_char(chunk_info_bytes)
