@@ -122,8 +122,8 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 	var (
 		proverVersion = taskCtx.ProverVersion
 		hardForkName  = taskCtx.HardForkName
+		err           error
 	)
-	var err error
 	if getHardForkName != nil {
 		hardForkName, err = getHardForkName(chunkTask)
 		if err != nil {
@@ -251,7 +251,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	if len(getTaskParameter.VKs) > 0 {
-
 		return cp.assignWithTwoCircuits(ctx, taskCtx, getTaskParameter)
 	}
 	return cp.assignWithSingleCircuit(ctx, taskCtx, getTaskParameter)

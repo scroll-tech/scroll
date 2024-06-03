@@ -146,7 +146,7 @@ func (bp *BatchProverTask) doAssignTaskWithinChunkRange(ctx *gin.Context, taskCt
 	if getHardForkName != nil {
 		hardForkName, err = getHardForkName(batchTask)
 		if err != nil {
-			log.Error("failed to get version by chunk", "error", err.Error())
+			log.Error("failed to get hard fork name by batch", "error", err.Error())
 			return nil, ErrCoordinatorInternalFailure
 		}
 	}
