@@ -177,7 +177,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-	db.WithContext(ctx)
+	db = db.WithContext(ctx)
 	db = db.Model(&Batch{})
 
 	if err := db.Create(&newBatch).Error; err != nil {

@@ -11,8 +11,8 @@ contract L1GasPriceOracleTest is DSTestPlus {
     uint256 private constant PRECISION = 1e9;
     uint256 private constant MAX_OVERHEAD = 30000000 / 16;
     uint256 private constant MAX_SCALAR = 1000 * PRECISION;
-    uint256 private constant MAX_COMMIT_SCALAR = 10 ** 18 * PRECISION;
-    uint256 private constant MAX_BLOB_SCALAR = 10 ** 18 * PRECISION;
+    uint256 private constant MAX_COMMIT_SCALAR = 10 ** 9 * PRECISION;
+    uint256 private constant MAX_BLOB_SCALAR = 10 ** 9 * PRECISION;
 
     L1GasPriceOracle private oracle;
     Whitelist private whitelist;
