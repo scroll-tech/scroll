@@ -162,15 +162,15 @@ pub unsafe extern "C" fn verify_batch_proof(
     let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
     let fork_name_str = c_char_to_str(fork_name);
     let fork_id = match fork_name_str {
-        "bernoulli" => 1,
-        "curie" => 2,
+        "bernoulli" => 2,
+        "curie" => 3,
         _ => {
             log::warn!("unexpected fork_name {fork_name_str}, treated as curie");
-            2
+            3
         }
     };
     let verified = panic_catch(|| {
-        if fork_id == 1 {
+        if fork_id == 2 {
             // before upgrade#3(DA Compression)
             verify_evm_calldata(
                 include_bytes!("plonk_verifier_0.10.3.bin").to_vec(),
