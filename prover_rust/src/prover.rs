@@ -25,10 +25,9 @@ pub(crate) static OUTPUT_DIR: Lazy<Option<String>> =
 pub struct Prover<'a> {
     config: &'a Config,
     key_signer: Rc<KeySigner>,
-    circuits_handler_provider: CircuitsHandlerProvider,
+    circuits_handler_provider: RefCell<CircuitsHandlerProvider<'a>>,
     coordinator_client: RefCell<CoordinatorClient<'a>>,
     geth_client: Option<RefCell<GethClient>>,
-    vks: Vec<String>,
 }
 
 impl<'a> Prover<'a> {
@@ -48,15 +47,13 @@ impl<'a> Prover<'a> {
             proof_type,
             config
         ).context("failed to create circuits handler provider")?;
-        let vks = provider.get_vks();
 
         let mut prover = Prover {
             config,
             key_signer: Rc::clone(&key_signer),
-            circuits_handler_provider: provider,
+            circuits_handler_provider: RefCell::new(provider),
             coordinator_client: RefCell::new(coordinator_client),
             geth_client: None,
-            vks,
         };
 
         if config.proof_type == ProofType::ProofTypeChunk {
@@ -79,11 +76,10 @@ impl<'a> Prover<'a> {
 
     pub fn fetch_task(&self) -> Result<Task> {
         log::info!("[prover] start to fetch_task");
-        let vks = self.vks.clone();
         let mut req = GetTaskRequest {
             task_type: self.get_proof_type(),
             prover_height: None,
-            vks,
+            vks: self.circuits_handler_provider.borrow().get_vks(),
         };
 
         if self.get_proof_type() == ProofType::ProofTypeChunk {
@@ -105,7 +101,7 @@ impl<'a> Prover<'a> {
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
         log::info!("[prover] start to prove_task, task id: {}", task.id);
-        if let Some(handler) = self.circuits_handler_provider.get_circuits_client(&task.hard_fork_name) {
+        if let Some(handler) = self.circuits_handler_provider.borrow_mut().get_circuits_handler(&task.hard_fork_name) {
             self.do_prove(task, handler)
         } else {
             log::error!("failed to get a circuit handler");
