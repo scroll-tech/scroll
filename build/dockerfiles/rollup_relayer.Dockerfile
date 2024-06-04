@@ -15,11 +15,9 @@ RUN go mod download -x
 # Build rollup_relayer
 FROM base as builder
 
-ENV CGO_LDFLAGS="-ldl"
-
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/rollup/cmd/rollup_relayer/ && go build -v -p 4 -o /bin/rollup_relayer
+    cd /src/rollup/cmd/rollup_relayer/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/rollup_relayer
 
 # Pull rollup_relayer into a second stage deploy alpine container
 FROM ubuntu:20.04

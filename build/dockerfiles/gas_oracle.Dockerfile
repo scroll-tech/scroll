@@ -15,11 +15,9 @@ RUN go mod download -x
 # Build gas_oracle
 FROM base as builder
 
-ENV CGO_LDFLAGS="-ldl"
-
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/rollup/cmd/gas_oracle/ && go build -v -p 4 -o /bin/gas_oracle
+    cd /src/rollup/cmd/gas_oracle/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/gas_oracle
 
 # Pull gas_oracle into a second stage deploy alpine container
 FROM ubuntu:20.04
