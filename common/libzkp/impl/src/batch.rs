@@ -162,19 +162,18 @@ pub unsafe extern "C" fn verify_batch_proof(
     let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
     let fork_name_str = c_char_to_str(fork_name);
     let fork_id = match fork_name_str {
-        "" => 0,
-        "shanghai" => 0,
         "bernoulli" => 1,
+        "curie" => 2,
         _ => {
-            log::warn!("unexpected fork_name {fork_name_str}, treated as bernoulli");
-            1
+            log::warn!("unexpected fork_name {fork_name_str}, treated as curie");
+            2
         }
     };
     let verified = panic_catch(|| {
-        if fork_id == 0 {
-            // before upgrade#2(EIP4844)
+        if fork_id == 1 {
+            // before upgrade#3(DA Compression)
             verify_evm_calldata(
-                include_bytes!("evm_verifier_fork_1.bin").to_vec(),
+                include_bytes!("plonk_verifier_0.10.3.bin").to_vec(),
                 proof.calldata(),
             )
         } else {
