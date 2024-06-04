@@ -2,9 +2,6 @@ name: Docker
 
 on:
   push:
-    tags:
-      - v**
-  push:
     branches:
       - main
       - staging
