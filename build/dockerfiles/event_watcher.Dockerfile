@@ -15,12 +15,16 @@ RUN go mod download -x
 # Build event_watcher
 FROM base as builder
 
+ENV CGO_LDFLAGS="-ldl"
+
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     cd /src/rollup/cmd/event_watcher/ && go build -v -p 4 -o /bin/event_watcher
 
 # Pull event_watcher into a second stage deploy alpine container
 FROM ubuntu:20.04
+
+ENV CGO_LDFLAGS="-ldl"
 
 COPY --from=builder /bin/event_watcher /bin/
 WORKDIR /app
