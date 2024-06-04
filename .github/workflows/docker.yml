@@ -2,17 +2,8 @@ name: Docker
 
 on:
   push:
-    branches:
-      - main
-      - staging
-      - develop
-      - alpha
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-      - ready_for_review
+    tags:
+      - v**
 
 env:
   AWS_REGION: us-west-2
