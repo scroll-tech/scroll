@@ -94,11 +94,6 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 		if len(getTaskParameter.VKs) != 2 {
 			return nil, fmt.Errorf("parameter vks length must be 2")
 		}
-		// min prover version supporting multi circuits, maybe put it to config file?
-		var minMultiCircuitsProverVersion = "v4.4.7"
-		if !version.CheckScrollRepoVersion(ptc.ProverVersion, minMultiCircuitsProverVersion) {
-			return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", minMultiCircuitsProverVersion, ptc.ProverVersion)
-		}
 		for _, vk := range getTaskParameter.VKs {
 			if _, exists := b.reverseVkMap[vk]; !exists {
 				return nil, fmt.Errorf("incompatible vk. vk %s is invalid", vk)
