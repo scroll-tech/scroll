@@ -42,6 +42,8 @@ import {WrappedEther} from "../../src/L2/predeploys/WrappedEther.sol";
 import {ScrollStandardERC20} from "../../src/libraries/token/ScrollStandardERC20.sol";
 import {ScrollStandardERC20Factory} from "../../src/libraries/token/ScrollStandardERC20Factory.sol";
 
+import {ScrollChainMockFinalize} from "../../src/mocks/ScrollChainMockFinalize.sol";
+
 /// @dev The address of DeterministicDeploymentProxy.
 ///      See https://github.com/Arachnid/deterministic-deployment-proxy.
 address constant DETERMINISTIC_DEPLOYMENT_PROXY_ADDR = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
@@ -135,6 +137,9 @@ abstract contract Configuration is Script {
 
     uint256 internal L1_CONTRACT_DEPLOYMENT_BLOCK;
 
+    bool internal TEST_ENV_MOCK_FINALIZE_ENABLED;
+    uint256 internal TEST_ENV_MOCK_FINALIZE_TIMEOUT_SEC;
+
     // accounts
     uint256 internal DEPLOYER_PRIVATE_KEY;
     uint256 internal L1_COMMIT_SENDER_PRIVATE_KEY;
@@ -195,6 +200,9 @@ abstract contract Configuration is Script {
         MAX_L1_MESSAGE_GAS_LIMIT = cfg.readUint(".general.MAX_L1_MESSAGE_GAS_LIMIT");
 
         L1_CONTRACT_DEPLOYMENT_BLOCK = cfg.readUint(".general.L1_CONTRACT_DEPLOYMENT_BLOCK");
+
+        TEST_ENV_MOCK_FINALIZE_ENABLED = cfg.readBool(".general.TEST_ENV_MOCK_FINALIZE_ENABLED");
+        TEST_ENV_MOCK_FINALIZE_TIMEOUT_SEC = cfg.readUint(".general.TEST_ENV_MOCK_FINALIZE_TIMEOUT_SEC");
 
         DEPLOYER_PRIVATE_KEY = cfg.readUint(".accounts.DEPLOYER_PRIVATE_KEY");
         L1_COMMIT_SENDER_PRIVATE_KEY = cfg.readUint(".accounts.L1_COMMIT_SENDER_PRIVATE_KEY");
@@ -946,11 +954,13 @@ contract DeployScroll is DeterminsticDeployment {
             notnull(L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR)
         );
 
-        L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR = deploy(
-            "L1_SCROLL_CHAIN_IMPLEMENTATION",
-            type(ScrollChain).creationCode,
-            args
-        );
+        bytes memory creationCode = type(ScrollChain).creationCode;
+
+        if (TEST_ENV_MOCK_FINALIZE_ENABLED) {
+            creationCode = type(ScrollChainMockFinalize).creationCode;
+        }
+
+        L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR = deploy("L1_SCROLL_CHAIN_IMPLEMENTATION", creationCode, args);
 
         upgrade(L1_PROXY_ADMIN_ADDR, L1_SCROLL_CHAIN_PROXY_ADDR, L1_SCROLL_CHAIN_IMPLEMENTATION_ADDR);
     }
@@ -2002,6 +2012,9 @@ contract GenerateRollupConfig is DeployScroll {
         vm.writeJson(vm.toString(bytes32(L2_GAS_ORACLE_SENDER_PRIVATE_KEY)), ROLLUP_CONFIG_PATH, ".l1_config.relayer_config.gas_oracle_sender_private_key");
 
         // other
+        vm.writeJson(vm.toString(TEST_ENV_MOCK_FINALIZE_ENABLED), ROLLUP_CONFIG_PATH, ".l2_config.relayer_config.enable_test_env_bypass_features");
+        vm.writeJson(vm.toString(TEST_ENV_MOCK_FINALIZE_TIMEOUT_SEC), ROLLUP_CONFIG_PATH, ".l2_config.relayer_config.finalize_batch_without_proof_timeout_sec");
+
         vm.writeJson(vm.toString(MAX_BLOCK_IN_CHUNK), ROLLUP_CONFIG_PATH, ".l2_config.chunk_proposer_config.max_block_num_per_chunk");
         vm.writeJson(vm.toString(MAX_TX_IN_CHUNK), ROLLUP_CONFIG_PATH, ".l2_config.chunk_proposer_config.max_tx_num_per_chunk");
 

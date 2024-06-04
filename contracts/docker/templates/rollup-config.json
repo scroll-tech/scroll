@@ -54,8 +54,8 @@
         "try_times": 5,
         "base_url": "http://chain-monitorv2:8080"
       },
-      "enable_test_env_bypass_features": true,
-      "finalize_batch_without_proof_timeout_sec": 3600,
+      "enable_test_env_bypass_features": null,
+      "finalize_batch_without_proof_timeout_sec": null,
       "gas_oracle_sender_private_key": null,
       "commit_sender_private_key": null,
       "finalize_sender_private_key": null,
