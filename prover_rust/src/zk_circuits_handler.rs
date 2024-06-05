@@ -100,11 +100,13 @@ impl<'a> CircuitsHandlerProvider<'a> {
         circuits_handler_builder_map: &HashMap<HardForkName, CircuitsHandlerBuilder>,
         geth_client: Option<Rc<RefCell<GethClient>>>) -> Vec<String> {
         circuits_handler_builder_map
-                .values()
-                .map(|build| {
+                .iter()
+                .map(|(hard_fork_name, build)| {
                     let handler = build(proof_type, config, geth_client.clone()).expect("failed to build circuits handler");
-                    handler.get_vk(proof_type)
-                        .map_or("".to_string(), |vk| utils::encode_vk(vk))
+                    let vk = handler.get_vk(proof_type)
+                        .map_or("".to_string(), |vk| utils::encode_vk(vk));
+                    log::info!("vk for {hard_fork_name} is {vk}");
+                    vk
                 })
                 .collect::<Vec<String>>()
     }
