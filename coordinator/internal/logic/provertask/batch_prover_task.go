@@ -42,6 +42,7 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
 			vkMap:              vkMap,
+			reverseVkMap:       reverseMap(vkMap),
 			db:                 db,
 			cfg:                cfg,
 			nameForkMap:        nameForkMap,
@@ -64,48 +65,31 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 	return bp
 }
 
-// Assign load and assign batch tasks
-func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	taskCtx, err := bp.checkParameter(ctx, getTaskParameter)
-	if err != nil || taskCtx == nil {
-		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
-	}
+type chunkIndexRange struct {
+	start uint64
+	end   uint64
+}
 
-	hardForkNumber, err := bp.getHardForkNumberByName(taskCtx.HardForkName)
-	if err != nil {
-		log.Error("batch assign failure because of the hard fork name don't exist", "fork name", taskCtx.HardForkName)
-		return nil, err
+func (r *chunkIndexRange) merge(o chunkIndexRange) *chunkIndexRange {
+	var start, end = r.start, r.end
+	if o.start < r.start {
+		start = o.start
 	}
+	if o.end > r.end {
+		end = o.end
+	}
+	return &chunkIndexRange{start, end}
+}
 
-	// if the hard fork number set, rollup relayer must generate the chunk from hard fork number,
-	// so the hard fork chunk's start_block_number must be ForkBlockNumber
-	var startChunkIndex uint64 = 0
-	var endChunkIndex uint64 = math.MaxInt64
-	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, bp.forkHeights)
-	if fromBlockNum != 0 {
-		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx.Copy(), fromBlockNum)
-		if chunkErr != nil {
-			log.Error("failed to get fork start chunk index", "forkName", taskCtx.HardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
-			return nil, ErrCoordinatorInternalFailure
-		}
-		if startChunk == nil {
-			return nil, nil
-		}
-		startChunkIndex = startChunk.Index
-	}
-	if toBlockNum != math.MaxInt64 {
-		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx.Copy(), toBlockNum)
-		if chunkErr != nil {
-			log.Error("failed to get fork end chunk index", "forkName", taskCtx.HardForkName, "toBlockNumber", toBlockNum, "err", chunkErr)
-			return nil, ErrCoordinatorInternalFailure
-		}
-		if toChunk != nil {
-			// toChunk being nil only indicates that we haven't yet reached the fork boundary
-			// don't need change the endChunkIndex of math.MaxInt64
-			endChunkIndex = toChunk.Index
-		}
-	}
+func (r *chunkIndexRange) contains(start, end uint64) bool {
+	return r.start <= start && r.end > end
+}
 
+type getHardForkNameByBatchFunc func(*orm.Batch) (string, error)
+
+func (bp *BatchProverTask) doAssignTaskWithinChunkRange(ctx *gin.Context, taskCtx *proverTaskContext,
+	chunkRange *chunkIndexRange, getTaskParameter *coordinatorType.GetTaskParameter, getHardForkName getHardForkNameByBatchFunc) (*coordinatorType.GetTaskSchema, error) {
+	startChunkIndex, endChunkIndex := chunkRange.start, chunkRange.end
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
 	var batchTask *orm.Batch
@@ -154,13 +138,25 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}
 
 	log.Info("start batch proof generation session", "id", batchTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
+	var (
+		proverVersion = taskCtx.ProverVersion
+		hardForkName  = taskCtx.HardForkName
+	)
+	var err error
+	if getHardForkName != nil {
+		hardForkName, err = getHardForkName(batchTask)
+		if err != nil {
+			log.Error("failed to get hard fork name by batch", "error", err.Error())
+			return nil, ErrCoordinatorInternalFailure
+		}
+	}
 
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,
 		TaskType:        int16(message.ProofTypeBatch),
 		ProverName:      taskCtx.ProverName,
-		ProverVersion:   taskCtx.ProverVersion,
+		ProverVersion:   proverVersion,
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 		// here why need use UTC time. see scroll/common/databased/db.go
@@ -181,7 +177,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	bp.batchTaskGetTaskTotal.WithLabelValues(taskCtx.HardForkName).Inc()
+	bp.batchTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
 	bp.batchTaskGetTaskProver.With(prometheus.Labels{
 		coordinatorType.LabelProverName:      proverTask.ProverName,
 		coordinatorType.LabelProverPublicKey: proverTask.ProverPublicKey,
@@ -189,6 +185,107 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}).Inc()
 
 	return taskMsg, nil
+}
+
+func (bp *BatchProverTask) getChunkRangeByName(ctx *gin.Context, hardForkName string) (*chunkIndexRange, error) {
+	hardForkNumber, err := bp.getHardForkNumberByName(hardForkName)
+	if err != nil {
+		log.Error("batch assign failure because of the hard fork name don't exist", "fork name", hardForkName)
+		return nil, err
+	}
+
+	// if the hard fork number set, rollup relayer must generate the chunk from hard fork number,
+	// so the hard fork chunk's start_block_number must be ForkBlockNumber
+	var startChunkIndex uint64 = 0
+	var endChunkIndex uint64 = math.MaxInt64
+	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, bp.forkHeights)
+	if fromBlockNum != 0 {
+		startChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx.Copy(), fromBlockNum)
+		if chunkErr != nil {
+			log.Error("failed to get fork start chunk index", "forkName", hardForkName, "fromBlockNumber", fromBlockNum, "err", chunkErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		if startChunk == nil {
+			return nil, nil
+		}
+		startChunkIndex = startChunk.Index
+	}
+	if toBlockNum != math.MaxInt64 {
+		toChunk, chunkErr := bp.chunkOrm.GetChunkByStartBlockNumber(ctx.Copy(), toBlockNum)
+		if chunkErr != nil {
+			log.Error("failed to get fork end chunk index", "forkName", hardForkName, "toBlockNumber", toBlockNum, "err", chunkErr)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		if toChunk != nil {
+			// toChunk being nil only indicates that we haven't yet reached the fork boundary
+			// don't need change the endChunkIndex of math.MaxInt64
+			endChunkIndex = toChunk.Index
+		}
+	}
+	return &chunkIndexRange{startChunkIndex, endChunkIndex}, nil
+}
+
+func (bp *BatchProverTask) assignWithSingleCircuit(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+	chunkRange, err := bp.getChunkRangeByName(ctx, taskCtx.HardForkName)
+	if err != nil {
+		return nil, err
+	}
+	if chunkRange == nil {
+		return nil, nil
+	}
+	return bp.doAssignTaskWithinChunkRange(ctx, taskCtx, chunkRange, getTaskParameter, nil)
+}
+
+func (bp *BatchProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+	var (
+		hardForkNames [2]string
+		chunkRanges   [2]*chunkIndexRange
+		err           error
+	)
+	for i := 0; i < 2; i++ {
+		hardForkNames[i] = bp.reverseVkMap[getTaskParameter.VKs[i]]
+		chunkRanges[i], err = bp.getChunkRangeByName(ctx, hardForkNames[i])
+		if err != nil {
+			return nil, err
+		}
+		if chunkRanges[i] == nil {
+			return nil, nil
+		}
+	}
+	chunkRange := chunkRanges[0].merge(*chunkRanges[1])
+	var hardForkName string
+	getHardForkName := func(batch *orm.Batch) (string, error) {
+		for i := 0; i < 2; i++ {
+			if chunkRanges[i].contains(batch.StartChunkIndex, batch.EndChunkIndex) {
+				hardForkName = hardForkNames[i]
+				break
+			}
+		}
+		if hardForkName == "" {
+			log.Warn("get batch not belongs to any hard fork name", "batch id", batch.Index)
+			return "", fmt.Errorf("get batch not belongs to any hard fork name, batch id: %d", batch.Index)
+		}
+		return hardForkName, nil
+	}
+	schema, err := bp.doAssignTaskWithinChunkRange(ctx, taskCtx, chunkRange, getTaskParameter, getHardForkName)
+	if schema != nil && err == nil {
+		schema.HardForkName = hardForkName
+		return schema, nil
+	}
+	return schema, err
+}
+
+// Assign load and assign batch tasks
+func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+	taskCtx, err := bp.checkParameter(ctx, getTaskParameter)
+	if err != nil || taskCtx == nil {
+		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
+	}
+
+	if len(getTaskParameter.VKs) > 0 {
+		return bp.assignWithTwoCircuits(ctx, taskCtx, getTaskParameter)
+	}
+	return bp.assignWithSingleCircuit(ctx, taskCtx, getTaskParameter)
 }
 
 func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
