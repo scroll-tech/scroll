@@ -1,9 +1,9 @@
-mod base;
-mod next;
+mod bernoulli;
+mod curie;
 
 use anyhow::Result;
-use base::BaseCircuitsHandler;
-use next::NextCircuitsHandler;
+use bernoulli::BaseCircuitsHandler;
+use curie::NextCircuitsHandler;
 use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 use super::geth_client::GethClient;

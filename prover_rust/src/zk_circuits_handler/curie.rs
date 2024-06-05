@@ -9,7 +9,7 @@ use std::{cell::RefCell, cmp::Ordering, rc::Rc};
 use prover_next::{BlockTrace, ChunkInfo, ChunkProof, ChunkProvingTask, BatchProvingTask};
 use prover_next::{aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver};
 
-use super::base::OUTPUT_DIR;
+use super::bernoulli::OUTPUT_DIR;
 
 #[derive(Deserialize)]
 pub struct BatchTaskDetail {

@@ -101,8 +101,6 @@ pub struct ProofDetail {
     pub id: String,
     #[serde(rename = "type", default)]
     pub proof_type: ProofType,
-    // pub chunk_proof: Option<String>,
-    // pub batch_proof: Option<String>,
     pub proof_data: String,
     pub error: String,
 }
