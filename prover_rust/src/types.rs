@@ -1,5 +1,4 @@
 use ethers_core::types::H256;
-use prover::{BatchProof, ChunkHash, ChunkProof};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::coordinator_client::types::GetTaskResponseData;
@@ -52,53 +51,26 @@ impl Default for ProofType {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct BatchTaskDetail {
-    pub chunk_infos: Vec<ChunkHash>,
-    pub chunk_proofs: Vec<ChunkProof>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct ChunkTaskDetail {
-    pub block_hashes: Vec<CommonHash>,
-}
-
 #[derive(Serialize, Deserialize, Default)]
 pub struct Task {
     pub uuid: String,
     pub id: String,
     #[serde(rename = "type", default)]
     pub task_type: ProofType,
-    #[serde(default)]
-    pub batch_task_detail: Option<BatchTaskDetail>,
-    #[serde(default)]
-    pub chunk_task_detail: Option<ChunkTaskDetail>,
+    pub task_data: String,
     #[serde(default)]
     pub hard_fork_name: String,
 }
 
-impl TryFrom<&GetTaskResponseData> for Task {
-    type Error = serde_json::Error;
-
-    fn try_from(value: &GetTaskResponseData) -> Result<Self, Self::Error> {
-        let mut task = Task {
-            uuid: value.uuid.clone(),
-            id: value.task_id.clone(),
+impl From<GetTaskResponseData> for Task {
+    fn from(value: GetTaskResponseData) -> Self {
+        Self {
+            uuid: value.uuid,
+            id: value.task_id,
             task_type: value.task_type,
-            chunk_task_detail: None,
-            batch_task_detail: None,
-            hard_fork_name: value.hard_fork_name.clone(),
-        };
-        match task.task_type {
-            ProofType::ProofTypeBatch => {
-                task.batch_task_detail = Some(serde_json::from_str(&value.task_data)?);
-            }
-            ProofType::ProofTypeChunk => {
-                task.chunk_task_detail = Some(serde_json::from_str(&value.task_data)?);
-            }
-            _ => unreachable!(),
+            task_data: value.task_data,
+            hard_fork_name: value.hard_fork_name,
         }
-        Ok(task)
     }
 }
 
@@ -129,8 +101,9 @@ pub struct ProofDetail {
     pub id: String,
     #[serde(rename = "type", default)]
     pub proof_type: ProofType,
-    pub chunk_proof: Option<ChunkProof>,
-    pub batch_proof: Option<BatchProof>,
+    // pub chunk_proof: Option<String>,
+    // pub batch_proof: Option<String>,
+    pub proof_data: String,
     pub error: String,
 }
 

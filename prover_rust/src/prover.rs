@@ -1,7 +1,7 @@
 use anyhow::{bail, Context, Error, Ok, Result};
 use ethers_core::types::U64;
-use once_cell::sync::Lazy;
-use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
+
+use std::{cell::RefCell, rc::Rc};
 use log;
 
 use crate::{
@@ -9,25 +9,20 @@ use crate::{
     coordinator_client::{
         listener::Listener, types::*, CoordinatorClient,
     },
-    geth_client::{get_block_number, GethClient},
+    geth_client::GethClient,
     key_signer::KeySigner,
-    types::{CommonHash, ProofFailureType, ProofStatus, ProofType},
+    types::{ProofFailureType, ProofStatus, ProofType},
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
 };
 
 use super::types::{ProofDetail, Task};
-use prover::{BlockTrace, ChunkHash, ChunkProof};
-
-// Only used for debugging.
-pub(crate) static OUTPUT_DIR: Lazy<Option<String>> =
-    Lazy::new(|| env::var("PROVER_OUTPUT_DIR").ok());
 
 pub struct Prover<'a> {
     config: &'a Config,
     key_signer: Rc<KeySigner>,
     circuits_handler_provider: RefCell<CircuitsHandlerProvider<'a>>,
     coordinator_client: RefCell<CoordinatorClient<'a>>,
-    geth_client: Option<RefCell<GethClient>>,
+    geth_client: Option<Rc<RefCell<GethClient>>>,
 }
 
 impl<'a> Prover<'a> {
@@ -43,25 +38,28 @@ impl<'a> Prover<'a> {
             coordinator_listener,
         ).context("failed to create coordinator_client")?;
 
+        let geth_client = if config.proof_type == ProofType::ProofTypeChunk {
+            Some(Rc::new(RefCell::new(GethClient::new(
+                &config.prover_name,
+                &config.l2geth.as_ref().unwrap().endpoint,
+            ).context("failed to create l2 geth_client")?)))
+        } else {
+            None
+        };
+
         let provider = CircuitsHandlerProvider::new(
             proof_type,
-            config
+            config,
+            geth_client.clone(),
         ).context("failed to create circuits handler provider")?;
 
-        let mut prover = Prover {
+        let prover = Prover {
             config,
             key_signer: Rc::clone(&key_signer),
             circuits_handler_provider: RefCell::new(provider),
             coordinator_client: RefCell::new(coordinator_client),
-            geth_client: None,
+            geth_client,
         };
-
-        if config.proof_type == ProofType::ProofTypeChunk {
-            prover.geth_client = Some(RefCell::new(GethClient::new(
-                &config.prover_name,
-                &config.l2geth.as_ref().unwrap().endpoint,
-            ).context("failed to create l2 geth_client")?));
-        }
 
         Ok(prover)
     }
@@ -96,7 +94,7 @@ impl<'a> Prover<'a> {
         }
         let resp = self.coordinator_client.borrow_mut().get_task(&req)?;
 
-        Task::try_from(&resp.data.unwrap()).map_err(|e| anyhow::anyhow!(e))
+        Ok(Task::from(resp.data.unwrap()))
     }
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
@@ -115,59 +113,20 @@ impl<'a> Prover<'a> {
             proof_type: task.task_type,
             ..Default::default()
         };
-        match task.task_type {
-            ProofType::ProofTypeBatch => {
-                let chunk_hashes_proofs: Vec<(ChunkHash, ChunkProof)> =
-                    self.gen_chunk_hashes_proofs(task)?;
-                let chunk_proofs: Vec<ChunkProof> =
-                    chunk_hashes_proofs.iter().map(|t| t.1.clone()).collect();
-                let is_valid = handler.aggregator_check_chunk_proofs(&chunk_proofs)?;
-                if !is_valid {
-                    bail!("non-match chunk protocol, task-id: {}", &task.id)
-                }
-                let batch_proof = handler.aggregator_gen_agg_evm_proof(
-                    chunk_hashes_proofs,
-                    None,
-                    self.get_output_dir(),
-                )?;
 
-                proof_detail.batch_proof = Some(batch_proof);
-                Ok(proof_detail)
-            }
-            ProofType::ProofTypeChunk => {
-                let chunk_trace = self.gen_chunk_traces(task)?;
-                let chunk_proof = handler.prover_gen_chunk_proof(
-                    chunk_trace,
-                    None,
-                    None,
-                    self.get_output_dir(),
-                )?;
-
-                proof_detail.chunk_proof = Some(chunk_proof);
-                Ok(proof_detail)
-            }
-            _ => bail!("task type invalid"),
-        }
+        proof_detail.proof_data = handler.get_proof_data(task.task_type, task)?;
+        Ok(proof_detail)
     }
 
-    pub fn submit_proof(&self, proof_detail: &ProofDetail, task: &Task) -> Result<()> {
+    pub fn submit_proof(&self, proof_detail: ProofDetail, task: &Task) -> Result<()> {
         log::info!("[prover] start to submit_proof, task id: {}", proof_detail.id);
-        let proof_data = match proof_detail.proof_type {
-            ProofType::ProofTypeBatch => {
-                serde_json::to_string(proof_detail.batch_proof.as_ref().unwrap())?
-            }
-            ProofType::ProofTypeChunk => {
-                serde_json::to_string(proof_detail.chunk_proof.as_ref().unwrap())?
-            }
-            _ => unreachable!(),
-        };
 
         let request = SubmitProofRequest {
             uuid: task.uuid.clone(),
-            task_id: proof_detail.id.clone(),
+            task_id: proof_detail.id,
             task_type: proof_detail.proof_type,
             status: ProofStatus::Ok,
-            proof: proof_data,
+            proof: proof_detail.proof_data,
             hard_fork_name: task.hard_fork_name.clone(),
             ..Default::default()
         };
@@ -208,87 +167,5 @@ impl<'a> Prover<'a> {
             .borrow_mut()
             .block_number()?;
         Ok(number.as_number())
-    }
-
-    fn get_output_dir(&self) -> Option<&str> {
-        OUTPUT_DIR.as_deref()
-    }
-
-    fn gen_chunk_traces(&self, task: &Task) -> Result<Vec<BlockTrace>> {
-        if let Some(chunk_detail) = task.chunk_task_detail.as_ref() {
-            self.get_sorted_traces_by_hashes(&chunk_detail.block_hashes)
-        } else {
-            log::error!("[prover] failed to get chunk_detail from task");
-            bail!("invalid task")
-        }
-    }
-
-    fn gen_chunk_hashes_proofs(&self, task: &Task) -> Result<Vec<(ChunkHash, ChunkProof)>> {
-        if let Some(batch_detail) = task.batch_task_detail.as_ref() {
-            Ok(batch_detail
-                .chunk_infos
-                .clone()
-                .into_iter()
-                .zip(batch_detail.chunk_proofs.clone())
-                .collect())
-        } else {
-            log::error!("[prover] failed to get batch_detail from task");
-            bail!("invalid task")
-        }
-    }
-
-    fn get_sorted_traces_by_hashes(
-        &self,
-        block_hashes: &Vec<CommonHash>,
-    ) -> Result<Vec<BlockTrace>> {
-        if block_hashes.len() == 0 {
-            log::error!("[prover] failed to get sorted traces: block_hashes are empty");
-            bail!("block_hashes are empty")
-        }
-
-        let mut block_traces = Vec::new();
-        for (_, hash) in block_hashes.into_iter().enumerate() {
-            let trace = self
-                .geth_client
-                .as_ref()
-                .unwrap()
-                .borrow_mut()
-                .get_block_trace_by_hash(hash)?;
-            block_traces.push(trace.block_trace);
-        }
-
-        block_traces.sort_by(|a, b| {
-            if get_block_number(a) == None {
-                Ordering::Less
-            } else if get_block_number(b) == None {
-                Ordering::Greater
-            } else {
-                get_block_number(a)
-                    .unwrap()
-                    .cmp(&get_block_number(b).unwrap())
-            }
-        });
-
-        let block_numbers: Vec<u64> = block_traces
-            .iter()
-            .map(|trace| match get_block_number(trace) {
-                Some(v) => v,
-                None => 0,
-            })
-            .collect();
-        let mut i = 0;
-        while i < block_numbers.len() - 1 {
-            if block_numbers[i] + 1 != block_numbers[i + 1] {
-                log::error!("[prover] block numbers are not continuous, got {} and {}", block_numbers[i], block_numbers[i + 1]);
-                bail!(
-                    "block numbers are not continuous, got {} and {}",
-                    block_numbers[i],
-                    block_numbers[i + 1]
-                )
-            }
-            i += 1;
-        }
-
-        Ok(block_traces)
     }
 }

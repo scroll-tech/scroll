@@ -4,18 +4,18 @@ use ethers_core::types::BlockNumber;
 use tokio::runtime::Runtime;
 
 use ethers_core::types::{H256, U64};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use std::fmt::Debug;
 
 use ethers_providers::{Http, Provider};
-use prover::BlockTrace as ProverBlockTrace;
 
 // ======================= types ============================
 
 /// l2 block full trace
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
-pub struct BlockTrace {
+pub struct BlockTrace<T> {
     #[serde(flatten)]
-    pub block_trace: ProverBlockTrace,
+    pub block_trace: T,
 
     pub version: String,
 
@@ -23,10 +23,6 @@ pub struct BlockTrace {
 
     #[serde(rename = "mptwitness", default)]
     pub mpt_witness: Vec<u8>,
-}
-
-pub fn get_block_number(block_trace: &ProverBlockTrace) -> Option<u64> {
-    block_trace.header.number.map(|n| n.as_u64())
 }
 
 pub type TxHash = H256;
@@ -77,7 +73,8 @@ impl GethClient {
         })
     }
 
-    pub fn get_block_trace_by_hash(&mut self, hash: &CommonHash) -> Result<BlockTrace> {
+    pub fn get_block_trace_by_hash<T>(&mut self, hash: &CommonHash) -> Result<BlockTrace<T>>
+    where T: Serialize + DeserializeOwned + Debug + Send {
         log::info!(
             "{}: calling get_block_trace_by_hash, hash: {}",
             self.id,
