@@ -71,9 +71,6 @@ impl KeySigner {
     {
         let pre_hash = keccak256(buffer);
 
-        // let hash_str = buffer_to_hex(&pre_hash, true);
-        // println!("hash is {hash_str}");
-
         let hash = H256::from(pre_hash);
         let sig = self.sign_hash(hash)?;
 

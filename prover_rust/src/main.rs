@@ -14,7 +14,7 @@ use clap::{Parser, ArgAction};
 use anyhow::Result;
 use config::{Config, AssetsDirEnvConfig};
 use prover::Prover;
-use std::{f64::consts::E, rc::Rc};
+use std::rc::Rc;
 use task_cache::{ClearCacheCoordinatorListener, TaskCache};
 use task_processor::TaskProcessor;
 use log;
@@ -31,7 +31,7 @@ struct Args {
     #[arg(short, long, action = ArgAction::SetTrue)]
     version: bool,
 
-    /// Path of config file
+    /// Path of log file
     #[arg(long = "log.file")]
     log_file: Option<String>,
 }
@@ -68,9 +68,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         version::get_version(),
     );
 
-    let task_processer = TaskProcessor::new(&prover, task_cache);
+    let task_processor = TaskProcessor::new(&prover, task_cache);
 
-    task_processer.start();
+    task_processor.start();
 
     Ok(())
 }
