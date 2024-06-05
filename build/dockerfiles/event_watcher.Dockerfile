@@ -1,6 +1,3 @@
-ARG LIBSCROLL_ZSTD_VERSION=v0.1.0-rc0-ubuntu20.04
-ARG SCROLL_LIB_PATH=/scroll/lib
-
 # Download Go dependencies
 FROM scrolltech/go-rust-builder:go-1.21-rust-nightly-2023-12-03 as base
 
@@ -18,36 +15,14 @@ RUN go mod download -x
 # Build event_watcher
 FROM base as builder
 
-ARG LIBSCROLL_ZSTD_VERSION
-ARG SCROLL_LIB_PATH
-
-RUN mkdir -p $SCROLL_LIB_PATH
-
-RUN apt-get -qq update && apt-get -qq install -y wget
-
-RUN wget -O $SCROLL_LIB_PATH/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libscroll_zstd.so
-
-ENV LD_LIBRARY_PATH=$SCROLL_LIB_PATH
-ENV CGO_LDFLAGS="-L$SCROLL_LIB_PATH -Wl,-rpath,$SCROLL_LIB_PATH"
-
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/rollup/cmd/event_watcher/ && go build -v -p 4 -o /bin/event_watcher
+    cd /src/rollup/cmd/event_watcher/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/event_watcher
 
 # Pull event_watcher into a second stage deploy alpine container
 FROM ubuntu:20.04
 
-ARG LIBSCROLL_ZSTD_VERSION
-ARG SCROLL_LIB_PATH
-
-RUN mkdir -p $SCROLL_LIB_PATH
-
-RUN apt-get -qq update && apt-get -qq install -y wget
-
-RUN wget -O $SCROLL_LIB_PATH/libscroll_zstd.so https://github.com/scroll-tech/da-codec/releases/download/$LIBSCROLL_ZSTD_VERSION/libscroll_zstd.so
-
-ENV LD_LIBRARY_PATH=$SCROLL_LIB_PATH
-ENV CGO_LDFLAGS="-L$SCROLL_LIB_PATH -Wl,-rpath,$SCROLL_LIB_PATH"
+ENV CGO_LDFLAGS="-ldl"
 
 COPY --from=builder /bin/event_watcher /bin/
 WORKDIR /app
