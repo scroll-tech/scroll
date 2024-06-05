@@ -29,6 +29,7 @@ type FetcherConfig struct {
 	ScrollChainAddr          string `json:"ScrollChainAddr"`
 	GatewayRouterAddr        string `json:"GatewayRouterAddr"`
 	MessageQueueAddr         string `json:"MessageQueueAddr"`
+	BatchBridgeGatewayAddr   string `json:"BatchBridgeGatewayAddr"`
 }
 
 // RedisConfig redis config

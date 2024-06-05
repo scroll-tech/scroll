@@ -11,14 +11,16 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/bridge-history-api/internal/orm"
+	btypes "scroll-tech/bridge-history-api/internal/types"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
 // EventUpdateLogic the logic of insert/update the database
 type EventUpdateLogic struct {
-	db              *gorm.DB
-	crossMessageOrm *orm.CrossMessage
-	batchEventOrm   *orm.BatchEvent
+	db                         *gorm.DB
+	crossMessageOrm            *orm.CrossMessage
+	batchEventOrm              *orm.BatchEvent
+	bridgeBatchDepositEventOrm *orm.BridgeBatchDepositEvent
 
 	eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight prometheus.Gauge
 	eventUpdateLogicL2MessageNonceUpdateHeight              prometheus.Gauge
@@ -27,9 +29,10 @@ type EventUpdateLogic struct {
 // NewEventUpdateLogic creates a EventUpdateLogic instance
 func NewEventUpdateLogic(db *gorm.DB, isL1 bool) *EventUpdateLogic {
 	b := &EventUpdateLogic{
-		db:              db,
-		crossMessageOrm: orm.NewCrossMessage(db),
-		batchEventOrm:   orm.NewBatchEvent(db),
+		db:                         db,
+		crossMessageOrm:            orm.NewCrossMessage(db),
+		batchEventOrm:              orm.NewBatchEvent(db),
+		bridgeBatchDepositEventOrm: orm.NewBridgeBatchDepositEvent(db),
 	}
 
 	if !isL1 {
@@ -48,30 +51,42 @@ func NewEventUpdateLogic(db *gorm.DB, isL1 bool) *EventUpdateLogic {
 }
 
 // GetL1SyncHeight gets the l1 sync height from db
-func (b *EventUpdateLogic) GetL1SyncHeight(ctx context.Context) (uint64, uint64, error) {
-	messageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, orm.MessageTypeL1SentMessage)
+func (b *EventUpdateLogic) GetL1SyncHeight(ctx context.Context) (uint64, uint64, uint64, error) {
+	messageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, btypes.MessageTypeL1SentMessage)
 	if err != nil {
 		log.Error("failed to get L1 cross message synced height", "error", err)
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
 	batchSyncedHeight, err := b.batchEventOrm.GetBatchEventSyncedHeightInDB(ctx)
 	if err != nil {
 		log.Error("failed to get L1 batch event synced height", "error", err)
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 
-	return messageSyncedHeight, batchSyncedHeight, nil
+	bridgeBatchDepositSyncedHeight, err := b.bridgeBatchDepositEventOrm.GetMessageL1SyncedHeightInDB(ctx)
+	if err != nil {
+		log.Error("failed to get l1 bridge batch deposit synced height", "error", err)
+		return 0, 0, 0, err
+	}
+
+	return messageSyncedHeight, batchSyncedHeight, bridgeBatchDepositSyncedHeight, nil
 }
 
 // GetL2MessageSyncedHeightInDB gets L2 messages synced height
-func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (uint64, error) {
-	l2SentMessageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, orm.MessageTypeL2SentMessage)
+func (b *EventUpdateLogic) GetL2MessageSyncedHeightInDB(ctx context.Context) (uint64, uint64, error) {
+	l2SentMessageSyncedHeight, err := b.crossMessageOrm.GetMessageSyncedHeightInDB(ctx, btypes.MessageTypeL2SentMessage)
 	if err != nil {
 		log.Error("failed to get L2 cross message processed height", "err", err)
-		return 0, err
+		return 0, 0, err
 	}
-	return l2SentMessageSyncedHeight, nil
+
+	l2BridgeBatchDepositSyncHeight, err := b.bridgeBatchDepositEventOrm.GetMessageL2SyncedHeightInDB(ctx)
+	if err != nil {
+		log.Error("failed to get bridge batch deposit processed height", "err", err)
+		return 0, 0, err
+	}
+	return l2SentMessageSyncedHeight, l2BridgeBatchDepositSyncHeight, nil
 }
 
 // L1InsertOrUpdate inserts or updates l1 messages
@@ -100,6 +115,12 @@ func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult
 		log.Error("failed to insert failed L1 gateway transactions", "err", err)
 		return err
 	}
+
+	if err := b.bridgeBatchDepositEventOrm.InsertOrUpdateL1BridgeBatchDepositEvent(ctx, l1FetcherResult.BridgeBatchDepositEvents); err != nil {
+		log.Error("failed to insert L1 bridge batch deposit transactions", "err", err)
+		return err
+	}
+
 	return nil
 }
 
@@ -139,7 +160,7 @@ func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, bat
 
 	for i, message := range l2WithdrawMessages {
 		message.MerkleProof = proofs[i]
-		message.RollupStatus = int(orm.RollupStatusTypeFinalized)
+		message.RollupStatus = int(btypes.RollupStatusTypeFinalized)
 		message.BatchIndex = batchIndex
 	}
 
@@ -172,6 +193,30 @@ func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, heig
 		}
 		b.eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight.Set(float64(finalizedBatch.EndBlockNumber))
 	}
+	return nil
+}
+
+// UpdateL2BridgeBatchDepositEvent update l2 bridge batch deposit status
+func (b *EventUpdateLogic) UpdateL2BridgeBatchDepositEvent(ctx context.Context, l2BatchDistributes []*orm.BridgeBatchDepositEvent) error {
+	distributeFailedMap := make(map[uint64][]string)
+	for _, l2BatchDistribute := range l2BatchDistributes {
+		if btypes.TxStatusType(l2BatchDistribute.TxStatus) == btypes.TxStatusBridgeBatchDistributeFailed {
+			distributeFailedMap[l2BatchDistribute.BatchIndex] = append(distributeFailedMap[l2BatchDistribute.BatchIndex], l2BatchDistribute.Sender)
+		}
+
+		if err := b.bridgeBatchDepositEventOrm.UpdateBatchEventStatus(ctx, l2BatchDistribute); err != nil {
+			log.Error("failed to update L1 bridge batch distribute event", "batchIndex", l2BatchDistribute.BatchIndex, "err", err)
+			return err
+		}
+	}
+
+	for batchIndex, distributeFailedSenders := range distributeFailedMap {
+		if err := b.bridgeBatchDepositEventOrm.UpdateDistributeFailedStatus(ctx, batchIndex, distributeFailedSenders); err != nil {
+			log.Error("failed to update L1 bridge batch distribute failed event", "batchIndex", batchIndex, "failed senders", distributeFailedSenders, "err", err)
+			return err
+		}
+	}
+
 	return nil
 }
 

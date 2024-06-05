@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"time"
 
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
-
-	"scroll-tech/rollup/internal/utils"
-
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
+
+	"scroll-tech/common/types"
+
+	"scroll-tech/rollup/internal/utils"
 )
 
 // Chunk represents a chunk of blocks in the database.
@@ -144,6 +144,22 @@ func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) (
 	return chunks, nil
 }
 
+// GetChunkByIndex retrieves a chunk that has the exact chunk index as given.
+func (o *Chunk) GetChunkByIndex(ctx context.Context, index uint64) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("index = ?", index)
+
+	var chunk Chunk
+	if err := db.First(&chunk).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Chunk.GetChunkByIndex error: %w", err)
+	}
+	return &chunk, nil
+}
+
 // GetChunksByBatchHash retrieves chunks by batch hash
 // for test
 func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*Chunk, error) {
@@ -159,7 +175,7 @@ func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, metrics utils.ChunkMetrics, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -182,12 +198,6 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		totalL1MessagePoppedBefore = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
 		parentChunkHash = parentChunk.Hash
 		parentChunkStateRoot = parentChunk.StateRoot
-	}
-
-	metrics, err := utils.CalculateChunkMetrics(chunk, codecVersion)
-	if err != nil {
-		log.Error("failed to calculate chunk metrics", "err", err)
-		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
 	chunkHash, err := utils.GetChunkHash(chunk, totalL1MessagePoppedBefore, codecVersion)

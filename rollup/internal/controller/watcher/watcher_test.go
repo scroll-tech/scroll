@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,6 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/testcontainers"
-	"scroll-tech/common/types/encoding"
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/rollup/internal/config"
@@ -107,13 +107,19 @@ func TestFunction(t *testing.T) {
 	// Run chunk proposer test cases.
 	t.Run("TestChunkProposerCodecv0Limits", testChunkProposerCodecv0Limits)
 	t.Run("TestChunkProposerCodecv1Limits", testChunkProposerCodecv1Limits)
-	t.Run("TestChunkProposerCodecv1BlobSizeLimit", testChunkProposerCodecv1BlobSizeLimit)
+	t.Run("TestChunkProposerCodecv2Limits", testChunkProposerCodecv2Limits)
+	t.Run("TestChunkProposerBlobSizeLimit", testChunkProposerBlobSizeLimit)
+	t.Run("TestChunkProposerIncludeCurieBlockInOneChunk", testChunkProposerIncludeCurieBlockInOneChunk)
 
-	// Run chunk proposer test cases.
+	// Run batch proposer test cases.
 	t.Run("TestBatchProposerCodecv0Limits", testBatchProposerCodecv0Limits)
 	t.Run("TestBatchProposerCodecv1Limits", testBatchProposerCodecv1Limits)
-	t.Run("TestBatchCommitGasAndCalldataSizeEstimation", testBatchCommitGasAndCalldataSizeEstimation)
+	t.Run("TestBatchProposerCodecv2Limits", testBatchProposerCodecv2Limits)
+	t.Run("TestBatchCommitGasAndCalldataSizeCodecv0Estimation", testBatchCommitGasAndCalldataSizeCodecv0Estimation)
+	t.Run("TestBatchCommitGasAndCalldataSizeCodecv1Estimation", testBatchCommitGasAndCalldataSizeCodecv1Estimation)
+	t.Run("TestBatchCommitGasAndCalldataSizeCodecv2Estimation", testBatchCommitGasAndCalldataSizeCodecv2Estimation)
 	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
+	t.Run("TestBatchProposerMaxChunkNumPerBatchLimit", testBatchProposerMaxChunkNumPerBatchLimit)
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {

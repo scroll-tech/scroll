@@ -277,7 +277,7 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 		log.Error("failed to send tx", "tx hash", signedTx.Hash().String(), "from", s.auth.From.String(), "nonce", signedTx.Nonce(), "err", err)
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
-		if strings.Contains(err.Error(), "nonce") && overrideNonce == nil {
+		if strings.Contains(err.Error(), "nonce too low") && overrideNonce == nil {
 			s.resetNonce(context.Background())
 		}
 		return nil, err
@@ -618,13 +618,13 @@ func makeSidecar(blob *kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
 	var commitments []kzg4844.Commitment
 	var proofs []kzg4844.Proof
 
-	for _, b := range blobs {
-		c, err := kzg4844.BlobToCommitment(b)
+	for i := range blobs {
+		c, err := kzg4844.BlobToCommitment(&blobs[i])
 		if err != nil {
 			return nil, fmt.Errorf("failed to get blob commitment, err: %w", err)
 		}
 
-		p, err := kzg4844.ComputeBlobProof(b, c)
+		p, err := kzg4844.ComputeBlobProof(&blobs[i], c)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compute blob proof, err: %w", err)
 		}
