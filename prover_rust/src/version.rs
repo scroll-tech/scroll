@@ -3,7 +3,7 @@ use std::cell::OnceCell;
 static DEFAULT_COMMIT: &str = "unknown";
 static mut VERSION: OnceCell<String> = OnceCell::new();
 
-pub const TAG: &str = "v4.4.3";
+pub const TAG: &str = "v0.0.0";
 pub const DEFAULT_ZK_VERSION: &str = "000000-000000";
 
 fn init_version() -> String {
