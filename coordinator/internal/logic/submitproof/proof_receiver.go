@@ -134,7 +134,12 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	if len(pv) == 0 {
 		return fmt.Errorf("get ProverVersion from context failed")
 	}
-	hardForkName := ctx.GetString(coordinatorType.HardForkName)
+	// use hard_fork_name from parameter first
+	// if prover support multi hard_forks, the real hard_fork_name is not set to the gin context
+	hardForkName := proofParameter.HardForkName
+	if hardForkName == "" {
+		hardForkName = ctx.GetString(coordinatorType.HardForkName)
+	}
 
 	var proverTask *orm.ProverTask
 	var err error
