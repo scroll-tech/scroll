@@ -137,7 +137,7 @@ func (bp *BatchProverTask) doAssignTaskWithinChunkRange(ctx *gin.Context, taskCt
 		return nil, nil
 	}
 
-	log.Info("start batch proof generation session", "id", batchTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
+	log.Info("start batch proof generation session", "task_id", batchTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 	var (
 		proverVersion = taskCtx.ProverVersion
 		hardForkName  = taskCtx.HardForkName
@@ -146,7 +146,7 @@ func (bp *BatchProverTask) doAssignTaskWithinChunkRange(ctx *gin.Context, taskCt
 	if getHardForkName != nil {
 		hardForkName, err = getHardForkName(batchTask)
 		if err != nil {
-			log.Error("failed to get hard fork name by batch", "error", err.Error())
+			log.Error("failed to get hard fork name by batch", "task_id", batchTask.Hash, "error", err.Error())
 			return nil, ErrCoordinatorInternalFailure
 		}
 	}
@@ -166,14 +166,14 @@ func (bp *BatchProverTask) doAssignTaskWithinChunkRange(ctx *gin.Context, taskCt
 	// Store session info.
 	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("insert batch prover task info fail", "taskID", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("format prover task failure", "hash", batchTask.Hash, "err", err)
+		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
