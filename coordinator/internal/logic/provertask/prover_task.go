@@ -32,7 +32,9 @@ type ProverTask interface {
 func reverseMap(input map[string]string) map[string]string {
 	output := make(map[string]string, len(input))
 	for k, v := range input {
-		output[v] = k
+		if k != "" {
+			output[v] = k
+		}
 	}
 	return output
 }
