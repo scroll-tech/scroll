@@ -7,7 +7,7 @@ use curie::NextCircuitsHandler;
 use std::collections::HashMap;
 use std::{cell::RefCell, rc::Rc};
 use super::geth_client::GethClient;
-use crate::{config::Config, types::{ProofType, Task}};
+use crate::{config::{Config, AssetsDirEnvConfig}, types::{ProofType, Task}};
 
 type HardForkName = String;
 
@@ -41,6 +41,8 @@ impl<'a> CircuitsHandlerProvider<'a> {
         let mut m: HashMap<HardForkName, CircuitsHandlerBuilder> = HashMap::new();
 
         fn handler_builder(proof_type: ProofType, config: &Config, geth_client: Option<Rc<RefCell<GethClient>>>) -> Result<Box<dyn CircuitsHandler>> {
+            log::info!("now init zk circuits handler, hard_fork_name: {}", &config.low_version_circuit.hard_fork_name);
+            AssetsDirEnvConfig::enable_first();
             BaseCircuitsHandler::new(proof_type,
                 &config.low_version_circuit.params_path,
                 &config.low_version_circuit.assets_path,
@@ -50,6 +52,8 @@ impl<'a> CircuitsHandlerProvider<'a> {
         m.insert(config.low_version_circuit.hard_fork_name.clone(), handler_builder);
 
         fn next_handler_builder(proof_type: ProofType, config: &Config, geth_client: Option<Rc<RefCell<GethClient>>>) -> Result<Box<dyn CircuitsHandler>> {
+            log::info!("now init zk circuits handler, hard_fork_name: {}", &config.high_version_circuit.hard_fork_name);
+            AssetsDirEnvConfig::enable_second();
             NextCircuitsHandler::new(proof_type,
                 &config.high_version_circuit.params_path,
                 &config.high_version_circuit.assets_path,

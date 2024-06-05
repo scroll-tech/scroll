@@ -12,9 +12,9 @@ mod zk_circuits_handler;
 
 use clap::{Parser, ArgAction};
 use anyhow::Result;
-use config::Config;
+use config::{Config, AssetsDirEnvConfig};
 use prover::Prover;
-use std::rc::Rc;
+use std::{f64::consts::E, rc::Rc};
 use task_cache::{ClearCacheCoordinatorListener, TaskCache};
 use task_processor::TaskProcessor;
 use log;
@@ -47,6 +47,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     utils::log_init(args.log_file);
 
     let config: Config = Config::from_file(args.config_file)?;
+
+    if let Err(e) = AssetsDirEnvConfig::init() {
+        log::error!("AssetsDirEnvConfig init failed: {}", e);
+        std::process::exit(-2);
+    }
 
     let task_cache = Rc::new(TaskCache::new(&config.db_path)?);
 
