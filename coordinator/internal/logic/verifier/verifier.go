@@ -166,7 +166,5 @@ func (v *Verifier) loadEmbedVK() error {
 
 	v.BatchVKMap["bernoulli"] = base64.StdEncoding.EncodeToString(batchVKBytes)
 	v.ChunkVKMap["bernoulli"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
-	v.BatchVKMap[""] = base64.StdEncoding.EncodeToString(batchVKBytes)
-	v.ChunkVKMap[""] = base64.StdEncoding.EncodeToString(chunkVkBytes)
 	return nil
 }
