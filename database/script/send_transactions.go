@@ -109,7 +109,7 @@ func main() {
 		},
 	}
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 50; i++ {
 		for _, txType := range txTypes {
 			for _, accessList := range accessLists {
 				if err := sendTransaction(client, auth, txType, &l2TestCurieOpcodesAddr, nonce, accessList, nil, useTloadTstoreCalldata); err != nil {
