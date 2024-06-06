@@ -38,11 +38,7 @@ impl<'a> TaskProcessor<'a> {
                     std::thread::sleep(core::time::Duration::from_secs(10));
                     return Err(err).context("failed to fetch task from coordinator");
                 }
-                let task_wrapper: TaskWrapper = fetch_result.unwrap().into();
-                self.task_cache
-                    .put_task(&task_wrapper)
-                    .context("failed to push task into stack")?;
-                task_wrapper
+                fetch_result.unwrap().into()
             }
         };
 
