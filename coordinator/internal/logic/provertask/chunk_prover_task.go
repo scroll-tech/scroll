@@ -118,7 +118,7 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 		return nil, nil
 	}
 
-	log.Info("start chunk generation session", "id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
+	log.Info("start chunk generation session", "task_id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 	var (
 		proverVersion = taskCtx.ProverVersion
 		hardForkName  = taskCtx.HardForkName
@@ -127,7 +127,7 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 	if getHardForkName != nil {
 		hardForkName, err = getHardForkName(chunkTask)
 		if err != nil {
-			log.Error("failed to get hard fork name by chunk", "error", err.Error())
+			log.Error("failed to get hard fork name by chunk", "task_id", chunkTask.Hash, "error", err.Error())
 			return nil, ErrCoordinatorInternalFailure
 		}
 	}
@@ -146,14 +146,14 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 
 	if err = cp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("insert chunk prover task fail", "taskID", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		log.Error("insert chunk prover task fail", "task_id", chunkTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask)
 	if err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("format prover task failure", "hash", chunkTask.Hash, "err", err)
+		log.Error("format prover task failure", "task_id", chunkTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
