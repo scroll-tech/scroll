@@ -100,7 +100,6 @@ impl<'a> Prover<'a> {
                 bail!("data of get_task empty, while error_code is success. there may be something wrong in response data or inner logic.")
             }
         }
-        
     }
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
