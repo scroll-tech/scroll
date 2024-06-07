@@ -11,7 +11,13 @@ use ethers_providers::{Http, Provider};
 
 // ======================= types ============================
 
-/// l2 block full trace
+/// L2 block full trace which tracks to the version in golang.
+/// 
+/// The inner block_trace is a generic type, whose real implementation
+/// lies in two version's zkevm-circuits library.
+/// 
+/// The inner block_trace missed some fields compared to the go version.
+/// These fields are defined here for clarity although not used.
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
 pub struct BlockTrace<T> {
     #[serde(flatten)]
