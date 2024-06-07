@@ -81,9 +81,11 @@ impl<'a> CircuitsHandlerProvider<'a> {
     pub fn get_circuits_handler(&mut self, hard_fork_name: &String) -> Option<&Box<dyn CircuitsHandler>> {
         match &self.current_hard_fork_name {
             Some(name) if name == hard_fork_name => {
+                log::info!("get circuits handler from cache");
                 (&self.current_circuit).as_ref()
             },
             _ => {
+                log::info!("failed to get circuits handler from cache, create a new one: {hard_fork_name}");
                 let builder = self.circuits_handler_builder_map.get(hard_fork_name);
                 builder.and_then(|build| {
                     log::info!("building circuits handler for {hard_fork_name}");
