@@ -94,7 +94,13 @@ impl<'a> Prover<'a> {
         }
         let resp = self.coordinator_client.borrow_mut().get_task(&req)?;
 
-        Ok(Task::from(resp.data.unwrap()))
+        match resp.data {
+            Some(d) => Ok(Task::from(d)),
+            None => {
+                bail!("data of get_task empty, while error_code is success. there may be something wrong in response data or inner logic.")
+            }
+        }
+        
     }
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
