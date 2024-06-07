@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config: Config = Config::from_file(args.config_file)?;
 
     if let Err(e) = AssetsDirEnvConfig::init() {
-        log::error!("AssetsDirEnvConfig init failed: {}", e);
+        log::error!("AssetsDirEnvConfig init failed: {:#}", e);
         std::process::exit(-2);
     }
 

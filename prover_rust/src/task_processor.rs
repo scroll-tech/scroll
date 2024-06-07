@@ -1,4 +1,4 @@
-use super::{prover::Prover, task_cache::TaskCache, types::TaskWrapper};
+use super::{prover::Prover, task_cache::TaskCache};
 use anyhow::{Context, Result};
 use log;
 use std::rc::Rc;
@@ -17,7 +17,7 @@ impl<'a> TaskProcessor<'a> {
         loop {
             log::info!("start a new round.");
             if let Err(err) = self.prove_and_submit() {
-                log::error!("encounter error: {err}");
+                log::error!("encounter error: {:#}", err);
             } else {
                 log::info!("prove & submit succeed.");
             }

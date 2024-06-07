@@ -55,7 +55,7 @@ impl Listener for ClearCacheCoordinatorListener {
     fn on_proof_submitted(&self, req: &SubmitProofRequest) {
         let result = self.task_cache.delete_task(req.task_id.clone());
         if let Err(e) = result {
-            log::error!("delete task from embed db failed, {}", e);
+            log::error!("delete task from embed db failed, {:#}", e);
         }
     }
 }
