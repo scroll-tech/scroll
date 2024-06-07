@@ -99,7 +99,7 @@ impl<'a> CoordinatorClient<'a> {
             log::info!("JWT expired, attempting to re-login");
             self.login().context("JWT expired, re-login failed")?;
             log::info!("re-login success");
-            return f(self, req);
+            return self.action_with_re_login(req, f);
         } else if response.errcode != ErrorCode::Success {
             bail!("action failed: {}", response.errmsg)
         }
