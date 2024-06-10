@@ -2240,12 +2240,12 @@ contract GenerateFrontendConfig is DeployScroll {
 
         // API endpoints
         vm.writeLine(FRONTEND_ENV_PATH, "");
-        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_EXTERNAL_RPC_URI_L1 = \"", L1_RPC_ENDPOINT, "\""));
-        vm.writeLine(FRONTEND_ENV_PATH, string.concat("REACT_APP_EXTERNAL_RPC_URI_L2 = \"", L2_RPC_ENDPOINT, "\""));
-        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_BRIDGE_API_URI = \"https://sepolia-api-bridge-v2.scroll.io/api\"");
-        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_ROLLUPSCAN_API_URI = \"https://sepolia-api-re.scroll.io/api\"");
-        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_EXPLORER_URI_L1 = \"https://sepolia.etherscan.io\"");
-        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_EXPLORER_URI_L2 = \"https://sepolia.scrollscan.com\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_RPC_URI_L1 = \"http://l1geth-devnet.scrollsdk\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_RPC_URI_L2 = \"http://l2-rpc.scrollsdk\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_BRIDGE_API_URI = \"http://bridge-history-api.scrollsdk/api\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_ROLLUPSCAN_API_URI = \"https://rollup-explorer-backend.scrollsdk/api\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_EXPLORER_URI_L1 = \"http://l1-explorer.scrollsdk\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_EXPLORER_URI_L2 = \"http://blockscout.scrollsdk\"");
 
         // L1 contracts
         vm.writeLine(FRONTEND_ENV_PATH, "");
