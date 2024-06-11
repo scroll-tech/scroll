@@ -82,7 +82,7 @@ impl GethClient {
     pub fn get_block_trace_by_hash<T>(&mut self, hash: &CommonHash) -> Result<BlockTrace<T>>
     where T: Serialize + DeserializeOwned + Debug + Send {
         log::info!(
-            "{}: calling get_block_trace_by_hash, hash: {}",
+            "{}: calling get_block_trace_by_hash, hash: {:#?}",
             self.id,
             hash
         );
@@ -97,7 +97,7 @@ impl GethClient {
 
     pub fn header_by_number(&mut self, block_number: &BlockNumber) -> Result<Header> {
         log::info!(
-            "{}: calling header_by_number, hash: {}",
+            "{}: calling header_by_number, hash: {:#?}",
             self.id,
             block_number
         );
