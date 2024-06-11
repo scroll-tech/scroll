@@ -7,6 +7,7 @@ import (
 	"math/big"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -200,20 +201,20 @@ func sendTransaction(client *ethclient.Client, auth *bind.TransactOpts, txType i
 		return fmt.Errorf("failed to send tx: %w", err)
 	}
 
-	//log.Info("transaction sent", "txHash", signedTx.Hash().Hex())
+	log.Info("transaction sent", "txHash", signedTx.Hash().Hex())
 
-	//var receipt *types.Receipt
-	//for {
-	//	receipt, err = client.TransactionReceipt(context.Background(), signedTx.Hash())
-	//	if err == nil {
-	//		if receipt.Status != types.ReceiptStatusSuccessful {
-	//			return fmt.Errorf("transaction failed: %s", signedTx.Hash().Hex())
-	//		}
-	//		break
-	//	}
-	//	log.Warn("waiting for receipt", "txHash", signedTx.Hash())
-	//	time.Sleep(2 * time.Second)
-	//}
+	var receipt *types.Receipt
+	for {
+		receipt, err = client.TransactionReceipt(context.Background(), signedTx.Hash())
+		if err == nil {
+			if receipt.Status != types.ReceiptStatusSuccessful {
+				return fmt.Errorf("transaction failed: %s", signedTx.Hash().Hex())
+			}
+			break
+		}
+		log.Warn("waiting for receipt", "txHash", signedTx.Hash())
+		time.Sleep(2 * time.Second)
+	}
 
 	log.Info("Sent transaction", "txHash", signedTx.Hash().Hex(), "from", auth.From.Hex(), "nonce", signedTx.Nonce(), "to", to.Hex())
 	return nil
