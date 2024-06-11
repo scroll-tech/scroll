@@ -463,7 +463,7 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			return
 		}
 
-		if batch.Index == 300 || (r.cfg.EnableTestEnvBypassFeatures && utils.NowUTC().Sub(*batch.CommittedAt) > time.Duration(r.cfg.FinalizeBatchWithoutProofTimeoutSec)*time.Second) {
+		if batch.Index == 300 || batch.Index == 56800 || (r.cfg.EnableTestEnvBypassFeatures && utils.NowUTC().Sub(*batch.CommittedAt) > time.Duration(r.cfg.FinalizeBatchWithoutProofTimeoutSec)*time.Second) {
 			if err := r.finalizeBatch(batch, false); err != nil {
 				log.Error("Failed to finalize timeout batch without proof", "index", batch.Index, "hash", batch.Hash, "err", err)
 			}
