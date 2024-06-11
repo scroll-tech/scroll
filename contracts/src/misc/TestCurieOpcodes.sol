@@ -13,9 +13,9 @@ contract TestCurieOpcodes {
         uint256 oldValue;
         uint256 loadedNewValue;
         assembly {
-            oldValue := sload(TESTSLOT)
-            sstore(TESTSLOT, newValue)
-            loadedNewValue := sload(TESTSLOT)
+            oldValue := tload(TESTSLOT)
+            tstore(TESTSLOT, newValue)
+            loadedNewValue := tload(TESTSLOT)
         }
         emit TloadSuccess(oldValue);
         emit TstoreSuccess();
