@@ -104,6 +104,7 @@ impl<'a> Prover<'a> {
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
         log::info!("[prover] start to prove_task, task id: {}", task.id);
+        self.circuits_handler_provider.borrow_mut().clear_circuits_handler();
         if let Some(handler) = self.circuits_handler_provider.borrow_mut().get_circuits_handler(&task.hard_fork_name) {
             self.do_prove(task, handler)
         } else {

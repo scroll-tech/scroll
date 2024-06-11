@@ -98,6 +98,12 @@ impl<'a> CircuitsHandlerProvider<'a> {
         }
     }
 
+    pub fn clear_circuits_handler(&mut self) {
+        log::info!("clear circuits handler to prevent cache, just for test");
+        self.current_hard_fork_name = None;
+        self.current_circuit = None;
+    }
+
     fn init_vks(proof_type: ProofType, config: &'a Config,
         circuits_handler_builder_map: &HashMap<HardForkName, CircuitsHandlerBuilder>,
         geth_client: Option<Rc<RefCell<GethClient>>>) -> Vec<String> {
