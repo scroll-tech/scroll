@@ -16,6 +16,7 @@ import (
 
 	"scroll-tech/bridge-history-api/internal/orm"
 	"scroll-tech/bridge-history-api/internal/types"
+	btypes "scroll-tech/bridge-history-api/internal/types"
 	"scroll-tech/bridge-history-api/internal/utils"
 )
 
@@ -35,20 +36,23 @@ const (
 
 // HistoryLogic services.
 type HistoryLogic struct {
-	crossMessageOrm *orm.CrossMessage
-	batchEventOrm   *orm.BatchEvent
-	redis           *redis.Client
-	singleFlight    singleflight.Group
-	cacheMetrics    *cacheMetrics
+	crossMessageOrm       *orm.CrossMessage
+	batchEventOrm         *orm.BatchEvent
+	bridgeBatchDepositOrm *orm.BridgeBatchDepositEvent
+
+	redis        *redis.Client
+	singleFlight singleflight.Group
+	cacheMetrics *cacheMetrics
 }
 
 // NewHistoryLogic returns bridge history services.
 func NewHistoryLogic(db *gorm.DB, redis *redis.Client) *HistoryLogic {
 	logic := &HistoryLogic{
-		crossMessageOrm: orm.NewCrossMessage(db),
-		batchEventOrm:   orm.NewBatchEvent(db),
-		redis:           redis,
-		cacheMetrics:    initCacheMetrics(),
+		crossMessageOrm:       orm.NewCrossMessage(db),
+		batchEventOrm:         orm.NewBatchEvent(db),
+		bridgeBatchDepositOrm: orm.NewBridgeBatchDepositEvent(db),
+		redis:                 redis,
+		cacheMetrics:          initCacheMetrics(),
 	}
 	return logic
 }
@@ -72,25 +76,28 @@ func (h *HistoryLogic) GetL2UnclaimedWithdrawalsByAddress(ctx context.Context, a
 	log.Info("cache miss", "cache key", cacheKey)
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
-		var messages []*orm.CrossMessage
-		messages, err = h.crossMessageOrm.GetL2UnclaimedWithdrawalsByAddress(ctx, address)
-		if err != nil {
-			return nil, err
+		var txHistoryInfos []*types.TxHistoryInfo
+		crossMessages, getErr := h.crossMessageOrm.GetL2UnclaimedWithdrawalsByAddress(ctx, address)
+		if getErr != nil {
+			return nil, getErr
 		}
-		return messages, nil
+		for _, message := range crossMessages {
+			txHistoryInfos = append(txHistoryInfos, getTxHistoryInfoFromCrossMessage(message))
+		}
+		return txHistoryInfos, nil
 	})
 	if err != nil {
 		log.Error("failed to get L2 claimable withdrawals by address", "address", address, "error", err)
 		return nil, 0, err
 	}
 
-	messages, ok := result.([]*orm.CrossMessage)
+	txHistoryInfos, ok := result.([]*types.TxHistoryInfo)
 	if !ok {
 		log.Error("unexpected type", "expected", "[]*types.TxHistoryInfo", "got", reflect.TypeOf(result), "address", address)
 		return nil, 0, errors.New("unexpected error")
 	}
 
-	return h.processAndCacheTxHistoryInfo(ctx, cacheKey, messages, page, pageSize)
+	return h.processAndCacheTxHistoryInfo(ctx, cacheKey, txHistoryInfos, page, pageSize)
 }
 
 // GetL2WithdrawalsByAddress gets all withdrawal txs under given address.
@@ -112,25 +119,28 @@ func (h *HistoryLogic) GetL2WithdrawalsByAddress(ctx context.Context, address st
 	log.Info("cache miss", "cache key", cacheKey)
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
-		var messages []*orm.CrossMessage
-		messages, err = h.crossMessageOrm.GetL2WithdrawalsByAddress(ctx, address)
-		if err != nil {
-			return nil, err
+		var txHistoryInfos []*types.TxHistoryInfo
+		crossMessages, getErr := h.crossMessageOrm.GetL2WithdrawalsByAddress(ctx, address)
+		if getErr != nil {
+			return nil, getErr
 		}
-		return messages, nil
+		for _, message := range crossMessages {
+			txHistoryInfos = append(txHistoryInfos, getTxHistoryInfoFromCrossMessage(message))
+		}
+		return txHistoryInfos, nil
 	})
 	if err != nil {
 		log.Error("failed to get L2 withdrawals by address", "address", address, "error", err)
 		return nil, 0, err
 	}
 
-	messages, ok := result.([]*orm.CrossMessage)
+	txHistoryInfos, ok := result.([]*types.TxHistoryInfo)
 	if !ok {
 		log.Error("unexpected type", "expected", "[]*types.TxHistoryInfo", "got", reflect.TypeOf(result), "address", address)
 		return nil, 0, errors.New("unexpected error")
 	}
 
-	return h.processAndCacheTxHistoryInfo(ctx, cacheKey, messages, page, pageSize)
+	return h.processAndCacheTxHistoryInfo(ctx, cacheKey, txHistoryInfos, page, pageSize)
 }
 
 // GetTxsByAddress gets tx infos under given address.
@@ -152,25 +162,36 @@ func (h *HistoryLogic) GetTxsByAddress(ctx context.Context, address string, page
 	log.Info("cache miss", "cache key", cacheKey)
 
 	result, err, _ := h.singleFlight.Do(cacheKey, func() (interface{}, error) {
-		var messages []*orm.CrossMessage
-		messages, err = h.crossMessageOrm.GetTxsByAddress(ctx, address)
-		if err != nil {
-			return nil, err
+		var txHistoryInfos []*types.TxHistoryInfo
+		crossMessages, getErr := h.crossMessageOrm.GetTxsByAddress(ctx, address)
+		if getErr != nil {
+			return nil, getErr
 		}
-		return messages, nil
+		for _, message := range crossMessages {
+			txHistoryInfos = append(txHistoryInfos, getTxHistoryInfoFromCrossMessage(message))
+		}
+
+		batchDepositMessages, getErr := h.bridgeBatchDepositOrm.GetTxsByAddress(ctx, address)
+		if getErr != nil {
+			return nil, getErr
+		}
+		for _, message := range batchDepositMessages {
+			txHistoryInfos = append(txHistoryInfos, getTxHistoryInfoFromBridgeBatchDepositMessage(message))
+		}
+		return txHistoryInfos, nil
 	})
 	if err != nil {
 		log.Error("failed to get txs by address", "address", address, "error", err)
 		return nil, 0, err
 	}
 
-	messages, ok := result.([]*orm.CrossMessage)
+	txHistoryInfos, ok := result.([]*types.TxHistoryInfo)
 	if !ok {
 		log.Error("unexpected type", "expected", "[]*types.TxHistoryInfo", "got", reflect.TypeOf(result), "address", address)
 		return nil, 0, errors.New("unexpected error")
 	}
 
-	return h.processAndCacheTxHistoryInfo(ctx, cacheKey, messages, page, pageSize)
+	return h.processAndCacheTxHistoryInfo(ctx, cacheKey, txHistoryInfos, page, pageSize)
 }
 
 // GetTxsByHashes gets tx infos under given tx hashes.
@@ -218,15 +239,24 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 	}
 
 	if len(uncachedHashes) > 0 {
-		messages, err := h.crossMessageOrm.GetMessagesByTxHashes(ctx, uncachedHashes)
+		var txHistories []*types.TxHistoryInfo
+
+		crossMessages, err := h.crossMessageOrm.GetMessagesByTxHashes(ctx, uncachedHashes)
 		if err != nil {
-			log.Error("failed to get messages by tx hashes", "hashes", uncachedHashes)
+			log.Error("failed to get cross messages by tx hashes", "hashes", uncachedHashes)
 			return nil, err
 		}
+		for _, message := range crossMessages {
+			txHistories = append(txHistories, getTxHistoryInfoFromCrossMessage(message))
+		}
 
-		var txHistories []*types.TxHistoryInfo
-		for _, message := range messages {
-			txHistories = append(txHistories, getTxHistoryInfo(message))
+		batchDepositMessages, err := h.bridgeBatchDepositOrm.GetMessagesByTxHashes(ctx, uncachedHashes)
+		if err != nil {
+			log.Error("failed to get batch deposit messages by tx hashes", "hashes", uncachedHashes)
+			return nil, err
+		}
+		for _, message := range batchDepositMessages {
+			txHistories = append(txHistories, getTxHistoryInfoFromBridgeBatchDepositMessage(message))
 		}
 
 		resultMap := make(map[string]*types.TxHistoryInfo)
@@ -260,19 +290,19 @@ func (h *HistoryLogic) GetTxsByHashes(ctx context.Context, txHashes []string) ([
 	return results, nil
 }
 
-func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
+func getTxHistoryInfoFromCrossMessage(message *orm.CrossMessage) *types.TxHistoryInfo {
 	txHistory := &types.TxHistoryInfo{
 		MessageHash:    message.MessageHash,
-		TokenType:      orm.TokenType(message.TokenType),
+		TokenType:      btypes.TokenType(message.TokenType),
 		TokenIDs:       utils.ConvertStringToStringArray(message.TokenIDs),
 		TokenAmounts:   utils.ConvertStringToStringArray(message.TokenAmounts),
 		L1TokenAddress: message.L1TokenAddress,
 		L2TokenAddress: message.L2TokenAddress,
-		MessageType:    orm.MessageType(message.MessageType),
-		TxStatus:       orm.TxStatusType(message.TxStatus),
+		MessageType:    btypes.MessageType(message.MessageType),
+		TxStatus:       btypes.TxStatusType(message.TxStatus),
 		BlockTimestamp: message.BlockTimestamp,
 	}
-	if txHistory.MessageType == orm.MessageTypeL1SentMessage {
+	if txHistory.MessageType == btypes.MessageTypeL1SentMessage {
 		txHistory.Hash = message.L1TxHash
 		txHistory.ReplayTxHash = message.L1ReplayTxHash
 		txHistory.RefundTxHash = message.L1RefundTxHash
@@ -288,7 +318,7 @@ func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 			Hash:        message.L1TxHash,
 			BlockNumber: message.L1BlockNumber,
 		}
-		if orm.RollupStatusType(message.RollupStatus) == orm.RollupStatusTypeFinalized {
+		if btypes.RollupStatusType(message.RollupStatus) == btypes.RollupStatusTypeFinalized {
 			txHistory.ClaimInfo = &types.ClaimInfo{
 				From:    message.MessageFrom,
 				To:      message.MessageTo,
@@ -302,6 +332,28 @@ func getTxHistoryInfo(message *orm.CrossMessage) *types.TxHistoryInfo {
 				Claimable: true,
 			}
 		}
+	}
+	return txHistory
+}
+
+func getTxHistoryInfoFromBridgeBatchDepositMessage(message *orm.BridgeBatchDepositEvent) *types.TxHistoryInfo {
+	txHistory := &types.TxHistoryInfo{
+		Hash:         message.L1TxHash,
+		TokenType:    btypes.TokenType(message.TokenType),
+		TokenAmounts: utils.ConvertStringToStringArray(message.TokenAmount),
+		BlockNumber:  message.L1BlockNumber,
+		MessageType:  btypes.MessageTypeL1BatchDeposit,
+		TxStatus:     btypes.TxStatusType(message.TxStatus),
+		CounterpartChainTx: &types.CounterpartChainTx{
+			Hash:        message.L2TxHash,
+			BlockNumber: message.L2BlockNumber,
+		},
+		BlockTimestamp:  message.BlockTimestamp,
+		BatchDepositFee: message.Fee,
+	}
+	if txHistory.TokenType != btypes.TokenTypeETH {
+		txHistory.L1TokenAddress = message.L1TokenAddress
+		txHistory.L2TokenAddress = message.L2TokenAddress
 	}
 	return txHistory
 }
@@ -320,7 +372,7 @@ func (h *HistoryLogic) getCachedTxsInfo(ctx context.Context, cacheKey string, pa
 		return nil, 0, false, nil
 	}
 
-	values, err := h.redis.ZRange(ctx, cacheKey, start, end).Result()
+	values, err := h.redis.ZRevRange(ctx, cacheKey, start, end).Result()
 	if err != nil {
 		log.Error("failed to get zrange result", "error", err)
 		return nil, 0, false, err
@@ -356,13 +408,13 @@ func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []
 			}
 		} else {
 			// The transactions are sorted, thus we set the score as their indices.
-			for i, tx := range txs {
+			for _, tx := range txs {
 				txBytes, err := json.Marshal(tx)
 				if err != nil {
 					log.Error("failed to marshal transaction to json", "error", err)
 					return err
 				}
-				if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(i), Member: txBytes}).Err(); err != nil {
+				if err := pipe.ZAdd(ctx, cacheKey, &redis.Z{Score: float64(tx.BlockTimestamp), Member: txBytes}).Err(); err != nil {
 					log.Error("failed to add transaction to sorted set", "error", err)
 					return err
 				}
@@ -381,12 +433,7 @@ func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []
 	return nil
 }
 
-func (h *HistoryLogic) processAndCacheTxHistoryInfo(ctx context.Context, cacheKey string, messages []*orm.CrossMessage, page, pageSize uint64) ([]*types.TxHistoryInfo, uint64, error) {
-	var txHistories []*types.TxHistoryInfo
-	for _, message := range messages {
-		txHistories = append(txHistories, getTxHistoryInfo(message))
-	}
-
+func (h *HistoryLogic) processAndCacheTxHistoryInfo(ctx context.Context, cacheKey string, txHistories []*types.TxHistoryInfo, page, pageSize uint64) ([]*types.TxHistoryInfo, uint64, error) {
 	err := h.cacheTxsInfo(ctx, cacheKey, txHistories)
 	if err != nil {
 		log.Error("failed to cache txs info", "key", cacheKey, "err", err)

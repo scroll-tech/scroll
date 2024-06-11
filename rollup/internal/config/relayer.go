@@ -26,6 +26,8 @@ type SenderConfig struct {
 	EscalateMultipleDen uint64 `json:"escalate_multiple_den"`
 	// The maximum gas price can be used to send transaction.
 	MaxGasPrice uint64 `json:"max_gas_price"`
+	// The minimum gas tip can be used to send transaction.
+	MinGasTip uint64 `json:"min_gas_tip"`
 	// The maximum blob gas price can be used to send transaction.
 	MaxBlobGasPrice uint64 `json:"max_blob_gas_price"`
 	// The transaction type to use: LegacyTx, DynamicFeeTx, BlobTx

@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"scroll-tech/common/types/encoding"
-
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 )

@@ -17,6 +17,12 @@ func (s *Sender) estimateLegacyGas(to *common.Address, data []byte, fallbackGasL
 		log.Error("estimateLegacyGas SuggestGasPrice failure", "error", err)
 		return nil, err
 	}
+
+	minGasTip := new(big.Int).SetUint64(s.config.MinGasTip)
+	if gasPrice.Cmp(minGasTip) < 0 {
+		gasPrice = minGasTip
+	}
+
 	gasLimit, _, err := s.estimateGasLimit(to, data, nil, gasPrice, nil, nil, nil)
 	if err != nil {
 		log.Error("estimateLegacyGas estimateGasLimit failure", "gas price", gasPrice, "from", s.auth.From.String(),
@@ -39,6 +45,11 @@ func (s *Sender) estimateDynamicGas(to *common.Address, data []byte, baseFee uin
 	if err != nil {
 		log.Error("estimateDynamicGas SuggestGasTipCap failure", "error", err)
 		return nil, err
+	}
+
+	minGasTip := new(big.Int).SetUint64(s.config.MinGasTip)
+	if gasTipCap.Cmp(minGasTip) < 0 {
+		gasTipCap = minGasTip
 	}
 
 	gasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
@@ -70,6 +81,11 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *gethT
 	if err != nil {
 		log.Error("estimateBlobGas SuggestGasTipCap failure", "error", err)
 		return nil, err
+	}
+
+	minGasTip := new(big.Int).SetUint64(s.config.MinGasTip)
+	if gasTipCap.Cmp(minGasTip) < 0 {
+		gasTipCap = minGasTip
 	}
 
 	gasFeeCap := getGasFeeCap(new(big.Int).SetUint64(baseFee), gasTipCap)
