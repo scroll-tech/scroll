@@ -41,7 +41,7 @@ docker pull postgres
 make dev_docker
 ```
 
-## Testing Rollup & Coordinator
+## Unit Tests
 
 Run the tests using the following commands:
 

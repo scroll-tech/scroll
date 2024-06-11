@@ -6,6 +6,8 @@ import (
 	"math/big"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/da-codec/encoding/codecv0"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
@@ -15,9 +17,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/orm"

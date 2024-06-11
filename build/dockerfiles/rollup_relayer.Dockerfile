@@ -1,5 +1,5 @@
 # Download Go dependencies
-FROM scrolltech/go-alpine-builder:1.21 as base
+FROM scrolltech/go-rust-builder:go-1.21-rust-nightly-2023-12-03 as base
 
 WORKDIR /src
 COPY go.work* ./
@@ -17,10 +17,13 @@ FROM base as builder
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    cd /src/rollup/cmd/rollup_relayer/ && go build -v -p 4 -o /bin/rollup_relayer
+    cd /src/rollup/cmd/rollup_relayer/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/rollup_relayer
 
 # Pull rollup_relayer into a second stage deploy alpine container
-FROM alpine:latest
+FROM ubuntu:20.04
+
+ENV CGO_LDFLAGS="-ldl"
+
 COPY --from=builder /bin/rollup_relayer /bin/
 WORKDIR /app
 ENTRYPOINT ["rollup_relayer"]
