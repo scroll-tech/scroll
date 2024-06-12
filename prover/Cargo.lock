@@ -3373,6 +3373,38 @@ dependencies = [
 [[package]]
 name = "prover"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.13.1",
+ "clap",
+ "env_logger 0.11.3",
+ "eth-keystore",
+ "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
+ "ethers-providers 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
+ "futures",
+ "halo2_proofs",
+ "hex",
+ "http 1.1.0",
+ "log",
+ "once_cell",
+ "prover 0.1.0 (git+https://github.com/scroll-tech/zkevm-circuits.git?branch=v0.10)",
+ "prover 0.11.0",
+ "rand",
+ "reqwest 0.12.4",
+ "reqwest-middleware",
+ "reqwest-retry",
+ "rlp",
+ "serde",
+ "serde_json",
+ "sled",
+ "snark-verifier-sdk",
+ "tiny-keccak",
+ "tokio",
+]
+
+[[package]]
+name = "prover"
+version = "0.1.0"
 source = "git+https://github.com/scroll-tech/zkevm-circuits.git?branch=v0.10#cfa71a8abe45c21582a6b7ebb85b5b1c4cff01eb"
 dependencies = [
  "aggregator 0.1.0",
@@ -3436,38 +3468,6 @@ dependencies = [
  "snark-verifier",
  "snark-verifier-sdk",
  "zkevm-circuits 0.11.0",
-]
-
-[[package]]
-name = "prover"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64 0.13.1",
- "clap",
- "env_logger 0.11.3",
- "eth-keystore",
- "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
- "ethers-providers 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
- "futures",
- "halo2_proofs",
- "hex",
- "http 1.1.0",
- "log",
- "once_cell",
- "prover 0.1.0",
- "prover 0.11.0",
- "rand",
- "reqwest 0.12.4",
- "reqwest-middleware",
- "reqwest-retry",
- "rlp",
- "serde",
- "serde_json",
- "sled",
- "snark-verifier-sdk",
- "tiny-keccak",
- "tokio",
 ]
 
 [[package]]
