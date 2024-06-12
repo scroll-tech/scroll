@@ -1,10 +1,8 @@
 .PHONY: prover
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-    $(info ************  First ************)
     HALO2_VERSION=$(shell grep -m 1 "halo2.git" ./Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-    $(info ************  Second ************)
     HALO2_VERSION=$(shell grep -m 1 "halo2.git" ./Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
 
