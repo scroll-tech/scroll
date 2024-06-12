@@ -96,7 +96,7 @@ contract DeployL1BridgeContracts is Script {
         address[] memory _verifiers = new address[](1);
         _versions[0] = 0;
         _verifiers[0] = address(zkEvmVerifierV1);
-        rollupVerifier = new MultipleVersionRollupVerifier(L1_SCROLL_CHAIN_PROXY_ADDR, _versions, _verifiers);
+        rollupVerifier = new MultipleVersionRollupVerifier(_versions, _verifiers);
 
         logAddress("L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR", address(rollupVerifier));
     }
