@@ -89,7 +89,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 let builder = self.circuits_handler_builder_map.get(hard_fork_name);
                 builder.and_then(|build| {
                     log::info!("building circuits handler for {hard_fork_name}");
-                    let handler = build(self.proof_type, &self.config, self.geth_client.clone()).expect("failed to build circuits handler");
+                    let handler = build(self.proof_type, self.config, self.geth_client.clone()).expect("failed to build circuits handler");
                     self.current_hard_fork_name = Some(hard_fork_name.clone());
                     self.current_circuit = Some(handler);
                     (&self.current_circuit).as_ref()
@@ -106,7 +106,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 .map(|(hard_fork_name, build)| {
                     let handler = build(proof_type, config, geth_client.clone()).expect("failed to build circuits handler");
                     let vk = handler.get_vk(proof_type)
-                        .map_or("".to_string(), |vk| utils::encode_vk(vk));
+                        .map_or("".to_string(), utils::encode_vk);
                     log::info!("vk for {hard_fork_name} is {vk}");
                     vk
                 })

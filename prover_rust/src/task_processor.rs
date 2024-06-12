@@ -1,6 +1,5 @@
 use super::{prover::Prover, task_cache::TaskCache};
 use anyhow::{Context, Result};
-use log;
 use std::rc::Rc;
 
 pub struct TaskProcessor<'a> {

@@ -37,13 +37,13 @@ pub struct NextCircuitsHandler {
 impl NextCircuitsHandler {
     pub fn new(proof_type: ProofType, params_dir: &str, assets_dir: &str, geth_client: Option<Rc<RefCell<GethClient>>>) -> Result<Self> {
         match proof_type {
-            ProofType::ProofTypeChunk => Ok(Self {
+            ProofType::Chunk => Ok(Self {
                 chunk_prover: Some(RefCell::new(ChunkProver::from_dirs(params_dir, assets_dir))),
                 batch_prover: None,
                 geth_client,
             }),
 
-            ProofType::ProofTypeBatch => Ok(Self {
+            ProofType::Batch => Ok(Self {
                 batch_prover: Some(RefCell::new(BatchProver::from_dirs(params_dir, assets_dir))),
                 chunk_prover: None,
                 geth_client,
@@ -121,13 +121,13 @@ impl NextCircuitsHandler {
         &self,
         block_hashes: &Vec<CommonHash>,
     ) -> Result<Vec<BlockTrace>> {
-        if block_hashes.len() == 0 {
+        if block_hashes.is_empty() {
             log::error!("[prover] failed to get sorted traces: block_hashes are empty");
             bail!("block_hashes are empty")
         }
 
         let mut block_traces = Vec::new();
-        for (_, hash) in block_hashes.into_iter().enumerate() {
+        for hash in block_hashes.iter() {
             let trace = self
                 .geth_client
                 .as_ref()
@@ -138,9 +138,9 @@ impl NextCircuitsHandler {
         }
 
         block_traces.sort_by(|a, b| {
-            if get_block_number(a) == None {
+            if get_block_number(a).is_none() {
                 Ordering::Less
-            } else if get_block_number(b) == None {
+            } else if get_block_number(b).is_none() {
                 Ordering::Greater
             } else {
                 get_block_number(a)
@@ -151,10 +151,7 @@ impl NextCircuitsHandler {
 
         let block_numbers: Vec<u64> = block_traces
             .iter()
-            .map(|trace| match get_block_number(trace) {
-                Some(v) => v,
-                None => 0,
-            })
+            .map(|trace| get_block_number(trace).unwrap_or(0))
             .collect();
         let mut i = 0;
         while i < block_numbers.len() - 1 {
@@ -176,11 +173,11 @@ impl NextCircuitsHandler {
 impl CircuitsHandler for NextCircuitsHandler {
     fn get_vk(&self, task_type: ProofType) -> Option<Vec<u8>> {
         match task_type {
-            ProofType::ProofTypeChunk => {
+            ProofType::Chunk => {
                 self.chunk_prover.as_ref()
                 .and_then(|prover| prover.borrow().get_vk())
             },
-            ProofType::ProofTypeBatch => {
+            ProofType::Batch => {
                 self.batch_prover.as_ref()
                 .and_then(|prover| prover.borrow().get_vk())
             },
@@ -190,8 +187,8 @@ impl CircuitsHandler for NextCircuitsHandler {
 
     fn get_proof_data(&self, task_type: ProofType, task: &crate::types::Task) -> Result<String> {
         match task_type {
-            ProofType::ProofTypeChunk => self.gen_chunk_proof(task),
-            ProofType::ProofTypeBatch => self.gen_batch_proof(task),
+            ProofType::Chunk => self.gen_chunk_proof(task),
+            ProofType::Batch => self.gen_batch_proof(task),
             _ => unreachable!()
         }
     }

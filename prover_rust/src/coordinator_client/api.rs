@@ -6,13 +6,13 @@ use core::time::Duration;
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use reqwest_retry::{RetryTransientMiddleware, policies::ExponentialBackoff};
 
-pub struct API {
+pub struct Api {
     url_base: Url,
     send_timeout: Duration,
     pub client: ClientWithMiddleware,
 }
 
-impl API {
+impl Api {
     pub fn new(url_base: &String, send_timeout: Duration, retry_count: u32, retry_wait_time_sec: u64) -> Result<Self> {
         let retry_wait_duration = core::time::Duration::from_secs(retry_wait_time_sec);
         let retry_policy = ExponentialBackoff::builder()
@@ -24,7 +24,7 @@ impl API {
         .build();
 
         Ok(Self {
-            url_base: Url::parse(&url_base)?,
+            url_base: Url::parse(url_base)?,
             send_timeout,
             client,
         })
@@ -53,7 +53,7 @@ impl API {
         token: &String,
     ) -> Result<Response<LoginResponseData>> {
         let method = "/coordinator/v1/login";
-        self.post_with_token(&method, req, token).await
+        self.post_with_token(method, req, token).await
     }
 
     pub async fn get_task(
@@ -62,7 +62,7 @@ impl API {
         token: &String,
     ) -> Result<Response<GetTaskResponseData>> {
         let method = "/coordinator/v1/get_task";
-        self.post_with_token(&method, req, token).await
+        self.post_with_token(method, req, token).await
     }
 
     pub async fn submit_proof(
@@ -71,7 +71,7 @@ impl API {
         token: &String,
     ) -> Result<Response<SubmitProofResponseData>> {
         let method = "/coordinator/v1/submit_proof";
-        self.post_with_token(&method, req, token).await
+        self.post_with_token(method, req, token).await
     }
 
     async fn post_with_token<Req, Resp>(

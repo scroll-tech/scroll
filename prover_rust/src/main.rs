@@ -17,7 +17,6 @@ use prover::Prover;
 use std::rc::Rc;
 use task_cache::{ClearCacheCoordinatorListener, TaskCache};
 use task_processor::TaskProcessor;
-use log;
 
 /// Simple program to greet a person
 #[derive(Parser, Debug)]

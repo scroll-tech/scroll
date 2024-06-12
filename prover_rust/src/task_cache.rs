@@ -4,7 +4,6 @@ use super::coordinator_client::{listener::Listener, types::SubmitProofRequest};
 use crate::types::TaskWrapper;
 use sled::{Config, Db};
 use std::rc::Rc;
-use log;
 
 pub struct TaskCache {
     db: Db,

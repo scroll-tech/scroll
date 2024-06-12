@@ -2,7 +2,6 @@ use anyhow::{bail, Context, Error, Ok, Result};
 use ethers_core::types::U64;
 
 use std::{cell::RefCell, rc::Rc};
-use log;
 
 use crate::{
     config::Config,
@@ -31,14 +30,14 @@ impl<'a> Prover<'a> {
         let keystore_path = &config.keystore_path;
         let keystore_password = &config.keystore_password;
 
-        let key_signer = Rc::new(KeySigner::new(&keystore_path, &keystore_password)?);
+        let key_signer = Rc::new(KeySigner::new(keystore_path, keystore_password)?);
         let coordinator_client = CoordinatorClient::new(
             config,
             Rc::clone(&key_signer),
             coordinator_listener,
         ).context("failed to create coordinator_client")?;
 
-        let geth_client = if config.proof_type == ProofType::ProofTypeChunk {
+        let geth_client = if config.proof_type == ProofType::Chunk {
             Some(Rc::new(RefCell::new(GethClient::new(
                 &config.prover_name,
                 &config.l2geth.as_ref().unwrap().endpoint,
@@ -80,7 +79,7 @@ impl<'a> Prover<'a> {
             vks: self.circuits_handler_provider.borrow().get_vks(),
         };
 
-        if self.get_proof_type() == ProofType::ProofTypeChunk {
+        if self.get_proof_type() == ProofType::Chunk {
             let latest_block_number = self.get_latest_block_number_value()?;
             if let Some(v) = latest_block_number {
                 if v.as_u64() == 0 {

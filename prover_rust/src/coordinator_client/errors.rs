@@ -1,5 +1,4 @@
 use serde::{Deserialize, Deserializer};
-use log;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ErrorCode {

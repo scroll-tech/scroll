@@ -6,10 +6,9 @@ pub mod types;
 use anyhow::{bail, Context, Ok, Result};
 use std::rc::Rc;
 
-use api::API;
+use api::Api;
 use errors::*;
 use listener::Listener;
-use log;
 use tokio::runtime::Runtime;
 use types::*;
 
@@ -17,7 +16,7 @@ use crate::key_signer::KeySigner;
 use crate::config::Config;
 
 pub struct CoordinatorClient<'a> {
-    api: API,
+    api: Api,
     token: Option<String>,
     config: &'a Config,
     key_signer: Rc<KeySigner>,
@@ -35,7 +34,7 @@ impl<'a> CoordinatorClient<'a> {
             .enable_all()
             .build()?;
 
-        let api = API::new(&config.coordinator.base_url,
+        let api = Api::new(&config.coordinator.base_url,
             core::time::Duration::from_secs(config.coordinator.connection_timeout_sec),
             config.coordinator.retry_count,
             config.coordinator.retry_wait_time_sec
@@ -121,7 +120,7 @@ impl<'a> CoordinatorClient<'a> {
     ) -> Result<Response<SubmitProofResponseData>> {
         let response = self
             .rt
-            .block_on(self.api.submit_proof(req, &self.token.as_ref().unwrap()))?;
+            .block_on(self.api.submit_proof(req, self.token.as_ref().unwrap()))?;
         self.listener.on_proof_submitted(req);
         Ok(response)
     }

@@ -7,17 +7,17 @@ pub type CommonHash = H256;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ProofType {
-    ProofTypeUndefined,
-    ProofTypeChunk,
-    ProofTypeBatch,
+    Undefined,
+    Chunk,
+    Batch,
 }
 
 impl ProofType {
     fn from_u8(v: u8) -> Self {
         match v {
-            1 => ProofType::ProofTypeChunk,
-            2 => ProofType::ProofTypeBatch,
-            _ => ProofType::ProofTypeUndefined,
+            1 => ProofType::Chunk,
+            2 => ProofType::Batch,
+            _ => ProofType::Undefined,
         }
     }
 }
@@ -28,9 +28,9 @@ impl Serialize for ProofType {
         S: Serializer,
     {
         match *self {
-            ProofType::ProofTypeUndefined => serializer.serialize_i8(0),
-            ProofType::ProofTypeChunk => serializer.serialize_i8(1),
-            ProofType::ProofTypeBatch => serializer.serialize_i8(2),
+            ProofType::Undefined => serializer.serialize_i8(0),
+            ProofType::Chunk => serializer.serialize_i8(1),
+            ProofType::Batch => serializer.serialize_i8(2),
         }
     }
 }
@@ -47,7 +47,7 @@ impl<'de> Deserialize<'de> for ProofType {
 
 impl Default for ProofType {
     fn default() -> Self {
-        Self::ProofTypeUndefined
+        Self::Undefined
     }
 }
 
