@@ -1,4 +1,5 @@
-
+#!/bin/bash
+set -ue
 
 higher_zkevm_item=`grep "zkevm-circuits.git" ./Cargo.lock | sort | uniq | awk -F "[#=]" '{print $3" "$4}' | sort -k 1 | tail -n 1`
 
