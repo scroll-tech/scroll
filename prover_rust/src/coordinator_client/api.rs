@@ -1,10 +1,10 @@
 use super::types::*;
 use anyhow::{bail, Result};
-use reqwest::{header::CONTENT_TYPE, Url};
-use serde::Serialize;
 use core::time::Duration;
+use reqwest::{header::CONTENT_TYPE, Url};
 use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
-use reqwest_retry::{RetryTransientMiddleware, policies::ExponentialBackoff};
+use reqwest_retry::{policies::ExponentialBackoff, RetryTransientMiddleware};
+use serde::Serialize;
 
 pub struct Api {
     url_base: Url,
@@ -13,15 +13,20 @@ pub struct Api {
 }
 
 impl Api {
-    pub fn new(url_base: &str, send_timeout: Duration, retry_count: u32, retry_wait_time_sec: u64) -> Result<Self> {
+    pub fn new(
+        url_base: &str,
+        send_timeout: Duration,
+        retry_count: u32,
+        retry_wait_time_sec: u64,
+    ) -> Result<Self> {
         let retry_wait_duration = core::time::Duration::from_secs(retry_wait_time_sec);
         let retry_policy = ExponentialBackoff::builder()
-        .retry_bounds(retry_wait_duration / 2, retry_wait_duration)
-        .build_with_max_retries(retry_count);
+            .retry_bounds(retry_wait_duration / 2, retry_wait_duration)
+            .build_with_max_retries(retry_count);
 
         let client = ClientBuilder::new(reqwest::Client::new())
-        .with(RetryTransientMiddleware::new_with_policy(retry_policy))
-        .build();
+            .with(RetryTransientMiddleware::new_with_policy(retry_policy))
+            .build();
 
         Ok(Self {
             url_base: Url::parse(url_base)?,

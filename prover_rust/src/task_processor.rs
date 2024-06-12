@@ -53,9 +53,7 @@ impl<'a> TaskProcessor<'a> {
                 task_wrapper.task.id
             );
             let result = match self.prover.prove_task(&task_wrapper.task) {
-                Ok(proof_detail) => self
-                    .prover
-                    .submit_proof(proof_detail, &task_wrapper.task),
+                Ok(proof_detail) => self.prover.submit_proof(proof_detail, &task_wrapper.task),
                 Err(error) => self.prover.submit_error(
                     &task_wrapper.task,
                     super::types::ProofFailureType::NoPanic,

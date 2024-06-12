@@ -3,7 +3,7 @@ use anyhow::Result;
 use ethers_core::types::BlockNumber;
 use tokio::runtime::Runtime;
 
-use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::fmt::Debug;
 
 use ethers_providers::{Http, Provider};
@@ -11,10 +11,10 @@ use ethers_providers::{Http, Provider};
 // ======================= types ============================
 
 /// L2 block full trace which tracks to the version in golang.
-/// 
+///
 /// The inner block_trace is a generic type, whose real implementation
 /// lies in two version's zkevm-circuits library.
-/// 
+///
 /// The inner block_trace missed some fields compared to the go version.
 /// These fields are defined here for clarity although not used.
 #[derive(Deserialize, Serialize, Default, Debug, Clone)]
@@ -53,7 +53,9 @@ impl GethClient {
     }
 
     pub fn get_block_trace_by_hash<T>(&mut self, hash: &CommonHash) -> Result<BlockTrace<T>>
-    where T: Serialize + DeserializeOwned + Debug + Send {
+    where
+        T: Serialize + DeserializeOwned + Debug + Send,
+    {
         log::info!(
             "{}: calling get_block_trace_by_hash, hash: {:#?}",
             self.id,

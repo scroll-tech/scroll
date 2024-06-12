@@ -12,8 +12,7 @@ use listener::Listener;
 use tokio::runtime::Runtime;
 use types::*;
 
-use crate::key_signer::KeySigner;
-use crate::config::Config;
+use crate::{config::Config, key_signer::KeySigner};
 
 pub struct CoordinatorClient<'a> {
     api: Api,
@@ -34,10 +33,11 @@ impl<'a> CoordinatorClient<'a> {
             .enable_all()
             .build()?;
 
-        let api = Api::new(&config.coordinator.base_url,
+        let api = Api::new(
+            &config.coordinator.base_url,
             core::time::Duration::from_secs(config.coordinator.connection_timeout_sec),
             config.coordinator.retry_count,
-            config.coordinator.retry_wait_time_sec
+            config.coordinator.retry_wait_time_sec,
         )?;
         let mut client = Self {
             api,

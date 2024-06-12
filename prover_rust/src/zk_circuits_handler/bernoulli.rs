@@ -1,18 +1,19 @@
 use super::CircuitsHandler;
-use once_cell::sync::Lazy;
 use crate::{geth_client::GethClient, types::ProofType};
 use anyhow::{bail, Ok, Result};
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 
-use crate::types::{Task, CommonHash};
-use std::{cell::RefCell, env, cmp::Ordering, rc::Rc};
-use prover::{aggregator::Prover as BatchProver, zkevm::Prover as ChunkProver};
-use prover::{BlockTrace, ChunkHash, ChunkProof};
+use crate::types::{CommonHash, Task};
+use prover::{
+    aggregator::Prover as BatchProver, zkevm::Prover as ChunkProver, BlockTrace, ChunkHash,
+    ChunkProof,
+};
+use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
 // Only used for debugging.
 pub(crate) static OUTPUT_DIR: Lazy<Option<String>> =
     Lazy::new(|| env::var("PROVER_OUTPUT_DIR").ok());
-
 
 #[derive(Deserialize)]
 pub struct BatchTaskDetail {
@@ -37,7 +38,12 @@ pub struct BaseCircuitsHandler {
 }
 
 impl BaseCircuitsHandler {
-    pub fn new(proof_type: ProofType, params_dir: &str, assets_dir: &str, geth_client: Option<Rc<RefCell<GethClient>>>) -> Result<Self> {
+    pub fn new(
+        proof_type: ProofType,
+        params_dir: &str,
+        assets_dir: &str,
+        geth_client: Option<Rc<RefCell<GethClient>>>,
+    ) -> Result<Self> {
         match proof_type {
             ProofType::Chunk => Ok(Self {
                 chunk_prover: Some(RefCell::new(ChunkProver::from_dirs(params_dir, assets_dir))),
@@ -57,9 +63,12 @@ impl BaseCircuitsHandler {
     fn gen_chunk_proof(&self, task: &crate::types::Task) -> Result<String> {
         let chunk_trace = self.gen_chunk_traces(task)?;
         if let Some(prover) = self.chunk_prover.as_ref() {
-            let chunk_proof = prover
-                .borrow_mut()
-                .gen_chunk_proof(chunk_trace, None, None, self.get_output_dir())?;
+            let chunk_proof = prover.borrow_mut().gen_chunk_proof(
+                chunk_trace,
+                None,
+                None,
+                self.get_output_dir(),
+            )?;
 
             return serde_json::to_string(&chunk_proof).map_err(|e| anyhow::anyhow!(e));
         }
@@ -73,20 +82,16 @@ impl BaseCircuitsHandler {
             chunk_hashes_proofs.iter().map(|t| t.1.clone()).collect();
 
         if let Some(prover) = self.batch_prover.as_ref() {
-            let is_valid = prover
-                .borrow_mut()
-                .check_chunk_proofs(&chunk_proofs);
+            let is_valid = prover.borrow_mut().check_chunk_proofs(&chunk_proofs);
 
             if !is_valid {
                 bail!("non-match chunk protocol, task-id: {}", &task.id)
             }
-            let batch_proof = prover
-                .borrow_mut()
-                .gen_agg_evm_proof(
-                    chunk_hashes_proofs,
-                    None,
-                    self.get_output_dir(),
-                )?;
+            let batch_proof = prover.borrow_mut().gen_agg_evm_proof(
+                chunk_hashes_proofs,
+                None,
+                self.get_output_dir(),
+            )?;
 
             return serde_json::to_string(&batch_proof).map_err(|e| anyhow::anyhow!(e));
         }
@@ -113,10 +118,7 @@ impl BaseCircuitsHandler {
             .collect())
     }
 
-    fn get_sorted_traces_by_hashes(
-        &self,
-        block_hashes: &[CommonHash],
-    ) -> Result<Vec<BlockTrace>> {
+    fn get_sorted_traces_by_hashes(&self, block_hashes: &[CommonHash]) -> Result<Vec<BlockTrace>> {
         if block_hashes.is_empty() {
             log::error!("[prover] failed to get sorted traces: block_hashes are empty");
             bail!("block_hashes are empty")
@@ -152,7 +154,11 @@ impl BaseCircuitsHandler {
         let mut i = 0;
         while i < block_numbers.len() - 1 {
             if block_numbers[i] + 1 != block_numbers[i + 1] {
-                log::error!("[prover] block numbers are not continuous, got {} and {}", block_numbers[i], block_numbers[i + 1]);
+                log::error!(
+                    "[prover] block numbers are not continuous, got {} and {}",
+                    block_numbers[i],
+                    block_numbers[i + 1]
+                );
                 bail!(
                     "block numbers are not continuous, got {} and {}",
                     block_numbers[i],
@@ -169,15 +175,15 @@ impl BaseCircuitsHandler {
 impl CircuitsHandler for BaseCircuitsHandler {
     fn get_vk(&self, task_type: ProofType) -> Option<Vec<u8>> {
         match task_type {
-            ProofType::Chunk => {
-                self.chunk_prover.as_ref()
-                .and_then(|prover| prover.borrow().get_vk())
-            },
-            ProofType::Batch => {
-                self.batch_prover.as_ref()
-                .and_then(|prover| prover.borrow().get_vk())
-            },
-            _ => unreachable!()
+            ProofType::Chunk => self
+                .chunk_prover
+                .as_ref()
+                .and_then(|prover| prover.borrow().get_vk()),
+            ProofType::Batch => self
+                .batch_prover
+                .as_ref()
+                .and_then(|prover| prover.borrow().get_vk()),
+            _ => unreachable!(),
         }
     }
 
@@ -185,7 +191,7 @@ impl CircuitsHandler for BaseCircuitsHandler {
         match task_type {
             ProofType::Chunk => self.gen_chunk_proof(task),
             ProofType::Batch => self.gen_batch_proof(task),
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 }

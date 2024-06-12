@@ -5,9 +5,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     config::Config,
-    coordinator_client::{
-        listener::Listener, types::*, CoordinatorClient,
-    },
+    coordinator_client::{listener::Listener, types::*, CoordinatorClient},
     geth_client::GethClient,
     key_signer::KeySigner,
     types::{ProofFailureType, ProofStatus, ProofType},
@@ -31,26 +29,24 @@ impl<'a> Prover<'a> {
         let keystore_password = &config.keystore_password;
 
         let key_signer = Rc::new(KeySigner::new(keystore_path, keystore_password)?);
-        let coordinator_client = CoordinatorClient::new(
-            config,
-            Rc::clone(&key_signer),
-            coordinator_listener,
-        ).context("failed to create coordinator_client")?;
+        let coordinator_client =
+            CoordinatorClient::new(config, Rc::clone(&key_signer), coordinator_listener)
+                .context("failed to create coordinator_client")?;
 
         let geth_client = if config.proof_type == ProofType::Chunk {
-            Some(Rc::new(RefCell::new(GethClient::new(
-                &config.prover_name,
-                &config.l2geth.as_ref().unwrap().endpoint,
-            ).context("failed to create l2 geth_client")?)))
+            Some(Rc::new(RefCell::new(
+                GethClient::new(
+                    &config.prover_name,
+                    &config.l2geth.as_ref().unwrap().endpoint,
+                )
+                .context("failed to create l2 geth_client")?,
+            )))
         } else {
             None
         };
 
-        let provider = CircuitsHandlerProvider::new(
-            proof_type,
-            config,
-            geth_client.clone(),
-        ).context("failed to create circuits handler provider")?;
+        let provider = CircuitsHandlerProvider::new(proof_type, config, geth_client.clone())
+            .context("failed to create circuits handler provider")?;
 
         let prover = Prover {
             config,
@@ -103,8 +99,11 @@ impl<'a> Prover<'a> {
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
         log::info!("[prover] start to prove_task, task id: {}", task.id);
-        let handler: Rc<Box<dyn CircuitsHandler>> = self.circuits_handler_provider.borrow_mut()
-            .get_circuits_handler(&task.hard_fork_name).context("failed to get circuit handler")?;
+        let handler: Rc<Box<dyn CircuitsHandler>> = self
+            .circuits_handler_provider
+            .borrow_mut()
+            .get_circuits_handler(&task.hard_fork_name)
+            .context("failed to get circuit handler")?;
         self.do_prove(task, handler)
     }
 
@@ -120,7 +119,10 @@ impl<'a> Prover<'a> {
     }
 
     pub fn submit_proof(&self, proof_detail: ProofDetail, task: &Task) -> Result<()> {
-        log::info!("[prover] start to submit_proof, task id: {}", proof_detail.id);
+        log::info!(
+            "[prover] start to submit_proof, task id: {}",
+            proof_detail.id
+        );
 
         let request = SubmitProofRequest {
             uuid: task.uuid.clone(),

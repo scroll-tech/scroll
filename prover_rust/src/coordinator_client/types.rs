@@ -1,7 +1,7 @@
+use super::errors::ErrorCode;
 use crate::types::{ProofFailureType, ProofStatus};
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
-use super::errors::ErrorCode;
 
 #[derive(Deserialize)]
 pub struct Response<T> {

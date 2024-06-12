@@ -10,9 +10,9 @@ mod utils;
 mod version;
 mod zk_circuits_handler;
 
-use clap::{Parser, ArgAction};
 use anyhow::Result;
-use config::{Config, AssetsDirEnvConfig};
+use clap::{ArgAction, Parser};
+use config::{AssetsDirEnvConfig, Config};
 use prover::Prover;
 use std::rc::Rc;
 use task_cache::{ClearCacheCoordinatorListener, TaskCache};
@@ -60,7 +60,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let prover = Prover::new(&config, coordinator_listener)?;
 
-    log::info!("prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",
+    log::info!(
+        "prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",
         config.prover_name,
         config.proof_type,
         prover.get_public_key(),

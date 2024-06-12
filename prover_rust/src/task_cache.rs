@@ -21,7 +21,10 @@ impl TaskCache {
         let k = task_wrapper.task.id.clone().into_bytes();
         let v = serde_json::to_vec(task_wrapper)?;
         self.db.insert(k, v)?;
-        log::info!("[task_cache] put_task with task_id: {}", task_wrapper.task.id);
+        log::info!(
+            "[task_cache] put_task with task_id: {}",
+            task_wrapper.task.id
+        );
         Ok(())
     }
 
@@ -30,7 +33,10 @@ impl TaskCache {
         if let Some((k, v)) = last {
             let kk = std::str::from_utf8(k.as_ref())?;
             let task_wrapper: TaskWrapper = serde_json::from_slice(v.as_ref())?;
-            log::info!("[task_cache] get_last_task with task_id: {kk}, count: {}", task_wrapper.get_count());
+            log::info!(
+                "[task_cache] get_last_task with task_id: {kk}, count: {}",
+                task_wrapper.get_count()
+            );
             return Ok(Some(task_wrapper));
         }
         Ok(None)
