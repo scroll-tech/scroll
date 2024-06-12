@@ -1,4 +1,4 @@
-name: Prover
+name: ProverRust
 
 on:
   push:
@@ -25,8 +25,23 @@ defaults:
     working-directory: 'prover_rust'
 
 jobs:
+  skip_check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          cancel_others: 'true'
+          concurrent_skipping: 'same_content_newer'
+          paths_ignore: '["**/README.md"]'
+
   compile:
-    if: github.event_name == 'push' # will only be triggered when pushing to main & staging & develop & alpha
+    needs: [skip_check]
+    if: |
+      github.event.pull_request.draft == false &&
+      (github.event.action == 'ready_for_review' || needs.skip_check.outputs.should_skip != 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,9 +58,10 @@ jobs:
           make prover
   
   clippy:
+    needs: [skip_check]
     if: |
       github.event.pull_request.draft == false &&
-      github.event.action == 'ready_for_review'
+      (github.event.action == 'ready_for_review' || needs.skip_check.outputs.should_skip != 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
