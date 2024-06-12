@@ -1,7 +1,7 @@
 mod bernoulli;
 mod curie;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use bernoulli::BaseCircuitsHandler;
 use curie::NextCircuitsHandler;
 use std::collections::HashMap;
@@ -32,7 +32,7 @@ pub struct CircuitsHandlerProvider<'a> {
     circuits_handler_builder_map: HashMap<HardForkName, CircuitsHandlerBuilder>,
 
     current_hard_fork_name: Option<HardForkName>,
-    current_circuit: Option<Box<dyn CircuitsHandler>>,
+    current_circuit: Option<Rc<Box<dyn CircuitsHandler>>>,
     vks: Vec<String>,
 }
 
@@ -78,22 +78,30 @@ impl<'a> CircuitsHandlerProvider<'a> {
         Ok(provider)
     }
 
-    pub fn get_circuits_handler(&mut self, hard_fork_name: &String) -> Option<&Box<dyn CircuitsHandler>> {
+    pub fn get_circuits_handler(&mut self, hard_fork_name: &String) -> Result<Rc<Box<dyn CircuitsHandler>>> {
         match &self.current_hard_fork_name {
             Some(name) if name == hard_fork_name => {
                 log::info!("get circuits handler from cache");
-                (&self.current_circuit).as_ref()
+                if let Some(handler) = &self.current_circuit {
+                    Ok(handler.clone())
+                } else {
+                    log::error!("missing cached handler, there must be something wrong.");
+                    bail!("missing cached handler, there must be something wrong.")
+                }
             },
             _ => {
                 log::info!("failed to get circuits handler from cache, create a new one: {hard_fork_name}");
-                let builder = self.circuits_handler_builder_map.get(hard_fork_name);
-                builder.and_then(|build| {
+                if let Some(builder) = self.circuits_handler_builder_map.get(hard_fork_name) {
                     log::info!("building circuits handler for {hard_fork_name}");
-                    let handler = build(self.proof_type, self.config, self.geth_client.clone()).expect("failed to build circuits handler");
+                    let handler = builder(self.proof_type, self.config, self.geth_client.clone()).expect("failed to build circuits handler");
                     self.current_hard_fork_name = Some(hard_fork_name.clone());
-                    self.current_circuit = Some(handler);
-                    (&self.current_circuit).as_ref()
-                } )
+                    let rc_handler = Rc::new(handler);
+                    self.current_circuit = Some(rc_handler.clone());
+                    Ok(rc_handler)
+                } else {
+                    log::error!("missing builder, there must be something wrong.");
+                    bail!("missing builder, there must be something wrong.")
+                }
             }
         }
     }
@@ -106,7 +114,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 .map(|(hard_fork_name, build)| {
                     let handler = build(proof_type, config, geth_client.clone()).expect("failed to build circuits handler");
                     let vk = handler.get_vk(proof_type)
-                        .map_or("".to_string(), utils::encode_vk);
+                        .map_or("".to_string(),  utils::encode_vk);
                     log::info!("vk for {hard_fork_name} is {vk}");
                     vk
                 })

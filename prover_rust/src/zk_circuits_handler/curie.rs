@@ -119,7 +119,7 @@ impl NextCircuitsHandler {
 
     fn get_sorted_traces_by_hashes(
         &self,
-        block_hashes: &Vec<CommonHash>,
+        block_hashes: &[CommonHash],
     ) -> Result<Vec<BlockTrace>> {
         if block_hashes.is_empty() {
             log::error!("[prover] failed to get sorted traces: block_hashes are empty");

@@ -13,7 +13,7 @@ pub struct Api {
 }
 
 impl Api {
-    pub fn new(url_base: &String, send_timeout: Duration, retry_count: u32, retry_wait_time_sec: u64) -> Result<Self> {
+    pub fn new(url_base: &str, send_timeout: Duration, retry_count: u32, retry_wait_time_sec: u64) -> Result<Self> {
         let retry_wait_duration = core::time::Duration::from_secs(retry_wait_time_sec);
         let retry_policy = ExponentialBackoff::builder()
         .retry_bounds(retry_wait_duration / 2, retry_wait_duration)

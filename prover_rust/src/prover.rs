@@ -103,15 +103,12 @@ impl<'a> Prover<'a> {
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
         log::info!("[prover] start to prove_task, task id: {}", task.id);
-        if let Some(handler) = self.circuits_handler_provider.borrow_mut().get_circuits_handler(&task.hard_fork_name) {
-            self.do_prove(task, handler)
-        } else {
-            log::error!("failed to get a circuit handler");
-            bail!("failed to get a circuit handler")
-        }
+        let handler: Rc<Box<dyn CircuitsHandler>> = self.circuits_handler_provider.borrow_mut()
+            .get_circuits_handler(&task.hard_fork_name).context("failed to get circuit handler")?;
+        self.do_prove(task, handler)
     }
 
-    fn do_prove(&self, task: &Task, handler: &Box<dyn CircuitsHandler>) -> Result<ProofDetail> {
+    fn do_prove(&self, task: &Task, handler: Rc<Box<dyn CircuitsHandler>>) -> Result<ProofDetail> {
         let mut proof_detail = ProofDetail {
             id: task.id.clone(),
             proof_type: task.task_type,
