@@ -1,0 +1,62 @@
+name: Prover
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+      - develop
+      - alpha
+    paths:
+      - 'prover_rust/**'
+      - '.github/workflows/prover_rust.yml'
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+    paths:
+      - 'prover_rust/**'
+      - '.github/workflows/prover_rust.yml'
+
+defaults:
+  run:
+    working-directory: 'prover_rust'
+
+jobs:
+  compile:
+    if: github.event_name == 'push' # will only be triggered when pushing to main & staging & develop & alpha
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2023-12-03
+          components: rustfmt, clippy
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "prover_rust -> target"
+      - name: Test
+        run: |
+          make prover
+  
+  clippy:
+    if: |
+      github.event.pull_request.draft == false &&
+      github.event.action == 'ready_for_review'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2023-12-03
+          components: clippy
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "prover_rust -> target"
+      - name: Run clippy
+        run: cargo clippy --all-features --all-targets -- -D warnings
