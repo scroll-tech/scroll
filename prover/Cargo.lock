@@ -3439,7 +3439,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "prover_rust"
+name = "prover"
 version = "0.1.0"
 dependencies = [
  "anyhow",
