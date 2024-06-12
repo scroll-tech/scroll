@@ -4,7 +4,6 @@ pragma solidity =0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {IScrollChain} from "./IScrollChain.sol";
 import {IRollupVerifier} from "../../libraries/verifier/IRollupVerifier.sol";
 import {IZkEvmVerifier} from "../../libraries/verifier/IZkEvmVerifier.sol";
 
@@ -28,18 +27,8 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
     /// @dev Thrown when the given address is `address(0)`.
     error ErrorZeroAddress();
 
-    /// @dev Thrown when the given start batch index is finalized.
-    error ErrorStartBatchIndexFinalized();
-
     /// @dev Thrown when the given start batch index is smaller than `latestVerifier.startBatchIndex`.
     error ErrorStartBatchIndexTooSmall();
-
-    /*************
-     * Constants *
-     *************/
-
-    /// @notice The address of ScrollChain contract.
-    address public immutable scrollChain;
 
     /***********
      * Structs *
@@ -67,14 +56,7 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
      * Constructor *
      ***************/
 
-    constructor(
-        address _scrollChain,
-        uint256[] memory _versions,
-        address[] memory _verifiers
-    ) {
-        if (_scrollChain == address(0)) revert ErrorZeroAddress();
-        scrollChain = _scrollChain;
-
+    constructor(uint256[] memory _versions, address[] memory _verifiers) {
         for (uint256 i = 0; i < _versions.length; i++) {
             if (_verifiers[i] == address(0)) revert ErrorZeroAddress();
             latestVerifier[_versions[i]].verifier = _verifiers[i];
@@ -157,8 +139,11 @@ contract MultipleVersionRollupVerifier is IRollupVerifier, Ownable {
         uint64 _startBatchIndex,
         address _verifier
     ) external onlyOwner {
-        if (_startBatchIndex <= IScrollChain(scrollChain).lastFinalizedBatchIndex())
-            revert ErrorStartBatchIndexFinalized();
+        // We are using version to decide the verifier to use and also this function is
+        // controlled by 7 days TimeLock. It is hard to predict `lastFinalizedBatchIndex` after 7 days.
+        // So we decide to remove this check to make verifier updating more easier.
+        // if (_startBatchIndex <= IScrollChain(scrollChain).lastFinalizedBatchIndex())
+        //    revert ErrorStartBatchIndexFinalized();
 
         Verifier memory _latestVerifier = latestVerifier[_version];
         if (_startBatchIndex < _latestVerifier.startBatchIndex) revert ErrorStartBatchIndexTooSmall();

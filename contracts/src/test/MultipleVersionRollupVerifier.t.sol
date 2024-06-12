@@ -18,19 +18,17 @@ contract MultipleVersionRollupVerifierTest is DSTestPlus {
     MockZkEvmVerifier private v0;
     MockZkEvmVerifier private v1;
     MockZkEvmVerifier private v2;
-    MockScrollChain private chain;
 
     function setUp() external {
         v0 = new MockZkEvmVerifier();
         v1 = new MockZkEvmVerifier();
         v2 = new MockZkEvmVerifier();
 
-        chain = new MockScrollChain(address(1), address(1));
         uint256[] memory _versions = new uint256[](1);
         address[] memory _verifiers = new address[](1);
         _versions[0] = 0;
         _verifiers[0] = address(v0);
-        verifier = new MultipleVersionRollupVerifier(address(chain), _versions, _verifiers);
+        verifier = new MultipleVersionRollupVerifier(_versions, _verifiers);
     }
 
     function testUpdateVerifierVersion0(address _newVerifier) external {
@@ -41,10 +39,6 @@ contract MultipleVersionRollupVerifierTest is DSTestPlus {
         hevm.expectRevert("Ownable: caller is not the owner");
         verifier.updateVerifier(0, 0, address(0));
         hevm.stopPrank();
-
-        // start batch index finalized, revert
-        hevm.expectRevert(MultipleVersionRollupVerifier.ErrorStartBatchIndexFinalized.selector);
-        verifier.updateVerifier(0, 0, address(1));
 
         // zero verifier address, revert
         hevm.expectRevert(MultipleVersionRollupVerifier.ErrorZeroAddress.selector);
@@ -92,10 +86,6 @@ contract MultipleVersionRollupVerifierTest is DSTestPlus {
         hevm.expectRevert("Ownable: caller is not the owner");
         verifier.updateVerifier(version, 0, address(0));
         hevm.stopPrank();
-
-        // start batch index finalized, revert
-        hevm.expectRevert(MultipleVersionRollupVerifier.ErrorStartBatchIndexFinalized.selector);
-        verifier.updateVerifier(version, 0, address(1));
 
         // zero verifier address, revert
         hevm.expectRevert(MultipleVersionRollupVerifier.ErrorZeroAddress.selector);
