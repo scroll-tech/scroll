@@ -18,6 +18,7 @@ func TestDB(t *testing.T) {
 
 	db, err := testApps.GetGormDBClient()
 	assert.NoError(t, err)
+	assert.NotNil(t, db)
 
 	sqlDB, err := database.Ping(db)
 	assert.NoError(t, err)
