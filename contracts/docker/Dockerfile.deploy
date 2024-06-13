@@ -1,8 +1,24 @@
-FROM ghcr.io/foundry-rs/foundry:nightly-19d69f277de96f621d930cdb767a9693c55ae8e1 as foundry
+# Use the latest node Debian slim base image
+# This makes installing yarn dep much easier
+FROM node:20-bookworm-slim
 
-RUN apk add --no-cache bash jq
+# Switch to bash shell
+SHELL ["/bin/bash", "-c"]
 
-WORKDIR /contracts
+WORKDIR /root
+
+# Install dependencies
+RUN apt update
+RUN apt install --yes curl bash coreutils git jq
+
+# Download and run the Foundry installation script
+RUN curl -L https://foundry.paradigm.xyz | bash
+
+# Set the environment variables to ensure Foundry tools are in the PATH
+ENV PATH="/root/.foundry/bin:${PATH}"
+
+# Run foundryup to update Foundry
+RUN foundryup -v nightly-88011569efcebc9152267be217c8cfbedc32c07c
 
 # copy dependencies
 COPY ./lib /contracts/lib
@@ -20,6 +36,7 @@ COPY ./scripts /contracts/scripts
 ENV FOUNDRY_EVM_VERSION="cancun"
 ENV FOUNDRY_BYTECODE_HASH="none"
 
+WORKDIR /contracts
 RUN forge build
 
 # copy script configs
