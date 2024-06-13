@@ -262,7 +262,7 @@ library ZkTrieVerifier {
             ptr, storageValue := verifyStorageProof(poseidon, storageKey, storageRootHash, ptr)
 
             // the one and only boundary check
-            // in case an attacker crafted a malicous payload
+            // in case an attacker crafted a malicious payload
             // and succeeds in the prior verification steps
             // then this should catch any bogus accesses
             if iszero(eq(ptr, add(proof.offset, proof.length))) {
