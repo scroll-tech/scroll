@@ -1,5 +1,8 @@
 .PHONY: help fmt clippy test test-ci test-all
 
+build:
+	@cargo build --release
+
 fmt:
 	@cargo fmt --all -- --check
 
