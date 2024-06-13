@@ -3,7 +3,7 @@ use anyhow::Result;
 use ethers_core::types::BlockNumber;
 use tokio::runtime::Runtime;
 
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 
 use ethers_providers::{Http, Provider};
