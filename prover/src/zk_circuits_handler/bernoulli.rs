@@ -132,7 +132,7 @@ impl BaseCircuitsHandler {
                 .unwrap()
                 .borrow_mut()
                 .get_block_trace_by_hash(hash)?;
-            block_traces.push(trace.block_trace);
+            block_traces.push(trace);
         }
 
         block_traces.sort_by(|a, b| {

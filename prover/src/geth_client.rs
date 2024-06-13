@@ -8,30 +8,6 @@ use std::fmt::Debug;
 
 use ethers_providers::{Http, Provider};
 
-// ======================= types ============================
-
-/// L2 block full trace which tracks to the version in golang.
-///
-/// The inner block_trace is a generic type, whose real implementation
-/// lies in two version's zkevm-circuits library.
-///
-/// The inner block_trace missed some fields compared to the go version.
-/// These fields are defined here for clarity although not used.
-#[derive(Deserialize, Serialize, Default, Debug, Clone)]
-pub struct BlockTrace<T> {
-    #[serde(flatten)]
-    pub block_trace: T,
-
-    pub version: String,
-
-    pub withdraw_trie_root: Option<CommonHash>,
-
-    #[serde(rename = "mptwitness", default)]
-    pub mpt_witness: Vec<u8>,
-}
-
-// ======================= geth client ============================
-
 pub struct GethClient {
     id: String,
     provider: Provider<Http>,
@@ -52,7 +28,7 @@ impl GethClient {
         })
     }
 
-    pub fn get_block_trace_by_hash<T>(&mut self, hash: &CommonHash) -> Result<BlockTrace<T>>
+    pub fn get_block_trace_by_hash<T>(&mut self, hash: &CommonHash) -> Result<T>
     where
         T: Serialize + DeserializeOwned + Debug + Send,
     {
