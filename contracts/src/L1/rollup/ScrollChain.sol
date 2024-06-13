@@ -89,10 +89,10 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @dev Thrown when the number of batches to revert is zero.
     error ErrorRevertZeroBatches();
 
-    /// @dev Thrown when the reverted batches are not in the ending of commited batch chain.
+    /// @dev Thrown when the reverted batches are not in the ending of committed batch chain.
     error ErrorRevertNotStartFromEnd();
 
-    /// @dev Thrown when reverting a finialized batch.
+    /// @dev Thrown when reverting a finalized batch.
     error ErrorRevertFinalizedBatch();
 
     /// @dev Thrown when the given state root is zero.
@@ -580,7 +580,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @param _chunks The list of chunks to commit.
     /// @param _skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
     /// @return _batchDataHash The computed data hash for the list of chunks.
-    /// @return _totalL1MessagesPoppedInBatch The total number of L1 messages poped in this batch, including skipped one.
+    /// @return _totalL1MessagesPoppedInBatch The total number of L1 messages popped in this batch, including skipped one.
     function _commitChunksV0(
         uint256 _totalL1MessagesPoppedOverall,
         bytes[] memory _chunks,
@@ -627,7 +627,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
     /// @param _skippedL1MessageBitmap The bitmap indicates whether each L1 message is skipped or not.
     /// @return _blobVersionedHash The blob versioned hash for the blob carried in this transaction.
     /// @return _batchDataHash The computed data hash for the list of chunks.
-    /// @return _totalL1MessagesPoppedInBatch The total number of L1 messages poped in this batch, including skipped one.
+    /// @return _totalL1MessagesPoppedInBatch The total number of L1 messages popped in this batch, including skipped one.
     function _commitChunksV1(
         uint256 _totalL1MessagesPoppedOverall,
         bytes[] memory _chunks,
@@ -950,7 +950,7 @@ contract ScrollChain is OwnableUpgradeable, PausableUpgradeable, IScrollChain {
 
     /// @dev Internal function to pop finalized l1 messages.
     /// @param bitmapPtr The memory offset of `skippedL1MessageBitmap`.
-    /// @param totalL1MessagePopped The total number of L1 messages poped in all batches including current batch.
+    /// @param totalL1MessagePopped The total number of L1 messages popped in all batches including current batch.
     /// @param l1MessagePopped The number of L1 messages popped in current batch.
     function _popL1Messages(
         uint256 bitmapPtr,
