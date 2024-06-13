@@ -3,8 +3,8 @@
 package verifier
 
 /*
-#cgo LDFLAGS: -lzkp -lm -ldl -lzktrie -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
-#cgo gpu LDFLAGS: -lzkp -lm -ldl -lgmp -lstdc++ -lprocps -lzktrie -L/usr/local/cuda/lib64/ -lcudart -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
+#cgo LDFLAGS: -lzkp -lm -ldl -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
+#cgo gpu LDFLAGS: -lzkp -lm -ldl -lgmp -lstdc++ -lprocps -L/usr/local/cuda/lib64/ -lcudart -L${SRCDIR}/lib/ -Wl,-rpath=${SRCDIR}/lib
 #include <stdlib.h>
 #include "./lib/libzkp.h"
 */
@@ -164,9 +164,7 @@ func (v *Verifier) loadEmbedVK() error {
 		return err
 	}
 
-	v.BatchVKMap["shanghai"] = base64.StdEncoding.EncodeToString(batchVKBytes)
-	v.ChunkVKMap["shanghai"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
-	v.BatchVKMap[""] = base64.StdEncoding.EncodeToString(batchVKBytes)
-	v.ChunkVKMap[""] = base64.StdEncoding.EncodeToString(chunkVkBytes)
+	v.BatchVKMap["bernoulli"] = base64.StdEncoding.EncodeToString(batchVKBytes)
+	v.ChunkVKMap["bernoulli"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
 	return nil
 }

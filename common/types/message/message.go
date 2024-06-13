@@ -183,6 +183,12 @@ type ChunkInfo struct {
 	TxBytes       []byte      `json:"tx_bytes"`
 }
 
+// SubCircuitRowUsage tracing info added in v0.11.0rc8
+type SubCircuitRowUsage struct {
+	Name      string `json:"name"`
+	RowNumber uint64 `json:"row_number"`
+}
+
 // ChunkProof includes the proof info that are required for chunk verification and rollup.
 type ChunkProof struct {
 	StorageTrace []byte `json:"storage_trace,omitempty"`
@@ -191,8 +197,9 @@ type ChunkProof struct {
 	Instances    []byte `json:"instances"`
 	Vk           []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
-	ChunkInfo  *ChunkInfo `json:"chunk_info,omitempty"`
-	GitVersion string     `json:"git_version,omitempty"`
+	ChunkInfo  *ChunkInfo           `json:"chunk_info,omitempty"`
+	GitVersion string               `json:"git_version,omitempty"`
+	RowUsages  []SubCircuitRowUsage `json:"row_usages,omitempty"`
 }
 
 // BatchProof includes the proof info that are required for batch verification and rollup.

@@ -11,6 +11,7 @@ import (
 
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
@@ -21,7 +22,6 @@ import (
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 
@@ -29,6 +29,7 @@ import (
 
 	"scroll-tech/rollup/internal/controller/sender"
 	"scroll-tech/rollup/internal/orm"
+	rutils "scroll-tech/rollup/internal/utils"
 )
 
 func setupL2RelayerDB(t *testing.T) *gorm.DB {
@@ -50,7 +51,7 @@ func testCreateNewRelayer(t *testing.T) {
 }
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
 	for _, codecVersion := range codecVersions {
 		db := setupL2RelayerDB(t)
 		defer database.CloseDB(db)
@@ -72,9 +73,9 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 		assert.NoError(t, err)
 		chunkOrm := orm.NewChunk(db)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, rutils.ChunkMetrics{})
 		assert.NoError(t, err)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, rutils.ChunkMetrics{})
 		assert.NoError(t, err)
 
 		batch := &encoding.Batch{
@@ -85,7 +86,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 		}
 
 		batchOrm := orm.NewBatch(db)
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
 		assert.NoError(t, err)
 
 		relayer.ProcessPendingBatches()
@@ -100,7 +101,7 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 }
 
 func testL2RelayerProcessCommittedBatches(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
 	for _, codecVersion := range codecVersions {
 		db := setupL2RelayerDB(t)
 		defer database.CloseDB(db)
@@ -117,9 +118,9 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 		assert.NoError(t, err)
 		chunkOrm := orm.NewChunk(db)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, rutils.ChunkMetrics{})
 		assert.NoError(t, err)
-		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, rutils.ChunkMetrics{})
 		assert.NoError(t, err)
 
 		batch := &encoding.Batch{
@@ -130,7 +131,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 		}
 
 		batchOrm := orm.NewBatch(db)
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
 		assert.NoError(t, err)
 
 		err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
@@ -163,7 +164,7 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 }
 
 func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
 	for _, codecVersion := range codecVersions {
 		db := setupL2RelayerDB(t)
 		defer database.CloseDB(db)
@@ -182,9 +183,9 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 		assert.NoError(t, err)
 		chunkOrm := orm.NewChunk(db)
-		chunkDB1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion)
+		chunkDB1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, rutils.ChunkMetrics{})
 		assert.NoError(t, err)
-		chunkDB2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion)
+		chunkDB2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, rutils.ChunkMetrics{})
 		assert.NoError(t, err)
 
 		batch := &encoding.Batch{
@@ -195,7 +196,7 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 		}
 
 		batchOrm := orm.NewBatch(db)
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
 		assert.NoError(t, err)
 
 		err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
@@ -255,7 +256,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
 		}
 
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, rutils.BatchMetrics{})
 		assert.NoError(t, err)
 		batchHashes[i] = dbBatch.Hash
 	}
@@ -311,7 +312,7 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
 		}
 
-		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, rutils.BatchMetrics{})
 		assert.NoError(t, err)
 		batchHashes[i] = dbBatch.Hash
 	}
@@ -355,7 +356,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 	}
 
 	batchOrm := orm.NewBatch(db)
-	dbBatch1, err := batchOrm.InsertBatch(context.Background(), batch1, encoding.CodecV0)
+	dbBatch1, err := batchOrm.InsertBatch(context.Background(), batch1, encoding.CodecV0, rutils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	batch2 := &encoding.Batch{
@@ -365,7 +366,7 @@ func testL2RelayerGasOracleConfirm(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk2},
 	}
 
-	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2, encoding.CodecV0)
+	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2, encoding.CodecV0, rutils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	// Create and set up the Layer2 Relayer.
@@ -517,9 +518,9 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 	assert.NoError(t, err)
 	chunkOrm := orm.NewChunk(db)
-	_, err = chunkOrm.InsertChunk(context.Background(), chunk1, encoding.CodecV0)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk1, encoding.CodecV0, rutils.ChunkMetrics{})
 	assert.NoError(t, err)
-	_, err = chunkOrm.InsertChunk(context.Background(), chunk2, encoding.CodecV0)
+	_, err = chunkOrm.InsertChunk(context.Background(), chunk2, encoding.CodecV0, rutils.ChunkMetrics{})
 	assert.NoError(t, err)
 
 	batch := &encoding.Batch{
@@ -530,7 +531,7 @@ func testGetBatchStatusByIndex(t *testing.T) {
 	}
 
 	batchOrm := orm.NewBatch(db)
-	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, rutils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	status, err := relayer.getBatchStatusByIndex(dbBatch)
