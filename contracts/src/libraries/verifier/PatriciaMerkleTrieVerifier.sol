@@ -369,7 +369,7 @@ library PatriciaMerkleTrieVerifier {
 
                     // first item is considered the root node.
                     // Otherwise verifies that the hash of the current node
-                    // is the same as the previous choosen one.
+                    // is the same as the previous chosen one.
                     switch i
                     case 1 {
                         rootHash := hash
@@ -425,7 +425,7 @@ library PatriciaMerkleTrieVerifier {
                     }
                 }
 
-                // lastly, derive the path of the choosen one (TM)
+                // lastly, derive the path of the chosen one (TM)
                 path := derivePath(key, depth)
             }
 
