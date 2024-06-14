@@ -217,6 +217,12 @@ mod tests {
     use std::sync::LazyLock;
     use std::path::PathBuf;
 
+    #[ctor::ctor]
+    fn init() {
+        crate::utils::log_init(None);
+        log::info!("logger initialized");
+    }
+
     static DEFAULT_WORK_DIR: &str = "/assets";
     static WORK_DIR: LazyLock<String> = LazyLock::new(|| {
         std::env::var("CURIE_TEST_DIR").unwrap_or(String::from(DEFAULT_WORK_DIR)).trim_end_matches('/').to_string()
@@ -255,9 +261,12 @@ mod tests {
 
         check_vk(ProofType::Chunk, chunk_vk, "chunk vk must be available");
         let chunk_dir_paths = get_chunk_dir_paths()?;
+        log::info!("chunk_dir_paths, {:?}", chunk_dir_paths);
         let mut chunk_infos = vec![];
         let mut chunk_proofs = vec![];
         for (id, chunk_path) in chunk_dir_paths.into_iter().enumerate() {
+            let chunk_id = format!("chunk_proof{id}");
+            log::info!("start to process {chunk_id}");
             let chunk_trace = read_chunk_trace(chunk_path)?;
 
             let chunk_info = traces_to_chunk_info(chunk_trace.clone())?;
@@ -265,7 +274,7 @@ mod tests {
 
             let chunk_proof = chunk_handler.gen_chunk_proof_raw(chunk_trace)?;
             let proof_data = serde_json::to_string(&chunk_proof)?;
-            dump_proof(format!("chunk_proof{id}"), proof_data)?;
+            dump_proof(chunk_id, proof_data)?;
             chunk_proofs.push(chunk_proof);
         }
         
@@ -274,6 +283,7 @@ mod tests {
         let batch_vk = batch_handler.get_vk(ProofType::Batch).unwrap();
         check_vk(ProofType::Batch, batch_vk, "batch vk must be available");
         let chunk_hashes_proofs = chunk_infos.into_iter().zip(chunk_proofs).collect();
+        log::info!("start to prove batch");
         let batch_proof = batch_handler.gen_batch_proof_raw(chunk_hashes_proofs)?;
         let proof_data = serde_json::to_string(&batch_proof)?;
         dump_proof(format!("batch_proof"), proof_data)?;
@@ -282,11 +292,13 @@ mod tests {
     }
 
     fn check_vk(proof_type: ProofType, vk: Vec<u8>, info: &str) {
+        log::info!("check_vk, {:?}", proof_type);
         let vk_from_file = read_vk(proof_type).unwrap();
         assert_eq!(vk_from_file, encode_vk(vk), "{info}")
     }
 
     fn read_vk(proof_type: ProofType) -> Result<String> {
+        log::info!("read_vk, {:?}", proof_type);
         let vk_file = match proof_type {
             ProofType::Chunk => CHUNK_VK_PATH.clone(),
             ProofType::Batch => BATCH_VK_PATH.clone(),
@@ -298,6 +310,7 @@ mod tests {
     }
 
     fn read_chunk_trace(path: PathBuf) -> Result<Vec<BlockTrace>> {
+        log::info!("read_chunk_trace, {:?}", path);
         let mut chunk_trace: Vec<BlockTrace> = vec![];
 
         fn read_block_trace(file: &PathBuf) -> Result<BlockTrace> {
