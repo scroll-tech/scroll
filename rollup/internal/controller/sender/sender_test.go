@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	dockercompose "scroll-tech/common/docker-compose/l1"
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
 	"scroll-tech/database/migrate"
@@ -41,7 +40,6 @@ var (
 	privateKey           *ecdsa.PrivateKey
 	cfg                  *config.Config
 	testApps             *testcontainers.TestcontainerApps
-	posL1TestEnv         *dockercompose.PoSL1TestEnv
 	txTypes              = []string{"LegacyTx", "DynamicFeeTx", "DynamicFeeTx"}
 	txBlob               = []*kzg4844.Blob{nil, nil, randBlob()}
 	txUint8Types         = []uint8{0, 2, 3}
@@ -53,9 +51,6 @@ func TestMain(m *testing.M) {
 	defer func() {
 		if testApps != nil {
 			testApps.Free()
-		}
-		if posL1TestEnv != nil {
-			posL1TestEnv.Stop()
 		}
 	}()
 	m.Run()
@@ -73,16 +68,13 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	privateKey = priv
 
-	posL1TestEnv, err = dockercompose.NewPoSL1TestEnv()
-	assert.NoError(t, err, "failed to create PoS L1 test environment")
-	assert.NoError(t, posL1TestEnv.Start(), "failed to start PoS L1 test environment")
-
 	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
-	assert.NoError(t, testApps.StartL1GethContainer())
 	assert.NoError(t, testApps.StartL2GethContainer())
+	assert.NoError(t, testApps.StartPoSL1Container())
 
-	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint = posL1TestEnv.Endpoint()
+	cfg.L2Config.RelayerConfig.SenderConfig.Endpoint, err = testApps.GetPoSL1EndPoint()
+	assert.NoError(t, err)
 
 	db, err = testApps.GetGormDBClient()
 	assert.NoError(t, err)
@@ -90,7 +82,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	l1Client, err := posL1TestEnv.L1Client()
+	l1Client, err := testApps.GetPoSL1Client()
 	assert.NoError(t, err)
 
 	chainID, err := l1Client.ChainID(context.Background())
@@ -327,10 +319,10 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 
 		if txType == LegacyTxType { // Legacy transactions can not have an access list.
-			assert.Equal(t, uint64(43956), gasLimit)
+			assert.Equal(t, uint64(43935), gasLimit)
 			assert.Nil(t, accessList)
 		} else { // Dynamic fee and blob transactions can have an access list.
-			assert.Equal(t, uint64(43479), gasLimit)
+			assert.Equal(t, uint64(43458), gasLimit)
 			assert.NotNil(t, accessList)
 		}
 
@@ -757,9 +749,12 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	assert.True(t, ok)
 	pointHash := crypto.Keccak256Hash(versionedHash.Bytes())
 	pointBigInt := new(big.Int).SetBytes(pointHash.Bytes())
-	point := kzg4844.Point(new(big.Int).Mod(pointBigInt, blsModulo).Bytes())
+	pointBytes := new(big.Int).Mod(pointBigInt, blsModulo).Bytes()
+	start := 32 - len(pointBytes)
+	var point kzg4844.Point
+	copy(point[start:], pointBytes)
 	commitment := sideCar.Commitments[0]
-	proof, claim, err := kzg4844.ComputeProof(*blob, point)
+	proof, claim, err := kzg4844.ComputeProof(blob, point)
 	assert.NoError(t, err)
 
 	var claimArray [32]byte

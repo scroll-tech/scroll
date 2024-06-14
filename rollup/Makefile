@@ -1,4 +1,4 @@
-.PHONY: mock_abi rollup_bins event_watcher gas_oracle rollup_relayer test lint clean docker
+.PHONY: mock_abi libzstd rollup_bins event_watcher gas_oracle rollup_relayer test lint clean docker
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
@@ -31,9 +31,9 @@ clean: ## Empty out the bin folder
 	@rm -rf build/bin
 
 docker_push:
-	docker docker push scrolltech/gas-oracle:${IMAGE_VERSION}
-	docker docker push scrolltech/event-watcher:${IMAGE_VERSION}
-	docker docker push scrolltech/rollup-relayer:${IMAGE_VERSION}
+	docker push scrolltech/gas-oracle:${IMAGE_VERSION}
+	docker push scrolltech/event-watcher:${IMAGE_VERSION}
+	docker push scrolltech/rollup-relayer:${IMAGE_VERSION}
 
 docker:
 	DOCKER_BUILDKIT=1 docker build -t scrolltech/gas-oracle:${IMAGE_VERSION} ${REPO_ROOT_DIR}/ -f ${REPO_ROOT_DIR}/build/dockerfiles/gas_oracle.Dockerfile

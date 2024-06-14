@@ -15,7 +15,8 @@
         "escalate_multiple_den": 1,
         "max_gas_price": 1000000000000,
         "tx_type": "LegacyTx",
-        "check_pending_time": 1
+        "check_pending_time": 1,
+        "min_gas_tip": 100000000
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
@@ -42,7 +43,8 @@
         "max_gas_price": 1000000000000,
         "max_blob_gas_price": 10000000000000,
         "tx_type": "DynamicFeeTx",
-        "check_pending_time": 1
+        "check_pending_time": 1,
+        "min_gas_tip": 100000000
       },
       "gas_oracle_config": {
         "min_gas_price": 0,
@@ -68,14 +70,15 @@
       "max_l1_commit_calldata_size_per_chunk": 112345,
       "chunk_timeout_sec": 300,
       "max_row_consumption_per_chunk": 1048319,
-      "gas_cost_increase_multiplier": 1.2
+      "gas_cost_increase_multiplier": 1.2,
+      "max_uncompressed_batch_bytes_size": 634880
     },
     "batch_proposer_config": {
-      "max_chunk_num_per_batch": 112,
       "max_l1_commit_gas_per_batch": 11234567,
       "max_l1_commit_calldata_size_per_batch": 112345,
       "batch_timeout_sec": 300,
-      "gas_cost_increase_multiplier": 1.2
+      "gas_cost_increase_multiplier": 1.2,
+      "max_uncompressed_batch_bytes_size": 634880
     }
   },
   "db_config": {

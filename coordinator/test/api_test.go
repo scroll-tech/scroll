@@ -14,18 +14,17 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
-	"scroll-tech/database/migrate"
-
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/version"
+	"scroll-tech/database/migrate"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/controller/api"

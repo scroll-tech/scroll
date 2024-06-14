@@ -63,7 +63,7 @@ func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gor
 
 // Start starts the L1 message fetching process.
 func (c *L1MessageFetcher) Start() {
-	messageSyncedHeight, batchSyncedHeight, dbErr := c.eventUpdateLogic.GetL1SyncHeight(c.ctx)
+	messageSyncedHeight, batchSyncedHeight, bridgeBatchDepositSyncedHeight, dbErr := c.eventUpdateLogic.GetL1SyncHeight(c.ctx)
 	if dbErr != nil {
 		log.Crit("L1MessageFetcher start failed", "err", dbErr)
 	}
@@ -72,6 +72,11 @@ func (c *L1MessageFetcher) Start() {
 	if batchSyncedHeight > l1SyncHeight {
 		l1SyncHeight = batchSyncedHeight
 	}
+
+	if bridgeBatchDepositSyncedHeight > l1SyncHeight {
+		l1SyncHeight = bridgeBatchDepositSyncedHeight
+	}
+
 	if c.cfg.StartHeight > l1SyncHeight {
 		l1SyncHeight = c.cfg.StartHeight - 1
 	}
@@ -91,7 +96,13 @@ func (c *L1MessageFetcher) Start() {
 
 	c.updateL1SyncHeight(l1SyncHeight, header.Hash())
 
-	log.Info("Start L1 message fetcher", "message synced height", messageSyncedHeight, "batch synced height", batchSyncedHeight, "config start height", c.cfg.StartHeight, "sync start height", c.l1SyncHeight+1)
+	log.Info("Start L1 message fetcher",
+		"message synced height", messageSyncedHeight,
+		"batch synced height", batchSyncedHeight,
+		"bridge batch deposit height", bridgeBatchDepositSyncedHeight,
+		"config start height", c.cfg.StartHeight,
+		"sync start height", c.l1SyncHeight+1,
+	)
 
 	tick := time.NewTicker(time.Duration(c.cfg.BlockTime) * time.Second)
 	go func() {

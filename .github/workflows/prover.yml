@@ -25,78 +25,75 @@ defaults:
     working-directory: 'prover'
 
 jobs:
-  test:
-    if: github.event.pull_request.draft == false
+  skip_check:
     runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.21.x
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Test
-      run: |
-        go test -tags="mock_prover" -v -coverprofile=coverage.txt ./...
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v3
-      env:
-        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      with:
-        flags: prover
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          cancel_others: 'true'
+          concurrent_skipping: 'same_content_newer'
+          paths_ignore: '["**/README.md"]'
+
+  fmt:
+    needs: [skip_check]
+    if: |
+      github.event.pull_request.draft == false &&
+      (github.event.action == 'ready_for_review' || needs.skip_check.outputs.should_skip != 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2023-12-03
+          components: rustfmt
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "prover -> target"
+      - name: Cargo check
+        run: cargo check --all-features
+      - name: Cargo fmt
+        run: cargo fmt --all -- --check
+  
+  clippy:
+    needs: [skip_check, fmt]
+    if: |
+      github.event.pull_request.draft == false &&
+      (github.event.action == 'ready_for_review' || needs.skip_check.outputs.should_skip != 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2023-12-03
+          components: clippy
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "prover -> target"
+      - name: Run clippy
+        run: cargo clippy --all-features --all-targets -- -D warnings
+
   compile:
-    if: github.event_name == 'push' # will only be triggered when pushing to main & staging & develop & alpha
+    needs: [skip_check, clippy]
+    if: |
+      github.event.pull_request.draft == false &&
+      (github.event.action == 'ready_for_review' || needs.skip_check.outputs.should_skip != 'true')
     runs-on: ubuntu-latest
     steps:
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly-2023-12-03
-        override: true
-        components: rustfmt, clippy
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.21.x
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Cache cargo
-      uses: Swatinem/rust-cache@v2
-      with:
-        workspaces: "common/libzkp/impl -> target"
-    - name: Test
-      run: |
-        make prover
-  check:
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    steps:
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.21.x
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Lint
-      run: |
-        rm -rf $HOME/.cache/golangci-lint
-        make lint
-  goimports-lint:
-    if: github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
-    steps:
-    - name: Install Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: 1.21.x
-    - name: Checkout code
-      uses: actions/checkout@v2
-    - name: Install goimports
-      run: go install golang.org/x/tools/cmd/goimports
-    - run: goimports -local scroll-tech/prover/ -w .
-    - run: go mod tidy
-    # If there are any diffs from goimports or go mod tidy, fail.
-    - name: Verify no changes from goimports and go mod tidy
-      run: |
-        if [ -n "$(git status --porcelain)" ]; then
-          exit 1
-        fi
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly-2023-12-03
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "prover -> target"
+      - name: Test
+        run: |
+          make prover

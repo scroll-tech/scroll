@@ -5,21 +5,20 @@ import (
 	"log"
 	"math/big"
 	"testing"
-	"time"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/testcontainers"
-	"scroll-tech/common/types/encoding"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
 	capp "scroll-tech/coordinator/cmd/api/app"
 	"scroll-tech/database/migrate"
 	"scroll-tech/integration-test/orm"
-	rapp "scroll-tech/prover/cmd/app"
+
 	bcmd "scroll-tech/rollup/cmd"
 )
 
@@ -43,7 +42,7 @@ func TestMain(m *testing.M) {
 func setupEnv(t *testing.T) {
 	testApps = testcontainers.NewTestcontainerApps()
 	assert.NoError(t, testApps.StartPostgresContainer())
-	assert.NoError(t, testApps.StartL1GethContainer())
+	assert.NoError(t, testApps.StartPoSL1Container())
 	assert.NoError(t, testApps.StartL2GethContainer())
 	rollupApp = bcmd.NewRollupApp(testApps, "../../rollup/conf/config.json")
 }
@@ -123,29 +122,10 @@ func testCoordinatorProverInteraction(t *testing.T) {
 	t.Log(version.Version)
 
 	coordinatorApp := capp.NewCoordinatorApp(testApps, "../../coordinator/conf/config.json", "./genesis.json")
-	chunkProverApp := rapp.NewProverApp(testApps, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
-	batchProverApp := rapp.NewProverApp(testApps, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	defer coordinatorApp.Free()
-	defer chunkProverApp.Free()
-	defer batchProverApp.Free()
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t)
-
-	// Run prover app.
-	chunkProverApp.ExpectWithTimeout(t, true, time.Second*40, "proof submitted successfully") // chunk prover login -> get task -> submit proof.
-	batchProverApp.ExpectWithTimeout(t, true, time.Second*40, "proof submitted successfully") // batch prover login -> get task -> submit proof.
-
-	// All task has been proven, coordinator would not return any task.
-	chunkProverApp.ExpectWithTimeout(t, true, 60*time.Second, "get empty prover task")
-	batchProverApp.ExpectWithTimeout(t, true, 60*time.Second, "get empty prover task")
-
-	chunkProverApp.RunApp(t)
-	batchProverApp.RunApp(t)
-
-	// Free apps.
-	chunkProverApp.WaitExit()
-	batchProverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
 
@@ -157,24 +137,10 @@ func testProverReLogin(t *testing.T) {
 	assert.NoError(t, migrate.ResetDB(db))
 
 	coordinatorApp := capp.NewCoordinatorApp(testApps, "../../coordinator/conf/config.json", "./genesis.json")
-	chunkProverApp := rapp.NewProverApp(testApps, utils.ChunkProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
-	batchProverApp := rapp.NewProverApp(testApps, utils.BatchProverApp, "../../prover/config.json", coordinatorApp.HTTPEndpoint())
 	defer coordinatorApp.Free()
-	defer chunkProverApp.Free()
-	defer batchProverApp.Free()
 
 	// Run coordinator app.
 	coordinatorApp.RunApp(t) // login timeout: 1 sec
 
-	// Run prover app.
-	chunkProverApp.ExpectWithTimeout(t, true, time.Second*40, "re-login success") // chunk prover login.
-	batchProverApp.ExpectWithTimeout(t, true, time.Second*40, "re-login success") // batch prover login.
-
-	chunkProverApp.RunApp(t)
-	batchProverApp.RunApp(t)
-
-	// Free apps.
-	chunkProverApp.WaitExit()
-	batchProverApp.WaitExit()
 	coordinatorApp.WaitExit()
 }
