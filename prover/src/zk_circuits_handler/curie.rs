@@ -7,7 +7,8 @@ use crate::types::{CommonHash, Task};
 use std::{cell::RefCell, cmp::Ordering, rc::Rc};
 
 use prover_next::{
-    aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver, BatchProof, BatchProvingTask, BlockTrace, ChunkInfo, ChunkProof, ChunkProvingTask
+    aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver,
+    BatchProof, BatchProvingTask, BlockTrace, ChunkInfo, ChunkProof, ChunkProvingTask,
 };
 
 use super::bernoulli::OUTPUT_DIR;
@@ -78,7 +79,10 @@ impl NextCircuitsHandler {
         serde_json::to_string(&chunk_proof).map_err(|e| anyhow::anyhow!(e))
     }
 
-    fn gen_batch_proof_raw(&self, chunk_hashes_proofs: Vec<(ChunkInfo, ChunkProof)>) -> Result<BatchProof> {
+    fn gen_batch_proof_raw(
+        &self,
+        chunk_hashes_proofs: Vec<(ChunkInfo, ChunkProof)>,
+    ) -> Result<BatchProof> {
         if let Some(prover) = self.batch_prover.as_ref() {
             let chunk_proofs: Vec<ChunkProof> =
                 chunk_hashes_proofs.iter().map(|t| t.1.clone()).collect();
@@ -103,7 +107,7 @@ impl NextCircuitsHandler {
     fn gen_batch_proof(&self, task: &crate::types::Task) -> Result<String> {
         log::info!("[circuit] gen_batch_proof for task {}", task.id);
         let chunk_hashes_proofs: Vec<(ChunkInfo, ChunkProof)> =
-                self.gen_chunk_hashes_proofs(task)?;
+            self.gen_chunk_hashes_proofs(task)?;
         let batch_proof = self.gen_batch_proof_raw(chunk_hashes_proofs)?;
         serde_json::to_string(&batch_proof).map_err(|e| anyhow::anyhow!(e))
     }
@@ -206,16 +210,14 @@ impl CircuitsHandler for NextCircuitsHandler {
     }
 }
 
-
 // =================================== tests module ========================================
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use prover_next::utils::chunk_trace_to_witness_block;
     use crate::zk_circuits_handler::utils::encode_vk;
-    use std::sync::LazyLock;
-    use std::path::PathBuf;
+    use prover_next::utils::chunk_trace_to_witness_block;
+    use std::{path::PathBuf, sync::LazyLock};
 
     #[ctor::ctor]
     fn init() {
@@ -225,26 +227,23 @@ mod tests {
 
     static DEFAULT_WORK_DIR: &str = "/assets";
     static WORK_DIR: LazyLock<String> = LazyLock::new(|| {
-        std::env::var("CURIE_TEST_DIR").unwrap_or(String::from(DEFAULT_WORK_DIR)).trim_end_matches('/').to_string()
+        std::env::var("CURIE_TEST_DIR")
+            .unwrap_or(String::from(DEFAULT_WORK_DIR))
+            .trim_end_matches('/')
+            .to_string()
     });
-    static PARAMS_PATH: LazyLock<String> = LazyLock::new(|| {
-        format!("{}/test_params", WORK_DIR.clone())
-    });
-    static ASSETS_PATH: LazyLock<String> = LazyLock::new(|| {
-        format!("{}/test_assets", WORK_DIR.clone())
-    });
-    static PROOF_DUMP_PATH: LazyLock<String> = LazyLock::new(|| {
-        format!("{}/proof_data", WORK_DIR.clone())
-    });
-    static BATCH_DIR_PATH: LazyLock<String> = LazyLock::new(|| {
-        format!("{}/traces/batch_24", WORK_DIR.clone())
-    });
-    static BATCH_VK_PATH: LazyLock<String> = LazyLock::new(|| {
-        format!("{}/test_assets/agg_vk.vkey", WORK_DIR.clone())
-    });
-    static CHUNK_VK_PATH: LazyLock<String> = LazyLock::new(|| {
-        format!("{}/test_assets/chunk_vk.vkey", WORK_DIR.clone())
-    });
+    static PARAMS_PATH: LazyLock<String> =
+        LazyLock::new(|| format!("{}/test_params", WORK_DIR.clone()));
+    static ASSETS_PATH: LazyLock<String> =
+        LazyLock::new(|| format!("{}/test_assets", WORK_DIR.clone()));
+    static PROOF_DUMP_PATH: LazyLock<String> =
+        LazyLock::new(|| format!("{}/proof_data", WORK_DIR.clone()));
+    static BATCH_DIR_PATH: LazyLock<String> =
+        LazyLock::new(|| format!("{}/traces/batch_24", WORK_DIR.clone()));
+    static BATCH_VK_PATH: LazyLock<String> =
+        LazyLock::new(|| format!("{}/test_assets/agg_vk.vkey", WORK_DIR.clone()));
+    static CHUNK_VK_PATH: LazyLock<String> =
+        LazyLock::new(|| format!("{}/test_assets/chunk_vk.vkey", WORK_DIR.clone()));
 
     #[test]
     fn it_works() {
@@ -254,9 +253,9 @@ mod tests {
 
     #[test]
     fn test_circuits() -> Result<()> {
-        let chunk_handler = 
+        let chunk_handler =
             NextCircuitsHandler::new(ProofType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
-        
+
         let chunk_vk = chunk_handler.get_vk(ProofType::Chunk).unwrap();
 
         check_vk(ProofType::Chunk, chunk_vk, "chunk vk must be available");
@@ -278,7 +277,7 @@ mod tests {
             dump_proof(chunk_id, proof_data)?;
             chunk_proofs.push(chunk_proof);
         }
-        
+
         let batch_handler =
             NextCircuitsHandler::new(ProofType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
         let batch_vk = batch_handler.get_vk(ProofType::Batch).unwrap();
@@ -303,7 +302,7 @@ mod tests {
         let vk_file = match proof_type {
             ProofType::Chunk => CHUNK_VK_PATH.clone(),
             ProofType::Batch => BATCH_VK_PATH.clone(),
-            ProofType::Undefined => unreachable!()
+            ProofType::Undefined => unreachable!(),
         };
 
         let data = std::fs::read(vk_file)?;
@@ -321,23 +320,25 @@ mod tests {
 
         if path.is_dir() {
             let entries = std::fs::read_dir(&path)?;
-            let mut files: Vec<String> = entries.into_iter()
+            let mut files: Vec<String> = entries
+                .into_iter()
                 .filter_map(|e| {
                     if e.is_err() {
                         return None;
                     }
                     let entry = e.unwrap();
                     if entry.path().is_dir() {
-                        return None
+                        return None;
                     }
                     if let Result::Ok(file_name) = entry.file_name().into_string() {
                         Some(file_name)
                     } else {
                         None
                     }
-                }).collect();
+                })
+                .collect();
             files.sort();
-            
+
             log::info!("files in chunk {:?} is {:?}", path, files);
             for file in files {
                 let block_trace = read_block_trace(&path.join(file))?;
@@ -353,21 +354,23 @@ mod tests {
     fn get_chunk_dir_paths() -> Result<Vec<PathBuf>> {
         let batch_path = PathBuf::from(BATCH_DIR_PATH.clone());
         let entries = std::fs::read_dir(&batch_path)?;
-        let mut files: Vec<String> = entries.filter_map(|e| {
-            if e.is_err() {
-                return None;
-            }
-            let entry = e.unwrap();
-            if entry.path().is_dir() {
-                if let Result::Ok(file_name) = entry.file_name().into_string() {
-                    Some(file_name)
+        let mut files: Vec<String> = entries
+            .filter_map(|e| {
+                if e.is_err() {
+                    return None;
+                }
+                let entry = e.unwrap();
+                if entry.path().is_dir() {
+                    if let Result::Ok(file_name) = entry.file_name().into_string() {
+                        Some(file_name)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 }
-            } else {
-                None
-            }
-        }).collect();
+            })
+            .collect();
         files.sort();
         log::info!("files in batch {:?} is {:?}", batch_path, files);
         Ok(files.into_iter().map(|f| batch_path.join(f)).collect())

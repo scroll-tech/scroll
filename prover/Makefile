@@ -47,3 +47,4 @@ tests_binary:
 lint:
 	cargo check --all-features
 	cargo clippy --all-features --all-targets -- -D warnings
+    cargo fmt --all
