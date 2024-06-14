@@ -272,6 +272,7 @@ mod tests {
             let chunk_info = traces_to_chunk_info(chunk_trace.clone())?;
             chunk_infos.push(chunk_info);
 
+            log::info!("start to prove {chunk_id}");
             let chunk_proof = chunk_handler.gen_chunk_proof_raw(chunk_trace)?;
             let proof_data = serde_json::to_string(&chunk_proof)?;
             dump_proof(chunk_id, proof_data)?;
@@ -337,6 +338,7 @@ mod tests {
                 }).collect();
             files.sort_by(|a, b| a.cmp(b));
             
+            log::info!("files in chunk {:?} is {:?}", path, files);
             for file in files {
                 let block_trace = read_block_trace(&path.join(file))?;
                 chunk_trace.push(block_trace);
@@ -367,6 +369,7 @@ mod tests {
             }
         }).collect();
         files.sort_by(|a, b| a.cmp(b));
+        log::info!("files in batch {:?} is {:?}", batch_path, files);
         Ok(files.into_iter().map(|f| (&batch_path).join(f)).collect())
     }
 
