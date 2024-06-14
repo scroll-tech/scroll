@@ -75,7 +75,7 @@ impl BaseCircuitsHandler {
     fn gen_chunk_proof(&self, task: &crate::types::Task) -> Result<String> {
         let chunk_trace = self.gen_chunk_traces(task)?;
         let chunk_proof = self.gen_chunk_proof_raw(chunk_trace)?;
-        return serde_json::to_string(&chunk_proof).map_err(|e| anyhow::anyhow!(e));
+        serde_json::to_string(&chunk_proof).map_err(|e| anyhow::anyhow!(e))
     }
 
     fn gen_batch_proof_raw(&self, chunk_hashes_proofs: Vec<(ChunkHash, ChunkProof)>) -> Result<BatchProof> {
@@ -104,7 +104,7 @@ impl BaseCircuitsHandler {
         let chunk_hashes_proofs: Vec<(ChunkHash, ChunkProof)> =
                 self.gen_chunk_hashes_proofs(task)?;
         let batch_proof = self.gen_batch_proof_raw(chunk_hashes_proofs)?;
-        return serde_json::to_string(&batch_proof).map_err(|e| anyhow::anyhow!(e));
+        serde_json::to_string(&batch_proof).map_err(|e| anyhow::anyhow!(e))
     }
 
     fn get_output_dir(&self) -> Option<&str> {
@@ -247,7 +247,7 @@ mod tests {
     #[test]
     fn it_works() {
         let result = true;
-        assert_eq!(result, true);
+        assert!(result);
     }
 
     #[test]
@@ -285,7 +285,7 @@ mod tests {
         log::info!("start to prove batch");
         let batch_proof = batch_handler.gen_batch_proof_raw(chunk_hashes_proofs)?;
         let proof_data = serde_json::to_string(&batch_proof)?;
-        dump_proof(format!("batch_proof"), proof_data)?;
+        dump_proof("batch_proof".to_string(), proof_data)?;
 
         Ok(())
     }
@@ -304,7 +304,7 @@ mod tests {
             ProofType::Undefined => unreachable!()
         };
 
-        let data = std::fs::read(&vk_file)?;
+        let data = std::fs::read(vk_file)?;
         Ok(encode_vk(data))
     }
 
@@ -334,7 +334,7 @@ mod tests {
                         None
                     }
                 }).collect();
-            files.sort_by(|a, b| a.cmp(b));
+            files.sort();
             
             log::info!("files in chunk {:?} is {:?}", path, files);
             for file in files {
@@ -366,9 +366,9 @@ mod tests {
                 None
             }
         }).collect();
-        files.sort_by(|a, b| a.cmp(b));
+        files.sort();
         log::info!("files in batch {:?} is {:?}", batch_path, files);
-        Ok(files.into_iter().map(|f| (&batch_path).join(f)).collect())
+        Ok(files.into_iter().map(|f| batch_path.join(f)).collect())
     }
 
     fn traces_to_chunk_info(chunk_trace: Vec<BlockTrace>) -> Result<ChunkHash> {
