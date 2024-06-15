@@ -47,7 +47,7 @@ type Confirmation struct {
 	SenderType   types.SenderType
 }
 
-// FeeData fee struct used to estimate gas price
+// FeeData struct used to estimate gas price
 type FeeData struct {
 	gasFeeCap *big.Int
 	gasTipCap *big.Int
@@ -60,7 +60,7 @@ type FeeData struct {
 	gasLimit uint64
 }
 
-// Sender Transaction sender to send transaction to l1/l2 geth
+// Sender sends the transaction to l1/l2 geth
 type Sender struct {
 	config     *config.SenderConfig
 	gethClient *gethclient.Client
@@ -138,13 +138,13 @@ func (s *Sender) GetChainID() *big.Int {
 	return s.chainID
 }
 
-// Stop stop the sender module.
+// Stop stops the sender module.
 func (s *Sender) Stop() {
 	close(s.stopCh)
 	log.Info("sender stopped", "name", s.name, "service", s.service, "address", s.auth.From.String())
 }
 
-// ConfirmChan channel used to communicate with transaction sender
+// ConfirmChan returns the channel used to communicate with transaction sender
 func (s *Sender) ConfirmChan() <-chan *Confirmation {
 	return s.confirmCh
 }
@@ -155,6 +155,7 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 	s.confirmCh <- cfm
 }
 
+// getFeeData calculates and returns fee data for different transaction types or returns an error if unsupported.
 func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64, fallbackGasLimit uint64) (*FeeData, error) {
 	switch s.config.TxType {
 	case LegacyTxType:
@@ -169,7 +170,7 @@ func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTy
 	}
 }
 
-// SendTransaction send a signed L2tL1 transaction.
+// SendTransaction sends a signed L2tL1 transaction.
 func (s *Sender) SendTransaction(contextID string, target *common.Address, data []byte, blob *kzg4844.Blob, fallbackGasLimit uint64) (common.Hash, error) {
 	s.metrics.sendTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	var (
@@ -308,7 +309,7 @@ func (s *Sender) createAndSendTx(feeData *FeeData, target *common.Address, data 
 	return signedTx, nil
 }
 
-// resetNonce reset nonce if send signed tx failed.
+// resetNonce resets the nonce if send signed tx failed.
 func (s *Sender) resetNonce(ctx context.Context) {
 	nonce, err := s.client.PendingNonceAt(ctx, s.auth.From)
 	if err != nil {
@@ -318,6 +319,8 @@ func (s *Sender) resetNonce(ctx context.Context) {
 	s.auth.Nonce = big.NewInt(int64(nonce))
 }
 
+// resubmitTransaction adjusts gas prices and caps for transaction resubmission based on transaction type,
+// returning the updated transaction or an error if the type is unsupported.
 func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBaseFee uint64) (*gethTypes.Transaction, error) {
 	escalateMultipleNum := new(big.Int).SetUint64(s.config.EscalateMultipleNum)
 	escalateMultipleDen := new(big.Int).SetUint64(s.config.EscalateMultipleDen)
@@ -590,6 +593,8 @@ func (s *Sender) getSenderMeta() *orm.SenderMeta {
 	}
 }
 
+// getBlockNumberAndBaseFeeAndBlobFee retrieves the current block number, base fee, and blob base fee from the blockchain.
+// It returns these values or an error if fetching the header fails.
 func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64, uint64, uint64, error) {
 	header, err := s.client.HeaderByNumber(ctx, nil)
 	if err != nil {

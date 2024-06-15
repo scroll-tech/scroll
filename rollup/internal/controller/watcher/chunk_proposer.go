@@ -19,7 +19,7 @@ import (
 	"scroll-tech/rollup/internal/utils"
 )
 
-// ChunkProposer proposes chunks based on available unchunked blocks.
+// ChunkProposer proposes chunks based on available un-chunked blocks.
 type ChunkProposer struct {
 	ctx context.Context
 	db  *gorm.DB
