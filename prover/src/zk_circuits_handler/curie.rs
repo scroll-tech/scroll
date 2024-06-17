@@ -232,10 +232,8 @@ mod tests {
             .trim_end_matches('/')
             .to_string()
     });
-    static PARAMS_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_params", *WORK_DIR));
-    static ASSETS_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_assets", *WORK_DIR));
+    static PARAMS_PATH: LazyLock<String> = LazyLock::new(|| format!("{}/test_params", *WORK_DIR));
+    static ASSETS_PATH: LazyLock<String> = LazyLock::new(|| format!("{}/test_assets", *WORK_DIR));
     static PROOF_DUMP_PATH: LazyLock<String> =
         LazyLock::new(|| format!("{}/proof_data", *WORK_DIR));
     static BATCH_DIR_PATH: LazyLock<String> =
