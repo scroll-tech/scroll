@@ -137,9 +137,8 @@ func (w *L1WatcherClient) FetchBlockHeader(blockHeight uint64) error {
 	}
 
 	var blobBaseFee uint64
-	if block.ExcessBlobGas != nil && block.BlobGasUsed != nil {
-		parentExcessBlobGas := misc.CalcExcessBlobGas(*block.ExcessBlobGas, *block.BlobGasUsed)
-		blobBaseFee = misc.CalcBlobFee(parentExcessBlobGas).Uint64()
+	if totalExcess := block.BlobGasUsed; totalExcess != nil {
+		blobBaseFee = misc.CalcBlobFee(*totalExcess).Uint64()
 	}
 
 	l1Block := orm.L1Block{
