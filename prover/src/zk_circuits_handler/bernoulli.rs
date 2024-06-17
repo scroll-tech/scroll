@@ -234,17 +234,17 @@ mod tests {
             .to_string()
     });
     static PARAMS_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_params", WORK_DIR.clone()));
+        LazyLock::new(|| format!("{}/test_params", *WORK_DIR));
     static ASSETS_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_assets", WORK_DIR.clone()));
+        LazyLock::new(|| format!("{}/test_assets", *WORK_DIR));
     static PROOF_DUMP_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/proof_data", WORK_DIR.clone()));
+        LazyLock::new(|| format!("{}/proof_data", *WORK_DIR));
     static BATCH_DIR_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/traces/batch_24", WORK_DIR.clone()));
+        LazyLock::new(|| format!("{}/traces/batch_24", *WORK_DIR));
     static BATCH_VK_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_assets/agg_vk.vkey", WORK_DIR.clone()));
+        LazyLock::new(|| format!("{}/test_assets/agg_vk.vkey", *WORK_DIR));
     static CHUNK_VK_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_assets/chunk_vk.vkey", WORK_DIR.clone()));
+        LazyLock::new(|| format!("{}/test_assets/chunk_vk.vkey", *WORK_DIR));
 
     #[test]
     fn it_works() {
