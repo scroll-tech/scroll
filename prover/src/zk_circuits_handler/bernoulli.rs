@@ -77,7 +77,7 @@ impl BaseCircuitsHandler {
     fn gen_chunk_proof(&self, task: &crate::types::Task) -> Result<String> {
         let chunk_trace = self.gen_chunk_traces(task)?;
         let chunk_proof = self.gen_chunk_proof_raw(chunk_trace)?;
-        serde_json::to_string(&chunk_proof).map_err(|e| anyhow::anyhow!(e))
+        Ok(serde_json::to_string(&chunk_proof)?)
     }
 
     fn gen_batch_proof_raw(
@@ -110,7 +110,7 @@ impl BaseCircuitsHandler {
         let chunk_hashes_proofs: Vec<(ChunkHash, ChunkProof)> =
             self.gen_chunk_hashes_proofs(task)?;
         let batch_proof = self.gen_batch_proof_raw(chunk_hashes_proofs)?;
-        serde_json::to_string(&batch_proof).map_err(|e| anyhow::anyhow!(e))
+        Ok(serde_json::to_string(&batch_proof)?)
     }
 
     fn get_output_dir(&self) -> Option<&str> {
@@ -263,7 +263,7 @@ mod tests {
         let mut chunk_infos = vec![];
         let mut chunk_proofs = vec![];
         for (id, chunk_path) in chunk_dir_paths.into_iter().enumerate() {
-            let chunk_id = format!("chunk_proof{id}");
+            let chunk_id = format!("chunk_proof{}", id + 1);
             log::info!("start to process {chunk_id}");
             let chunk_trace = read_chunk_trace(chunk_path)?;
 
@@ -314,7 +314,7 @@ mod tests {
 
         fn read_block_trace(file: &PathBuf) -> Result<BlockTrace> {
             let f = std::fs::File::open(file)?;
-            serde_json::from_reader(&f).map_err(|e| anyhow::anyhow!(e))
+            Ok(serde_json::from_reader(&f)?)
         }
 
         if path.is_dir() {
@@ -382,6 +382,6 @@ mod tests {
 
     fn dump_proof(id: String, proof_data: String) -> Result<()> {
         let dump_path = PathBuf::from(PROOF_DUMP_PATH.clone());
-        std::fs::write(dump_path.join(id), proof_data).map_err(|e| anyhow::anyhow!(e))
+        Ok(std::fs::write(dump_path.join(id), proof_data)?)
     }
 }
