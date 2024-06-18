@@ -97,7 +97,7 @@ contract L1StandardERC20Gateway is L1ERC20Gateway {
 
     /// @inheritdoc IL1ERC20Gateway
     function getL2ERC20Address(address _l1Token) public view override returns (address) {
-        // In StandardERC20Gateway, all corresponding l2 tokens are depoyed by Create2 with salt,
+        // In StandardERC20Gateway, all corresponding l2 tokens are deployed by Create2 with salt,
         // we can calculate the l2 address directly.
         bytes32 _salt = keccak256(abi.encodePacked(counterpart, keccak256(abi.encodePacked(_l1Token))));
 

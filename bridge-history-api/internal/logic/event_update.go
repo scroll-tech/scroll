@@ -147,7 +147,7 @@ func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, bat
 	}
 
 	if withdrawTrie.NextMessageNonce != l2WithdrawMessages[0].MessageNonce {
-		log.Error("nonce mismatch", "expected next message nonce", withdrawTrie.NextMessageNonce, "actuall next message nonce", l2WithdrawMessages[0].MessageNonce)
+		log.Error("nonce mismatch", "expected next message nonce", withdrawTrie.NextMessageNonce, "actual next message nonce", l2WithdrawMessages[0].MessageNonce)
 		return fmt.Errorf("nonce mismatch")
 	}
 
