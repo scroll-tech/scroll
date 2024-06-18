@@ -262,7 +262,7 @@ mod tests {
         let mut chunk_infos = vec![];
         let mut chunk_proofs = vec![];
         for (id, chunk_path) in chunk_dir_paths.into_iter().enumerate() {
-            let chunk_id = format!("chunk_proof{}", id+1);
+            let chunk_id = format!("chunk_proof{}", id + 1);
             log::info!("start to process {chunk_id}");
             let chunk_trace = read_chunk_trace(chunk_path)?;
 
