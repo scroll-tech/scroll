@@ -2240,7 +2240,7 @@ contract GenerateFrontendConfig is DeployScroll {
 
         // API endpoints
         vm.writeLine(FRONTEND_ENV_PATH, "");
-        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_RPC_URI_L1 = \"http://l1geth-devnet.scrollsdk\"");
+        vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_RPC_URI_L1 = \"http://l1-devnet.scrollsdk\"");
         vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_EXTERNAL_RPC_URI_L2 = \"http://l2-rpc.scrollsdk\"");
         vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_BRIDGE_API_URI = \"http://bridge-history-api.scrollsdk/api\"");
         vm.writeLine(FRONTEND_ENV_PATH, "REACT_APP_ROLLUPSCAN_API_URI = \"https://rollup-explorer-backend.scrollsdk/api\"");

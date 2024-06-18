@@ -18,7 +18,7 @@ RUN curl -L https://foundry.paradigm.xyz | bash
 ENV PATH="/root/.foundry/bin:${PATH}"
 
 # Run foundryup to update Foundry
-RUN foundryup -v nightly-88011569efcebc9152267be217c8cfbedc32c07c
+RUN foundryup -v nightly-35356b032ee8dfb8dc4a797ff06419ed56a4e980
 
 # copy dependencies
 COPY ./lib /contracts/lib
