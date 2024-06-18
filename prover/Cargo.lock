@@ -64,7 +64,7 @@ dependencies = [
  "ark-std 0.3.0",
  "bitstream-io",
  "c-kzg",
- "ctor",
+ "ctor 0.1.26",
  "encoder",
  "env_logger 0.10.2",
  "eth-types 0.11.0",
@@ -1034,6 +1034,16 @@ checksum = "6d2301688392eb071b0bf1a37be05c469d3cc4dbbd95df672fe28ab021e6a096"
 dependencies = [
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "ctor"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edb49164822f3ee45b17acd4a208cfc1251410cf0cad9a833234c9890774dd9f"
+dependencies = [
+ "quote",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -3378,6 +3388,7 @@ dependencies = [
  "anyhow",
  "base64 0.13.1",
  "clap",
+ "ctor 0.2.8",
  "env_logger 0.11.3",
  "eth-keystore",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
