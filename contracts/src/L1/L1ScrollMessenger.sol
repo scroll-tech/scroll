@@ -44,7 +44,7 @@ contract L1ScrollMessenger is ScrollMessengerBase, IL1ScrollMessenger {
     struct ReplayState {
         // The number of replayed times.
         uint128 times;
-        // The queue index of lastest replayed one. If it is zero, it means the message has not been replayed.
+        // The queue index of latest replayed one. If it is zero, it means the message has not been replayed.
         uint128 lastIndex;
     }
 

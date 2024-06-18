@@ -945,7 +945,7 @@ error ErrorRevertFinalizedBatch()
 
 
 
-*Thrown when reverting a finialized batch.*
+*Thrown when reverting a finalized batch.*
 
 
 ### ErrorRevertNotStartFromEnd
@@ -956,7 +956,7 @@ error ErrorRevertNotStartFromEnd()
 
 
 
-*Thrown when the reverted batches are not in the ending of commited batch chain.*
+*Thrown when the reverted batches are not in the ending of committed batch chain.*
 
 
 ### ErrorRevertZeroBatches
