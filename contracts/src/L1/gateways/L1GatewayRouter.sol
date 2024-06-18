@@ -25,7 +25,7 @@ contract L1GatewayRouter is OwnableUpgradeable, IL1GatewayRouter {
     /// @notice The address of L1ETHGateway.
     address public ethGateway;
 
-    /// @notice The addess of default ERC20 gateway, normally the L1StandardERC20Gateway contract.
+    /// @notice The address of default ERC20 gateway, normally the L1StandardERC20Gateway contract.
     address public defaultERC20Gateway;
 
     /// @notice Mapping from ERC20 token address to corresponding L1ERC20Gateway.
