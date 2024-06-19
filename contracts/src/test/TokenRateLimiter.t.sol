@@ -17,6 +17,12 @@ contract TokenRateLimiterTest is DSTestPlus {
         limiter = new TokenRateLimiter(86400);
     }
 
+    function testDeployRateLimiterRevert() external {
+        // periodDuration is zero, should revert
+        hevm.expectRevert(ITokenRateLimiter.PeriodIsZero.selector);
+        new TokenRateLimiter(0);
+    }
+
     function testUpdateTotalLimit(address _token, uint104 _newTotalLimit) external {
         hevm.assume(_newTotalLimit > 0);
 

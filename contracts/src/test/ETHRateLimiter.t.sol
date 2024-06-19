@@ -17,6 +17,12 @@ contract ETHRateLimiterTest is DSTestPlus {
         limiter = new ETHRateLimiter(86400, address(this), 100 ether);
     }
 
+    function testDeployRateLimiterRevert() external {
+        // periodDuration is zero, should revert
+        hevm.expectRevert(IETHRateLimiter.PeriodIsZero.selector);
+        new ETHRateLimiter(0, address(this), 100 ether);
+    }
+
     function testUpdateTotalLimit(uint104 _newTotalLimit) external {
         hevm.assume(_newTotalLimit > 0);
 
