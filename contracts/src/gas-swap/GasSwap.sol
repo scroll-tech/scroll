@@ -139,7 +139,7 @@ contract GasSwap is ERC2771Context, Ownable, ReentrancyGuard {
      * Restricted Functions *
      ************************/
 
-    /// @notice Withdraw stucked tokens.
+    /// @notice Withdraw stuck tokens.
     /// @param _token The address of token to withdraw. Use `address(0)` if you want to withdraw Ether.
     /// @param _amount The amount of token to withdraw.
     function withdraw(address _token, uint256 _amount) external onlyOwner {
