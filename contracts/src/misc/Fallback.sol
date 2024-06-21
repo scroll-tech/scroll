@@ -9,7 +9,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 contract Fallback is Ownable {
     using SafeERC20 for IERC20;
 
-    /// @notice Withdraw stucked token from this contract.
+    /// @notice Withdraw stuck token from this contract.
     /// @param _token The address of token to withdraw, use `address(0)` if withdraw ETH.
     /// @param _amount The amount of token to withdraw.
     /// @param _recipient The address of receiver.
