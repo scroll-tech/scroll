@@ -167,7 +167,7 @@ abstract contract L1ERC20Gateway is IL1ERC20Gateway, IMessageDropCallback, Scrol
     /// @dev Internal function to do all the deposit operations.
     ///
     /// @param _token The token to deposit.
-    /// @param _to The recipient address to recieve the token in L2.
+    /// @param _to The recipient address to receive the token in L2.
     /// @param _amount The amount of token to deposit.
     /// @param _data Optional data to forward to recipient's account.
     /// @param _gasLimit Gas limit required to complete the deposit on L2.

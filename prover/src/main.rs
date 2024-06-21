@@ -1,3 +1,5 @@
+#![feature(lazy_cell)]
+
 mod config;
 mod coordinator_client;
 mod geth_client;

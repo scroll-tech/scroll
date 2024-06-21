@@ -1,4 +1,4 @@
-.PHONY: prover
+.PHONY: prover lint tests_binary
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
     HALO2_VERSION=$(shell grep -m 1 "halo2.git" ./Cargo.lock | cut -d "#" -f2 | cut -c-7)
@@ -39,3 +39,14 @@ prover:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release
 	rm -rf ./lib && mkdir ./lib
 	find target/ -name "libzktrie.so" | xargs -I{} cp {} ./lib
+
+tests_binary:
+	cargo clean && cargo test --release --no-run
+	ls target/release/deps/prover* | grep -v "\.d" | xargs -I{} ln -sf {} ./prover.test
+	rm -rf ./lib && mkdir ./lib
+	find target/ -name "libzktrie.so" | xargs -I{} cp {} ./lib
+
+lint:
+	cargo check --all-features
+	cargo clippy --all-features --all-targets -- -D warnings
+	cargo fmt --all
