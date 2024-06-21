@@ -63,7 +63,7 @@ impl AssetsDirEnvConfig {
         let value = std::env::var(SCROLL_PROVER_ASSETS_DIR_ENV_NAME)?;
         let dirs: Vec<&str> = value.split(',').collect();
         if dirs.len() != 2 {
-            bail!("env variable SCROLL_PROVER_ASSETS_DIR value must be 2 parts seperated by comma.")
+            bail!("env variable SCROLL_PROVER_ASSETS_DIR value must be 2 parts separated by comma.")
         }
         unsafe {
             SCROLL_PROVER_ASSETS_DIRS = dirs.into_iter().map(|s| s.to_string()).collect();
