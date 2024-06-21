@@ -161,7 +161,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         gateway = _deployGateway(address(mockMessenger));
         gateway.initialize(address(counterpartGateway), address(router), address(mockMessenger));
 
-        // only call by conterpart
+        // only call by counterpart
         hevm.expectRevert(ErrorCallerIsNotCounterpartGateway.selector);
         mockMessenger.callTarget(
             address(gateway),
