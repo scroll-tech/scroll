@@ -279,7 +279,7 @@ contract L1USDCGatewayTest is L1GatewayTestBase {
         IL1ScrollMessenger.L2MessageProof memory proof;
         proof.batchIndex = rollup.lastFinalizedBatchIndex();
 
-        // conterpart is not L2USDCGateway
+        // counterpart is not L2USDCGateway
         // emit FailedRelayedMessage from L1ScrollMessenger
         hevm.expectEmit(true, false, false, true);
         emit FailedRelayedMessage(keccak256(xDomainCalldata));
