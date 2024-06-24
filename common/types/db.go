@@ -195,10 +195,10 @@ const (
 	// BatchProofsStatusUndefined represents an undefined batch proofs status
 	BatchProofsStatusUndefined BatchProofsStatus = iota
 
-	// BatchProofsStatusPending means that some batchs that belong to this bundle have not been proven
+	// BatchProofsStatusPending means that some batches that belong to this bundle have not been proven
 	BatchProofsStatusPending
 
-	// BatchProofsStatusReady means that all batchs that belong to this bundle have been proven
+	// BatchProofsStatusReady means that all batches that belong to this bundle have been proven
 	BatchProofsStatusReady
 )
 
