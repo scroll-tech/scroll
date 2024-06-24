@@ -1,5 +1,0 @@
-hardhat/=node_modules/hardhat/
-forge-std/=lib/forge-std/src/
-ds-test/=lib/ds-test/src/
-solmate/=lib/solmate/src/
-@openzeppelin/=node_modules/@openzeppelin
