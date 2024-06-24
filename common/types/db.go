@@ -188,7 +188,7 @@ func (s ChunkProofsStatus) String() string {
 	}
 }
 
-// BatchProofsStatus describes the proving status of batchs that belong to a bundle.
+// BatchProofsStatus describes the proving status of batches that belong to a bundle.
 type BatchProofsStatus int
 
 const (
