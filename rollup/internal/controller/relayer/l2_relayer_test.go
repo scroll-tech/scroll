@@ -60,6 +60,14 @@ func testL2RelayerProcessPendingBatches(t *testing.T) {
 		chainConfig := &params.ChainConfig{}
 		if codecVersion == encoding.CodecV0 {
 			chainConfig.BernoulliBlock = big.NewInt(0)
+		} else if codecVersion == encoding.CodecV1 {
+			chainConfig.BernoulliBlock = big.NewInt(0)
+			chainConfig.CurieBlock = big.NewInt(0)
+		} else if codecVersion == encoding.CodecV2 {
+			chainConfig.BernoulliBlock = big.NewInt(0)
+			chainConfig.CurieBlock = big.NewInt(0)
+			var zero uint64 = 0
+			chainConfig.DescartesTime = &zero
 		}
 
 		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
