@@ -243,7 +243,7 @@ func (bp *BatchProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *prov
 		err           error
 	)
 	for i := 0; i < 2; i++ {
-		hardForkNames[i] = bp.reverseVkMap[getTaskParameter.VKs[i]]
+		hardForkNames[i] = bp.reverseVkMap[""]
 		chunkRanges[i], err = bp.getChunkRangeByName(ctx, hardForkNames[i])
 		if err != nil {
 			return nil, err
@@ -282,9 +282,6 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	if len(getTaskParameter.VKs) > 0 {
-		return bp.assignWithTwoCircuits(ctx, taskCtx, getTaskParameter)
-	}
 	return bp.assignWithSingleCircuit(ctx, taskCtx, getTaskParameter)
 }
 

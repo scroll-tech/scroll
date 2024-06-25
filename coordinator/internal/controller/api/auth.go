@@ -2,12 +2,9 @@ package api
 
 import (
 	"fmt"
-
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-
-	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/logic/auth"
 	"scroll-tech/coordinator/internal/types"
@@ -53,44 +50,11 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 		return jwt.MapClaims{}
 	}
 
-	var publicKey string
-	var err error
-	if v.Message.HardForkName != "" {
-		authMsg := message.AuthMsg{
-			Identity: &message.Identity{
-				Challenge:     v.Message.Challenge,
-				ProverName:    v.Message.ProverName,
-				ProverVersion: v.Message.ProverVersion,
-				HardForkName:  v.Message.HardForkName,
-			},
-			Signature: v.Signature,
-		}
-		publicKey, err = authMsg.PublicKey()
-	} else {
-		authMsg := message.LegacyAuthMsg{
-			Identity: &message.LegacyIdentity{
-				Challenge:     v.Message.Challenge,
-				ProverName:    v.Message.ProverName,
-				ProverVersion: v.Message.ProverVersion,
-			},
-			Signature: v.Signature,
-		}
-		publicKey, err = authMsg.PublicKey()
-	}
-
-	if err != nil {
-		return jwt.MapClaims{}
-	}
-
-	if v.Message.HardForkName == "" {
-		v.Message.HardForkName = "shanghai"
-	}
-
 	return jwt.MapClaims{
-		types.PublicKey:     publicKey,
+		types.PublicKey:     v.PublicKey,
 		types.ProverName:    v.Message.ProverName,
 		types.ProverVersion: v.Message.ProverVersion,
-		types.HardForkName:  v.Message.HardForkName,
+		types.Vks:           v.Message.VKs,
 	}
 }
 
@@ -109,8 +73,8 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 		c.Set(types.ProverVersion, proverVersion)
 	}
 
-	if hardForkName, ok := claims[types.HardForkName]; ok {
-		c.Set(types.HardForkName, hardForkName)
+	if hardForkName, ok := claims[types.Vks]; ok {
+		c.Set(types.Vks, hardForkName)
 	}
 	return nil
 }

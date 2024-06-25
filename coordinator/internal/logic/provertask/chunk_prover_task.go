@@ -182,7 +182,7 @@ func (cp *ChunkProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *prov
 		err           error
 	)
 	for i := 0; i < 2; i++ {
-		hardForkNames[i] = cp.reverseVkMap[getTaskParameter.VKs[i]]
+		hardForkNames[i] = cp.reverseVkMap[""]
 		blockRanges[i], err = cp.getBlockRangeByName(hardForkNames[i])
 		if err != nil {
 			return nil, err
@@ -250,9 +250,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
-	if len(getTaskParameter.VKs) > 0 {
-		return cp.assignWithTwoCircuits(ctx, taskCtx, getTaskParameter)
-	}
 	return cp.assignWithSingleCircuit(ctx, taskCtx, getTaskParameter)
 }
 

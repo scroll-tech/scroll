@@ -1,0 +1,59 @@
+{
+	"L1": {
+		"confirmation": 0,
+		"endpoint": "http://10.5.12.230:8545/l1",
+		"startHeight": 5773255,
+		"blockTime": 12,
+		"fetchLimit": 16,
+		"MessengerAddr": "0x50c7d3e7f7c656493D1D76aaa1a836CedfCBB16A",
+		"ETHGatewayAddr": "0x8A54A2347Da2562917304141ab67324615e9866d",
+		"WETHGatewayAddr": "0x3dA0BF44814cfC678376b3311838272158211695",
+		"StandardERC20GatewayAddr": "0x65D123d6389b900d954677c26327bfc1C3e88A13",
+		"CustomERC20GatewayAddr": "0x31C994F2017E71b82fd4D8118F140c81215bbb37",
+		"ERC721GatewayAddr": "0xEF27A5E63aa3f1B8312f744b9b4DcEB910Ba77AC",
+		"ERC1155GatewayAddr": "0xa5Df8530766A85936EE3E139dECE3bF081c83146",
+		"USDCGatewayAddr": "0x0000000000000000000000000000000000000000",
+		"LIDOGatewayAddr": "0xF22B24fa7c3168f30b17fd97b71bdd3162DDe029",
+		"DAIGatewayAddr": "0x8b0B9c4e9f41b9bbDEfFee24F9f11C328093d248",
+		"PufferGatewayAddr": "0xA033Ff09f2da45f0e9ae495f525363722Df42b2a",
+		"ScrollChainAddr": "0x2D567EcE699Eabe5afCd141eDB7A4f2D0D6ce8a0",
+		"GatewayRouterAddr": "0x13FBE0D0e5552b8c9c4AE9e2435F38f37355998a",
+		"MessageQueueAddr": "0xF0B2293F5D834eAe920c6974D50957A1732de763",
+		"BatchBridgeGatewayAddr": "0xc388b775097caec9e8bd68d6e9ec080b24c40d06"
+	},
+	"L2": {
+		"confirmation": 0,
+		"endpoint": "http://10.5.10.5:8545",
+		"startHeight": 4030455,
+		"blockTime": 3,
+		"fetchLimit": 64,
+		"MessengerAddr": "0xBa50f5340FB9F3Bd074bD638c9BE13eCB36E603d",
+		"ETHGatewayAddr": "0x91e8ADDFe1358aCa5314c644312d38237fC1101C",
+		"WETHGatewayAddr": "0x481B20A927206aF7A754dB8b904B052e2781ea27",
+		"StandardERC20GatewayAddr": "0xaDcA915971A336EA2f5b567e662F5bd74AEf9582",
+		"CustomERC20GatewayAddr": "0x058dec71E53079F9ED053F3a0bBca877F6f3eAcf",
+		"ERC721GatewayAddr": "0x179B9415194B67DC3c0b8760E075cD4415785c97",
+		"ERC1155GatewayAddr": "0xe17C9b9C66FAF07753cdB04316D09f52144612A5",
+		"USDCGatewayAddr": "0x0000000000000000000000000000000000000000",
+		"LIDOGatewayAddr": "0x635B054A092F6aE61Ce0Fddc397A704F6626510D",
+		"DAIGatewayAddr": "0xbF28c28490988026Dca2396148DE50136A54534e",
+		"PufferGatewayAddr": "0x9eBf2f33526CD571f8b2ad312492cb650870CFd6",
+		"GatewayRouterAddr": "0x9aD3c5617eCAa556d6E166787A97081907171230",
+		"MessageQueueAddr": "0x5300000000000000000000000000000000000000",
+		"BatchBridgeGatewayAddr": "0xaa951eab2ebd161d05e12f1c6e70defda7523245"
+	},
+	"db": {
+		"dsn": "postgres://localhost:5432/test?sslmode=disable",
+		"driverName": "postgres",
+		"maxOpenNum": 200,
+		"maxIdleNum": 20
+	},
+	"redis": {
+		"address": "localhost:6379",
+		"username": "default",
+		"password": "",
+		"local": true,
+		"minIdleConns": 10,
+		"readTimeoutMs": 500
+	}
+}

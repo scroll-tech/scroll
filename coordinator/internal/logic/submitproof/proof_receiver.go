@@ -138,7 +138,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	// if prover support multi hard_forks, the real hard_fork_name is not set to the gin context
 	hardForkName := proofParameter.HardForkName
 	if hardForkName == "" {
-		hardForkName = ctx.GetString(coordinatorType.HardForkName)
+		hardForkName = ctx.GetString("")
 	}
 
 	var proverTask *orm.ProverTask

@@ -2,7 +2,6 @@ package types
 
 // SubmitProofParameter the SubmitProof api request parameter
 type SubmitProofParameter struct {
-	// TODO when prover have upgrade, need change this field to required
 	UUID         string `form:"uuid" json:"uuid"`
 	TaskID       string `form:"task_id" json:"task_id" binding:"required"`
 	TaskType     int    `form:"task_type" json:"task_type" binding:"required"`
