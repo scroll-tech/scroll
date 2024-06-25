@@ -874,7 +874,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV3(dbBatch *orm.Batch, d
 
 	calldata, packErr := r.l1RollupABI.Pack("commitBatchWithBlobProof", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap, blobDataProof)
 	if packErr != nil {
-		return nil, nil, fmt.Errorf("failed to pack commitBatch: %w", packErr)
+		return nil, nil, fmt.Errorf("failed to pack commitBatchWithBlobProof: %w", packErr)
 	}
 	return calldata, daBatch.Blob(), nil
 }

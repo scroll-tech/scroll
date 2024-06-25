@@ -108,6 +108,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestChunkProposerCodecv0Limits", testChunkProposerCodecv0Limits)
 	t.Run("TestChunkProposerCodecv1Limits", testChunkProposerCodecv1Limits)
 	t.Run("TestChunkProposerCodecv2Limits", testChunkProposerCodecv2Limits)
+	t.Run("TestChunkProposerCodecv3Limits", testChunkProposerCodecv3Limits)
 	t.Run("TestChunkProposerBlobSizeLimit", testChunkProposerBlobSizeLimit)
 	t.Run("TestChunkProposerIncludeCurieBlockInOneChunk", testChunkProposerIncludeCurieBlockInOneChunk)
 
