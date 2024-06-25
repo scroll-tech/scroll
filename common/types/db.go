@@ -188,6 +188,31 @@ func (s ChunkProofsStatus) String() string {
 	}
 }
 
+// BatchProofsStatus describes the proving status of batches that belong to a bundle.
+type BatchProofsStatus int
+
+const (
+	// BatchProofsStatusUndefined represents an undefined batch proofs status
+	BatchProofsStatusUndefined BatchProofsStatus = iota
+
+	// BatchProofsStatusPending means that some batches that belong to this bundle have not been proven
+	BatchProofsStatusPending
+
+	// BatchProofsStatusReady means that all batches that belong to this bundle have been proven
+	BatchProofsStatusReady
+)
+
+func (s BatchProofsStatus) String() string {
+	switch s {
+	case BatchProofsStatusPending:
+		return "BatchProofsStatusPending"
+	case BatchProofsStatusReady:
+		return "BatchProofsStatusReady"
+	default:
+		return fmt.Sprintf("Undefined BatchProofsStatus (%d)", int32(s))
+	}
+}
+
 // RollupStatus block_batch rollup_status (pending, committing, committed, commit_failed, finalizing, finalized, finalize_skipped, finalize_failed)
 type RollupStatus int
 
