@@ -199,18 +199,19 @@ func (p *ChunkProposer) proposeChunk() error {
 		return nil
 	}
 
-	codecVersion := getCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
-
-	// Ensure all blocks in the same chunk use the same codec version
-	// If a different codec version is found, truncate the blocks slice at that point
+	// Ensure all blocks in the same chunk use the same hardfork name
+	// If a different hardfork name is found, truncate the blocks slice at that point
+	hardforkName := getHardforkName(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 	for i := 1; i < len(blocks); i++ {
-		currentCodecVersion := getCodecVersion(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
-		if currentCodecVersion != codecVersion {
+		currentHardfork := getHardforkName(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
+		if currentHardfork != hardforkName {
 			blocks = blocks[:i]
 			maxBlocksThisChunk = uint64(i) // update maxBlocksThisChunk to trigger chunking, because these blocks are the last blocks before the hardfork
 			break
 		}
 	}
+
+	codecVersion := getCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 
 	// Including Curie block in a sole chunk.
 	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number.Cmp(p.chainCfg.CurieBlock) == 0 {

@@ -170,7 +170,6 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	codecVersion := getCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 	maxChunksThisBatch := getMaxChunksPerBatch(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 
 	// select at most maxChunkNumPerBatch chunks
@@ -183,11 +182,12 @@ func (p *BatchProposer) proposeBatch() error {
 		return nil
 	}
 
-	// Ensure all chunks in the same batch use the same codec version
-	// If a different codec version is found, truncate the chunks slice at that point
-	for i, chunk := range dbChunks {
-		currentCodecVersion := getCodecVersion(p.chainCfg, chunk.StartBlockNumber, chunk.StartBlockTime)
-		if currentCodecVersion != codecVersion {
+	// Ensure all chunks in the same batch use the same hardfork name
+	// If a different hardfork name is found, truncate the chunks slice at that point
+	hardforkName := getHardforkName(p.chainCfg, dbChunks[0].StartBlockNumber, dbChunks[0].StartBlockTime)
+	for i := 1; i < len(dbChunks); i++ {
+		currentHardfork := getHardforkName(p.chainCfg, dbChunks[i].StartBlockNumber, dbChunks[i].StartBlockTime)
+		if currentHardfork != hardforkName {
 			dbChunks = dbChunks[:i]
 			maxChunksThisBatch = uint64(len(dbChunks)) // update maxChunksThisBatch to trigger batching, because these chunks are the last chunks before the hardfork
 			break
@@ -203,6 +203,8 @@ func (p *BatchProposer) proposeBatch() error {
 	if err != nil {
 		return err
 	}
+
+	codecVersion := getCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1

@@ -11,6 +11,18 @@ const contractEventsBlocksFetchLimit = int64(10)
 
 const maxBlobSize = uint64(131072)
 
+func getHardforkName(config *params.ChainConfig, blockHeight, blockTimestamp uint64) string {
+	if !config.IsBernoulli(new(big.Int).SetUint64(blockHeight)) {
+		return "homestead"
+	} else if !config.IsCurie(new(big.Int).SetUint64(blockHeight)) {
+		return "bernoulli"
+	} else if !config.IsDarwin(blockTimestamp) {
+		return "curie"
+	} else {
+		return "darwin"
+	}
+}
+
 func getCodecVersion(chainCfg *params.ChainConfig, blockHeight, blockTimestamp uint64) encoding.CodecVersion {
 	if !chainCfg.IsBernoulli(new(big.Int).SetUint64(blockHeight)) {
 		return encoding.CodecV0
