@@ -874,7 +874,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV3(dbBatch *orm.Batch, d
 
 	skippedL1MessageBitmap, _, err := encoding.ConstructSkippedBitmap(batch.Index, batch.Chunks, batch.TotalL1MessagePoppedBefore)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to construct skipped bitmap: %w", err)
+		return nil, nil, fmt.Errorf("failed to construct skipped L1 message bitmap: %w", err)
 	}
 
 	calldata, packErr := r.l1RollupABI.Pack("commitBatchWithBlobProof", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, skippedL1MessageBitmap, blobDataProof)
