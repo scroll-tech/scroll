@@ -763,8 +763,8 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 		}
 
 		var chainConfig *params.ChainConfig
-		if codecVersion == encoding.CodecV0 {
-			chainConfig = &params.ChainConfig{} // will never hit blob size limit
+		if codecVersion == encoding.CodecV0 { // will never hit blob size limit
+			chainConfig = &params.ChainConfig{}
 		} else if codecVersion == encoding.CodecV1 {
 			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
 		} else if codecVersion == encoding.CodecV2 {
