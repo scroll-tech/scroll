@@ -3,7 +3,10 @@ use std::io;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use snarkify_sdk::prover::ProofHandler;
-use prover::prover_core;
+// #[path="../prover_core.rs"]
+// mod prover_core;
+//
+// use prover_core::Prover;
 
 struct MyProofHandler;
 

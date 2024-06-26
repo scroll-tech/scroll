@@ -11,6 +11,7 @@ mod types;
 mod utils;
 mod version;
 mod zk_circuits_handler;
+mod prover_core;
 
 use anyhow::Result;
 use clap::{ArgAction, Parser};

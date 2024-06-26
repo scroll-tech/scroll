@@ -9,9 +9,8 @@ use crate::{
     key_signer::KeySigner,
     types::{ProofFailureType, ProofStatus, ProofType},
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
+    types::{ProofDetail, Task},
 };
-
-use super::types::{ProofDetail, Task};
 
 pub struct Prover<'a> {
     config: &'a Config,
