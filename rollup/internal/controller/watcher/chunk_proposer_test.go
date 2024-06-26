@@ -145,18 +145,6 @@ func testChunkProposerCodecv0Limits(t *testing.T) {
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
-		{
-			name:                       "ForkBlockReached",
-			maxBlockNum:                100,
-			maxTxNum:                   10000,
-			maxL1CommitGas:             50000000000,
-			maxL1CommitCalldataSize:    1000000,
-			maxRowConsumption:          1000000,
-			chunkTimeoutSec:            1000000000000,
-			expectedChunksLen:          1,
-			expectedBlocksInFirstChunk: 1,
-			forkBlock:                  big.NewInt(2),
-		},
 	}
 
 	for _, tt := range tests {
@@ -176,9 +164,7 @@ func testChunkProposerCodecv0Limits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
-			}, &params.ChainConfig{
-				HomesteadBlock: tt.forkBlock,
-			}, db, nil)
+			}, &params.ChainConfig{}, db, nil)
 			cp.TryProposeChunk()
 
 			chunkOrm := orm.NewChunk(db)
@@ -329,18 +315,6 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
-		{
-			name:                       "ForkBlockReached",
-			maxBlockNum:                100,
-			maxTxNum:                   10000,
-			maxL1CommitGas:             50000000000,
-			maxL1CommitCalldataSize:    1000000,
-			maxRowConsumption:          1000000,
-			chunkTimeoutSec:            1000000000000,
-			expectedChunksLen:          1,
-			expectedBlocksInFirstChunk: 1,
-			forkBlock:                  big.NewInt(2),
-		},
 	}
 
 	for _, tt := range tests {
@@ -360,9 +334,7 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       tt.maxRowConsumption,
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
-			}, &params.ChainConfig{
-				BernoulliBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock,
-			}, db, nil)
+			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
 			cp.TryProposeChunk()
 
 			chunkOrm := orm.NewChunk(db)
@@ -513,18 +485,6 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
-		{
-			name:                       "ForkBlockReached",
-			maxBlockNum:                100,
-			maxTxNum:                   10000,
-			maxL1CommitGas:             50000000000,
-			maxL1CommitCalldataSize:    1000000,
-			maxRowConsumption:          1000000,
-			chunkTimeoutSec:            1000000000000,
-			expectedChunksLen:          1,
-			expectedBlocksInFirstChunk: 1,
-			forkBlock:                  big.NewInt(2),
-		},
 	}
 
 	for _, tt := range tests {
@@ -545,7 +505,7 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
 				MaxUncompressedBatchBytesSize:   math.MaxUint64,
-			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), HomesteadBlock: tt.forkBlock}, db, nil)
+			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}, db, nil)
 			cp.TryProposeChunk()
 
 			chunkOrm := orm.NewChunk(db)
@@ -696,18 +656,6 @@ func testChunkProposerCodecv3Limits(t *testing.T) {
 			expectedChunksLen:          1,
 			expectedBlocksInFirstChunk: 1,
 		},
-		{
-			name:                       "ForkBlockReached",
-			maxBlockNum:                100,
-			maxTxNum:                   10000,
-			maxL1CommitGas:             50000000000,
-			maxL1CommitCalldataSize:    1000000,
-			maxRowConsumption:          1000000,
-			chunkTimeoutSec:            1000000000000,
-			expectedChunksLen:          1,
-			expectedBlocksInFirstChunk: 1,
-			forkBlock:                  big.NewInt(2),
-		},
 	}
 
 	for _, tt := range tests {
@@ -728,7 +676,7 @@ func testChunkProposerCodecv3Limits(t *testing.T) {
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
 				MaxUncompressedBatchBytesSize:   math.MaxUint64,
-			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), HomesteadBlock: tt.forkBlock}, db, nil)
+			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}, db, nil)
 			cp.TryProposeChunk()
 
 			chunkOrm := orm.NewChunk(db)

@@ -12,8 +12,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/forks"
-
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
@@ -35,7 +33,6 @@ type ChunkProposer struct {
 	chunkTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
-	forkHeights                     []uint64
 
 	chainCfg *params.ChainConfig
 
@@ -58,7 +55,6 @@ type ChunkProposer struct {
 
 // NewChunkProposer creates a new ChunkProposer instance.
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
-	forkHeights, _, _ := forks.CollectSortedForkHeights(chainCfg)
 	log.Debug("new chunk proposer",
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
@@ -66,8 +62,7 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
 		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
 		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
-		"maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize,
-		"forkHeights", forkHeights)
+		"maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize)
 
 	p := &ChunkProposer{
 		ctx:                             ctx,
@@ -82,7 +77,6 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
-		forkHeights:                     forkHeights,
 		chainCfg:                        chainCfg,
 
 		chunkProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -194,10 +188,6 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	maxBlocksThisChunk := p.maxBlockNumPerChunk
-	blocksUntilFork := forks.BlocksUntilFork(unchunkedBlockHeight, p.forkHeights)
-	if blocksUntilFork != 0 && blocksUntilFork < maxBlocksThisChunk {
-		maxBlocksThisChunk = blocksUntilFork
-	}
 
 	// select at most maxBlocksThisChunk blocks
 	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, int(maxBlocksThisChunk))
@@ -209,15 +199,17 @@ func (p *ChunkProposer) proposeChunk() error {
 		return nil
 	}
 
-	var codecVersion encoding.CodecVersion
-	if !p.chainCfg.IsBernoulli(blocks[0].Header.Number) {
-		codecVersion = encoding.CodecV0
-	} else if !p.chainCfg.IsCurie(blocks[0].Header.Number) {
-		codecVersion = encoding.CodecV1
-	} else if !p.chainCfg.IsDarwin(blocks[0].Header.Time) {
-		codecVersion = encoding.CodecV2
-	} else {
-		codecVersion = encoding.CodecV3
+	codecVersion := getCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
+
+	// Ensure all blocks in the same chunk use the same codec version
+	// If a different codec version is found, truncate the blocks slice at that point
+	for i := 1; i < len(blocks); i++ {
+		currentCodecVersion := getCodecVersion(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
+		if currentCodecVersion != codecVersion {
+			blocks = blocks[:i]
+			maxBlocksThisChunk = uint64(i) // update maxBlocksThisChunk to trigger chunking, because these blocks are the last blocks before the hardfork
+			break
+		}
 	}
 
 	// Including Curie block in a sole chunk.

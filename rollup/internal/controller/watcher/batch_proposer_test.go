@@ -75,15 +75,6 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 1,
 		},
-		{
-			name:                       "ForkBlockReached",
-			maxL1CommitGas:             50000000000,
-			maxL1CommitCalldataSize:    1000000,
-			batchTimeoutSec:            1000000000000,
-			expectedBatchesLen:         1,
-			expectedChunksInFirstBatch: 1,
-			forkBlock:                  big.NewInt(3),
-		},
 	}
 
 	for _, tt := range tests {
@@ -126,9 +117,7 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       1000000,
 				ChunkTimeoutSec:                 300,
 				GasCostIncreaseMultiplier:       1.2,
-			}, &params.ChainConfig{
-				HomesteadBlock: tt.forkBlock,
-			}, db, nil)
+			}, &params.ChainConfig{}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
 
@@ -227,15 +216,6 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 1,
 		},
-		{
-			name:                       "ForkBlockReached",
-			maxL1CommitGas:             50000000000,
-			maxL1CommitCalldataSize:    1000000,
-			batchTimeoutSec:            1000000000000,
-			expectedBatchesLen:         1,
-			expectedChunksInFirstBatch: 1,
-			forkBlock:                  big.NewInt(3),
-		},
 	}
 
 	for _, tt := range tests {
@@ -280,7 +260,6 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				GasCostIncreaseMultiplier:       1.2,
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0),
-				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
@@ -380,15 +359,6 @@ func testBatchProposerCodecv2Limits(t *testing.T) {
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 1,
 		},
-		{
-			name:                       "ForkBlockReached",
-			maxL1CommitGas:             50000000000,
-			maxL1CommitCalldataSize:    1000000,
-			batchTimeoutSec:            1000000000000,
-			expectedBatchesLen:         1,
-			expectedChunksInFirstBatch: 1,
-			forkBlock:                  big.NewInt(3),
-		},
 	}
 
 	for _, tt := range tests {
@@ -435,7 +405,6 @@ func testBatchProposerCodecv2Limits(t *testing.T) {
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0),
 				CurieBlock:     big.NewInt(0),
-				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
@@ -537,15 +506,6 @@ func testBatchProposerCodecv3Limits(t *testing.T) {
 			expectedBatchesLen:         1,
 			expectedChunksInFirstBatch: 1,
 		},
-		{
-			name:                       "ForkBlockReached",
-			maxL1CommitGas:             50000000000,
-			maxL1CommitCalldataSize:    1000000,
-			batchTimeoutSec:            1000000000000,
-			expectedBatchesLen:         1,
-			expectedChunksInFirstBatch: 1,
-			forkBlock:                  big.NewInt(3),
-		},
 	}
 
 	for _, tt := range tests {
@@ -615,7 +575,6 @@ func testBatchProposerCodecv3Limits(t *testing.T) {
 				BernoulliBlock: big.NewInt(0),
 				CurieBlock:     big.NewInt(0),
 				DarwinTime:     new(uint64),
-				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			bp.TryProposeBatch()
 
