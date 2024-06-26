@@ -872,7 +872,12 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV3(dbBatch *orm.Batch, d
 		return nil, nil, fmt.Errorf("failed to get blob data proof for point evaluation: %w", err)
 	}
 
-	calldata, packErr := r.l1RollupABI.Pack("commitBatchWithBlobProof", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap, blobDataProof)
+	skippedL1MessageBitmap, _, err := encoding.ConstructSkippedBitmap(batch.Index, batch.Chunks, batch.TotalL1MessagePoppedBefore)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to construct skipped bitmap: %w", err)
+	}
+
+	calldata, packErr := r.l1RollupABI.Pack("commitBatchWithBlobProof", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, skippedL1MessageBitmap, blobDataProof)
 	if packErr != nil {
 		return nil, nil, fmt.Errorf("failed to pack commitBatchWithBlobProof: %w", packErr)
 	}
