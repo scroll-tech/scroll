@@ -1105,3 +1105,85 @@ func testBatchProposerMaxChunkNumPerBatchLimit(t *testing.T) {
 		database.CloseDB(db)
 	}
 }
+
+func testBatchProposerRespectHardforks(t *testing.T) {
+	db := setupDB(t)
+	defer database.CloseDB(db)
+
+	chainConfig := &params.ChainConfig{
+		BernoulliBlock: big.NewInt(1),
+		CurieBlock:     big.NewInt(2),
+		DarwinTime:     func() *uint64 { t := uint64(4); return &t }(),
+	}
+
+	// Add genesis batch.
+	block := &encoding.Block{
+		Header: &gethTypes.Header{
+			Number: big.NewInt(0),
+		},
+		RowConsumption: &gethTypes.RowConsumption{},
+	}
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{block},
+	}
+	chunkOrm := orm.NewChunk(db)
+	_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, utils.ChunkMetrics{})
+	assert.NoError(t, err)
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+	}
+	batchOrm := orm.NewBatch(db)
+	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
+	assert.NoError(t, err)
+
+	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+		MaxBlockNumPerChunk:             math.MaxUint64,
+		MaxTxNumPerChunk:                math.MaxUint64,
+		MaxL1CommitGasPerChunk:          math.MaxUint64,
+		MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
+		MaxRowConsumptionPerChunk:       math.MaxUint64,
+		ChunkTimeoutSec:                 math.MaxUint64,
+		GasCostIncreaseMultiplier:       1,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+	}, chainConfig, db, nil)
+
+	block = readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
+	for i := int64(1); i <= 60; i++ {
+		block.Header.Number = big.NewInt(i)
+		block.Header.Time = uint64(i)
+		err = orm.NewL2Block(db).InsertL2Blocks(context.Background(), []*encoding.Block{block})
+		assert.NoError(t, err)
+	}
+
+	for i := 0; i < 5; i++ {
+		cp.TryProposeChunk()
+	}
+
+	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		MaxL1CommitGasPerBatch:          math.MaxUint64,
+		MaxL1CommitCalldataSizePerBatch: math.MaxUint64,
+		BatchTimeoutSec:                 math.MaxUint64,
+		GasCostIncreaseMultiplier:       1,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+	}, chainConfig, db, nil)
+
+	for i := 0; i < 5; i++ {
+		bp.TryProposeBatch()
+	}
+
+	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
+	assert.NoError(t, err)
+	assert.Len(t, batches, 4)
+
+	expectedEndChunkIndices := []uint64{0, 1, 3, 4}
+	expectedEndBlockNumbers := []uint64{0, 1, 3, 60}
+	for i, batch := range batches {
+		assert.Equal(t, expectedEndChunkIndices[i], batch.EndChunkIndex)
+		chunk, err := chunkOrm.GetChunkByIndex(context.Background(), batch.EndChunkIndex)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedEndBlockNumbers[i], chunk.EndBlockNumber)
+	}
+}

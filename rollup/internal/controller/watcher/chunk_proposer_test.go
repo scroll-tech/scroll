@@ -764,12 +764,15 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 	}
 }
 
-func testChunkProposerIncludeCurieBlockInOneChunk(t *testing.T) {
+func testChunkProposerRespectHardforks(t *testing.T) {
 	db := setupDB(t)
+	defer database.CloseDB(db)
+
 	block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
-	for i := int64(0); i < 10; i++ {
+	for i := int64(1); i <= 20; i++ {
 		l2BlockOrm := orm.NewL2Block(db)
 		block.Header.Number = big.NewInt(i)
+		block.Header.Time = uint64(i)
 		err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
 		assert.NoError(t, err)
 	}
@@ -783,9 +786,13 @@ func testChunkProposerIncludeCurieBlockInOneChunk(t *testing.T) {
 		ChunkTimeoutSec:                 math.MaxUint64,
 		GasCostIncreaseMultiplier:       1,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
-	}, &params.ChainConfig{BernoulliBlock: big.NewInt(1), CurieBlock: big.NewInt(2)}, db, nil)
+	}, &params.ChainConfig{
+		BernoulliBlock: big.NewInt(1),
+		CurieBlock:     big.NewInt(2),
+		DarwinTime:     func() *uint64 { t := uint64(4); return &t }(),
+	}, db, nil)
 
-	for i := 0; i < 2; i++ {
+	for i := 0; i < 5; i++ {
 		cp.TryProposeChunk()
 	}
 
@@ -793,9 +800,9 @@ func testChunkProposerIncludeCurieBlockInOneChunk(t *testing.T) {
 	chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 	assert.NoError(t, err)
 
-	assert.Len(t, chunks, 2)
+	assert.Len(t, chunks, 4)
+	expectedEndBlockNumbers := []uint64{1, 2, 3, 20}
 	for i, chunk := range chunks {
-		assert.Equal(t, uint64(i+1), chunk.EndBlockNumber)
+		assert.Equal(t, expectedEndBlockNumbers[i], chunk.EndBlockNumber)
 	}
-	database.CloseDB(db)
 }

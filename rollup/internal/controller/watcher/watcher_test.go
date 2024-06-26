@@ -110,7 +110,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestChunkProposerCodecv2Limits", testChunkProposerCodecv2Limits)
 	t.Run("TestChunkProposerCodecv3Limits", testChunkProposerCodecv3Limits)
 	t.Run("TestChunkProposerBlobSizeLimit", testChunkProposerBlobSizeLimit)
-	t.Run("TestChunkProposerIncludeCurieBlockInOneChunk", testChunkProposerIncludeCurieBlockInOneChunk)
+	t.Run("TestChunkProposerRespectHardforks", testChunkProposerRespectHardforks)
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerCodecv0Limits", testBatchProposerCodecv0Limits)
@@ -123,6 +123,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestBatchCommitGasAndCalldataSizeCodecv3Estimation", testBatchCommitGasAndCalldataSizeCodecv3Estimation)
 	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
 	t.Run("TestBatchProposerMaxChunkNumPerBatchLimit", testBatchProposerMaxChunkNumPerBatchLimit)
+	t.Run("TestBatchProposerRespectHardforks", testBatchProposerRespectHardforks)
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {
