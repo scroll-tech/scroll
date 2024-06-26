@@ -29,8 +29,9 @@ type GetTaskController struct {
 
 // NewGetTaskController create a get prover task controller
 func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, vf.ChunkVKMap, reg)
-	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, vf.BatchVKMap, reg)
+	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, reg)
+	bundleProverTask := provertask.NewBundleProverTask(cfg, chainCfg, db, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),
@@ -42,7 +43,7 @@ func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *
 
 	ptc.proverTasks[message.ProofTypeChunk] = chunkProverTask
 	ptc.proverTasks[message.ProofTypeBatch] = batchProverTask
-
+	ptc.proverTasks[message.ProofTypeBundle] = bundleProverTask
 	return ptc
 }
 
@@ -111,6 +112,7 @@ func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) 
 	proofTypes := []message.ProofType{
 		message.ProofTypeChunk,
 		message.ProofTypeBatch,
+		message.ProofTypeBundle,
 	}
 
 	if proofType == message.ProofTypeUndefined {

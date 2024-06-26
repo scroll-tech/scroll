@@ -1,7 +1,6 @@
-package types
+package message
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -26,6 +25,8 @@ func (r ProofType) String() string {
 		return "proof type chunk"
 	case ProofTypeBatch:
 		return "proof type batch"
+	case ProofTypeBundle:
+		return "proof type bundle"
 	default:
 		return fmt.Sprintf("illegal proof type: %d", r)
 	}
@@ -36,8 +37,10 @@ const (
 	ProofTypeUndefined ProofType = iota
 	// ProofTypeChunk is default prover, it only generates zk proof from traces.
 	ProofTypeChunk
-	// ProofTypeBatch generates zk proof from other zk proofs and aggregate them into one proof.
+	// ProofTypeBatch generates zk proof from chunks proofs
 	ProofTypeBatch
+	// ProofTypeBundle generates zk proof from batch proofs
+	ProofTypeBundle
 )
 
 // ChunkTaskDetail is a type containing ChunkTask detail.
@@ -88,21 +91,4 @@ type BatchProof struct {
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
 	GitVersion string `json:"git_version,omitempty"`
-}
-
-// SanityCheck checks whether an BatchProof is in a legal format
-// TODO: change to check Proof&Instance when upgrading to snark verifier v0.4
-func (ap *BatchProof) SanityCheck() error {
-	if ap == nil {
-		return errors.New("agg_proof is nil")
-	}
-
-	if len(ap.Proof) == 0 {
-		return errors.New("proof not ready")
-	}
-	if len(ap.Proof)%32 != 0 {
-		return fmt.Errorf("proof buffer has wrong length, expected: 32, got: %d", len(ap.Proof))
-	}
-
-	return nil
 }

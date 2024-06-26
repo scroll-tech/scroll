@@ -21,19 +21,14 @@ var (
 	ErrHardForkName = fmt.Errorf("wrong hard fork name")
 )
 
+var (
+	getTaskCounterInitOnce sync.Once
+	getTaskCounterVec      *prometheus.CounterVec = nil
+)
+
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
-}
-
-func reverseMap(input map[string]string) map[string]string {
-	output := make(map[string]string, len(input))
-	for k, v := range input {
-		if k != "" {
-			output[v] = k
-		}
-	}
-	return output
 }
 
 // BaseProverTask a base prover task which contain series functions
@@ -41,15 +36,12 @@ type BaseProverTask struct {
 	cfg *config.Config
 	db  *gorm.DB
 
-	// key is hardForkName, value is vk
-	vkMap map[string]string
-	// key is vk, value is hardForkName
-	reverseVkMap map[string]string
-	nameForkMap  map[string]uint64
-	forkHeights  []uint64
+	nameForkMap map[string]uint64
+	forkHeights []uint64
 
 	batchOrm           *orm.Batch
 	chunkOrm           *orm.Chunk
+	bundleOrm          *orm.Bundle
 	blockOrm           *orm.L2Block
 	proverTaskOrm      *orm.ProverTask
 	proverBlockListOrm *orm.ProverBlockList
@@ -117,11 +109,6 @@ func (b *BaseProverTask) getHardForkNumberByName(forkName string) (uint64, error
 
 	return hardForkNumber, nil
 }
-
-var (
-	getTaskCounterInitOnce sync.Once
-	getTaskCounterVec      *prometheus.CounterVec = nil
-)
 
 func newGetTaskCounterVec(factory promauto.Factory, taskType string) *prometheus.CounterVec {
 	getTaskCounterInitOnce.Do(func() {

@@ -18,13 +18,12 @@ import (
 	"io/fs"
 	"os"
 	"path"
+	coordinatorType "scroll-tech/common/types/message"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
 
 	"scroll-tech/coordinator/internal/config"
-
-	"scroll-tech/common/types/message"
 )
 
 // NewVerifier Sets up a rust ffi to call verify.
@@ -85,7 +84,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *coordinatorType.BatchProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, batch verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -112,7 +111,7 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) 
 }
 
 // VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
+func (v *Verifier) VerifyChunkProof(proof *coordinatorType.ChunkProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {

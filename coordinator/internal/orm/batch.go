@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -13,7 +12,6 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
 
@@ -77,11 +75,11 @@ func (*Batch) TableName() string {
 
 // GetUnassignedBatch retrieves unassigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
-func (o *Batch) GetUnassignedBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
+func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	var batch Batch
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND start_chunk_index >= %d AND end_chunk_index < %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
-		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady), startChunkIndex, endChunkIndex)
+	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
+		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady))
 	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
 		return nil, fmt.Errorf("Batch.GetUnassignedBatch error: %w", err)
@@ -94,11 +92,11 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, startChunkIndex, endChun
 
 // GetAssignedBatch retrieves assigned batch based on the specified limit.
 // The returned batch are sorted in ascending order by their index.
-func (o *Batch) GetAssignedBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
+func (o *Batch) GetAssignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	var batch Batch
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND start_chunk_index >= %d AND end_chunk_index < %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
-		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady), startChunkIndex, endChunkIndex)
+	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
+		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady))
 	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
 		return nil, fmt.Errorf("Batch.GetAssignedBatch error: %w", err)
@@ -317,18 +315,14 @@ func (o *Batch) UpdateProvingStatusFailed(ctx context.Context, hash string, maxA
 }
 
 // UpdateProofAndProvingStatusByHash updates the batch proof and proving status by hash.
-func (o *Batch) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof *message.BatchProof, provingStatus types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+func (o *Batch) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof []byte, provingStatus types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-	proofBytes, err := json.Marshal(proof)
-	if err != nil {
-		return err
-	}
 
 	updateFields := make(map[string]interface{})
-	updateFields["proof"] = proofBytes
+	updateFields["proof"] = proof
 	updateFields["proving_status"] = provingStatus
 	updateFields["proof_time_sec"] = proofTimeSec
 	updateFields["proved_at"] = utils.NowUTC()

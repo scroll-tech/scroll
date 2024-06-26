@@ -24,21 +24,21 @@ import (
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
-// BatchProverTask is prover task implement for batch proof
-type BatchProverTask struct {
+// BundleProverTask is prover task implement for bundle proof
+type BundleProverTask struct {
 	BaseProverTask
 
-	batchAttemptsExceedTotal prometheus.Counter
-	batchTaskGetTaskTotal    *prometheus.CounterVec
-	batchTaskGetTaskProver   *prometheus.CounterVec
+	bundleAttemptsExceedTotal prometheus.Counter
+	bundleTaskGetTaskTotal    *prometheus.CounterVec
+	bundleTaskGetTaskProver   *prometheus.CounterVec
 }
 
-// NewBatchProverTask new a batch collector
-func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProverTask {
+// NewBundleProverTask new a bundle collector
+func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BundleProverTask {
 	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
 	log.Info("new batch prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
 
-	bp := &BatchProverTask{
+	bp := &BundleProverTask{
 		BaseProverTask: BaseProverTask{
 			db:                 db,
 			cfg:                cfg,
@@ -46,24 +46,25 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			forkHeights:        forkHeights,
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
+			bundleOrm:          orm.NewBundle(db),
 			proverTaskOrm:      orm.NewProverTask(db),
 			proverBlockListOrm: orm.NewProverBlockList(db),
 		},
-		batchAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "coordinator_batch_attempts_exceed_total",
-			Help: "Total number of batch attempts exceed.",
+		bundleAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_bundle_attempts_exceed_total",
+			Help: "Total number of bundle attempts exceed.",
 		}),
-		batchTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
-			Name: "coordinator_batch_get_task_total",
-			Help: "Total number of batch get task.",
+		bundleTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
+			Name: "coordinator_bundle_get_task_total",
+			Help: "Total number of bundle get task.",
 		}, []string{"fork_name"}),
-		batchTaskGetTaskProver: newGetTaskCounterVec(promauto.With(reg), "batch"),
+		bundleTaskGetTaskProver: newGetTaskCounterVec(promauto.With(reg), "bundle"),
 	}
 	return bp
 }
 
 // Assign load and assign batch tasks
-func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
 	taskCtx, err := bp.checkParameter(ctx)
 	if err != nil || taskCtx == nil {
 		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
@@ -71,34 +72,34 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
-	var batchTask *orm.Batch
+	var bundleTask *orm.Bundle
 	for i := 0; i < 5; i++ {
 		var getTaskError error
-		var tmpBatchTask *orm.Batch
-		tmpBatchTask, getTaskError = bp.batchOrm.GetAssignedBatch(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
+		var tmpBundleTask *orm.Bundle
+		tmpBundleTask, getTaskError = bp.bundleOrm.GetAssignedBundle(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
-			log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+			log.Error("failed to get assigned bundle proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
-		// batch to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
-		if tmpBatchTask == nil {
-			tmpBatchTask, getTaskError = bp.batchOrm.GetUnassignedBatch(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
+		// bundle to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
+		if tmpBundleTask == nil {
+			tmpBundleTask, getTaskError = bp.bundleOrm.GetUnassignedBundle(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
-				log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+				log.Error("failed to get unassigned bundle proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
 			}
 		}
 
-		if tmpBatchTask == nil {
-			log.Debug("get empty batch", "height", getTaskParameter.ProverHeight)
+		if tmpBundleTask == nil {
+			log.Debug("get empty bundle", "height", getTaskParameter.ProverHeight)
 			return nil, nil
 		}
 
-		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx.Copy(), tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
+		rowsAffected, updateAttemptsErr := bp.bundleOrm.UpdateBundleAttempts(ctx.Copy(), tmpBundleTask.Hash, tmpBundleTask.ActiveAttempts, tmpBundleTask.TotalAttempts)
 		if updateAttemptsErr != nil {
-			log.Error("failed to update batch attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
+			log.Error("failed to update bundle attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)
 			return nil, ErrCoordinatorInternalFailure
 		}
 
@@ -107,24 +108,24 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			continue
 		}
 
-		batchTask = tmpBatchTask
+		bundleTask = tmpBundleTask
 		break
 	}
 
-	if batchTask == nil {
-		log.Debug("get empty unassigned batch after retry 5 times", "height", getTaskParameter.ProverHeight)
+	if bundleTask == nil {
+		log.Debug("get empty unassigned bundle after retry 5 times", "height", getTaskParameter.ProverHeight)
 		return nil, nil
 	}
 
-	log.Info("start batch proof generation session", "task_id", batchTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
+	log.Info("start batch proof generation session", "task index", bundleTask.Index, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 
 	// TODO get hard fork name
 	var hardForkName string
 
 	proverTask := orm.ProverTask{
-		TaskID:          batchTask.Hash,
+		TaskID:          bundleTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,
-		TaskType:        int16(message.ProofTypeBatch),
+		TaskType:        int16(message.ProofTypeBundle),
 		ProverName:      taskCtx.ProverName,
 		ProverVersion:   taskCtx.ProverVersion,
 		ProvingStatus:   int16(types.ProverAssigned),
@@ -135,20 +136,20 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	// Store session info.
 	if err = bp.proverTaskOrm.InsertProverTask(ctx.Copy(), &proverTask); err != nil {
-		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("insert batch prover task info fail", "task_id", batchTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
+		bp.recoverActiveAttempts(ctx, bundleTask)
+		log.Error("insert bundle prover task info fail", "task_id", bundleTask.Hash, "publicKey", taskCtx.PublicKey, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
 	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
 	if err != nil {
-		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)
+		bp.recoverActiveAttempts(ctx, bundleTask)
+		log.Error("format bundle prover task failure", "task_id", bundleTask.Hash, "err", err)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	bp.batchTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
-	bp.batchTaskGetTaskProver.With(prometheus.Labels{
+	bp.bundleTaskGetTaskTotal.WithLabelValues(hardForkName).Inc()
+	bp.bundleTaskGetTaskProver.With(prometheus.Labels{
 		coordinatorType.LabelProverName:      proverTask.ProverName,
 		coordinatorType.LabelProverPublicKey: proverTask.ProverPublicKey,
 		coordinatorType.LabelProverVersion:   proverTask.ProverVersion,
@@ -157,7 +158,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	return taskMsg, nil
 }
 
-func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
 	// get chunk from db
 	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, task.TaskID)
 	if err != nil {
@@ -201,15 +202,15 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	taskMsg := &coordinatorType.GetTaskSchema{
 		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
-		TaskType:     int(message.ProofTypeBatch),
+		TaskType:     int(message.ProofTypeBundle),
 		TaskData:     string(chunkProofsBytes),
 		HardForkName: hardForkName,
 	}
 	return taskMsg, nil
 }
 
-func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *orm.Batch) {
-	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), batchTask.Hash); err != nil {
-		log.Error("failed to recover batch active attempts", "hash", batchTask.Hash, "error", err)
+func (bp *BundleProverTask) recoverActiveAttempts(ctx *gin.Context, bundleTask *orm.Bundle) {
+	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), bundleTask.Hash); err != nil {
+		log.Error("failed to recover bundle active attempts", "hash", bundleTask.Hash, "error", err)
 	}
 }

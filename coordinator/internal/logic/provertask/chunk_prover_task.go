@@ -33,13 +33,11 @@ type ChunkProverTask struct {
 }
 
 // NewChunkProverTask new a chunk prover task
-func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vkMap map[string]string, reg prometheus.Registerer) *ChunkProverTask {
+func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProverTask {
 	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
 	log.Info("new chunk prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
-			vkMap:              vkMap,
-			reverseVkMap:       reverseMap(vkMap),
 			db:                 db,
 			cfg:                cfg,
 			nameForkMap:        nameForkMap,
@@ -62,13 +60,11 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 	return cp
 }
 
-type getHardForkNameByChunkFunc func(*orm.Chunk) (string, error)
-
-func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCtx *proverTaskContext,
-	blockRange *blockRange, getTaskParameter *coordinatorType.GetTaskParameter, getHardForkName getHardForkNameByChunkFunc) (*coordinatorType.GetTaskSchema, error) {
-	fromBlockNum, toBlockNum := blockRange.from, blockRange.to
-	if toBlockNum > getTaskParameter.ProverHeight {
-		toBlockNum = getTaskParameter.ProverHeight + 1
+// Assign the chunk proof which need to prove
+func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
+	taskCtx, err := cp.checkParameter(ctx)
+	if err != nil || taskCtx == nil {
+		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
 	}
 
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
@@ -77,7 +73,7 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
-		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx.Copy(), fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
+		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
 			log.Error("failed to get assigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
@@ -86,7 +82,7 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
 		if tmpChunkTask == nil {
-			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx.Copy(), fromBlockNum, toBlockNum, maxActiveAttempts, maxTotalAttempts)
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
 				log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
@@ -119,25 +115,13 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 	}
 
 	log.Info("start chunk generation session", "task_id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
-	var (
-		proverVersion = taskCtx.ProverVersion
-		hardForkName  = taskCtx.HardForkName
-		err           error
-	)
-	if getHardForkName != nil {
-		hardForkName, err = getHardForkName(chunkTask)
-		if err != nil {
-			log.Error("failed to get hard fork name by chunk", "task_id", chunkTask.Hash, "error", err.Error())
-			return nil, ErrCoordinatorInternalFailure
-		}
-	}
 
 	proverTask := orm.ProverTask{
 		TaskID:          chunkTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,
 		TaskType:        int16(message.ProofTypeChunk),
 		ProverName:      taskCtx.ProverName,
-		ProverVersion:   proverVersion,
+		ProverVersion:   taskCtx.ProverVersion,
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
 		// here why need use UTC time. see scroll/common/databased/db.go
@@ -150,7 +134,10 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask)
+	// TODO get hardfork name from chunk
+	var hardForkName = ""
+
+	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
 	if err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("format prover task failure", "task_id", chunkTask.Hash, "err", err)
@@ -167,93 +154,7 @@ func (cp *ChunkProverTask) doAssignTaskWithinBlockRange(ctx *gin.Context, taskCt
 	return taskMsg, nil
 }
 
-func (cp *ChunkProverTask) assignWithSingleCircuit(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	blockRange, err := cp.getBlockRangeByName(taskCtx.HardForkName)
-	if err != nil {
-		return nil, err
-	}
-	return cp.doAssignTaskWithinBlockRange(ctx, taskCtx, blockRange, getTaskParameter, nil)
-}
-
-func (cp *ChunkProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *proverTaskContext, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	var (
-		hardForkNames [2]string
-		blockRanges   [2]*blockRange
-		err           error
-	)
-	for i := 0; i < 2; i++ {
-		hardForkNames[i] = cp.reverseVkMap[""]
-		blockRanges[i], err = cp.getBlockRangeByName(hardForkNames[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	blockRange, err := blockRanges[0].merge(*blockRanges[1])
-	if err != nil {
-		return nil, err
-	}
-	var hardForkName string
-	getHardForkName := func(chunk *orm.Chunk) (string, error) {
-		for i := 0; i < 2; i++ {
-			if blockRanges[i].contains(chunk.StartBlockNumber, chunk.EndBlockNumber) {
-				hardForkName = hardForkNames[i]
-				break
-			}
-		}
-		if hardForkName == "" {
-			log.Warn("get chunk not belongs to any hard fork name", "chunk id", chunk.Index)
-			return "", fmt.Errorf("get chunk not belongs to any hard fork name, chunk id: %d", chunk.Index)
-		}
-		return hardForkName, nil
-	}
-	schema, err := cp.doAssignTaskWithinBlockRange(ctx, taskCtx, blockRange, getTaskParameter, getHardForkName)
-	if schema != nil && err == nil {
-		schema.HardForkName = hardForkName
-		return schema, nil
-	}
-	return schema, err
-}
-
-type blockRange struct {
-	from uint64
-	to   uint64
-}
-
-func (r *blockRange) merge(o blockRange) (*blockRange, error) {
-	if r.from == o.to {
-		return &blockRange{o.from, r.to}, nil
-	} else if r.to == o.from {
-		return &blockRange{r.from, o.to}, nil
-	}
-	return nil, fmt.Errorf("two ranges are not adjacent")
-}
-
-func (r *blockRange) contains(start, end uint64) bool {
-	return r.from <= start && r.to > end
-}
-
-func (cp *ChunkProverTask) getBlockRangeByName(hardForkName string) (*blockRange, error) {
-	hardForkNumber, err := cp.getHardForkNumberByName(hardForkName)
-	if err != nil {
-		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", hardForkName)
-		return nil, err
-	}
-
-	fromBlockNum, toBlockNum := forks.BlockRange(hardForkNumber, cp.forkHeights)
-	return &blockRange{fromBlockNum, toBlockNum}, nil
-}
-
-// Assign the chunk proof which need to prove
-func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error) {
-	taskCtx, err := cp.checkParameter(ctx, getTaskParameter)
-	if err != nil || taskCtx == nil {
-		return nil, fmt.Errorf("check prover task parameter failed, error:%w", err)
-	}
-
-	return cp.assignWithSingleCircuit(ctx, taskCtx, getTaskParameter)
-}
-
-func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
 	blockHashes, dbErr := cp.blockOrm.GetL2BlockHashesByChunkHash(ctx, task.TaskID)
 	if dbErr != nil || len(blockHashes) == 0 {
@@ -269,10 +170,11 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	proverTaskSchema := &coordinatorType.GetTaskSchema{
-		UUID:     task.UUID.String(),
-		TaskID:   task.TaskID,
-		TaskType: int(message.ProofTypeChunk),
-		TaskData: string(blockHashesBytes),
+		UUID:         task.UUID.String(),
+		TaskID:       task.TaskID,
+		TaskType:     int(message.ProofTypeChunk),
+		TaskData:     string(blockHashesBytes),
+		HardForkName: hardForkName,
 	}
 
 	return proverTaskSchema, nil

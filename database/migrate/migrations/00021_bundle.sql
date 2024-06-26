@@ -2,7 +2,8 @@
 -- +goose StatementBegin
 
 CREATE TABLE bundle (
-    index                   BIGSERIAL      PRIMARY KEY,
+    index                   BIGSERIAL       PRIMARY KEY,
+    hash                    VARCHAR         NOT NULL,
     start_batch_index       BIGINT          NOT NULL,
     end_batch_index         BIGINT          NOT NULL,
     start_batch_hash        VARCHAR         NOT NULL,
@@ -15,6 +16,8 @@ CREATE TABLE bundle (
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
     proof_time_sec          INTEGER         DEFAULT NULL,
+    total_attempts          SMALLINT        NOT NULL DEFAULT 0
+    active_attempts         SMALLINT        NOT NULL DEFAULT 0
 
 -- rollup
     rollup_status           SMALLINT        NOT NULL DEFAULT 1,
