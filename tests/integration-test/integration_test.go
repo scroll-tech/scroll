@@ -14,13 +14,12 @@ import (
 
 	"scroll-tech/integration-test/orm"
 
-	"scroll-tech/database/migrate"
-
 	capp "scroll-tech/coordinator/cmd/api/app"
 
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/utils"
 	"scroll-tech/common/version"
+	"scroll-tech/database/migrate"
 
 	bcmd "scroll-tech/rollup/cmd"
 )
