@@ -32,7 +32,6 @@ type BatchProposer struct {
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
-	forkMap                         map[uint64]bool
 
 	chainCfg *params.ChainConfig
 
