@@ -361,7 +361,6 @@ jobs:
         with:
           context: .
           file: ./build/dockerfiles/coordinator-api.Dockerfile
-          platforms: linux/amd64
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
