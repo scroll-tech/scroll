@@ -592,7 +592,7 @@ func testBatchProposerCodecv3Limits(t *testing.T) {
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0),
 				CurieBlock:     big.NewInt(0),
-				DescartesTime:  new(uint64),
+				DarwinTime:     new(uint64),
 				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
@@ -614,7 +614,7 @@ func testBatchProposerCodecv3Limits(t *testing.T) {
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0),
 				CurieBlock:     big.NewInt(0),
-				DescartesTime:  new(uint64),
+				DarwinTime:     new(uint64),
 				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			bp.TryProposeBatch()
@@ -920,7 +920,7 @@ func testBatchCommitGasAndCalldataSizeCodecv3Estimation(t *testing.T) {
 		ChunkTimeoutSec:                 300,
 		GasCostIncreaseMultiplier:       1.2,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
-	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DescartesTime: new(uint64)}, db, nil)
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}, db, nil)
 	cp.TryProposeChunk() // chunk1 contains block1
 	cp.TryProposeChunk() // chunk2 contains block2
 
@@ -937,7 +937,7 @@ func testBatchCommitGasAndCalldataSizeCodecv3Estimation(t *testing.T) {
 		BatchTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1.2,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
-	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DescartesTime: new(uint64)}, db, nil)
+	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}, db, nil)
 	bp.TryProposeBatch()
 
 	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
@@ -997,7 +997,7 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 		} else if codecVersion == encoding.CodecV2 {
 			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
 		} else {
-			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DescartesTime: new(uint64)}
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 		}
 
 		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
@@ -1104,7 +1104,7 @@ func testBatchProposerMaxChunkNumPerBatchLimit(t *testing.T) {
 			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
 			expectedChunkNum = 45
 		} else {
-			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DescartesTime: new(uint64)}
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 			expectedChunkNum = 45
 		}
 

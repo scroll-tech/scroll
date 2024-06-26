@@ -389,7 +389,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				log.Error("failed to construct commitBatch payload codecv1", "index", dbBatch.Index, "err", err)
 				return
 			}
-		} else if !r.chainCfg.IsDescartes(dbChunks[0].StartBlockTime) { // codecv2
+		} else if !r.chainCfg.IsDarwin(dbChunks[0].StartBlockTime) { // codecv2
 			calldata, blob, err = r.constructCommitBatchPayloadCodecV2(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
 				log.Error("failed to construct commitBatch payload codecv2", "index", dbBatch.Index, "err", err)

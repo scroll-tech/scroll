@@ -187,7 +187,7 @@ func (p *BatchProposer) proposeBatch() error {
 	} else if !p.chainCfg.IsCurie(startBlockNum) {
 		codecVersion = encoding.CodecV1
 		maxChunksThisBatch = 15
-	} else if !p.chainCfg.IsDescartes(firstUnbatchedChunk.StartBlockTime) {
+	} else if !p.chainCfg.IsDarwin(firstUnbatchedChunk.StartBlockTime) {
 		codecVersion = encoding.CodecV2
 		maxChunksThisBatch = 45
 	} else {

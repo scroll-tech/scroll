@@ -214,7 +214,7 @@ func (p *ChunkProposer) proposeChunk() error {
 		codecVersion = encoding.CodecV0
 	} else if !p.chainCfg.IsCurie(blocks[0].Header.Number) {
 		codecVersion = encoding.CodecV1
-	} else if !p.chainCfg.IsDescartes(blocks[0].Header.Time) {
+	} else if !p.chainCfg.IsDarwin(blocks[0].Header.Time) {
 		codecVersion = encoding.CodecV2
 	} else {
 		codecVersion = encoding.CodecV3

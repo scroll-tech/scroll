@@ -728,7 +728,7 @@ func testChunkProposerCodecv3Limits(t *testing.T) {
 				ChunkTimeoutSec:                 tt.chunkTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
 				MaxUncompressedBatchBytesSize:   math.MaxUint64,
-			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DescartesTime: new(uint64), HomesteadBlock: tt.forkBlock}, db, nil)
+			}, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), HomesteadBlock: tt.forkBlock}, db, nil)
 			cp.TryProposeChunk()
 
 			chunkOrm := orm.NewChunk(db)
@@ -770,7 +770,7 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 		} else if codecVersion == encoding.CodecV2 {
 			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
 		} else {
-			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DescartesTime: new(uint64)}
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 		}
 
 		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
