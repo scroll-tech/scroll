@@ -35,6 +35,7 @@ else
     ZK_VERSION=${ZKEVM_COMMIT}-${HALO2_GPU_VERSION}
 endif
 
+
 prover:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release
 	rm -rf ./lib && mkdir ./lib
@@ -50,3 +51,8 @@ lint:
 	cargo check --all-features
 	cargo clippy --all-features --all-targets -- -D warnings
 	cargo fmt --all
+
+snarkify:
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --bin snarkify --release
+	rm -rf ./lib && mkdir ./lib
+	find target/ -name "libzktrie.so" | xargs -I{} cp {} ./lib
