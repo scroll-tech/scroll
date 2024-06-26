@@ -74,6 +74,9 @@ jobs:
       working-directory: 'rollup'
       run: |
         if [ -n "$(git status --porcelain)" ]; then
+          git status
+          git diff
+          echo "Changes found. Please run 'goimports -local scroll-tech/rollup/ -w .' and 'go mod tidy' locally and commit the changes."
           exit 1
         fi
   tests:
