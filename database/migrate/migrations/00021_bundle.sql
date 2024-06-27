@@ -3,7 +3,7 @@
 
 CREATE TABLE bundle (
     index                   BIGSERIAL       PRIMARY KEY,
-    hash                    VARCHAR         NOT NULL,
+    hash                    VARCHAR         NOT NULL, -- Not part of DA hash, used for SQL query consistency and ease of use, derived using keccak256(concat(start_batch_hash, end_batch_hash)).
     start_batch_index       BIGINT          NOT NULL,
     end_batch_index         BIGINT          NOT NULL,
     start_batch_hash        VARCHAR         NOT NULL,
