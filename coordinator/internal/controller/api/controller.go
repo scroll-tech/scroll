@@ -28,7 +28,7 @@ func InitController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.D
 
 	log.Info("verifier created", "chunkVerifier", vf.ChunkVKMap, "batchVerifier", vf.BatchVKMap)
 
-	Auth = NewAuthController(db)
-	GetTask = NewGetTaskController(cfg, chainCfg, db, vf, reg)
+	Auth = NewAuthController(db, cfg, vf)
+	GetTask = NewGetTaskController(cfg, chainCfg, db, reg)
 	SubmitProof = NewSubmitProofController(cfg, db, vf, reg)
 }

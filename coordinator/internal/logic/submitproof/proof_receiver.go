@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/scroll-tech/go-ethereum/params"
+	"scroll-tech/common/forks"
 	"strings"
 	"time"
 
@@ -35,11 +37,13 @@ var (
 	// ErrValidatorFailureTaskHaveVerifiedSuccess have proved success and verified success
 	ErrValidatorFailureTaskHaveVerifiedSuccess = errors.New("validator failure chunk/batch have proved and verified success")
 	// ErrValidatorFailureVerifiedFailed failed to verify and the verifier returns error
-	ErrValidatorFailureVerifiedFailed = fmt.Errorf("verification failed, verifier returns error")
+	ErrValidatorFailureVerifiedFailed = errors.New("verification failed, verifier returns error")
 	// ErrValidatorSuccessInvalidProof successful verified and the proof is invalid
-	ErrValidatorSuccessInvalidProof = fmt.Errorf("verification succeeded, it's an invalid proof")
+	ErrValidatorSuccessInvalidProof = errors.New("verification succeeded, it's an invalid proof")
+	// ErrGetHardForkNameFailed failed to get hard fork name
+	ErrGetHardForkNameFailed = errors.New("failed to get hard fork name")
 	// ErrCoordinatorInternalFailure coordinator internal db failure
-	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+	ErrCoordinatorInternalFailure = errors.New("coordinator internal error")
 )
 
 // ProofReceiverLogic the proof receiver logic
@@ -47,10 +51,12 @@ type ProofReceiverLogic struct {
 	chunkOrm      *orm.Chunk
 	batchOrm      *orm.Batch
 	bundleOrm     *orm.Bundle
+	blockOrm      *orm.L2Block
 	proverTaskOrm *orm.ProverTask
 
-	db  *gorm.DB
-	cfg *config.ProverManager
+	db       *gorm.DB
+	cfg      *config.ProverManager
+	chainCfg *params.ChainConfig
 
 	verifier *verifier.Verifier
 
@@ -67,15 +73,17 @@ type ProofReceiverLogic struct {
 }
 
 // NewSubmitProofReceiverLogic create a proof receiver logic
-func NewSubmitProofReceiverLogic(cfg *config.ProverManager, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *ProofReceiverLogic {
+func NewSubmitProofReceiverLogic(cfg *config.ProverManager, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *ProofReceiverLogic {
 	return &ProofReceiverLogic{
 		chunkOrm:      orm.NewChunk(db),
 		batchOrm:      orm.NewBatch(db),
 		bundleOrm:     orm.NewBundle(db),
+		blockOrm:      orm.NewL2Block(db),
 		proverTaskOrm: orm.NewProverTask(db),
 
-		cfg: cfg,
-		db:  db,
+		cfg:      cfg,
+		chainCfg: chainCfg,
+		db:       db,
 
 		verifier: vf,
 
@@ -157,13 +165,17 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 
 	success := true
 	var verifyErr error
+	hardForkName, getHardForkErr := m.hardForkName(ctx, proofParameter.TaskID, proofParameter.TaskType)
+	if getHardForkErr != nil {
+		return ErrGetHardForkNameFailed
+	}
 	// only verify batch proof. chunk proof verifier have been disabled after Bernoulli
 	if message.ProofType(proofParameter.TaskType) == message.ProofTypeBatch {
 		var batchProof message.BatchProof
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &batchProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
-		success, verifyErr = m.verifier.VerifyBatchProof(&batchProof, proofParameter.HardForkName)
+		success, verifyErr = m.verifier.VerifyBatchProof(&batchProof, hardForkName)
 	}
 
 	if message.ProofType(proofParameter.TaskType) == message.ProofTypeBundle {
@@ -395,4 +407,52 @@ func (m *ProofReceiverLogic) checkIsTaskSuccess(ctx context.Context, hash string
 
 func (m *ProofReceiverLogic) updateProverTaskProof(ctx context.Context, proverTask *orm.ProverTask, proofParameter coordinatorType.SubmitProofParameter) error {
 	return m.proverTaskOrm.UpdateProverTaskProof(ctx, proverTask.UUID, []byte(proofParameter.Proof))
+}
+
+func (m *ProofReceiverLogic) hardForkName(ctx *gin.Context, hash string, proofType int) (string, error) {
+	var (
+		bundle *orm.Bundle
+		batch  *orm.Batch
+		chunk  *orm.Chunk
+		err    error
+	)
+
+	switch message.ProofType(proofType) {
+	case message.ProofTypeChunk:
+		chunk, err = m.chunkOrm.GetChunkByHash(ctx, hash)
+	case message.ProofTypeBatch:
+		batch, err = m.batchOrm.GetBatchByHash(ctx, hash)
+	case message.ProofTypeBundle:
+		bundle, err = m.bundleOrm.GetBundleByHash(ctx, hash)
+	}
+
+	if err != nil {
+		return "", err
+	}
+
+	if bundle != nil {
+		batch, err = m.batchOrm.GetBatchByHash(ctx, bundle.StartBatchHash)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if batch != nil {
+		chunk, err = m.chunkOrm.GetChunkByHash(ctx, batch.StartChunkHash)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if chunk == nil {
+		return "", errors.New("failed to find chunk")
+	}
+
+	l2Block, getBlockErr := m.blockOrm.GetL2BlockByNumber(ctx.Copy(), chunk.StartBlockNumber)
+	if getBlockErr != nil {
+		return "", getBlockErr
+	}
+
+	hardForkName := forks.GetHardforkName(m.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
+	return hardForkName, nil
 }

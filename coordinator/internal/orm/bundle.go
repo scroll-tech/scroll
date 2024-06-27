@@ -104,16 +104,16 @@ func (o *Bundle) GetProvingStatusByHash(ctx context.Context, hash string) (types
 }
 
 // GetBundleByHash retrieves the given
-func (o *Bundle) GetBundleByHash(ctx context.Context, chunkHash string) (*Chunk, error) {
+func (o *Bundle) GetBundleByHash(ctx context.Context, bundleHash string) (*Bundle, error) {
 	db := o.db.WithContext(ctx)
-	db = db.Model(&Chunk{})
-	db = db.Where("hash = ?", chunkHash)
+	db = db.Model(&Bundle{})
+	db = db.Where("hash = ?", bundleHash)
 
-	var chunk Chunk
-	if err := db.First(&chunk).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.GetChunkByHash error: %w, chunk hash: %v", err, chunkHash)
+	var bundle Bundle
+	if err := db.First(&bundle).Error; err != nil {
+		return nil, fmt.Errorf("Bundle.GetBundleByHash error: %w, bundle hash: %v", err, bundleHash)
 	}
-	return &chunk, nil
+	return &bundle, nil
 }
 
 // GetUnassignedAndBatchesUnreadyBundles get the bundles which is unassigned and batches are not ready

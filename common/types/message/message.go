@@ -1,6 +1,7 @@
 package message
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
@@ -91,4 +92,21 @@ type BatchProof struct {
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
 	GitVersion string `json:"git_version,omitempty"`
+}
+
+// SanityCheck checks whether an BatchProof is in a legal format
+// TODO: change to check Proof&Instance when upgrading to snark verifier v0.4
+func (ap *BatchProof) SanityCheck() error {
+	if ap == nil {
+		return errors.New("agg_proof is nil")
+	}
+
+	if len(ap.Proof) == 0 {
+		return errors.New("proof not ready")
+	}
+	if len(ap.Proof)%32 != 0 {
+		return fmt.Errorf("proof buffer has wrong length, expected: 32, got: %d", len(ap.Proof))
+	}
+
+	return nil
 }

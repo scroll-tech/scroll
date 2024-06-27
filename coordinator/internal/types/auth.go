@@ -33,13 +33,14 @@ type Message struct {
 	Challenge     string   `form:"challenge" json:"challenge" binding:"required"`
 	ProverVersion string   `form:"prover_version" json:"prover_version" binding:"required"`
 	ProverName    string   `form:"prover_name" json:"prover_name" binding:"required"`
+	ProverTypes   []int    `form:"prover_types" json:"prover_types"`
 	VKs           []string `form:"vks" json:"vks"`
 }
 
 // LoginParameter for /login api
 type LoginParameter struct {
 	Message   Message `form:"message" json:"message" binding:"required"`
-	PublicKey string  `form:"public_key" json:"public_key" binding:"required"`
+	PublicKey string  `form:"public_key" json:"public_key"`
 	Signature string  `form:"signature" json:"signature" binding:"required"`
 }
 
