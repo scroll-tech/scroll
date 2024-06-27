@@ -13,6 +13,8 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
+	"scroll-tech/common/forks"
+
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
@@ -170,7 +172,7 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	maxChunksThisBatch := getMaxChunksPerBatch(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
+	maxChunksThisBatch := forks.GetMaxChunksPerBatch(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 
 	// select at most maxChunkNumPerBatch chunks
 	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, int(maxChunksThisBatch))
@@ -184,9 +186,9 @@ func (p *BatchProposer) proposeBatch() error {
 
 	// Ensure all chunks in the same batch use the same hardfork name
 	// If a different hardfork name is found, truncate the chunks slice at that point
-	hardforkName := getHardforkName(p.chainCfg, dbChunks[0].StartBlockNumber, dbChunks[0].StartBlockTime)
+	hardforkName := forks.GetHardforkName(p.chainCfg, dbChunks[0].StartBlockNumber, dbChunks[0].StartBlockTime)
 	for i := 1; i < len(dbChunks); i++ {
-		currentHardfork := getHardforkName(p.chainCfg, dbChunks[i].StartBlockNumber, dbChunks[i].StartBlockTime)
+		currentHardfork := forks.GetHardforkName(p.chainCfg, dbChunks[i].StartBlockNumber, dbChunks[i].StartBlockTime)
 		if currentHardfork != hardforkName {
 			dbChunks = dbChunks[:i]
 			maxChunksThisBatch = uint64(len(dbChunks)) // update maxChunksThisBatch to trigger batching, because these chunks are the last chunks before the hardfork
@@ -204,7 +206,7 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	codecVersion := getCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
+	codecVersion := forks.GetCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1
