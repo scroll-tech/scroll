@@ -51,15 +51,21 @@ func testCreateNewRelayer(t *testing.T) {
 }
 
 func testL2RelayerProcessPendingBatches(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2, encoding.CodecV3}
 	for _, codecVersion := range codecVersions {
 		db := setupL2RelayerDB(t)
 		defer database.CloseDB(db)
 
 		l2Cfg := cfg.L2Config
-		chainConfig := &params.ChainConfig{}
+		var chainConfig *params.ChainConfig
 		if codecVersion == encoding.CodecV0 {
-			chainConfig.BernoulliBlock = big.NewInt(0)
+			chainConfig = &params.ChainConfig{}
+		} else if codecVersion == encoding.CodecV1 {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
+		} else if codecVersion == encoding.CodecV2 {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
+		} else {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 		}
 
 		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
