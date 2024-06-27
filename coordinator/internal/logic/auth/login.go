@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
+
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/version"
 
