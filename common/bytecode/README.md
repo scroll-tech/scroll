@@ -9,7 +9,7 @@
    make l2geth-docker
 ```
 
-2. Start docker and write pre deployed contracts into genesis file.
+2. Start docker and write pre deployed contracts into the genesis file.
 ```bash
    make start-docker
    ./bin/genesis-creator -genesis ${SCROLLPATH}/common/docker/l2geth/genesis.json -contract [erc20|greeter]
