@@ -11,3 +11,4 @@ export RUST_MIN_STACK=100000000
 export CHAIN_ID=534351 #update here, 534351 for sepolia, and 534352 for mainnet
 ```
 5. run `./target/release/snarkify`
+6. In a different shell, run `run_batch.sh` to submit a sample job to the prover to generate proof
