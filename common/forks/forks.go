@@ -41,7 +41,7 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 		}
 		height := fork.block.Uint64()
 
-		// only keep latest fork for at each height, discard the rest
+		//Only keep the latest fork for at each height, discard the rest
 		forkHeightNameMap[height] = fork.name
 	}
 
