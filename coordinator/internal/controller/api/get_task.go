@@ -106,19 +106,25 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 }
 
 func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) message.ProofType {
-	proofType := message.ProofType(para.TaskType)
-
-	proofTypes := []message.ProofType{
-		message.ProofTypeChunk,
-		message.ProofTypeBatch,
-		message.ProofTypeBundle,
+	var proofTypes []message.ProofType
+	if para.TaskType != 0 {
+		proofTypes = append(proofTypes, message.ProofType(para.TaskType))
 	}
 
-	if proofType == message.ProofTypeUndefined {
-		rand.Shuffle(len(proofTypes), func(i, j int) {
-			proofTypes[i], proofTypes[j] = proofTypes[j], proofTypes[i]
-		})
-		proofType = proofTypes[0]
+	for _, proofType := range para.TaskTypes {
+		proofTypes = append(proofTypes, message.ProofType(proofType))
 	}
-	return proofType
+
+	if len(proofTypes) == 0 {
+		proofTypes = []message.ProofType{
+			message.ProofTypeChunk,
+			message.ProofTypeBatch,
+			message.ProofTypeBundle,
+		}
+	}
+
+	rand.Shuffle(len(proofTypes), func(i, j int) {
+		proofTypes[i], proofTypes[j] = proofTypes[j], proofTypes[i]
+	})
+	return proofTypes[0]
 }
