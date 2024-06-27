@@ -66,7 +66,7 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	}
 
 	var vks map[string]struct{}
-	for _, proverType := range login.Message.ProverType {
+	for _, proverType := range login.Message.ProverTypes {
 		if message.ProofType(proverType) == message.ProofTypeChunk {
 			for vk := range l.chunkVks {
 				vks[vk] = struct{}{}
