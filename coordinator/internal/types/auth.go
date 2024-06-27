@@ -33,7 +33,7 @@ type Message struct {
 	Challenge     string   `form:"challenge" json:"challenge" binding:"required"`
 	ProverVersion string   `form:"prover_version" json:"prover_version" binding:"required"`
 	ProverName    string   `form:"prover_name" json:"prover_name" binding:"required"`
-	ProverTypes   []int    `form:"prover_types" json:"prover_types"`
+	ProverTypes   []string `form:"prover_types" json:"prover_types"`
 	VKs           []string `form:"vks" json:"vks"`
 }
 

@@ -30,5 +30,5 @@ func InitController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.D
 
 	Auth = NewAuthController(db, cfg, vf)
 	GetTask = NewGetTaskController(cfg, chainCfg, db, reg)
-	SubmitProof = NewSubmitProofController(cfg, db, vf, reg)
+	SubmitProof = NewSubmitProofController(cfg, chainCfg, db, vf, reg)
 }

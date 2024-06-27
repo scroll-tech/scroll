@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -36,7 +37,11 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 	// if not exist, the jwt token will intercept it
 	brearToken := c.GetHeader("Authorization")
 	if brearToken != "Bearer "+login.Message.Challenge {
-		return "", fmt.Errorf("check challenge failure for the not equal challenge string")
+		return "", errors.New("check challenge failure for the not equal challenge string")
+	}
+
+	if err := a.loginLogic.Check(&login); err != nil {
+		return "", fmt.Errorf("check the login parameter failure: %w", err)
 	}
 
 	// check the challenge is used, if used, return failure

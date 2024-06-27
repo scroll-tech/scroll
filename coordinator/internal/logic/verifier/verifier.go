@@ -18,10 +18,11 @@ import (
 	"io/fs"
 	"os"
 	"path"
-	coordinatorType "scroll-tech/common/types/message"
 	"unsafe"
 
 	"github.com/scroll-tech/go-ethereum/log"
+
+	coordinatorType "scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
 )
@@ -29,25 +30,8 @@ import (
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if cfg.MockMode {
-		batchVKMap := map[string]string{
-			"shanghai":  "",
-			"bernoulli": "",
-			"london":    "",
-			"istanbul":  "",
-			"homestead": "",
-			"eip155":    "",
-		}
-		chunkVKMap := map[string]string{
-			"shanghai":  "",
-			"bernoulli": "",
-			"london":    "",
-			"istanbul":  "",
-			"homestead": "",
-			"eip155":    "",
-		}
-
-		batchVKMap[cfg.ForkName] = ""
-		chunkVKMap[cfg.ForkName] = ""
+		batchVKMap := map[string]string{cfg.ForkName: "mock_batch_vk"}
+		chunkVKMap := map[string]string{cfg.ForkName: "mock_chunk_vk"}
 		return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)

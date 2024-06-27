@@ -16,6 +16,12 @@ import (
 	"scroll-tech/coordinator/internal/types"
 )
 
+var (
+	proofChunkTypeString  = fmt.Sprintf("%d", message.ProofTypeChunk)
+	proofBatchTypeString  = fmt.Sprintf("%d", message.ProofTypeBatch)
+	proofBundleTypeString = fmt.Sprintf("%d", message.ProofTypeBundle)
+)
+
 // LoginLogic the auth logic
 type LoginLogic struct {
 	cfg          *config.Config
@@ -29,6 +35,9 @@ type LoginLogic struct {
 func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
 	l := &LoginLogic{
 		cfg:          cfg,
+		chunkVks:     make(map[string]struct{}),
+		batchVKs:     make(map[string]struct{}),
+		bundleVks:    make(map[string]struct{}),
 		challengeOrm: orm.NewChallenge(db),
 	}
 
@@ -65,34 +74,36 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 			l.cfg.ProverManager.MinProverVersion, login.Message.ProverVersion)
 	}
 
-	var vks map[string]struct{}
-	for _, proverType := range login.Message.ProverTypes {
-		if message.ProofType(proverType) == message.ProofTypeChunk {
-			for vk := range l.chunkVks {
-				vks[vk] = struct{}{}
+	if len(login.Message.ProverTypes) > 0 {
+		vks := make(map[string]struct{})
+		for _, proverType := range login.Message.ProverTypes {
+			if proverType == proofChunkTypeString {
+				for vk := range l.chunkVks {
+					vks[vk] = struct{}{}
+				}
+			}
+			if proverType == proofBatchTypeString {
+				for vk := range l.batchVKs {
+					vks[vk] = struct{}{}
+				}
+			}
+			if proverType == proofBundleTypeString {
+				for vk := range l.bundleVks {
+					vks[vk] = struct{}{}
+				}
 			}
 		}
-		if message.ProofType(proverType) == message.ProofTypeBatch {
-			for vk := range l.batchVKs {
-				vks[vk] = struct{}{}
-			}
-		}
-		if message.ProofType(proverType) == message.ProofTypeBundle {
-			for vk := range l.bundleVks {
-				vks[vk] = struct{}{}
-			}
-		}
-	}
 
-	for _, vk := range login.Message.VKs {
-		if _, ok := vks[vk]; !ok {
-			log.Error("vk inconsistency", "prover vk", vk)
-			if !version.CheckScrollProverVersion(login.Message.ProverVersion) {
-				return fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s",
-					version.Version, login.Message.ProverVersion)
+		for _, vk := range login.Message.VKs {
+			if _, ok := vks[vk]; !ok {
+				log.Error("vk inconsistency", "prover vk", vk)
+				if !version.CheckScrollProverVersion(login.Message.ProverVersion) {
+					return fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s",
+						version.Version, login.Message.ProverVersion)
+				}
+				// if the prover reports a same prover version
+				return fmt.Errorf("incompatible vk. please check your params files or config files")
 			}
-			// if the prover reports a same prover version
-			return fmt.Errorf("incompatible vk. please check your params files or config files")
 		}
 	}
 	return nil
