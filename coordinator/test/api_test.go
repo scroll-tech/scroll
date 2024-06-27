@@ -261,12 +261,12 @@ func testGetTaskBlocked(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedErr := fmt.Errorf("return prover task err:check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", chunkProver.publicKey(), chunkProver.proverName, chunkProver.proverVersion)
-	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk, "homestead")
+	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 
 	expectedErr = fmt.Errorf("get empty prover task")
-	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch, "homestead")
+	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
 	assert.Equal(t, types.ErrCoordinatorEmptyProofData, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 
@@ -277,12 +277,12 @@ func testGetTaskBlocked(t *testing.T) {
 	assert.NoError(t, err)
 
 	expectedErr = fmt.Errorf("get empty prover task")
-	code, errMsg = chunkProver.tryGetProverTask(t, message.ProofTypeChunk, "homestead")
+	code, errMsg = chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
 	assert.Equal(t, types.ErrCoordinatorEmptyProofData, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 
 	expectedErr = fmt.Errorf("return prover task err:check prover task parameter failed, error:public key %s is blocked from fetching tasks. ProverName: %s, ProverVersion: %s", batchProver.publicKey(), batchProver.proverName, batchProver.proverVersion)
-	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch, "homestead")
+	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 }
@@ -302,12 +302,12 @@ func testOutdatedProverVersion(t *testing.T) {
 	assert.True(t, chunkProver.healthCheckSuccess(t))
 
 	expectedErr := fmt.Errorf("return prover task err:check prover task parameter failed, error:incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", version.Version, chunkProver.proverVersion)
-	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk, "homestead")
+	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 
 	expectedErr = fmt.Errorf("return prover task err:check prover task parameter failed, error:incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", version.Version, batchProver.proverVersion)
-	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch, "homestead")
+	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
 	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 }
