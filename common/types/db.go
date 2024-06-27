@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// GasOracleStatus represents current gas oracle processing status
+// GasOracleStatus represents the current gas oracle processing status
 type GasOracleStatus int
 
 const (
