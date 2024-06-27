@@ -57,7 +57,7 @@ func (c *Cmd) WaitExit() {
 
 	// Send interrupt signal.
 	_ = c.app.Process.Signal(os.Interrupt)
-	// should use `_ = c.app.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
+	// should use `_ = c.app.Process.Wait()` here, but we have some bugs in the coordinator's graceful exit,
 	// so we use `Kill` as a temp workaround. And since `WaitExit` is only used in integration tests, so
 	// it won't really affect our functionalities.
 	if err = c.app.Process.Signal(syscall.SIGTERM); err != nil {
