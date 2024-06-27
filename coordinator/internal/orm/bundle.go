@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -100,6 +101,39 @@ func (o *Bundle) GetProvingStatusByHash(ctx context.Context, hash string) (types
 		return types.ProvingStatusUndefined, fmt.Errorf("Bundle.GetProvingStatusByHash error: %w, batch hash: %v", err, hash)
 	}
 	return types.ProvingStatus(bundle.ProvingStatus), nil
+}
+
+// GetBundleByHash retrieves the given
+func (o *Bundle) GetBundleByHash(ctx context.Context, chunkHash string) (*Chunk, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("hash = ?", chunkHash)
+
+	var chunk Chunk
+	if err := db.First(&chunk).Error; err != nil {
+		return nil, fmt.Errorf("Chunk.GetChunkByHash error: %w, chunk hash: %v", err, chunkHash)
+	}
+	return &chunk, nil
+}
+
+// GetUnassignedAndBatchesUnreadyBundles get the bundles which is unassigned and batches are not ready
+func (o *Bundle) GetUnassignedAndBatchesUnreadyBundles(ctx context.Context, offset, limit int) ([]*Bundle, error) {
+	if offset < 0 || limit < 0 {
+		return nil, errors.New("limit and offset must not be smaller than 0")
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
+	db = db.Where("chunk_proofs_status = ?", types.BatchProofsStatusPending)
+	db = db.Order("index ASC")
+	db = db.Offset(offset)
+	db = db.Limit(limit)
+
+	var bundles []*Bundle
+	if err := db.Find(&bundles).Error; err != nil {
+		return nil, fmt.Errorf("Bundle.GetUnassignedAndBatchesUnreadyBundles error: %w", err)
+	}
+	return bundles, nil
 }
 
 // UpdateBatchProofsStatusByBatchHash updates the status of batch_proofs_status field for a given bundle hash.

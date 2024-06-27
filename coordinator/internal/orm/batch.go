@@ -182,6 +182,32 @@ func (o *Batch) GetAttemptsByHash(ctx context.Context, hash string) (int16, int1
 	return batch.ActiveAttempts, batch.TotalAttempts, nil
 }
 
+// CheckIfBundleBatchProofsAreReady checks if all proofs for all batches of a given bundleHash are collected.
+func (o *Batch) CheckIfBundleBatchProofsAreReady(ctx context.Context, bundleHash string) (bool, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("bundle_hash = ? AND proving_status != ?", bundleHash, types.ProvingTaskVerified)
+
+	var count int64
+	if err := db.Count(&count).Error; err != nil {
+		return false, fmt.Errorf("Chunk.CheckIfBundleBatchProofsAreReady error: %w, bundle hash: %v", err, bundleHash)
+	}
+	return count == 0, nil
+}
+
+// GetBatchByHash retrieves the given batch.
+func (o *Batch) GetBatchByHash(ctx context.Context, hash string) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("hash = ?", hash)
+
+	var batch Batch
+	if err := db.First(&batch).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetBatchByHash error: %w, batch hash: %v", err, hash)
+	}
+	return &batch, nil
+}
+
 // InsertBatch inserts a new batch into the database.
 func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...*gorm.DB) (*Batch, error) {
 	if batch == nil {

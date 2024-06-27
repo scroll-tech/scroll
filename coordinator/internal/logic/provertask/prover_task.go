@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
 	"scroll-tech/coordinator/internal/config"
@@ -33,11 +34,9 @@ type ProverTask interface {
 
 // BaseProverTask a base prover task which contain series functions
 type BaseProverTask struct {
-	cfg *config.Config
-	db  *gorm.DB
-
-	nameForkMap map[string]uint64
-	forkHeights []uint64
+	cfg      *config.Config
+	chainCfg *params.ChainConfig
+	db       *gorm.DB
 
 	batchOrm           *orm.Batch
 	chunkOrm           *orm.Chunk
@@ -93,21 +92,6 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 		return nil, fmt.Errorf("prover with publicKey %s is already assigned a task. ProverName: %s, ProverVersion: %s", publicKey, proverName, proverVersion)
 	}
 	return &ptc, nil
-}
-
-func (b *BaseProverTask) getHardForkNumberByName(forkName string) (uint64, error) {
-	// when the first hard fork upgrade, the prover don't pass the fork_name to coordinator.
-	// so coordinator need to be compatible.
-	if forkName == "" {
-		return 0, nil
-	}
-
-	hardForkNumber, exist := b.nameForkMap[forkName]
-	if !exist {
-		return 0, ErrHardForkName
-	}
-
-	return hardForkNumber, nil
 }
 
 func newGetTaskCounterVec(factory promauto.Factory, taskType string) *prometheus.CounterVec {

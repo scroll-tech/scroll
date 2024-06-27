@@ -34,14 +34,11 @@ type ChunkProverTask struct {
 
 // NewChunkProverTask new a chunk prover task
 func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProverTask {
-	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
-	log.Info("new chunk prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
 	cp := &ChunkProverTask{
 		BaseProverTask: BaseProverTask{
 			db:                 db,
 			cfg:                cfg,
-			nameForkMap:        nameForkMap,
-			forkHeights:        forkHeights,
+			chainCfg:           chainCfg,
 			chunkOrm:           orm.NewChunk(db),
 			blockOrm:           orm.NewL2Block(db),
 			proverTaskOrm:      orm.NewProverTask(db),
@@ -116,6 +113,13 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	log.Info("start chunk generation session", "task_id", chunkTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 
+	hardForkName, getHardForkErr := cp.hardForkName(ctx, chunkTask)
+	if getHardForkErr != nil {
+		cp.recoverActiveAttempts(ctx, chunkTask)
+		log.Error("retrieve hard fork name by chunk failed", "task_id", chunkTask.Hash, "err", err)
+		return nil, ErrCoordinatorInternalFailure
+	}
+
 	proverTask := orm.ProverTask{
 		TaskID:          chunkTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,
@@ -134,9 +138,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	// TODO get hardfork name from chunk
-	var hardForkName = ""
-
 	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
 	if err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
@@ -152,6 +153,15 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}).Inc()
 
 	return taskMsg, nil
+}
+
+func (cp *ChunkProverTask) hardForkName(ctx *gin.Context, chunkTask *orm.Chunk) (string, error) {
+	l2Block, getBlockErr := cp.blockOrm.GetL2BlockByNumber(ctx.Copy(), chunkTask.StartBlockNumber)
+	if getBlockErr != nil {
+		return "", getBlockErr
+	}
+	hardForkName := forks.GetHardforkName(cp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
+	return hardForkName, nil
 }
 
 func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {

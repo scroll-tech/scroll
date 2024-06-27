@@ -35,15 +35,11 @@ type BatchProverTask struct {
 
 // NewBatchProverTask new a batch collector
 func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProverTask {
-	forkHeights, _, nameForkMap := forks.CollectSortedForkHeights(chainCfg)
-	log.Info("new batch prover task", "forkHeights", forkHeights, "nameForks", nameForkMap)
-
 	bp := &BatchProverTask{
 		BaseProverTask: BaseProverTask{
 			db:                 db,
 			cfg:                cfg,
-			nameForkMap:        nameForkMap,
-			forkHeights:        forkHeights,
+			chainCfg:           chainCfg,
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
 			proverTaskOrm:      orm.NewProverTask(db),
@@ -118,8 +114,12 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	log.Info("start batch proof generation session", "task_id", batchTask.Hash, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 
-	// TODO get hard fork name
-	var hardForkName string
+	hardForkName, getHardForkErr := bp.hardForkName(ctx, batchTask)
+	if getHardForkErr != nil {
+		bp.recoverActiveAttempts(ctx, batchTask)
+		log.Error("retrieve hard fork name by batch failed", "task_id", batchTask.Hash, "err", err)
+		return nil, ErrCoordinatorInternalFailure
+	}
 
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
@@ -155,6 +155,20 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	}).Inc()
 
 	return taskMsg, nil
+}
+
+func (bp *BatchProverTask) hardForkName(ctx *gin.Context, batchTask *orm.Batch) (string, error) {
+	startChunk, getChunkErr := bp.chunkOrm.GetChunkByHash(ctx, batchTask.StartChunkHash)
+	if getChunkErr != nil {
+		return "", getChunkErr
+	}
+
+	l2Block, getBlockErr := bp.blockOrm.GetL2BlockByNumber(ctx.Copy(), startChunk.StartBlockNumber)
+	if getBlockErr != nil {
+		return "", getBlockErr
+	}
+	hardForkName := forks.GetHardforkName(bp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
+	return hardForkName, nil
 }
 
 func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
