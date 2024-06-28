@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -65,7 +66,7 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	if login.PublicKey != "" {
 		verify, err := login.Verify()
 		if err != nil || !verify {
-			return fmt.Errorf("auth message verify failure:%w", err)
+			return errors.New("auth message verify failure")
 		}
 	}
 

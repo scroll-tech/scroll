@@ -59,7 +59,7 @@ func TestGenerateSignature(t *testing.T) {
 		Message: Message{
 			ProverName:    "test",
 			ProverVersion: "v4.1.115-4dd11c6-000000-000000",
-			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTk1MDgwNjUsIm9yaWdfaWF0IjoxNzE5NTA0NDY1LCJyYW5kb20iOiI1ZXp0UWtKYy1vZXNfOGZGeV9leG85bmdCN2thMzVjeEdFcHpQQUpKamVrPSJ9.5_lq2WXSvic0h6F6uqGsKtbnHSjb-2zCMHk7YAVC_e4",
+			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTk1NjAxNTEsIm9yaWdfaWF0IjoxNzE5NTU2NTUxLCJyYW5kb20iOiJEN0RzOEZlekFpRjJ4RzVaaERUU1d2LWh4Q1RwS3JkajZyWFBVMFhZQmkwPSJ9.mrWKdzjqSpkSp6bt5wjMu0ZIjbe1pbXBow_-C13h_mw",
 			ProverTypes:   []string{fmt.Sprintf("%d", message.ProofTypeChunk)},
 			VKs:           []string{"mock_chunk_vk"},
 		},

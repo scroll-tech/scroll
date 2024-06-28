@@ -50,7 +50,6 @@ type proverTaskContext struct {
 	PublicKey     string
 	ProverName    string
 	ProverVersion string
-	HardForkName  string
 }
 
 // checkParameter check the prover task parameter illegal
