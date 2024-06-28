@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"fmt"
 	"testing"
 
@@ -49,7 +50,11 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 
 // TestGenerateSignature this unit test isn't for test, just generate the signature for manually test.
 func TestGenerateSignature(t *testing.T) {
-	privateKey, err := crypto.GenerateKey()
+	privateKeyHex := "8b8df68fddf7ee2724b79ccbd07799909d59b4dd4f4df3f6ecdc4fb8d56bdf4c"
+	privateKeyBytes, err := hex.DecodeString(privateKeyHex)
+	assert.Nil(t, err)
+	privateKey, err := crypto.ToECDSA(privateKeyBytes)
+	assert.NoError(t, err)
 	assert.NoError(t, err)
 	publicKeyHex := common.Bytes2Hex(crypto.CompressPubkey(&privateKey.PublicKey))
 
@@ -59,7 +64,7 @@ func TestGenerateSignature(t *testing.T) {
 		Message: Message{
 			ProverName:    "test",
 			ProverVersion: "v4.1.115-4dd11c6-000000-000000",
-			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTk1NjAxNTEsIm9yaWdfaWF0IjoxNzE5NTU2NTUxLCJyYW5kb20iOiJEN0RzOEZlekFpRjJ4RzVaaERUU1d2LWh4Q1RwS3JkajZyWFBVMFhZQmkwPSJ9.mrWKdzjqSpkSp6bt5wjMu0ZIjbe1pbXBow_-C13h_mw",
+			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTk1NjkyNDAsIm9yaWdfaWF0IjoxNzE5NTY1NjQwLCJyYW5kb20iOiJPRExnNEZtUW1MOEwzTDRvZ3BMcnl6c09EN1ZXd0FoNmd3bVpzVURJV3M0PSJ9.3Oq7fDtFnKGbPyjc8fslzfftyzreQbi-lAr0_HFy54w",
 			ProverTypes:   []string{fmt.Sprintf("%d", message.ProofTypeChunk)},
 			VKs:           []string{"mock_chunk_vk"},
 		},
