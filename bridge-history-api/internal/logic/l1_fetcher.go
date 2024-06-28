@@ -122,10 +122,14 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 	}
 
 	index, err := f.batchEventOrm.GetLastFinalizedBatchIndex(context.TODO())
-	if err != nil && err != gorm.ErrRecordNotFound {
-		log.Crit("failed to get finalized bacth index, fatal db error", "err", err.Error())
+	if err == gorm.ErrRecordNotFound {
+		// do nothing, leaving lastFinalizedBatchIndex to be nil
+		log.Warn("all bacthes are non-finalized, this should happen only once")
+	} else if err != nil {
+		log.Crit("failed to get last finalized bacth index, fatal db error", "err", err.Error())
+	} else {
+		f.setLastFinalizedBatchIndex(index)
 	}
-	f.setLastFinalizedBatchIndex(index)
 
 	reg := prometheus.DefaultRegisterer
 	f.l1FetcherLogicFetchedTotal = promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
