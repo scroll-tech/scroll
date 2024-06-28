@@ -90,7 +90,7 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 			}
 		case btypes.BatchStatusTypeFinalized:
 			// After darwin, FinalizeBatch event signals a range of batches are finalized,
-			// thus losing the batch hash info. Meanwhile, only batch_index is enough to find the target batch.
+			// thus losing the batch hash info. Meanwhile, only batch_index is enough to find the target batch when finalizing batches.
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
 			updateFields["batch_status"] = btypes.BatchStatusTypeFinalized
 			if err := db.Updates(updateFields).Error; err != nil {
