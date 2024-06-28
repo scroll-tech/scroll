@@ -49,7 +49,7 @@ type L1FetcherLogic struct {
 }
 
 // NewL1FetcherLogic creates L1 fetcher logic
-func NewL1FetcherLogic(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
+func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
 

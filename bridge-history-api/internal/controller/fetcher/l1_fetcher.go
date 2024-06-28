@@ -41,7 +41,7 @@ func NewL1MessageFetcher(ctx context.Context, cfg *config.FetcherConfig, db *gor
 		cfg:              cfg,
 		client:           client,
 		eventUpdateLogic: logic.NewEventUpdateLogic(db, true),
-		l1FetcherLogic:   logic.NewL1FetcherLogic(ctx, cfg, db, client),
+		l1FetcherLogic:   logic.NewL1FetcherLogic(cfg, db, client),
 	}
 
 	reg := prometheus.DefaultRegisterer
