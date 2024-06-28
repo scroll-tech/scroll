@@ -10,8 +10,8 @@ import (
 
 // NewVerifier Sets up a mock verifier.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
-	batchVKMap := map[string]string{cfg.ForkName: "mock_batch_vk"}
-	chunkVKMap := map[string]string{cfg.ForkName: "mock_chunk_vk"}
+	batchVKMap := map[string]string{cfg.ForkName: "mock_vk"}
+	chunkVKMap := map[string]string{cfg.ForkName: "mock_vk"}
 	return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap}, nil
 }
 

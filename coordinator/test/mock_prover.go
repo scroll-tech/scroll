@@ -83,7 +83,7 @@ func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []s
 			ProverName:    r.proverName,
 			ProverVersion: r.proverVersion,
 			ProverTypes:   proverTypes,
-			VKs:           []string{"mock_test"},
+			VKs:           []string{"mock_vk"},
 		},
 		PublicKey: r.publicKey(),
 	}
@@ -96,7 +96,7 @@ func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []s
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("Bearer %s", challengeString)).
-		SetBody([]byte(body)).
+		SetBody(body).
 		SetResult(&result).
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/login")
 	assert.NoError(t, err)
