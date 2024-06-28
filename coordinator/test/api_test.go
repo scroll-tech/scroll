@@ -495,17 +495,20 @@ func testHardForkAssignTask(t *testing.T) {
 				ChunkInfo:    nil,
 			}
 
+			proof, err := json.Marshal(chunkProof)
+			assert.NoError(t, err)
+
 			// the insert block number is 2 and 3
 			// chunk1 batch1 contains block number 2
 			// chunk2 batch2 contains block number 3
-			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+			err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 			assert.NoError(t, err)
 
 			dbHardForkChunk1, err := chunkOrm.InsertChunk(context.Background(), hardForkChunk1)
 			assert.NoError(t, err)
 			err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 0, 2, dbHardForkChunk1.Hash)
 			assert.NoError(t, err)
-			err = chunkOrm.UpdateProofAndProvingStatusByHash(context.Background(), dbHardForkChunk1.Hash, chunkProof, types.ProvingTaskUnassigned, 1)
+			err = chunkOrm.UpdateProofAndProvingStatusByHash(context.Background(), dbHardForkChunk1.Hash, proof, types.ProvingTaskUnassigned, 1)
 			assert.NoError(t, err)
 			dbHardForkBatch1, err := batchOrm.InsertBatch(context.Background(), hardForkBatch1)
 			assert.NoError(t, err)
@@ -518,7 +521,7 @@ func testHardForkAssignTask(t *testing.T) {
 			assert.NoError(t, err)
 			err = l2BlockOrm.UpdateChunkHashInRange(context.Background(), 3, 100, dbHardForkChunk2.Hash)
 			assert.NoError(t, err)
-			err = chunkOrm.UpdateProofAndProvingStatusByHash(context.Background(), dbHardForkChunk2.Hash, chunkProof, types.ProvingTaskUnassigned, 1)
+			err = chunkOrm.UpdateProofAndProvingStatusByHash(context.Background(), dbHardForkChunk2.Hash, proof, types.ProvingTaskUnassigned, 1)
 			assert.NoError(t, err)
 			dbHardForkBatch2, err := batchOrm.InsertBatch(context.Background(), hardForkBatch2)
 			assert.NoError(t, err)
@@ -530,7 +533,7 @@ func testHardForkAssignTask(t *testing.T) {
 			getTaskNumber := 0
 			for i := 0; i < 2; i++ {
 				mockProver := newMockProver(t, fmt.Sprintf("mock_prover_%d", i), coordinatorURL, tt.proofType, version.Version)
-				proverTask, errCode, errMsg := mockProver.getProverTask(t, tt.proofType, tt.proverForkNames[i])
+				proverTask, errCode, errMsg := mockProver.getProverTask(t, tt.proofType)
 				assert.Equal(t, tt.exceptGetTaskErrCodes[i], errCode)
 				assert.Equal(t, tt.exceptGetTaskErrMsgs[i], errMsg)
 				if errCode != types.Success {
@@ -576,7 +579,7 @@ func testValidProof(t *testing.T) {
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
 
 		proofStatus := verifiedSuccess
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, "istanbul")
+		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType)
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
 		assert.NotNil(t, proverTask)
@@ -650,7 +653,7 @@ func testInvalidProof(t *testing.T) {
 	provingStatus := verifiedFailed
 	expectErrCode := types.ErrCoordinatorHandleZkProofFailure
 	prover := newMockProver(t, "prover_test", coordinatorURL, proofType, version.Version)
-	proverTask, errCode, errMsg := prover.getProverTask(t, proofType, "istanbul")
+	proverTask, errCode, errMsg := prover.getProverTask(t, proofType)
 	assert.NotNil(t, proverTask)
 	assert.Equal(t, errCode, types.Success)
 	assert.Equal(t, errMsg, "")
@@ -714,7 +717,7 @@ func testProofGeneratedFailed(t *testing.T) {
 			proofType = message.ProofTypeBatch
 		}
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
-		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType, "istanbul")
+		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType)
 		assert.NotNil(t, proverTask)
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
@@ -802,13 +805,13 @@ func testTimeoutProof(t *testing.T) {
 
 	// create first chunk & batch mock prover, that will not send any proof.
 	chunkProver1 := newMockProver(t, "prover_test"+strconv.Itoa(0), coordinatorURL, message.ProofTypeChunk, version.Version)
-	proverChunkTask, errChunkCode, errChunkMsg := chunkProver1.getProverTask(t, message.ProofTypeChunk, "istanbul")
+	proverChunkTask, errChunkCode, errChunkMsg := chunkProver1.getProverTask(t, message.ProofTypeChunk)
 	assert.NotNil(t, proverChunkTask)
 	assert.Equal(t, errChunkCode, types.Success)
 	assert.Equal(t, errChunkMsg, "")
 
 	batchProver1 := newMockProver(t, "prover_test"+strconv.Itoa(1), coordinatorURL, message.ProofTypeBatch, version.Version)
-	proverBatchTask, errBatchCode, errBatchMsg := batchProver1.getProverTask(t, message.ProofTypeBatch, "istanbul")
+	proverBatchTask, errBatchCode, errBatchMsg := batchProver1.getProverTask(t, message.ProofTypeBatch)
 	assert.NotNil(t, proverBatchTask)
 	assert.Equal(t, errBatchCode, types.Success)
 	assert.Equal(t, errBatchMsg, "")
@@ -837,14 +840,14 @@ func testTimeoutProof(t *testing.T) {
 
 	// create second mock prover, that will send valid proof.
 	chunkProver2 := newMockProver(t, "prover_test"+strconv.Itoa(2), coordinatorURL, message.ProofTypeChunk, version.Version)
-	proverChunkTask2, chunkTask2ErrCode, chunkTask2ErrMsg := chunkProver2.getProverTask(t, message.ProofTypeChunk, "istanbul")
+	proverChunkTask2, chunkTask2ErrCode, chunkTask2ErrMsg := chunkProver2.getProverTask(t, message.ProofTypeChunk)
 	assert.NotNil(t, proverChunkTask2)
 	assert.Equal(t, chunkTask2ErrCode, types.Success)
 	assert.Equal(t, chunkTask2ErrMsg, "")
 	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess, types.Success, "istanbul")
 
 	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), coordinatorURL, message.ProofTypeBatch, version.Version)
-	proverBatchTask2, batchTask2ErrCode, batchTask2ErrMsg := batchProver2.getProverTask(t, message.ProofTypeBatch, "istanbul")
+	proverBatchTask2, batchTask2ErrCode, batchTask2ErrMsg := batchProver2.getProverTask(t, message.ProofTypeBatch)
 	assert.NotNil(t, proverBatchTask2)
 	assert.Equal(t, batchTask2ErrCode, types.Success)
 	assert.Equal(t, batchTask2ErrMsg, "")

@@ -16,8 +16,8 @@ CREATE TABLE bundle (
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
     proof_time_sec          INTEGER         DEFAULT NULL,
-    total_attempts          SMALLINT        NOT NULL DEFAULT 0
-    active_attempts         SMALLINT        NOT NULL DEFAULT 0
+    total_attempts          SMALLINT        NOT NULL DEFAULT 0,
+    active_attempts         SMALLINT        NOT NULL DEFAULT 0,
 
 -- rollup
     rollup_status           SMALLINT        NOT NULL DEFAULT 1,

@@ -51,7 +51,7 @@ func newMockProver(t *testing.T, proverName string, coordinatorURL string, proof
 }
 
 // connectToCoordinator sets up a websocket client to connect to the prover manager.
-func (r *mockProver) connectToCoordinator(t *testing.T, proverTypes []int) string {
+func (r *mockProver) connectToCoordinator(t *testing.T, proverTypes []string) string {
 	challengeString := r.challenge(t)
 	return r.login(t, challengeString, proverTypes)
 }
@@ -76,7 +76,7 @@ func (r *mockProver) challenge(t *testing.T) string {
 	return loginData.Token
 }
 
-func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []int) string {
+func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []string) string {
 	authMsg := types.LoginParameter{
 		Message: types.Message{
 			Challenge:     challengeString,
@@ -138,7 +138,7 @@ func (r *mockProver) healthCheckFailure(t *testing.T) bool {
 
 func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) (*types.GetTaskSchema, int, string) {
 	// get task from coordinator
-	token := r.connectToCoordinator(t, []int{int(proofType)})
+	token := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proofType)})
 	assert.NotEmpty(t, token)
 
 	type response struct {
@@ -165,7 +165,7 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) (*
 //nolint:unparam
 func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType) (int, string) {
 	// get task from coordinator
-	token := r.connectToCoordinator(t, []int{int(proofType)})
+	token := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proofType)})
 	assert.NotEmpty(t, token)
 
 	type response struct {
@@ -234,7 +234,7 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 		Proof:    string(proof),
 	}
 
-	token := r.connectToCoordinator(t, []int{proverTaskSchema.TaskType})
+	token := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proverTaskSchema.TaskType)})
 	assert.NotEmpty(t, token)
 
 	submitProofData, err := json.Marshal(submitProof)

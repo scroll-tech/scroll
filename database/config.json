@@ -1,5 +1,5 @@
 {
-  "dsn": "postgres://postgres:123456@localhost:5444/test?sslmode=disable",
+  "dsn": "postgres://localhost/scroll?sslmode=disable",
   "driver_name": "postgres",
   "maxOpenNum": 200,
   "maxIdleNum": 20
