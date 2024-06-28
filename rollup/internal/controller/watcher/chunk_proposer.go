@@ -285,10 +285,9 @@ func (p *ChunkProposer) proposeChunk() error {
 	currentTimeSec := uint64(time.Now().Unix())
 	if metrics.FirstBlockTimestamp+p.chunkTimeoutSec < currentTimeSec || metrics.NumBlocks == maxBlocksThisChunk {
 		log.Info("reached maximum number of blocks in chunk or first block timeout",
-			"start block number", chunk.Blocks[0].Header.Number,
 			"block count", len(chunk.Blocks),
-			"block number", chunk.Blocks[0].Header.Number,
-			"block timestamp", metrics.FirstBlockTimestamp,
+			"start block number", chunk.Blocks[0].Header.Number,
+			"start block timestamp", metrics.FirstBlockTimestamp,
 			"current time", currentTimeSec)
 
 		p.chunkFirstBlockTimeoutReached.Inc()

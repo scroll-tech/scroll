@@ -44,3 +44,9 @@ type BatchProposerConfig struct {
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
 	MaxUncompressedBatchBytesSize   uint64  `json:"max_uncompressed_batch_bytes_size"`
 }
+
+// BundleProposerConfig loads bundle_proposer configuration items.
+type BundleProposerConfig struct {
+	MaxBatchNumPerBundle uint64 `json:"max_batch_num_per_bundle"`
+	BundleTimeoutSec     uint64 `json:"bundle_timeout_sec"`
+}

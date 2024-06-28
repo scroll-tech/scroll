@@ -8,6 +8,7 @@ CREATE TABLE bundle (
     end_batch_index         BIGINT          NOT NULL,
     start_batch_hash        VARCHAR         NOT NULL,
     end_batch_hash          VARCHAR         NOT NULL,
+    codec_version           SMALLINT        NOT NULL,
 
 -- proof
     batch_proofs_status     SMALLINT        NOT NULL DEFAULT 1,

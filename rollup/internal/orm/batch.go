@@ -58,6 +58,9 @@ type Batch struct {
 	BlobDataProof []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
 	BlobSize      uint64 `json:"blob_size" gorm:"column:blob_size"`
 
+	// bundle
+	BundleHash string `json:"bundle_hash" gorm:"column:bundle_hash"`
+
 	// metadata
 	TotalL1CommitGas          uint64         `json:"total_l1_commit_gas" gorm:"column:total_l1_commit_gas;default:0"`
 	TotalL1CommitCalldataSize uint64         `json:"total_l1_commit_calldata_size" gorm:"column:total_l1_commit_calldata_size;default:0"`
@@ -155,6 +158,25 @@ func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error)
 		return 0, fmt.Errorf("Batch.GetFirstUnbatchedChunkIndex error: %w", err)
 	}
 	return latestBatch.EndChunkIndex + 1, nil
+}
+
+// GetBatchesGEIndex retrieves batches that have a batch index greater than the or equal to the given index.
+// The returned batches are sorted in ascending order by their index.
+func (o *Batch) GetBatchesGEIndex(ctx context.Context, index uint64, limit int) ([]*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("index >= ?", index)
+	db = db.Order("index ASC")
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+
+	var batches []*Batch
+	if err := db.Find(&batches).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetBatchesGEIndex error: %w", err)
+	}
+	return batches, nil
 }
 
 // GetRollupStatusByHashList retrieves the rollup statuses for a list of batch hashes.
@@ -414,6 +436,51 @@ func (o *Batch) UpdateProofByHash(ctx context.Context, hash string, proof *messa
 
 	if err = db.Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("Batch.UpdateProofByHash error: %w, batch hash: %v", err, hash)
+	}
+	return nil
+}
+
+// UpdateBundleHashInRange updates the bundle_hash for bundles within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end indices.
+func (o *Batch) UpdateBundleHashInRange(ctx context.Context, startIndex uint64, endIndex uint64, bundleHash string, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("index >= ? AND index <= ?", startIndex, endIndex)
+
+	if err := db.Update("bundle_hash", bundleHash).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateBundleHashInRange error: %w, start index: %v, end index: %v, batch hash: %v", err, startIndex, endIndex, bundleHash)
+	}
+	return nil
+}
+
+// UpdateProvingStatusByBundleHash updates the proving_status for batches within the specified bundle_hash
+func (o *Batch) UpdateProvingStatusByBundleHash(ctx context.Context, bundleHash string, status types.ProvingStatus, dbTX ...*gorm.DB) error {
+	updateFields := make(map[string]interface{})
+	updateFields["proving_status"] = int(status)
+
+	switch status {
+	case types.ProvingTaskAssigned:
+		updateFields["prover_assigned_at"] = time.Now()
+	case types.ProvingTaskUnassigned:
+		updateFields["prover_assigned_at"] = nil
+	case types.ProvingTaskVerified:
+		updateFields["proved_at"] = time.Now()
+	}
+
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("bundle_hash = ?", bundleHash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateProvingStatusByBundleHash error: %w, bundle hash: %v, status: %v", err, bundleHash, status.String())
 	}
 	return nil
 }
