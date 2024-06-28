@@ -114,7 +114,7 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config, reg prom
 func (c *Collector) Stop() {
 	c.stopChunkTimeoutChan <- struct{}{}
 	c.stopBatchTimeoutChan <- struct{}{}
-	c.stopChunkTimeoutChan <- struct{}{}
+	c.stopBundleTimeoutChan <- struct{}{}
 	c.stopBatchAllChunkReadyChan <- struct{}{}
 	c.stopCleanChallengeChan <- struct{}{}
 }

@@ -83,12 +83,13 @@ func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []s
 			ProverName:    r.proverName,
 			ProverVersion: r.proverVersion,
 			ProverTypes:   proverTypes,
-			VKs:           []string{},
+			VKs:           []string{"mock_test"},
 		},
+		PublicKey: r.publicKey(),
 	}
 	assert.NoError(t, authMsg.SignWithKey(r.privKey))
-	body := fmt.Sprintf("{\"message\":{\"challenge\":\"%s\",\"prover_name\":\"%s\", \"prover_version\":\"%s\", \"prover_types\":\"%s\", \"vks\":\"%s\"},\"public_key\":\"%s\",\"signature\":\"%s\"}",
-		authMsg.Message.Challenge, authMsg.Message.ProverName, authMsg.Message.ProverVersion, authMsg.Message.ProverTypes, authMsg.Message.VKs, authMsg.PublicKey, authMsg.Signature)
+	body, err := json.Marshal(authMsg)
+	assert.NoError(t, err)
 
 	var result ctypes.Response
 	client := resty.New()

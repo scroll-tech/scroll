@@ -124,7 +124,7 @@ func (o *Bundle) GetUnassignedAndBatchesUnreadyBundles(ctx context.Context, offs
 
 	db := o.db.WithContext(ctx)
 	db = db.Where("proving_status = ?", types.ProvingTaskUnassigned)
-	db = db.Where("chunk_proofs_status = ?", types.BatchProofsStatusPending)
+	db = db.Where("batch_proofs_status = ?", types.BatchProofsStatusPending)
 	db = db.Order("index ASC")
 	db = db.Offset(offset)
 	db = db.Limit(limit)

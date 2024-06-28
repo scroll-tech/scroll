@@ -89,7 +89,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
-	tokenTimeout = 6
+	tokenTimeout = 60
 	conf = &config.Config{
 		L2: &config.L2{
 			ChainID: 111,
@@ -99,11 +99,12 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			Verifier: &config.VerifierConfig{
 				MockMode: true,
 			},
-			BatchCollectionTimeSec: 10,
-			ChunkCollectionTimeSec: 10,
-			MaxVerifierWorkers:     10,
-			SessionAttempts:        5,
-			MinProverVersion:       version.Version,
+			BatchCollectionTimeSec:  10,
+			ChunkCollectionTimeSec:  10,
+			BundleCollectionTimeSec: 10,
+			MaxVerifierWorkers:      10,
+			SessionAttempts:         5,
+			MinProverVersion:        version.Version,
 		},
 		Auth: &config.Auth{
 			ChallengeExpireDurationSec: tokenTimeout,
@@ -152,7 +153,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 func setEnv(t *testing.T) {
 	var err error
 
-	version.Version = "v4.1.98"
+	version.Version = "v4.2.0"
 
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
 	glogger.Verbosity(log.LvlInfo)
