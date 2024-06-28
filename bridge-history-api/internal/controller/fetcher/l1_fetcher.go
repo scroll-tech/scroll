@@ -153,7 +153,6 @@ func (c *L1MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			return
 		}
 
-		c.l1FetcherLogic.ShiftToNextLastFinalizedBatchIndex()
 		c.updateL1SyncHeight(to, lastBlockHash)
 		c.l1MessageFetcherRunningTotal.Inc()
 	}

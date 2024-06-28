@@ -45,9 +45,6 @@ type L1FetcherLogic struct {
 	crossMessageOrm *orm.CrossMessage
 	batchEventOrm   *orm.BatchEvent
 
-	lastFinalizedBatchIndex            *uint64
-	nextPendingLastFinalizedBatchIndex uint64
-
 	l1FetcherLogicFetchedTotal *prometheus.CounterVec
 }
 
@@ -119,16 +116,6 @@ func NewL1FetcherLogic(ctx context.Context, cfg *config.FetcherConfig, db *gorm.
 		addressList:     addressList,
 		gatewayList:     gatewayList,
 		parser:          NewL1EventParser(cfg, client),
-	}
-
-	index, err := f.batchEventOrm.GetLastFinalizedBatchIndex(ctx)
-	if err == gorm.ErrRecordNotFound {
-		// do nothing, leaving lastFinalizedBatchIndex to be nil
-		log.Warn("all bacthes are non-finalized, this should happen only once")
-	} else if err != nil {
-		log.Crit("failed to get last finalized bacth index, fatal db error", "err", err.Error())
-	} else {
-		f.setLastFinalizedBatchIndex(index)
 	}
 
 	reg := prometheus.DefaultRegisterer
@@ -279,7 +266,7 @@ func (f *L1FetcherLogic) L1Fetcher(ctx context.Context, from, to uint64, lastBlo
 		return false, 0, common.Hash{}, nil, err
 	}
 
-	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f)
+	l1BatchEvents, err := f.parser.ParseL1BatchEventLogs(ctx, eventLogs, f.client)
 	if err != nil {
 		log.Error("failed to parse L1 batch event logs", "from", from, "to", to, "err", err)
 		return false, 0, common.Hash{}, nil, err
@@ -363,26 +350,4 @@ func (f *L1FetcherLogic) updateMetrics(res L1FilterResult) {
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_bridge_batch_deposit_erc20").Add(1)
 		}
 	}
-}
-
-func (f *L1FetcherLogic) getLastFinalizedBatchIndex() (uint64, bool) {
-	if f.lastFinalizedBatchIndex == nil {
-		return 0, false
-	}
-	return *f.lastFinalizedBatchIndex, true
-}
-
-func (f *L1FetcherLogic) setLastFinalizedBatchIndex(batchIndex uint64) {
-	if f.lastFinalizedBatchIndex == nil || batchIndex > *f.lastFinalizedBatchIndex {
-		f.lastFinalizedBatchIndex = &batchIndex
-	}
-}
-
-func (f *L1FetcherLogic) setNextPendingLastFinalizedBatchIndex(batchIndex uint64) {
-	f.nextPendingLastFinalizedBatchIndex = batchIndex
-}
-
-// ShiftToNextLastFinalizedBatchIndex
-func (f *L1FetcherLogic) ShiftToNextLastFinalizedBatchIndex() {
-	f.setLastFinalizedBatchIndex(f.nextPendingLastFinalizedBatchIndex)
 }

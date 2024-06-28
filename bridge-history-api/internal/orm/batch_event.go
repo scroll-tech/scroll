@@ -73,6 +73,8 @@ func (c *BatchEvent) GetFinalizedBatchesLEBlockHeight(ctx context.Context, block
 
 // InsertOrUpdateBatchEvents inserts a new batch event or updates an existing one based on the BatchStatusType.
 func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvents []*BatchEvent) error {
+	var maxFinalizedBatchIndex uint64
+	var containsFinalizedEvent bool
 	for _, l1BatchEvent := range l1BatchEvents {
 		db := c.db
 		db = db.WithContext(ctx)
@@ -89,12 +91,10 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 				return fmt.Errorf("failed to insert or ignore batch event, error: %w", err)
 			}
 		case btypes.BatchStatusTypeFinalized:
-			// After darwin, FinalizeBatch event signals a range of batches are finalized,
-			// thus losing the batch hash info. Meanwhile, only batch_index is enough to find the target batch when finalizing batches.
-			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
-			updateFields["batch_status"] = btypes.BatchStatusTypeFinalized
-			if err := db.Updates(updateFields).Error; err != nil {
-				return fmt.Errorf("failed to update batch event, error: %w", err)
+			containsFinalizedEvent = true
+			// get the maxFinalizedBatchIndex, which signals all the batch before it are all finalized
+			if l1BatchEvent.BatchIndex > maxFinalizedBatchIndex {
+				maxFinalizedBatchIndex = l1BatchEvent.BatchIndex
 			}
 		case btypes.BatchStatusTypeReverted:
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
@@ -106,6 +106,20 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 			// Soft delete the batch event.
 			if err := db.Delete(l1BatchEvent).Error; err != nil {
 				return fmt.Errorf("failed to soft delete batch event, error: %w", err)
+			}
+		}
+		if containsFinalizedEvent {
+			db := c.db
+			db = db.WithContext(ctx)
+			db = db.Model(&BatchEvent{})
+			updateFields := make(map[string]interface{})
+			// After darwin, FinalizeBatch event signals a range of batches are finalized,
+			// thus losing the batch hash info. Meanwhile, only batch_index is enough to update finalized batches.
+			db = db.Where("batch_index <= ?", maxFinalizedBatchIndex)
+			db = db.Where("batch_status != ?", btypes.BatchStatusTypeFinalized)
+			updateFields["batch_status"] = btypes.BatchStatusTypeFinalized
+			if err := db.Updates(updateFields).Error; err != nil {
+				return fmt.Errorf("failed to update batch event, error: %w", err)
 			}
 		}
 	}
@@ -124,16 +138,4 @@ func (c *BatchEvent) UpdateBatchEventStatus(ctx context.Context, batchIndex uint
 		return fmt.Errorf("failed to update batch event status, batchIndex: %d, error: %w", batchIndex, err)
 	}
 	return nil
-}
-
-// GetLastFinalizedBatchIndex returns the last finalized batch index in db.
-func (c *BatchEvent) GetLastFinalizedBatchIndex(ctx context.Context) (uint64, error) {
-	var batche BatchEvent
-	db := c.db.WithContext(ctx)
-	db = db.Model(&BatchEvent{})
-	db = db.Select("batch_index")
-	db = db.Where("batch_status = ?", btypes.BatchStatusTypeFinalized)
-	db = db.Order("batch_index desc")
-	err := db.First(&batche).Error
-	return batche.BatchIndex, err
 }
