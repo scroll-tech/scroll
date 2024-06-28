@@ -224,7 +224,8 @@ func (e *L1EventParser) ParseL1SingleCrossChainEventLogs(ctx context.Context, lo
 }
 
 // ParseL1BatchEventLogs parses L1 watched batch events.
-func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, client *ethclient.Client) ([]*orm.BatchEvent, error) {
+func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.Log, f *L1FetcherLogic) ([]*orm.BatchEvent, error) {
+	client := f.client
 	var l1BatchEvents []*orm.BatchEvent
 	for _, vlog := range logs {
 		switch vlog.Topics[0] {
@@ -270,12 +271,17 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				log.Error("Failed to unpack FinalizeBatch event", "err", err)
 				return nil, err
 			}
-			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
-				BatchStatus:   int(btypes.BatchStatusTypeFinalized),
-				BatchIndex:    event.BatchIndex.Uint64(),
-				BatchHash:     event.BatchHash.String(),
-				L1BlockNumber: vlog.BlockNumber,
-			})
+			var startBatchIndex uint64 = 0
+			if lastFinalizedBatchIndex, ok := f.getLastFinalizedBatchIndex(); ok {
+				startBatchIndex = lastFinalizedBatchIndex + 1
+			}
+			for index := startBatchIndex; index <= event.BatchIndex.Uint64(); index++ {
+				l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
+					BatchStatus: int(btypes.BatchStatusTypeFinalized),
+					BatchIndex:  index,
+				})
+			}
+			f.setNextPendingLastFinalizedBatchIndex(event.BatchIndex.Uint64())
 		}
 	}
 	return l1BatchEvents, nil
