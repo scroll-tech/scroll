@@ -263,7 +263,7 @@ func (bp *BatchProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *prov
 	var hardForkName string
 	getHardForkName := func(batch *orm.Batch) (string, error) {
 		for i := 0; i < 2; i++ {
-			if chunkRanges[i].contains(batch.StartChunkIndex, batch.EndChunkIndex) {
+			if chunkRanges[i] != nil && chunkRanges[i].contains(batch.StartChunkIndex, batch.EndChunkIndex) {
 				hardForkName = hardForkNames[i]
 				break
 			}
