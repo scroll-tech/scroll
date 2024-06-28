@@ -51,7 +51,7 @@ func newMockProver(t *testing.T, proverName string, coordinatorURL string, proof
 }
 
 // connectToCoordinator sets up a websocket client to connect to the prover manager.
-func (r *mockProver) connectToCoordinator(t *testing.T, proverTypes []string) string {
+func (r *mockProver) connectToCoordinator(t *testing.T, proverTypes []string) (string, int, string) {
 	challengeString := r.challenge(t)
 	return r.login(t, challengeString, proverTypes)
 }
@@ -76,7 +76,7 @@ func (r *mockProver) challenge(t *testing.T) string {
 	return loginData.Token
 }
 
-func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []string) string {
+func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []string) (string, int, string) {
 	authMsg := types.LoginParameter{
 		Message: types.Message{
 			Challenge:     challengeString,
@@ -101,6 +101,10 @@ func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []s
 		Post("http://" + r.coordinatorURL + "/coordinator/v1/login")
 	assert.NoError(t, err)
 
+	if result.ErrCode != 0 {
+		return "", result.ErrCode, result.ErrMsg
+	}
+
 	type login struct {
 		Time  string `json:"time"`
 		Token string `json:"token"`
@@ -110,7 +114,7 @@ func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []s
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, resp.StatusCode())
 	assert.Empty(t, result.ErrMsg)
-	return loginData.Token
+	return loginData.Token, 0, ""
 }
 
 func (r *mockProver) healthCheckSuccess(t *testing.T) bool {
@@ -139,7 +143,10 @@ func (r *mockProver) healthCheckFailure(t *testing.T) bool {
 
 func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) (*types.GetTaskSchema, int, string) {
 	// get task from coordinator
-	token := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proofType)})
+	token, errCode, errMsg := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proofType)})
+	if errCode != 0 {
+		return nil, errCode, errMsg
+	}
 	assert.NotEmpty(t, token)
 
 	type response struct {
@@ -166,7 +173,10 @@ func (r *mockProver) getProverTask(t *testing.T, proofType message.ProofType) (*
 //nolint:unparam
 func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType) (int, string) {
 	// get task from coordinator
-	token := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proofType)})
+	token, errCode, errMsg := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proofType)})
+	if errCode != 0 {
+		return errCode, errMsg
+	}
 	assert.NotEmpty(t, token)
 
 	type response struct {
@@ -235,7 +245,9 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 		Proof:    string(proof),
 	}
 
-	token := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proverTaskSchema.TaskType)})
+	token, errCode, errMsg := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proverTaskSchema.TaskType)})
+	assert.Equal(t, errCode, 0)
+	assert.Equal(t, errMsg, "")
 	assert.NotEmpty(t, token)
 
 	submitProofData, err := json.Marshal(submitProof)
