@@ -242,17 +242,24 @@ func (bp *BatchProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *prov
 		chunkRanges   [2]*chunkIndexRange
 		err           error
 	)
+	var chunkRange *chunkIndexRange
 	for i := 0; i < 2; i++ {
 		hardForkNames[i] = bp.reverseVkMap[getTaskParameter.VKs[i]]
 		chunkRanges[i], err = bp.getChunkRangeByName(ctx, hardForkNames[i])
 		if err != nil {
 			return nil, err
 		}
-		if chunkRanges[i] == nil {
-			return nil, nil
+		if chunkRanges[i] != nil {
+			if chunkRange == nil {
+				chunkRange = chunkRanges[i]
+			} else {
+				chunkRange = chunkRange.merge(*chunkRanges[i])
+			}
 		}
 	}
-	chunkRange := chunkRanges[0].merge(*chunkRanges[1])
+	if chunkRange == nil {
+		return nil, nil
+	}
 	var hardForkName string
 	getHardForkName := func(batch *orm.Batch) (string, error) {
 		for i := 0; i < 2; i++ {
