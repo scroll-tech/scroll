@@ -52,7 +52,7 @@ type L1FetcherLogic struct {
 }
 
 // NewL1FetcherLogic creates L1 fetcher logic
-func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
+func NewL1FetcherLogic(ctx context.Context, cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
 	addressList := []common.Address{
 		common.HexToAddress(cfg.ETHGatewayAddr),
 
@@ -121,7 +121,7 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		parser:          NewL1EventParser(cfg, client),
 	}
 
-	index, err := f.batchEventOrm.GetLastFinalizedBatchIndex(context.TODO())
+	index, err := f.batchEventOrm.GetLastFinalizedBatchIndex(ctx)
 	if err == gorm.ErrRecordNotFound {
 		// do nothing, leaving lastFinalizedBatchIndex to be nil
 		log.Warn("all bacthes are non-finalized, this should happen only once")
