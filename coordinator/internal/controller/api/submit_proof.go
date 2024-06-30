@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/submitproof"
 	"scroll-tech/coordinator/internal/logic/verifier"
