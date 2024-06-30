@@ -40,6 +40,7 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			db:                 db,
 			cfg:                cfg,
 			chainCfg:           chainCfg,
+			blockOrm:           orm.NewL2Block(db),
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
 			proverTaskOrm:      orm.NewProverTask(db),

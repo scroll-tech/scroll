@@ -40,6 +40,7 @@ func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *g
 			db:                 db,
 			chainCfg:           chainCfg,
 			cfg:                cfg,
+			blockOrm:           orm.NewL2Block(db),
 			chunkOrm:           orm.NewChunk(db),
 			batchOrm:           orm.NewBatch(db),
 			bundleOrm:          orm.NewBundle(db),

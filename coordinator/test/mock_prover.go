@@ -239,6 +239,7 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 	}
 
 	submitProof := types.SubmitProofParameter{
+		UUID:     proverTaskSchema.UUID,
 		TaskID:   proverTaskSchema.TaskID,
 		TaskType: proverTaskSchema.TaskType,
 		Status:   int(proofMsgStatus),

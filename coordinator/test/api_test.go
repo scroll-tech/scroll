@@ -34,10 +34,9 @@ import (
 )
 
 const (
-	forkNumberFour  = 4
-	forkNumberThree = 3
-	forkNumberTwo   = 2
-	forkNumberOne   = 1
+	forkNumberTwo    = 2
+	forkNumberOne    = 1
+	minProverVersion = "v2.0.0"
 )
 
 var (
@@ -52,17 +51,10 @@ var (
 	proverTaskOrm      *orm.ProverTask
 	proverBlockListOrm *orm.ProverBlockList
 
-	block1 *encoding.Block
-	block2 *encoding.Block
-
-	chunk          *encoding.Chunk
-	hardForkChunk1 *encoding.Chunk
-	hardForkChunk2 *encoding.Chunk
-
-	batch          *encoding.Batch
-	hardForkBatch1 *encoding.Batch
-	hardForkBatch2 *encoding.Batch
-
+	block1       *encoding.Block
+	block2       *encoding.Block
+	chunk        *encoding.Chunk
+	batch        *encoding.Batch
 	tokenTimeout int
 )
 
@@ -104,7 +96,7 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			BundleCollectionTimeSec: 10,
 			MaxVerifierWorkers:      10,
 			SessionAttempts:         5,
-			MinProverVersion:        "v2.0.0",
+			MinProverVersion:        minProverVersion,
 		},
 		Auth: &config.Auth{
 			ChallengeExpireDurationSec: tokenTimeout,
@@ -156,7 +148,7 @@ func setEnv(t *testing.T) {
 	version.Version = "v4.2.0"
 
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
-	glogger.Verbosity(log.LvlInfo)
+	glogger.Verbosity(log.LvlDebug)
 	log.Root().SetHandler(glogger)
 
 	testApps = testcontainers.NewTestcontainerApps()
@@ -187,14 +179,9 @@ func setEnv(t *testing.T) {
 	assert.NoError(t, err)
 
 	chunk = &encoding.Chunk{Blocks: []*encoding.Block{block1, block2}}
-	hardForkChunk1 = &encoding.Chunk{Blocks: []*encoding.Block{block1}}
-	hardForkChunk2 = &encoding.Chunk{Blocks: []*encoding.Block{block2}}
-
 	assert.NoError(t, err)
-
 	batch = &encoding.Batch{Chunks: []*encoding.Chunk{chunk}}
-	hardForkBatch1 = &encoding.Batch{Index: 1, Chunks: []*encoding.Chunk{hardForkChunk1}}
-	hardForkBatch2 = &encoding.Batch{Index: 2, Chunks: []*encoding.Chunk{hardForkChunk2}}
+
 }
 
 func TestApis(t *testing.T) {
@@ -301,14 +288,14 @@ func testOutdatedProverVersion(t *testing.T) {
 	batchProver := newMockProver(t, "prover_batch_test", coordinatorURL, message.ProofTypeBatch, "v1.999.999")
 	assert.True(t, chunkProver.healthCheckSuccess(t))
 
-	expectedErr := fmt.Errorf("return prover task err:check prover task parameter failed, error:incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", version.Version, chunkProver.proverVersion)
+	expectedErr := fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", minProverVersion, chunkProver.proverVersion)
 	code, errMsg := chunkProver.tryGetProverTask(t, message.ProofTypeChunk)
-	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
+	assert.Equal(t, types.ErrJWTCommonErr, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 
-	expectedErr = fmt.Errorf("return prover task err:check prover task parameter failed, error:incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", version.Version, batchProver.proverVersion)
+	expectedErr = fmt.Errorf("check the login parameter failure: incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s", minProverVersion, batchProver.proverVersion)
 	code, errMsg = batchProver.tryGetProverTask(t, message.ProofTypeBatch)
-	assert.Equal(t, types.ErrCoordinatorGetTaskFailure, code)
+	assert.Equal(t, types.ErrJWTCommonErr, code)
 	assert.Equal(t, expectedErr, fmt.Errorf(errMsg))
 }
 
