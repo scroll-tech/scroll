@@ -199,7 +199,7 @@ func (r *mockProver) tryGetProverTask(t *testing.T, proofType message.ProofType)
 	return result.ErrCode, result.ErrMsg
 }
 
-func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus, errCode int, forkName string) {
+func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSchema, proofStatus proofStatus, errCode int) {
 	proofMsgStatus := message.StatusOk
 	if proofStatus == generatedFailed {
 		proofMsgStatus = message.StatusProofError
@@ -224,14 +224,14 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 		case int(message.ProofTypeChunk):
 			chunkProof := message.ChunkProof{}
 			chunkProof.Proof = []byte(verifier.InvalidTestProof)
-			encodeData, err := json.Marshal(message.ChunkProof{})
+			encodeData, err := json.Marshal(&chunkProof)
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)
 			proof = encodeData
 		case int(message.ProofTypeBatch):
-			chunkProof := message.BatchProof{}
-			chunkProof.Proof = []byte(verifier.InvalidTestProof)
-			encodeData, err := json.Marshal(message.BatchProof{})
+			batchProof := message.BatchProof{}
+			batchProof.Proof = []byte(verifier.InvalidTestProof)
+			encodeData, err := json.Marshal(&batchProof)
 			assert.NoError(t, err)
 			assert.NotEmpty(t, encodeData)
 			proof = encodeData
@@ -246,8 +246,8 @@ func (r *mockProver) submitProof(t *testing.T, proverTaskSchema *types.GetTaskSc
 		Proof:    string(proof),
 	}
 
-	token, errCode, errMsg := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proverTaskSchema.TaskType)})
-	assert.Equal(t, errCode, 0)
+	token, authErrCode, errMsg := r.connectToCoordinator(t, []string{fmt.Sprintf("%d", proverTaskSchema.TaskType)})
+	assert.Equal(t, authErrCode, 0)
 	assert.Equal(t, errMsg, "")
 	assert.NotEmpty(t, token)
 

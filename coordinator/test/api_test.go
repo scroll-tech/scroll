@@ -148,7 +148,7 @@ func setEnv(t *testing.T) {
 	version.Version = "v4.2.0"
 
 	glogger := log.NewGlogHandler(log.StreamHandler(os.Stderr, log.LogfmtFormat()))
-	glogger.Verbosity(log.LvlDebug)
+	glogger.Verbosity(log.LvlInfo)
 	log.Root().SetHandler(glogger)
 
 	testApps = testcontainers.NewTestcontainerApps()
@@ -335,7 +335,7 @@ func testValidProof(t *testing.T) {
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
 		assert.NotNil(t, proverTask)
-		provers[i].submitProof(t, proverTask, proofStatus, types.Success, "istanbul")
+		provers[i].submitProof(t, proverTask, proofStatus, types.Success)
 	}
 
 	// verify proof status
@@ -409,7 +409,7 @@ func testInvalidProof(t *testing.T) {
 	assert.NotNil(t, proverTask)
 	assert.Equal(t, errCode, types.Success)
 	assert.Equal(t, errMsg, "")
-	prover.submitProof(t, proverTask, provingStatus, expectErrCode, "istanbul")
+	prover.submitProof(t, proverTask, provingStatus, expectErrCode)
 
 	// verify proof status
 	var (
@@ -473,7 +473,7 @@ func testProofGeneratedFailed(t *testing.T) {
 		assert.NotNil(t, proverTask)
 		assert.Equal(t, errCode, types.Success)
 		assert.Equal(t, errMsg, "")
-		provers[i].submitProof(t, proverTask, generatedFailed, types.ErrCoordinatorHandleZkProofFailure, "istanbul")
+		provers[i].submitProof(t, proverTask, generatedFailed, types.ErrCoordinatorHandleZkProofFailure)
 	}
 
 	// verify proof status
@@ -596,14 +596,14 @@ func testTimeoutProof(t *testing.T) {
 	assert.NotNil(t, proverChunkTask2)
 	assert.Equal(t, chunkTask2ErrCode, types.Success)
 	assert.Equal(t, chunkTask2ErrMsg, "")
-	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess, types.Success, "istanbul")
+	chunkProver2.submitProof(t, proverChunkTask2, verifiedSuccess, types.Success)
 
 	batchProver2 := newMockProver(t, "prover_test"+strconv.Itoa(3), coordinatorURL, message.ProofTypeBatch, version.Version)
 	proverBatchTask2, batchTask2ErrCode, batchTask2ErrMsg := batchProver2.getProverTask(t, message.ProofTypeBatch)
 	assert.NotNil(t, proverBatchTask2)
 	assert.Equal(t, batchTask2ErrCode, types.Success)
 	assert.Equal(t, batchTask2ErrMsg, "")
-	batchProver2.submitProof(t, proverBatchTask2, verifiedSuccess, types.Success, "istanbul")
+	batchProver2.submitProof(t, proverBatchTask2, verifiedSuccess, types.Success)
 
 	// verify proof status, it should be verified now, because second prover sent valid proof
 	chunkProofStatus2, err := chunkOrm.GetProvingStatusByHash(context.Background(), dbChunk.Hash)
