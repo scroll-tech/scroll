@@ -18,8 +18,8 @@ const (
 	ProverName = "prover_name"
 	// ProverVersion the prover version for context
 	ProverVersion = "prover_version"
-	// Vks the prover vks
-	Vks = "vks"
+	// VKs the prover vks
+	VKs = "vks"
 )
 
 // LoginSchema for /login response
@@ -68,26 +68,15 @@ func (a *LoginParameter) Verify() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	sig := common.FromHex(a.Signature)
-
-	pk, err := crypto.SigToPub(hash, sig)
-	if err != nil {
-		return false, err
-	}
-
-	isValid := crypto.VerifySignature(crypto.CompressPubkey(pk), hash, sig[:len(sig)-1])
-	if !isValid {
-		return false, nil
-	}
 
 	expectedPubKey, err := a.Message.DecodeAndUnmarshalPubkey(a.PublicKey)
 	if err != nil {
 		return false, err
 	}
-	expectedAddr := crypto.PubkeyToAddress(*expectedPubKey)
-	recoveredAddr := crypto.PubkeyToAddress(*pk)
 
-	return recoveredAddr == expectedAddr, nil
+	sig := common.FromHex(a.Signature)
+	isValid := crypto.VerifySignature(crypto.CompressPubkey(expectedPubKey), hash, sig[:len(sig)-1])
+	return isValid, nil
 }
 
 // Hash returns the hash of the auth message, which should be the message used
