@@ -210,21 +210,21 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	if hardForkName == "darwin" {
-		batch, err := bp.batchOrm.GetBatchByHash(ctx, task.TaskID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get batch by hash, taskID:%s err:%w", task.TaskID, err)
+		batch, getErr := bp.batchOrm.GetBatchByHash(ctx, task.TaskID)
+		if getErr != nil {
+			return nil, fmt.Errorf("failed to get batch by hash, taskID:%s err:%w", task.TaskID, getErr)
 		}
 
-		parentBatch, err := bp.batchOrm.GetBatchByHash(ctx, batch.ParentBatchHash)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get parent batch by hash, taskID:%s err:%w", task.TaskID, err)
+		parentBatch, getErr := bp.batchOrm.GetBatchByHash(ctx, batch.ParentBatchHash)
+		if getErr != nil {
+			return nil, fmt.Errorf("failed to get parent batch by hash, taskID:%s err:%w", task.TaskID, getErr)
 		}
 
 		taskDetail.ParentStateRoot = common.HexToHash(parentBatch.StateRoot)
 		taskDetail.ParentBatchHash = common.HexToHash(parentBatch.Hash)
-		batchHeader, err := codecv3.NewDABatchFromBytes(parentBatch.BatchHeader)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode batch header, taskID:%s err:%w", task.TaskID, err)
+		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(parentBatch.BatchHeader)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("failed to decode batch header, taskID:%s err:%w", task.TaskID, decodeErr)
 		}
 		// FIXME: this structure does not support json marshal/unmarshal well.
 		taskDetail.BatchHeader = batchHeader
