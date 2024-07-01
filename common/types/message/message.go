@@ -52,11 +52,12 @@ type ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos      []*ChunkInfo     `json:"chunk_infos"`
-	ChunkProofs     []*ChunkProof    `json:"chunk_proofs"`
-	ParentStateRoot common.Hash      `json:"parent_state_root"`
-	ParentBatchHash common.Hash      `json:"parent_batch_hash"`
-	BatchHeader     *codecv3.DABatch `json:"batch_header"`
+	ChunkInfos      []*ChunkInfo  `json:"chunk_infos"`
+	ChunkProofs     []*ChunkProof `json:"chunk_proofs"`
+	ParentStateRoot common.Hash   `json:"parent_state_root"`
+	ParentBatchHash common.Hash   `json:"parent_batch_hash"`
+	// FIXME: this structure does not support json marshal/unmarshal well.
+	BatchHeader *codecv3.DABatch `json:"batch_header"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
