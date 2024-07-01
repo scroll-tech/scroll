@@ -108,7 +108,7 @@ func TestProofDetailHash(t *testing.T) {
 	}
 	hash, err := proofDetail.Hash()
 	assert.NoError(t, err)
-	expectedHash := "01128ea9006601146ba80dbda959c96ebaefca463e78570e473a57d821db5ec1"
+	expectedHash := "4c291e7582ee773add1c145270a6e704e00ba193b6118ee2c5fd646112bc867c"
 	assert.Equal(t, expectedHash, hex.EncodeToString(hash))
 }
 
@@ -119,8 +119,11 @@ func TestProveTypeString(t *testing.T) {
 	proofTypeBatch := ProofType(2)
 	assert.Equal(t, "proof type batch", proofTypeBatch.String())
 
-	illegalProof := ProofType(3)
-	assert.Equal(t, "illegal proof type: 3", illegalProof.String())
+	proofTypeBundle := ProofType(3)
+	assert.Equal(t, "proof type bundle", proofTypeBundle.String())
+
+	illegalProof := ProofType(4)
+	assert.Equal(t, "illegal proof type: 4", illegalProof.String())
 }
 
 func TestProofMsgPublicKey(t *testing.T) {
