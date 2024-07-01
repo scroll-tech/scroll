@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/scroll-tech/da-codec/encoding/codecv3"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	"github.com/scroll-tech/go-ethereum/crypto"
@@ -44,6 +45,8 @@ func (r ProofType) String() string {
 		return "proof type chunk"
 	case ProofTypeBatch:
 		return "proof type batch"
+	case ProofTypeBundle:
+		return "proof type bundle"
 	default:
 		return fmt.Sprintf("illegal proof type: %d", r)
 	}
@@ -52,10 +55,12 @@ func (r ProofType) String() string {
 const (
 	// ProofTypeUndefined is an unknown proof type
 	ProofTypeUndefined ProofType = iota
-	// ProofTypeChunk is default prover, it only generates zk proof from traces.
+	// ProofTypeChunk generates a proof for a ZkEvm chunk, where the inputs are the execution traces for blocks contained in the chunk. ProofTypeChunk is the default proof type.
 	ProofTypeChunk
-	// ProofTypeBatch generates zk proof from other zk proofs and aggregate them into one proof.
+	// ProofTypeBatch generates a single proof, aggregating one or more proofs of the type ProofTypeChunk.
 	ProofTypeBatch
+	// ProofTypeBundle generates a single proof by recursing over more than one proofs of the type ProofTypeBatch.
+	ProofTypeBundle
 )
 
 // GenerateToken generates token
@@ -135,8 +140,9 @@ type TaskMsg struct {
 	UUID            string           `json:"uuid"`
 	ID              string           `json:"id"`
 	Type            ProofType        `json:"type,omitempty"`
-	BatchTaskDetail *BatchTaskDetail `json:"batch_task_detail,omitempty"`
 	ChunkTaskDetail *ChunkTaskDetail `json:"chunk_task_detail,omitempty"`
+	BatchTaskDetail *BatchTaskDetail `json:"batch_task_detail,omitempty"`
+	BundleTaskDetail *BundleTaskDetail `json:"bundle_task_detail,omitempty"`
 }
 
 // ChunkTaskDetail is a type containing ChunkTask detail.
@@ -148,6 +154,20 @@ type ChunkTaskDetail struct {
 type BatchTaskDetail struct {
 	ChunkInfos  []*ChunkInfo  `json:"chunk_infos"`
 	ChunkProofs []*ChunkProof `json:"chunk_proofs"`
+	ParentStateRoot common.Hash `json:"parent_state_root"`
+	ParentBatchHash common.Hash `json:"parent_batch_hash"`
+	BatchHeader *codecv3.DABatch `json:"batch_header"`
+}
+
+// BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
+type BundleTaskDetail struct {
+	ChainID uint64 `json:"chain_id"`
+	FinalizedBatchHash common.Hash `json:"finalized_batch_hash"`
+	FinalizedStateRoot common.Hash `json:"finalized_state_root"`
+	PendingBatchHash common.Hash `json:"pending_batch_hash"`
+	PendingStateRoot common.Hash `json:"pending_state_root"`
+	PendingWithdrawRoot common.Hash `json:"pending_withdraw_root"`
+	BatchProofs []*BatchProof `json:"batch_proofs"`
 }
 
 // ProofDetail is the message received from provers that contains zk proof, the status of
@@ -158,6 +178,7 @@ type ProofDetail struct {
 	Status     RespStatus  `json:"status"`
 	ChunkProof *ChunkProof `json:"chunk_proof,omitempty"`
 	BatchProof *BatchProof `json:"batch_proof,omitempty"`
+	BundleProof *BundleProof `json:"bundle_proof,omitempty"`
 	Error      string      `json:"error,omitempty"`
 }
 
@@ -204,10 +225,12 @@ type ChunkProof struct {
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
 type BatchProof struct {
+	Protocol  []byte `json:"protocol"`
 	Proof     []byte `json:"proof"`
 	Instances []byte `json:"instances"`
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
+	BatchHash  common.Hash `json:"batch_hash"`
 	GitVersion string `json:"git_version,omitempty"`
 }
 
@@ -226,4 +249,13 @@ func (ap *BatchProof) SanityCheck() error {
 	}
 
 	return nil
+}
+
+// BundleProof includes the proof info that are required for verification of a bundle of batch proofs.
+type BundleProof struct {
+	Proof     []byte `json:"proof"`
+	Instances []byte `json:"instances"`
+	Vk        []byte `json:"vk"`
+	// cross-reference between cooridinator computation and prover compution
+	GitVersion string `json:"git_version,omitempty"`
 }
