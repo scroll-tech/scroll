@@ -112,20 +112,20 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 				return fmt.Errorf("failed to soft delete batch event, error: %w", err)
 			}
 		}
-		if containsFinalizedEvent {
-			db := c.db
-			db = db.WithContext(ctx)
-			db = db.Model(&BatchEvent{})
-			updateFields := make(map[string]interface{})
-			// After darwin, FinalizeBatch event signals a range of batches are finalized,
-			// thus losing the batch hash info. Meanwhile, only batch_index is enough to update finalized batches.
-			db = db.Where("batch_index <= ?", maxFinalizedBatchIndex)
-			db = db.Where("batch_status != ?", btypes.BatchStatusTypeFinalized)
-			updateFields["batch_status"] = btypes.BatchStatusTypeFinalized
-			updateFields["l1_block_number"] = maxL1BlockNumber
-			if err := db.Updates(updateFields).Error; err != nil {
-				return fmt.Errorf("failed to update batch event, error: %w", err)
-			}
+	}
+	if containsFinalizedEvent {
+		db := c.db
+		db = db.WithContext(ctx)
+		db = db.Model(&BatchEvent{})
+		updateFields := make(map[string]interface{})
+		// After darwin, FinalizeBatch event signals a range of batches are finalized,
+		// thus losing the batch hash info. Meanwhile, only batch_index is enough to update finalized batches.
+		db = db.Where("batch_index <= ?", maxFinalizedBatchIndex)
+		db = db.Where("batch_status != ?", btypes.BatchStatusTypeFinalized)
+		updateFields["batch_status"] = btypes.BatchStatusTypeFinalized
+		updateFields["l1_block_number"] = maxL1BlockNumber
+		if err := db.Updates(updateFields).Error; err != nil {
+			return fmt.Errorf("failed to update batch event, error: %w", err)
 		}
 	}
 	return nil
