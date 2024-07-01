@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/da-codec/encoding/codecv3"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
@@ -206,6 +207,26 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	taskDetail := message.BatchTaskDetail{
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
+	}
+
+	if hardForkName == "darwin" {
+		batch, err := bp.batchOrm.GetBatchByHash(ctx, task.TaskID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get batch by hash, taskID:%s err:%w", task.TaskID, err)
+		}
+
+		parentBatch, err := bp.batchOrm.GetBatchByHash(ctx, batch.ParentBatchHash)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get parent batch by hash, taskID:%s err:%w", task.TaskID, err)
+		}
+
+		taskDetail.ParentStateRoot = common.HexToHash(parentBatch.StateRoot)
+		taskDetail.ParentBatchHash = common.HexToHash(parentBatch.Hash)
+		batchHeader, err := codecv3.NewDABatchFromBytes(parentBatch.BatchHeader)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode batch header, taskID:%s err:%w", task.TaskID, err)
+		}
+		taskDetail.BatchHeader = batchHeader
 	}
 
 	chunkProofsBytes, err := json.Marshal(taskDetail)
