@@ -137,11 +137,11 @@ func (a *ProofMsg) PublicKey() (string, error) {
 
 // TaskMsg is a wrapper type around db ProveTask type.
 type TaskMsg struct {
-	UUID            string           `json:"uuid"`
-	ID              string           `json:"id"`
-	Type            ProofType        `json:"type,omitempty"`
-	ChunkTaskDetail *ChunkTaskDetail `json:"chunk_task_detail,omitempty"`
-	BatchTaskDetail *BatchTaskDetail `json:"batch_task_detail,omitempty"`
+	UUID             string            `json:"uuid"`
+	ID               string            `json:"id"`
+	Type             ProofType         `json:"type,omitempty"`
+	ChunkTaskDetail  *ChunkTaskDetail  `json:"chunk_task_detail,omitempty"`
+	BatchTaskDetail  *BatchTaskDetail  `json:"batch_task_detail,omitempty"`
 	BundleTaskDetail *BundleTaskDetail `json:"bundle_task_detail,omitempty"`
 }
 
@@ -152,34 +152,34 @@ type ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos  []*ChunkInfo  `json:"chunk_infos"`
-	ChunkProofs []*ChunkProof `json:"chunk_proofs"`
-	ParentStateRoot common.Hash `json:"parent_state_root"`
-	ParentBatchHash common.Hash `json:"parent_batch_hash"`
-	BatchHeader *codecv3.DABatch `json:"batch_header"`
+	ChunkInfos      []*ChunkInfo     `json:"chunk_infos"`
+	ChunkProofs     []*ChunkProof    `json:"chunk_proofs"`
+	ParentStateRoot common.Hash      `json:"parent_state_root"`
+	ParentBatchHash common.Hash      `json:"parent_batch_hash"`
+	BatchHeader     *codecv3.DABatch `json:"batch_header"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
 type BundleTaskDetail struct {
-	ChainID uint64 `json:"chain_id"`
-	FinalizedBatchHash common.Hash `json:"finalized_batch_hash"`
-	FinalizedStateRoot common.Hash `json:"finalized_state_root"`
-	PendingBatchHash common.Hash `json:"pending_batch_hash"`
-	PendingStateRoot common.Hash `json:"pending_state_root"`
-	PendingWithdrawRoot common.Hash `json:"pending_withdraw_root"`
-	BatchProofs []*BatchProof `json:"batch_proofs"`
+	ChainID             uint64        `json:"chain_id"`
+	FinalizedBatchHash  common.Hash   `json:"finalized_batch_hash"`
+	FinalizedStateRoot  common.Hash   `json:"finalized_state_root"`
+	PendingBatchHash    common.Hash   `json:"pending_batch_hash"`
+	PendingStateRoot    common.Hash   `json:"pending_state_root"`
+	PendingWithdrawRoot common.Hash   `json:"pending_withdraw_root"`
+	BatchProofs         []*BatchProof `json:"batch_proofs"`
 }
 
 // ProofDetail is the message received from provers that contains zk proof, the status of
 // the proof generation succeeded, and an error message if proof generation failed.
 type ProofDetail struct {
-	ID         string      `json:"id"`
-	Type       ProofType   `json:"type,omitempty"`
-	Status     RespStatus  `json:"status"`
-	ChunkProof *ChunkProof `json:"chunk_proof,omitempty"`
-	BatchProof *BatchProof `json:"batch_proof,omitempty"`
+	ID          string       `json:"id"`
+	Type        ProofType    `json:"type,omitempty"`
+	Status      RespStatus   `json:"status"`
+	ChunkProof  *ChunkProof  `json:"chunk_proof,omitempty"`
+	BatchProof  *BatchProof  `json:"batch_proof,omitempty"`
 	BundleProof *BundleProof `json:"bundle_proof,omitempty"`
-	Error      string      `json:"error,omitempty"`
+	Error       string       `json:"error,omitempty"`
 }
 
 // Hash return proofMsg content hash.
@@ -231,7 +231,7 @@ type BatchProof struct {
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
 	BatchHash  common.Hash `json:"batch_hash"`
-	GitVersion string `json:"git_version,omitempty"`
+	GitVersion string      `json:"git_version,omitempty"`
 }
 
 // SanityCheck checks whether an BatchProof is in a legal format
