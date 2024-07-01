@@ -3,7 +3,6 @@ package orm
 import (
 	"context"
 	"fmt"
-	coordinatorType "scroll-tech/common/types/message"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +11,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"scroll-tech/common/types"
+	coordinatorType "scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
 

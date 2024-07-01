@@ -130,7 +130,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		ProverVersion:   taskCtx.ProverVersion,
 		ProvingStatus:   int16(types.ProverAssigned),
 		FailureType:     int16(types.ProverTaskFailureTypeUndefined),
-		// here why need use UTC time. see scroll/common/databased/db.go
+		// here why need use UTC time. see scroll/common/database/db.go
 		AssignedAt: utils.NowUTC(),
 	}
 

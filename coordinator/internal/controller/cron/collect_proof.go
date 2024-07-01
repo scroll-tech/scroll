@@ -119,7 +119,7 @@ func (c *Collector) Stop() {
 	c.stopCleanChallengeChan <- struct{}{}
 }
 
-// timeoutBundleProofTask cron check the send task is timeout. if timeout reached, restore the
+// timeoutBundleProofTask cron checks the send task is timeout. if timeout reached, restore the
 // bundle task to unassigned. then the bundle collector can retry it.
 func (c *Collector) timeoutBundleProofTask() {
 	defer func() {

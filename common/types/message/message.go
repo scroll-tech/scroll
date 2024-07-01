@@ -38,7 +38,7 @@ const (
 	ProofTypeUndefined ProofType = iota
 	// ProofTypeChunk is default prover, it only generates zk proof from traces.
 	ProofTypeChunk
-	// ProofTypeBatch generates zk proof from chunks proofs
+	// ProofTypeBatch generates zk proof from chunk proofs
 	ProofTypeBatch
 	// ProofTypeBundle generates zk proof from batch proofs
 	ProofTypeBundle
