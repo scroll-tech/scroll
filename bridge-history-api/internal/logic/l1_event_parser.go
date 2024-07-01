@@ -271,8 +271,9 @@ func (e *L1EventParser) ParseL1BatchEventLogs(ctx context.Context, logs []types.
 				return nil, err
 			}
 			l1BatchEvents = append(l1BatchEvents, &orm.BatchEvent{
-				BatchStatus: int(btypes.BatchStatusTypeFinalized),
-				BatchIndex:  event.BatchIndex.Uint64(),
+				BatchStatus:   int(btypes.BatchStatusTypeFinalized),
+				BatchIndex:    event.BatchIndex.Uint64(),
+				L1BlockNumber: vlog.BlockNumber,
 			})
 		}
 	}
