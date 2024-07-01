@@ -180,39 +180,44 @@ func (bp *BundleProverTask) hardForkName(ctx *gin.Context, bundleTask *orm.Bundl
 }
 
 func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
-	// get chunk from db
-	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, task.TaskID)
+	// get bundle from db
+	batches, err := bp.batchOrm.GetBatchesByBundleHash(ctx, task.TaskID)
 	if err != nil {
 		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", task.TaskID, err)
 		return nil, err
 	}
 
-	var chunkProofs []*message.ChunkProof
-	var chunkInfos []*message.ChunkInfo
-	for _, chunk := range chunks {
-		var proof message.ChunkProof
-		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
-		}
-		chunkProofs = append(chunkProofs, &proof)
-
-		chunkInfo := message.ChunkInfo{
-			ChainID:       bp.cfg.L2.ChainID,
-			PrevStateRoot: common.HexToHash(chunk.ParentChunkStateRoot),
-			PostStateRoot: common.HexToHash(chunk.StateRoot),
-			WithdrawRoot:  common.HexToHash(chunk.WithdrawRoot),
-			DataHash:      common.HexToHash(chunk.Hash),
-			IsPadding:     false,
-		}
-		if proof.ChunkInfo != nil {
-			chunkInfo.TxBytes = proof.ChunkInfo.TxBytes
-		}
-		chunkInfos = append(chunkInfos, &chunkInfo)
+	if len(batches) == 0 {
+		return nil, fmt.Errorf("failed to get batch proofs for bundle task id:%s, no batch found", task.TaskID)
 	}
 
-	taskDetail := message.BatchTaskDetail{
-		ChunkInfos:  chunkInfos,
-		ChunkProofs: chunkProofs,
+	latestFinalizedBatch, err := bp.batchOrm.GetLatestFinalizedBatch(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest finalized batch by bundle hash: %w, bundle hash: %v", err, task.TaskID)
+	}
+
+	if latestFinalizedBatch == nil {
+		return nil, fmt.Errorf("failed to get latest finalized batch by bundle hash: %v, no finalized batch found", err, task.TaskID)
+	}
+
+	var batchProofs []*message.BatchProof
+	for _, batch := range batches {
+		var proof message.BatchProof
+		if encodeErr := json.Unmarshal(batch.Proof, &proof); encodeErr != nil {
+			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
+		}
+		batchProofs = append(batchProofs, &proof)
+	}
+
+	lastPendingBatch := batches[len(batches)-1]
+	taskDetail := message.BundleTaskDetail{
+		ChainID:             bp.cfg.L2.ChainID,
+		FinalizedBatchHash:  common.HexToHash(latestFinalizedBatch.Hash),
+		FinalizedStateRoot:  common.HexToHash(latestFinalizedBatch.StateRoot),
+		PendingBatchHash:    common.HexToHash(lastPendingBatch.Hash),
+		PendingStateRoot:    common.HexToHash(lastPendingBatch.StateRoot),
+		PendingWithdrawRoot: common.HexToHash(lastPendingBatch.WithdrawRoot),
+		BatchProofs:         batchProofs,
 	}
 
 	chunkProofsBytes, err := json.Marshal(taskDetail)

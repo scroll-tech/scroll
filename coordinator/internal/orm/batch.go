@@ -57,6 +57,9 @@ type Batch struct {
 	BlobDataProof []byte `json:"blob_data_proof" gorm:"column:blob_data_proof"`
 	BlobSize      uint64 `json:"blob_size" gorm:"column:blob_size"`
 
+	// bundle
+	BundleHash string `json:"bundle_hash" gorm:"column:bundle_hash"`
+
 	// metadata
 	CreatedAt time.Time      `json:"created_at" gorm:"column:created_at"`
 	UpdatedAt time.Time      `json:"updated_at" gorm:"column:updated_at"`
@@ -206,6 +209,37 @@ func (o *Batch) GetBatchByHash(ctx context.Context, hash string) (*Batch, error)
 		return nil, fmt.Errorf("Batch.GetBatchByHash error: %w, batch hash: %v", err, hash)
 	}
 	return &batch, nil
+}
+
+// GetLatestFinalizedBatch retrieves the latest finalized batch from the database.
+func (o *Batch) GetLatestFinalizedBatch(ctx context.Context) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("rollup_status = ?", int(types.RollupFinalized))
+	db = db.Order("index desc")
+
+	var latestFinalizedBatch Batch
+	if err := db.First(&latestFinalizedBatch).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("Batch.GetLatestBatch error: %w", err)
+	}
+	return &latestFinalizedBatch, nil
+}
+
+// GetBatchesByBundleHash retrieves the given batch.
+func (o *Batch) GetBatchesByBundleHash(ctx context.Context, bundleHash string) ([]*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("bundle_hash = ?", bundleHash)
+	db = db.Order("index ASC")
+
+	var batches []*Batch
+	if err := db.First(&batches).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetBatchesByBundleHash error: %w, bundle hash: %v", err, bundleHash)
+	}
+	return batches, nil
 }
 
 // InsertBatch inserts a new batch into the database.
