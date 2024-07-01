@@ -226,7 +226,6 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		if decodeErr != nil {
 			return nil, fmt.Errorf("failed to decode batch header, taskID:%s err:%w", task.TaskID, decodeErr)
 		}
-		// FIXME: this structure does not support json marshal/unmarshal well.
 		taskDetail.BatchHeader = batchHeader
 	}
 
