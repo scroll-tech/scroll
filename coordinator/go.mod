@@ -45,7 +45,7 @@ require (
 require (
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/da-codec v0.0.0-20240605080813-32bfc9fccde7
+	github.com/scroll-tech/da-codec v0.0.0-20240626090813-e197995302f3
 )
 
 require (

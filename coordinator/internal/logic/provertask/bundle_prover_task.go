@@ -183,7 +183,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 	// get bundle from db
 	batches, err := bp.batchOrm.GetBatchesByBundleHash(ctx, task.TaskID)
 	if err != nil {
-		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", task.TaskID, err)
+		err = fmt.Errorf("failed to get batch proofs for batch task id:%s err:%w ", task.TaskID, err)
 		return nil, err
 	}
 
@@ -197,14 +197,14 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 	}
 
 	if latestFinalizedBatch == nil {
-		return nil, fmt.Errorf("failed to get latest finalized batch by bundle hash: %v, no finalized batch found", err, task.TaskID)
+		return nil, fmt.Errorf("failed to get latest finalized batch by bundle hash: %v, no finalized batch found", task.TaskID)
 	}
 
 	var batchProofs []*message.BatchProof
 	for _, batch := range batches {
 		var proof message.BatchProof
 		if encodeErr := json.Unmarshal(batch.Proof, &proof); encodeErr != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
+			return nil, fmt.Errorf("failed to unmarshal proof: %w, bundle hash: %v, batch hash: %v", encodeErr, task.TaskID, batch.Hash)
 		}
 		batchProofs = append(batchProofs, &proof)
 	}
