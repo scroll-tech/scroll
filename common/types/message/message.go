@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/scroll-tech/da-codec/encoding/codecv3"
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
@@ -36,7 +37,7 @@ func (r ProofType) String() string {
 const (
 	// ProofTypeUndefined is an unknown proof type
 	ProofTypeUndefined ProofType = iota
-	// ProofTypeChunk is default prover, it only generates zk proof from traces.
+	// ProofTypeChunk generates a proof for a ZkEvm chunk, where the inputs are the execution traces for blocks contained in the chunk. ProofTypeChunk is the default proof type.
 	ProofTypeChunk
 	// ProofTypeBatch generates zk proof from chunk proofs
 	ProofTypeBatch
@@ -51,8 +52,22 @@ type ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos  []*ChunkInfo  `json:"chunk_infos"`
-	ChunkProofs []*ChunkProof `json:"chunk_proofs"`
+	ChunkInfos      []*ChunkInfo     `json:"chunk_infos"`
+	ChunkProofs     []*ChunkProof    `json:"chunk_proofs"`
+	ParentStateRoot common.Hash      `json:"parent_state_root"`
+	ParentBatchHash common.Hash      `json:"parent_batch_hash"`
+	BatchHeader     *codecv3.DABatch `json:"batch_header"`
+}
+
+// BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
+type BundleTaskDetail struct {
+	ChainID             uint64        `json:"chain_id"`
+	FinalizedBatchHash  common.Hash   `json:"finalized_batch_hash"`
+	FinalizedStateRoot  common.Hash   `json:"finalized_state_root"`
+	PendingBatchHash    common.Hash   `json:"pending_batch_hash"`
+	PendingStateRoot    common.Hash   `json:"pending_state_root"`
+	PendingWithdrawRoot common.Hash   `json:"pending_withdraw_root"`
+	BatchProofs         []*BatchProof `json:"batch_proofs"`
 }
 
 // ChunkInfo is for calculating pi_hash for chunk
@@ -87,11 +102,13 @@ type ChunkProof struct {
 
 // BatchProof includes the proof info that are required for batch verification and rollup.
 type BatchProof struct {
+	Protocol  []byte `json:"protocol"`
 	Proof     []byte `json:"proof"`
 	Instances []byte `json:"instances"`
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
-	GitVersion string `json:"git_version,omitempty"`
+	BatchHash  common.Hash `json:"batch_hash"`
+	GitVersion string      `json:"git_version,omitempty"`
 }
 
 // SanityCheck checks whether an BatchProof is in a legal format
@@ -109,4 +126,13 @@ func (ap *BatchProof) SanityCheck() error {
 	}
 
 	return nil
+}
+
+// BundleProof includes the proof info that are required for verification of a bundle of batch proofs.
+type BundleProof struct {
+	Proof     []byte `json:"proof"`
+	Instances []byte `json:"instances"`
+	Vk        []byte `json:"vk"`
+	// cross-reference between cooridinator computation and prover compution
+	GitVersion string `json:"git_version,omitempty"`
 }
