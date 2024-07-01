@@ -212,7 +212,6 @@ type BatchProof struct {
 }
 
 // SanityCheck checks whether an BatchProof is in a legal format
-// TODO: change to check Proof&Instance when upgrading to snark verifier v0.4
 func (ap *BatchProof) SanityCheck() error {
 	if ap == nil {
 		return errors.New("agg_proof is nil")
@@ -223,6 +222,20 @@ func (ap *BatchProof) SanityCheck() error {
 	}
 	if len(ap.Proof)%32 != 0 {
 		return fmt.Errorf("proof buffer has wrong length, expected: 32, got: %d", len(ap.Proof))
+	}
+
+	if len(ap.Instances) == 0 {
+		return errors.New("instance not ready")
+	}
+	if len(ap.Instances)%32 != 0 {
+		return fmt.Errorf("instance buffer has wrong length, expected: 32, got: %d", len(ap.Instances))
+	}
+
+	if len(ap.Vk) == 0 {
+		return errors.New("vk not ready")
+	}
+	if len(ap.Vk)%32 != 0 {
+		return fmt.Errorf("vk buffer has wrong length, expected: 32, got: %d", len(ap.Vk))
 	}
 
 	return nil
