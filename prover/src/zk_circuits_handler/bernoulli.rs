@@ -1,5 +1,5 @@
 use super::CircuitsHandler;
-use crate::{geth_client::GethClient, types::TaskType};
+use crate::{geth_client::GethClient, types::{ProverType, TaskType}};
 use anyhow::{bail, Ok, Result};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
@@ -39,19 +39,19 @@ pub struct BaseCircuitsHandler {
 
 impl BaseCircuitsHandler {
     pub fn new(
-        proof_type: TaskType,
+        prover_type: ProverType,
         params_dir: &str,
         assets_dir: &str,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Result<Self> {
-        match proof_type {
-            TaskType::Chunk => Ok(Self {
+        match prover_type {
+            ProverType::Chunk => Ok(Self {
                 chunk_prover: Some(RefCell::new(ChunkProver::from_dirs(params_dir, assets_dir))),
                 batch_prover: None,
                 geth_client,
             }),
 
-            TaskType::Batch => Ok(Self {
+            ProverType::Batch => Ok(Self {
                 batch_prover: Some(RefCell::new(BatchProver::from_dirs(params_dir, assets_dir))),
                 chunk_prover: None,
                 geth_client,
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn test_circuits() -> Result<()> {
         let chunk_handler =
-            BaseCircuitsHandler::new(TaskType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
+            BaseCircuitsHandler::new(ProverType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
 
         let chunk_vk = chunk_handler.get_vk(TaskType::Chunk).unwrap();
 
@@ -278,7 +278,7 @@ mod tests {
         }
 
         let batch_handler =
-            BaseCircuitsHandler::new(TaskType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
+            BaseCircuitsHandler::new(ProverType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
         let batch_vk = batch_handler.get_vk(TaskType::Batch).unwrap();
         check_vk(TaskType::Batch, batch_vk, "batch vk must be available");
         let chunk_hashes_proofs = chunk_infos.into_iter().zip(chunk_proofs).collect();
@@ -301,6 +301,7 @@ mod tests {
         let vk_file = match proof_type {
             TaskType::Chunk => CHUNK_VK_PATH.clone(),
             TaskType::Batch => BATCH_VK_PATH.clone(),
+            TaskType::Bundle => unreachable!(),
             TaskType::Undefined => unreachable!(),
         };
 

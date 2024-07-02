@@ -21,6 +21,7 @@ pub struct CoordinatorClient<'a> {
     key_signer: Rc<KeySigner>,
     rt: Runtime,
     listener: Box<dyn Listener>,
+    vks: Vec<String>,
 }
 
 impl<'a> CoordinatorClient<'a> {
@@ -28,6 +29,7 @@ impl<'a> CoordinatorClient<'a> {
         config: &'a Config,
         key_signer: Rc<KeySigner>,
         listener: Box<dyn Listener>,
+        vks: Vec<String>,
     ) -> Result<Self> {
         let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -46,6 +48,7 @@ impl<'a> CoordinatorClient<'a> {
             key_signer,
             rt,
             listener,
+            vks,
         };
         client.login()?;
         Ok(client)
@@ -68,12 +71,15 @@ impl<'a> CoordinatorClient<'a> {
             challenge: token.clone(),
             prover_name: self.config.prover_name.clone(),
             prover_version: crate::version::get_version(),
+            prover_types: vec![self.config.prover_type],
+            vks: self.vks.clone(),
         };
 
         let buffer = login_message.rlp();
         let signature = self.key_signer.sign_buffer(&buffer)?;
         let login_request = LoginRequest {
             message: login_message,
+            public_key: self.key_signer.get_public_key(),
             signature,
         };
         let login_response = self.rt.block_on(api.login(&login_request, &token))?;

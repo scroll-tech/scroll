@@ -54,6 +54,46 @@ impl Default for TaskType {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ProverType {
+    Chunk,
+    Batch
+}
+
+impl ProverType {
+    fn from_u8(v: u8) -> Self {
+        match v {
+            1 => ProverType::Chunk,
+            2 => ProverType::Batch,
+            _ => {
+                panic!("invalid prover_type")
+            }
+        }
+    }
+}
+
+impl Serialize for ProverType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match *self {
+            ProverType::Chunk => serializer.serialize_u8(1),
+            ProverType::Batch => serializer.serialize_u8(2),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ProverType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let v: u8 = u8::deserialize(deserializer)?;
+        Ok(ProverType::from_u8(v))
+    }
+}
+
 #[derive(Serialize, Deserialize, Default)]
 pub struct Task {
     pub uuid: String,
