@@ -4,7 +4,7 @@ IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..
 
 mock_abi:
-    git submodule update --init --recursive
+	git submodule update --init --recursive
 	cd .. && solc --evm-version cancun --bin --abi --optimize --overwrite -o ./build/bin ./rollup/mock_bridge/MockBridge.sol
 	cd .. && go run github.com/scroll-tech/go-ethereum/cmd/abigen --bin=./build/bin/MockBridge.bin --abi=./build/bin/MockBridge.abi --pkg=mock_bridge --out=./rollup/mock_bridge/MockBridge.go
 
