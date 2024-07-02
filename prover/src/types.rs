@@ -6,46 +6,49 @@ use crate::coordinator_client::types::GetTaskResponseData;
 pub type CommonHash = H256;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub enum ProofType {
+pub enum TaskType {
     Undefined,
     Chunk,
     Batch,
+    Bundle
 }
 
-impl ProofType {
+impl TaskType {
     fn from_u8(v: u8) -> Self {
         match v {
-            1 => ProofType::Chunk,
-            2 => ProofType::Batch,
-            _ => ProofType::Undefined,
+            1 => TaskType::Chunk,
+            2 => TaskType::Batch,
+            3 => TaskType::Bundle,
+            _ => TaskType::Undefined,
         }
     }
 }
 
-impl Serialize for ProofType {
+impl Serialize for TaskType {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         match *self {
-            ProofType::Undefined => serializer.serialize_i8(0),
-            ProofType::Chunk => serializer.serialize_i8(1),
-            ProofType::Batch => serializer.serialize_i8(2),
+            TaskType::Undefined => serializer.serialize_u8(0),
+            TaskType::Chunk => serializer.serialize_u8(1),
+            TaskType::Batch => serializer.serialize_u8(2),
+            TaskType::Bundle => serializer.serialize_u8(3),
         }
     }
 }
 
-impl<'de> Deserialize<'de> for ProofType {
+impl<'de> Deserialize<'de> for TaskType {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         let v: u8 = u8::deserialize(deserializer)?;
-        Ok(ProofType::from_u8(v))
+        Ok(TaskType::from_u8(v))
     }
 }
 
-impl Default for ProofType {
+impl Default for TaskType {
     fn default() -> Self {
         Self::Undefined
     }
@@ -56,7 +59,7 @@ pub struct Task {
     pub uuid: String,
     pub id: String,
     #[serde(rename = "type", default)]
-    pub task_type: ProofType,
+    pub task_type: TaskType,
     pub task_data: String,
     #[serde(default)]
     pub hard_fork_name: String,
@@ -100,7 +103,7 @@ impl From<Task> for TaskWrapper {
 pub struct ProofDetail {
     pub id: String,
     #[serde(rename = "type", default)]
-    pub proof_type: ProofType,
+    pub proof_type: TaskType,
     pub proof_data: String,
     pub error: String,
 }

@@ -45,7 +45,7 @@ pub type ChallengeResponseData = LoginResponseData;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct GetTaskRequest {
-    pub task_type: crate::types::ProofType,
+    pub task_type: crate::types::TaskType,
     pub prover_height: Option<u64>,
     pub vks: Vec<String>,
 }
@@ -54,7 +54,7 @@ pub struct GetTaskRequest {
 pub struct GetTaskResponseData {
     pub uuid: String,
     pub task_id: String,
-    pub task_type: crate::types::ProofType,
+    pub task_type: crate::types::TaskType,
     pub task_data: String,
     pub hard_fork_name: String,
 }
@@ -63,7 +63,7 @@ pub struct GetTaskResponseData {
 pub struct SubmitProofRequest {
     pub uuid: String,
     pub task_id: String,
-    pub task_type: crate::types::ProofType,
+    pub task_type: crate::types::TaskType,
     pub status: ProofStatus,
     pub proof: String,
     pub failure_type: Option<ProofFailureType>,

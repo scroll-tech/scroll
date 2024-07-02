@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 
-use crate::types::ProofType;
+use crate::types::TaskType;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CircuitConfig {
@@ -31,7 +31,7 @@ pub struct Config {
     pub keystore_password: String,
     pub db_path: String,
     #[serde(default)]
-    pub proof_type: ProofType,
+    pub proof_type: TaskType,
     pub low_version_circuit: CircuitConfig,
     pub high_version_circuit: CircuitConfig,
     pub coordinator: CoordinatorConfig,

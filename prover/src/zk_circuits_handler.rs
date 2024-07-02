@@ -1,10 +1,11 @@
 mod bernoulli;
 mod curie;
+mod darwin;
 
 use super::geth_client::GethClient;
 use crate::{
     config::{AssetsDirEnvConfig, Config},
-    types::{ProofType, Task},
+    types::{TaskType, Task},
 };
 use anyhow::{bail, Result};
 use bernoulli::BaseCircuitsHandler;
@@ -20,19 +21,19 @@ pub mod utils {
 }
 
 pub trait CircuitsHandler {
-    fn get_vk(&self, task_type: ProofType) -> Option<Vec<u8>>;
+    fn get_vk(&self, task_type: TaskType) -> Option<Vec<u8>>;
 
-    fn get_proof_data(&self, task_type: ProofType, task: &Task) -> Result<String>;
+    fn get_proof_data(&self, task_type: TaskType, task: &Task) -> Result<String>;
 }
 
 type CircuitsHandlerBuilder = fn(
-    proof_type: ProofType,
+    proof_type: TaskType,
     config: &Config,
     geth_client: Option<Rc<RefCell<GethClient>>>,
 ) -> Result<Box<dyn CircuitsHandler>>;
 
 pub struct CircuitsHandlerProvider<'a> {
-    proof_type: ProofType,
+    proof_type: TaskType,
     config: &'a Config,
     geth_client: Option<Rc<RefCell<GethClient>>>,
     circuits_handler_builder_map: HashMap<HardForkName, CircuitsHandlerBuilder>,
@@ -44,14 +45,14 @@ pub struct CircuitsHandlerProvider<'a> {
 
 impl<'a> CircuitsHandlerProvider<'a> {
     pub fn new(
-        proof_type: ProofType,
+        proof_type: TaskType,
         config: &'a Config,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Result<Self> {
         let mut m: HashMap<HardForkName, CircuitsHandlerBuilder> = HashMap::new();
 
         fn handler_builder(
-            proof_type: ProofType,
+            proof_type: TaskType,
             config: &Config,
             geth_client: Option<Rc<RefCell<GethClient>>>,
         ) -> Result<Box<dyn CircuitsHandler>> {
@@ -74,7 +75,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
         );
 
         fn next_handler_builder(
-            proof_type: ProofType,
+            proof_type: TaskType,
             config: &Config,
             geth_client: Option<Rc<RefCell<GethClient>>>,
         ) -> Result<Box<dyn CircuitsHandler>> {
@@ -147,7 +148,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
     }
 
     fn init_vks(
-        proof_type: ProofType,
+        proof_type: TaskType,
         config: &'a Config,
         circuits_handler_builder_map: &HashMap<HardForkName, CircuitsHandlerBuilder>,
         geth_client: Option<Rc<RefCell<GethClient>>>,

@@ -8,7 +8,7 @@ use crate::{
     coordinator_client::{listener::Listener, types::*, CoordinatorClient},
     geth_client::GethClient,
     key_signer::KeySigner,
-    types::{ProofFailureType, ProofStatus, ProofType},
+    types::{ProofFailureType, ProofStatus, TaskType},
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
 };
 
@@ -33,7 +33,7 @@ impl<'a> Prover<'a> {
             CoordinatorClient::new(config, Rc::clone(&key_signer), coordinator_listener)
                 .context("failed to create coordinator_client")?;
 
-        let geth_client = if config.proof_type == ProofType::Chunk {
+        let geth_client = if config.proof_type == TaskType::Chunk {
             Some(Rc::new(RefCell::new(
                 GethClient::new(
                     &config.prover_name,
@@ -59,7 +59,7 @@ impl<'a> Prover<'a> {
         Ok(prover)
     }
 
-    pub fn get_proof_type(&self) -> ProofType {
+    pub fn get_proof_type(&self) -> TaskType {
         self.config.proof_type
     }
 
@@ -75,7 +75,7 @@ impl<'a> Prover<'a> {
             vks: self.circuits_handler_provider.borrow().get_vks(),
         };
 
-        if self.get_proof_type() == ProofType::Chunk {
+        if self.get_proof_type() == TaskType::Chunk {
             let latest_block_number = self.get_latest_block_number_value()?;
             if let Some(v) = latest_block_number {
                 if v.as_u64() == 0 {
