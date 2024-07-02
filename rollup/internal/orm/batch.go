@@ -484,3 +484,27 @@ func (o *Batch) UpdateProvingStatusByBundleHash(ctx context.Context, bundleHash 
 	}
 	return nil
 }
+
+// UpdateRollupStatusByBundleHash updates the proving_status for batches within the specified bundle_hash
+func (o *Batch) UpdateRollupStatusByBundleHash(ctx context.Context, bundleHash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
+	updateFields := make(map[string]interface{})
+	updateFields["rollup_status"] = int(status)
+
+	switch status {
+	case types.RollupFinalized:
+		updateFields["finalized_at"] = utils.NowUTC()
+	}
+
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("bundle_hash = ?", bundleHash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Batch.UpdateRollupStatusByBundleHash error: %w, bundle hash: %v, status: %v", err, bundleHash, status.String())
+	}
+	return nil
+}

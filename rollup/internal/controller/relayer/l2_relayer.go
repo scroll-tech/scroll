@@ -811,9 +811,20 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 				log.Warn("FinalizeBundleTxType transaction confirmed but failed in layer1", "confirmation", cfm)
 			}
 
-			err := r.bundleOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, bundleHash, cfm.TxHash.String(), status)
+			err := r.db.Transaction(func(dbTX *gorm.DB) error {
+				if err := r.batchOrm.UpdateRollupStatusByBundleHash(r.ctx, bundleHash, status); err != nil {
+					log.Warn("UpdateRollupStatusByBundleHash failed", "confirmation", cfm, "err", err)
+					return err
+				}
+
+				if err := r.bundleOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, bundleHash, cfm.TxHash.String(), status); err != nil {
+					log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "confirmation", cfm, "err", err)
+					return err
+				}
+				return nil
+			})
 			if err != nil {
-				log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "confirmation", cfm, "err", err)
+				log.Warn("failed to update rollup status of bundle and batches", "err", err)
 			}
 			return
 		}
