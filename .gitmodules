@@ -1,12 +1,3 @@
-[submodule "l2geth"]
-	path = l2geth
-	url = git@github.com:scroll-tech/go-ethereum.git
-[submodule "contracts/lib/ds-test"]
-	path = contracts/lib/ds-test
-	url = https://github.com/dapphub/ds-test
-[submodule "contracts/lib/forge-std"]
-	path = contracts/lib/forge-std
-	url = https://github.com/foundry-rs/forge-std
-[submodule "contracts/lib/solmate"]
-	path = contracts/lib/solmate
-	url = https://github.com/rari-capital/solmate
+[submodule "scroll-contracts"]
+	path = scroll-contracts
+	url = https://github.com/scroll-tech/scroll-contracts.git

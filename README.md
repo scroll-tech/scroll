@@ -52,12 +52,6 @@ go test -v -race -covermode=atomic scroll-tech/database/...
 go test -v -race -covermode=atomic scroll-tech/common/...
 ```
 
-## Testing Contracts
-
-You can find the unit tests in [`contracts/src/test/`](/contracts/src/test/), and integration tests in [`contracts/integration-test/`](/contracts/integration-test/).
-
-See [`contracts`](/contracts) for more details on the contracts.
-
 ## License
 
 Scroll Monorepo is licensed under the [MIT](./LICENSE) license.
