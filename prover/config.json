@@ -6,21 +6,21 @@
     "proof_type": 2,
     "low_version_circuit": {
         "hard_fork_name": "bernoulli",
-        "params_path": "params",
-        "assets_path": "assets"
+        "params_path": "/snarkify-data/params",
+        "assets_path": "/snarkify-data/assets"
     },
     "high_version_circuit": {
         "hard_fork_name": "curie",
-        "params_path": "params",
-        "assets_path": "assets"
+        "params_path": "/snarkify-data/params",
+        "assets_path": "/snarkify-data/assets"
     },
     "coordinator": {
-        "base_url": "http://localhost:8555",
+        "base_url": "https://sepolia-coordinator.scroll.io",
         "retry_count": 10,
         "retry_wait_time_sec": 10,
         "connection_timeout_sec": 30
     },
     "l2geth": {
-        "endpoint": "http://localhost:9999"
+        "endpoint": "https://purple-cool-grass.scroll-testnet.quiknode.pro/7c71f2df0436f31b249b4158a1ef4dc1ddfe5248/"
     }
 }

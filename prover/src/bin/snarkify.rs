@@ -20,7 +20,7 @@ impl ProofHandler for MyProofHandler {
     type Error = String;
 
     async fn prove(data: Self::Input) -> Result<Self::Output, Self::Error> {
-        let config: Config = Config::from_file("config.json".to_string()).map_err(|e| e.to_string())?;
+        let config: Config = Config::from_file("/snarkify-data/config.json".to_string()).map_err(|e| e.to_string())?;
 
         if let Err(e) = AssetsDirEnvConfig::init() {
             log::error!("AssetsDirEnvConfig init failed: {:#}", e);

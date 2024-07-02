@@ -19,7 +19,7 @@ $(info ZKEVM_COMMIT is ${ZKEVM_COMMIT})
 HALO2_GPU_VERSION=$(shell ./print_halo2gpu_version.sh | sed -n '2p')
 
 GIT_REV=$(shell git rev-parse --short HEAD)
-GO_TAG=$(shell grep "var tag = " ../common/version/version.go | cut -d "\"" -f2)
+GO_TAG=$(shell grep "var tag = " version.go | cut -d "\"" -f2)
 
 ifeq (${GO_TAG},)
     $(error GO_TAG not set)
