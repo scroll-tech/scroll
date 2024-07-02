@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,7 +34,6 @@ type BatchProposer struct {
 	batchTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
-	forkMap                         map[uint64]bool
 
 	chainCfg *params.ChainConfig
 
@@ -56,14 +54,12 @@ type BatchProposer struct {
 
 // NewBatchProposer creates a new BatchProposer instance.
 func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
-	forkHeights, forkMap, _ := forks.CollectSortedForkHeights(chainCfg)
 	log.Debug("new batch proposer",
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
 		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
 		"batchTimeoutSec", cfg.BatchTimeoutSec,
 		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
-		"maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize,
-		"forkHeights", forkHeights)
+		"maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize)
 
 	p := &BatchProposer{
 		ctx:                             ctx,
@@ -76,7 +72,6 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
-		forkMap:                         forkMap,
 		chainCfg:                        chainCfg,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -177,20 +172,7 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	startBlockNum := new(big.Int).SetUint64(firstUnbatchedChunk.StartBlockNumber)
-
-	var codecVersion encoding.CodecVersion
-	var maxChunksThisBatch uint64
-	if !p.chainCfg.IsBernoulli(startBlockNum) {
-		codecVersion = encoding.CodecV0
-		maxChunksThisBatch = 15
-	} else if !p.chainCfg.IsCurie(startBlockNum) {
-		codecVersion = encoding.CodecV1
-		maxChunksThisBatch = 15
-	} else {
-		codecVersion = encoding.CodecV2
-		maxChunksThisBatch = 45
-	}
+	maxChunksThisBatch := forks.GetMaxChunksPerBatch(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 
 	// select at most maxChunkNumPerBatch chunks
 	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, int(maxChunksThisBatch))
@@ -202,13 +184,14 @@ func (p *BatchProposer) proposeBatch() error {
 		return nil
 	}
 
-	for i, chunk := range dbChunks {
-		// if a chunk is starting at a fork boundary, only consider earlier chunks
-		if i != 0 && p.forkMap[chunk.StartBlockNumber] {
+	// Ensure all chunks in the same batch use the same hardfork name
+	// If a different hardfork name is found, truncate the chunks slice at that point
+	hardforkName := forks.GetHardforkName(p.chainCfg, dbChunks[0].StartBlockNumber, dbChunks[0].StartBlockTime)
+	for i := 1; i < len(dbChunks); i++ {
+		currentHardfork := forks.GetHardforkName(p.chainCfg, dbChunks[i].StartBlockNumber, dbChunks[i].StartBlockTime)
+		if currentHardfork != hardforkName {
 			dbChunks = dbChunks[:i]
-			if uint64(len(dbChunks)) < maxChunksThisBatch {
-				maxChunksThisBatch = uint64(len(dbChunks))
-			}
+			maxChunksThisBatch = uint64(len(dbChunks)) // update maxChunksThisBatch to trigger batching, because these chunks are the last chunks before the hardfork
 			break
 		}
 	}
@@ -222,6 +205,8 @@ func (p *BatchProposer) proposeBatch() error {
 	if err != nil {
 		return err
 	}
+
+	codecVersion := forks.GetCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1

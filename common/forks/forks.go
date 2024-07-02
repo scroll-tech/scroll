@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"sort"
 
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/params"
 )
 
@@ -63,17 +64,6 @@ func CollectSortedForkHeights(config *params.ChainConfig) ([]uint64, map[uint64]
 	return forkHeights, forkHeightsMap, forkNameHeightMap
 }
 
-// BlocksUntilFork returns the number of blocks until the next fork
-// returns 0 if there is no fork scheduled for the future
-func BlocksUntilFork(blockHeight uint64, forkHeights []uint64) uint64 {
-	for _, forkHeight := range forkHeights {
-		if forkHeight > blockHeight {
-			return forkHeight - blockHeight
-		}
-	}
-	return 0
-}
-
 // BlockRange returns the block range of the hard fork
 // Need ensure the forkHeights is incremental
 func BlockRange(currentForkHeight uint64, forkHeights []uint64) (from, to uint64) {
@@ -86,4 +76,46 @@ func BlockRange(currentForkHeight uint64, forkHeights []uint64) (from, to uint64
 		from = height
 	}
 	return
+}
+
+// GetHardforkName returns the name of the hardfork active at the given block height and timestamp.
+// It checks the chain configuration to determine which hardfork is active.
+func GetHardforkName(config *params.ChainConfig, blockHeight, blockTimestamp uint64) string {
+	if !config.IsBernoulli(new(big.Int).SetUint64(blockHeight)) {
+		return "homestead"
+	} else if !config.IsCurie(new(big.Int).SetUint64(blockHeight)) {
+		return "bernoulli"
+	} else if !config.IsDarwin(blockTimestamp) {
+		return "curie"
+	} else {
+		return "darwin"
+	}
+}
+
+// GetCodecVersion returns the encoding codec version for the given block height and timestamp.
+// It determines the appropriate codec version based on the active hardfork.
+func GetCodecVersion(config *params.ChainConfig, blockHeight, blockTimestamp uint64) encoding.CodecVersion {
+	if !config.IsBernoulli(new(big.Int).SetUint64(blockHeight)) {
+		return encoding.CodecV0
+	} else if !config.IsCurie(new(big.Int).SetUint64(blockHeight)) {
+		return encoding.CodecV1
+	} else if !config.IsDarwin(blockTimestamp) {
+		return encoding.CodecV2
+	} else {
+		return encoding.CodecV3
+	}
+}
+
+// GetMaxChunksPerBatch returns the maximum number of chunks allowed per batch for the given block height and timestamp.
+// This value may change depending on the active hardfork.
+func GetMaxChunksPerBatch(config *params.ChainConfig, blockHeight, blockTimestamp uint64) uint64 {
+	if !config.IsBernoulli(new(big.Int).SetUint64(blockHeight)) {
+		return 15
+	} else if !config.IsCurie(new(big.Int).SetUint64(blockHeight)) {
+		return 15
+	} else if !config.IsDarwin(blockTimestamp) {
+		return 45
+	} else {
+		return 45
+	}
 }
