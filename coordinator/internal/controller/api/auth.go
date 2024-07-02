@@ -62,7 +62,6 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 		types.PublicKey:     v.PublicKey,
 		types.ProverName:    v.Message.ProverName,
 		types.ProverVersion: v.Message.ProverVersion,
-		types.VKs:           v.Message.VKs,
 	}
 }
 
@@ -79,10 +78,6 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 
 	if proverVersion, ok := claims[types.ProverVersion]; ok {
 		c.Set(types.ProverVersion, proverVersion)
-	}
-
-	if vks, ok := claims[types.VKs]; ok {
-		c.Set(types.VKs, vks)
 	}
 	return nil
 }

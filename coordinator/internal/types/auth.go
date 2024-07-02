@@ -18,8 +18,6 @@ const (
 	ProverName = "prover_name"
 	// ProverVersion the prover version for context
 	ProverVersion = "prover_version"
-	// VKs the prover vks
-	VKs = "vks"
 )
 
 // LoginSchema for /login response
