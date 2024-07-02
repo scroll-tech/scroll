@@ -81,8 +81,8 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 		c.Set(types.ProverVersion, proverVersion)
 	}
 
-	if hardForkName, ok := claims[types.VKs]; ok {
-		c.Set(types.VKs, hardForkName)
+	if vks, ok := claims[types.VKs]; ok {
+		c.Set(types.VKs, vks)
 	}
 	return nil
 }
