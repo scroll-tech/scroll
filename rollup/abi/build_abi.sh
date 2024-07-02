@@ -24,7 +24,7 @@ gen_name=("L1GatewayRouter" "L2GatewayRouter" "L1ScrollMessenger" "L2ScrollMesse
 for i in "${!abi_name[@]}"; do
   mkdir -p tmp
   abi="tmp/${abi_name[$i]}.json"
-  cat ../contracts/artifacts/src/${abi_name[$i]}.sol/${abi_name[$i]}.json | jq '.abi' > $abi
+  cat ../scroll-contracts/artifacts/src/${abi_name[$i]}.sol/${abi_name[$i]}.json | jq '.abi' > $abi
   pkg="${pkg_name[$i]}_abi"
   out="contracts/${pkg}/${gen_name[$i]}.go"
   echo "generating ${out} from ${abi}"
