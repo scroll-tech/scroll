@@ -1,6 +1,3 @@
-[submodule "l2geth"]
-	path = l2geth
-	url = git@github.com:scroll-tech/go-ethereum.git
 [submodule "scroll-contracts"]
 	path = scroll-contracts
 	url = git@github.com:scroll-tech/scroll-contracts.git
