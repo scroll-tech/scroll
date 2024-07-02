@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {BatchHeaderV0Codec} from "../../../contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
-import {BatchHeaderV1Codec} from "../../../contracts/src/libraries/codec/BatchHeaderV1Codec.sol";
-import {ChunkCodecV0} from "../../../contracts/src/libraries/codec/ChunkCodecV0.sol";
-import {ChunkCodecV1} from "../../../contracts/src/libraries/codec/ChunkCodecV1.sol";
+import {BatchHeaderV0Codec} from "../../../scroll-contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
+import {BatchHeaderV1Codec} from "../../../scroll-contracts/src/libraries/codec/BatchHeaderV1Codec.sol";
+import {ChunkCodecV0} from "../../../scroll-contracts/src/libraries/codec/ChunkCodecV0.sol";
+import {ChunkCodecV1} from "../../../scroll-contracts/src/libraries/codec/ChunkCodecV1.sol";
 
 contract MockBridge {
     /// @dev Thrown when committing a committed batch.

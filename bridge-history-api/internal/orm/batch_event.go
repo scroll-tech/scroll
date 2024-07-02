@@ -73,6 +73,9 @@ func (c *BatchEvent) GetFinalizedBatchesLEBlockHeight(ctx context.Context, block
 
 // InsertOrUpdateBatchEvents inserts a new batch event or updates an existing one based on the BatchStatusType.
 func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvents []*BatchEvent) error {
+	var maxFinalizedBatchIndex uint64
+	var containsFinalizedEvent bool
+	var maxL1BlockNumber uint64
 	for _, l1BatchEvent := range l1BatchEvents {
 		db := c.db
 		db = db.WithContext(ctx)
@@ -89,11 +92,13 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 				return fmt.Errorf("failed to insert or ignore batch event, error: %w", err)
 			}
 		case btypes.BatchStatusTypeFinalized:
-			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
-			db = db.Where("batch_hash = ?", l1BatchEvent.BatchHash)
-			updateFields["batch_status"] = btypes.BatchStatusTypeFinalized
-			if err := db.Updates(updateFields).Error; err != nil {
-				return fmt.Errorf("failed to update batch event, error: %w", err)
+			containsFinalizedEvent = true
+			// get the maxFinalizedBatchIndex, which signals all the batch before it are all finalized
+			if l1BatchEvent.BatchIndex > maxFinalizedBatchIndex {
+				maxFinalizedBatchIndex = l1BatchEvent.BatchIndex
+			}
+			if l1BatchEvent.L1BlockNumber > maxL1BlockNumber {
+				maxL1BlockNumber = l1BatchEvent.L1BlockNumber
 			}
 		case btypes.BatchStatusTypeReverted:
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
@@ -106,6 +111,21 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 			if err := db.Delete(l1BatchEvent).Error; err != nil {
 				return fmt.Errorf("failed to soft delete batch event, error: %w", err)
 			}
+		}
+	}
+	if containsFinalizedEvent {
+		db := c.db
+		db = db.WithContext(ctx)
+		db = db.Model(&BatchEvent{})
+		updateFields := make(map[string]interface{})
+		// After darwin, FinalizeBatch event signals a range of batches are finalized,
+		// thus losing the batch hash info. Meanwhile, only batch_index is enough to update finalized batches.
+		db = db.Where("batch_index <= ?", maxFinalizedBatchIndex)
+		db = db.Where("batch_status != ?", btypes.BatchStatusTypeFinalized)
+		updateFields["batch_status"] = btypes.BatchStatusTypeFinalized
+		updateFields["l1_block_number"] = maxL1BlockNumber
+		if err := db.Updates(updateFields).Error; err != nil {
+			return fmt.Errorf("failed to update batch event, error: %w", err)
 		}
 	}
 	return nil
