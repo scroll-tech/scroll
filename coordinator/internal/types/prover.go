@@ -1,6 +1,9 @@
 package types
 
-import "fmt"
+import (
+	"fmt"
+	"scroll-tech/common/types/message"
+)
 
 // ProverType represents the type of prover.
 type ProverType uint8
@@ -24,3 +27,14 @@ const (
 	// ProverTypeBatch signals it's a batch prover, which can prove batch_tasks and bundle_tasks
 	ProverTypeBatch
 )
+
+// MakeProverType make ProverType from ProofType
+func MakeProverType(proof_type message.ProofType) ProverType {
+	switch proof_type {
+	case message.ProofTypeChunk:
+		return ProverTypeChunk
+	case message.ProofTypeBatch | message.ProofTypeBundle:
+		return ProverTypeBatch
+	}
+	return ProverTypeUndefined
+}
