@@ -19,6 +19,7 @@ import (
 
 	"scroll-tech/common/testcontainers"
 	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
 	"scroll-tech/database/migrate"
 
 	"scroll-tech/rollup/internal/utils"
@@ -31,6 +32,7 @@ var (
 	l2BlockOrm            *L2Block
 	chunkOrm              *Chunk
 	batchOrm              *Batch
+	bundleOrm             *Bundle
 	pendingTransactionOrm *PendingTransaction
 
 	block1 *encoding.Block
@@ -61,6 +63,7 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NoError(t, migrate.ResetDB(sqlDB))
 
+	bundleOrm = NewBundle(db)
 	batchOrm = NewBatch(db)
 	chunkOrm = NewChunk(db)
 	l2BlockOrm = NewL2Block(db)
@@ -269,10 +272,8 @@ func TestBatchOrm(t *testing.T) {
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 
 		batch := &encoding.Batch{
-			Index:                      0,
-			TotalL1MessagePoppedBefore: 0,
-			ParentBatchHash:            common.Hash{},
-			Chunks:                     []*encoding.Chunk{chunk1},
+			Index:  0,
+			Chunks: []*encoding.Chunk{chunk1},
 		}
 		batch1, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, utils.BatchMetrics{})
 		assert.NoError(t, err)
@@ -299,14 +300,11 @@ func TestBatchOrm(t *testing.T) {
 			assert.NoError(t, createErr)
 			batchHash1 = daBatch1.Hash().Hex()
 		}
-
 		assert.Equal(t, hash1, batchHash1)
 
 		batch = &encoding.Batch{
-			Index:                      1,
-			TotalL1MessagePoppedBefore: 0,
-			ParentBatchHash:            common.Hash{},
-			Chunks:                     []*encoding.Chunk{chunk2},
+			Index:  1,
+			Chunks: []*encoding.Chunk{chunk2},
 		}
 		batch2, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, utils.BatchMetrics{})
 		assert.NoError(t, err)
@@ -382,7 +380,148 @@ func TestBatchOrm(t *testing.T) {
 		assert.NotNil(t, updatedBatch)
 		assert.Equal(t, "finalizeTxHash", updatedBatch.FinalizeTxHash)
 		assert.Equal(t, types.RollupFinalizeFailed, types.RollupStatus(updatedBatch.RollupStatus))
+
+		batches, err := batchOrm.GetBatchesGEIndex(context.Background(), 0, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(batches))
+		assert.Equal(t, batchHash1, batches[0].Hash)
+		assert.Equal(t, batchHash2, batches[1].Hash)
+
+		batches, err = batchOrm.GetBatchesGEIndex(context.Background(), 0, 1)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(batches))
+		assert.Equal(t, batchHash1, batches[0].Hash)
+
+		batches, err = batchOrm.GetBatchesGEIndex(context.Background(), 1, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(batches))
+		assert.Equal(t, batchHash2, batches[0].Hash)
+
+		err = batchOrm.UpdateBundleHashInRange(context.Background(), 0, 0, "test hash")
+		assert.NoError(t, err)
+
+		err = batchOrm.UpdateProvingStatusByBundleHash(context.Background(), "test hash", types.ProvingTaskFailed)
+		assert.NoError(t, err)
+
+		err = batchOrm.UpdateRollupStatusByBundleHash(context.Background(), "test hash", types.RollupFinalizeFailed)
+		assert.NoError(t, err)
+
+		batches, err = batchOrm.GetBatchesGEIndex(context.Background(), 0, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(batches))
+		assert.Equal(t, batchHash1, batches[0].Hash)
+		assert.Equal(t, batchHash2, batches[1].Hash)
+		assert.Equal(t, types.ProvingStatus(batches[0].ProvingStatus), types.ProvingTaskFailed)
+		assert.Equal(t, types.RollupStatus(batches[0].RollupStatus), types.RollupFinalizeFailed)
 	}
+}
+
+func TestBundleOrm(t *testing.T) {
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+
+	chunk1 := &encoding.Chunk{Blocks: []*encoding.Block{block1}}
+	batch1 := &encoding.Batch{
+		Index:  0,
+		Chunks: []*encoding.Chunk{chunk1},
+	}
+	dbBatch1, err := batchOrm.InsertBatch(context.Background(), batch1, encoding.CodecV3, utils.BatchMetrics{})
+	assert.NoError(t, err)
+
+	chunk2 := &encoding.Chunk{Blocks: []*encoding.Block{block2}}
+	batch2 := &encoding.Batch{
+		Index:  1,
+		Chunks: []*encoding.Chunk{chunk2},
+	}
+	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2, encoding.CodecV3, utils.BatchMetrics{})
+	assert.NoError(t, err)
+
+	var bundle1 *Bundle
+	var bundle2 *Bundle
+
+	t.Run("InsertBundle", func(t *testing.T) {
+		bundle1, err = bundleOrm.InsertBundle(context.Background(), []*Batch{dbBatch1}, encoding.CodecV3)
+		assert.NoError(t, err)
+		assert.NotNil(t, bundle1)
+		assert.Equal(t, uint64(0), bundle1.StartBatchIndex)
+		assert.Equal(t, uint64(0), bundle1.EndBatchIndex)
+		assert.Equal(t, dbBatch1.Hash, bundle1.StartBatchHash)
+		assert.Equal(t, dbBatch1.Hash, bundle1.EndBatchHash)
+		assert.Equal(t, encoding.CodecV3, encoding.CodecVersion(bundle1.CodecVersion))
+
+		bundle2, err = bundleOrm.InsertBundle(context.Background(), []*Batch{dbBatch2}, encoding.CodecV3)
+		assert.NoError(t, err)
+		assert.NotNil(t, bundle2)
+		assert.Equal(t, uint64(1), bundle2.StartBatchIndex)
+		assert.Equal(t, uint64(1), bundle2.EndBatchIndex)
+		assert.Equal(t, dbBatch2.Hash, bundle2.StartBatchHash)
+		assert.Equal(t, dbBatch2.Hash, bundle2.EndBatchHash)
+		assert.Equal(t, encoding.CodecV3, encoding.CodecVersion(bundle2.CodecVersion))
+	})
+
+	t.Run("GetFirstUnbundledBatchIndex", func(t *testing.T) {
+		index, err := bundleOrm.GetFirstUnbundledBatchIndex(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(2), index)
+	})
+
+	t.Run("GetFirstPendingBundle", func(t *testing.T) {
+		bundle, err := bundleOrm.GetFirstPendingBundle(context.Background())
+		assert.NoError(t, err)
+		assert.NotNil(t, bundle)
+		assert.Equal(t, int16(types.RollupPending), bundle.RollupStatus)
+	})
+
+	t.Run("UpdateFinalizeTxHashAndRollupStatus", func(t *testing.T) {
+		err := bundleOrm.UpdateFinalizeTxHashAndRollupStatus(context.Background(), bundle1.Hash, "0xabcd", types.RollupFinalized)
+		assert.NoError(t, err)
+
+		pendingBundle, err := bundleOrm.GetFirstPendingBundle(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, uint64(2), pendingBundle.Index)
+
+		var finalizedBundle Bundle
+		err = db.Where("hash = ?", bundle1.Hash).First(&finalizedBundle).Error
+		assert.NoError(t, err)
+		assert.Equal(t, "0xabcd", finalizedBundle.FinalizeTxHash)
+		assert.Equal(t, int16(types.RollupFinalized), finalizedBundle.RollupStatus)
+		assert.NotNil(t, finalizedBundle.FinalizedAt)
+	})
+
+	t.Run("UpdateProvingStatus", func(t *testing.T) {
+		err := bundleOrm.UpdateProvingStatus(context.Background(), bundle1.Hash, types.ProvingTaskAssigned)
+		assert.NoError(t, err)
+
+		var bundle Bundle
+		err = db.Where("hash = ?", bundle1.Hash).First(&bundle).Error
+		assert.NoError(t, err)
+		assert.Equal(t, int16(types.ProvingTaskAssigned), bundle.ProvingStatus)
+		assert.NotNil(t, bundle.ProverAssignedAt)
+
+		err = bundleOrm.UpdateProvingStatus(context.Background(), bundle1.Hash, types.ProvingTaskVerified)
+		assert.NoError(t, err)
+
+		err = db.Where("hash = ?", bundle1.Hash).First(&bundle).Error
+		assert.NoError(t, err)
+		assert.Equal(t, int16(types.ProvingTaskVerified), bundle.ProvingStatus)
+		assert.NotNil(t, bundle.ProvedAt)
+	})
+
+	t.Run("GetVerifiedProofByHash", func(t *testing.T) {
+		proof := &message.BundleProof{
+			Proof: []byte("test proof"),
+		}
+		proofBytes, err := json.Marshal(proof)
+		assert.NoError(t, err)
+
+		err = db.Model(&Bundle{}).Where("hash = ?", bundle1.Hash).Update("proof", proofBytes).Error
+		assert.NoError(t, err)
+
+		retrievedProof, err := bundleOrm.GetVerifiedProofByHash(context.Background(), bundle1.Hash)
+		assert.NoError(t, err)
+		assert.Equal(t, proof.Proof, retrievedProof.Proof)
+	})
 }
 
 func TestPendingTransactionOrm(t *testing.T) {

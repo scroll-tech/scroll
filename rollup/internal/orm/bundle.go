@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"gorm.io/gorm"
 
@@ -21,7 +22,7 @@ type Bundle struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	// bundle
-	Index           uint64 `json:"index" gorm:"column:index"`
+	Index           uint64 `json:"index" gorm:"column:index;primaryKey"`
 	Hash            string `json:"hash" gorm:"column:hash"`
 	StartBatchIndex uint64 `json:"start_batch_index" gorm:"column:start_batch_index"`
 	EndBatchIndex   uint64 `json:"end_batch_index" gorm:"column:end_batch_index"`
@@ -131,21 +132,7 @@ func (o *Bundle) InsertBundle(ctx context.Context, batches []*Batch, codecVersio
 	db = db.WithContext(ctx)
 	db = db.Model(&Bundle{})
 
-	startBytes, err := hex.DecodeString(batches[0].Hash)
-	if err != nil {
-		return nil, fmt.Errorf("Bundle.InsertBundle DecodeString error: %w, batch hash: %v", err, batches[0].Hash)
-	}
-	endBytes, err := hex.DecodeString(batches[len(batches)-1].Hash)
-	if err != nil {
-		return nil, fmt.Errorf("Bundle.InsertBundle DecodeString error: %w, batch hash: %v", err, batches[len(batches)-1].Hash)
-	}
-
-	// Not part of DA hash, used for SQL query consistency and ease of use.
-	// Derived using keccak256(concat(start_batch_hash, end_batch_hash)).
-	bundleHash := hex.EncodeToString(crypto.Keccak256(append(startBytes, endBytes...)))
-
 	newBundle := Bundle{
-		Hash:              bundleHash,
 		StartBatchHash:    batches[0].Hash,
 		StartBatchIndex:   batches[0].Index,
 		EndBatchHash:      batches[len(batches)-1].Hash,
@@ -155,6 +142,10 @@ func (o *Bundle) InsertBundle(ctx context.Context, batches []*Batch, codecVersio
 		RollupStatus:      int16(types.RollupPending),
 		CodecVersion:      int16(codecVersion),
 	}
+
+	// Not part of DA hash, used for SQL query consistency and ease of use.
+	// Derived using keccak256(concat(start_batch_hash_bytes, end_batch_hash_bytes)).
+	newBundle.Hash = hex.EncodeToString(crypto.Keccak256(append(common.Hex2Bytes(newBundle.StartBatchHash[2:]), common.Hex2Bytes(newBundle.EndBatchHash[2:])...)))
 
 	if err := db.Create(&newBundle).Error; err != nil {
 		return nil, fmt.Errorf("Bundle.InsertBundle Create error: %w, bundle hash: %v", err, newBundle.Hash)
