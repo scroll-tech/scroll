@@ -403,7 +403,7 @@ func TestBatchOrm(t *testing.T) {
 		err = batchOrm.UpdateProvingStatusByBundleHash(context.Background(), "test hash", types.ProvingTaskFailed)
 		assert.NoError(t, err)
 
-		err = batchOrm.UpdateRollupStatusByBundleHash(context.Background(), "test hash", types.RollupFinalizeFailed)
+		err = batchOrm.UpdateRollupStatusByBundleHash(context.Background(), "test hash", types.RollupCommitFailed)
 		assert.NoError(t, err)
 
 		batches, err = batchOrm.GetBatchesGEIndex(context.Background(), 0, 0)
@@ -411,8 +411,10 @@ func TestBatchOrm(t *testing.T) {
 		assert.Equal(t, 2, len(batches))
 		assert.Equal(t, batchHash1, batches[0].Hash)
 		assert.Equal(t, batchHash2, batches[1].Hash)
-		assert.Equal(t, types.ProvingStatus(batches[0].ProvingStatus), types.ProvingTaskFailed)
-		assert.Equal(t, types.RollupStatus(batches[0].RollupStatus), types.RollupFinalizeFailed)
+		assert.Equal(t, types.ProvingTaskFailed, types.ProvingStatus(batches[0].ProvingStatus))
+		assert.Equal(t, types.RollupCommitFailed, types.RollupStatus(batches[0].RollupStatus))
+		assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(batches[1].ProvingStatus))
+		assert.Equal(t, types.RollupFinalizeFailed, types.RollupStatus(batches[1].RollupStatus))
 	}
 }
 
