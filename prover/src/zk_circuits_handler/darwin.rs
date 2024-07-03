@@ -153,17 +153,6 @@ impl DarwinHandler {
         self.get_sorted_traces_by_hashes(&chunk_task_detail.block_hashes)
     }
 
-    // fn gen_chunk_hashes_proofs(&self, task: &Task) -> Result<Vec<(ChunkInfo, ChunkProof)>> {
-    //     let batch_task_detail: BatchTaskDetail = serde_json::from_str(&task.task_data)?;
-
-    //     Ok(batch_task_detail
-    //         .chunk_infos
-    //         .clone()
-    //         .into_iter()
-    //         .zip(batch_task_detail.chunk_proofs.clone())
-    //         .collect())
-    // }
-
     fn get_sorted_traces_by_hashes(&self, block_hashes: &[CommonHash]) -> Result<Vec<BlockTrace>> {
         if block_hashes.is_empty() {
             log::error!("[prover] failed to get sorted traces: block_hashes are empty");
