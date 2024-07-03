@@ -332,8 +332,8 @@ func testValidProof(t *testing.T) {
 
 		proofStatus := verifiedSuccess
 		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType)
-		assert.Equal(t, errCode, types.Success)
-		assert.Equal(t, errMsg, "")
+		assert.Equal(t, types.Success, errCode)
+		assert.Equal(t, "", errMsg)
 		assert.NotNil(t, proverTask)
 		provers[i].submitProof(t, proverTask, proofStatus, types.Success)
 	}

@@ -33,8 +33,9 @@ func MakeProverType(proof_type message.ProofType) ProverType {
 	switch proof_type {
 	case message.ProofTypeChunk:
 		return ProverTypeChunk
-	case message.ProofTypeBatch | message.ProofTypeBundle:
+	case message.ProofTypeBatch, message.ProofTypeBundle:
 		return ProverTypeBatch
+	default:
+		return ProverTypeUndefined
 	}
-	return ProverTypeUndefined
 }
