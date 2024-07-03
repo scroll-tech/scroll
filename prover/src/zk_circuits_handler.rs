@@ -1,4 +1,3 @@
-mod bernoulli;
 mod curie;
 mod darwin;
 
@@ -9,8 +8,8 @@ use crate::{
     utils::get_task_types,
 };
 use anyhow::{bail, Result};
-use bernoulli::BaseCircuitsHandler;
-use curie::NextCircuitsHandler;
+use curie::CurieHandler;
+use darwin::DarwinHandler;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 type HardForkName = String;
@@ -61,7 +60,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 &config.low_version_circuit.hard_fork_name
             );
             AssetsDirEnvConfig::enable_first();
-            BaseCircuitsHandler::new(
+            CurieHandler::new(
                 prover_type,
                 &config.low_version_circuit.params_path,
                 &config.low_version_circuit.assets_path,
@@ -84,7 +83,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 &config.high_version_circuit.hard_fork_name
             );
             AssetsDirEnvConfig::enable_second();
-            NextCircuitsHandler::new(
+            DarwinHandler::new(
                 prover_type,
                 &config.high_version_circuit.params_path,
                 &config.high_version_circuit.assets_path,
@@ -155,16 +154,20 @@ impl<'a> CircuitsHandlerProvider<'a> {
             .flat_map(|(hard_fork_name, build)| {
                 let handler = build(prover_type, config, geth_client.clone())
                     .expect("failed to build circuits handler");
-                
-                let vks = get_task_types(prover_type).into_iter().map(|task_type| {
-                    let vk = handler
-                    .get_vk(task_type)
-                    .map_or("".to_string(), utils::encode_vk);
-                    log::info!("vk for {hard_fork_name}, is {vk}, task_type: {:?}", task_type);
-                    vk
-                }).collect::<Vec<String>>();
-                
-                vks
+
+                get_task_types(prover_type)
+                    .into_iter()
+                    .map(|task_type| {
+                        let vk = handler
+                            .get_vk(task_type)
+                            .map_or("".to_string(), utils::encode_vk);
+                        log::info!(
+                            "vk for {hard_fork_name}, is {vk}, task_type: {:?}",
+                            task_type
+                        );
+                        vk
+                    })
+                    .collect::<Vec<String>>()
             })
             .collect::<Vec<String>>()
     }

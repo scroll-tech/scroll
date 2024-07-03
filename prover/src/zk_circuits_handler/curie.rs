@@ -1,17 +1,22 @@
 use super::CircuitsHandler;
-use crate::{geth_client::GethClient, types::{ProverType, TaskType}};
+use crate::{
+    geth_client::GethClient,
+    types::{ProverType, TaskType},
+};
 use anyhow::{bail, Context, Ok, Result};
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 
 use crate::types::{CommonHash, Task};
-use std::{cell::RefCell, cmp::Ordering, rc::Rc};
+use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
-use prover_next::{
+use prover_curie::{
     aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver,
     BatchProof, BatchProvingTask, BlockTrace, ChunkInfo, ChunkProof, ChunkProvingTask,
 };
 
-use super::bernoulli::OUTPUT_DIR;
+// Only used for debugging.
+static OUTPUT_DIR: Lazy<Option<String>> = Lazy::new(|| env::var("PROVER_OUTPUT_DIR").ok());
 
 #[derive(Deserialize)]
 pub struct BatchTaskDetail {
@@ -29,14 +34,14 @@ fn get_block_number(block_trace: &BlockTrace) -> Option<u64> {
 }
 
 #[derive(Default)]
-pub struct NextCircuitsHandler {
+pub struct CurieHandler {
     chunk_prover: Option<RefCell<ChunkProver>>,
     batch_prover: Option<RefCell<BatchProver>>,
 
     geth_client: Option<Rc<RefCell<GethClient>>>,
 }
 
-impl NextCircuitsHandler {
+impl CurieHandler {
     pub fn new(
         prover_type: ProverType,
         params_dir: &str,
@@ -55,7 +60,6 @@ impl NextCircuitsHandler {
                 chunk_prover: None,
                 geth_client,
             }),
-            _ => bail!("proof type invalid"),
         }
     }
 
@@ -186,7 +190,7 @@ impl NextCircuitsHandler {
     }
 }
 
-impl CircuitsHandler for NextCircuitsHandler {
+impl CircuitsHandler for CurieHandler {
     fn get_vk(&self, task_type: TaskType) -> Option<Vec<u8>> {
         match task_type {
             TaskType::Chunk => self
@@ -216,7 +220,7 @@ impl CircuitsHandler for NextCircuitsHandler {
 mod tests {
     use super::*;
     use crate::zk_circuits_handler::utils::encode_vk;
-    use prover_next::utils::chunk_trace_to_witness_block;
+    use prover_curie::utils::chunk_trace_to_witness_block;
     use std::{path::PathBuf, sync::LazyLock};
 
     #[ctor::ctor]
@@ -251,8 +255,7 @@ mod tests {
 
     #[test]
     fn test_circuits() -> Result<()> {
-        let chunk_handler =
-            NextCircuitsHandler::new(ProverType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let chunk_handler = CurieHandler::new(ProverType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
 
         let chunk_vk = chunk_handler.get_vk(TaskType::Chunk).unwrap();
 
@@ -276,8 +279,7 @@ mod tests {
             chunk_proofs.push(chunk_proof);
         }
 
-        let batch_handler =
-            NextCircuitsHandler::new(ProverType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let batch_handler = CurieHandler::new(ProverType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
         let batch_vk = batch_handler.get_vk(TaskType::Batch).unwrap();
         check_vk(TaskType::Batch, batch_vk, "batch vk must be available");
         let chunk_hashes_proofs = chunk_infos.into_iter().zip(chunk_proofs).collect();

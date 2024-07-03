@@ -1,5 +1,5 @@
 use super::errors::ErrorCode;
-use crate::types::{ProofFailureType, ProofStatus, TaskType, ProverType};
+use crate::types::{ProofFailureType, ProofStatus, ProverType, TaskType};
 use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
 

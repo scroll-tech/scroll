@@ -10,7 +10,7 @@ pub enum TaskType {
     Undefined,
     Chunk,
     Batch,
-    Bundle
+    Bundle,
 }
 
 impl TaskType {
@@ -57,7 +57,7 @@ impl Default for TaskType {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ProverType {
     Chunk,
-    Batch
+    Batch,
 }
 
 impl ProverType {

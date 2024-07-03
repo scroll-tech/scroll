@@ -9,8 +9,8 @@ use crate::{
     geth_client::GethClient,
     key_signer::KeySigner,
     types::{ProofFailureType, ProofStatus, ProverType},
-    zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
     utils::get_task_types,
+    zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
 };
 
 use super::types::{ProofDetail, Task};
