@@ -672,16 +672,23 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 
 	// Check batch status before sending `finalizeBundle` tx.
 	if r.cfg.ChainMonitor.Enabled {
-		batchStatus, getErr := r.getBatchStatusByIndex(dbBatch)
-		if getErr != nil {
-			r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
-			log.Warn("failed to get batch status, please check chain_monitor api server", "batch_index", dbBatch.Index, "err", getErr)
-			return err
-		}
-		if !batchStatus {
-			r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
-			log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", dbBatch.Index)
-			return err
+		for batchIndex := bundle.StartBatchIndex; batchIndex <= bundle.EndBatchIndex; batchIndex++ {
+			tmpBatch, getErr := r.batchOrm.GetBatchByIndex(r.ctx, batchIndex)
+			if getErr != nil {
+				log.Error("failed to get batch by index", "batch index", batchIndex, "error", getErr)
+				return err
+			}
+			batchStatus, getErr := r.getBatchStatusByIndex(tmpBatch)
+			if getErr != nil {
+				r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
+				log.Error("failed to get batch status, please check chain_monitor api server", "batch_index", tmpBatch.Index, "err", getErr)
+				return err
+			}
+			if !batchStatus {
+				r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
+				log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", tmpBatch.Index)
+				return err
+			}
 		}
 	}
 
