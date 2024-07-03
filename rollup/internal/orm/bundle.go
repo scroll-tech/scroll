@@ -67,9 +67,40 @@ func (o *Bundle) getLatestBundle(ctx context.Context) (*Bundle, error) {
 
 	var latestBundle Bundle
 	if err := db.First(&latestBundle).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("getLatestBundle error: %w", err)
 	}
 	return &latestBundle, nil
+}
+
+// GetBatches retrieves selected batches from the database.
+// The returned batches are sorted in ascending order by their index.
+// only used in unit tests.
+func (o *Bundle) GetBundles(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*Bundle, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Bundle{})
+
+	for key, value := range fields {
+		db = db.Where(key, value)
+	}
+
+	for _, orderBy := range orderByList {
+		db = db.Order(orderBy)
+	}
+
+	if limit > 0 {
+		db = db.Limit(limit)
+	}
+
+	db = db.Order("index ASC")
+
+	var bundles []*Bundle
+	if err := db.Find(&bundles).Error; err != nil {
+		return nil, fmt.Errorf("Bundle.GetBundles error: %w, fields: %v, orderByList: %v", err, fields, orderByList)
+	}
+	return bundles, nil
 }
 
 // GetFirstUnbatchedBatchIndex retrieves the first unbundled batch index.
@@ -78,6 +109,9 @@ func (o *Bundle) GetFirstUnbundledBatchIndex(ctx context.Context) (uint64, error
 	latestBundle, err := o.getLatestBundle(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("Bundle.GetFirstUnbundledBatchIndex error: %w", err)
+	}
+	if latestBundle == nil {
+		return 0, nil
 	}
 	return latestBundle.EndBatchIndex + 1, nil
 }

@@ -34,6 +34,7 @@ type Batch struct {
 	WithdrawRoot    string `json:"withdraw_root" gorm:"column:withdraw_root"`
 	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
+	CodecVersion    int16  `json:"codec_version" gorm:"column:codec_version"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
@@ -160,12 +161,13 @@ func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error)
 	return latestBatch.EndChunkIndex + 1, nil
 }
 
-// GetBatchesGEIndex retrieves batches that have a batch index greater than the or equal to the given index.
+// GetBatchesGEIndexGECodecVersion retrieves batches that have a batch index greater than or equal to the given index and codec version.
 // The returned batches are sorted in ascending order by their index.
-func (o *Batch) GetBatchesGEIndex(ctx context.Context, index uint64, limit int) ([]*Batch, error) {
+func (o *Batch) GetBatchesGEIndexGECodecVersion(ctx context.Context, index uint64, codecv encoding.CodecVersion, limit int) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 	db = db.Where("index >= ?", index)
+	db = db.Where("codec_version >= ?", codecv)
 	db = db.Order("index ASC")
 
 	if limit > 0 {
@@ -174,7 +176,7 @@ func (o *Batch) GetBatchesGEIndex(ctx context.Context, index uint64, limit int) 
 
 	var batches []*Batch
 	if err := db.Find(&batches).Error; err != nil {
-		return nil, fmt.Errorf("Batch.GetBatchesGEIndex error: %w", err)
+		return nil, fmt.Errorf("Batch.GetBatchesGEIndexGECodecVersion error: %w", err)
 	}
 	return batches, nil
 }
@@ -286,6 +288,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		WithdrawRoot:              batch.WithdrawRoot().Hex(),
 		ParentBatchHash:           batch.ParentBatchHash.Hex(),
 		BatchHeader:               batchMeta.BatchBytes,
+		CodecVersion:              int16(codecVersion),
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),

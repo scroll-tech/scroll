@@ -131,7 +131,7 @@ func (p *BundleProposer) proposeBundle() error {
 
 	// select at most maxBlocksThisChunk blocks
 	maxBatchesThisBundle := p.maxBatchNumPerBundle
-	batches, err := p.batchOrm.GetBatchesGEIndex(p.ctx, firstUnbundledBatchIndex, int(maxBatchesThisBundle))
+	batches, err := p.batchOrm.GetBatchesGEIndexGECodecVersion(p.ctx, firstUnbundledBatchIndex, encoding.CodecV3, int(maxBatchesThisBundle))
 	if err != nil {
 		return err
 	}
