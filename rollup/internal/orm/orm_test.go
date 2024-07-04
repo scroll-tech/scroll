@@ -524,6 +524,45 @@ func TestBundleOrm(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, proof.Proof, retrievedProof.Proof)
 	})
+
+	t.Run("GetBundles", func(t *testing.T) {
+		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, []string{}, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, 2, len(bundles))
+		assert.Equal(t, bundle1.Hash, bundles[0].Hash)
+		assert.Equal(t, bundle2.Hash, bundles[1].Hash)
+	})
+
+	t.Run("UpdateProofAndProvingStatusByHash", func(t *testing.T) {
+		proof := &message.BundleProof{
+			Proof: []byte("new test proof"),
+		}
+		err := bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle2.Hash, proof, types.ProvingTaskVerified, 600)
+		assert.NoError(t, err)
+
+		var bundle Bundle
+		err = db.Where("hash = ?", bundle2.Hash).First(&bundle).Error
+		assert.NoError(t, err)
+		assert.Equal(t, types.ProvingTaskVerified, types.ProvingStatus(bundle.ProvingStatus))
+		assert.Equal(t, int32(600), bundle.ProofTimeSec)
+		assert.NotNil(t, bundle.ProvedAt)
+
+		var retrievedProof message.BundleProof
+		err = json.Unmarshal(bundle.Proof, &retrievedProof)
+		assert.NoError(t, err)
+		assert.Equal(t, proof.Proof, retrievedProof.Proof)
+	})
+
+	t.Run("UpdateRollupStatus", func(t *testing.T) {
+		err := bundleOrm.UpdateRollupStatus(context.Background(), bundle2.Hash, types.RollupFinalized)
+		assert.NoError(t, err)
+
+		var bundle Bundle
+		err = db.Where("hash = ?", bundle2.Hash).First(&bundle).Error
+		assert.NoError(t, err)
+		assert.Equal(t, types.RollupFinalized, types.RollupStatus(bundle.RollupStatus))
+		assert.NotNil(t, bundle.FinalizedAt)
+	})
 }
 
 func TestPendingTransactionOrm(t *testing.T) {

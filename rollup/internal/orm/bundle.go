@@ -131,34 +131,6 @@ func (o *Bundle) GetFirstPendingBundle(ctx context.Context) (*Bundle, error) {
 	return &pendingBundle, nil
 }
 
-// UpdateProofAndProvingStatusByHash updates the bundle proof and proving status by hash.
-func (o *Bundle) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof *message.BundleProof, provingStatus types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
-	db := o.db
-	if len(dbTX) > 0 && dbTX[0] != nil {
-		db = dbTX[0]
-	}
-
-	proofBytes, err := json.Marshal(proof)
-	if err != nil {
-		return err
-	}
-
-	updateFields := make(map[string]interface{})
-	updateFields["proof"] = proofBytes
-	updateFields["proving_status"] = provingStatus
-	updateFields["proof_time_sec"] = proofTimeSec
-	updateFields["proved_at"] = utils.NowUTC()
-
-	db = db.WithContext(ctx)
-	db = db.Model(&Bundle{})
-	db = db.Where("hash", hash)
-
-	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Bundle.UpdateProofByHash error: %w, bundle hash: %v", err, hash)
-	}
-	return nil
-}
-
 // GetVerifiedProofByHash retrieves the verified aggregate proof for a bundle with the given hash.
 func (o *Bundle) GetVerifiedProofByHash(ctx context.Context, hash string) (*message.BundleProof, error) {
 	db := o.db.WithContext(ctx)
@@ -262,6 +234,7 @@ func (o *Bundle) UpdateProvingStatus(ctx context.Context, hash string, status ty
 }
 
 // UpdateRollupStatus updates the rollup status for a bundle.
+// only used in unit tests.
 func (o *Bundle) UpdateRollupStatus(ctx context.Context, hash string, status types.RollupStatus) error {
 	updateFields := make(map[string]interface{})
 	updateFields["rollup_status"] = int(status)
@@ -275,6 +248,35 @@ func (o *Bundle) UpdateRollupStatus(ctx context.Context, hash string, status typ
 
 	if err := db.Updates(updateFields).Error; err != nil {
 		return fmt.Errorf("Bundle.UpdateRollupStatus error: %w, bundle hash: %v, status: %v", err, hash, status.String())
+	}
+	return nil
+}
+
+// UpdateProofAndProvingStatusByHash updates the bundle proof and proving status by hash.
+// only used in unit tests.
+func (o *Bundle) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof *message.BundleProof, provingStatus types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+
+	proofBytes, err := json.Marshal(proof)
+	if err != nil {
+		return err
+	}
+
+	updateFields := make(map[string]interface{})
+	updateFields["proof"] = proofBytes
+	updateFields["proving_status"] = provingStatus
+	updateFields["proof_time_sec"] = proofTimeSec
+	updateFields["proved_at"] = utils.NowUTC()
+
+	db = db.WithContext(ctx)
+	db = db.Model(&Bundle{})
+	db = db.Where("hash", hash)
+
+	if err := db.Updates(updateFields).Error; err != nil {
+		return fmt.Errorf("Bundle.UpdateProofByHash error: %w, bundle hash: %v", err, hash)
 	}
 	return nil
 }
