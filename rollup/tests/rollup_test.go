@@ -64,10 +64,6 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
 
-	// Create L1Watcher
-	l1Cfg := rollupApp.Config.L1Config
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
-
 	// add some blocks to db
 	var blocks []*encoding.Block
 	for i := int64(0); i < 10; i++ {
@@ -125,8 +121,6 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// fetch rollup events
 	assert.Eventually(t, func() bool {
-		err = l1Watcher.FetchContractEvent()
-		assert.NoError(t, err)
 		var statuses []types.RollupStatus
 		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 		return err == nil && len(statuses) == 1 && types.RollupCommitted == statuses[0]
@@ -163,8 +157,6 @@ func testCommitBatchAndFinalizeBatch(t *testing.T) {
 
 	// fetch rollup events
 	assert.Eventually(t, func() bool {
-		err = l1Watcher.FetchContractEvent()
-		assert.NoError(t, err)
 		var statuses []types.RollupStatus
 		statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 		return err == nil && len(statuses) == 1 && types.RollupFinalized == statuses[0]
@@ -198,10 +190,6 @@ func testCommitBatchAndFinalizeBatch4844(t *testing.T) {
 		}
 		l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
-
-		// Create L1Watcher
-		l1Cfg := rollupApp.Config.L1Config
-		l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 		// add some blocks to db
 		var blocks []*encoding.Block
@@ -262,8 +250,6 @@ func testCommitBatchAndFinalizeBatch4844(t *testing.T) {
 
 		// fetch rollup events
 		assert.Eventually(t, func() bool {
-			err = l1Watcher.FetchContractEvent()
-			assert.NoError(t, err)
 			var statuses []types.RollupStatus
 			statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 			return err == nil && len(statuses) == 1 && types.RollupCommitted == statuses[0]
@@ -300,8 +286,6 @@ func testCommitBatchAndFinalizeBatch4844(t *testing.T) {
 
 		// fetch rollup events
 		assert.Eventually(t, func() bool {
-			err = l1Watcher.FetchContractEvent()
-			assert.NoError(t, err)
 			var statuses []types.RollupStatus
 			statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 			return err == nil && len(statuses) == 1 && types.RollupFinalized == statuses[0]
@@ -339,10 +323,6 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfter4844(t *testing.T) {
 		}
 		l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
-
-		// Create L1Watcher
-		l1Cfg := rollupApp.Config.L1Config
-		l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 		// add some blocks to db
 		var blocks []*encoding.Block
@@ -397,8 +377,6 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfter4844(t *testing.T) {
 
 			// fetch rollup events
 			assert.Eventually(t, func() bool {
-				err = l1Watcher.FetchContractEvent()
-				assert.NoError(t, err)
 				var statuses []types.RollupStatus
 				statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 				return err == nil && len(statuses) == 1 && types.RollupCommitted == statuses[0]
@@ -435,8 +413,6 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfter4844(t *testing.T) {
 
 			// fetch rollup events
 			assert.Eventually(t, func() bool {
-				err = l1Watcher.FetchContractEvent()
-				assert.NoError(t, err)
 				var statuses []types.RollupStatus
 				statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 				return err == nil && len(statuses) == 1 && types.RollupFinalized == statuses[0]
@@ -470,10 +446,6 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfterCompression(t *testing.T) {
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
-
-	// Create L1Watcher
-	l1Cfg := rollupApp.Config.L1Config
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, 0, l1Cfg.Confirmations, l1Cfg.L1MessageQueueAddress, l1Cfg.ScrollChainContractAddress, db, nil)
 
 	// add some blocks to db
 	var blocks []*encoding.Block
@@ -528,8 +500,6 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfterCompression(t *testing.T) {
 
 		// fetch rollup events
 		assert.Eventually(t, func() bool {
-			err = l1Watcher.FetchContractEvent()
-			assert.NoError(t, err)
 			var statuses []types.RollupStatus
 			statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 			return err == nil && len(statuses) == 1 && types.RollupCommitted == statuses[0]
@@ -566,8 +536,6 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfterCompression(t *testing.T) {
 
 		// fetch rollup events
 		assert.Eventually(t, func() bool {
-			err = l1Watcher.FetchContractEvent()
-			assert.NoError(t, err)
 			var statuses []types.RollupStatus
 			statuses, err = batchOrm.GetRollupStatusByHashList(context.Background(), []string{batch.Hash})
 			return err == nil && len(statuses) == 1 && types.RollupFinalized == statuses[0]
@@ -583,4 +551,126 @@ func testCommitBatchAndFinalizeBatchBeforeAndAfterCompression(t *testing.T) {
 			return err == nil && receipt.Status == gethTypes.ReceiptStatusSuccessful
 		}, 30*time.Second, time.Second)
 	}
+}
+
+func testCommitTwoBatchesAndFinalizeByOneBundle(t *testing.T) {
+	db := setupDB(t)
+	defer database.CloseDB(db)
+
+	prepareContracts(t)
+
+	chainConfig := &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
+
+	// Create L2Relayer
+	l2Cfg := rollupApp.Config.L2Config
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
+	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
+
+	// add some blocks to db
+	var blocks []*encoding.Block
+	for i := int64(0); i < 10; i++ {
+		header := gethTypes.Header{
+			Number:     big.NewInt(i + 1),
+			ParentHash: common.Hash{},
+			Difficulty: big.NewInt(0),
+			BaseFee:    big.NewInt(0),
+			Root:       common.HexToHash("0x1"),
+		}
+		blocks = append(blocks, &encoding.Block{
+			Header:         &header,
+			Transactions:   nil,
+			WithdrawRoot:   common.HexToHash("0x2"),
+			RowConsumption: &gethTypes.RowConsumption{},
+		})
+	}
+
+	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+		MaxBlockNumPerChunk:             100,
+		MaxTxNumPerChunk:                10000,
+		MaxL1CommitGasPerChunk:          50000000000,
+		MaxL1CommitCalldataSizePerChunk: 1000000,
+		MaxRowConsumptionPerChunk:       1048319,
+		ChunkTimeoutSec:                 300,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+	}, chainConfig, db, nil)
+
+	bap := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		MaxL1CommitGasPerBatch:          50000000000,
+		MaxL1CommitCalldataSizePerBatch: 1000000,
+		BatchTimeoutSec:                 300,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+	}, chainConfig, db, nil)
+
+	bup := watcher.NewBundleProposer(context.Background(), &config.BundleProposerConfig{
+		MaxBatchNumPerBundle: 1000000,
+		BundleTimeoutSec:     300,
+	}, chainConfig, db, nil)
+
+	l2BlockOrm := orm.NewL2Block(db)
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[:5])
+	assert.NoError(t, err)
+
+	cp.TryProposeChunk()
+	bap.TryProposeBatch()
+
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[5:])
+	assert.NoError(t, err)
+
+	cp.TryProposeChunk()
+	bap.TryProposeBatch()
+
+	bup.TryProposeBundle() // The proposed bundle contains two batches.
+
+	l2Relayer.ProcessPendingBatches()
+
+	// add dummy proof
+	proof := &message.BundleProof{
+		Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+	}
+
+	bundleOrm := orm.NewBundle(db)
+	bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
+	assert.NoError(t, err)
+	assert.Len(t, bundles, 1)
+	err = bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundles[0].Hash, proof, types.ProvingTaskVerified, 100)
+	assert.NoError(t, err)
+
+	assert.Eventually(t, func() bool {
+		batchOrm := orm.NewBatch(db)
+		batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
+		assert.NoError(t, err)
+		assert.Len(t, batches, 3)
+		return types.RollupCommitted == types.RollupStatus(batches[1].RollupStatus) && types.RollupCommitted == types.RollupStatus(batches[2].RollupStatus)
+	}, 30*time.Second, time.Second)
+
+	// process pending bundle and check status
+	l2Relayer.ProcessPendingBundles()
+
+	// fetch rollup events
+	assert.Eventually(t, func() bool {
+		batchOrm := orm.NewBatch(db)
+		batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
+		assert.NoError(t, err)
+		assert.Len(t, batches, 3)
+		batches = batches[1:]
+		if types.RollupFinalized != types.RollupStatus(batches[0].RollupStatus) || types.RollupFinalized != types.RollupStatus(batches[1].RollupStatus) {
+			return false
+		}
+		assert.NotEmpty(t, batches[0].FinalizeTxHash)
+		assert.Equal(t, batches[0].FinalizeTxHash, batches[1].FinalizeTxHash)
+		receipt, err := l1Client.TransactionReceipt(context.Background(), common.HexToHash(batches[0].FinalizeTxHash))
+		assert.NoError(t, err)
+		assert.Equal(t, gethTypes.ReceiptStatusSuccessful, receipt.Status)
+		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
+		assert.NoError(t, err)
+		assert.Len(t, bundles, 1)
+		if types.RollupFinalized != types.RollupStatus(bundles[0].RollupStatus) {
+			return false
+		}
+		assert.Equal(t, batches[0].FinalizeTxHash, bundles[0].FinalizeTxHash)
+		return true
+	}, 30*time.Second, time.Second)
 }

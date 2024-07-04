@@ -403,7 +403,7 @@ func TestBatchOrm(t *testing.T) {
 		err = batchOrm.UpdateProvingStatusByBundleHash(context.Background(), "test hash", types.ProvingTaskFailed)
 		assert.NoError(t, err)
 
-		err = batchOrm.UpdateRollupStatusByBundleHash(context.Background(), "test hash", types.RollupCommitFailed)
+		err = batchOrm.UpdateFinalizeTxHashAndRollupStatusByBundleHash(context.Background(), "test hash", "tx hash", types.RollupCommitFailed)
 		assert.NoError(t, err)
 
 		batches, err = batchOrm.GetBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion, 0)

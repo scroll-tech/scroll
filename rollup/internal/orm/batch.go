@@ -488,9 +488,10 @@ func (o *Batch) UpdateProvingStatusByBundleHash(ctx context.Context, bundleHash 
 	return nil
 }
 
-// UpdateRollupStatusByBundleHash updates the proving_status for batches within the specified bundle_hash
-func (o *Batch) UpdateRollupStatusByBundleHash(ctx context.Context, bundleHash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
+// UpdateFinalizeTxHashAndRollupStatusByBundleHash updates the the finalize transaction hash and rollup status for batches within the specified bundle_hash
+func (o *Batch) UpdateFinalizeTxHashAndRollupStatusByBundleHash(ctx context.Context, bundleHash string, finalizeTxHash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})
+	updateFields["finalize_tx_hash"] = finalizeTxHash
 	updateFields["rollup_status"] = int(status)
 
 	switch status {
@@ -507,7 +508,7 @@ func (o *Batch) UpdateRollupStatusByBundleHash(ctx context.Context, bundleHash s
 	db = db.Where("bundle_hash = ?", bundleHash)
 
 	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateRollupStatusByBundleHash error: %w, bundle hash: %v, status: %v", err, bundleHash, status.String())
+		return fmt.Errorf("Batch.UpdateFinalizeTxHashAndRollupStatusByBundleHash error: %w, bundle hash: %v, status: %v", err, bundleHash, status.String())
 	}
 	return nil
 }

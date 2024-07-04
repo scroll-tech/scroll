@@ -832,8 +832,8 @@ func (r *Layer2Relayer) handleConfirmation(cfm *sender.Confirmation) {
 			}
 
 			err := r.db.Transaction(func(dbTX *gorm.DB) error {
-				if err := r.batchOrm.UpdateRollupStatusByBundleHash(r.ctx, bundleHash, status); err != nil {
-					log.Warn("UpdateRollupStatusByBundleHash failed", "confirmation", cfm, "err", err)
+				if err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatusByBundleHash(r.ctx, bundleHash, cfm.TxHash.String(), status); err != nil {
+					log.Warn("UpdateFinalizeTxHashAndRollupStatusByBundleHash failed", "confirmation", cfm, "err", err)
 					return err
 				}
 
