@@ -70,6 +70,13 @@ impl ProverType {
             }
         }
     }
+
+    pub fn to_u8(self) -> u8 {
+        match self {
+            ProverType::Chunk => 1,
+            ProverType::Batch => 2,
+        }
+    }
 }
 
 impl Serialize for ProverType {

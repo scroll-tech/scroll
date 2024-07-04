@@ -1,6 +1,6 @@
 use super::errors::ErrorCode;
 use crate::types::{ProofFailureType, ProofStatus, ProverType, TaskType};
-use rlp::RlpStream;
+use rlp::{Encodable, RlpStream};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -19,15 +19,23 @@ pub struct LoginMessage {
     pub vks: Vec<String>,
 }
 
-impl LoginMessage {
-    pub fn rlp(&self) -> Vec<u8> {
-        let mut rlp = RlpStream::new();
+impl Encodable for LoginMessage {
+    fn rlp_append(&self, s: &mut RlpStream) {
         let num_fields = 5;
-        rlp.begin_list(num_fields);
-        rlp.append(&self.prover_name);
-        rlp.append(&self.prover_version);
-        rlp.append(&self.challenge);
-        rlp.out().freeze().into()
+        s.begin_list(num_fields);
+        s.append(&self.challenge);
+        s.append(&self.prover_version);
+        s.append(&self.prover_name);
+        let prover_types = self
+            .prover_types
+            .iter()
+            .map(|prover_type| prover_type.to_u8())
+            .collect::<Vec<u8>>();
+        s.append(&prover_types);
+        s.begin_list(self.vks.len());
+        for vk in &self.vks {
+            s.append(vk);
+        }
     }
 }
 

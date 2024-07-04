@@ -75,7 +75,7 @@ impl<'a> CoordinatorClient<'a> {
             vks: self.vks.clone(),
         };
 
-        let buffer = login_message.rlp();
+        let buffer = rlp::encode(&login_message);
         let signature = self.key_signer.sign_buffer(&buffer)?;
         let login_request = LoginRequest {
             message: login_message,
