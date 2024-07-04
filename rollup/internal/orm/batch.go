@@ -416,7 +416,7 @@ func (o *Batch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash st
 	db = db.Where("hash", hash)
 
 	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Batch.UpdateFinalizeTxHashAndRollupStatus error: %w, batch hash: %v, status: %v, commitTxHash: %v", err, hash, status.String(), finalizeTxHash)
+		return fmt.Errorf("Batch.UpdateFinalizeTxHashAndRollupStatus error: %w, batch hash: %v, status: %v, finalizeTxHash: %v", err, hash, status.String(), finalizeTxHash)
 	}
 	return nil
 }

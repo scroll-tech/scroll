@@ -698,6 +698,10 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 		if err != nil {
 			return fmt.Errorf("failed to get verified proof by bundle index: %d, err: %w", bundle.Index, err)
 		}
+
+		if err = aggProof.SanityCheck(); err != nil {
+			return fmt.Errorf("failed to check agg_proof sanity, index: %d, err: %w", bundle.Index, err)
+		}
 	}
 
 	calldata, err := r.constructFinalizeBundlePayloadCodecV3(dbBatch, aggProof)
@@ -730,6 +734,15 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 			}
 			if updateErr := r.batchOrm.UpdateProvingStatusByBundleHash(r.ctx, bundle.Hash, types.ProvingTaskVerified); updateErr != nil {
 				return updateErr
+			}
+			for batchIndex := bundle.StartBatchIndex; batchIndex <= bundle.EndBatchIndex; batchIndex++ {
+				tmpBatch, getErr := r.batchOrm.GetBatchByIndex(r.ctx, batchIndex)
+				if getErr != nil {
+					return getErr
+				}
+				if updateErr := r.chunkOrm.UpdateProvingStatusByBatchHash(r.ctx, tmpBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
+					return updateErr
+				}
 			}
 			return nil
 		})
