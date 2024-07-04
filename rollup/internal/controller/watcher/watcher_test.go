@@ -126,6 +126,7 @@ func TestFunction(t *testing.T) {
 	t.Run("TestBatchProposerRespectHardforks", testBatchProposerRespectHardforks)
 
 	// Run bundle proposer test cases.
+	t.Run("TestBundleProposerLimits", testBundleProposerLimits)
 	t.Run("TestBundleProposerRespectHardforks", testBundleProposerRespectHardforks)
 }
 

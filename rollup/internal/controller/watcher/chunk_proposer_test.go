@@ -25,7 +25,6 @@ func testChunkProposerCodecv0Limits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
@@ -195,7 +194,6 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
@@ -365,7 +363,6 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
@@ -536,7 +533,6 @@ func testChunkProposerCodecv3Limits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
