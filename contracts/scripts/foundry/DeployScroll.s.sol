@@ -1754,7 +1754,7 @@ contract GenerateGenesis is DeployScroll {
 
         // Scroll predeploys
         setL2MessageQueue();
-        setL2GasPriceOracle();
+        setL1GasPriceOracle();
         setL2Whitelist();
         setL2Weth();
         setL2FeeVault();
@@ -1794,7 +1794,7 @@ contract GenerateGenesis is DeployScroll {
         vm.resetNonce(address(_queue));
     }
 
-    function setL2GasPriceOracle() internal {
+    function setL1GasPriceOracle() internal {
         address predeployAddr = tryGetOverride("L1_GAS_PRICE_ORACLE");
 
         if (predeployAddr == address(0)) {
@@ -1808,6 +1808,9 @@ contract GenerateGenesis is DeployScroll {
         // set storage
         bytes32 _ownerSlot = hex"0000000000000000000000000000000000000000000000000000000000000000";
         vm.store(predeployAddr, _ownerSlot, vm.load(address(_oracle), _ownerSlot));
+
+        bytes32 _isCurieSlot = hex"0000000000000000000000000000000000000000000000000000000000000008";
+        vm.store(predeployAddr, _isCurieSlot, bytes32(uint256(1)));
 
         // reset so its not included state dump
         vm.etch(address(_oracle), "");

@@ -15,6 +15,7 @@
     "archimedesBlock": 0,
     "shanghaiBlock": 0,
     "bernoulliBlock": 0,
+    "curieBlock": 0,
     "clique": {
       "period": 3,
       "epoch": 30000
@@ -24,8 +25,6 @@
       "maxTxPerBlock": null,
       "maxTxPayloadBytesPerBlock": 122880,
       "feeVaultAddress": null,
-      "enableEIP2718": false,
-      "enableEIP1559": false,
       "l1Config": {
         "l1ChainId": null,
         "l1MessageQueueAddress": null,
