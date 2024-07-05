@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"math/big"
 	"testing"
@@ -307,7 +306,6 @@ func testCommitBatchAndFinalizeBatchOrBundleCrossingAllTransitions(t *testing.T)
 		assert.Len(t, batches, 4)
 		batches = batches[1:]
 		for _, batch := range batches {
-			fmt.Println("batch info", "start chunk index", batch.StartChunkIndex, "end chunk index", batch.EndChunkIndex, "batch.RollupStatus", batch.RollupStatus)
 			if types.RollupCommitted != types.RollupStatus(batch.RollupStatus) {
 				return false
 			}
