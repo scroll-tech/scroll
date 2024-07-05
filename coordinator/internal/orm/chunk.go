@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/da-codec/encoding/codecv0"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/encoding"
-	"scroll-tech/common/types/encoding/codecv0"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
@@ -332,7 +332,7 @@ func (o *Chunk) UpdateProvingStatusFailed(ctx context.Context, hash string, maxA
 	db = db.Model(&Chunk{})
 	db = db.Where("hash", hash)
 	db = db.Where("total_attempts >= ?", maxAttempts)
-	db = db.Where("proving_status != ?", int(types.ProverProofValid))
+	db = db.Where("proving_status != ?", int(types.ProvingTaskVerified))
 	if err := db.Update("proving_status", int(types.ProvingTaskFailed)).Error; err != nil {
 		return fmt.Errorf("Batch.UpdateProvingStatus error: %w, batch hash: %v, status: %v", err, hash, types.ProvingTaskFailed.String())
 	}

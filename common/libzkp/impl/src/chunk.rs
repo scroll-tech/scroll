@@ -10,7 +10,7 @@ use prover::{
     consts::CHUNK_VK_FILENAME,
     utils::init_env_and_log,
     zkevm::{Prover, Verifier},
-    BlockTrace, ChunkProof,
+    BlockTrace, ChunkProof, ChunkProvingTask,
 };
 use std::{cell::OnceCell, env, ptr::null};
 
@@ -71,11 +71,12 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
         let block_traces = c_char_to_vec(block_traces);
         let block_traces = serde_json::from_slice::<Vec<BlockTrace>>(&block_traces)
             .map_err(|e| format!("failed to deserialize block traces: {e:?}"))?;
+        let chunk = ChunkProvingTask::from(block_traces);
 
         let proof = PROVER
             .get_mut()
             .expect("failed to get mutable reference to PROVER.")
-            .gen_chunk_proof(block_traces, None, None, OUTPUT_DIR.as_deref())
+            .gen_chunk_proof(chunk, None, None, OUTPUT_DIR.as_deref())
             .map_err(|e| format!("failed to generate proof: {e:?}"))?;
 
         serde_json::to_vec(&proof).map_err(|e| format!("failed to serialize the proof: {e:?}"))

@@ -98,19 +98,6 @@ describe("ScrollChain.blob", async () => {
       batchHeader0[25] = 1;
     });
 
-    it("should revert when ErrorInvalidBatchHeaderVersion", async () => {
-      const header = new Uint8Array(121);
-      header[0] = 2;
-      await expect(chain.commitBatch(1, header, ["0x"], "0x")).to.revertedWithCustomError(
-        chain,
-        "ErrorInvalidBatchHeaderVersion"
-      );
-      await expect(chain.commitBatch(2, batchHeader0, ["0x"], "0x")).to.revertedWithCustomError(
-        chain,
-        "ErrorInvalidBatchHeaderVersion"
-      );
-    });
-
     it("should revert when ErrorNoBlobFound", async () => {
       await expect(chain.commitBatch(1, batchHeader0, ["0x"], "0x")).to.revertedWithCustomError(
         chain,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity =0.8.24;
+pragma solidity ^0.8.24;
 
 import {BatchHeaderV0Codec} from "../../../contracts/src/libraries/codec/BatchHeaderV0Codec.sol";
 import {BatchHeaderV1Codec} from "../../../contracts/src/libraries/codec/BatchHeaderV1Codec.sol";
@@ -82,14 +82,25 @@ contract MockBridge {
     /// point evaluation precompile
     uint256 constant BLS_MODULUS = 52435875175126190479447740508185965837690552500527637822603658699938581184513;
 
+    uint256 public l1BaseFee;
+    uint256 public l1BlobBaseFee;
     uint256 public l2BaseFee;
     uint256 public lastFinalizedBatchIndex;
     mapping(uint256 => bytes32) public committedBatches;
     mapping(uint256 => bytes32) public finalizedStateRoots;
     mapping(uint256 => bytes32) public withdrawRoots;
 
-    function setL2BaseFee(uint256 _newL2BaseFee) external {
-      l2BaseFee = _newL2BaseFee;
+    function setL1BaseFee(uint256 _l1BaseFee) external {
+        l1BaseFee = _l1BaseFee;
+    }
+
+    function setL1BaseFeeAndBlobBaseFee(uint256 _l1BaseFee, uint256 _l1BlobBaseFee) external {
+        l1BaseFee = _l1BaseFee;
+        l1BlobBaseFee = _l1BlobBaseFee;
+    }
+
+    function setL2BaseFee(uint256 _l2BaseFee) external {
+        l2BaseFee = _l2BaseFee;
     }
 
     /*****************************
@@ -155,7 +166,7 @@ contract MockBridge {
                 _totalL1MessagesPoppedOverall := add(_totalL1MessagesPoppedOverall, _totalL1MessagesPoppedInBatch)
             }
             // store entries, the order matters
-            BatchHeaderV0Codec.storeVersion(batchPtr, 0);
+            BatchHeaderV0Codec.storeVersion(batchPtr, _version);
             BatchHeaderV0Codec.storeBatchIndex(batchPtr, _batchIndex);
             BatchHeaderV0Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
             BatchHeaderV0Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
@@ -166,7 +177,7 @@ contract MockBridge {
                 batchPtr,
                 BatchHeaderV0Codec.BATCH_HEADER_FIXED_LENGTH
             );
-        } else if (_version == 1) {
+        } else {
             bytes32 blobVersionedHash;
             (blobVersionedHash, _dataHash, _totalL1MessagesPoppedInBatch) = _commitChunksV1(
                 _totalL1MessagesPoppedOverall,
@@ -177,7 +188,7 @@ contract MockBridge {
                 _totalL1MessagesPoppedOverall := add(_totalL1MessagesPoppedOverall, _totalL1MessagesPoppedInBatch)
             }
             // store entries, the order matters
-            BatchHeaderV1Codec.storeVersion(batchPtr, 1);
+            BatchHeaderV1Codec.storeVersion(batchPtr, _version);
             BatchHeaderV1Codec.storeBatchIndex(batchPtr, _batchIndex);
             BatchHeaderV1Codec.storeL1MessagePopped(batchPtr, _totalL1MessagesPoppedInBatch);
             BatchHeaderV1Codec.storeTotalL1MessagePopped(batchPtr, _totalL1MessagesPoppedOverall);
@@ -189,8 +200,6 @@ contract MockBridge {
                 batchPtr,
                 BatchHeaderV1Codec.BATCH_HEADER_FIXED_LENGTH
             );
-        } else {
-            revert ErrorInvalidBatchHeaderVersion();
         }
 
         committedBatches[_batchIndex] = _batchHash;
@@ -421,12 +430,10 @@ contract MockBridge {
             (batchPtr, _length) = BatchHeaderV0Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV0Codec.computeBatchHash(batchPtr, _length);
             _batchIndex = BatchHeaderV0Codec.getBatchIndex(batchPtr);
-        } else if (version == 1) {
+        } else {
             (batchPtr, _length) = BatchHeaderV1Codec.loadAndValidate(_batchHeader);
             _batchHash = BatchHeaderV1Codec.computeBatchHash(batchPtr, _length);
             _batchIndex = BatchHeaderV1Codec.getBatchIndex(batchPtr);
-        } else {
-            revert ErrorInvalidBatchHeaderVersion();
         }
         // only check when genesis is imported
         if (committedBatches[_batchIndex] != _batchHash && finalizedStateRoots[0] != bytes32(0)) {

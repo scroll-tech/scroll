@@ -1,4 +1,4 @@
-.PHONY: mock_abi rollup_bins event_watcher gas_oracle rollup_relayer test lint clean docker
+.PHONY: mock_abi libzstd rollup_bins event_watcher gas_oracle rollup_relayer test lint clean docker
 
 IMAGE_VERSION=latest
 REPO_ROOT_DIR=./..

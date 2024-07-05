@@ -105,7 +105,7 @@ jobs:
     - name: Test rollup packages
       working-directory: 'rollup'
       run: |
-        go test -v -race -gcflags="-l" -ldflags="-s=false" -coverprofile=coverage.txt -covermode=atomic ./...
+        make test
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v3
       env:

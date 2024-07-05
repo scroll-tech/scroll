@@ -1,0 +1,4 @@
+outputs
+libzkp.so
+test_zkp_test/
+*log

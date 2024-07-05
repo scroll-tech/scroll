@@ -319,10 +319,10 @@ func testAccessListTransactionGasLimit(t *testing.T) {
 		assert.NoError(t, err)
 
 		if txType == LegacyTxType { // Legacy transactions can not have an access list.
-			assert.Equal(t, uint64(43956), gasLimit)
+			assert.Equal(t, uint64(43935), gasLimit)
 			assert.Nil(t, accessList)
 		} else { // Dynamic fee and blob transactions can have an access list.
-			assert.Equal(t, uint64(43479), gasLimit)
+			assert.Equal(t, uint64(43458), gasLimit)
 			assert.NotNil(t, accessList)
 		}
 
@@ -749,7 +749,10 @@ func testBlobTransactionWithBlobhashOpContractCall(t *testing.T) {
 	assert.True(t, ok)
 	pointHash := crypto.Keccak256Hash(versionedHash.Bytes())
 	pointBigInt := new(big.Int).SetBytes(pointHash.Bytes())
-	point := kzg4844.Point(new(big.Int).Mod(pointBigInt, blsModulo).Bytes())
+	pointBytes := new(big.Int).Mod(pointBigInt, blsModulo).Bytes()
+	start := 32 - len(pointBytes)
+	var point kzg4844.Point
+	copy(point[start:], pointBytes)
 	commitment := sideCar.Commitments[0]
 	proof, claim, err := kzg4844.ComputeProof(blob, point)
 	assert.NoError(t, err)

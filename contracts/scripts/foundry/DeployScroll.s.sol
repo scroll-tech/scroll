@@ -93,10 +93,9 @@ contract MultipleVersionRollupVerifierSetOwner is MultipleVersionRollupVerifier 
     ///      DeterministicDeploymentProxy would become the owner.
     constructor(
         address owner,
-        address _scrollChain,
         uint256[] memory _versions,
         address[] memory _verifiers
-    ) MultipleVersionRollupVerifier(_scrollChain, _versions, _verifiers) {
+    ) MultipleVersionRollupVerifier(_versions, _verifiers) {
         _transferOwnership(owner);
     }
 }
@@ -912,7 +911,7 @@ contract DeployScroll is DeterminsticDeployment {
         _versions[0] = 1;
         _verifiers[0] = notnull(L1_ZKEVM_VERIFIER_V1_ADDR);
 
-        bytes memory args = abi.encode(DEPLOYER_ADDR, notnull(L1_SCROLL_CHAIN_PROXY_ADDR), _versions, _verifiers);
+        bytes memory args = abi.encode(DEPLOYER_ADDR, _versions, _verifiers);
 
         L1_MULTIPLE_VERSION_ROLLUP_VERIFIER_ADDR = deploy(
             "L1_MULTIPLE_VERSION_ROLLUP_VERIFIER",

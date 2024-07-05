@@ -12,7 +12,6 @@ update:
 	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG}&& go mod tidy
 	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/prover/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG}&& go mod tidy
 	cd $(PWD)/rollup/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/tests/integration-test/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 
@@ -21,7 +20,6 @@ lint: ## The code's format and security checks.
 	make -C common lint
 	make -C coordinator lint
 	make -C database lint
-	make -C prover lint
 	make -C bridge-history-api lint
 
 fmt: ## format the code
@@ -30,7 +28,6 @@ fmt: ## format the code
 	cd $(PWD)/common/ && go mod tidy
 	cd $(PWD)/coordinator/ && go mod tidy
 	cd $(PWD)/database/ && go mod tidy
-	cd $(PWD)/prover/ && go mod tidy
 	cd $(PWD)/rollup/ && go mod tidy
 	cd $(PWD)/tests/integration-test/ && go mod tidy
 
@@ -38,7 +35,6 @@ fmt: ## format the code
 	goimports -local $(PWD)/common/ -w .
 	goimports -local $(PWD)/coordinator/ -w .
 	goimports -local $(PWD)/database/ -w .
-	goimports -local $(PWD)/prover/ -w .
 	goimports -local $(PWD)/rollup/ -w .
 	goimports -local $(PWD)/tests/integration-test/ -w .
 

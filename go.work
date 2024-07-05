@@ -1,11 +1,10 @@
-go 1.21
+go 1.21.0
 
 use (
 	./bridge-history-api
 	./common
 	./coordinator
 	./database
-	./prover
 	./rollup
 	./tests/integration-test
 )

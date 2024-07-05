@@ -1,49 +1,52 @@
-.PHONY: lint docker clean prover mock-prover
+.PHONY: prover lint tests_binary
 
 ifeq (4.3,$(firstword $(sort $(MAKE_VERSION) 4.3)))
-    ZKEVM_VERSION=$(shell grep -m 1 "zkevm-circuits" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
-    HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "#" -f2 | cut -c-7)
+    HALO2_VERSION=$(shell grep -m 1 "halo2.git" ./Cargo.lock | cut -d "#" -f2 | cut -c-7)
 else
-    ZKEVM_VERSION=$(shell grep -m 1 "zkevm-circuits" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
-    HALO2_VERSION=$(shell grep -m 1 "halo2.git" ../common/libzkp/impl/Cargo.lock | cut -d "\#" -f2 | cut -c-7)
+    HALO2_VERSION=$(shell grep -m 1 "halo2.git" ./Cargo.lock | cut -d "\#" -f2 | cut -c-7)
 endif
+
+ZKEVM_VERSION=$(shell ./print_high_zkevm_version.sh)
+ifeq (${ZKEVM_VERSION},)
+    $(error ZKEVM_VERSION not set)
+else
+    $(info ZKEVM_VERSION is ${ZKEVM_VERSION})
+endif
+
+ZKEVM_COMMIT=$(shell echo ${ZKEVM_VERSION} | cut -d " " -f2)
+$(info ZKEVM_COMMIT is ${ZKEVM_COMMIT})
 
 HALO2_GPU_VERSION=$(shell ./print_halo2gpu_version.sh | sed -n '2p')
 
-ifeq (${HALO2_GPU_VERSION},)
-	# use halo2_proofs with CPU
-    ZK_VERSION=${ZKEVM_VERSION}-${HALO2_VERSION}
+GIT_REV=$(shell git rev-parse --short HEAD)
+GO_TAG=$(shell grep "var tag = " ../common/version/version.go | cut -d "\"" -f2)
+
+ifeq (${GO_TAG},)
+    $(error GO_TAG not set)
 else
-	# use halo2_gpu
-    ZK_VERSION=${ZKEVM_VERSION}-${HALO2_GPU_VERSION}
+    $(info GO_TAG is ${GO_TAG})
 endif
 
-libzkp:
-	cd ../common/libzkp/impl && cargo clean && cargo build --release && cp ./target/release/libzkp.so ../interface/
-	rm -rf ./core/lib && cp -r ../common/libzkp/interface ./core/lib
-	find ../common | grep libzktrie.so | xargs -I{} cp {} ./core/lib/
+ifeq (${HALO2_GPU_VERSION},)
+	# use halo2_proofs with CPU
+    ZK_VERSION=${ZKEVM_COMMIT}-${HALO2_VERSION}
+else
+	# use halo2_gpu
+    ZK_VERSION=${ZKEVM_COMMIT}-${HALO2_GPU_VERSION}
+endif
 
-prover: libzkp ## Build the Prover instance.
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/prover ./cmd
+prover:
+	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release
+	rm -rf ./lib && mkdir ./lib
+	find target/ -name "libzktrie.so" | xargs -I{} cp {} ./lib
 
-mock-prover: ## Build the mocked Prover instance.
-	GOBIN=$(PWD)/build/bin go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/prover ./cmd
+tests_binary:
+	cargo clean && cargo test --release --no-run
+	ls target/release/deps/prover* | grep -v "\.d" | xargs -I{} ln -sf {} ./prover.test
+	rm -rf ./lib && mkdir ./lib
+	find target/ -name "libzktrie.so" | xargs -I{} cp {} ./lib
 
-gpu-prover: libzkp ## Build the GPU Prover instance.
-	GOBIN=$(PWD)/build/bin go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -tags gpu -o $(PWD)/build/bin/prover ./cmd
-
-test-prover: libzkp
-	go test -tags ffi -timeout 0 -v ./prover
-
-test-gpu-prover: libzkp
-	go test -tags="gpu ffi" -timeout 0 -v ./prover
-
-lastest-zk-version:
-	curl -sL https://api.github.com/repos/scroll-tech/zkevm-circuits/commits | jq -r ".[0].sha"
-
-lint: ## Lint the files - used for CI
-	cp -r ../common/libzkp/interface ./core/lib
-	GOBIN=$(PWD)/build/bin go run ../build/lint.go
-
-clean: ## Empty out the bin folder
-	@rm -rf build/bin
+lint:
+	cargo check --all-features
+	cargo clippy --all-features --all-targets -- -D warnings
+	cargo fmt --all
