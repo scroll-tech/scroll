@@ -10,7 +10,6 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -20,17 +19,10 @@ import (
 
 // L1WatcherClient will listen for smart contract events from Eth L1.
 type L1WatcherClient struct {
-	ctx          context.Context
-	client       *ethclient.Client
-	l1MessageOrm *orm.L1Message
-	l1BlockOrm   *orm.L1Block
-	batchOrm     *orm.Batch
+	ctx        context.Context
+	client     *ethclient.Client
+	l1BlockOrm *orm.L1Block
 
-	// The number of new blocks to wait for a block to be confirmed
-	confirmations rpc.BlockNumber
-
-	// The height of the block that the watcher has retrieved event logs
-	processedMsgHeight uint64
 	// The height of the block that the watcher has retrieved header rlp
 	processedBlockHeight uint64
 
@@ -38,17 +30,7 @@ type L1WatcherClient struct {
 }
 
 // NewL1WatcherClient returns a new instance of L1WatcherClient.
-func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, confirmations rpc.BlockNumber, db *gorm.DB, reg prometheus.Registerer) *L1WatcherClient {
-	l1MessageOrm := orm.NewL1Message(db)
-	savedHeight, err := l1MessageOrm.GetLayer1LatestWatchedHeight()
-	if err != nil {
-		log.Warn("Failed to fetch height from db", "err", err)
-		savedHeight = 0
-	}
-	if savedHeight < int64(startHeight) {
-		savedHeight = int64(startHeight)
-	}
-
+func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeight uint64, db *gorm.DB, reg prometheus.Registerer) *L1WatcherClient {
 	l1BlockOrm := orm.NewL1Block(db)
 	savedL1BlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(ctx)
 	if err != nil {
@@ -60,14 +42,10 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 	}
 
 	return &L1WatcherClient{
-		ctx:           ctx,
-		client:        client,
-		l1MessageOrm:  l1MessageOrm,
-		l1BlockOrm:    l1BlockOrm,
-		batchOrm:      orm.NewBatch(db),
-		confirmations: confirmations,
+		ctx:        ctx,
+		client:     client,
+		l1BlockOrm: l1BlockOrm,
 
-		processedMsgHeight:   uint64(savedHeight),
 		processedBlockHeight: savedL1BlockHeight,
 		metrics:              initL1WatcherMetrics(reg),
 	}
@@ -77,18 +55,6 @@ func NewL1WatcherClient(ctx context.Context, client *ethclient.Client, startHeig
 // Currently only use for unit test
 func (w *L1WatcherClient) ProcessedBlockHeight() uint64 {
 	return w.processedBlockHeight
-}
-
-// Confirmations get confirmations
-// Currently only use for unit test
-func (w *L1WatcherClient) Confirmations() rpc.BlockNumber {
-	return w.confirmations
-}
-
-// SetConfirmations set the confirmations for L1WatcherClient
-// Currently only use for unit test
-func (w *L1WatcherClient) SetConfirmations(confirmations rpc.BlockNumber) {
-	w.confirmations = confirmations
 }
 
 // FetchBlockHeader pull latest L1 blocks and save in DB

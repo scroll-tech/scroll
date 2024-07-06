@@ -36,7 +36,7 @@ func testImportL1GasPrice(t *testing.T) {
 	// Create L1Watcher
 	startHeight, err := l1Client.BlockNumber(context.Background())
 	assert.NoError(t, err)
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, 0, db, nil)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, db, nil)
 
 	// fetch new blocks
 	number, err := l1Client.BlockNumber(context.Background())
@@ -81,7 +81,7 @@ func testImportL1GasPriceAfterCurie(t *testing.T) {
 	// Create L1Watcher
 	startHeight, err := l1Client.BlockNumber(context.Background())
 	assert.NoError(t, err)
-	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, 0, db, nil)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-1, db, nil)
 
 	// fetch new blocks
 	number, err := l1Client.BlockNumber(context.Background())
