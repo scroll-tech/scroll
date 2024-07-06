@@ -245,7 +245,7 @@ func (ap *BatchProof) SanityCheck() error {
 	}
 
 	if len(ap.Proof)%32 != 0 {
-		return fmt.Errorf("proof buffer has wrong length, expected: 32, got: %d", len(ap.Proof))
+		return fmt.Errorf("proof buffer length must be a multiple of 32, got: %d", len(ap.Proof))
 	}
 
 	if len(ap.Instances) == 0 {
@@ -253,7 +253,7 @@ func (ap *BatchProof) SanityCheck() error {
 	}
 
 	if len(ap.Instances)%32 != 0 {
-		return fmt.Errorf("instance buffer has wrong length, expected: 32, got: %d", len(ap.Instances))
+		return fmt.Errorf("instance buffer length must be a multiple of 32, got: %d", len(ap.Instances))
 	}
 
 	if len(ap.Vk) == 0 {
@@ -261,7 +261,7 @@ func (ap *BatchProof) SanityCheck() error {
 	}
 
 	if len(ap.Vk)%32 != 0 {
-		return fmt.Errorf("vk buffer has wrong length, expected: 32, got: %d", len(ap.Vk))
+		return fmt.Errorf("vk buffer length must be a multiple of 32, got: %d", len(ap.Vk))
 	}
 
 	return nil
@@ -287,7 +287,7 @@ func (ap *BundleProof) SanityCheck() error {
 	}
 
 	if len(ap.Proof)%32 != 0 {
-		return fmt.Errorf("proof buffer has wrong length, expected: 32, got: %d", len(ap.Proof))
+		return fmt.Errorf("proof buffer length must be a multiple of 32, got: %d", len(ap.Proof))
 	}
 
 	if len(ap.Instances) == 0 {
@@ -295,7 +295,7 @@ func (ap *BundleProof) SanityCheck() error {
 	}
 
 	if len(ap.Instances)%32 != 0 {
-		return fmt.Errorf("instance buffer has wrong length, expected: 32, got: %d", len(ap.Instances))
+		return fmt.Errorf("instance buffer length must be a multiple of 32, got: %d", len(ap.Instances))
 	}
 
 	if len(ap.Vk) == 0 {
@@ -303,7 +303,7 @@ func (ap *BundleProof) SanityCheck() error {
 	}
 
 	if len(ap.Vk)%32 != 0 {
-		return fmt.Errorf("vk buffer has wrong length, expected: 32, got: %d", len(ap.Vk))
+		return fmt.Errorf("vk buffer length must be a multiple of 32, got: %d", len(ap.Vk))
 	}
 
 	return nil
