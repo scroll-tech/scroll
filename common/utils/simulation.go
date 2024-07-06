@@ -12,12 +12,8 @@ import (
 type MockAppName string
 
 var (
-	// EventWatcherApp the name of mock event-watcher app.
-	EventWatcherApp MockAppName = "event-watcher-test"
 	// GasOracleApp the name of mock gas-oracle app.
 	GasOracleApp MockAppName = "gas-oracle-test"
-	// MessageRelayerApp the name of mock message-relayer app.
-	MessageRelayerApp MockAppName = "message-relayer-test"
 	// RollupRelayerApp the name of mock rollup-relayer app.
 	RollupRelayerApp MockAppName = "rollup-relayer-test"
 
@@ -28,11 +24,6 @@ var (
 	CoordinatorAPIApp MockAppName = "coordinator-api-test"
 	// CoordinatorCronApp the name of mock coordinator cron app.
 	CoordinatorCronApp MockAppName = "coordinator-cron-test"
-
-	// ChunkProverApp the name of mock chunk prover app.
-	ChunkProverApp MockAppName = "chunkProver-test"
-	// BatchProverApp the name of mock batch prover app.
-	BatchProverApp MockAppName = "batchProver-test"
 )
 
 // RegisterSimulation register initializer function for integration-test.

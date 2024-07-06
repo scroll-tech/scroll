@@ -187,7 +187,6 @@ func prepareContracts(t *testing.T) {
 	}, 30*time.Second, time.Second)
 
 	l1Config, l2Config := rollupApp.Config.L1Config, rollupApp.Config.L2Config
-	l1Config.ScrollChainContractAddress = mockL1ContractAddress
 	l2Config.RelayerConfig.RollupContractAddress = mockL1ContractAddress
 
 	l2Config.RelayerConfig.GasPriceOracleContractAddress = mockL1ContractAddress
