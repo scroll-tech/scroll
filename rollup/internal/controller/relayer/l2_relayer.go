@@ -34,7 +34,9 @@ import (
 	rutils "scroll-tech/rollup/internal/utils"
 )
 
-// Layer2Relayer is responsible for committing and finalizing L2 blocks on L1.
+// Layer2Relayer is responsible for:
+// i. committing and finalizing L2 blocks on L1.
+// ii. updating L2 gas price oracle contract on L1.
 type Layer2Relayer struct {
 	ctx context.Context
 
