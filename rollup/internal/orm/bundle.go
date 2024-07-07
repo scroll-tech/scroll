@@ -276,7 +276,7 @@ func (o *Bundle) UpdateProofAndProvingStatusByHash(ctx context.Context, hash str
 	db = db.Where("hash", hash)
 
 	if err := db.Updates(updateFields).Error; err != nil {
-		return fmt.Errorf("Bundle.UpdateProofByHash error: %w, bundle hash: %v", err, hash)
+		return fmt.Errorf("Bundle.UpdateProofAndProvingStatusByHash error: %w, bundle hash: %v", err, hash)
 	}
 	return nil
 }
