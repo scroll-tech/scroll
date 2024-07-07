@@ -252,16 +252,8 @@ func (ap *BatchProof) SanityCheck() error {
 		return errors.New("instance not ready")
 	}
 
-	if len(ap.Instances)%32 != 0 {
-		return fmt.Errorf("instance buffer length must be a multiple of 32, got: %d", len(ap.Instances))
-	}
-
 	if len(ap.Vk) == 0 {
 		return errors.New("vk not ready")
-	}
-
-	if len(ap.Vk)%32 != 0 {
-		return fmt.Errorf("vk buffer length must be a multiple of 32, got: %d", len(ap.Vk))
 	}
 
 	return nil
@@ -294,16 +286,8 @@ func (ap *BundleProof) SanityCheck() error {
 		return errors.New("instance not ready")
 	}
 
-	if len(ap.Instances)%32 != 0 {
-		return fmt.Errorf("instance buffer length must be a multiple of 32, got: %d", len(ap.Instances))
-	}
-
 	if len(ap.Vk) == 0 {
 		return errors.New("vk not ready")
-	}
-
-	if len(ap.Vk)%32 != 0 {
-		return fmt.Errorf("vk buffer length must be a multiple of 32, got: %d", len(ap.Vk))
 	}
 
 	return nil

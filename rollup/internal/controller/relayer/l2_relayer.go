@@ -534,7 +534,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 		log.Error("bundle proving failed", "index", bundle.Index, "hash", bundle.Hash, "prover assigned at", bundle.ProverAssignedAt, "proved at", bundle.ProvedAt, "proof time sec", bundle.ProofTimeSec)
 
 	default:
-		log.Error("encounter unreachable case in ProcessPendingBundle", "proving status", status)
+		log.Error("encounter unreachable case in ProcessPendingBundles", "proving status", status)
 	}
 }
 
@@ -664,32 +664,32 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 }
 
 func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error {
-	dbBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.EndBatchIndex)
-	if err != nil {
-		log.Error("failed to get batch by index", "batch index", bundle.EndBatchIndex, "error", err)
-		return err
-	}
-
 	// Check batch status before sending `finalizeBundle` tx.
 	if r.cfg.ChainMonitor.Enabled {
 		for batchIndex := bundle.StartBatchIndex; batchIndex <= bundle.EndBatchIndex; batchIndex++ {
 			tmpBatch, getErr := r.batchOrm.GetBatchByIndex(r.ctx, batchIndex)
 			if getErr != nil {
 				log.Error("failed to get batch by index", "batch index", batchIndex, "error", getErr)
-				return err
+				return getErr
 			}
 			batchStatus, getErr := r.getBatchStatusByIndex(tmpBatch)
 			if getErr != nil {
 				r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
 				log.Error("failed to get batch status, please check chain_monitor api server", "batch_index", tmpBatch.Index, "err", getErr)
-				return err
+				return getErr
 			}
 			if !batchStatus {
 				r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
 				log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", tmpBatch.Index)
-				return err
+				return getErr
 			}
 		}
+	}
+
+	dbBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.EndBatchIndex)
+	if err != nil {
+		log.Error("failed to get batch by index", "batch index", bundle.EndBatchIndex, "error", err)
+		return err
 	}
 
 	var aggProof *message.BundleProof
