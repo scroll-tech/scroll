@@ -362,6 +362,20 @@ func testCommitBatchAndFinalizeBatchOrBundleCrossingAllTransitions(t *testing.T)
 	assert.Eventually(t, func() bool {
 		l2Relayer.ProcessPendingBundles()
 
+		batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
+		assert.NoError(t, err)
+		assert.Len(t, batches, 4)
+		batches = batches[3:]
+		for _, batch := range batches {
+			if types.RollupStatus(batch.RollupStatus) != types.RollupFinalized {
+				return false
+			}
+			assert.NotEmpty(t, batch.FinalizeTxHash)
+			receipt, getErr := l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.FinalizeTxHash))
+			assert.NoError(t, getErr)
+			assert.Equal(t, gethTypes.ReceiptStatusSuccessful, receipt.Status)
+		}
+
 		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
 		assert.NoError(t, err)
 		assert.Len(t, bundles, 1)
