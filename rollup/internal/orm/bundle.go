@@ -77,7 +77,7 @@ func (o *Bundle) getLatestBundle(ctx context.Context) (*Bundle, error) {
 }
 
 // GetBundles retrieves selected bundles from the database.
-// The returned bundles are sorted in ascending order by their index.
+// The returned bundles are sorted in ascending order by their indices.
 // only used in unit tests.
 func (o *Bundle) GetBundles(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*Bundle, error) {
 	db := o.db.WithContext(ctx)

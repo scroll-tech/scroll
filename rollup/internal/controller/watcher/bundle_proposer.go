@@ -176,7 +176,7 @@ func (p *BundleProposer) proposeBundle() error {
 		return p.updateDBBundleInfo(batches, codecVersion)
 	}
 
-	log.Debug("pending batches are not enough and do no contain a timeout batch")
+	log.Debug("pending batches are not enough and do not contain a timeout batch")
 	p.bundleBatchesProposeNotEnoughTotal.Inc()
 	return nil
 }

@@ -397,6 +397,10 @@ func TestBatchOrm(t *testing.T) {
 		assert.Equal(t, 1, len(batches))
 		assert.Equal(t, batchHash2, batches[0].Hash)
 
+		batches, err = batchOrm.GetBatchesGEIndexGECodecVersion(context.Background(), 0, codecVersion+1, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, 0, len(batches))
+
 		err = batchOrm.UpdateBundleHashInRange(context.Background(), 0, 0, "test hash")
 		assert.NoError(t, err)
 
