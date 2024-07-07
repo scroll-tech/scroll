@@ -42,7 +42,7 @@ type BundleProposer struct {
 
 // NewBundleProposer creates a new BundleProposer instance.
 func NewBundleProposer(ctx context.Context, cfg *config.BundleProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BundleProposer {
-	log.Debug("new bundle proposer", "bundleTimeoutSec", cfg.BundleTimeoutSec)
+	log.Info("new bundle proposer", "bundleBatchesNum", cfg.MaxBatchNumPerBundle, "bundleTimeoutSec", cfg.BundleTimeoutSec)
 
 	p := &BundleProposer{
 		ctx:                  ctx,

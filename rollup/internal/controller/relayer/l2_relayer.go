@@ -2,6 +2,7 @@ package relayer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"sort"
@@ -503,7 +504,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 
 	bundle, err := r.bundleOrm.GetFirstPendingBundle(r.ctx)
 	if err != nil {
-		log.Error("Failed to fetch pending L2 bundle", "err", err)
+		log.Error("Failed to fetch first pending L2 bundle", "err", err)
 		return
 	}
 	status := types.ProvingStatus(bundle.ProvingStatus)
@@ -550,8 +551,8 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 		}
 		if !batchStatus {
 			r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
-			log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", dbBatch.Index)
-			return err
+			log.Error("the batch status is false, stop finalize batch and check the reason", "batch_index", dbBatch.Index)
+			return errors.New("the batch status is false")
 		}
 	}
 
@@ -680,8 +681,8 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 			}
 			if !batchStatus {
 				r.metrics.rollupL2ChainMonitorLatestFailedBatchStatus.Inc()
-				log.Error("the batch status is not right, stop finalize batch and check the reason", "batch_index", tmpBatch.Index)
-				return getErr
+				log.Error("the batch status is false, stop finalize batch and check the reason", "batch_index", tmpBatch.Index)
+				return errors.New("the batch status is false")
 			}
 		}
 	}
