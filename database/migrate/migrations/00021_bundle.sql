@@ -29,8 +29,12 @@ CREATE TABLE bundle (
     deleted_at              TIMESTAMP(0)    DEFAULT NULL
 );
 
-CREATE INDEX bundle_start_batch_index_idx ON bundle (start_batch_index) WHERE deleted_at IS NULL;
-CREATE INDEX bundle_end_batch_index_idx ON bundle (end_batch_index) WHERE deleted_at IS NULL;
+CREATE INDEX idx_bundle_index_rollup_status ON bundle(index, rollup_status);
+CREATE INDEX idx_bundle_hash ON bundle(hash);
+CREATE INDEX idx_bundle_hash_proving_status ON bundle(hash, proving_status);
+CREATE INDEX idx_bundle_index_desc ON bundle(index DESC);
+CREATE INDEX idx_bundle_start_batch_index ON bundle (start_batch_index) WHERE deleted_at IS NULL;
+CREATE INDEX idx_bundle_end_batch_index ON bundle (end_batch_index) WHERE deleted_at IS NULL;
 
 COMMENT ON COLUMN bundle.batch_proofs_status IS 'undefined, pending, ready';
 COMMENT ON COLUMN bundle.proving_status IS 'undefined, unassigned, assigned, proved (deprecated), verified, failed';
