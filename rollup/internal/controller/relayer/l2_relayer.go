@@ -613,7 +613,7 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 
 		calldata, err = r.constructFinalizeBatchPayloadCodecV2(dbBatch, dbParentBatch, dbChunks, chunks, aggProof)
 		if err != nil {
-			return fmt.Errorf("failed to construct finalizeBatch payload codecv1, index: %v, err: %w", dbBatch.Index, err)
+			return fmt.Errorf("failed to construct finalizeBatch payload codecv2, index: %v, err: %w", dbBatch.Index, err)
 		}
 	} else { // codecv3
 		log.Debug("encoding is codecv3, using finalizeBundle instead", "index", dbBatch.Index)
