@@ -187,6 +187,16 @@ func (b *EventUpdateLogic) UpdateL2WithdrawMessageProofs(ctx context.Context, he
 		return err
 	}
 
+	if len(finalizedBatches) == 0 {
+		log.Warn("no finalized batches to update", "lastUpdatedFinalizedBlockHeight", lastUpdatedFinalizedBlockHeight)
+		return nil
+	}
+
+	if finalizedBatches[0].EndBlockNumber <= lastUpdatedFinalizedBlockHeight {
+		log.Warn("no finalized batches to update", "lastUpdatedFinalizedBlockHeight", lastUpdatedFinalizedBlockHeight, "endBlockNumber", finalizedBatches[0].EndBlockNumber)
+		return nil
+	}
+
 	for _, finalizedBatch := range finalizedBatches {
 		log.Info("update finalized batch info of L2 withdrawals", "index", finalizedBatch.BatchIndex, "lastlockHeight", lastUpdatedFinalizedBlockHeight, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber)
 		// This method is compatible with both "finalize by batch" and "finalize by bundle" modes:

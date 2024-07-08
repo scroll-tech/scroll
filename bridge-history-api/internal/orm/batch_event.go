@@ -63,6 +63,7 @@ func (c *BatchEvent) GetUpdatedFinalizedBlockHeight(ctx context.Context) (uint64
 	db = db.Order("batch_index desc")
 	if err := db.First(&batch).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
+			// No finalized batch found, return genesis batch's end block number.
 			return 0, nil
 		}
 		return 0, fmt.Errorf("failed to get latest processed finalized batch, error: %w", err)
