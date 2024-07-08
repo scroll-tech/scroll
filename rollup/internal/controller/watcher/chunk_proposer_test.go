@@ -25,7 +25,6 @@ func testChunkProposerCodecv0Limits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
@@ -195,7 +194,6 @@ func testChunkProposerCodecv1Limits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
@@ -365,7 +363,6 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
@@ -536,7 +533,6 @@ func testChunkProposerCodecv3Limits(t *testing.T) {
 		maxL1CommitCalldataSize    uint64
 		maxRowConsumption          uint64
 		chunkTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedChunksLen          int
 		expectedBlocksInFirstChunk int // only be checked when expectedChunksLen > 0
 	}{
@@ -727,7 +723,7 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 			MaxL1CommitGasPerChunk:          math.MaxUint64,
 			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 			MaxRowConsumptionPerChunk:       math.MaxUint64,
-			ChunkTimeoutSec:                 math.MaxUint64,
+			ChunkTimeoutSec:                 math.MaxUint32,
 			GasCostIncreaseMultiplier:       1,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
 		}, chainConfig, db, nil)
@@ -783,7 +779,7 @@ func testChunkProposerRespectHardforks(t *testing.T) {
 		MaxL1CommitGasPerChunk:          math.MaxUint64,
 		MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 		MaxRowConsumptionPerChunk:       math.MaxUint64,
-		ChunkTimeoutSec:                 math.MaxUint64,
+		ChunkTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
 	}, &params.ChainConfig{

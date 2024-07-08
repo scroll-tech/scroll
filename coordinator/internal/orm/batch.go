@@ -76,7 +76,7 @@ func (*Batch) TableName() string {
 }
 
 // GetUnassignedBatch retrieves unassigned batch based on the specified limit.
-// The returned batch are sorted in ascending order by their index.
+// The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetUnassignedBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	var batch Batch
 	db := o.db.WithContext(ctx)
@@ -93,7 +93,7 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, startChunkIndex, endChun
 }
 
 // GetAssignedBatch retrieves assigned batch based on the specified limit.
-// The returned batch are sorted in ascending order by their index.
+// The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetAssignedBatch(ctx context.Context, startChunkIndex, endChunkIndex uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
 	var batch Batch
 	db := o.db.WithContext(ctx)

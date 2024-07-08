@@ -3,11 +3,12 @@
 
 CREATE TABLE bundle (
     index                   BIGSERIAL       PRIMARY KEY,
-    hash                    VARCHAR         NOT NULL, -- Not part of DA hash, used for SQL query consistency and ease of use, derived using keccak256(concat(start_batch_hash, end_batch_hash)).
+    hash                    VARCHAR         NOT NULL, -- Not part of DA hash, used for SQL query consistency and ease of use, derived using keccak256(concat(start_batch_hash_bytes, end_batch_hash_bytes)).
     start_batch_index       BIGINT          NOT NULL,
     end_batch_index         BIGINT          NOT NULL,
     start_batch_hash        VARCHAR         NOT NULL,
     end_batch_hash          VARCHAR         NOT NULL,
+    codec_version           SMALLINT        NOT NULL,
 
 -- proof
     batch_proofs_status     SMALLINT        NOT NULL DEFAULT 1,
@@ -28,8 +29,13 @@ CREATE TABLE bundle (
     deleted_at              TIMESTAMP(0)    DEFAULT NULL
 );
 
-CREATE INDEX bundle_start_batch_index_idx ON bundle (start_batch_index) WHERE deleted_at IS NULL;
-CREATE INDEX bundle_end_batch_index_idx ON bundle (end_batch_index) WHERE deleted_at IS NULL;
+CREATE INDEX idx_bundle_index_rollup_status ON bundle(index, rollup_status) WHERE deleted_at IS NULL;
+CREATE INDEX idx_bundle_hash ON bundle(hash) WHERE deleted_at IS NULL;
+CREATE INDEX idx_bundle_hash_proving_status ON bundle(hash, proving_status) WHERE deleted_at IS NULL;
+CREATE INDEX idx_bundle_index_desc ON bundle(index DESC) WHERE deleted_at IS NULL;
+CREATE INDEX idx_bundle_batch_proofs_status ON bundle(batch_proofs_status) WHERE deleted_at IS NULL;
+CREATE INDEX idx_bundle_start_batch_index ON bundle(start_batch_index) WHERE deleted_at IS NULL;
+CREATE INDEX idx_bundle_end_batch_index ON bundle(end_batch_index) WHERE deleted_at IS NULL;
 
 COMMENT ON COLUMN bundle.batch_proofs_status IS 'undefined, pending, ready';
 COMMENT ON COLUMN bundle.proving_status IS 'undefined, unassigned, assigned, proved (deprecated), verified, failed';

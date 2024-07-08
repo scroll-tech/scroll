@@ -113,9 +113,13 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 		defer database.CloseDB(db)
 
 		l2Cfg := cfg.L2Config
-		chainConfig := &params.ChainConfig{}
+		var chainConfig *params.ChainConfig
 		if codecVersion == encoding.CodecV0 {
-			chainConfig.BernoulliBlock = big.NewInt(0)
+			chainConfig = &params.ChainConfig{}
+		} else if codecVersion == encoding.CodecV1 {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
+		} else {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
 		}
 		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
@@ -171,6 +175,66 @@ func testL2RelayerProcessCommittedBatches(t *testing.T) {
 	}
 }
 
+func testL2RelayerProcessPendingBundles(t *testing.T) {
+	codecVersions := []encoding.CodecVersion{encoding.CodecV3}
+	for _, codecVersion := range codecVersions {
+		db := setupL2RelayerDB(t)
+		defer database.CloseDB(db)
+
+		l2Cfg := cfg.L2Config
+		var chainConfig *params.ChainConfig
+		if codecVersion == encoding.CodecV3 {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
+		}
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		assert.NoError(t, err)
+
+		batch := &encoding.Batch{
+			Index:                      1,
+			TotalL1MessagePoppedBefore: 0,
+			ParentBatchHash:            common.Hash{},
+			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		}
+
+		batchOrm := orm.NewBatch(db)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
+		assert.NoError(t, err)
+
+		bundleOrm := orm.NewBundle(db)
+		bundle, err := bundleOrm.InsertBundle(context.Background(), []*orm.Batch{dbBatch}, codecVersion)
+		assert.NoError(t, err)
+
+		err = bundleOrm.UpdateRollupStatus(context.Background(), bundle.Hash, types.RollupPending)
+		assert.NoError(t, err)
+
+		err = bundleOrm.UpdateProvingStatus(context.Background(), dbBatch.Hash, types.ProvingTaskVerified)
+		assert.NoError(t, err)
+
+		relayer.ProcessPendingBundles()
+
+		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundle.Hash}, nil, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(bundles))
+		// no valid proof, rollup status remains the same
+		assert.Equal(t, types.RollupPending, types.RollupStatus(bundles[0].RollupStatus))
+
+		proof := &message.BundleProof{
+			Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+			Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+			Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		}
+		err = bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle.Hash, proof, types.ProvingTaskVerified, 600)
+		assert.NoError(t, err)
+
+		relayer.ProcessPendingBundles()
+		bundles, err = bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundle.Hash}, nil, 0)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(bundles))
+		assert.Equal(t, types.RollupFinalizing, types.RollupStatus(bundles[0].RollupStatus))
+		relayer.StopSenders()
+	}
+}
+
 func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
 	for _, codecVersion := range codecVersions {
@@ -180,9 +244,13 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 		l2Cfg := cfg.L2Config
 		l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
 		l2Cfg.RelayerConfig.FinalizeBatchWithoutProofTimeoutSec = 0
-		chainConfig := &params.ChainConfig{}
+		var chainConfig *params.ChainConfig
 		if codecVersion == encoding.CodecV0 {
-			chainConfig.BernoulliBlock = big.NewInt(0)
+			chainConfig = &params.ChainConfig{}
+		} else if codecVersion == encoding.CodecV1 {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
+		} else {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
 		}
 		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
 		assert.NoError(t, err)
@@ -213,29 +281,108 @@ func testL2RelayerFinalizeTimeoutBatches(t *testing.T) {
 		err = chunkOrm.UpdateBatchHashInRange(context.Background(), chunkDB1.Index, chunkDB2.Index, dbBatch.Hash, nil)
 		assert.NoError(t, err)
 
-		// Check the database for the updated status using TryTimes.
-		ok := utils.TryTimes(5, func() bool {
+		assert.Eventually(t, func() bool {
 			relayer.ProcessCommittedBatches()
-			time.Sleep(time.Second)
 
 			batchInDB, batchErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": dbBatch.Hash}, nil, 0)
 			if batchErr != nil {
-				return false
-			}
-			chunks, chunkErr := chunkOrm.GetChunksByBatchHash(context.Background(), dbBatch.Hash)
-			if chunkErr != nil {
 				return false
 			}
 
 			batchStatus := len(batchInDB) == 1 && types.RollupStatus(batchInDB[0].RollupStatus) == types.RollupFinalizing &&
 				types.ProvingStatus(batchInDB[0].ProvingStatus) == types.ProvingTaskVerified
 
+			chunks, chunkErr := chunkOrm.GetChunksByBatchHash(context.Background(), dbBatch.Hash)
+			if chunkErr != nil {
+				return false
+			}
+
 			chunkStatus := len(chunks) == 2 && types.ProvingStatus(chunks[0].ProvingStatus) == types.ProvingTaskVerified &&
 				types.ProvingStatus(chunks[1].ProvingStatus) == types.ProvingTaskVerified
 
 			return batchStatus && chunkStatus
-		})
-		assert.True(t, ok)
+		}, 5*time.Second, 100*time.Millisecond, "Batch or Chunk status did not update as expected")
+		relayer.StopSenders()
+	}
+}
+
+func testL2RelayerFinalizeTimeoutBundles(t *testing.T) {
+	codecVersions := []encoding.CodecVersion{encoding.CodecV3}
+	for _, codecVersion := range codecVersions {
+		db := setupL2RelayerDB(t)
+		defer database.CloseDB(db)
+
+		l2Cfg := cfg.L2Config
+		l2Cfg.RelayerConfig.EnableTestEnvBypassFeatures = true
+		l2Cfg.RelayerConfig.FinalizeBundleWithoutProofTimeoutSec = 0
+		var chainConfig *params.ChainConfig
+		if codecVersion == encoding.CodecV3 {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
+		}
+		relayer, err := NewLayer2Relayer(context.Background(), l2Cli, db, l2Cfg.RelayerConfig, chainConfig, true, ServiceTypeL2RollupRelayer, nil)
+		assert.NoError(t, err)
+
+		l2BlockOrm := orm.NewL2Block(db)
+		err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
+		assert.NoError(t, err)
+		chunkOrm := orm.NewChunk(db)
+		chunkDB1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, rutils.ChunkMetrics{})
+		assert.NoError(t, err)
+		chunkDB2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, rutils.ChunkMetrics{})
+		assert.NoError(t, err)
+
+		batch := &encoding.Batch{
+			Index:                      1,
+			TotalL1MessagePoppedBefore: 0,
+			ParentBatchHash:            common.Hash{},
+			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		}
+
+		batchOrm := orm.NewBatch(db)
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
+		assert.NoError(t, err)
+
+		err = batchOrm.UpdateRollupStatus(context.Background(), dbBatch.Hash, types.RollupCommitted)
+		assert.NoError(t, err)
+
+		err = chunkOrm.UpdateBatchHashInRange(context.Background(), chunkDB1.Index, chunkDB2.Index, dbBatch.Hash, nil)
+		assert.NoError(t, err)
+
+		bundleOrm := orm.NewBundle(db)
+		bundle, err := bundleOrm.InsertBundle(context.Background(), []*orm.Batch{dbBatch}, codecVersion)
+		assert.NoError(t, err)
+
+		err = batchOrm.UpdateBundleHashInRange(context.Background(), dbBatch.Index, dbBatch.Index, bundle.Hash, nil)
+		assert.NoError(t, err)
+
+		assert.Eventually(t, func() bool {
+			relayer.ProcessPendingBundles()
+
+			bundleInDB, bundleErr := bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundle.Hash}, nil, 0)
+			if bundleErr != nil {
+				return false
+			}
+
+			bundleStatus := len(bundleInDB) == 1 && types.RollupStatus(bundleInDB[0].RollupStatus) == types.RollupFinalizing &&
+				types.ProvingStatus(bundleInDB[0].ProvingStatus) == types.ProvingTaskVerified
+
+			batchInDB, batchErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": dbBatch.Hash}, nil, 0)
+			if batchErr != nil {
+				return false
+			}
+
+			batchStatus := len(batchInDB) == 1 && types.ProvingStatus(batchInDB[0].ProvingStatus) == types.ProvingTaskVerified
+
+			chunks, chunkErr := chunkOrm.GetChunksByBatchHash(context.Background(), dbBatch.Hash)
+			if chunkErr != nil {
+				return false
+			}
+
+			chunkStatus := len(chunks) == 2 && types.ProvingStatus(chunks[0].ProvingStatus) == types.ProvingTaskVerified &&
+				types.ProvingStatus(chunks[1].ProvingStatus) == types.ProvingTaskVerified
+
+			return bundleStatus && batchStatus && chunkStatus
+		}, 5*time.Second, 100*time.Millisecond, "Bundle or Batch or Chunk status did not update as expected")
 		relayer.StopSenders()
 	}
 }
@@ -296,7 +443,7 @@ func testL2RelayerCommitConfirm(t *testing.T) {
 	assert.True(t, ok)
 }
 
-func testL2RelayerFinalizeConfirm(t *testing.T) {
+func testL2RelayerFinalizeBatchConfirm(t *testing.T) {
 	db := setupL2RelayerDB(t)
 	defer database.CloseDB(db)
 
@@ -350,6 +497,75 @@ func testL2RelayerFinalizeConfirm(t *testing.T) {
 		return true
 	})
 	assert.True(t, ok)
+}
+
+func testL2RelayerFinalizeBundleConfirm(t *testing.T) {
+	db := setupL2RelayerDB(t)
+	defer database.CloseDB(db)
+
+	// Create and set up the Layer2 Relayer.
+	l2Cfg := cfg.L2Config
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	l2Relayer, err := NewLayer2Relayer(ctx, l2Cli, db, l2Cfg.RelayerConfig, &params.ChainConfig{}, true, ServiceTypeL2RollupRelayer, nil)
+	assert.NoError(t, err)
+	defer l2Relayer.StopSenders()
+
+	// Simulate message confirmations.
+	isSuccessful := []bool{true, false}
+	batchOrm := orm.NewBatch(db)
+	bundleOrm := orm.NewBundle(db)
+	batchHashes := make([]string, len(isSuccessful))
+	bundleHashes := make([]string, len(isSuccessful))
+	for i := range batchHashes {
+		batch := &encoding.Batch{
+			Index:                      uint64(i + 1),
+			TotalL1MessagePoppedBefore: 0,
+			ParentBatchHash:            common.Hash{},
+			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
+		}
+
+		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, rutils.BatchMetrics{})
+		assert.NoError(t, err)
+		batchHashes[i] = dbBatch.Hash
+
+		bundle, err := bundleOrm.InsertBundle(context.Background(), []*orm.Batch{dbBatch}, encoding.CodecV3)
+		assert.NoError(t, err)
+		bundleHashes[i] = bundle.Hash
+
+		err = batchOrm.UpdateBundleHashInRange(context.Background(), dbBatch.Index, dbBatch.Index, bundle.Hash)
+		assert.NoError(t, err)
+	}
+
+	for i, bundleHash := range bundleHashes {
+		l2Relayer.finalizeSender.SendConfirmation(&sender.Confirmation{
+			ContextID:    "finalizeBundle-" + bundleHash,
+			IsSuccessful: isSuccessful[i],
+			TxHash:       common.HexToHash("0x123456789abcdef"),
+			SenderType:   types.SenderTypeFinalizeBatch,
+		})
+	}
+
+	assert.Eventually(t, func() bool {
+		expectedStatuses := []types.RollupStatus{
+			types.RollupFinalized,
+			types.RollupFinalizeFailed,
+		}
+
+		for i, bundleHash := range bundleHashes {
+			bundleInDB, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{"hash": bundleHash}, nil, 0)
+			if err != nil || len(bundleInDB) != 1 || types.RollupStatus(bundleInDB[0].RollupStatus) != expectedStatuses[i] {
+				return false
+			}
+
+			batchInDB, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{"hash": batchHashes[i]}, nil, 0)
+			if err != nil || len(batchInDB) != 1 || types.RollupStatus(batchInDB[0].RollupStatus) != expectedStatuses[i] {
+				return false
+			}
+		}
+
+		return true
+	}, 5*time.Second, 100*time.Millisecond, "Bundle or Batch status did not update as expected")
 }
 
 func testL2RelayerGasOracleConfirm(t *testing.T) {
