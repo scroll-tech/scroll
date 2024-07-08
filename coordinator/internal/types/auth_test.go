@@ -2,14 +2,11 @@ package types
 
 import (
 	"encoding/hex"
-	"fmt"
 	"testing"
 
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
-
-	"scroll-tech/common/types/message"
 )
 
 func TestAuthMessageSignAndVerify(t *testing.T) {
@@ -24,7 +21,7 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 				ProverName:    "test1",
 				ProverVersion: "v0.0.1",
 				Challenge:     "abcdef",
-				ProverTypes:   []string{"2"},
+				ProverTypes:   []ProverType{ProverTypeBatch},
 				VKs:           []string{"vk1", "vk2"},
 			},
 			PublicKey: publicKeyHex,
@@ -65,7 +62,7 @@ func TestGenerateSignature(t *testing.T) {
 			ProverName:    "test",
 			ProverVersion: "v4.1.115-4dd11c6-000000-000000",
 			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MTk1NjkyNDAsIm9yaWdfaWF0IjoxNzE5NTY1NjQwLCJyYW5kb20iOiJPRExnNEZtUW1MOEwzTDRvZ3BMcnl6c09EN1ZXd0FoNmd3bVpzVURJV3M0PSJ9.3Oq7fDtFnKGbPyjc8fslzfftyzreQbi-lAr0_HFy54w",
-			ProverTypes:   []string{fmt.Sprintf("%d", message.ProofTypeChunk)},
+			ProverTypes:   []ProverType{ProverTypeChunk},
 			VKs:           []string{"mock_chunk_vk"},
 		},
 		PublicKey: publicKeyHex,

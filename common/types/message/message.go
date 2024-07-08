@@ -18,7 +18,7 @@ const (
 	StatusProofError
 )
 
-// ProofType represents the type of prover.
+// ProofType represents the type of task.
 type ProofType uint8
 
 func (r ProofType) String() string {

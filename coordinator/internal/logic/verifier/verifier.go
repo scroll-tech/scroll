@@ -50,7 +50,11 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		BatchVKMap: make(map[string]string),
 	}
 
-	batchVK, err := v.readVK(path.Join(cfg.AssetsPath, "agg_vk.vkey"))
+	bundleVK, err := v.readVK(path.Join(cfg.AssetsPath, "bundle_vk.vkey"))
+	if err != nil {
+		return nil, err
+	}
+	batchVK, err := v.readVK(path.Join(cfg.AssetsPath, "batch_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}
@@ -58,6 +62,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if err != nil {
 		return nil, err
 	}
+	v.BundleVkMap[cfg.ForkName] = bundleVK
 	v.BatchVKMap[cfg.ForkName] = batchVK
 	v.ChunkVKMap[cfg.ForkName] = chunkVK
 
@@ -147,7 +152,7 @@ func (v *Verifier) loadEmbedVK() error {
 		return err
 	}
 
-	v.BatchVKMap["bernoulli"] = base64.StdEncoding.EncodeToString(batchVKBytes)
-	v.ChunkVKMap["bernoulli"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
+	v.BatchVKMap["curie"] = base64.StdEncoding.EncodeToString(batchVKBytes)
+	v.ChunkVKMap["curie"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
 	return nil
 }

@@ -8,19 +8,12 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/types/message"
 	"scroll-tech/common/version"
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/orm"
 	"scroll-tech/coordinator/internal/types"
-)
-
-var (
-	proofChunkTypeString  = fmt.Sprintf("%d", message.ProofTypeChunk)
-	proofBatchTypeString  = fmt.Sprintf("%d", message.ProofTypeBatch)
-	proofBundleTypeString = fmt.Sprintf("%d", message.ProofTypeBundle)
 )
 
 // LoginLogic the auth logic
@@ -78,20 +71,20 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	if len(login.Message.ProverTypes) > 0 {
 		vks := make(map[string]struct{})
 		for _, proverType := range login.Message.ProverTypes {
-			if proverType == proofChunkTypeString {
+			switch proverType {
+			case types.ProverTypeChunk:
 				for vk := range l.chunkVks {
 					vks[vk] = struct{}{}
 				}
-			}
-			if proverType == proofBatchTypeString {
+			case types.ProverTypeBatch:
 				for vk := range l.batchVKs {
 					vks[vk] = struct{}{}
 				}
-			}
-			if proverType == proofBundleTypeString {
 				for vk := range l.bundleVks {
 					vks[vk] = struct{}{}
 				}
+			default:
+				log.Error("invalid prover_type", "value", proverType)
 			}
 		}
 
