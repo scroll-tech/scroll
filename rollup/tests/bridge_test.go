@@ -101,7 +101,6 @@ func setupEnv(t *testing.T) {
 	assert.NoError(t, err)
 
 	l1Cfg, l2Cfg := rollupApp.Config.L1Config, rollupApp.Config.L2Config
-	l1Cfg.Confirmations = 0
 	l1Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
@@ -187,7 +186,6 @@ func prepareContracts(t *testing.T) {
 	}, 30*time.Second, time.Second)
 
 	l1Config, l2Config := rollupApp.Config.L1Config, rollupApp.Config.L2Config
-	l1Config.ScrollChainContractAddress = mockL1ContractAddress
 	l2Config.RelayerConfig.RollupContractAddress = mockL1ContractAddress
 
 	l2Config.RelayerConfig.GasPriceOracleContractAddress = mockL1ContractAddress

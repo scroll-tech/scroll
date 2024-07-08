@@ -8,32 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestEventSignature(t *testing.T) {
-	assert := assert.New(t)
-
-	assert.Equal(L1CommitBatchEventSignature, common.HexToHash("2c32d4ae151744d0bf0b9464a3e897a1d17ed2f1af71f7c9a75f12ce0d28238f"))
-	assert.Equal(L1FinalizeBatchEventSignature, common.HexToHash("26ba82f907317eedc97d0cbef23de76a43dd6edb563bdb6e9407645b950a7a2d"))
-
-	assert.Equal(L2SentMessageEventSignature, common.HexToHash("104371f3b442861a2a7b82a070afbbaab748bb13757bf47769e170e37809ec1e"))
-	assert.Equal(L2RelayedMessageEventSignature, common.HexToHash("4641df4a962071e12719d8c8c8e5ac7fc4d97b927346a3d7a335b1f7517e133c"))
-	assert.Equal(L2FailedRelayedMessageEventSignature, common.HexToHash("99d0e048484baa1b1540b1367cb128acd7ab2946d1ed91ec10e3c85e4bf51b8f"))
-
-	assert.Equal(L2AppendMessageEventSignature, common.HexToHash("faa617c2d8ce12c62637dbce76efcc18dae60574aa95709bdcedce7e76071693"))
-}
-
-func TestPackRelayL2MessageWithProof(t *testing.T) {
-	assert := assert.New(t)
-	l1MessengerABI, err := L1ScrollMessengerMetaData.GetAbi()
-	assert.NoError(err)
-
-	proof := IL1ScrollMessengerL2MessageProof{
-		BatchIndex:  big.NewInt(0),
-		MerkleProof: []byte{},
-	}
-	_, err = l1MessengerABI.Pack("relayMessageWithProof", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), []byte{}, proof)
-	assert.NoError(err)
-}
-
 func TestPackCommitBatch(t *testing.T) {
 	assert := assert.New(t)
 
@@ -75,16 +49,6 @@ func TestPackImportGenesisBatch(t *testing.T) {
 	stateRoot := common.Hash{}
 
 	_, err = l1RollupABI.Pack("importGenesisBatch", batchHeader, stateRoot)
-	assert.NoError(err)
-}
-
-func TestPackRelayL1Message(t *testing.T) {
-	assert := assert.New(t)
-
-	l2MessengerABI, err := L2ScrollMessengerMetaData.GetAbi()
-	assert.NoError(err)
-
-	_, err = l2MessengerABI.Pack("relayMessage", common.Address{}, common.Address{}, big.NewInt(0), big.NewInt(0), []byte{})
 	assert.NoError(err)
 }
 
