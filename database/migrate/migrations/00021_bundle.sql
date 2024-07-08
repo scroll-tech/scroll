@@ -17,6 +17,8 @@ CREATE TABLE bundle (
     prover_assigned_at      TIMESTAMP(0)    DEFAULT NULL,
     proved_at               TIMESTAMP(0)    DEFAULT NULL,
     proof_time_sec          INTEGER         DEFAULT NULL,
+    total_attempts          SMALLINT        NOT NULL DEFAULT 0,
+    active_attempts         SMALLINT        NOT NULL DEFAULT 0,
 
 -- rollup
     rollup_status           SMALLINT        NOT NULL DEFAULT 1,
@@ -36,6 +38,9 @@ CREATE INDEX idx_bundle_index_desc ON bundle(index DESC) WHERE deleted_at IS NUL
 CREATE INDEX idx_bundle_batch_proofs_status ON bundle(batch_proofs_status) WHERE deleted_at IS NULL;
 CREATE INDEX idx_bundle_start_batch_index ON bundle(start_batch_index) WHERE deleted_at IS NULL;
 CREATE INDEX idx_bundle_end_batch_index ON bundle(end_batch_index) WHERE deleted_at IS NULL;
+create index idx_bundle_total_attempts_active_attempts_batch_proofs_status
+    on bundle (total_attempts, active_attempts, batch_proofs_status)
+    where deleted_at IS NULL;
 
 COMMENT ON COLUMN bundle.batch_proofs_status IS 'undefined, pending, ready';
 COMMENT ON COLUMN bundle.proving_status IS 'undefined, unassigned, assigned, proved (deprecated), verified, failed';

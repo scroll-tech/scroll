@@ -1,29 +1,11 @@
 package message
 
 import (
-	"crypto/ecdsa"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 
 	"github.com/scroll-tech/da-codec/encoding/codecv3"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/common/hexutil"
-	"github.com/scroll-tech/go-ethereum/crypto"
-	"github.com/scroll-tech/go-ethereum/rlp"
-)
-
-// ProofFailureType the proof failure type
-type ProofFailureType int
-
-const (
-	// ProofFailureUndefined the undefined type proof failure type
-	ProofFailureUndefined ProofFailureType = iota
-	// ProofFailurePanic proof failure for prover panic
-	ProofFailurePanic
-	// ProofFailureNoPanic proof failure for no prover panic
-	ProofFailureNoPanic
 )
 
 // RespStatus represents status code from prover to scroll
@@ -36,7 +18,7 @@ const (
 	StatusProofError
 )
 
-// ProofType represents the type of prover.
+// ProofType represents the type of task.
 type ProofType uint8
 
 func (r ProofType) String() string {
@@ -57,93 +39,11 @@ const (
 	ProofTypeUndefined ProofType = iota
 	// ProofTypeChunk generates a proof for a ZkEvm chunk, where the inputs are the execution traces for blocks contained in the chunk. ProofTypeChunk is the default proof type.
 	ProofTypeChunk
-	// ProofTypeBatch generates a single proof, aggregating one or more proofs of the type ProofTypeChunk.
+	// ProofTypeBatch generates zk proof from chunk proofs
 	ProofTypeBatch
-	// ProofTypeBundle generates a single proof by recursing over more than one proofs of the type ProofTypeBatch.
+	// ProofTypeBundle generates zk proof from batch proofs
 	ProofTypeBundle
 )
-
-// GenerateToken generates token
-func GenerateToken() (string, error) {
-	b := make([]byte, 16)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
-
-// ProofMsg is the data structure sent to the coordinator.
-type ProofMsg struct {
-	*ProofDetail `json:"zkProof"`
-	// Prover signature
-	Signature string `json:"signature"`
-
-	// Prover public key
-	publicKey string
-}
-
-// Sign signs the ProofMsg.
-func (a *ProofMsg) Sign(priv *ecdsa.PrivateKey) error {
-	hash, err := a.ProofDetail.Hash()
-	if err != nil {
-		return err
-	}
-	sig, err := crypto.Sign(hash, priv)
-	if err != nil {
-		return err
-	}
-	a.Signature = hexutil.Encode(sig)
-	return nil
-}
-
-// Verify verifies ProofMsg.Signature.
-func (a *ProofMsg) Verify() (bool, error) {
-	hash, err := a.ProofDetail.Hash()
-	if err != nil {
-		return false, err
-	}
-	sig := common.FromHex(a.Signature)
-	// recover public key
-	if a.publicKey == "" {
-		pk, err := crypto.SigToPub(hash, sig)
-		if err != nil {
-			return false, err
-		}
-		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
-	}
-
-	return crypto.VerifySignature(common.FromHex(a.publicKey), hash, sig[:len(sig)-1]), nil
-}
-
-// PublicKey return public key from signature
-func (a *ProofMsg) PublicKey() (string, error) {
-	if a.publicKey == "" {
-		hash, err := a.ProofDetail.Hash()
-		if err != nil {
-			return "", err
-		}
-		sig := common.FromHex(a.Signature)
-		// recover public key
-		pk, err := crypto.SigToPub(hash, sig)
-		if err != nil {
-			return "", err
-		}
-		a.publicKey = common.Bytes2Hex(crypto.CompressPubkey(pk))
-		return a.publicKey, nil
-	}
-
-	return a.publicKey, nil
-}
-
-// TaskMsg is a wrapper type around db ProveTask type.
-type TaskMsg struct {
-	UUID             string            `json:"uuid"`
-	ID               string            `json:"id"`
-	Type             ProofType         `json:"type,omitempty"`
-	ChunkTaskDetail  *ChunkTaskDetail  `json:"chunk_task_detail,omitempty"`
-	BatchTaskDetail  *BatchTaskDetail  `json:"batch_task_detail,omitempty"`
-	BundleTaskDetail *BundleTaskDetail `json:"bundle_task_detail,omitempty"`
-}
 
 // ChunkTaskDetail is a type containing ChunkTask detail.
 type ChunkTaskDetail struct {
@@ -168,29 +68,6 @@ type BundleTaskDetail struct {
 	PendingStateRoot    common.Hash   `json:"pending_state_root"`
 	PendingWithdrawRoot common.Hash   `json:"pending_withdraw_root"`
 	BatchProofs         []*BatchProof `json:"batch_proofs"`
-}
-
-// ProofDetail is the message received from provers that contains zk proof, the status of
-// the proof generation succeeded, and an error message if proof generation failed.
-type ProofDetail struct {
-	ID          string       `json:"id"`
-	Type        ProofType    `json:"type,omitempty"`
-	Status      RespStatus   `json:"status"`
-	ChunkProof  *ChunkProof  `json:"chunk_proof,omitempty"`
-	BatchProof  *BatchProof  `json:"batch_proof,omitempty"`
-	BundleProof *BundleProof `json:"bundle_proof,omitempty"`
-	Error       string       `json:"error,omitempty"`
-}
-
-// Hash return proofMsg content hash.
-func (z *ProofDetail) Hash() ([]byte, error) {
-	byt, err := rlp.EncodeToBytes(z)
-	if err != nil {
-		return nil, err
-	}
-
-	hash := crypto.Keccak256Hash(byt)
-	return hash[:], nil
 }
 
 // ChunkInfo is for calculating pi_hash for chunk

@@ -22,33 +22,16 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
-	"scroll-tech/coordinator/internal/config"
+	coordinatorType "scroll-tech/common/types/message"
 
-	"scroll-tech/common/types/message"
+	"scroll-tech/coordinator/internal/config"
 )
 
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if cfg.MockMode {
-		batchVKMap := map[string]string{
-			"shanghai":  "",
-			"bernoulli": "",
-			"london":    "",
-			"istanbul":  "",
-			"homestead": "",
-			"eip155":    "",
-		}
-		chunkVKMap := map[string]string{
-			"shanghai":  "",
-			"bernoulli": "",
-			"london":    "",
-			"istanbul":  "",
-			"homestead": "",
-			"eip155":    "",
-		}
-
-		batchVKMap[cfg.ForkName] = ""
-		chunkVKMap[cfg.ForkName] = ""
+		batchVKMap := map[string]string{cfg.ForkName: "mock_vk"}
+		chunkVKMap := map[string]string{cfg.ForkName: "mock_vk"}
 		return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
@@ -67,7 +50,11 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		BatchVKMap: make(map[string]string),
 	}
 
-	batchVK, err := v.readVK(path.Join(cfg.AssetsPath, "agg_vk.vkey"))
+	bundleVK, err := v.readVK(path.Join(cfg.AssetsPath, "bundle_vk.vkey"))
+	if err != nil {
+		return nil, err
+	}
+	batchVK, err := v.readVK(path.Join(cfg.AssetsPath, "batch_vk.vkey"))
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +62,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if err != nil {
 		return nil, err
 	}
+	v.BundleVkMap[cfg.ForkName] = bundleVK
 	v.BatchVKMap[cfg.ForkName] = batchVK
 	v.ChunkVKMap[cfg.ForkName] = chunkVK
 
@@ -85,7 +73,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *coordinatorType.BatchProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, batch verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -112,7 +100,7 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) 
 }
 
 // VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
+func (v *Verifier) VerifyChunkProof(proof *coordinatorType.ChunkProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -164,7 +152,7 @@ func (v *Verifier) loadEmbedVK() error {
 		return err
 	}
 
-	v.BatchVKMap["bernoulli"] = base64.StdEncoding.EncodeToString(batchVKBytes)
-	v.ChunkVKMap["bernoulli"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
+	v.BatchVKMap["curie"] = base64.StdEncoding.EncodeToString(batchVKBytes)
+	v.ChunkVKMap["curie"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
 	return nil
 }

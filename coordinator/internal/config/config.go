@@ -21,6 +21,8 @@ type ProverManager struct {
 	BatchCollectionTimeSec int `json:"batch_collection_time_sec"`
 	// ChunkCollectionTimeSec chunk Proof collection time (in seconds).
 	ChunkCollectionTimeSec int `json:"chunk_collection_time_sec"`
+	// BundleCollectionTimeSec bundle Proof collection time (in seconds).
+	BundleCollectionTimeSec int `json:"bundle_collection_time_sec"`
 	// Max number of workers in verifier worker pool
 	MaxVerifierWorkers int `json:"max_verifier_workers"`
 	// MinProverVersion is the minimum version of the prover that is required.
