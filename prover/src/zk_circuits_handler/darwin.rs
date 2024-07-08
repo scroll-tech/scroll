@@ -11,7 +11,9 @@ use crate::types::{CommonHash, Task};
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
 use prover_darwin::{
-    aggregator::{Prover as BatchProver, MAX_AGG_SNARKS}, check_chunk_hashes, zkevm::Prover as ChunkProver,
+    aggregator::{Prover as BatchProver, MAX_AGG_SNARKS},
+    check_chunk_hashes,
+    zkevm::Prover as ChunkProver,
     BatchProof, BatchProvingTask, BlockTrace, BundleProof, BundleProvingTask, ChunkInfo,
     ChunkProof, ChunkProvingTask,
 };
