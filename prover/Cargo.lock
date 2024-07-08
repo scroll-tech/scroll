@@ -425,6 +425,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
 
 [[package]]
+name = "ark-bn254"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea691771ebbb28aea556c044e2e5c5227398d840cee0c34d4d20fa8eb2689e8c"
+dependencies = [
+ "ark-ec",
+ "ark-ff 0.3.0",
+ "ark-std 0.3.0",
+]
+
+[[package]]
+name = "ark-ec"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dea978406c4b1ca13c2db2373b05cc55429c3575b8b21f1b9ee859aa5b03dd42"
+dependencies = [
+ "ark-ff 0.3.0",
+ "ark-serialize 0.3.0",
+ "ark-std 0.3.0",
+ "derivative",
+ "num-traits",
+ "rayon",
+ "zeroize",
+]
+
+[[package]]
 name = "ark-ff"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -536,6 +562,7 @@ checksum = "1df2c09229cbc5a028b1d70e00fdb2acee28b1055dfb5ca73eea49c5a25c4e7c"
 dependencies = [
  "num-traits",
  "rand",
+ "rayon",
 ]
 
 [[package]]
@@ -1069,6 +1096,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmake"
+version = "0.1.50"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a31c789563b815f77f4250caee12365734369f942439b7defd71e18a48197130"
+dependencies = [
+ "cc",
+]
+
+[[package]]
 name = "coins-bip32"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1325,6 +1361,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0369ee1ad671834580515889b80f2ea915f23b8be8d0daa4bbaf2ac5c7590835"
 dependencies = [
  "cipher",
+]
+
+[[package]]
+name = "cusnark"
+version = "0.1.0"
+source = "git+https://github.com/snarkify/cusnark.git?branch=main#a8b218a7efc14b346fd155ee897cb06b365638f7"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff 0.3.0",
+ "ark-std 0.3.0",
+ "blst",
+ "cc",
+ "cmake",
+ "ff 0.13.0",
+ "group 0.13.0",
+ "halo2curves",
+ "rand",
+ "rand_chacha",
+ "rand_core",
+ "rayon",
+ "serial_test",
+ "sppark",
+ "which",
 ]
 
 [[package]]
@@ -2419,12 +2479,13 @@ dependencies = [
 [[package]]
 name = "halo2_proofs"
 version = "1.1.0"
-source = "git+https://github.com/scroll-tech/halo2.git?branch=v1.1#e5ddf67e5ae16be38d6368ed355c7c41906272ab"
+source = "git+https://github.com/snarkify/halo2-scroll.git?tag=snarkify-v0.1#d27d547489e93cee603ee88cedf38205f18bd0da"
 dependencies = [
  "ark-std 0.3.0",
  "blake2b_simd",
  "cfg-if 0.1.10",
  "crossbeam",
+ "cusnark",
  "ff 0.13.0",
  "group 0.13.0",
  "halo2curves",
@@ -2535,6 +2596,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest 0.10.7",
+]
+
+[[package]]
+name = "home"
+version = "0.5.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3d1354bf6b7235cb4a0576c2619fd4ed18183f689b12b006a0ee7329eeff9a5"
+dependencies = [
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3851,6 +3921,7 @@ dependencies = [
  "reqwest-middleware",
  "reqwest-retry",
  "rlp",
+ "scopeguard",
  "serde",
  "serde_json",
  "sled",
@@ -4560,6 +4631,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "scc"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af947d0ca10a2f3e00c7ec1b515b7c83e5cb3fa62d4c11a64301d9eec54440e9"
+dependencies = [
+ "sdd",
+]
+
+[[package]]
 name = "schannel"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4595,6 +4675,12 @@ dependencies = [
  "ring 0.17.8",
  "untrusted 0.9.0",
 ]
+
+[[package]]
+name = "sdd"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b84345e4c9bd703274a082fb80caaa99b7612be48dfaa1dd9266577ec412309d"
 
 [[package]]
 name = "sec1"
@@ -4819,6 +4905,31 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "serial_test"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b4b487fe2acf240a021cf57c6b2b4903b1e78ca0ecd862a71b71d2a51fed77d"
+dependencies = [
+ "futures",
+ "log",
+ "once_cell",
+ "parking_lot 0.12.3",
+ "scc",
+ "serial_test_derive",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "3.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82fe9db325bcef1fbcde82e078a5cc4efdf787e96b3b9cf45b50b529f2083d67"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.66",
 ]
 
 [[package]]
@@ -5062,6 +5173,15 @@ checksum = "d91ed6c858b01f942cd56b37a94b3e0a1798290327d1236e4d9cf4eaca44d29d"
 dependencies = [
  "base64ct",
  "der 0.7.9",
+]
+
+[[package]]
+name = "sppark"
+version = "0.1.5"
+source = "git+https://github.com/snarkify/cusnark.git?branch=main#a8b218a7efc14b346fd155ee897cb06b365638f7"
+dependencies = [
+ "cc",
+ "which",
 ]
 
 [[package]]
@@ -5836,6 +5956,18 @@ name = "webpki-roots"
 version = "0.25.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5f20c57d8d7db6d3b86154206ae5d8fba62dd39573114de97c2cb0578251f8e1"
+
+[[package]]
+name = "which"
+version = "4.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87ba24419a2078cd2b0f2ede2691b6c66d8e47836da3b6db8265ebad47afbfc7"
+dependencies = [
+ "either",
+ "home",
+ "once_cell",
+ "rustix",
+]
 
 [[package]]
 name = "winapi"
