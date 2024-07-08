@@ -22,6 +22,8 @@ type L2Config struct {
 	ChunkProposerConfig *ChunkProposerConfig `json:"chunk_proposer_config"`
 	// The batch_proposer config
 	BatchProposerConfig *BatchProposerConfig `json:"batch_proposer_config"`
+	// The bundle_proposer config
+	BundleProposerConfig *BatchProposerConfig `json:"bundle_proposer_config"`
 }
 
 // ChunkProposerConfig loads chunk_proposer configuration items.
@@ -43,4 +45,10 @@ type BatchProposerConfig struct {
 	BatchTimeoutSec                 uint64  `json:"batch_timeout_sec"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
 	MaxUncompressedBatchBytesSize   uint64  `json:"max_uncompressed_batch_bytes_size"`
+}
+
+// BundleProposerConfig loads bundle_proposer configuration items.
+type BundleProposerConfig struct {
+	MaxBatchNumPerBundle uint64 `json:"max_batch_num_per_bundle"`
+	BundleTimeoutSec     uint64 `json:"bundle_timeout_sec"`
 }

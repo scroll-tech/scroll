@@ -124,6 +124,10 @@ func TestFunction(t *testing.T) {
 	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
 	t.Run("TestBatchProposerMaxChunkNumPerBatchLimit", testBatchProposerMaxChunkNumPerBatchLimit)
 	t.Run("TestBatchProposerRespectHardforks", testBatchProposerRespectHardforks)
+
+	// Run bundle proposer test cases.
+	t.Run("TestBundleProposerLimits", testBundleProposerLimits)
+	t.Run("TestBundleProposerRespectHardforks", testBundleProposerRespectHardforks)
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {
