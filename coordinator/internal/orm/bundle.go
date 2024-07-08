@@ -77,7 +77,7 @@ func (o *Bundle) GetUnassignedBundle(ctx context.Context, maxActiveAttempts, max
 func (o *Bundle) GetAssignedBundle(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Bundle, error) {
 	var bundle Bundle
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM bundle WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND bundle.deleted_at IS NULL ORDER BY bundle.index LIMIT 1;",
+	sql := fmt.Sprintf("SELECT * FROM bundle WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND batch_proofs_status = %d AND bundle.deleted_at IS NULL ORDER BY bundle.index LIMIT 1;",
 		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.BatchProofsStatusReady))
 	err := db.Raw(sql).Scan(&bundle).Error
 	if err != nil {
