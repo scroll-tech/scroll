@@ -116,7 +116,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	hardForkName, getHardForkErr := cp.hardForkName(ctx, chunkTask)
 	if getHardForkErr != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("retrieve hard fork name by chunk failed", "task_id", chunkTask.Hash, "err", err)
+		log.Error("retrieve hard fork name by chunk failed", "task_id", chunkTask.Hash, "err", getHardForkErr)
 		return nil, ErrCoordinatorInternalFailure
 	}
 

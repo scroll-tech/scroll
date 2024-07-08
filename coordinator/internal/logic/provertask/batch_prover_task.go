@@ -119,7 +119,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	hardForkName, getHardForkErr := bp.hardForkName(ctx, batchTask)
 	if getHardForkErr != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("retrieve hard fork name by batch failed", "task_id", batchTask.Hash, "err", err)
+		log.Error("retrieve hard fork name by batch failed", "task_id", batchTask.Hash, "err", getHardForkErr)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
@@ -142,7 +142,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, &batchTask, hardForkName)
+	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, batchTask, hardForkName)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)

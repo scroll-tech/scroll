@@ -119,7 +119,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	hardForkName, getHardForkErr := bp.hardForkName(ctx, bundleTask)
 	if getHardForkErr != nil {
 		bp.recoverActiveAttempts(ctx, bundleTask)
-		log.Error("retrieve hard fork name by bundle failed", "task_id", bundleTask.Hash, "err", err)
+		log.Error("retrieve hard fork name by bundle failed", "task_id", bundleTask.Hash, "err", getHardForkErr)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
