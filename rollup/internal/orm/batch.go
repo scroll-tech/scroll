@@ -81,7 +81,7 @@ func (*Batch) TableName() string {
 }
 
 // GetBatches retrieves selected batches from the database.
-// The returned batches are sorted in ascending order by their indices.
+// The returned batches are sorted in ascending order by their index fields.
 func (o *Batch) GetBatches(ctx context.Context, fields map[string]interface{}, orderByList []string, limit int) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
@@ -162,7 +162,7 @@ func (o *Batch) GetFirstUnbatchedChunkIndex(ctx context.Context) (uint64, error)
 }
 
 // GetBatchesGEIndexGECodecVersion retrieves batches that have a batch index greater than or equal to the given index and codec version.
-// The returned batches are sorted in ascending order by their indices.
+// The returned batches are sorted in ascending order by their index fields.
 func (o *Batch) GetBatchesGEIndexGECodecVersion(ctx context.Context, index uint64, codecv encoding.CodecVersion, limit int) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
@@ -215,7 +215,7 @@ func (o *Batch) GetRollupStatusByHashList(ctx context.Context, hashes []string) 
 }
 
 // GetFailedAndPendingBatches retrieves batches with failed or pending status up to the specified limit.
-// The returned batches are sorted in ascending order by their indices.
+// The returned batches are sorted in ascending order by their index fields.
 func (o *Batch) GetFailedAndPendingBatches(ctx context.Context, limit int) ([]*Batch, error) {
 	if limit <= 0 {
 		return nil, errors.New("limit must be greater than zero")
