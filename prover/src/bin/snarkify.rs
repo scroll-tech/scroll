@@ -6,9 +6,10 @@ use snarkify_sdk::prover::ProofHandler;
 use prover_runner::{
     prover_core::Prover,
     types::{Task, ProofDetail},
-    config::{Config, AssetsDirEnvConfig},
+    config::{Config, AssetsDirEnvConfig, SCROLL_PROVER_ASSETS_DIR_ENV_NAME},
     version,
 };
+use scopeguard::defer;
 
 struct MyProofHandler;
 
@@ -20,7 +21,9 @@ impl ProofHandler for MyProofHandler {
     type Error = String;
 
     async fn prove(data: Self::Input) -> Result<Self::Output, Self::Error> {
-        let config: Config = Config::from_file("/snarkify-data/config.json".to_string()).map_err(|e| e.to_string())?;
+        let config: Config = Config::from_file("config.json".to_string()).map_err(|e| e.to_string())?;
+        let assets_dir_value = std::env::var(SCROLL_PROVER_ASSETS_DIR_ENV_NAME)
+            .map_err(|e| e.to_string()).unwrap();
 
         if let Err(e) = AssetsDirEnvConfig::init() {
             log::error!("AssetsDirEnvConfig init failed: {:#}", e);
@@ -37,7 +40,20 @@ impl ProofHandler for MyProofHandler {
             version::get_version(),
         );
 
-        prover.prove_task(&data).map_err(|e| e.to_string())
+        let proof = prover.prove_task(&data).map_err(|e| e.to_string());
+        unsafe {
+            log::info!(
+                "set env {SCROLL_PROVER_ASSETS_DIR_ENV_NAME} to {}",
+                assets_dir_value
+            );
+            std::env::set_var(
+                SCROLL_PROVER_ASSETS_DIR_ENV_NAME,
+                assets_dir_value,
+            );
+        }
+
+        proof
+
     }
 }
 

@@ -49,3 +49,4 @@ clap = { version = "4.5", features = ["derive"] }
 ctor = "0.2.8"
 snarkify-sdk = "0.1.0-alpha.7"
 async-trait = "0.1.80"
+scopeguard = "1.2.0"

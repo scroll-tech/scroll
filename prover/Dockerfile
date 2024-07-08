@@ -5,8 +5,9 @@ FROM nvidia/cuda:12.3.0-base-ubuntu22.04
 WORKDIR /snarkify
 
 # Copy the build artifact from the build stage
-COPY snarkify /usr/local/bin/snarkify
-COPY libzktrie.so /usr/local/lib/libzktrie.so
+COPY target/release/snarkify /usr/local/bin/snarkify
+COPY lib/libzktrie.so /usr/local/lib/libzktrie.so
+COPY config.json .
 # Set environment variables
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH \
     SCROLL_PROVER_ASSETS_DIR=/snarkify-data/assets,/snarkify-data/assets \
