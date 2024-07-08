@@ -338,7 +338,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
-	// get pending batches from database in ascending order by their index fields.
+	// get pending batches from database in ascending order by their index.
 	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, 5)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)

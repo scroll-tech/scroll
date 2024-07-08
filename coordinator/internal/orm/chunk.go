@@ -73,7 +73,7 @@ func (*Chunk) TableName() string {
 }
 
 // GetUnassignedChunk retrieves unassigned chunk based on the specified limit.
-// The returned chunks are sorted in ascending order by their index fields.
+// The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetUnassignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	var chunk Chunk
 	db := o.db.WithContext(ctx)
@@ -90,7 +90,7 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, fromBlockNum, toBlockNum
 }
 
 // GetAssignedChunk retrieves assigned chunk based on the specified limit.
-// The returned chunks are sorted in ascending order by their index fields.
+// The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetAssignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	var chunk Chunk
 	db := o.db.WithContext(ctx)

@@ -70,7 +70,7 @@ func (*Chunk) TableName() string {
 
 // GetChunksInRange retrieves chunks within a given range (inclusive) from the database.
 // The range is closed, i.e., it includes both start and end indices.
-// The returned chunks are sorted in ascending order by their index fields.
+// The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
 	if startIndex > endIndex {
 		return nil, fmt.Errorf("Chunk.GetChunksInRange: start index should be less than or equal to end index, start index: %v, end index: %v", startIndex, endIndex)
@@ -126,7 +126,7 @@ func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 }
 
 // GetChunksGEIndex retrieves chunks that have a chunk index greater than the or equal to the given index.
-// The returned chunks are sorted in ascending order by their index fields.
+// The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetChunksGEIndex(ctx context.Context, index uint64, limit int) ([]*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
