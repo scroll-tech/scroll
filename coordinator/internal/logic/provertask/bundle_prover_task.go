@@ -220,7 +220,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		BatchProofs:         batchProofs,
 	}
 
-	chunkProofsBytes, err := json.Marshal(taskDetail)
+	batchProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", task.TaskID, err)
 	}
@@ -229,7 +229,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		UUID:         task.UUID.String(),
 		TaskID:       task.TaskID,
 		TaskType:     int(message.ProofTypeBundle),
-		TaskData:     string(chunkProofsBytes),
+		TaskData:     string(batchProofsBytes),
 		HardForkName: hardForkName,
 	}
 	return taskMsg, nil
