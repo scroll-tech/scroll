@@ -26,7 +26,6 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 		maxL1CommitGas             uint64
 		maxL1CommitCalldataSize    uint64
 		batchTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedBatchesLen         int
 		expectedChunksInFirstBatch uint64 // only be checked when expectedBatchesLen > 0
 	}{
@@ -133,10 +132,7 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 				MaxL1CommitCalldataSizePerBatch: tt.maxL1CommitCalldataSize,
 				BatchTimeoutSec:                 tt.batchTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
-			}, &params.ChainConfig{
-				HomesteadBlock: tt.forkBlock,
-				CurieBlock:     big.NewInt(0),
-			}, db, nil)
+			}, &params.ChainConfig{}, db, nil)
 			bp.TryProposeBatch()
 
 			batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, []string{}, 0)
@@ -167,7 +163,6 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 		maxL1CommitGas             uint64
 		maxL1CommitCalldataSize    uint64
 		batchTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedBatchesLen         int
 		expectedChunksInFirstBatch uint64 // only be checked when expectedBatchesLen > 0
 	}{
@@ -278,7 +273,6 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				GasCostIncreaseMultiplier:       1.2,
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0),
-				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			bp.TryProposeBatch()
 
@@ -310,7 +304,6 @@ func testBatchProposerCodecv2Limits(t *testing.T) {
 		maxL1CommitGas             uint64
 		maxL1CommitCalldataSize    uint64
 		batchTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedBatchesLen         int
 		expectedChunksInFirstBatch uint64 // only be checked when expectedBatchesLen > 0
 	}{
@@ -425,7 +418,6 @@ func testBatchProposerCodecv2Limits(t *testing.T) {
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0),
 				CurieBlock:     big.NewInt(0),
-				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			bp.TryProposeBatch()
 
@@ -457,7 +449,6 @@ func testBatchProposerCodecv3Limits(t *testing.T) {
 		maxL1CommitGas             uint64
 		maxL1CommitCalldataSize    uint64
 		batchTimeoutSec            uint64
-		forkBlock                  *big.Int
 		expectedBatchesLen         int
 		expectedChunksInFirstBatch uint64 // only be checked when expectedBatchesLen > 0
 	}{
@@ -553,7 +544,6 @@ func testBatchProposerCodecv3Limits(t *testing.T) {
 				BernoulliBlock: big.NewInt(0),
 				CurieBlock:     big.NewInt(0),
 				DarwinTime:     new(uint64),
-				HomesteadBlock: tt.forkBlock,
 			}, db, nil)
 			cp.TryProposeChunk() // chunk1 contains block1
 			cp.TryProposeChunk() // chunk2 contains block2
@@ -986,7 +976,7 @@ func testBatchProposerBlobSizeLimit(t *testing.T) {
 		bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 			MaxL1CommitGasPerBatch:          math.MaxUint64,
 			MaxL1CommitCalldataSizePerBatch: math.MaxUint64,
-			BatchTimeoutSec:                 math.MaxUint64,
+			BatchTimeoutSec:                 math.MaxUint32,
 			GasCostIncreaseMultiplier:       1,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
 		}, chainConfig, db, nil)
@@ -1089,7 +1079,7 @@ func testBatchProposerMaxChunkNumPerBatchLimit(t *testing.T) {
 		bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 			MaxL1CommitGasPerBatch:          math.MaxUint64,
 			MaxL1CommitCalldataSizePerBatch: math.MaxUint64,
-			BatchTimeoutSec:                 math.MaxUint64,
+			BatchTimeoutSec:                 math.MaxUint32,
 			GasCostIncreaseMultiplier:       1,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
 		}, chainConfig, db, nil)
@@ -1145,7 +1135,7 @@ func testBatchProposerRespectHardforks(t *testing.T) {
 		MaxL1CommitGasPerChunk:          math.MaxUint64,
 		MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 		MaxRowConsumptionPerChunk:       math.MaxUint64,
-		ChunkTimeoutSec:                 math.MaxUint64,
+		ChunkTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
 	}, chainConfig, db, nil)
@@ -1165,7 +1155,7 @@ func testBatchProposerRespectHardforks(t *testing.T) {
 	bp := NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 		MaxL1CommitGasPerBatch:          math.MaxUint64,
 		MaxL1CommitCalldataSizePerBatch: math.MaxUint64,
-		BatchTimeoutSec:                 math.MaxUint64,
+		BatchTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1,
 		MaxUncompressedBatchBytesSize:   math.MaxUint64,
 	}, chainConfig, db, nil)

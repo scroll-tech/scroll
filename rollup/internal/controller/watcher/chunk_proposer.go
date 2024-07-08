@@ -57,13 +57,15 @@ type ChunkProposer struct {
 
 // NewChunkProposer creates a new ChunkProposer instance.
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
-	log.Debug("new chunk proposer",
+	log.Info("new chunk proposer",
+		"maxBlockNumPerChunk", cfg.MaxBlockNumPerChunk,
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
 		"maxL1CommitCalldataSizePerChunk", cfg.MaxL1CommitCalldataSizePerChunk,
 		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
 		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
 		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
+		"maxBlobSize", maxBlobSize,
 		"maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize)
 
 	p := &ChunkProposer{
@@ -285,10 +287,9 @@ func (p *ChunkProposer) proposeChunk() error {
 	currentTimeSec := uint64(time.Now().Unix())
 	if metrics.FirstBlockTimestamp+p.chunkTimeoutSec < currentTimeSec || metrics.NumBlocks == maxBlocksThisChunk {
 		log.Info("reached maximum number of blocks in chunk or first block timeout",
-			"start block number", chunk.Blocks[0].Header.Number,
 			"block count", len(chunk.Blocks),
-			"block number", chunk.Blocks[0].Header.Number,
-			"block timestamp", metrics.FirstBlockTimestamp,
+			"start block number", chunk.Blocks[0].Header.Number,
+			"start block timestamp", metrics.FirstBlockTimestamp,
 			"current time", currentTimeSec)
 
 		p.chunkFirstBlockTimeoutReached.Inc()

@@ -234,8 +234,7 @@ type BatchProof struct {
 	GitVersion string      `json:"git_version,omitempty"`
 }
 
-// SanityCheck checks whether an BatchProof is in a legal format
-// TODO: change to check Proof&Instance when upgrading to snark verifier v0.4
+// SanityCheck checks whether a BatchProof is in a legal format
 func (ap *BatchProof) SanityCheck() error {
 	if ap == nil {
 		return errors.New("agg_proof is nil")
@@ -244,8 +243,17 @@ func (ap *BatchProof) SanityCheck() error {
 	if len(ap.Proof) == 0 {
 		return errors.New("proof not ready")
 	}
+
 	if len(ap.Proof)%32 != 0 {
-		return fmt.Errorf("proof buffer has wrong length, expected: 32, got: %d", len(ap.Proof))
+		return fmt.Errorf("proof buffer length must be a multiple of 32, got: %d", len(ap.Proof))
+	}
+
+	if len(ap.Instances) == 0 {
+		return errors.New("instance not ready")
+	}
+
+	if len(ap.Vk) == 0 {
+		return errors.New("vk not ready")
 	}
 
 	return nil
@@ -258,4 +266,29 @@ type BundleProof struct {
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
 	GitVersion string `json:"git_version,omitempty"`
+}
+
+// SanityCheck checks whether a BundleProof is in a legal format
+func (ap *BundleProof) SanityCheck() error {
+	if ap == nil {
+		return errors.New("agg_proof is nil")
+	}
+
+	if len(ap.Proof) == 0 {
+		return errors.New("proof not ready")
+	}
+
+	if len(ap.Proof)%32 != 0 {
+		return fmt.Errorf("proof buffer length must be a multiple of 32, got: %d", len(ap.Proof))
+	}
+
+	if len(ap.Instances) == 0 {
+		return errors.New("instance not ready")
+	}
+
+	if len(ap.Vk) == 0 {
+		return errors.New("vk not ready")
+	}
+
+	return nil
 }

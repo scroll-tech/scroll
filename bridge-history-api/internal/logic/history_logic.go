@@ -407,7 +407,7 @@ func (h *HistoryLogic) cacheTxsInfo(ctx context.Context, cacheKey string, txs []
 				return err
 			}
 		} else {
-			// The transactions are sorted, thus we set the score as their indices.
+			// The transactions are sorted, thus we set the score as their index.
 			for _, tx := range txs {
 				txBytes, err := json.Marshal(tx)
 				if err != nil {
