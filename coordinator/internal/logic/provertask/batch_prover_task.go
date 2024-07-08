@@ -142,7 +142,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
+	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, &batchTask, hardForkName)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)
@@ -173,12 +173,16 @@ func (bp *BatchProverTask) hardForkName(ctx *gin.Context, batchTask *orm.Batch) 
 	return hardForkName, nil
 }
 
-func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, batch *orm.Batch, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
 	// get chunk from db
 	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, task.TaskID)
 	if err != nil {
 		err = fmt.Errorf("failed to get chunk proofs for batch task id:%s err:%w ", task.TaskID, err)
 		return nil, err
+	}
+
+	if len(chunks) == 0 {
+		return nil, fmt.Errorf("no chunk found for batch task id:%s", task.TaskID)
 	}
 
 	var chunkProofs []*message.ChunkProof
@@ -210,19 +214,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	if hardForkName == "darwin" {
-		batch, getErr := bp.batchOrm.GetBatchByHash(ctx, task.TaskID)
-		if getErr != nil {
-			return nil, fmt.Errorf("failed to get batch by hash, taskID:%s err:%w", task.TaskID, getErr)
-		}
-
-		parentBatch, getErr := bp.batchOrm.GetBatchByHash(ctx, batch.ParentBatchHash)
-		if getErr != nil {
-			return nil, fmt.Errorf("failed to get parent batch by hash, taskID:%s err:%w", task.TaskID, getErr)
-		}
-
-		taskDetail.ParentStateRoot = common.HexToHash(parentBatch.StateRoot)
-		taskDetail.ParentBatchHash = common.HexToHash(parentBatch.Hash)
-		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(parentBatch.BatchHeader)
+		taskDetail.ParentStateRoot = common.HexToHash(chunks[0].ParentChunkStateRoot)
+		taskDetail.ParentBatchHash = common.HexToHash(batch.ParentBatchHash)
+		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(batch.BatchHeader)
 		if decodeErr != nil {
 			return nil, fmt.Errorf("failed to decode batch header, taskID:%s err:%w", task.TaskID, decodeErr)
 		}
