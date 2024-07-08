@@ -8,13 +8,8 @@ import (
 )
 
 type l1WatcherMetrics struct {
-	l1WatcherFetchBlockHeaderTotal                  prometheus.Counter
-	l1WatcherFetchBlockHeaderProcessedBlockHeight   prometheus.Gauge
-	l1WatcherFetchContractEventTotal                prometheus.Counter
-	l1WatcherFetchContractEventSuccessTotal         prometheus.Counter
-	l1WatcherFetchContractEventProcessedBlockHeight prometheus.Gauge
-	l1WatcherFetchContractEventSentEventsTotal      prometheus.Counter
-	l1WatcherFetchContractEventRollupEventsTotal    prometheus.Counter
+	l1WatcherFetchBlockHeaderTotal                prometheus.Counter
+	l1WatcherFetchBlockHeaderProcessedBlockHeight prometheus.Gauge
 }
 
 var (
@@ -32,26 +27,6 @@ func initL1WatcherMetrics(reg prometheus.Registerer) *l1WatcherMetrics {
 			l1WatcherFetchBlockHeaderProcessedBlockHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 				Name: "rollup_l1_watcher_fetch_block_header_processed_block_height",
 				Help: "The current processed block height of l1 watcher fetch block header",
-			}),
-			l1WatcherFetchContractEventTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_l1_watcher_fetch_block_contract_event_total",
-				Help: "The total number of l1 watcher fetch contract event total",
-			}),
-			l1WatcherFetchContractEventSuccessTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_l1_watcher_fetch_block_contract_event_success_total",
-				Help: "The total number of l1 watcher fetch contract event success total",
-			}),
-			l1WatcherFetchContractEventProcessedBlockHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
-				Name: "rollup_l1_watcher_fetch_block_contract_event_processed_block_height",
-				Help: "The current processed block height of l1 watcher fetch contract event",
-			}),
-			l1WatcherFetchContractEventSentEventsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_l1_watcher_fetch_block_contract_event_sent_event_total",
-				Help: "The current processed block height of l1 watcher fetch contract sent event",
-			}),
-			l1WatcherFetchContractEventRollupEventsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-				Name: "rollup_l1_watcher_fetch_block_contract_event_rollup_event_total",
-				Help: "The current processed block height of l1 watcher fetch contract rollup event",
 			}),
 		}
 	})

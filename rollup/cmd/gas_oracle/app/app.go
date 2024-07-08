@@ -84,7 +84,7 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
 	}
 
-	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, cfg.L1Config.Confirmations, cfg.L1Config.L1MessageQueueAddress, cfg.L1Config.ScrollChainContractAddress, db, registry)
+	l1watcher := watcher.NewL1WatcherClient(ctx.Context, l1client, cfg.L1Config.StartHeight, db, registry)
 
 	l1relayer, err := relayer.NewLayer1Relayer(ctx.Context, db, cfg.L1Config.RelayerConfig, genesis.Config, relayer.ServiceTypeL1GasOracle, registry)
 	if err != nil {
