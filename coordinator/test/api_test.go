@@ -330,12 +330,12 @@ func testValidProof(t *testing.T) {
 
 		provers[i] = newMockProver(t, "prover_test"+strconv.Itoa(i), coordinatorURL, proofType, version.Version)
 
-		proofStatus := verifiedSuccess
+		exceptProofStatus := verifiedSuccess
 		proverTask, errCode, errMsg := provers[i].getProverTask(t, proofType)
 		assert.Equal(t, types.Success, errCode)
 		assert.Equal(t, "", errMsg)
 		assert.NotNil(t, proverTask)
-		provers[i].submitProof(t, proverTask, proofStatus, types.Success)
+		provers[i].submitProof(t, proverTask, exceptProofStatus, types.Success)
 	}
 
 	// verify proof status

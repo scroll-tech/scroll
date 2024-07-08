@@ -38,6 +38,9 @@ CREATE INDEX idx_bundle_index_desc ON bundle(index DESC) WHERE deleted_at IS NUL
 CREATE INDEX idx_bundle_batch_proofs_status ON bundle(batch_proofs_status) WHERE deleted_at IS NULL;
 CREATE INDEX idx_bundle_start_batch_index ON bundle(start_batch_index) WHERE deleted_at IS NULL;
 CREATE INDEX idx_bundle_end_batch_index ON bundle(end_batch_index) WHERE deleted_at IS NULL;
+create index idx_bundle_total_attempts_active_attempts_batch_proofs_status
+    on bundle (total_attempts, active_attempts, batch_proofs_status)
+    where deleted_at IS NULL;
 
 COMMENT ON COLUMN bundle.batch_proofs_status IS 'undefined, pending, ready';
 COMMENT ON COLUMN bundle.proving_status IS 'undefined, unassigned, assigned, proved (deprecated), verified, failed';
