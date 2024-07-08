@@ -21,12 +21,9 @@ import (
 	"scroll-tech/rollup/internal/orm"
 )
 
-// Layer1Relayer is responsible for
-//  1. fetch pending L1Message from db
-//  2. relay pending message to layer 2 node
+// Layer1Relayer is responsible for updating L1 gas price oracle contract on L2.
 //
-// Actions are triggered by new head from layer 1 geth node.
-// @todo It's better to be triggered by watcher.
+// Actions are triggered by L1 watcher.
 type Layer1Relayer struct {
 	ctx context.Context
 
