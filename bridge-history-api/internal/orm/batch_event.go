@@ -84,7 +84,7 @@ func (c *BatchEvent) GetUnupdatedFinalizedBatchesLEBlockHeight(ctx context.Conte
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get batches >= block height, error: %w", err)
+		return nil, fmt.Errorf("failed to get unupdated finalized batches >= block height, error: %w", err)
 	}
 	return batches, nil
 }
