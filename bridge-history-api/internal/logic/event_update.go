@@ -198,7 +198,7 @@ func (b *EventUpdateLogic) UpdateL2WithdrawMessageProofs(ctx context.Context, he
 	}
 
 	for _, finalizedBatch := range finalizedBatches {
-		log.Info("update finalized batch or bundle info of L2 withdrawals", "index", finalizedBatch.BatchIndex, "lastlockHeight", lastUpdatedFinalizedBlockHeight, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber)
+		log.Info("update finalized batch or bundle info of L2 withdrawals", "index", finalizedBatch.BatchIndex, "lastUpdatedFinalizedBlockHeight", lastUpdatedFinalizedBlockHeight, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber)
 		// This method is compatible with both "finalize by batch" and "finalize by bundle" modes:
 		// - In "finalize by batch" mode, each batch emits a FinalizedBatch event.
 		// - In "finalize by bundle" mode, all batches in the bundle emit only one FinalizedBatch event, using the last batch's index and hash.
