@@ -247,6 +247,7 @@ func (p *ChunkProposer) proposeChunk() error {
 				// The first block fails compressed data compatibility check, manual fix is needed.
 				return fmt.Errorf("the first block fails compressed data compatibility check; block number: %v", block.Header.Number)
 			}
+			log.Warn("breaking limit condition in proposing a new chunk due to a compressed data compatibility breach", "start block number", chunk.Blocks[0].Header.Number, "block count", len(chunk.Blocks))
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
 			p.compressedDataCompatibilityBreachTotal.Inc()
 			return p.updateDBChunkInfo(&chunk, codecVersion, *metrics)

@@ -245,6 +245,7 @@ func (p *BatchProposer) proposeBatch() error {
 				// The first chunk fails compressed data compatibility check, manual fix is needed.
 				return fmt.Errorf("the first chunk fails compressed data compatibility check; start block number: %v, end block number: %v", dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber)
 			}
+			log.Warn("breaking limit condition in proposing a new batch due to a compressed data compatibility breach", "start chunk index", dbChunks[0].Index, "end chunk index", dbChunks[len(dbChunks)-1].Index)
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 			p.compressedDataCompatibilityBreachTotal.Inc()
 			return p.updateDBBatchInfo(&batch, codecVersion, *metrics)

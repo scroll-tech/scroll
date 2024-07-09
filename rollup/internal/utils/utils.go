@@ -10,7 +10,6 @@ import (
 	"github.com/scroll-tech/da-codec/encoding/codecv1"
 	"github.com/scroll-tech/da-codec/encoding/codecv2"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // ChunkMetrics indicates the metrics for proposing a chunk.
@@ -94,7 +93,6 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			if errors.Is(err, &encoding.CompressedDataCompatibilityError{}) {
-				log.Error("Compressed data compatibility check failed", "error", err)
 				return nil, err
 			} else {
 				return nil, fmt.Errorf("failed to estimate codecv2 chunk L1 commit batch size and blob size: %w", err)
@@ -179,7 +177,6 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			if errors.Is(err, &encoding.CompressedDataCompatibilityError{}) {
-				log.Error("Compressed data compatibility check failed", "error", err)
 				return nil, err
 			} else {
 				return nil, fmt.Errorf("failed to estimate codecv2 batch L1 commit batch size and blob size: %w", err)
