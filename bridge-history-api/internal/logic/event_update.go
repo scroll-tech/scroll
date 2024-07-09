@@ -175,9 +175,9 @@ func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, bat
 
 // UpdateL2WithdrawMessageProofs updates L2 withdrawal message proofs.
 func (b *EventUpdateLogic) UpdateL2WithdrawMessageProofs(ctx context.Context, height uint64) error {
-	lastUpdatedFinalizedBlockHeight, err := b.batchEventOrm.GetUpdatedFinalizedBlockHeight(ctx)
+	lastUpdatedFinalizedBlockHeight, err := b.batchEventOrm.GetLastUpdatedFinalizedBlockHeight(ctx)
 	if err != nil {
-		log.Error("failed to get latest processed finalized batch", "error", err)
+		log.Error("failed to get last updated finalized block height", "error", err)
 		return err
 	}
 

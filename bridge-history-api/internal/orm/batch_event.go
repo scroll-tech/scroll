@@ -53,8 +53,8 @@ func (c *BatchEvent) GetBatchEventSyncedHeightInDB(ctx context.Context) (uint64,
 	return batch.L1BlockNumber, nil
 }
 
-// GetUpdatedFinalizedBlockHeight returns the processed finalized block height in db.
-func (c *BatchEvent) GetUpdatedFinalizedBlockHeight(ctx context.Context) (uint64, error) {
+// GetLastUpdatedFinalizedBlockHeight returns the last updated finalized block height in db.
+func (c *BatchEvent) GetLastUpdatedFinalizedBlockHeight(ctx context.Context) (uint64, error) {
 	var batch BatchEvent
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BatchEvent{})
@@ -66,7 +66,7 @@ func (c *BatchEvent) GetUpdatedFinalizedBlockHeight(ctx context.Context) (uint64
 			// No finalized batch found, return genesis batch's end block number.
 			return 0, nil
 		}
-		return 0, fmt.Errorf("failed to get latest processed finalized batch, error: %w", err)
+		return 0, fmt.Errorf("failed to get last updated finalized block height, error: %w", err)
 	}
 	return batch.EndBlockNumber, nil
 }
