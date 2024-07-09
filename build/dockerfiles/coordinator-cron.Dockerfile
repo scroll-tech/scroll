@@ -18,8 +18,6 @@ RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     cd /src/coordinator/cmd/cron/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/coordinator_cron
 
-
-
 # Pull coordinator into a second stage deploy ubuntu container
 FROM ubuntu:20.04
 
