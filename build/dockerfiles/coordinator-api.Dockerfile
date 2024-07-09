@@ -34,10 +34,11 @@ FROM base as builder
 COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/logic/verifier/lib/
-RUN cd ./coordinator && make coordinator_api_skip_libzkp && mv ./build/bin/coordinator_api /bin/coordinator_api && mv internal/logic/verifier/lib /bin/
+RUN cd ./coordinator && CGO_LDFLAGS="-ldl" make coordinator_api_skip_libzkp && mv ./build/bin/coordinator_api /bin/coordinator_api && mv internal/logic/verifier/lib /bin/
 
 # Pull coordinator into a second stage deploy alpine container
 FROM ubuntu:20.04
+ENV CGO_LDFLAGS="-ldl"
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
 # ENV CHAIN_ID=534353
 RUN mkdir -p /src/coordinator/internal/logic/verifier/lib
