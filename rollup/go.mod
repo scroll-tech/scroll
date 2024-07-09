@@ -8,9 +8,10 @@ require (
 	github.com/crate-crypto/go-kzg-4844 v1.0.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-resty/resty/v2 v2.7.0
+	github.com/golang/gddo v0.0.0-20210115222349-20d68f94ee1f
 	github.com/holiman/uint256 v1.2.4
 	github.com/prometheus/client_golang v1.16.0
-	github.com/scroll-tech/da-codec v0.0.0-20240708144942-a554fe417a39
+	github.com/scroll-tech/da-codec v0.0.0-20240709064636-3d6d357a18e6
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20240607130425-e2becce6a1a4
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/stretchr/testify v1.9.0
@@ -56,6 +57,7 @@ require (
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/iden3/go-iden3-crypto v0.0.15 // indirect
+	github.com/inconshreveable/log15 v0.0.0-20170622235902-74a0988b5f80 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect

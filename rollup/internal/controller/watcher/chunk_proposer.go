@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -39,21 +40,22 @@ type ChunkProposer struct {
 
 	chainCfg *params.ChainConfig
 
-	chunkProposerCircleTotal           prometheus.Counter
-	proposeChunkFailureTotal           prometheus.Counter
-	proposeChunkUpdateInfoTotal        prometheus.Counter
-	proposeChunkUpdateInfoFailureTotal prometheus.Counter
-	chunkTxNum                         prometheus.Gauge
-	chunkEstimateL1CommitGas           prometheus.Gauge
-	totalL1CommitCalldataSize          prometheus.Gauge
-	totalL1CommitBlobSize              prometheus.Gauge
-	maxTxConsumption                   prometheus.Gauge
-	chunkBlocksNum                     prometheus.Gauge
-	chunkFirstBlockTimeoutReached      prometheus.Counter
-	chunkBlocksProposeNotEnoughTotal   prometheus.Counter
-	chunkEstimateGasTime               prometheus.Gauge
-	chunkEstimateCalldataSizeTime      prometheus.Gauge
-	chunkEstimateBlobSizeTime          prometheus.Gauge
+	chunkProposerCircleTotal               prometheus.Counter
+	proposeChunkFailureTotal               prometheus.Counter
+	proposeChunkUpdateInfoTotal            prometheus.Counter
+	proposeChunkUpdateInfoFailureTotal     prometheus.Counter
+	compressedDataCompatibilityBreachTotal prometheus.Counter
+	chunkTxNum                             prometheus.Gauge
+	chunkEstimateL1CommitGas               prometheus.Gauge
+	totalL1CommitCalldataSize              prometheus.Gauge
+	totalL1CommitBlobSize                  prometheus.Gauge
+	maxTxConsumption                       prometheus.Gauge
+	chunkBlocksNum                         prometheus.Gauge
+	chunkFirstBlockTimeoutReached          prometheus.Counter
+	chunkBlocksProposeNotEnoughTotal       prometheus.Counter
+	chunkEstimateGasTime                   prometheus.Gauge
+	chunkEstimateCalldataSizeTime          prometheus.Gauge
+	chunkEstimateBlobSizeTime              prometheus.Gauge
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
@@ -100,6 +102,10 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		proposeChunkUpdateInfoFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_chunk_update_info_failure_total",
 			Help: "Total number of propose chunk update info failure total.",
+		}),
+		compressedDataCompatibilityBreachTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "rollup_propose_chunk_due_to_compressed_data_compatibility_breach_total",
+			Help: "Total number of propose chunk due to compressed data compatibility breach.",
 		}),
 		chunkTxNum: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "rollup_propose_chunk_tx_num",
@@ -234,6 +240,16 @@ func (p *ChunkProposer) proposeChunk() error {
 		chunk.Blocks = append(chunk.Blocks, block)
 
 		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
+		if errors.Is(calcErr, &encoding.CompressedDataCompatibilityError{}) {
+			if i == 0 {
+				// The first block fails compressed data compatibility check, manual fix is needed.
+				return fmt.Errorf("the first block fails compressed data compatibility check; block number: %v", block.Header.Number)
+			}
+			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
+			p.compressedDataCompatibilityBreachTotal.Inc()
+			return p.updateDBChunkInfo(&chunk, codecVersion, *metrics)
+		}
+
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 		}
