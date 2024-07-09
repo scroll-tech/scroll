@@ -31,6 +31,7 @@ RUN go mod download -x
 
 # Build coordinator
 FROM base as builder
+RUN apt-get install libc6-dev
 COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/logic/verifier/lib/
