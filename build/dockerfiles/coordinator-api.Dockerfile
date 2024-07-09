@@ -39,8 +39,7 @@ RUN cd ./coordinator && make coordinator_api_skip_libzkp && mv ./build/bin/coord
 
 # Pull coordinator into a second stage deploy ubuntu container
 FROM ubuntu:20.04
-ENV CGO_ENABLED=1
-ENV CGO_LDFLAGS="-ldl"
+ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
 # ENV CHAIN_ID=534353
 RUN mkdir -p /src/coordinator/internal/logic/verifier/lib
