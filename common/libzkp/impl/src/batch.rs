@@ -13,7 +13,6 @@ use prover::{
     utils::{chunk_trace_to_witness_block, init_env_and_log},
     BatchProof, BatchProvingTask, BlockTrace, ChunkInfo, ChunkProof,
 };
-use snark_verifier_sdk::verify_evm_calldata;
 use std::{cell::OnceCell, env, ptr::null};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
