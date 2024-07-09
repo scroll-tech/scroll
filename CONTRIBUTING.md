@@ -26,7 +26,7 @@ We'd also love PRs. If you're thinking of a large PR, we advise opening up an is
 3. Make your change, add tests, and make sure the tests still pass.
 4. Format your code in scroll home directory: `make lint && make fmt`
 5. Push to your fork and [submit a pull request][pr].
-6. Pat yourself on the back and wait for your pull request to be reviewed and merged.
+6. Wait, for your pickup request to be reviewed and merged.
 
 Here are a few things you can do that will increase the likelihood of your pull request being accepted:
 
