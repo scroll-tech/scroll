@@ -125,6 +125,11 @@ func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult
 }
 
 func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, batchIndex, startBlock, endBlock uint64) error {
+	if startBlock > endBlock {
+		log.Warn("start block is greater than end block", "start", startBlock, "end", endBlock)
+		return nil
+	}
+
 	l2WithdrawMessages, err := b.crossMessageOrm.GetL2WithdrawalsByBlockRange(ctx, startBlock, endBlock)
 	if err != nil {
 		log.Error("failed to get L2 withdrawals by batch index", "batch index", batchIndex, "err", err)
@@ -185,16 +190,6 @@ func (b *EventUpdateLogic) UpdateL2WithdrawMessageProofs(ctx context.Context, he
 	if err != nil {
 		log.Error("failed to get unupdated finalized batches >= block height", "error", err)
 		return err
-	}
-
-	if len(finalizedBatches) == 0 {
-		log.Warn("no finalized batches to update", "lastUpdatedFinalizedBlockHeight", lastUpdatedFinalizedBlockHeight)
-		return nil
-	}
-
-	if finalizedBatches[0].EndBlockNumber <= lastUpdatedFinalizedBlockHeight {
-		log.Warn("no finalized batches to update", "lastUpdatedFinalizedBlockHeight", lastUpdatedFinalizedBlockHeight, "endBlockNumber", finalizedBatches[0].EndBlockNumber)
-		return nil
 	}
 
 	for _, finalizedBatch := range finalizedBatches {
