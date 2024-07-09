@@ -52,22 +52,14 @@ type ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos      []*ChunkInfo     `json:"chunk_infos"`
-	ChunkProofs     []*ChunkProof    `json:"chunk_proofs"`
-	ParentStateRoot common.Hash      `json:"parent_state_root"`
-	ParentBatchHash common.Hash      `json:"parent_batch_hash"`
-	BatchHeader     *codecv3.DABatch `json:"batch_header"`
+	ChunkInfos  []*ChunkInfo     `json:"chunk_infos"`
+	ChunkProofs []*ChunkProof    `json:"chunk_proofs"`
+	BatchHeader *codecv3.DABatch `json:"batch_header"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
 type BundleTaskDetail struct {
-	ChainID             uint64        `json:"chain_id"`
-	FinalizedBatchHash  common.Hash   `json:"finalized_batch_hash"`
-	FinalizedStateRoot  common.Hash   `json:"finalized_state_root"`
-	PendingBatchHash    common.Hash   `json:"pending_batch_hash"`
-	PendingStateRoot    common.Hash   `json:"pending_state_root"`
-	PendingWithdrawRoot common.Hash   `json:"pending_withdraw_root"`
-	BatchProofs         []*BatchProof `json:"batch_proofs"`
+	BatchProofs []*BatchProof `json:"batch_proofs"`
 }
 
 // ChunkInfo is for calculating pi_hash for chunk
@@ -107,8 +99,8 @@ type BatchProof struct {
 	Instances []byte `json:"instances"`
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
-	BatchHash  common.Hash `json:"batch_hash"`
-	GitVersion string      `json:"git_version,omitempty"`
+	BatchHeader *codecv3.DABatch `json:"batch_header"`
+	GitVersion  string           `json:"git_version,omitempty"`
 }
 
 // SanityCheck checks whether a BatchProof is in a legal format
