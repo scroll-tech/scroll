@@ -17,10 +17,9 @@
 ├── <a href="./common/">common</a>: Common libraries and types
 ├── <a href="./coordinator/">coordinator</a>: Prover coordinator service that dispatches proving tasks to provers
 ├── <a href="./database">database</a>: Database client and schema definition
-├── <a href="./src">l2geth</a>: Scroll execution node
 ├── <a href="./prover">prover</a>: Prover client that runs proof generation for zkEVM circuit and aggregation circuit
 ├── <a href="./rollup">rollup</a>: Rollup-related services
-├── <a href="./rpc-gateway">rpc-gateway</a>: RPC gateway external repo
+├── <a href="./scroll-contracts">scroll-contracts</a>: solidity code for Scroll L1 bridge and rollup contracts and L2 bridge and pre-deployed contracts.
 └── <a href="./tests">tests</a>: Integration tests
 </pre>
 
