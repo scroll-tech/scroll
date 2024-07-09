@@ -19,7 +19,7 @@ RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     cd /src/rollup/cmd/gas_oracle/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/gas_oracle
 
-# Pull gas_oracle into a second stage deploy alpine container
+# Pull gas_oracle into a second stage deploy ubuntu container
 FROM ubuntu:20.04
 
 ENV CGO_LDFLAGS="-ldl"

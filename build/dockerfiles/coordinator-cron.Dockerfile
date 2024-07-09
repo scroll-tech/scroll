@@ -20,7 +20,7 @@ RUN --mount=target=. \
 
 
 
-# Pull coordinator into a second stage deploy alpine container
+# Pull coordinator into a second stage deploy ubuntu container
 FROM ubuntu:20.04
 
 ENV CGO_LDFLAGS="-ldl"

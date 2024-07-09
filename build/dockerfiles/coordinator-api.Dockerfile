@@ -36,7 +36,7 @@ RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/logic/verifier/lib/
 RUN cd ./coordinator && make coordinator_api_skip_libzkp && mv ./build/bin/coordinator_api /bin/coordinator_api && mv internal/logic/verifier/lib /bin/
 
-# Pull coordinator into a second stage deploy alpine container
+# Pull coordinator into a second stage deploy ubuntu container
 FROM ubuntu:20.04
 ENV CGO_ENABLED=1
 ENV CGO_LDFLAGS="-ldl"
