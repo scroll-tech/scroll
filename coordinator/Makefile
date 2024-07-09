@@ -27,7 +27,7 @@ coordinator_cron:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_cron ./cmd/cron
 
 coordinator_api_skip_libzkp:
-	CGO_ENABLED=1 CGO_LDFLAGS="-ldl" go build -ldflags '-extldflags "-ldl" -X scroll-tech/common/version.ZkVersion=${ZK_VERSION}' -o $(PWD)/build/bin/coordinator_api ./cmd/api
+	CGO_ENABLED=1 CGO_LDFLAGS="-ldl" go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
 
 mock_coordinator_api: ## Builds the mocked Coordinator instance.
 	go build -tags="mock_prover mock_verifier" -o $(PWD)/build/bin/coordinator_api ./cmd/api
