@@ -40,20 +40,22 @@ type BatchProposer struct {
 
 	chainCfg *params.ChainConfig
 
-	batchProposerCircleTotal               prometheus.Counter
-	proposeBatchFailureTotal               prometheus.Counter
-	proposeBatchUpdateInfoTotal            prometheus.Counter
-	proposeBatchUpdateInfoFailureTotal     prometheus.Counter
+	batchProposerCircleTotal           prometheus.Counter
+	proposeBatchFailureTotal           prometheus.Counter
+	proposeBatchUpdateInfoTotal        prometheus.Counter
+	proposeBatchUpdateInfoFailureTotal prometheus.Counter
+	totalL1CommitGas                   prometheus.Gauge
+	totalL1CommitCalldataSize          prometheus.Gauge
+	totalL1CommitBlobSize              prometheus.Gauge
+	batchChunksNum                     prometheus.Gauge
+	batchFirstBlockTimeoutReached      prometheus.Counter
+	batchChunksProposeNotEnoughTotal   prometheus.Counter
+	batchEstimateGasTime               prometheus.Gauge
+	batchEstimateCalldataSizeTime      prometheus.Gauge
+	batchEstimateBlobSizeTime          prometheus.Gauge
+
+	// total number of times that batch proposer stops early due to compressed data compatibility breach
 	compressedDataCompatibilityBreachTotal prometheus.Counter
-	totalL1CommitGas                       prometheus.Gauge
-	totalL1CommitCalldataSize              prometheus.Gauge
-	totalL1CommitBlobSize                  prometheus.Gauge
-	batchChunksNum                         prometheus.Gauge
-	batchFirstBlockTimeoutReached          prometheus.Counter
-	batchChunksProposeNotEnoughTotal       prometheus.Counter
-	batchEstimateGasTime                   prometheus.Gauge
-	batchEstimateCalldataSizeTime          prometheus.Gauge
-	batchEstimateBlobSizeTime              prometheus.Gauge
 }
 
 // NewBatchProposer creates a new BatchProposer instance.

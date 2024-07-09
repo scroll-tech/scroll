@@ -40,22 +40,24 @@ type ChunkProposer struct {
 
 	chainCfg *params.ChainConfig
 
-	chunkProposerCircleTotal               prometheus.Counter
-	proposeChunkFailureTotal               prometheus.Counter
-	proposeChunkUpdateInfoTotal            prometheus.Counter
-	proposeChunkUpdateInfoFailureTotal     prometheus.Counter
+	chunkProposerCircleTotal           prometheus.Counter
+	proposeChunkFailureTotal           prometheus.Counter
+	proposeChunkUpdateInfoTotal        prometheus.Counter
+	proposeChunkUpdateInfoFailureTotal prometheus.Counter
+	chunkTxNum                         prometheus.Gauge
+	chunkEstimateL1CommitGas           prometheus.Gauge
+	totalL1CommitCalldataSize          prometheus.Gauge
+	totalL1CommitBlobSize              prometheus.Gauge
+	maxTxConsumption                   prometheus.Gauge
+	chunkBlocksNum                     prometheus.Gauge
+	chunkFirstBlockTimeoutReached      prometheus.Counter
+	chunkBlocksProposeNotEnoughTotal   prometheus.Counter
+	chunkEstimateGasTime               prometheus.Gauge
+	chunkEstimateCalldataSizeTime      prometheus.Gauge
+	chunkEstimateBlobSizeTime          prometheus.Gauge
+
+	// total number of times that chunk proposer stops early due to compressed data compatibility breach
 	compressedDataCompatibilityBreachTotal prometheus.Counter
-	chunkTxNum                             prometheus.Gauge
-	chunkEstimateL1CommitGas               prometheus.Gauge
-	totalL1CommitCalldataSize              prometheus.Gauge
-	totalL1CommitBlobSize                  prometheus.Gauge
-	maxTxConsumption                       prometheus.Gauge
-	chunkBlocksNum                         prometheus.Gauge
-	chunkFirstBlockTimeoutReached          prometheus.Counter
-	chunkBlocksProposeNotEnoughTotal       prometheus.Counter
-	chunkEstimateGasTime                   prometheus.Gauge
-	chunkEstimateCalldataSizeTime          prometheus.Gauge
-	chunkEstimateBlobSizeTime              prometheus.Gauge
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
