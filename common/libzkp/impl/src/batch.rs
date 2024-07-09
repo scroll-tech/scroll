@@ -191,8 +191,7 @@ pub unsafe extern "C" fn verify_batch_proof(
             // As of upgrade #3 (Curie), we verify batch proofs on-chain (EVM).
             let proof = serde_json::from_slice::<BatchProofV3>(proof.as_slice()).unwrap();
             verify_evm_calldata(
-                include_bytes!("plonk_verifier_0.10.3.bin").to_vec(),
-                // TODO(infra): include_bytes!("plonk_verifier_0.11.4.bin").to_vec(),
+                include_bytes!("plonk_verifier_0.11.4.bin").to_vec(),
                 proof.calldata(),
             )
         } else {
