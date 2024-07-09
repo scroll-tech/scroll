@@ -154,14 +154,10 @@ pub unsafe extern "C" fn gen_batch_proof(
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn verify_batch_proof(
-    proof: *const c_char,
-) -> c_char {
+pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<BatchProof>(proof.as_slice()).unwrap();
-    let verified = panic_catch(|| {
-        VERIFIER.get().unwrap().verify_agg_evm_proof(proof)
-    });
+    let verified = panic_catch(|| VERIFIER.get().unwrap().verify_agg_evm_proof(proof));
     verified.unwrap_or(false) as c_char
 }
 
