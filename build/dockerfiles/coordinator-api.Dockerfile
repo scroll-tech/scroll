@@ -23,7 +23,6 @@ COPY ./rollup/go.* ./rollup/
 COPY ./common/go.* ./common/
 COPY ./coordinator/go.* ./coordinator/
 COPY ./database/go.* ./database/
-COPY ./prover/go.* ./prover/
 COPY ./tests/integration-test/go.* ./tests/integration-test/
 COPY ./bridge-history-api/go.* ./bridge-history-api/
 RUN go mod download -x
@@ -34,11 +33,12 @@ FROM base as builder
 COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/logic/verifier/lib/
-RUN cd ./coordinator && make coordinator_api_skip_libzkp && mv ./build/bin/coordinator_api /bin/coordinator_api && mv internal/logic/verifier/lib /bin/
+RUN cd ./coordinator && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_api_skip_libzkp && mv ./build/bin/coordinator_api /bin/coordinator_api && mv internal/logic/verifier/lib /bin/
 
-# Pull coordinator into a second stage deploy alpine container
+# Pull coordinator into a second stage deploy ubuntu container
 FROM ubuntu:20.04
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
+ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
 # ENV CHAIN_ID=534353
 RUN mkdir -p /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/lib /src/coordinator/internal/logic/verifier/lib
