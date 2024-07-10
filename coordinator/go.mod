@@ -7,7 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240607130425-e2becce6a1a4
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240426041101-a860446ebaea
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.25.7
@@ -45,7 +45,7 @@ require (
 require (
 	github.com/google/uuid v1.6.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/da-codec v0.0.0-20240710063951-6059652f5c45
+	github.com/scroll-tech/da-codec v0.0.0-20240429123441-4aaf9d35e570
 )
 
 require (
@@ -69,7 +69,7 @@ require (
 	github.com/prometheus/common v0.48.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.8.4 // indirect
+	github.com/scroll-tech/zktrie v0.8.2 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
