@@ -2,6 +2,8 @@ name: Docker
 
 on:
   push:
+    tags:
+      - v**
 
 env:
   AWS_REGION: us-west-2
