@@ -242,7 +242,8 @@ func (p *ChunkProposer) proposeChunk() error {
 		chunk.Blocks = append(chunk.Blocks, block)
 
 		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
-		if errors.Is(calcErr, &encoding.CompressedDataCompatibilityError{}) {
+		var compressErr *encoding.CompressedDataCompatibilityError
+		if errors.As(calcErr, &compressErr) {
 			if i == 0 {
 				// The first block fails compressed data compatibility check, manual fix is needed.
 				return fmt.Errorf("the first block fails compressed data compatibility check; block number: %v", block.Header.Number)

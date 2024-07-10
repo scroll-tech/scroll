@@ -240,7 +240,8 @@ func (p *BatchProposer) proposeBatch() error {
 		batch.Chunks = append(batch.Chunks, chunk)
 		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
 
-		if errors.Is(calcErr, &encoding.CompressedDataCompatibilityError{}) {
+		var compressErr *encoding.CompressedDataCompatibilityError
+		if errors.As(calcErr, &compressErr) {
 			if i == 0 {
 				// The first chunk fails compressed data compatibility check, manual fix is needed.
 				return fmt.Errorf("the first chunk fails compressed data compatibility check; start block number: %v, end block number: %v", dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber)
