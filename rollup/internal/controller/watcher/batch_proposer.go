@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -52,6 +53,9 @@ type BatchProposer struct {
 	batchEstimateGasTime               prometheus.Gauge
 	batchEstimateCalldataSizeTime      prometheus.Gauge
 	batchEstimateBlobSizeTime          prometheus.Gauge
+
+	// total number of times that batch proposer stops early due to compressed data compatibility breach
+	compressedDataCompatibilityBreachTotal prometheus.Counter
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
@@ -94,6 +98,10 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		proposeBatchUpdateInfoFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_batch_update_info_failure_total",
 			Help: "Total number of propose batch update info failure total.",
+		}),
+		compressedDataCompatibilityBreachTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "rollup_propose_batch_due_to_compressed_data_compatibility_breach_total",
+			Help: "Total number of propose batch due to compressed data compatibility breach.",
 		}),
 		totalL1CommitGas: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "rollup_propose_batch_total_l1_commit_gas",
@@ -231,6 +239,18 @@ func (p *BatchProposer) proposeBatch() error {
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
 		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
+
+		if errors.Is(calcErr, &encoding.CompressedDataCompatibilityError{}) {
+			if i == 0 {
+				// The first chunk fails compressed data compatibility check, manual fix is needed.
+				return fmt.Errorf("the first chunk fails compressed data compatibility check; start block number: %v, end block number: %v", dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber)
+			}
+			log.Warn("breaking limit condition in proposing a new batch due to a compressed data compatibility breach", "start chunk index", dbChunks[0].Index, "end chunk index", dbChunks[len(dbChunks)-1].Index)
+			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
+			p.compressedDataCompatibilityBreachTotal.Inc()
+			return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
+		}
+
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
