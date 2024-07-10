@@ -10,8 +10,8 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0
 	github.com/holiman/uint256 v1.2.4
 	github.com/prometheus/client_golang v1.16.0
-	github.com/scroll-tech/da-codec v0.0.0-20240605080813-32bfc9fccde7
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240426041101-a860446ebaea
+	github.com/scroll-tech/da-codec v0.0.0-20240710085339-459342e9a542
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240607130425-e2becce6a1a4
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/stretchr/testify v1.9.0
 	github.com/urfave/cli/v2 v2.25.7
@@ -86,7 +86,7 @@ require (
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/zktrie v0.8.2 // indirect
+	github.com/scroll-tech/zktrie v0.8.4 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/smartystreets/assertions v1.13.1 // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect
