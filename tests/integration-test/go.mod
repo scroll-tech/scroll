@@ -3,8 +3,8 @@ module scroll-tech/integration-test
 go 1.21
 
 require (
-	github.com/scroll-tech/da-codec v0.0.0-20240429123441-4aaf9d35e570
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240426041101-a860446ebaea
+	github.com/scroll-tech/da-codec v0.0.0-20240710063951-6059652f5c45
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20240607130425-e2becce6a1a4
 	github.com/stretchr/testify v1.9.0
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
@@ -12,7 +12,6 @@ require (
 require (
 	github.com/bits-and-blooms/bitset v1.12.0 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
-	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
 	github.com/crate-crypto/go-kzg-4844 v1.0.0 // indirect
@@ -30,7 +29,7 @@ require (
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect
-	github.com/scroll-tech/zktrie v0.8.2 // indirect
+	github.com/scroll-tech/zktrie v0.8.4 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
