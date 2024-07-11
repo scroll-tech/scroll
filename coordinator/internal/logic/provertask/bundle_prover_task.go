@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -209,15 +208,8 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		batchProofs = append(batchProofs, &proof)
 	}
 
-	lastPendingBatch := batches[len(batches)-1]
 	taskDetail := message.BundleTaskDetail{
-		ChainID:             bp.cfg.L2.ChainID,
-		FinalizedBatchHash:  common.HexToHash(latestFinalizedBatch.Hash),
-		FinalizedStateRoot:  common.HexToHash(latestFinalizedBatch.StateRoot),
-		PendingBatchHash:    common.HexToHash(lastPendingBatch.Hash),
-		PendingStateRoot:    common.HexToHash(lastPendingBatch.StateRoot),
-		PendingWithdrawRoot: common.HexToHash(lastPendingBatch.WithdrawRoot),
-		BatchProofs:         batchProofs,
+		BatchProofs: batchProofs,
 	}
 
 	batchProofsBytes, err := json.Marshal(taskDetail)

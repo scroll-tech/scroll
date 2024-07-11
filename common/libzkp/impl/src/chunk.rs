@@ -6,16 +6,18 @@ use crate::{
     },
 };
 use libc::c_char;
-use prover::{
+use prover_v3::{zkevm::Verifier as VerifierV3, ChunkProof as ChunkProofV3};
+use prover_v4::{
     consts::CHUNK_VK_FILENAME,
     utils::init_env_and_log,
-    zkevm::{Prover, Verifier},
-    BlockTrace, ChunkProof, ChunkProvingTask,
+    zkevm::{Prover, Verifier as VerifierV4},
+    BlockTrace, ChunkProof as ChunkProofV4, ChunkProvingTask,
 };
 use std::{cell::OnceCell, env, ptr::null};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
-static mut VERIFIER: OnceCell<Verifier> = OnceCell::new();
+static mut VERIFIER_V3: OnceCell<VerifierV3> = OnceCell::new();
+static mut VERIFIER_V4: OnceCell<VerifierV4> = OnceCell::new();
 
 /// # Safety
 #[no_mangle]
@@ -48,9 +50,11 @@ pub unsafe extern "C" fn init_chunk_verifier(params_dir: *const c_char, assets_d
 
     // TODO: add a settings in scroll-prover.
     env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
-    let verifier = Verifier::from_dirs(params_dir, assets_dir);
+    let verifier_v3 = VerifierV3::from_dirs(params_dir, assets_dir);
+    let verifier_v4 = VerifierV4::from_dirs(params_dir, assets_dir);
 
-    VERIFIER.set(verifier).unwrap();
+    VERIFIER_V3.set(verifier_v3).unwrap();
+    VERIFIER_V4.set(verifier_v4).unwrap();
 }
 
 /// # Safety
@@ -99,10 +103,29 @@ pub unsafe extern "C" fn gen_chunk_proof(block_traces: *const c_char) -> *const 
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn verify_chunk_proof(proof: *const c_char) -> c_char {
+pub unsafe extern "C" fn verify_chunk_proof(
+    proof: *const c_char,
+    fork_name: *const c_char,
+) -> c_char {
     let proof = c_char_to_vec(proof);
-    let proof = serde_json::from_slice::<ChunkProof>(proof.as_slice()).unwrap();
 
-    let verified = panic_catch(|| VERIFIER.get().unwrap().verify_chunk_proof(proof));
+    let fork_name_str = c_char_to_str(fork_name);
+    let fork_id = match fork_name_str {
+        "curie" => 3,
+        "darwin" => 4,
+        _ => {
+            log::warn!("unexpected fork_name {fork_name_str}, treated as darwin");
+            4
+        }
+    };
+    let verified = panic_catch(|| {
+        if fork_id == 3 {
+            let proof = serde_json::from_slice::<ChunkProofV3>(proof.as_slice()).unwrap();
+            VERIFIER_V3.get().unwrap().verify_chunk_proof(proof)
+        } else {
+            let proof = serde_json::from_slice::<ChunkProofV4>(proof.as_slice()).unwrap();
+            VERIFIER_V4.get().unwrap().verify_chunk_proof(proof)
+        }
+    });
     verified.unwrap_or(false) as c_char
 }

@@ -30,3 +30,11 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) 
 	}
 	return true, nil
 }
+
+// VerifyBundleProof return a mock verification result for a BundleProof.
+func (v *Verifier) VerifyBundleProof(proof *message.BundleProof) (bool, error) {
+	if string(proof.Proof) == InvalidTestProof {
+		return false, nil
+	}
+	return true, nil
+}

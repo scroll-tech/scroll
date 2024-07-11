@@ -214,8 +214,6 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	if hardForkName == "darwin" {
-		taskDetail.ParentStateRoot = common.HexToHash(chunks[0].ParentChunkStateRoot)
-		taskDetail.ParentBatchHash = common.HexToHash(batch.ParentBatchHash)
 		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(batch.BatchHeader)
 		if decodeErr != nil {
 			return nil, fmt.Errorf("failed to decode batch header, taskID:%s err:%w", task.TaskID, decodeErr)
