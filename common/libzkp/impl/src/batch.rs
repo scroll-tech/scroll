@@ -13,7 +13,7 @@ use prover_v4::{
     consts::BATCH_VK_FILENAME,
     utils::{chunk_trace_to_witness_block, init_env_and_log},
     BatchHeader, BatchProof as BatchProofV4, BatchProvingTask, BlockTrace, BundleProof,
-    BundleProvingTask, ChunkInfo, ChunkProof,
+    BundleProvingTask, ChunkInfo, ChunkProof, MAX_AGG_SNARKS,
 };
 use snark_verifier_sdk::verify_evm_calldata;
 use std::{cell::OnceCell, env, ptr::null};
@@ -128,7 +128,7 @@ pub unsafe extern "C" fn gen_batch_proof(
             .map_err(|e| format!("failed to deserialize chunk hashes: {e:?}"))?;
         let chunk_proofs = serde_json::from_slice::<Vec<ChunkProof>>(&chunk_proofs)
             .map_err(|e| format!("failed to deserialize chunk proofs: {e:?}"))?;
-        let batch_header = serde_json::from_slice::<BatchHeader>(&batch_header)
+        let batch_header = serde_json::from_slice::<BatchHeader<MAX_AGG_SNARKS>>(&batch_header)
             .map_err(|e| format!("failed to deserialize batch header: {e:?}"))?;
 
         if chunk_hashes.len() != chunk_proofs.len() {

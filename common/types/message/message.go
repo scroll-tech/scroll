@@ -99,8 +99,8 @@ type BatchProof struct {
 	Instances []byte `json:"instances"`
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
-	BatchHeader *codecv3.DABatch `json:"batch_header"`
-	GitVersion  string           `json:"git_version,omitempty"`
+	BatchHash  common.Hash `json:"batch_hash"`
+	GitVersion string      `json:"git_version,omitempty"`
 }
 
 // SanityCheck checks whether a BatchProof is in a legal format
