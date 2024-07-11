@@ -16,7 +16,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyChunkProof return a mock verification result for a ChunkProof.
-func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof) (bool, error) {
+func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}
