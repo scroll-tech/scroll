@@ -169,17 +169,21 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 	if getHardForkErr != nil {
 		return ErrGetHardForkNameFailed
 	}
-	// Post-Bernoulli we do not verify chunk proofs.
-	// Verify batch proof
-	if message.ProofType(proofParameter.TaskType) == message.ProofTypeBatch {
+
+	switch message.ProofType(proofParameter.TaskType) {
+	case message.ProofTypeChunk:
+		var chunkProof message.ChunkProof
+		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &chunkProof); unmarshalErr != nil {
+			return unmarshalErr
+		}
+		success, verifyErr = m.verifier.VerifyChunkProof(&chunkProof, hardForkName)
+	case message.ProofTypeBatch:
 		var batchProof message.BatchProof
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &batchProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
 		success, verifyErr = m.verifier.VerifyBatchProof(&batchProof, hardForkName)
-	}
-	// Verify bundle proof
-	if message.ProofType(proofParameter.TaskType) == message.ProofTypeBundle {
+	case message.ProofTypeBundle:
 		var bundleProof message.BundleProof
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &bundleProof); unmarshalErr != nil {
 			return unmarshalErr
