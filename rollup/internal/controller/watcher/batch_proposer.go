@@ -158,7 +158,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 	for {
 		compatible, err := utils.CheckBatchCompressedDataCompatibility(batch, codecVersion)
 		if err != nil {
-			log.Error("Failed to check batch compressed data compatibility", "err", err)
+			log.Error("Failed to check batch compressed data compatibility", "codecVersion", codecVersion, "err", err)
 			return err
 		}
 
@@ -172,7 +172,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 			return errors.New("cannot truncate batch with only 1 chunk for compatibility")
 		}
 
-		log.Warn("Batch not compatible with compressed data, removing last chunk")
+		log.Info("Batch not compatible with compressed data, removing last chunk")
 		p.compressedDataCompatibilityBreachTotal.Inc()
 		batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 	}
