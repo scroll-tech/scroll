@@ -169,7 +169,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 		if len(batch.Chunks) == 1 {
 			log.Error("Cannot truncate batch with only 1 chunk for compatibility", "start block number", batch.Chunks[0].Blocks[0].Header.Number.Uint64(),
 				"end block number", batch.Chunks[0].Blocks[len(batch.Chunks[0].Blocks)-1].Header.Number.Uint64())
-			return errors.New("Cannot truncate batch with only 1 chunk for compatibility")
+			return errors.New("cannot truncate batch with only 1 chunk for compatibility")
 		}
 
 		log.Warn("Batch not compatible with compressed data, removing last chunk")
