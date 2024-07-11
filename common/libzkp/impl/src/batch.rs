@@ -15,7 +15,6 @@ use prover_v4::{
     BatchHeader, BatchProof as BatchProofV4, BatchProvingTask, BlockTrace, BundleProof,
     BundleProvingTask, ChunkInfo, ChunkProof, MAX_AGG_SNARKS,
 };
-use snark_verifier_sdk::verify_evm_calldata;
 use std::{cell::OnceCell, env, ptr::null};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
@@ -172,10 +171,7 @@ pub unsafe extern "C" fn gen_batch_proof(
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn verify_batch_proof(
-    proof: *const c_char,
-    fork_name: *const c_char,
-) -> c_char {
+pub unsafe extern "C" fn verify_batch_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
     let fork_name_str = c_char_to_str(fork_name);
     let fork_id = match fork_name_str {

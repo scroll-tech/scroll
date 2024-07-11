@@ -96,7 +96,7 @@ func (v *Verifier) VerifyBatchProof(proof *coordinatorType.BatchProof, forkName 
 		C.free(unsafe.Pointer(forkNameStr))
 	}()
 
-	verified := C.verify_batch_proof(proofStr, forkNameStr)
+	verified := C.verify_batch_proof(proofStr)
 	return verified != 0, nil
 }
 

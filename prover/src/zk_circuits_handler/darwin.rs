@@ -11,9 +11,7 @@ use crate::types::{CommonHash, Task};
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
 use prover_darwin::{
-    aggregator::{Prover as BatchProver, MAX_AGG_SNARKS},
-    check_chunk_hashes,
-    zkevm::Prover as ChunkProver,
+    aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver,
     BatchProof, BatchProvingTask, BlockTrace, BundleProof, BundleProvingTask, ChunkInfo,
     ChunkProof, ChunkProvingTask,
 };
@@ -107,7 +105,7 @@ impl DarwinHandler {
                 bail!("non-match chunk protocol")
             }
             check_chunk_hashes("", &chunk_hashes_proofs).context("failed to check chunk info")?;
-            let batch_proof = prover.borrow_mut().gen_batch_proof::<MAX_AGG_SNARKS>(
+            let batch_proof = prover.borrow_mut().gen_batch_proof(
                 batch_task_detail.batch_proving_task,
                 None,
                 self.get_output_dir(),
