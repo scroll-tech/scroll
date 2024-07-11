@@ -22,7 +22,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/log"
 
-	coordinatorType "scroll-tech/common/types/message"
+	"scroll-tech/common/types/message"
 
 	"scroll-tech/coordinator/internal/config"
 )
@@ -74,7 +74,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyBatchProof(proof *coordinatorType.BatchProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, batch verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -101,7 +101,7 @@ func (v *Verifier) VerifyBatchProof(proof *coordinatorType.BatchProof, forkName 
 }
 
 // VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyChunkProof(proof *coordinatorType.ChunkProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -128,7 +128,7 @@ func (v *Verifier) VerifyChunkProof(proof *coordinatorType.ChunkProof, forkName 
 }
 
 // VerifyBundleProof Verify a ZkProof for a bundle of batches, by marshaling it and verifying it via the EVM verifier.
-func (v *Verifier) VerifyBundleProof(proof *coordinatorType.BundleProof) (bool, error) {
+func (v *Verifier) VerifyBundleProof(proof *message.BundleProof) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
