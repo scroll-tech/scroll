@@ -96,7 +96,7 @@ func (v *Verifier) VerifyBatchProof(proof *coordinatorType.BatchProof, forkName 
 		C.free(unsafe.Pointer(forkNameStr))
 	}()
 
-	verified := C.verify_batch_proof(proofStr)
+	verified := C.verify_batch_proof(proofStr, forkNameStr)
 	return verified != 0, nil
 }
 
@@ -115,13 +115,15 @@ func (v *Verifier) VerifyChunkProof(proof *coordinatorType.ChunkProof, forkName 
 		return false, err
 	}
 
+	log.Info("Start to verify chunk proof", "forkName", forkName)
 	proofStr := C.CString(string(buf))
+	forkNameStr := C.CString(forkName)
 	defer func() {
 		C.free(unsafe.Pointer(proofStr))
+		C.free(unsafe.Pointer(forkNameStr))
 	}()
 
-	log.Info("Start to verify chunk proof", "forkName", forkName)
-	verified := C.verify_chunk_proof(proofStr, forkName)
+	verified := C.verify_chunk_proof(proofStr, forkNameStr)
 	return verified != 0, nil
 }
 
