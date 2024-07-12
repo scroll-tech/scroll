@@ -154,13 +154,13 @@ func (p *BatchProposer) TryProposeBatch() {
 	}
 }
 
-func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics utils.BatchMetrics) error {
+func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics *utils.BatchMetrics) error {
 	compatibilityBreachOccurred := false
 
 	for {
 		compatible, err := utils.CheckBatchCompressedDataCompatibility(batch, codecVersion)
 		if err != nil {
-			log.Error("Failed to check batch compressed data compatibility", "codecVersion", codecVersion, "err", err)
+			log.Error("Failed to check batch compressed data compatibility", "batch index", batch.Index, "codecVersion", codecVersion, "err", err)
 			return err
 		}
 
@@ -182,10 +182,21 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 
 	if compatibilityBreachOccurred {
 		p.compressedDataCompatibilityBreachTotal.Inc()
+
+		// recalculate batch metrics after truncation
+		var calcErr error
+		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecVersion)
+		if calcErr != nil {
+			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
+		}
+
+		p.recordTimerBatchMetrics(metrics)
+		p.recordAllBatchMetrics(metrics)
 	}
 
+	p.proposeBatchUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, metrics, dbTX)
+		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, *metrics, dbTX)
 		if dbErr != nil {
 			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "error", dbErr)
 			return dbErr
@@ -302,7 +313,7 @@ func (p *BatchProposer) proposeBatch() error {
 			}
 
 			p.recordAllBatchMetrics(metrics)
-			return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
+			return p.updateDBBatchInfo(&batch, codecVersion, metrics)
 		}
 	}
 
@@ -320,7 +331,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.recordAllBatchMetrics(metrics)
-		return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
+		return p.updateDBBatchInfo(&batch, codecVersion, metrics)
 	}
 
 	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")
