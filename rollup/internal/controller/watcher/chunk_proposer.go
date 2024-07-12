@@ -168,7 +168,7 @@ func (p *ChunkProposer) TryProposeChunk() {
 	}
 }
 
-func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, metrics utils.ChunkMetrics) error {
+func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) error {
 	if chunk == nil {
 		return nil
 	}
@@ -201,9 +201,17 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 		p.compressedDataCompatibilityBreachTotal.Inc()
 	}
 
+	// calculate metrics before updating the chunk info in db
+	metrics, calcErr := utils.CalculateChunkMetrics(chunk, codecVersion)
+	if calcErr != nil {
+		return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
+	}
+	p.recordTimerChunkMetrics(metrics)
+	p.recordAllChunkMetrics(metrics)
+
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, metrics, dbTX)
+		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, *metrics, dbTX)
 		if err != nil {
 			log.Warn("ChunkProposer.InsertChunk failed", "err", err)
 			return err
@@ -257,12 +265,7 @@ func (p *ChunkProposer) proposeChunk() error {
 	// Including Curie block in a sole chunk.
 	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number.Cmp(p.chainCfg.CurieBlock) == 0 {
 		chunk := encoding.Chunk{Blocks: blocks[:1]}
-		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
-		if calcErr != nil {
-			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
-		}
-		p.recordTimerChunkMetrics(metrics)
-		return p.updateDBChunkInfo(&chunk, codecVersion, *metrics)
+		return p.updateDBChunkInfo(&chunk, codecVersion)
 	}
 
 	var chunk encoding.Chunk
@@ -273,8 +276,6 @@ func (p *ChunkProposer) proposeChunk() error {
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 		}
-
-		p.recordTimerChunkMetrics(metrics)
 
 		overEstimatedL1CommitGas := uint64(p.gasCostIncreaseMultiplier * float64(metrics.L1CommitGas))
 		if metrics.TxNum > p.maxTxNumPerChunk ||
@@ -305,14 +306,7 @@ func (p *ChunkProposer) proposeChunk() error {
 				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
-
-			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
-			if calcErr != nil {
-				return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
-			}
-
-			p.recordAllChunkMetrics(metrics)
-			return p.updateDBChunkInfo(&chunk, codecVersion, *metrics)
+			return p.updateDBChunkInfo(&chunk, codecVersion)
 		}
 	}
 
@@ -331,12 +325,10 @@ func (p *ChunkProposer) proposeChunk() error {
 			"current time", currentTimeSec)
 
 		p.chunkFirstBlockTimeoutReached.Inc()
-		p.recordAllChunkMetrics(metrics)
-		return p.updateDBChunkInfo(&chunk, codecVersion, *metrics)
+		return p.updateDBChunkInfo(&chunk, codecVersion)
 	}
 
 	log.Debug("pending blocks do not reach one of the constraints or contain a timeout block")
-	p.recordTimerChunkMetrics(metrics)
 	p.chunkBlocksProposeNotEnoughTotal.Inc()
 	return nil
 }
