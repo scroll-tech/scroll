@@ -14,6 +14,8 @@ RUN go mod download -x
 # Build rollup_relayer
 FROM base as builder
 
+RUN apt update && apt install ca-certificates -y
+
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     cd /src/rollup/cmd/rollup_relayer/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/rollup_relayer
