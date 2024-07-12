@@ -155,6 +155,8 @@ func (p *BatchProposer) TryProposeBatch() {
 }
 
 func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics utils.BatchMetrics) error {
+	compatibilityBreachOccurred := false
+
 	for {
 		compatible, err := utils.CheckBatchCompressedDataCompatibility(batch, codecVersion)
 		if err != nil {
@@ -172,9 +174,14 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 			return errors.New("cannot truncate batch with only 1 chunk for compatibility")
 		}
 
-		log.Info("Batch not compatible with compressed data, removing last chunk")
-		p.compressedDataCompatibilityBreachTotal.Inc()
+		compatibilityBreachOccurred = true
 		batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
+
+		log.Info("Batch not compatible with compressed data, removing last chunk", "batch index", batch.Index, "truncated chunk length", len(batch.Chunks))
+	}
+
+	if compatibilityBreachOccurred {
+		p.compressedDataCompatibilityBreachTotal.Inc()
 	}
 
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
