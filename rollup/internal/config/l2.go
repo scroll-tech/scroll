@@ -23,7 +23,7 @@ type L2Config struct {
 	// The batch_proposer config
 	BatchProposerConfig *BatchProposerConfig `json:"batch_proposer_config"`
 	// The bundle_proposer config
-	BundleProposerConfig *BatchProposerConfig `json:"bundle_proposer_config"`
+	BundleProposerConfig *BundleProposerConfig `json:"bundle_proposer_config"`
 }
 
 // ChunkProposerConfig loads chunk_proposer configuration items.

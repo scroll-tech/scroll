@@ -94,6 +94,11 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
 	}
 
+	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, genesis.Config, db, registry)
+	if err != nil {
+		log.Crit("failed to create bundleProposer", "config file", cfgFile, "error", err)
+	}
+
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db, registry)
 
 	// Watcher loop to fetch missing blocks
@@ -110,7 +115,11 @@ func action(ctx *cli.Context) error {
 
 	go utils.Loop(subCtx, 10*time.Second, batchProposer.TryProposeBatch)
 
+	go utils.Loop(subCtx, 10*time.Second, bundleProposer.TryProposeBundle)
+
 	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
+
+	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessPendingBundles)
 
 	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessPendingBundles)
 
