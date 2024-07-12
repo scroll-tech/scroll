@@ -194,7 +194,7 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 		compatibilityBreachOccurred = true
 		chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
 
-		log.Info("Chunk not compatible with compressed data, removing last block", "start block number", chunk.Blocks[0].Header.Number, "truncated block number", len(chunk.Blocks))
+		log.Info("Chunk not compatible with compressed data, removing last block", "start block number", chunk.Blocks[0].Header.Number, "truncated block length", len(chunk.Blocks))
 	}
 
 	if compatibilityBreachOccurred {
