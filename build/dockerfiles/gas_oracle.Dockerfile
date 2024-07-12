@@ -21,6 +21,8 @@ RUN --mount=target=. \
 # Pull gas_oracle into a second stage deploy ubuntu container
 FROM ubuntu:20.04
 
+RUN apt update && apt install ca-certificates -y
+
 ENV CGO_LDFLAGS="-ldl"
 
 COPY --from=builder /bin/gas_oracle /bin/
