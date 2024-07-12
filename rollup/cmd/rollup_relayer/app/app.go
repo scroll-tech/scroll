@@ -112,7 +112,7 @@ func action(ctx *cli.Context) error {
 
 	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
 
-	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessCommittedBatches)
+	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessPendingBundles)
 
 	// Finish start all rollup relayer functions.
 	log.Info("Start rollup-relayer successfully", "version", version.Version)

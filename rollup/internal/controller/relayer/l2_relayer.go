@@ -518,6 +518,12 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 			}
 		}
 
+		if bundle.EndBatchIndex < 274315 {
+			if err := r.finalizeBundle(bundle, false); err != nil {
+				log.Error("Failed to finalize timeout bundle without proof", "index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
+			}
+		}
+
 	case types.ProvingTaskVerified:
 		log.Info("Start to roll up zk proof", "hash", bundle.Hash)
 		r.metrics.rollupL2RelayerProcessPendingBundlesFinalizedTotal.Inc()
