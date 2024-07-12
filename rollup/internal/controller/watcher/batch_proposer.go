@@ -187,7 +187,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 		var calcErr error
 		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecVersion)
 		if calcErr != nil {
-			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
+			return fmt.Errorf("failed to calculate batch metrics, batch index: %v, error: %w", batch.Index, calcErr)
 		}
 
 		p.recordTimerBatchMetrics(metrics)
@@ -319,7 +319,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
 	if calcErr != nil {
-		return fmt.Errorf("failed to calculate batch metrics, batch index: %v, error: %w", batch.Index, calcErr)
+		return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 	}
 	currentTimeSec := uint64(time.Now().Unix())
 	if metrics.FirstBlockTimestamp+p.batchTimeoutSec < currentTimeSec || metrics.NumChunks == maxChunksThisBatch {
