@@ -204,7 +204,7 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 		var calcErr error
 		metrics, calcErr = utils.CalculateChunkMetrics(chunk, codecVersion)
 		if calcErr != nil {
-			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
+			return fmt.Errorf("failed to calculate chunk metrics, start block number: %v, error: %w", chunk.Blocks[0].Header.Number, calcErr)
 		}
 
 		p.recordTimerChunkMetrics(metrics)
