@@ -14,6 +14,8 @@ RUN go mod download -x
 # Build gas_oracle
 FROM base as builder
 
+RUN apt-get install ca-certificates -y
+
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     cd /src/rollup/cmd/gas_oracle/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/gas_oracle
