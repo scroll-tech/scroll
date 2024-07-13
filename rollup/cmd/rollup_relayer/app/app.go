@@ -32,8 +32,7 @@ func init() {
 	app.Name = "rollup-relayer"
 	app.Usage = "The Scroll Rollup Relayer"
 	app.Version = version.Version
-	app.Flags = append(app.Flags, utils.CommonFlags...)
-	app.Flags = append(app.Flags, utils.RollupRelayerFlags...)
+	app.Flags = append(app.Flags, append(utils.CommonFlags, utils.RollupRelayerFlags...)...)
 	app.Commands = []*cli.Command{}
 	app.Before = func(ctx *cli.Context) error {
 		return utils.LogSetup(ctx)
@@ -42,25 +41,26 @@ func init() {
 	utils.RegisterSimulation(app, utils.RollupRelayerApp)
 }
 
+func checkError(err error, msg string, ctx ...interface{}) {
+	if err != nil {
+		log.Crit(msg, ctx...)
+	}
+}
+
 func action(ctx *cli.Context) error {
 	// Load config file.
 	cfgFile := ctx.String(utils.ConfigFileFlag.Name)
 	cfg, err := config.NewConfig(cfgFile)
-	if err != nil {
-		log.Crit("failed to load config file", "config file", cfgFile, "error", err)
-	}
+	checkError(err, "failed to load config file", "config file", cfgFile, "error", err)
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
+	defer cancel()
+
 	// Init db connection
 	db, err := database.InitDB(cfg.DBConfig)
-	if err != nil {
-		log.Crit("failed to init db connection", "err", err)
-	}
+	checkError(err, "failed to init db connection", "err", err)
 	defer func() {
-		cancel()
-		if err = database.CloseDB(db); err != nil {
-			log.Crit("failed to close db connection", "error", err)
-		}
+		checkError(database.CloseDB(db), "failed to close db connection", "error", err)
 	}()
 
 	registry := prometheus.DefaultRegisterer
@@ -68,31 +68,21 @@ func action(ctx *cli.Context) error {
 
 	// Init l2geth connection
 	l2client, err := ethclient.Dial(cfg.L2Config.Endpoint)
-	if err != nil {
-		log.Crit("failed to connect l2 geth", "config file", cfgFile, "error", err)
-	}
+	checkError(err, "failed to connect l2 geth", "config file", cfgFile, "error", err)
 
 	genesisPath := ctx.String(utils.Genesis.Name)
 	genesis, err := utils.ReadGenesis(genesisPath)
-	if err != nil {
-		log.Crit("failed to read genesis", "genesis file", genesisPath, "error", err)
-	}
+	checkError(err, "failed to read genesis", "genesis file", genesisPath, "error", err)
 
 	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, initGenesis, relayer.ServiceTypeL2RollupRelayer, registry)
-	if err != nil {
-		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
-	}
+	checkError(err, "failed to create l2 relayer", "config file", cfgFile, "error", err)
 
 	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, genesis.Config, db, registry)
-	if err != nil {
-		log.Crit("failed to create chunkProposer", "config file", cfgFile, "error", err)
-	}
+	checkError(err, "failed to create chunkProposer", "config file", cfgFile, "error", err)
 
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, genesis.Config, db, registry)
-	if err != nil {
-		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
-	}
+	checkError(err, "failed to create batchProposer", "config file", cfgFile, "error", err)
 
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db, registry)
 
@@ -107,11 +97,8 @@ func action(ctx *cli.Context) error {
 	})
 
 	go utils.Loop(subCtx, 2*time.Second, chunkProposer.TryProposeChunk)
-
 	go utils.Loop(subCtx, 10*time.Second, batchProposer.TryProposeBatch)
-
 	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
-
 	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessCommittedBatches)
 
 	// Finish start all rollup relayer functions.
