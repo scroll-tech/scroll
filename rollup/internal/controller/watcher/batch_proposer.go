@@ -154,9 +154,49 @@ func (p *BatchProposer) TryProposeBatch() {
 	}
 }
 
-func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics utils.BatchMetrics) error {
+func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics *utils.BatchMetrics) error {
+	compatibilityBreachOccurred := false
+
+	for {
+		compatible, err := utils.CheckBatchCompressedDataCompatibility(batch, codecVersion)
+		if err != nil {
+			log.Error("Failed to check batch compressed data compatibility", "batch index", batch.Index, "codecVersion", codecVersion, "err", err)
+			return err
+		}
+
+		if compatible {
+			break
+		}
+
+		if len(batch.Chunks) == 1 {
+			log.Error("Cannot truncate batch with only 1 chunk for compatibility", "start block number", batch.Chunks[0].Blocks[0].Header.Number.Uint64(),
+				"end block number", batch.Chunks[0].Blocks[len(batch.Chunks[0].Blocks)-1].Header.Number.Uint64())
+			return errors.New("cannot truncate batch with only 1 chunk for compatibility")
+		}
+
+		compatibilityBreachOccurred = true
+		batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
+
+		log.Info("Batch not compatible with compressed data, removing last chunk", "batch index", batch.Index, "truncated chunk length", len(batch.Chunks))
+	}
+
+	if compatibilityBreachOccurred {
+		p.compressedDataCompatibilityBreachTotal.Inc()
+
+		// recalculate batch metrics after truncation
+		var calcErr error
+		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecVersion)
+		if calcErr != nil {
+			return fmt.Errorf("failed to calculate batch metrics, batch index: %v, error: %w", batch.Index, calcErr)
+		}
+
+		p.recordTimerBatchMetrics(metrics)
+		p.recordAllBatchMetrics(metrics)
+	}
+
+	p.proposeBatchUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, metrics, dbTX)
+		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, *metrics, dbTX)
 		if dbErr != nil {
 			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "error", dbErr)
 			return dbErr
@@ -239,19 +279,6 @@ func (p *BatchProposer) proposeBatch() error {
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
 		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
-
-		var compressErr *encoding.CompressedDataCompatibilityError
-		if errors.As(calcErr, &compressErr) {
-			if i == 0 {
-				// The first chunk fails compressed data compatibility check, manual fix is needed.
-				return fmt.Errorf("the first chunk fails compressed data compatibility check; start block number: %v, end block number: %v", dbChunks[0].StartBlockNumber, dbChunks[0].EndBlockNumber)
-			}
-			log.Warn("breaking limit condition in proposing a new batch due to a compressed data compatibility breach", "start chunk index", dbChunks[0].Index, "end chunk index", dbChunks[len(dbChunks)-1].Index)
-			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
-			p.compressedDataCompatibilityBreachTotal.Inc()
-			return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
-		}
-
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
@@ -286,7 +313,7 @@ func (p *BatchProposer) proposeBatch() error {
 			}
 
 			p.recordAllBatchMetrics(metrics)
-			return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
+			return p.updateDBBatchInfo(&batch, codecVersion, metrics)
 		}
 	}
 
@@ -304,7 +331,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.recordAllBatchMetrics(metrics)
-		return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
+		return p.updateDBBatchInfo(&batch, codecVersion, metrics)
 	}
 
 	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")
