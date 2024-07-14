@@ -120,7 +120,6 @@ func setupEnv(t *testing.T) {
 
 func TestSender(t *testing.T) {
 	setupEnv(t)
-
 	t.Run("test new sender", testNewSender)
 	t.Run("test send and retrieve transaction", testSendAndRetrieveTransaction)
 	t.Run("test fallback gas limit", testFallbackGasLimit)
@@ -135,6 +134,7 @@ func TestSender(t *testing.T) {
 	t.Run("test check pending transaction replaced tx confirmed", testCheckPendingTransactionReplacedTxConfirmed)
 	t.Run("test check pending transaction multiple times with only one transaction pending", testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending)
 	t.Run("test blob transaction with blobhash op contract call", testBlobTransactionWithBlobhashOpContractCall)
+	t.Run("test test send blob-carrying tx over limit", testSendBlobCarryingTxOverLimit)
 }
 
 func testNewSender(t *testing.T) {
@@ -817,4 +817,23 @@ func randFieldElement() [32]byte {
 	r.SetBytes(bytes)
 
 	return gokzg4844.SerializeScalar(r)
+}
+
+func testSendBlobCarryingTxOverLimit(t *testing.T) {
+	cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
+	cfgCopy.TxType = "DynamicFeeTx"
+
+	sqlDB, err := db.DB()
+	assert.NoError(t, err)
+	assert.NoError(t, migrate.ResetDB(sqlDB))
+	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeCommitBatch, db, nil)
+	assert.NoError(t, err)
+
+	for i := 0; i < cfgCopy.MaxBlobCarryingPendingTxs; i++ {
+		_, err := s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
+		assert.NoError(t, err)
+	}
+	_, err = s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
+	assert.ErrorIs(t, err, ErrTooMuchBlobCarryingPendingTxs)
+	s.Stop()
 }

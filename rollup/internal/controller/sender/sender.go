@@ -39,6 +39,11 @@ const (
 	DynamicFeeTxType = "DynamicFeeTx"
 )
 
+var (
+	// ErrTooMuchBlobCarryingPendingTxs
+	ErrTooMuchBlobCarryingPendingTxs = errors.New("the limit of pending blob-carrying transactions has been exceeded")
+)
+
 // Confirmation struct used to indicate transaction confirmation details
 type Confirmation struct {
 	ContextID    string
@@ -180,6 +185,16 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 	)
 
 	if blob != nil {
+		if s.senderType == types.SenderTypeCommitBatch {
+			txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(s.ctx, s.senderType, s.config.MaxBlobCarryingPendingTxs)
+			if err != nil {
+				log.Error("failed to get pending or replaced transactions", "err: %w", err)
+			}
+			if len(txs) >= s.config.MaxBlobCarryingPendingTxs {
+				return common.Hash{}, ErrTooMuchBlobCarryingPendingTxs
+			}
+
+		}
 		sidecar, err = makeSidecar(blob)
 		if err != nil {
 			log.Error("failed to make sidecar for blob transaction", "error", err)

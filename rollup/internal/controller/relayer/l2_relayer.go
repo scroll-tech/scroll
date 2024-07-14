@@ -2,6 +2,7 @@ package relayer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"sort"
@@ -403,6 +404,10 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		txHash, err := r.commitSender.SendTransaction(dbBatch.Hash, &r.cfg.RollupContractAddress, calldata, blob, fallbackGasLimit)
 		if err != nil {
+			if errors.Is(err, sender.ErrTooMuchBlobCarryingPendingTxs) {
+				log.Debug("Didn't send commitBatch tx to layer 1",
+					"err", err)
+			}
 			log.Error(
 				"Failed to send commitBatch tx to layer1",
 				"index", dbBatch.Index,
