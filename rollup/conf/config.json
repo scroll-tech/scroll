@@ -19,7 +19,8 @@
         "min_gas_price": 0,
         "gas_price_diff": 50000,
         "l1_base_fee_weight": 0.132,
-        "l1_blob_base_fee_weight":  0.145
+        "l1_blob_base_fee_weight":  0.145,
+        "gas_price_oracle_update_window": 5
       },
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }
