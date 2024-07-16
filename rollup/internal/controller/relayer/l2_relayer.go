@@ -18,7 +18,6 @@ import (
 	"github.com/scroll-tech/da-codec/encoding/codecv3"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
-	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -175,45 +174,44 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 }
 
 func (r *Layer2Relayer) initializeGenesis() error {
-	if count, err := r.batchOrm.GetBatchCount(r.ctx); err != nil {
-		return fmt.Errorf("failed to get batch count: %v", err)
-	} else if count > 0 {
-		log.Info("genesis already imported", "batch count", count)
-		return nil
-	}
-
-	genesis, err := r.l2Client.HeaderByNumber(r.ctx, big.NewInt(0))
+	lastBernoulliBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, 274314 /* last bernoulli batch */)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve L2 genesis header: %v", err)
+		log.Error("Failed to fetch pending L2 batches", "err", err)
+		return err
 	}
 
-	log.Info("retrieved L2 genesis header", "hash", genesis.Hash().String())
+	lastBernoulliChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, lastBernoulliBatch.StartChunkIndex, lastBernoulliBatch.EndChunkIndex)
+	if err != nil {
+		log.Error("failed to get chunks in range", "err", err)
+		return err
+	}
 
-	chunk := &encoding.Chunk{
-		Blocks: []*encoding.Block{{
-			Header:         genesis,
-			Transactions:   nil,
-			WithdrawRoot:   common.Hash{},
-			RowConsumption: &gethTypes.RowConsumption{},
-		}},
+	chunks := make([]*encoding.Chunk, len(lastBernoulliChunks))
+	for i, c := range lastBernoulliChunks {
+		blocks, getErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
+		if getErr != nil {
+			log.Error("failed to get blocks in range", "err", getErr)
+			return err
+		}
+		chunks[i] = &encoding.Chunk{Blocks: blocks}
+	}
+
+	batch := &encoding.Batch{
+		Index:                      lastBernoulliBatch.Index,
+		TotalL1MessagePoppedBefore: lastBernoulliChunks[0].TotalL1MessagesPoppedBefore,
+		ParentBatchHash:            common.HexToHash(lastBernoulliBatch.ParentBatchHash),
+		Chunks:                     chunks,
 	}
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		var dbChunk *orm.Chunk
-		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, encoding.CodecV0, rutils.ChunkMetrics{}, dbTX)
+		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunks[len(chunks)-1], encoding.CodecV0, rutils.ChunkMetrics{}, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
 
 		if err = r.chunkOrm.UpdateProvingStatus(r.ctx, dbChunk.Hash, types.ProvingTaskVerified, dbTX); err != nil {
 			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
-		}
-
-		batch := &encoding.Batch{
-			Index:                      0,
-			TotalL1MessagePoppedBefore: 0,
-			ParentBatchHash:            common.Hash{},
-			Chunks:                     []*encoding.Chunk{chunk},
 		}
 
 		var dbBatch *orm.Batch
