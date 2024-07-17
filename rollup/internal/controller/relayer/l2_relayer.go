@@ -2,6 +2,7 @@ package relayer
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -985,7 +986,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV3(dbBatch *orm.Batch, d
 		return nil, nil, fmt.Errorf("failed to pack commitBatchWithBlobProof: %w", packErr)
 	}
 
-	log.Info("Layer2Relayer v3", "blob", daBatch.Blob())
+	log.Info("Layer2Relayer v3", "blob", hex.EncodeToString(daBatch.BlobVersionedHash.Bytes()))
 
 	return calldata, daBatch.Blob(), nil
 }
