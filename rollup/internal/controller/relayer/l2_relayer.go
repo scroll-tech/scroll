@@ -984,6 +984,9 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV3(dbBatch *orm.Batch, d
 	if packErr != nil {
 		return nil, nil, fmt.Errorf("failed to pack commitBatchWithBlobProof: %w", packErr)
 	}
+
+	log.Info("Layer2Relayer v3", "blob", daBatch.Blob())
+
 	return calldata, daBatch.Blob(), nil
 }
 
