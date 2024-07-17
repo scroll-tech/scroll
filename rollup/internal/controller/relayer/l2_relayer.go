@@ -33,7 +33,6 @@ import (
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/sender"
 	"scroll-tech/rollup/internal/orm"
-	rutils "scroll-tech/rollup/internal/utils"
 )
 
 // Layer2Relayer is responsible for:
@@ -180,63 +179,9 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		return err
 	}
 
-	lastBernoulliChunks, err := r.chunkOrm.GetChunksInRange(r.ctx, lastBernoulliBatch.StartChunkIndex, lastBernoulliBatch.EndChunkIndex)
-	if err != nil {
-		log.Error("failed to get chunks in range", "err", err)
-		return err
-	}
-
-	chunks := make([]*encoding.Chunk, len(lastBernoulliChunks))
-	for i, c := range lastBernoulliChunks {
-		blocks, getErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
-		if getErr != nil {
-			log.Error("failed to get blocks in range", "err", getErr)
-			return err
-		}
-		chunks[i] = &encoding.Chunk{Blocks: blocks}
-	}
-
-	batch := &encoding.Batch{
-		Index:                      lastBernoulliBatch.Index,
-		TotalL1MessagePoppedBefore: lastBernoulliChunks[0].TotalL1MessagesPoppedBefore,
-		ParentBatchHash:            common.HexToHash(lastBernoulliBatch.ParentBatchHash),
-		Chunks:                     chunks,
-	}
-
-	err = r.db.Transaction(func(dbTX *gorm.DB) error {
-		var dbChunk *orm.Chunk
-		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunks[len(chunks)-1], encoding.CodecV0, rutils.ChunkMetrics{}, dbTX)
-		if err != nil {
-			return fmt.Errorf("failed to insert chunk: %v", err)
-		}
-
-		if err = r.chunkOrm.UpdateProvingStatus(r.ctx, dbChunk.Hash, types.ProvingTaskVerified, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis chunk proving status: %v", err)
-		}
-
-		var dbBatch *orm.Batch
-		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, rutils.BatchMetrics{}, dbTX)
-		if err != nil {
-			return fmt.Errorf("failed to insert batch: %v", err)
-		}
-
-		if err = r.chunkOrm.UpdateBatchHashInRange(r.ctx, 0, 0, dbBatch.Hash, dbTX); err != nil {
-			return fmt.Errorf("failed to update batch hash for chunks: %v", err)
-		}
-
-		if err = r.batchOrm.UpdateProvingStatus(r.ctx, dbBatch.Hash, types.ProvingTaskVerified, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis batch proving status: %v", err)
-		}
-
-		if err = r.batchOrm.UpdateRollupStatus(r.ctx, dbBatch.Hash, types.RollupFinalized, dbTX); err != nil {
-			return fmt.Errorf("failed to update genesis batch rollup status: %v", err)
-		}
-
-		// commit genesis batch on L1
-		// note: we do this inside the DB transaction so that we can revert all DB changes if this step fails
-		return r.commitGenesisBatch(dbBatch.Hash, dbBatch.BatchHeader, common.HexToHash(dbBatch.StateRoot))
-	})
-
+	// commit genesis batch on L1
+	// note: we do this inside the DB transaction so that we can revert all DB changes if this step fails
+	err = r.commitGenesisBatch(lastBernoulliBatch.Hash, lastBernoulliBatch.BatchHeader, common.HexToHash(lastBernoulliBatch.StateRoot))
 	if err != nil {
 		return fmt.Errorf("update genesis transaction failed: %v", err)
 	}
