@@ -149,7 +149,7 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 
 	var l2Blocks []L2Block
 	if err := db.Find(&l2Blocks).Error; err != nil {
-		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange hhf0 error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
 	}
 
 	// sanity check
@@ -162,18 +162,18 @@ func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint6
 		var block encoding.Block
 
 		if err := json.Unmarshal([]byte(v.Transactions), &block.Transactions); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange hhf1 error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
 		}
 
 		block.Header = &gethTypes.Header{}
 		if err := json.Unmarshal([]byte(v.Header), block.Header); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange hhf2 error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
 		}
 
 		block.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
 
 		if err := json.Unmarshal([]byte(v.RowConsumption), &block.RowConsumption); err != nil {
-			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange hhf3 error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
 		}
 
 		blocks = append(blocks, &block)
