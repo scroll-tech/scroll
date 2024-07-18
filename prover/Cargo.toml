@@ -10,13 +10,13 @@ edition = "2021"
 ethers-signers  = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 halo2curves = { git = "https://github.com/scroll-tech/halo2curves", branch = "v0.1.0" }
 [patch."https://github.com/privacy-scaling-explorations/halo2.git"]
-halo2_proofs = {  git = "https://github.com/snarkify/halo2-scroll.git", tag = "snarkify-v0.1" }
+halo2_proofs = {  git = "https://github.com/snarkify/halo2-scroll.git", tag = "snarkify-v0.1.2" }
 [patch."https://github.com/privacy-scaling-explorations/poseidon.git"]
 poseidon = { git = "https://github.com/scroll-tech/poseidon.git", branch = "main" }
 [patch."https://github.com/privacy-scaling-explorations/bls12_381"]
 bls12_381 = { git = "https://github.com/scroll-tech/bls12_381", branch = "feat/impl_scalar_field" }
 [patch."https://github.com/scroll-tech/halo2.git"]
-halo2_proofs = {  git = "https://github.com/snarkify/halo2-scroll.git", tag = "snarkify-v0.1" }
+halo2_proofs = {  git = "https://github.com/snarkify/halo2-scroll.git", tag = "snarkify-v0.1.2" }
 
 [dependencies]
 anyhow = "1.0"
@@ -47,6 +47,6 @@ sled = "0.34.7"
 http = "1.1.0"
 clap = { version = "4.5", features = ["derive"] }
 ctor = "0.2.8"
-snarkify-sdk = "0.1.0-alpha.7"
+snarkify-sdk = "0.1.0-alpha.8"
 async-trait = "0.1.80"
 scopeguard = "1.2.0"

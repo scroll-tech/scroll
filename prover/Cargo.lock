@@ -1366,7 +1366,7 @@ dependencies = [
 [[package]]
 name = "cusnark"
 version = "0.1.0"
-source = "git+https://github.com/snarkify/cusnark.git?branch=main#a8b218a7efc14b346fd155ee897cb06b365638f7"
+source = "git+https://github.com/snarkify/cusnark.git?tag=v0.1.1#05c816e8dee330ab0f302072ca3a2c083a90e49c"
 dependencies = [
  "ark-bn254",
  "ark-ec",
@@ -2479,7 +2479,7 @@ dependencies = [
 [[package]]
 name = "halo2_proofs"
 version = "1.1.0"
-source = "git+https://github.com/snarkify/halo2-scroll.git?tag=snarkify-v0.1#d27d547489e93cee603ee88cedf38205f18bd0da"
+source = "git+https://github.com/snarkify/halo2-scroll.git?tag=snarkify-v0.1.2#7507bb485286c199afe357f5c6c5a06326ea8464"
 dependencies = [
  "ark-std 0.3.0",
  "blake2b_simd",
@@ -5123,9 +5123,9 @@ dependencies = [
 
 [[package]]
 name = "snarkify-sdk"
-version = "0.1.0-alpha.7"
+version = "0.1.0-alpha.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "893565908cf2a60b6df65a74eaae430bb479255c15d576727c0c521fd988efd9"
+checksum = "ff0cd1e7be7f259cf8203735e3a3574f02dbddc28679f44492fc20c909620fea"
 dependencies = [
  "actix-http",
  "actix-rt",
@@ -5178,7 +5178,7 @@ dependencies = [
 [[package]]
 name = "sppark"
 version = "0.1.5"
-source = "git+https://github.com/snarkify/cusnark.git?branch=main#a8b218a7efc14b346fd155ee897cb06b365638f7"
+source = "git+https://github.com/snarkify/cusnark.git?tag=v0.1.1#05c816e8dee330ab0f302072ca3a2c083a90e49c"
 dependencies = [
  "cc",
  "which",
