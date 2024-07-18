@@ -46,9 +46,10 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
 
 	v := &Verifier{
-		cfg:        cfg,
-		ChunkVKMap: make(map[string]string),
-		BatchVKMap: make(map[string]string),
+		cfg:         cfg,
+		ChunkVKMap:  make(map[string]string),
+		BatchVKMap:  make(map[string]string),
+		BundleVkMap: make(map[string]string),
 	}
 
 	bundleVK, err := v.readVK(path.Join(cfg.AssetsPath, "vk_bundle.vkey"))
