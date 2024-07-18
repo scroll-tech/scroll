@@ -126,6 +126,9 @@ func (o *Bundle) GetFirstPendingBundle(ctx context.Context) (*Bundle, error) {
 
 	var pendingBundle Bundle
 	if err := db.First(&pendingBundle).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("Bundle.GetFirstPendingBundle error: %w", err)
 	}
 	return &pendingBundle, nil
