@@ -174,6 +174,15 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 }
 
 func (r *Layer2Relayer) initializeGenesis() error {
+	latestBatch, err := r.batchOrm.GetLatestBatch(r.ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get latest batch: %v", err)
+	}
+	if latestBatch.Index > 274314 {
+		log.Info("genesis already imported")
+		return nil
+	}
+
 	lastBernoulliBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, 274314 /* last bernoulli batch */)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
