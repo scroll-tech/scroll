@@ -505,10 +505,14 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 	r.metrics.rollupL2RelayerProcessPendingBundlesTotal.Inc()
 
 	bundle, err := r.bundleOrm.GetFirstPendingBundle(r.ctx)
+	if bundle == nil && err == nil {
+		return
+	}
 	if err != nil {
 		log.Error("Failed to fetch first pending L2 bundle", "err", err)
 		return
 	}
+
 	status := types.ProvingStatus(bundle.ProvingStatus)
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
