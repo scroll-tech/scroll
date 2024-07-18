@@ -167,6 +167,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                         );
                         vk
                     })
+                    .filter(|vk| !vk.is_empty())
                     .collect::<Vec<String>>()
             })
             .collect::<Vec<String>>()

@@ -141,7 +141,7 @@ func (c *L2MessageFetcher) fetchAndSaveEvents(confirmation uint64) {
 			return
 		}
 
-		if updateErr := c.eventUpdateLogic.UpdateL1BatchIndexAndStatus(c.ctx, c.l2SyncHeight); updateErr != nil {
+		if updateErr := c.eventUpdateLogic.UpdateL2WithdrawMessageProofs(c.ctx, c.l2SyncHeight); updateErr != nil {
 			log.Error("failed to update L1 batch index and status", "from", from, "to", to, "err", updateErr)
 			return
 		}

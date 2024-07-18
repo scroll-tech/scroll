@@ -125,6 +125,11 @@ func (b *EventUpdateLogic) L1InsertOrUpdate(ctx context.Context, l1FetcherResult
 }
 
 func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, batchIndex, startBlock, endBlock uint64) error {
+	if startBlock > endBlock {
+		log.Warn("start block is greater than end block", "start", startBlock, "end", endBlock)
+		return nil
+	}
+
 	l2WithdrawMessages, err := b.crossMessageOrm.GetL2WithdrawalsByBlockRange(ctx, startBlock, endBlock)
 	if err != nil {
 		log.Error("failed to get L2 withdrawals by batch index", "batch index", batchIndex, "err", err)
@@ -173,24 +178,42 @@ func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, bat
 	return nil
 }
 
-// UpdateL1BatchIndexAndStatus updates L1 finalized batch index and status
-func (b *EventUpdateLogic) UpdateL1BatchIndexAndStatus(ctx context.Context, height uint64) error {
-	finalizedBatches, err := b.batchEventOrm.GetFinalizedBatchesLEBlockHeight(ctx, height)
+// UpdateL2WithdrawMessageProofs updates L2 withdrawal message proofs.
+func (b *EventUpdateLogic) UpdateL2WithdrawMessageProofs(ctx context.Context, height uint64) error {
+	lastUpdatedFinalizedBlockHeight, err := b.batchEventOrm.GetLastUpdatedFinalizedBlockHeight(ctx)
 	if err != nil {
-		log.Error("failed to get batches >= block height", "error", err)
+		log.Error("failed to get last updated finalized block height", "error", err)
+		return err
+	}
+
+	finalizedBatches, err := b.batchEventOrm.GetUnupdatedFinalizedBatchesLEBlockHeight(ctx, height)
+	if err != nil {
+		log.Error("failed to get unupdated finalized batches >= block height", "error", err)
 		return err
 	}
 
 	for _, finalizedBatch := range finalizedBatches {
-		log.Info("update finalized batch info of L2 withdrawals", "index", finalizedBatch.BatchIndex, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber)
-		if updateErr := b.updateL2WithdrawMessageInfos(ctx, finalizedBatch.BatchIndex, finalizedBatch.StartBlockNumber, finalizedBatch.EndBlockNumber); updateErr != nil {
-			log.Error("failed to update L2 withdraw message infos", "index", finalizedBatch.BatchIndex, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber, "error", updateErr)
+		log.Info("update finalized batch or bundle info of L2 withdrawals", "index", finalizedBatch.BatchIndex, "lastUpdatedFinalizedBlockHeight", lastUpdatedFinalizedBlockHeight, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber)
+		// This method is compatible with both "finalize by batch" and "finalize by bundle" modes:
+		// - In "finalize by batch" mode, each batch emits a FinalizedBatch event.
+		// - In "finalize by bundle" mode, all batches in the bundle emit only one FinalizedBatch event, using the last batch's index and hash.
+		//
+		// The method updates two types of information in L2 withdrawal messages:
+		// 1. Withdraw proof generation:
+		//    - finalize by batch: Generates proofs for each batch.
+		//    - finalize by bundle: Generates proofs for the entire bundle at once.
+		// 2. Batch index updating:
+		//    - finalize by batch: Updates the batch index for withdrawal messages in each processed batch.
+		//    - finalize by bundle: Updates the batch index for all withdrawal messages in the bundle, using the index of the last batch in the bundle.
+		if updateErr := b.updateL2WithdrawMessageInfos(ctx, finalizedBatch.BatchIndex, lastUpdatedFinalizedBlockHeight+1, finalizedBatch.EndBlockNumber); updateErr != nil {
+			log.Error("failed to update L2 withdraw message infos", "index", finalizedBatch.BatchIndex, "lastUpdatedFinalizedBlockHeight", lastUpdatedFinalizedBlockHeight, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber, "error", updateErr)
 			return updateErr
 		}
 		if dbErr := b.batchEventOrm.UpdateBatchEventStatus(ctx, finalizedBatch.BatchIndex); dbErr != nil {
-			log.Error("failed to update batch event status as updated", "index", finalizedBatch.BatchIndex, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber, "error", dbErr)
+			log.Error("failed to update batch event status as updated", "index", finalizedBatch.BatchIndex, "lastUpdatedFinalizedBlockHeight", lastUpdatedFinalizedBlockHeight, "start", finalizedBatch.StartBlockNumber, "end", finalizedBatch.EndBlockNumber, "error", dbErr)
 			return dbErr
 		}
+		lastUpdatedFinalizedBlockHeight = finalizedBatch.EndBlockNumber
 		b.eventUpdateLogicL1FinalizeBatchEventL2BlockUpdateHeight.Set(float64(finalizedBatch.EndBlockNumber))
 	}
 	return nil
