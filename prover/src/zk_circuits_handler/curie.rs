@@ -201,6 +201,7 @@ impl CircuitsHandler for CurieHandler {
                 .batch_prover
                 .as_ref()
                 .and_then(|prover| prover.borrow().get_vk()),
+            TaskType::Bundle => None,
             _ => unreachable!(),
         }
     }
