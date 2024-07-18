@@ -3,6 +3,7 @@ package provertask
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -181,21 +182,31 @@ func (cp *ChunkProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *prov
 		blockRanges   [2]*blockRange
 		err           error
 	)
+	var blockRange *blockRange
 	for i := 0; i < 2; i++ {
 		hardForkNames[i] = cp.reverseVkMap[getTaskParameter.VKs[i]]
 		blockRanges[i], err = cp.getBlockRangeByName(hardForkNames[i])
-		if err != nil {
-			return nil, err
+		if err == nil && blockRanges[i] != nil {
+			if blockRange == nil {
+				blockRange = blockRanges[i]
+			} else {
+				var err2 error
+				blockRange, err2 = blockRange.merge(*blockRanges[i])
+				if err2 != nil {
+					return nil, err2
+				}
+			}
 		}
 	}
-	blockRange, err := blockRanges[0].merge(*blockRanges[1])
-	if err != nil {
-		return nil, err
+	if blockRange == nil {
+		log.Error("blockRange empty")
+		return nil, errors.New("blockRange empty")
 	}
+
 	var hardForkName string
 	getHardForkName := func(chunk *orm.Chunk) (string, error) {
 		for i := 0; i < 2; i++ {
-			if blockRanges[i].contains(chunk.StartBlockNumber, chunk.EndBlockNumber) {
+			if blockRanges[i] != nil && blockRanges[i].contains(chunk.StartBlockNumber, chunk.EndBlockNumber) {
 				hardForkName = hardForkNames[i]
 				break
 			}
@@ -235,7 +246,7 @@ func (r *blockRange) contains(start, end uint64) bool {
 func (cp *ChunkProverTask) getBlockRangeByName(hardForkName string) (*blockRange, error) {
 	hardForkNumber, err := cp.getHardForkNumberByName(hardForkName)
 	if err != nil {
-		log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", hardForkName)
+		// log.Error("chunk assign failure because of the hard fork name don't exist", "fork name", hardForkName)
 		return nil, err
 	}
 

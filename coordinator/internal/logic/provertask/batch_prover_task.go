@@ -3,6 +3,7 @@ package provertask
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -190,7 +191,7 @@ func (bp *BatchProverTask) doAssignTaskWithinChunkRange(ctx *gin.Context, taskCt
 func (bp *BatchProverTask) getChunkRangeByName(ctx *gin.Context, hardForkName string) (*chunkIndexRange, error) {
 	hardForkNumber, err := bp.getHardForkNumberByName(hardForkName)
 	if err != nil {
-		log.Error("batch assign failure because of the hard fork name don't exist", "fork name", hardForkName)
+		// log.Error("batch assign failure because of the hard fork name don't exist", "fork name", hardForkName)
 		return nil, err
 	}
 
@@ -246,10 +247,7 @@ func (bp *BatchProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *prov
 	for i := 0; i < 2; i++ {
 		hardForkNames[i] = bp.reverseVkMap[getTaskParameter.VKs[i]]
 		chunkRanges[i], err = bp.getChunkRangeByName(ctx, hardForkNames[i])
-		if err != nil {
-			return nil, err
-		}
-		if chunkRanges[i] != nil {
+		if err == nil && chunkRanges[i] != nil {
 			if chunkRange == nil {
 				chunkRange = chunkRanges[i]
 			} else {
@@ -258,7 +256,8 @@ func (bp *BatchProverTask) assignWithTwoCircuits(ctx *gin.Context, taskCtx *prov
 		}
 	}
 	if chunkRange == nil {
-		return nil, nil
+		log.Error("chunkRange empty")
+		return nil, errors.New("chunkRange empty")
 	}
 	var hardForkName string
 	getHardForkName := func(batch *orm.Batch) (string, error) {
