@@ -198,7 +198,7 @@ pub unsafe extern "C" fn verify_batch_proof(
             // Post upgrade #4 (Darwin), batch proofs are not EVM-verifiable. Instead they are
             // halo2 proofs meant to be bundled recursively.
             let proof = serde_json::from_slice::<BatchProofV4>(proof.as_slice()).unwrap();
-            VERIFIER_V4.get().unwrap().verify_batch_proof(proof)
+            VERIFIER_V4.get().unwrap().verify_batch_proof(&proof)
         }
     });
     verified.unwrap_or(false) as c_char
