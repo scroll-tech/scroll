@@ -30,7 +30,7 @@ ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branc
 halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "v1.1" }
 snark-verifier-sdk = { git = "https://github.com/scroll-tech/snark-verifier", branch = "develop", default-features = false, features = ["loader_halo2", "loader_evm", "halo2-pse"] }
 prover_curie = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.11.4", package = "prover", default-features = false, features = ["parallel_syn", "scroll"] }
-prover_darwin = { git = "https://github.com/scroll-tech/zkevm-circuits.git", branch = "feat/agg_recursion", package = "prover", default-features = false, features = ["parallel_syn", "scroll"] }
+prover_darwin = { git = "https://github.com/scroll-tech/zkevm-circuits.git", branch = "release/v0.12.0", package = "prover", default-features = false, features = ["parallel_syn", "scroll"] }
 base64 = "0.13.1"
 reqwest = { version = "0.12.4", features = ["gzip"] }
 reqwest-middleware = "0.3"
