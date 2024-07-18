@@ -31,7 +31,7 @@ dependencies = [
 [[package]]
 name = "aggregator"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "ark-std 0.3.0",
  "bitstream-io",
@@ -635,7 +635,7 @@ checksum = "79296716171880943b8470b5f8d03aa55eb2e645a4874bdbb28adb49162e012c"
 [[package]]
 name = "bus-mapping"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "eth-types 0.11.0",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
@@ -1312,7 +1312,7 @@ dependencies = [
 [[package]]
 name = "eth-types"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "base64 0.13.1",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
@@ -1561,7 +1561,7 @@ dependencies = [
 [[package]]
 name = "external-tracer"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "eth-types 0.11.0",
  "geth-utils 0.11.0",
@@ -1791,7 +1791,7 @@ dependencies = [
 [[package]]
 name = "gadgets"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "eth-types 0.11.0",
  "halo2_proofs",
@@ -1826,7 +1826,7 @@ dependencies = [
 [[package]]
 name = "geth-utils"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "env_logger 0.10.2",
  "gobuild",
@@ -2676,7 +2676,7 @@ dependencies = [
 [[package]]
 name = "mock"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "eth-types 0.11.0",
  "ethers-core 2.0.7 (git+https://github.com/scroll-tech/ethers-rs.git?branch=v2.0.7)",
@@ -2706,7 +2706,7 @@ dependencies = [
 [[package]]
 name = "mpt-zktrie"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "eth-types 0.11.0",
  "halo2curves",
@@ -3312,7 +3312,7 @@ dependencies = [
 [[package]]
 name = "prover"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "aggregator 0.11.0",
  "anyhow",
@@ -5341,7 +5341,7 @@ dependencies = [
 [[package]]
 name = "zkevm-circuits"
 version = "0.11.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.4#38a68e22d3d8449bd39a50c22da55b9e741de453"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.11.5#6ea8fb3fad4d8a8bfe873e18e2f881ad1c807ded"
 dependencies = [
  "array-init",
  "bus-mapping 0.11.0",
