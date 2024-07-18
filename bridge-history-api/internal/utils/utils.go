@@ -66,32 +66,55 @@ func ComputeMessageHash(
 	return common.BytesToHash(crypto.Keccak256(data))
 }
 
-type commitBatchArgs struct {
-	Version                uint8
-	ParentBatchHeader      []byte
-	Chunks                 [][]byte
-	SkippedL1MessageBitmap []byte
-}
-
 // GetBatchRangeFromCalldata find the block range from calldata, both inclusive.
-func GetBatchRangeFromCalldata(calldata []byte) (uint64, uint64, error) {
-	method := backendabi.IScrollChainABI.Methods["commitBatch"]
-	values, err := method.Inputs.Unpack(calldata[4:])
-	if err != nil {
-		// special case: import genesis batch
-		method = backendabi.IScrollChainABI.Methods["importGenesisBatch"]
-		_, err2 := method.Inputs.Unpack(calldata[4:])
-		if err2 == nil {
-			// genesis batch
-			return 0, 0, nil
-		}
-		// none of "commitBatch" and "importGenesisBatch" match, give up
-		return 0, 0, err
+func GetBatchRangeFromCalldata(txData []byte) (uint64, uint64, error) {
+	const methodIDLength = 4
+	if len(txData) < methodIDLength {
+		return 0, 0, fmt.Errorf("transaction data is too short, length of tx data: %v, minimum length required: %v", len(txData), methodIDLength)
 	}
-	args := commitBatchArgs{}
-	err = method.Inputs.Copy(&args, values)
+	method, err := backendabi.IScrollChainABI.MethodById(txData[:methodIDLength])
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("failed to get method by ID, ID: %v, err: %w", txData[:methodIDLength], err)
+	}
+	values, err := method.Inputs.Unpack(txData[methodIDLength:])
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to unpack transaction data using ABI, tx data: %v, err: %w", txData, err)
+	}
+
+	var chunks [][]byte
+
+	if method.Name == "importGenesisBatch" {
+		return 0, 0, nil
+	} else if method.Name == "commitBatch" {
+		type commitBatchArgs struct {
+			Version                uint8
+			ParentBatchHeader      []byte
+			Chunks                 [][]byte
+			SkippedL1MessageBitmap []byte
+		}
+
+		var args commitBatchArgs
+		if err = method.Inputs.Copy(&args, values); err != nil {
+			return 0, 0, fmt.Errorf("failed to decode calldata into commitBatch args, values: %+v, err: %w", values, err)
+		}
+
+		chunks = args.Chunks
+
+	} else if method.Name == "commitBatchWithBlobProof" {
+		type commitBatchWithBlobProofArgs struct {
+			Version                uint8
+			ParentBatchHeader      []byte
+			Chunks                 [][]byte
+			SkippedL1MessageBitmap []byte
+			BlobDataProof          []byte
+		}
+
+		var args commitBatchWithBlobProofArgs
+		if err = method.Inputs.Copy(&args, values); err != nil {
+			return 0, 0, fmt.Errorf("failed to decode calldata into commitBatchWithBlobProofArgs args, values: %+v, err: %w", values, err)
+		}
+
+		chunks = args.Chunks
 	}
 
 	var startBlock uint64
@@ -100,14 +123,14 @@ func GetBatchRangeFromCalldata(calldata []byte) (uint64, uint64, error) {
 	// decode blocks from chunk and assume that there's no empty chunk
 	// |   1 byte   | 60 bytes | ... | 60 bytes |
 	// | num blocks |  block 1 | ... |  block n |
-	if len(args.Chunks) == 0 {
+	if len(chunks) == 0 {
 		return 0, 0, errors.New("invalid chunks")
 	}
-	chunk := args.Chunks[0]
+	chunk := chunks[0]
 	block := chunk[1:61] // first block in chunk
 	startBlock = binary.BigEndian.Uint64(block[0:8])
 
-	chunk = args.Chunks[len(args.Chunks)-1]
+	chunk = chunks[len(chunks)-1]
 	lastBlockIndex := int(chunk[0]) - 1
 	block = chunk[1+lastBlockIndex*60 : 1+lastBlockIndex*60+60] // last block in chunk
 	finishBlock = binary.BigEndian.Uint64(block[0:8])

@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -50,6 +51,9 @@ type BatchProposer struct {
 	batchEstimateGasTime               prometheus.Gauge
 	batchEstimateCalldataSizeTime      prometheus.Gauge
 	batchEstimateBlobSizeTime          prometheus.Gauge
+
+	// total number of times that batch proposer stops early due to compressed data compatibility breach
+	compressedDataCompatibilityBreachTotal prometheus.Counter
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
@@ -90,6 +94,10 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		proposeBatchUpdateInfoFailureTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "rollup_propose_batch_update_info_failure_total",
 			Help: "Total number of propose batch update info failure total.",
+		}),
+		compressedDataCompatibilityBreachTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "rollup_propose_batch_due_to_compressed_data_compatibility_breach_total",
+			Help: "Total number of propose batch due to compressed data compatibility breach.",
 		}),
 		totalL1CommitGas: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
 			Name: "rollup_propose_batch_total_l1_commit_gas",
@@ -142,9 +150,49 @@ func (p *BatchProposer) TryProposeBatch() {
 	}
 }
 
-func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics utils.BatchMetrics) error {
+func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics *utils.BatchMetrics) error {
+	compatibilityBreachOccurred := false
+
+	for {
+		compatible, err := utils.CheckBatchCompressedDataCompatibility(batch, codecVersion)
+		if err != nil {
+			log.Error("Failed to check batch compressed data compatibility", "batch index", batch.Index, "codecVersion", codecVersion, "err", err)
+			return err
+		}
+
+		if compatible {
+			break
+		}
+
+		if len(batch.Chunks) == 1 {
+			log.Error("Cannot truncate batch with only 1 chunk for compatibility", "start block number", batch.Chunks[0].Blocks[0].Header.Number.Uint64(),
+				"end block number", batch.Chunks[0].Blocks[len(batch.Chunks[0].Blocks)-1].Header.Number.Uint64())
+			return errors.New("cannot truncate batch with only 1 chunk for compatibility")
+		}
+
+		compatibilityBreachOccurred = true
+		batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
+
+		log.Info("Batch not compatible with compressed data, removing last chunk", "batch index", batch.Index, "truncated chunk length", len(batch.Chunks))
+	}
+
+	if compatibilityBreachOccurred {
+		p.compressedDataCompatibilityBreachTotal.Inc()
+
+		// recalculate batch metrics after truncation
+		var calcErr error
+		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecVersion)
+		if calcErr != nil {
+			return fmt.Errorf("failed to calculate batch metrics, batch index: %v, error: %w", batch.Index, calcErr)
+		}
+
+		p.recordTimerBatchMetrics(metrics)
+		p.recordAllBatchMetrics(metrics)
+	}
+
+	p.proposeBatchUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, metrics, dbTX)
+		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, *metrics, dbTX)
 		if dbErr != nil {
 			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "error", dbErr)
 			return dbErr
@@ -251,7 +299,7 @@ func (p *BatchProposer) proposeBatch() error {
 			}
 
 			p.recordAllBatchMetrics(metrics)
-			return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
+			return p.updateDBBatchInfo(&batch, codecVersion, metrics)
 		}
 	}
 
@@ -269,7 +317,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.recordAllBatchMetrics(metrics)
-		return p.updateDBBatchInfo(&batch, codecVersion, *metrics)
+		return p.updateDBBatchInfo(&batch, codecVersion, metrics)
 	}
 
 	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")

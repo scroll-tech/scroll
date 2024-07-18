@@ -92,7 +92,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv2.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk)
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate codecv2 chunk L1 commit blob size: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv2 chunk L1 commit batch size and blob size: %w", err)
 		}
 		return metrics, nil
 	case encoding.CodecV3:
@@ -113,6 +113,34 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 		return metrics, nil
 	default:
 		return nil, fmt.Errorf("unsupported codec version: %v", codecVersion)
+	}
+}
+
+// CheckChunkCompressedDataCompatibility checks compressed data compatibility of a batch built by a single chunk.
+func CheckChunkCompressedDataCompatibility(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) (bool, error) {
+	switch codecVersion {
+	case encoding.CodecV0, encoding.CodecV1:
+		return true, nil
+	case encoding.CodecV2:
+		return codecv2.CheckChunkCompressedDataCompatibility(chunk)
+	case encoding.CodecV3:
+		return codecv3.CheckChunkCompressedDataCompatibility(chunk)
+	default:
+		return false, fmt.Errorf("unsupported codec version: %v", codecVersion)
+	}
+}
+
+// CheckBatchCompressedDataCompatibility checks compressed data compatibility of a batch built by a single chunk.
+func CheckBatchCompressedDataCompatibility(batch *encoding.Batch, codecVersion encoding.CodecVersion) (bool, error) {
+	switch codecVersion {
+	case encoding.CodecV0, encoding.CodecV1:
+		return true, nil
+	case encoding.CodecV2:
+		return codecv2.CheckBatchCompressedDataCompatibility(batch)
+	case encoding.CodecV3:
+		return codecv3.CheckBatchCompressedDataCompatibility(batch)
+	default:
+		return false, fmt.Errorf("unsupported codec version: %v", codecVersion)
 	}
 }
 
@@ -188,7 +216,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv2.EstimateBatchL1CommitBatchSizeAndBlobSize(batch)
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate codecv2 batch L1 commit blob size: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv2 batch L1 commit batch size and blob size: %w", err)
 		}
 		return metrics, nil
 	case encoding.CodecV3:

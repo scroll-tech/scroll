@@ -13,7 +13,7 @@ require (
 	github.com/modern-go/reflect2 v1.0.2
 	github.com/orcaman/concurrent-map v1.0.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/da-codec v0.0.0-20240703091800-5b6cded48ab7
+	github.com/scroll-tech/da-codec v0.0.0-20240718144756-1875fd490923
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20240626125436-418bc6f728b6
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.30.0
