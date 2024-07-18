@@ -2,6 +2,7 @@ package testcontainers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -114,7 +115,7 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 // GetPoSL1EndPoint returns the endpoint of the running PoS L1 endpoint
 func (t *TestcontainerApps) GetPoSL1EndPoint() (string, error) {
 	if t.poSL1Container == nil {
-		return "", fmt.Errorf("PoS L1 container is not running")
+		return "", errors.New("PoS L1 container is not running")
 	}
 	contrainer, err := t.poSL1Container.ServiceContainer(context.Background(), "geth")
 	if err != nil {
@@ -135,7 +136,7 @@ func (t *TestcontainerApps) GetPoSL1Client() (*ethclient.Client, error) {
 // GetDBEndPoint returns the endpoint of the running postgres container
 func (t *TestcontainerApps) GetDBEndPoint() (string, error) {
 	if t.postgresContainer == nil || !t.postgresContainer.IsRunning() {
-		return "", fmt.Errorf("postgres is not running")
+		return "", errors.New("postgres is not running")
 	}
 	return t.postgresContainer.ConnectionString(context.Background(), "sslmode=disable")
 }
@@ -143,7 +144,7 @@ func (t *TestcontainerApps) GetDBEndPoint() (string, error) {
 // GetL2GethEndPoint returns the endpoint of the running L2Geth container
 func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 	if t.l2GethContainer == nil || !t.l2GethContainer.IsRunning() {
-		return "", fmt.Errorf("l2 geth is not running")
+		return "", errors.New("l2 geth is not running")
 	}
 	endpoint, err := t.l2GethContainer.PortEndpoint(context.Background(), "8546/tcp", "ws")
 	if err != nil {
@@ -217,7 +218,7 @@ func findProjectRootDir() (string, error) {
 
 		parentDir := filepath.Dir(currentDir)
 		if parentDir == currentDir {
-			return "", fmt.Errorf("go.work file not found in any parent directory")
+			return "", errors.New("go.work file not found in any parent directory")
 		}
 
 		currentDir = parentDir

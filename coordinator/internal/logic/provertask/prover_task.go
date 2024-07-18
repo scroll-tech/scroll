@@ -1,6 +1,7 @@
 package provertask
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -19,9 +20,9 @@ import (
 
 var (
 	// ErrCoordinatorInternalFailure coordinator internal db failure
-	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+	ErrCoordinatorInternalFailure = errors.New("coordinator internal error")
 	// ErrHardForkName indicates client request with the wrong hard fork name
-	ErrHardForkName = fmt.Errorf("wrong hard fork name")
+	ErrHardForkName = errors.New("wrong hard fork name")
 )
 
 // ProverTask the interface of a collector who send data to prover
@@ -71,19 +72,19 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
-		return nil, fmt.Errorf("get public key from context failed")
+		return nil, errors.New("get public key from context failed")
 	}
 	ptc.PublicKey = publicKey.(string)
 
 	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
 	if !proverNameExist {
-		return nil, fmt.Errorf("get prover name from context failed")
+		return nil, errors.New("get prover name from context failed")
 	}
 	ptc.ProverName = proverName.(string)
 
 	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
 	if !proverVersionExist {
-		return nil, fmt.Errorf("get prover version from context failed")
+		return nil, errors.New("get prover version from context failed")
 	}
 	ptc.ProverVersion = proverVersion.(string)
 
@@ -94,7 +95,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 	// signals that the prover is multi-circuits version
 	if len(getTaskParameter.VKs) > 0 {
 		if len(getTaskParameter.VKs) != 2 {
-			return nil, fmt.Errorf("parameter vks length must be 2")
+			return nil, errors.New("parameter vks length must be 2")
 		}
 		for _, vk := range getTaskParameter.VKs {
 			if _, exists := b.reverseVkMap[vk]; !exists {
@@ -104,7 +105,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 	} else {
 		hardForkName, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
 		if !hardForkNameExist {
-			return nil, fmt.Errorf("get hard fork name from context failed")
+			return nil, errors.New("get hard fork name from context failed")
 		}
 		ptc.HardForkName = hardForkName.(string)
 
@@ -121,7 +122,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context, getTaskParameter *coor
 				return nil, fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s", version.Version, proverVersion.(string))
 			}
 			// if the prover reports a same prover version
-			return nil, fmt.Errorf("incompatible vk. please check your params files or config files")
+			return nil, errors.New("incompatible vk. please check your params files or config files")
 		}
 	}
 
