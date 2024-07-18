@@ -34,12 +34,9 @@ import (
 	rutils "scroll-tech/rollup/internal/utils"
 )
 
-// Layer2Relayer is responsible for
-//  1. Committing and finalizing L2 blocks on L1
-//  2. Relaying messages from L2 to L1
-//
-// Actions are triggered by new head from layer 1 geth node.
-// @todo It's better to be triggered by watcher.
+// Layer2Relayer is responsible for:
+// i. committing and finalizing L2 blocks on L1.
+// ii. updating L2 gas price oracle contract on L1.
 type Layer2Relayer struct {
 	ctx context.Context
 
@@ -602,7 +599,7 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 
 	log.Info("finalizeBatch in layer1", "with proof", withProof, "index", dbBatch.Index, "batch hash", dbBatch.Hash, "tx hash", txHash.String())
 
-	// record and sync with db, @todo handle db error
+	// Updating rollup status in database.
 	if err := r.batchOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, dbBatch.Hash, txHash.String(), types.RollupFinalizing); err != nil {
 		log.Error("UpdateFinalizeTxHashAndRollupStatus failed", "index", dbBatch.Index, "batch hash", dbBatch.Hash, "tx hash", txHash.String(), "err", err)
 		return err

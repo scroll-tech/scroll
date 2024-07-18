@@ -6,31 +6,28 @@ help: ## Display this help message
 	@grep -h \
 		-E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
-update:
+update: ## Update dependencies
 	go work sync
 	cd $(PWD)/bridge-history-api/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/common/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG}&& go mod tidy
 	cd $(PWD)/coordinator/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/database/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
-	cd $(PWD)/prover/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG}&& go mod tidy
 	cd $(PWD)/rollup/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 	cd $(PWD)/tests/integration-test/ && go get -u github.com/scroll-tech/go-ethereum@${L2GETH_TAG} && go mod tidy
 
-lint: ## The code's format and security checks.
+lint: ## The code's format and security checks
 	make -C rollup lint
 	make -C common lint
 	make -C coordinator lint
 	make -C database lint
-	make -C prover lint
 	make -C bridge-history-api lint
 
-fmt: ## format the code
+fmt: ## Format the code
 	go work sync
 	cd $(PWD)/bridge-history-api/ && go mod tidy
 	cd $(PWD)/common/ && go mod tidy
 	cd $(PWD)/coordinator/ && go mod tidy
 	cd $(PWD)/database/ && go mod tidy
-	cd $(PWD)/prover/ && go mod tidy
 	cd $(PWD)/rollup/ && go mod tidy
 	cd $(PWD)/tests/integration-test/ && go mod tidy
 
@@ -38,11 +35,10 @@ fmt: ## format the code
 	goimports -local $(PWD)/common/ -w .
 	goimports -local $(PWD)/coordinator/ -w .
 	goimports -local $(PWD)/database/ -w .
-	goimports -local $(PWD)/prover/ -w .
 	goimports -local $(PWD)/rollup/ -w .
 	goimports -local $(PWD)/tests/integration-test/ -w .
 
-dev_docker: ## build docker images for development/testing usages
+dev_docker: ## Build docker images for development/testing usages
 	docker pull postgres
 	docker build -t scroll_l1geth ./common/testcontainers/docker/l1geth/
 	docker build -t scroll_l2geth ./common/testcontainers/docker/l2geth/

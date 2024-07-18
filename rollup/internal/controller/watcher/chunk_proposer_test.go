@@ -568,11 +568,11 @@ func testChunkProposerCodecv2Limits(t *testing.T) {
 }
 
 func testChunkProposerBlobSizeLimit(t *testing.T) {
-	compressionTests := []bool{false, true} // false for uncompressed, true for compressed
-	for _, compressed := range compressionTests {
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2}
+	for _, codecVersion := range codecVersions {
 		db := setupDB(t)
-		block := readBlockFromJSON(t, "../../../testdata/blockTrace_02.json")
-		for i := int64(0); i < 2000; i++ {
+		block := readBlockFromJSON(t, "../../../testdata/blockTrace_03.json")
+		for i := int64(0); i < 510; i++ {
 			l2BlockOrm := orm.NewL2Block(db)
 			block.Header.Number = big.NewInt(i + 1)
 			err := l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block})
@@ -580,24 +580,26 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 		}
 
 		var chainConfig *params.ChainConfig
-		if compressed {
-			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
-		} else {
+		if codecVersion == encoding.CodecV0 { // will never hit blob size limit
+			chainConfig = &params.ChainConfig{}
+		} else if codecVersion == encoding.CodecV1 {
 			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
+		} else {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
 		}
 
 		cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
-			MaxBlockNumPerChunk:             math.MaxUint64,
+			MaxBlockNumPerChunk:             255,
 			MaxTxNumPerChunk:                math.MaxUint64,
 			MaxL1CommitGasPerChunk:          math.MaxUint64,
 			MaxL1CommitCalldataSizePerChunk: math.MaxUint64,
 			MaxRowConsumptionPerChunk:       math.MaxUint64,
-			ChunkTimeoutSec:                 math.MaxUint64,
+			ChunkTimeoutSec:                 math.MaxUint32,
 			GasCostIncreaseMultiplier:       1,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
 		}, chainConfig, db, nil)
 
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 2; i++ {
 			cp.TryProposeChunk()
 		}
 
@@ -605,14 +607,14 @@ func testChunkProposerBlobSizeLimit(t *testing.T) {
 		chunks, err := chunkOrm.GetChunksGEIndex(context.Background(), 0, 0)
 		assert.NoError(t, err)
 
-		var expectedNumChunks int
+		var expectedNumChunks int = 2
 		var numBlocksMultiplier uint64
-		if compressed {
-			expectedNumChunks = 1
-			numBlocksMultiplier = 2000
-		} else {
-			expectedNumChunks = 4
-			numBlocksMultiplier = 551
+		if codecVersion == encoding.CodecV0 {
+			numBlocksMultiplier = 255
+		} else if codecVersion == encoding.CodecV1 {
+			numBlocksMultiplier = 22
+		} else if codecVersion == encoding.CodecV2 {
+			numBlocksMultiplier = 255
 		}
 		assert.Len(t, chunks, expectedNumChunks)
 

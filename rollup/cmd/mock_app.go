@@ -45,10 +45,7 @@ func NewRollupApp(testApps *testcontainers.TestcontainerApps, file string) *Mock
 
 // RunApp run rollup-test child process by multi parameters.
 func (b *MockApp) RunApp(t *testing.T, name utils.MockAppName, args ...string) {
-	if !(name == utils.EventWatcherApp ||
-		name == utils.GasOracleApp ||
-		name == utils.MessageRelayerApp ||
-		name == utils.RollupRelayerApp) {
+	if !(name == utils.GasOracleApp || name == utils.RollupRelayerApp) {
 		t.Errorf(fmt.Sprintf("Don't support the mock app, name: %s", name))
 		return
 	}

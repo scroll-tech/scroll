@@ -84,7 +84,7 @@ func action(ctx *cli.Context) error {
 	return nil
 }
 
-// Run event watcher cmd instance.
+// Run bridge-history-backend fetcher cmd instance.
 func Run() {
 	if err := app.Run(os.Args); err != nil {
 		_, _ = fmt.Fprintln(os.Stderr, err)

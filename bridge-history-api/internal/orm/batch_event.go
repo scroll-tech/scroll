@@ -53,8 +53,26 @@ func (c *BatchEvent) GetBatchEventSyncedHeightInDB(ctx context.Context) (uint64,
 	return batch.L1BlockNumber, nil
 }
 
-// GetFinalizedBatchesLEBlockHeight returns the finalized batches with end block <= given block height in db.
-func (c *BatchEvent) GetFinalizedBatchesLEBlockHeight(ctx context.Context, blockHeight uint64) ([]*BatchEvent, error) {
+// GetLastUpdatedFinalizedBlockHeight returns the last updated finalized block height in db.
+func (c *BatchEvent) GetLastUpdatedFinalizedBlockHeight(ctx context.Context) (uint64, error) {
+	var batch BatchEvent
+	db := c.db.WithContext(ctx)
+	db = db.Model(&BatchEvent{})
+	db = db.Where("batch_status = ?", btypes.BatchStatusTypeFinalized)
+	db = db.Where("update_status = ?", btypes.UpdateStatusTypeUpdated)
+	db = db.Order("batch_index desc")
+	if err := db.First(&batch).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			// No finalized batch found, return genesis batch's end block number.
+			return 0, nil
+		}
+		return 0, fmt.Errorf("failed to get last updated finalized block height, error: %w", err)
+	}
+	return batch.EndBlockNumber, nil
+}
+
+// GetUnupdatedFinalizedBatchesLEBlockHeight returns the finalized batches with end block <= given block height in db.
+func (c *BatchEvent) GetUnupdatedFinalizedBatchesLEBlockHeight(ctx context.Context, blockHeight uint64) ([]*BatchEvent, error) {
 	var batches []*BatchEvent
 	db := c.db.WithContext(ctx)
 	db = db.Model(&BatchEvent{})
@@ -66,7 +84,7 @@ func (c *BatchEvent) GetFinalizedBatchesLEBlockHeight(ctx context.Context, block
 		if err == gorm.ErrRecordNotFound {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get batches >= block height, error: %w", err)
+		return nil, fmt.Errorf("failed to get unupdated finalized batches >= block height, error: %w", err)
 	}
 	return batches, nil
 }
@@ -92,6 +110,7 @@ func (c *BatchEvent) InsertOrUpdateBatchEvents(ctx context.Context, l1BatchEvent
 			db = db.Where("batch_index = ?", l1BatchEvent.BatchIndex)
 			db = db.Where("batch_hash = ?", l1BatchEvent.BatchHash)
 			updateFields["batch_status"] = btypes.BatchStatusTypeFinalized
+			updateFields["l1_block_number"] = l1BatchEvent.L1BlockNumber
 			if err := db.Updates(updateFields).Error; err != nil {
 				return fmt.Errorf("failed to update batch event, error: %w", err)
 			}
