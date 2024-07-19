@@ -566,11 +566,12 @@ func testResubmitNonceGappedTransaction(t *testing.T) {
 		assert.Equal(t, txs[0].Nonce, txs[1].Nonce)
 		assert.Equal(t, txs[0].Nonce+1, txs[2].Nonce)
 
-		// the first 2 transactions are the same nonce, with one replaced and another pending
+		// the first 2 transactions have the same nonce, with one replaced and another pending
 		assert.Equal(t, types.TxStatusReplaced, txs[0].Status)
 		assert.Equal(t, types.TxStatusPending, txs[1].Status)
 
-		// the third transaction is the next nonce, which will not be replaced due to the nonce gap
+		// the third transaction has nonce + 1, which will not be replaced due to the nonce gap,
+		// thus the status should be pending
 		assert.Equal(t, types.TxStatusPending, txs[2].Status)
 
 		s.Stop()
