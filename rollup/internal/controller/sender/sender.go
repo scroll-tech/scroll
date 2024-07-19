@@ -528,7 +528,8 @@ func (s *Sender) checkPendingTransaction() {
 			}
 
 			// early return if the previous transaction has not been confirmed yet.
-			if tx.Nonce() > currentNonce+1 {
+			// currentNonce is already the confirmed nonce + 1.
+			if tx.Nonce() > currentNonce {
 				log.Debug("previous transaction not yet confirmed, skip bumping gas price", "address", txnToCheck.SenderAddress, "currentNonce", currentNonce, "txNonce", tx.Nonce())
 				continue
 			}
