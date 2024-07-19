@@ -236,7 +236,7 @@ func (o *Batch) GetBatchesByBundleHash(ctx context.Context, bundleHash string) (
 	db = db.Order("index ASC")
 
 	var batches []*Batch
-	if err := db.First(&batches).Error; err != nil {
+	if err := db.Find(&batches).Error; err != nil {
 		return nil, fmt.Errorf("Batch.GetBatchesByBundleHash error: %w, bundle hash: %v", err, bundleHash)
 	}
 	return batches, nil
