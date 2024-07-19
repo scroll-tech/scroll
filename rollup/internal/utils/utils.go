@@ -108,7 +108,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv3.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk)
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate codecv3 chunk L1 commit blob size: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv3 chunk L1 commit batch size and blob size: %w", err)
 		}
 		return metrics, nil
 	default:
@@ -232,7 +232,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv3.EstimateBatchL1CommitBatchSizeAndBlobSize(batch)
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
-			return nil, fmt.Errorf("failed to estimate codecv3 batch L1 commit blob size: %w", err)
+			return nil, fmt.Errorf("failed to estimate codecv3 batch L1 commit batch size and blob size: %w", err)
 		}
 		return metrics, nil
 	default:
