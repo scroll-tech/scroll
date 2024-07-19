@@ -148,7 +148,7 @@ impl<'a> Prover<'a> {
             task_type: task.task_type,
             status: ProofStatus::Error,
             failure_type: Some(failure_type),
-            failure_msg: Some(error.to_string()),
+            failure_msg: Some(format!("{:#}", error)),
             ..Default::default()
         };
         self.do_submit(&request)
