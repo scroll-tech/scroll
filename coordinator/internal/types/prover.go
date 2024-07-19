@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+
 	"scroll-tech/common/types/message"
 )
 
