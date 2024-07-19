@@ -190,15 +190,6 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 		return nil, fmt.Errorf("failed to get batch proofs for bundle task id:%s, no batch found", task.TaskID)
 	}
 
-	latestFinalizedBatch, err := bp.batchOrm.GetLatestFinalizedBatch(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get latest finalized batch by bundle hash: %w, bundle hash: %v", err, task.TaskID)
-	}
-
-	if latestFinalizedBatch == nil {
-		return nil, fmt.Errorf("failed to get latest finalized batch by bundle hash: %v, no finalized batch found", task.TaskID)
-	}
-
 	var batchProofs []*message.BatchProof
 	for _, batch := range batches {
 		var proof message.BatchProof
@@ -228,7 +219,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 }
 
 func (bp *BundleProverTask) recoverActiveAttempts(ctx *gin.Context, bundleTask *orm.Bundle) {
-	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), bundleTask.Hash); err != nil {
+	if err := bp.bundleOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), bundleTask.Hash); err != nil {
 		log.Error("failed to recover bundle active attempts", "hash", bundleTask.Hash, "error", err)
 	}
 }
