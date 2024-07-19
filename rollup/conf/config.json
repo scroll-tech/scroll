@@ -76,7 +76,9 @@
       "batch_timeout_sec": 300,
       "gas_cost_increase_multiplier": 1.2,
       "max_uncompressed_batch_bytes_size": 634880
-    }
+    },
+    "chunk_proposal_interval_milliseconds": 0,
+    "batch_proposal_interval_milliseconds": 0
   },
   "db_config": {
     "driver_name": "postgres",

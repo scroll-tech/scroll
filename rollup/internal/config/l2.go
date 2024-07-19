@@ -22,6 +22,10 @@ type L2Config struct {
 	ChunkProposerConfig *ChunkProposerConfig `json:"chunk_proposer_config"`
 	// The batch_proposer config
 	BatchProposerConfig *BatchProposerConfig `json:"batch_proposer_config"`
+	// The interval between chunk proposals in milliseconds
+	ChunkProposalIntervalMilliseconds int `json:"chunk_proposal_interval_milliseconds"`
+	// The interval between batch proposals in milliseconds
+	BatchProposalIntervalMilliseconds int `json:"batch_proposal_interval_milliseconds"`
 }
 
 // ChunkProposerConfig loads chunk_proposer configuration items.
