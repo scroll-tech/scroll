@@ -20,7 +20,9 @@
         "gas_price_diff": 50000,
         "l1_base_fee_weight": 0.132,
         "l1_blob_base_fee_weight":  0.145,
-        "gas_price_oracle_update_window": 5
+        "commit_batch_timeout_window_minutes": 5,
+        "l1_base_fee_default": 15000000000,
+        "l1_blob_base_fee_default": 1
       },
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
     }

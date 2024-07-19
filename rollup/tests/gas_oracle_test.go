@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -56,6 +57,11 @@ func testImportL1GasPrice(t *testing.T) {
 	assert.Empty(t, blocks[0].OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
 
+	patchGuard := gomonkey.ApplyMethodFunc(l1Relayer, "commitBatchReachTimeout", func() bool {
+		return false
+	})
+	defer patchGuard.Reset()
+
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
 	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
@@ -100,6 +106,11 @@ func testImportL1GasPriceAfterCurie(t *testing.T) {
 	assert.Equal(t, len(blocks), 1)
 	assert.Empty(t, blocks[0].OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
+
+	patchGuard := gomonkey.ApplyMethodFunc(l1Relayer, "commitBatchReachTimeout", func() bool {
+		return false
+	})
+	defer patchGuard.Reset()
 
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()

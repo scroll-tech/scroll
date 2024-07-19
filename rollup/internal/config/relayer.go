@@ -80,8 +80,10 @@ type GasOracleConfig struct {
 	L1BaseFeeWeight float64 `json:"l1_base_fee_weight"`
 	// The weight for L1 blob base fee.
 	L1BlobBaseFeeWeight float64 `json:"l1_blob_base_fee_weight"`
-	// GasPriceOracleUpdateWindow the time frame to check if we committed batches to decide to update gas oracle in minutes
-	GasPriceOracleUpdateWindow int `json:"gas_price_oracle_update_window"`
+	// CommitBatchTimeoutWindowMinutes the time frame to check if we committed batches to decide to update gas oracle in minutes
+	CommitBatchTimeoutWindowMinutes int    `json:"commit_batch_timeout_window_minutes"`
+	L1BaseFeeDefault                uint64 `json:"l1_base_fee_default"`
+	L1BlobBaseFeeDefault            uint64 `json:"l1_blob_base_fee_default"`
 }
 
 // relayerConfigAlias RelayerConfig alias name

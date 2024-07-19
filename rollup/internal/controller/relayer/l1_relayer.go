@@ -153,6 +153,15 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 		}
 
 		if r.shouldUpdateGasOracle(baseFee, blobBaseFee, isCurie) {
+			// if we are not committing batches due to high fees then we shouldn't update fees to prevent users from paying high l1_data_fee
+			// also, set fees to some default value, because we have already updated fees to some high values, probably
+			if r.commitBatchReachTimeout() {
+				if r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BaseFeeDefault && r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BlobBaseFeeDefault {
+					return
+				}
+				baseFee = r.cfg.GasOracleConfig.L1BaseFeeDefault
+				blobBaseFee = r.cfg.GasOracleConfig.L1BlobBaseFeeDefault
+			}
 			var data []byte
 			if isCurie {
 				data, err = r.l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", new(big.Int).SetUint64(baseFee), new(big.Int).SetUint64(blobBaseFee))
@@ -234,20 +243,6 @@ func (r *Layer1Relayer) StopSenders() {
 }
 
 func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64, isCurie bool) bool {
-	fields := map[string]interface{}{
-		"rollup_status": types.RollupCommitting,
-	}
-	orderByList := []string{"updated_at DESC"}
-	limit := 1
-	batches, err := r.batchOrm.GetBatches(r.ctx, fields, orderByList, limit)
-	if err != nil {
-		log.Error("failed to fetch latest committing batches", "err", err)
-	}
-	// do not update GasOracle if we haven't committed batches for a while
-	if len(batches) == 0 || utils.NowUTC().Sub(batches[0].UpdatedAt) > time.Duration(r.cfg.GasOracleConfig.GasPriceOracleUpdateWindow)*time.Minute {
-		return false
-	}
-
 	// Right after restarting.
 	if r.lastBaseFee == 0 {
 		return true
@@ -276,4 +271,17 @@ func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64
 	}
 
 	return false
+}
+
+func (r *Layer1Relayer) commitBatchReachTimeout() bool {
+	fields := map[string]interface{}{
+		"rollup_status": types.RollupCommitted,
+	}
+	orderByList := []string{"updated_at DESC"}
+	limit := 1
+	batches, err := r.batchOrm.GetBatches(r.ctx, fields, orderByList, limit)
+	if err != nil {
+		log.Error("failed to fetch latest committing batches", "err", err)
+	}
+	return len(batches) == 0 || utils.NowUTC().Sub(batches[0].UpdatedAt) > time.Duration(r.cfg.GasOracleConfig.CommitBatchTimeoutWindowMinutes)*time.Minute
 }
