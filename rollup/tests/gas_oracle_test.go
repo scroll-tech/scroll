@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -57,10 +56,33 @@ func testImportL1GasPrice(t *testing.T) {
 	assert.Empty(t, blocks[0].OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
 
-	patchGuard := gomonkey.ApplyMethodFunc(l1Relayer, "commitBatchReachTimeout", func() bool {
-		return false
-	})
-	defer patchGuard.Reset()
+	// add fake batch to pass check for commit batch timeout
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{
+			{
+				Header: &gethTypes.Header{
+					Number:     big.NewInt(1),
+					ParentHash: common.Hash{},
+					Difficulty: big.NewInt(0),
+					BaseFee:    big.NewInt(0),
+				},
+				Transactions:   nil,
+				WithdrawRoot:   common.Hash{},
+				RowConsumption: &gethTypes.RowConsumption{},
+			},
+		},
+	}
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+	}
+	batchOrm := orm.NewBatch(db)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
+	assert.NoError(t, err)
+	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
+	assert.NoError(t, err)
 
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
@@ -107,10 +129,33 @@ func testImportL1GasPriceAfterCurie(t *testing.T) {
 	assert.Empty(t, blocks[0].OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
 
-	patchGuard := gomonkey.ApplyMethodFunc(l1Relayer, "commitBatchReachTimeout", func() bool {
-		return false
-	})
-	defer patchGuard.Reset()
+	// add fake batch to pass check for commit batch timeout
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{
+			{
+				Header: &gethTypes.Header{
+					Number:     big.NewInt(1),
+					ParentHash: common.Hash{},
+					Difficulty: big.NewInt(0),
+					BaseFee:    big.NewInt(0),
+				},
+				Transactions:   nil,
+				WithdrawRoot:   common.Hash{},
+				RowConsumption: &gethTypes.RowConsumption{},
+			},
+		},
+	}
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+	}
+	batchOrm := orm.NewBatch(db)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
+	assert.NoError(t, err)
+	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
+	assert.NoError(t, err)
 
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
