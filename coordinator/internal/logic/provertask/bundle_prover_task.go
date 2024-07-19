@@ -113,7 +113,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		return nil, nil
 	}
 
-	log.Info("start batch proof generation session", "task index", bundleTask.Index, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
+	log.Info("start bundle proof generation session", "task index", bundleTask.Index, "public key", taskCtx.PublicKey, "prover name", taskCtx.ProverName)
 
 	hardForkName, getHardForkErr := bp.hardForkName(ctx, bundleTask)
 	if getHardForkErr != nil {
