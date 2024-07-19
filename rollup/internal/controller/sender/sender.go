@@ -40,8 +40,8 @@ const (
 )
 
 var (
-	// ErrTooMuchBlobCarryingPendingTxs
-	ErrTooMuchBlobCarryingPendingTxs = errors.New("the limit of pending blob-carrying transactions has been exceeded")
+	// ErrTooManyPendingBlobTxs
+	ErrTooManyPendingBlobTxs = errors.New("the limit of pending blob-carrying transactions has been exceeded")
 )
 
 // Confirmation struct used to indicate transaction confirmation details
@@ -186,12 +186,13 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 
 	if blob != nil {
 		if s.senderType == types.SenderTypeCommitBatch {
-			txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(s.ctx, s.senderType, s.config.MaxBlobCarryingPendingTxs)
+			var numPendingTransactions int64
+			numPendingTransactions, err = s.pendingTransactionOrm.GetCountPendingTransactionsBySenderType(s.ctx, s.senderType)
 			if err != nil {
 				log.Error("failed to get pending or replaced transactions", "err: %w", err)
 			}
-			if len(txs) >= s.config.MaxBlobCarryingPendingTxs {
-				return common.Hash{}, ErrTooMuchBlobCarryingPendingTxs
+			if numPendingTransactions >= s.config.MaxPendingBlobTxs {
+				return common.Hash{}, ErrTooManyPendingBlobTxs
 			}
 
 		}

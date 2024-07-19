@@ -829,11 +829,11 @@ func testSendBlobCarryingTxOverLimit(t *testing.T) {
 	s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeCommitBatch, db, nil)
 	assert.NoError(t, err)
 
-	for i := 0; i < cfgCopy.MaxBlobCarryingPendingTxs; i++ {
-		_, err := s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
+	for i := 0; i < int(cfgCopy.MaxPendingBlobTxs); i++ {
+		_, err = s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
 		assert.NoError(t, err)
 	}
 	_, err = s.SendTransaction("0", &common.Address{}, nil, randBlob(), 0)
-	assert.ErrorIs(t, err, ErrTooMuchBlobCarryingPendingTxs)
+	assert.ErrorIs(t, err, ErrTooManyPendingBlobTxs)
 	s.Stop()
 }

@@ -33,7 +33,7 @@ type SenderConfig struct {
 	// The transaction type to use: LegacyTx, DynamicFeeTx, BlobTx
 	TxType string `json:"tx_type"`
 	// The maximum number of pending blob-carrying transactions
-	MaxBlobCarryingPendingTxs int `json:"max_blob_carrying_pending_txs"`
+	MaxPendingBlobTxs int64 `json:"max_pending_blob_txs"`
 }
 
 // ChainMonitor this config is used to get batch status from chain_monitor API.
