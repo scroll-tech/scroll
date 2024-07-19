@@ -77,8 +77,8 @@
       "gas_cost_increase_multiplier": 1.2,
       "max_uncompressed_batch_bytes_size": 634880
     },
-    "chunk_proposal_interval_milliseconds": 0,
-    "batch_proposal_interval_milliseconds": 0
+    "chunk_proposal_interval_milliseconds": 100,
+    "batch_proposal_interval_milliseconds": 1000
   },
   "db_config": {
     "driver_name": "postgres",
