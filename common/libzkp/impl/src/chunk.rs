@@ -42,16 +42,18 @@ pub unsafe extern "C" fn init_chunk_prover(params_dir: *const c_char, assets_dir
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn init_chunk_verifier(params_dir: *const c_char, assets_dir: *const c_char) {
+pub unsafe extern "C" fn init_chunk_verifier(params_dir: *const c_char, v3_assets_dir: *const c_char, v4_assets_dir: *const c_char) {
     init_env_and_log("ffi_chunk_verify");
 
     let params_dir = c_char_to_str(params_dir);
-    let assets_dir = c_char_to_str(assets_dir);
+    let v3_assets_dir = c_char_to_str(v3_assets_dir);
+    let v4_assets_dir = c_char_to_str(v4_assets_dir);
 
     // TODO: add a settings in scroll-prover.
-    env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
-    let verifier_v3 = VerifierV3::from_dirs(params_dir, assets_dir);
-    let verifier_v4 = VerifierV4::from_dirs(params_dir, assets_dir);
+    env::set_var("SCROLL_PROVER_ASSETS_DIR", v3_assets_dir);
+    let verifier_v3 = VerifierV3::from_dirs(params_dir, v3_assets_dir);
+    env::set_var("SCROLL_PROVER_ASSETS_DIR", v4_assets_dir);
+    let verifier_v4 = VerifierV4::from_dirs(params_dir, v4_assets_dir);
 
     VERIFIER_V3.set(verifier_v3).unwrap();
     VERIFIER_V4.set(verifier_v4).unwrap();

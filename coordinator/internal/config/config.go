@@ -52,10 +52,11 @@ type Config struct {
 
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
-	ForkName   string `json:"fork_name"`
-	MockMode   bool   `json:"mock_mode"`
-	ParamsPath string `json:"params_path"`
-	AssetsPath string `json:"assets_path"`
+	ForkName     string `json:"fork_name"`
+	MockMode     bool   `json:"mock_mode"`
+	ParamsPath   string `json:"params_path"`
+	AssetsPathV3 string `json:"assets_path_v3"`
+	AssetsPathV4 string `json:"assets_path_v4"`
 }
 
 // NewConfig returns a new instance of Config.
