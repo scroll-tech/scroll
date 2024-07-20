@@ -42,7 +42,11 @@ pub unsafe extern "C" fn init_chunk_prover(params_dir: *const c_char, assets_dir
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn init_chunk_verifier(params_dir: *const c_char, v3_assets_dir: *const c_char, v4_assets_dir: *const c_char) {
+pub unsafe extern "C" fn init_chunk_verifier(
+    params_dir: *const c_char,
+    v3_assets_dir: *const c_char,
+    v4_assets_dir: *const c_char,
+) {
     init_env_and_log("ffi_chunk_verify");
 
     let params_dir = c_char_to_str(params_dir);
