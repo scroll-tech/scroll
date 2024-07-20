@@ -119,7 +119,7 @@ func action(ctx *cli.Context) error {
 
 	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
 
-	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessPendingBundles)
+	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessCommittedBatches)
 
 	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessPendingBundles)
 
