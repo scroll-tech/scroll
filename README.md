@@ -18,7 +18,7 @@
 ├── <a href="./database">database</a>: Database client and schema definition
 ├── <a href="./prover">prover</a>: Prover client that runs proof generation for zkEVM circuit and aggregation circuit
 ├── <a href="./rollup">rollup</a>: Rollup-related services
-├── <a href="./scroll-contracts">scroll-contracts</a>: solidity code for Scroll L1 bridge and rollup contracts and L2 bridge and pre-deployed contracts.
+├── <a href="https://github.com/scroll-tech/scroll-contracts.git">scroll-contracts</a>: solidity code for Scroll L1 bridge and rollup contracts and L2 bridge and pre-deployed contracts.
 └── <a href="./tests">tests</a>: Integration tests
 </pre>
 
