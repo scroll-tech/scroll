@@ -193,8 +193,17 @@ func (r *Layer2Relayer) initializeGenesis() error {
 	// note: we do this inside the DB transaction so that we can revert all DB changes if this step fails
 	err = r.commitGenesisBatch(lastBernoulliBatch.Hash, lastBernoulliBatch.BatchHeader, common.HexToHash(lastBernoulliBatch.StateRoot))
 	if err != nil {
-		return fmt.Errorf("update genesis transaction failed: %v", err)
+		return fmt.Errorf("274314 update genesis transaction failed: %v", err)
 	}
+	log.Info("import genesis transaction successfully batch index: 274314")
+
+	zeroBatchHeader := "0000000000000000000000000000000000000000000000000061a5de00a189b490960523626c576089401f5413e4ca6f5fe5f16004d764ccd00000000000000000000000000000000000000000000000000000000000000000"
+	zeroBatchHeaderBytes, _ := hex.DecodeString(zeroBatchHeader)
+	err = r.commitGenesisBatch("0x5aaeb6101a47fc16866e80d77ffe090b6a7b3cf7d988be981646ab6aedfa2c42", zeroBatchHeaderBytes, common.HexToHash("0x08d535cc60f40af5dd3b31e0998d7567c2d568b224bed2ba26070aeb078d1339"))
+	if err != nil {
+		return fmt.Errorf("0 update genesis transaction failed: %v", err)
+	}
+	log.Info("import genesis transaction successfully batch index 0")
 
 	log.Info("successfully imported genesis chunk and batch")
 
