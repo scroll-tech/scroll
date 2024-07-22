@@ -6,20 +6,20 @@ use crate::{
     },
 };
 use libc::c_char;
-use prover_v3::BatchProof as BatchProofV3;
+use prover_v3::BatchProof as BatchProofLoVersion;
 use prover_v4::{
-    aggregator::{Prover, Verifier as VerifierV4},
+    aggregator::{Prover, Verifier as VerifierHiVersion},
     check_chunk_hashes,
     consts::BATCH_VK_FILENAME,
     utils::{chunk_trace_to_witness_block, init_env_and_log},
-    BatchHeader, BatchProof as BatchProofV4, BatchProvingTask, BlockTrace, BundleProof,
+    BatchHeader, BatchProof as BatchProofHiVersion, BatchProvingTask, BlockTrace, BundleProof,
     BundleProvingTask, ChunkInfo, ChunkProof, MAX_AGG_SNARKS,
 };
 use snark_verifier_sdk::verify_evm_calldata;
 use std::{cell::OnceCell, env, ptr::null};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
-static mut VERIFIER_V4: OnceCell<VerifierV4> = OnceCell::new();
+static mut VERIFIER: OnceCell<VerifierHiVersion> = OnceCell::new();
 
 /// # Safety
 #[no_mangle]
@@ -52,9 +52,9 @@ pub unsafe extern "C" fn init_batch_verifier(params_dir: *const c_char, assets_d
 
     // TODO: add a settings in scroll-prover.
     env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
-    let verifier_v4 = VerifierV4::from_dirs(params_dir, assets_dir);
+    let verifier_hi = VerifierHiVersion::from_dirs(params_dir, assets_dir);
 
-    VERIFIER_V4.set(verifier_v4).unwrap();
+    VERIFIER.set(verifier_hi).unwrap();
 }
 
 /// # Safety
@@ -189,7 +189,7 @@ pub unsafe extern "C" fn verify_batch_proof(
     let verified = panic_catch(|| {
         if fork_id == 3 {
             // As of upgrade #3 (Curie), we verify batch proofs on-chain (EVM).
-            let proof = serde_json::from_slice::<BatchProofV3>(proof.as_slice()).unwrap();
+            let proof = serde_json::from_slice::<BatchProofLoVersion>(proof.as_slice()).unwrap();
             verify_evm_calldata(
                 include_bytes!("plonk_verifier_0.11.4.bin").to_vec(),
                 proof.calldata(),
@@ -197,8 +197,8 @@ pub unsafe extern "C" fn verify_batch_proof(
         } else {
             // Post upgrade #4 (Darwin), batch proofs are not EVM-verifiable. Instead they are
             // halo2 proofs meant to be bundled recursively.
-            let proof = serde_json::from_slice::<BatchProofV4>(proof.as_slice()).unwrap();
-            VERIFIER_V4.get().unwrap().verify_batch_proof(&proof)
+            let proof = serde_json::from_slice::<BatchProofHiVersion>(proof.as_slice()).unwrap();
+            VERIFIER.get().unwrap().verify_batch_proof(&proof)
         }
     });
     verified.unwrap_or(false) as c_char
@@ -209,7 +209,7 @@ pub unsafe extern "C" fn verify_batch_proof(
 pub unsafe extern "C" fn gen_bundle_proof(batch_proofs: *const c_char) -> *const c_char {
     let proof_result: Result<Vec<u8>, String> = panic_catch(|| {
         let batch_proofs = c_char_to_vec(batch_proofs);
-        let batch_proofs = serde_json::from_slice::<Vec<BatchProofV4>>(&batch_proofs)
+        let batch_proofs = serde_json::from_slice::<Vec<BatchProofHiVersion>>(&batch_proofs)
             .map_err(|e| format!("failed to deserialize batch proofs: {e:?}"))?;
 
         let bundle = BundleProvingTask { batch_proofs };
@@ -243,7 +243,7 @@ pub unsafe extern "C" fn gen_bundle_proof(batch_proofs: *const c_char) -> *const
 pub unsafe extern "C" fn verify_bundle_proof(proof: *const c_char) -> c_char {
     let proof = c_char_to_vec(proof);
     let proof = serde_json::from_slice::<BundleProof>(proof.as_slice()).unwrap();
-    let verified = panic_catch(|| VERIFIER_V4.get().unwrap().verify_bundle_proof(proof));
+    let verified = panic_catch(|| VERIFIER.get().unwrap().verify_bundle_proof(proof));
     verified.unwrap_or(false) as c_char
 }
 

@@ -6,18 +6,18 @@ use crate::{
     },
 };
 use libc::c_char;
-use prover_v3::{zkevm::Verifier as VerifierV3, ChunkProof as ChunkProofV3};
+use prover_v3::{zkevm::Verifier as VerifierLoVersion, ChunkProof as ChunkProofLoVersion};
 use prover_v4::{
     consts::CHUNK_VK_FILENAME,
     utils::init_env_and_log,
-    zkevm::{Prover, Verifier as VerifierV4},
-    BlockTrace, ChunkProof as ChunkProofV4, ChunkProvingTask,
+    zkevm::{Prover, Verifier as VerifierHiVersion},
+    BlockTrace, ChunkProof as ChunkProofHiVersion, ChunkProvingTask,
 };
 use std::{cell::OnceCell, env, ptr::null};
 
 static mut PROVER: OnceCell<Prover> = OnceCell::new();
-static mut VERIFIER_V3: OnceCell<VerifierV3> = OnceCell::new();
-static mut VERIFIER_V4: OnceCell<VerifierV4> = OnceCell::new();
+static mut VERIFIER_LO_VERSION: OnceCell<VerifierLoVersion> = OnceCell::new();
+static mut VERIFIER_HI_VERSION: OnceCell<VerifierHiVersion> = OnceCell::new();
 
 /// # Safety
 #[no_mangle]
@@ -55,12 +55,12 @@ pub unsafe extern "C" fn init_chunk_verifier(
 
     // TODO: add a settings in scroll-prover.
     env::set_var("SCROLL_PROVER_ASSETS_DIR", v3_assets_dir);
-    let verifier_v3 = VerifierV3::from_dirs(params_dir, v3_assets_dir);
+    let verifier_lo = VerifierLoVersion::from_dirs(params_dir, v3_assets_dir);
     env::set_var("SCROLL_PROVER_ASSETS_DIR", v4_assets_dir);
-    let verifier_v4 = VerifierV4::from_dirs(params_dir, v4_assets_dir);
+    let verifier_hi = VerifierHiVersion::from_dirs(params_dir, v4_assets_dir);
 
-    VERIFIER_V3.set(verifier_v3).unwrap();
-    VERIFIER_V4.set(verifier_v4).unwrap();
+    VERIFIER_LO_VERSION.set(verifier_lo).unwrap();
+    VERIFIER_HI_VERSION.set(verifier_hi).unwrap();
 }
 
 /// # Safety
@@ -126,11 +126,11 @@ pub unsafe extern "C" fn verify_chunk_proof(
     };
     let verified = panic_catch(|| {
         if fork_id == 3 {
-            let proof = serde_json::from_slice::<ChunkProofV3>(proof.as_slice()).unwrap();
-            VERIFIER_V3.get().unwrap().verify_chunk_proof(proof)
+            let proof = serde_json::from_slice::<ChunkProofLoVersion>(proof.as_slice()).unwrap();
+            VERIFIER_LO_VERSION.get().unwrap().verify_chunk_proof(proof)
         } else {
-            let proof = serde_json::from_slice::<ChunkProofV4>(proof.as_slice()).unwrap();
-            VERIFIER_V4.get().unwrap().verify_chunk_proof(proof)
+            let proof = serde_json::from_slice::<ChunkProofHiVersion>(proof.as_slice()).unwrap();
+            VERIFIER_HI_VERSION.get().unwrap().verify_chunk_proof(proof)
         }
     });
     verified.unwrap_or(false) as c_char
