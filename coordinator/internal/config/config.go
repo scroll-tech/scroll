@@ -56,7 +56,7 @@ type VerifierConfig struct {
 	MockMode     bool   `json:"mock_mode"`
 	ParamsPath   string `json:"params_path"`
 	AssetsPathLo string `json:"assets_path_lo"` // lower version Verifier
-	AssetsPathHI string `json:"assets_path_hi"` // higher version Verifier
+	AssetsPathHi string `json:"assets_path_hi"` // higher version Verifier
 }
 
 // NewConfig returns a new instance of Config.
