@@ -38,8 +38,6 @@ type BundleProposer struct {
 	bundleBatchesNum                    prometheus.Gauge
 	bundleFirstBlockTimeoutReached      prometheus.Counter
 	bundleBatchesProposeNotEnoughTotal  prometheus.Counter
-
-	lastBundleId uint64
 }
 
 // NewBundleProposer creates a new BundleProposer instance.
@@ -124,7 +122,6 @@ func (p *BundleProposer) updateDBBundleInfo(batches []*orm.Batch, codecVersion e
 		log.Error("update chunk info in orm failed", "err", err)
 		return err
 	}
-	p.lastBundleId = bundle.Index
 	return nil
 }
 
@@ -135,8 +132,7 @@ func (p *BundleProposer) proposeBundle() error {
 	}
 
 	// select at most maxBlocksThisChunk blocks
-	//maxBatchesThisBundle := p.maxBatchNumPerBundle
-	maxBatchesThisBundle := p.lastBundleId%p.maxBatchNumPerBundle + 1
+	maxBatchesThisBundle := p.maxBatchNumPerBundle
 	batches, err := p.batchOrm.GetBatchesGEIndexGECodecVersion(p.ctx, firstUnbundledBatchIndex, encoding.CodecV3, int(maxBatchesThisBundle))
 	if err != nil {
 		return err
