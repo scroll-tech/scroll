@@ -36,14 +36,16 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap, BundleVkMap: bundleVKMap}, nil
 	}
 	paramsPathStr := C.CString(cfg.ParamsPath)
-	assetsPathStr := C.CString(cfg.AssetsPath)
+	assetsPathLoStr := C.CString(cfg.AssetsPathLo)
+	assetsPathHiStr := C.CString(cfg.AssetsPathHi)
 	defer func() {
 		C.free(unsafe.Pointer(paramsPathStr))
-		C.free(unsafe.Pointer(assetsPathStr))
+		C.free(unsafe.Pointer(assetsPathLoStr))
+		C.free(unsafe.Pointer(assetsPathHiStr))
 	}()
 
-	C.init_batch_verifier(paramsPathStr, assetsPathStr)
-	C.init_chunk_verifier(paramsPathStr, assetsPathStr)
+	C.init_batch_verifier(paramsPathStr, assetsPathHiStr)
+	C.init_chunk_verifier(paramsPathStr, assetsPathLoStr, assetsPathHiStr)
 
 	v := &Verifier{
 		cfg:         cfg,
@@ -52,15 +54,15 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		BundleVkMap: make(map[string]string),
 	}
 
-	bundleVK, err := v.readVK(path.Join(cfg.AssetsPath, "vk_bundle.vkey"))
+	bundleVK, err := v.readVK(path.Join(cfg.AssetsPathHi, "vk_bundle.vkey"))
 	if err != nil {
 		return nil, err
 	}
-	batchVK, err := v.readVK(path.Join(cfg.AssetsPath, "vk_batch.vkey"))
+	batchVK, err := v.readVK(path.Join(cfg.AssetsPathHi, "vk_batch.vkey"))
 	if err != nil {
 		return nil, err
 	}
-	chunkVK, err := v.readVK(path.Join(cfg.AssetsPath, "vk_chunk.vkey"))
+	chunkVK, err := v.readVK(path.Join(cfg.AssetsPathHi, "vk_chunk.vkey"))
 	if err != nil {
 		return nil, err
 	}

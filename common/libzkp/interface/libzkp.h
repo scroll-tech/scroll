@@ -17,7 +17,7 @@ char* gen_bundle_proof(char* batch_proofs);
 char verify_bundle_proof(char* proof);
 
 void init_chunk_prover(char* params_dir, char* assets_dir);
-void init_chunk_verifier(char* params_dir, char* assets_dir);
+void init_chunk_verifier(char* params_dir, char* v3_assets_dir, char* v4_assets_dir);
 char* get_chunk_vk();
 char* gen_chunk_proof(char* block_traces);
 char verify_chunk_proof(char* proof, char* fork_name);
