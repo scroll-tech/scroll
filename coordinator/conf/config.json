@@ -9,7 +9,7 @@
       "fork_name": "bernoulli",
       "mock_mode": true,
       "params_path": "",
-      "assets_path_low": "",
+      "assets_path_lo": "",
       "assets_path_hi": ""
     },
     "max_verifier_workers": 4,
