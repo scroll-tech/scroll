@@ -22,19 +22,6 @@ impl ProofHandler for MyProofHandler {
 
     async fn prove(data: Self::Input) -> Result<Self::Output, Self::Error> {
         let config: Config = Config::from_file("config.json".to_string()).map_err(|e| e.to_string())?;
-        let assets_dir_value = std::env::var(SCROLL_PROVER_ASSETS_DIR_ENV_NAME)
-            .map_err(|e| e.to_string()).unwrap();
-
-        defer! {
-            log::info!(
-                "set env {SCROLL_PROVER_ASSETS_DIR_ENV_NAME} to {}",
-                assets_dir_value
-            );
-            std::env::set_var(
-                SCROLL_PROVER_ASSETS_DIR_ENV_NAME,
-                assets_dir_value,
-            );
-        }
 
         if let Err(e) = AssetsDirEnvConfig::init() {
             log::error!("AssetsDirEnvConfig init failed: {:#}", e);
