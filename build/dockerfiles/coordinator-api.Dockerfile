@@ -36,7 +36,7 @@ COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/log
 RUN cd ./coordinator && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_api_skip_libzkp && mv ./build/bin/coordinator_api /bin/coordinator_api && mv internal/logic/verifier/lib /bin/
 
 # Pull coordinator into a second stage deploy ubuntu container
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
 # ENV CHAIN_ID=534353

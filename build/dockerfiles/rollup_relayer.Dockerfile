@@ -19,7 +19,7 @@ RUN --mount=target=. \
     cd /src/rollup/cmd/rollup_relayer/ && CGO_LDFLAGS="-ldl" go build -v -p 4 -o /bin/rollup_relayer
 
 # Pull rollup_relayer into a second stage deploy ubuntu container
-FROM ubuntu:20.04
+FROM ubuntu:22.04
 
 RUN apt update && apt install ca-certificates -y
 
