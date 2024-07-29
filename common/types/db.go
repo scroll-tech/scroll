@@ -111,7 +111,7 @@ const (
 	ProverTaskFailureTypeServerError
 	// ProverTaskFailureTypeObjectAlreadyVerified object(batch/chunk) already verified, may exists in test env when ENABLE_TEST_ENV_BYPASS_FEATURES is true
 	ProverTaskFailureTypeObjectAlreadyVerified
-	// ProverTaskFailureTypeReassignedByAdmin reassigned by admin
+	// ProverTaskFailureTypeReassignedByAdmin reassigned by admin, this value is used in admin-system and defined here for clarity
 	ProverTaskFailureTypeReassignedByAdmin
 )
 
