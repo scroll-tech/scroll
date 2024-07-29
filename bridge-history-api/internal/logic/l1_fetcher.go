@@ -339,7 +339,8 @@ func (f *L1FetcherLogic) updateMetrics(res L1FilterResult) {
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_skip_message").Add(1)
 		case btypes.MessageQueueEventTypeDropTransaction:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_drop_message").Add(1)
-		// this event could reset more than one skipped messages.
+		// one ResetDequeuedTransaction event could indicate reset multiple skipped messages,
+		// this metric only counts the number of events, not the number of skipped messages.
 		case btypes.MessageQueueEventTypeResetDequeuedTransaction:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_reset_skipped_messages").Add(1)
 		}
