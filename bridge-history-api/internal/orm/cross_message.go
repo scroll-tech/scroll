@@ -221,6 +221,7 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			// do not over-write terminal statuses.
 			db = db.Where("tx_status != ?", types.TxStatusTypeRelayed)
 			db = db.Where("tx_status != ?", types.TxStatusTypeDropped)
+			// reset skipped messages that the nonce is greater than or equal to the queue index.
 			db = db.Where("message_nonce >= ?", l1MessageQueueEvent.QueueIndex)
 			db = db.Where("message_type = ?", btypes.MessageTypeL1SentMessage)
 			txStatusUpdateFields["tx_status"] = types.TxStatusTypeSent
