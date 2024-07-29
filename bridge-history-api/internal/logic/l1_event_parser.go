@@ -327,7 +327,7 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 				return nil, err
 			}
 			l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
-				EventType:  btypes.MessageQueueEventTypeDequeueTransaction,
+				EventType:  btypes.MessageQueueEventTypeResetDequeuedTransaction,
 				QueueIndex: event.StartIndex.Uint64(),
 			})
 		case backendabi.L1DropTransactionEventSig:

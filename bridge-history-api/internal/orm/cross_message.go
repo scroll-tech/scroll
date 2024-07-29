@@ -237,7 +237,7 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		db = db.Model(&CrossMessage{})
 		txHashUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
-		case btypes.MessageQueueEventTypeDequeueTransaction:
+		case btypes.MessageQueueEventTypeDequeueTransaction, btypes.MessageQueueEventTypeResetDequeuedTransaction:
 			continue
 		case btypes.MessageQueueEventTypeQueueTransaction:
 			// only replayMessages or enforced txs (whose message hashes would not be found), sendMessages have been filtered out.
