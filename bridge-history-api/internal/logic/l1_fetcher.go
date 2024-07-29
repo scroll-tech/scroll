@@ -339,6 +339,8 @@ func (f *L1FetcherLogic) updateMetrics(res L1FilterResult) {
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_skip_message").Add(1)
 		case btypes.MessageQueueEventTypeDropTransaction:
 			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_drop_message").Add(1)
+		case btypes.MessageQueueEventTypeResetDequeuedTransaction:
+			f.l1FetcherLogicFetchedTotal.WithLabelValues("L1_reset_skipped_message").Add(1)
 		}
 	}
 

@@ -217,6 +217,13 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			db = db.Where("message_type = ?", btypes.MessageTypeL1SentMessage)
 			txStatusUpdateFields["tx_status"] = types.TxStatusTypeDropped
+		case btypes.MessageQueueEventTypeResetDequeuedTransaction:
+			// do not over-write terminal statuses.
+			db = db.Where("tx_status != ?", types.TxStatusTypeRelayed)
+			db = db.Where("tx_status != ?", types.TxStatusTypeDropped)
+			db = db.Where("message_nonce >= ?", l1MessageQueueEvent.QueueIndex)
+			db = db.Where("message_type = ?", btypes.MessageTypeL1SentMessage)
+			txStatusUpdateFields["tx_status"] = types.TxStatusTypeSent
 		}
 		if err := db.Updates(txStatusUpdateFields).Error; err != nil {
 			return fmt.Errorf("failed to update tx statuses of L1 message queue events, update fields: %v, error: %w", txStatusUpdateFields, err)
