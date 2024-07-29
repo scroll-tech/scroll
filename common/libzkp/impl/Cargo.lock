@@ -65,7 +65,7 @@ dependencies = [
 [[package]]
 name = "aggregator"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "ark-std 0.3.0",
  "bitstream-io",
@@ -598,7 +598,7 @@ dependencies = [
 [[package]]
 name = "bus-mapping"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "eth-types 0.12.0",
  "ethers-core",
@@ -1214,7 +1214,7 @@ dependencies = [
 [[package]]
 name = "eth-types"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "base64 0.13.1",
  "ethers-core",
@@ -1383,7 +1383,7 @@ dependencies = [
 [[package]]
 name = "external-tracer"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "eth-types 0.12.0",
  "geth-utils 0.12.0",
@@ -1577,7 +1577,7 @@ dependencies = [
 [[package]]
 name = "gadgets"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "eth-types 0.12.0",
  "halo2_proofs",
@@ -1610,7 +1610,7 @@ dependencies = [
 [[package]]
 name = "geth-utils"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "env_logger 0.10.0",
  "gobuild",
@@ -2374,7 +2374,7 @@ dependencies = [
 [[package]]
 name = "mock"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "eth-types 0.12.0",
  "ethers-core",
@@ -2403,7 +2403,7 @@ dependencies = [
 [[package]]
 name = "mpt-zktrie"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "eth-types 0.12.0",
  "halo2curves",
@@ -2909,7 +2909,7 @@ dependencies = [
 [[package]]
 name = "prover"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "aggregator 0.12.0",
  "anyhow",
@@ -4588,7 +4588,7 @@ dependencies = [
 [[package]]
 name = "zkevm-circuits"
 version = "0.12.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0-rc.3#706ba9ee7292b8e15a4fa0d4634a65dffa999402"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.12.0#6a1f65a1f99429f3725ef4d6788f5643bb61aa6f"
 dependencies = [
  "array-init",
  "bus-mapping 0.12.0",
