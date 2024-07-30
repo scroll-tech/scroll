@@ -3,6 +3,7 @@ package provertask
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -225,7 +226,7 @@ func (r *blockRange) merge(o blockRange) (*blockRange, error) {
 	} else if r.to == o.from {
 		return &blockRange{r.from, o.to}, nil
 	}
-	return nil, fmt.Errorf("two ranges are not adjacent")
+	return nil, errors.New("two ranges are not adjacent")
 }
 
 func (r *blockRange) contains(start, end uint64) bool {

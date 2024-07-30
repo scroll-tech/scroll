@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 
@@ -49,15 +50,15 @@ func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *
 func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
-		return fmt.Errorf("get public key from context failed")
+		return errors.New("get public key from context failed")
 	}
 	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
 	if !proverNameExist {
-		return fmt.Errorf("get prover name from context failed")
+		return errors.New("get prover name from context failed")
 	}
 	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
 	if !proverVersionExist {
-		return fmt.Errorf("get prover version from context failed")
+		return errors.New("get prover version from context failed")
 	}
 
 	ptc.getTaskAccessCounter.With(prometheus.Labels{
@@ -97,7 +98,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	}
 
 	if result == nil {
-		nerr := fmt.Errorf("get empty prover task")
+		nerr := errors.New("get empty prover task")
 		types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, nerr)
 		return
 	}

@@ -2,6 +2,7 @@ package relayer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"sort"
@@ -83,7 +84,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 		// Ensure test features aren't enabled on the ethereum mainnet.
 		if gasOracleSender.GetChainID().Cmp(big.NewInt(1)) == 0 && cfg.EnableTestEnvBypassFeatures {
-			return nil, fmt.Errorf("cannot enable test env features in mainnet")
+			return nil, errors.New("cannot enable test env features in mainnet")
 		}
 
 	case ServiceTypeL2RollupRelayer:
@@ -101,7 +102,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 		// Ensure test features aren't enabled on the ethereum mainnet.
 		if commitSender.GetChainID().Cmp(big.NewInt(1)) == 0 && cfg.EnableTestEnvBypassFeatures {
-			return nil, fmt.Errorf("cannot enable test env features in mainnet")
+			return nil, errors.New("cannot enable test env features in mainnet")
 		}
 
 	default:
@@ -278,7 +279,7 @@ func (r *Layer2Relayer) commitGenesisBatch(batchHash string, batchHeader []byte,
 				return fmt.Errorf("unexpected import genesis confirmation id, expected: %v, got: %v", batchHash, confirmation.ContextID)
 			}
 			if !confirmation.IsSuccessful {
-				return fmt.Errorf("import genesis batch tx failed")
+				return errors.New("import genesis batch tx failed")
 			}
 			log.Info("Successfully committed genesis batch on L1", "txHash", confirmation.TxHash.String())
 			return nil
@@ -514,7 +515,7 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 	}
 
 	if dbBatch.Index == 0 {
-		return fmt.Errorf("invalid args: batch index is 0, should only happen in finalizing genesis batch")
+		return errors.New("invalid args: batch index is 0, should only happen in finalizing genesis batch")
 	}
 
 	dbParentBatch, getErr := r.batchOrm.GetBatchByIndex(r.ctx, dbBatch.Index-1)

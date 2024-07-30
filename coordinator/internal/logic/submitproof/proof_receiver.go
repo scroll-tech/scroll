@@ -35,11 +35,11 @@ var (
 	// ErrValidatorFailureTaskHaveVerifiedSuccess have proved success and verified success
 	ErrValidatorFailureTaskHaveVerifiedSuccess = errors.New("validator failure chunk/batch have proved and verified success")
 	// ErrValidatorFailureVerifiedFailed failed to verify and the verifier returns error
-	ErrValidatorFailureVerifiedFailed = fmt.Errorf("verification failed, verifier returns error")
+	ErrValidatorFailureVerifiedFailed = errors.New("verification failed, verifier returns error")
 	// ErrValidatorSuccessInvalidProof successful verified and the proof is invalid
-	ErrValidatorSuccessInvalidProof = fmt.Errorf("verification succeeded, it's an invalid proof")
+	ErrValidatorSuccessInvalidProof = errors.New("verification succeeded, it's an invalid proof")
 	// ErrCoordinatorInternalFailure coordinator internal db failure
-	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+	ErrCoordinatorInternalFailure = errors.New("coordinator internal error")
 )
 
 // ProofReceiverLogic the proof receiver logic
@@ -128,11 +128,11 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofMsg *message.P
 	m.proofReceivedTotal.Inc()
 	pk := ctx.GetString(coordinatorType.PublicKey)
 	if len(pk) == 0 {
-		return fmt.Errorf("get public key from context failed")
+		return errors.New("get public key from context failed")
 	}
 	pv := ctx.GetString(coordinatorType.ProverVersion)
 	if len(pv) == 0 {
-		return fmt.Errorf("get ProverVersion from context failed")
+		return errors.New("get ProverVersion from context failed")
 	}
 	// use hard_fork_name from parameter first
 	// if prover support multi hard_forks, the real hard_fork_name is not set to the gin context
@@ -284,6 +284,8 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 
 	// if the batch/chunk have proved and verifier success, need skip this submit proof
 	if m.checkIsTaskSuccess(ctx, proofMsg.ID, proofMsg.Type) {
+		m.proofRecover(ctx, proverTask, types.ProverTaskFailureTypeObjectAlreadyVerified, proofMsg)
+
 		m.validateFailureProverTaskHaveVerifier.Inc()
 		log.Info("the prove task have proved and verifier success, skip this submit proof", "hash", proofMsg.ID,
 			"taskType", proverTask.TaskType, "proverName", proverTask.ProverName, "proverPublicKey", pk, "forkName", forkName)
