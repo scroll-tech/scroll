@@ -210,7 +210,7 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 		Topics:    make([][]common.Hash, 1),
 	}
 
-	query.Topics[0] = make([]common.Hash, 14)
+	query.Topics[0] = make([]common.Hash, 15)
 	query.Topics[0][0] = backendabi.L1DepositETHSig
 	query.Topics[0][1] = backendabi.L1DepositERC20Sig
 	query.Topics[0][2] = backendabi.L1DepositERC721Sig
@@ -224,7 +224,8 @@ func (f *L1FetcherLogic) l1FetcherLogs(ctx context.Context, from, to uint64) ([]
 	query.Topics[0][10] = backendabi.L1QueueTransactionEventSig
 	query.Topics[0][11] = backendabi.L1DequeueTransactionEventSig
 	query.Topics[0][12] = backendabi.L1DropTransactionEventSig
-	query.Topics[0][13] = backendabi.L1BridgeBatchDepositSig
+	query.Topics[0][13] = backendabi.L1ResetDequeuedTransactionEventSig
+	query.Topics[0][14] = backendabi.L1BridgeBatchDepositSig
 
 	eventLogs, err := f.client.FilterLogs(ctx, query)
 	if err != nil {
