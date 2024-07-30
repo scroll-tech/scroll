@@ -70,6 +70,7 @@ const (
 	MessageQueueEventTypeQueueTransaction
 	MessageQueueEventTypeDequeueTransaction
 	MessageQueueEventTypeDropTransaction
+	MessageQueueEventTypeResetDequeuedTransaction
 )
 
 // BatchStatusType represents the type of batch status.

@@ -320,6 +320,16 @@ func (e *L1EventParser) ParseL1MessageQueueEventLogs(logs []types.Log, l1Deposit
 					QueueIndex: index,
 				})
 			}
+		case backendabi.L1ResetDequeuedTransactionEventSig:
+			event := backendabi.L1ResetDequeuedTransactionEvent{}
+			if err := utils.UnpackLog(backendabi.IL1MessageQueueABI, &event, "ResetDequeuedTransaction", vlog); err != nil {
+				log.Error("Failed to unpack ResetDequeuedTransaction event", "err", err)
+				return nil, err
+			}
+			l1MessageQueueEvents = append(l1MessageQueueEvents, &orm.MessageQueueEvent{
+				EventType:  btypes.MessageQueueEventTypeResetDequeuedTransaction,
+				QueueIndex: event.StartIndex.Uint64(),
+			})
 		case backendabi.L1DropTransactionEventSig:
 			event := backendabi.L1DropTransactionEvent{}
 			if err := utils.UnpackLog(backendabi.IL1MessageQueueABI, &event, "DropTransaction", vlog); err != nil {
