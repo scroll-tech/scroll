@@ -18,7 +18,7 @@ import (
 
 var (
 	// ErrCoordinatorInternalFailure coordinator internal db failure
-	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
+	ErrCoordinatorInternalFailure = errors.New("coordinator internal error")
 )
 
 var (

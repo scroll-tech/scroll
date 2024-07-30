@@ -96,7 +96,7 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 						version.Version, login.Message.ProverVersion)
 				}
 				// if the prover reports a same prover version
-				return fmt.Errorf("incompatible vk. please check your params files or config files")
+				return errors.New("incompatible vk. please check your params files or config files")
 			}
 		}
 	}

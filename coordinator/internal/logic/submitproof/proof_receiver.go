@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -138,11 +137,11 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 	m.proofReceivedTotal.Inc()
 	pk := ctx.GetString(coordinatorType.PublicKey)
 	if len(pk) == 0 {
-		return fmt.Errorf("get public key from context failed")
+		return errors.New("get public key from context failed")
 	}
 	pv := ctx.GetString(coordinatorType.ProverVersion)
 	if len(pv) == 0 {
-		return fmt.Errorf("get ProverVersion from context failed")
+		return errors.New("get ProverVersion from context failed")
 	}
 
 	proverTask, err := m.proverTaskOrm.GetProverTaskByUUIDAndPublicKey(ctx.Copy(), proofParameter.UUID, pk)
