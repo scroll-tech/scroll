@@ -217,6 +217,12 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 			db = db.Where("message_nonce = ?", l1MessageQueueEvent.QueueIndex)
 			db = db.Where("message_type = ?", btypes.MessageTypeL1SentMessage)
 			txStatusUpdateFields["tx_status"] = types.TxStatusTypeDropped
+		case btypes.MessageQueueEventTypeResetDequeuedTransaction:
+			db = db.Where("tx_status = ?", types.TxStatusTypeSkipped)
+			// reset skipped messages that the nonce is greater than or equal to the queue index.
+			db = db.Where("message_nonce >= ?", l1MessageQueueEvent.QueueIndex)
+			db = db.Where("message_type = ?", btypes.MessageTypeL1SentMessage)
+			txStatusUpdateFields["tx_status"] = types.TxStatusTypeSent
 		}
 		if err := db.Updates(txStatusUpdateFields).Error; err != nil {
 			return fmt.Errorf("failed to update tx statuses of L1 message queue events, update fields: %v, error: %w", txStatusUpdateFields, err)
@@ -230,7 +236,7 @@ func (c *CrossMessage) UpdateL1MessageQueueEventsInfo(ctx context.Context, l1Mes
 		db = db.Model(&CrossMessage{})
 		txHashUpdateFields := make(map[string]interface{})
 		switch l1MessageQueueEvent.EventType {
-		case btypes.MessageQueueEventTypeDequeueTransaction:
+		case btypes.MessageQueueEventTypeDequeueTransaction, btypes.MessageQueueEventTypeResetDequeuedTransaction:
 			continue
 		case btypes.MessageQueueEventTypeQueueTransaction:
 			// only replayMessages or enforced txs (whose message hashes would not be found), sendMessages have been filtered out.
