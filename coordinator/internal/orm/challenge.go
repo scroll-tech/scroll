@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -53,7 +54,7 @@ func (r *Challenge) InsertChallenge(ctx context.Context, challengeString string)
 		return fmt.Errorf("the challenge string:%s have been used", challengeString)
 	}
 
-	return fmt.Errorf("insert challenge string affected rows more than 1")
+	return errors.New("insert challenge string affected rows more than 1")
 }
 
 // DeleteExpireChallenge delete the expire challenge
