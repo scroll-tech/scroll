@@ -109,10 +109,6 @@ const (
 	ProverTaskFailureTypeVerifiedFailed
 	// ProverTaskFailureTypeServerError collect occur error
 	ProverTaskFailureTypeServerError
-	// ProverTaskFailureTypeObjectAlreadyVerified object(batch/chunk) already verified, may exists in test env when ENABLE_TEST_ENV_BYPASS_FEATURES is true
-	ProverTaskFailureTypeObjectAlreadyVerified
-	// ProverTaskFailureTypeReassignedByAdmin reassigned by admin, this value is used in admin-system and defined here for clarity
-	ProverTaskFailureTypeReassignedByAdmin
 )
 
 func (r ProverTaskFailureType) String() string {
@@ -127,10 +123,6 @@ func (r ProverTaskFailureType) String() string {
 		return "prover task failure verified failed"
 	case ProverTaskFailureTypeServerError:
 		return "prover task failure server exception"
-	case ProverTaskFailureTypeObjectAlreadyVerified:
-		return "prover task failure object already verified"
-	case ProverTaskFailureTypeReassignedByAdmin:
-		return "prover task failure reassigned by admin"
 	default:
 		return fmt.Sprintf("illegal prover task failure type (%d)", int32(r))
 	}
