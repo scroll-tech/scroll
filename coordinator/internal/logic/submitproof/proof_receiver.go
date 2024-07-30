@@ -297,6 +297,7 @@ func (m *ProofReceiverLogic) validator(ctx context.Context, proverTask *orm.Prov
 
 	// if the batch/chunk have proved and verifier success, need skip this submit proof
 	if m.checkIsTaskSuccess(ctx, proofParameter.TaskID, message.ProofType(proofParameter.TaskType)) {
+		m.proofRecover(ctx, proverTask, types.ProverTaskFailureTypeObjectAlreadyVerified, proofParameter)
 		m.validateFailureProverTaskHaveVerifier.Inc()
 		log.Info("the prove task have proved and verifier success, skip this submit proof", "hash", proofParameter.TaskID,
 			"taskType", proverTask.TaskType, "proverName", proverTask.ProverName, "proverPublicKey", pk)

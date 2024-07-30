@@ -25,7 +25,7 @@ func init() {
 	app = cli.NewApp()
 	app.Action = action
 	app.Name = "coordinator-tool"
-	app.Usage = "The Scroll L2 Coordinator"
+	app.Usage = "The Scroll L2 Coordinator Tool"
 	app.Version = version.Version
 	app.Flags = append(app.Flags, utils.CommonFlags...)
 	app.Before = func(ctx *cli.Context) error {

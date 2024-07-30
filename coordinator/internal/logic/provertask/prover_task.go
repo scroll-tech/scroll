@@ -1,6 +1,7 @@
 package provertask
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -18,8 +19,6 @@ import (
 var (
 	// ErrCoordinatorInternalFailure coordinator internal db failure
 	ErrCoordinatorInternalFailure = fmt.Errorf("coordinator internal error")
-	// ErrHardForkName indicates client request with the wrong hard fork name
-	ErrHardForkName = fmt.Errorf("wrong hard fork name")
 )
 
 var (
@@ -58,19 +57,19 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
-		return nil, fmt.Errorf("get public key from context failed")
+		return nil, errors.New("get public key from context failed")
 	}
 	ptc.PublicKey = publicKey.(string)
 
 	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
 	if !proverNameExist {
-		return nil, fmt.Errorf("get prover name from context failed")
+		return nil, errors.New("get prover name from context failed")
 	}
 	ptc.ProverName = proverName.(string)
 
 	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
 	if !proverVersionExist {
-		return nil, fmt.Errorf("get prover version from context failed")
+		return nil, errors.New("get prover version from context failed")
 	}
 	ptc.ProverVersion = proverVersion.(string)
 
