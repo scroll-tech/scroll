@@ -503,7 +503,6 @@ func TestBundleOrm(t *testing.T) {
 		err = db.Where("hash = ?", bundle1.Hash).First(&bundle).Error
 		assert.NoError(t, err)
 		assert.Equal(t, int16(types.ProvingTaskAssigned), bundle.ProvingStatus)
-		assert.NotNil(t, bundle.ProverAssignedAt)
 
 		err = bundleOrm.UpdateProvingStatus(context.Background(), bundle1.Hash, types.ProvingTaskVerified)
 		assert.NoError(t, err)

@@ -490,7 +490,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 			"batch proving failed",
 			"Index", batch.Index,
 			"Hash", batch.Hash,
-			"ProverAssignedAt", batch.ProverAssignedAt,
 			"ProvedAt", batch.ProvedAt,
 			"ProofTimeSec", batch.ProofTimeSec,
 		)
@@ -538,7 +537,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 		//     stop the ledger, fix the limit, revert all the violating blocks,
 		//     chunks, batches, bundles and all subsequent ones, and resume,
 		//     i.e. this case requires manual resolution.
-		log.Error("bundle proving failed", "index", bundle.Index, "hash", bundle.Hash, "prover assigned at", bundle.ProverAssignedAt, "proved at", bundle.ProvedAt, "proof time sec", bundle.ProofTimeSec)
+		log.Error("bundle proving failed", "index", bundle.Index, "hash", bundle.Hash, "proved at", bundle.ProvedAt, "proof time sec", bundle.ProofTimeSec)
 
 	default:
 		log.Error("encounter unreachable case in ProcessPendingBundles", "proving status", status)
@@ -652,11 +651,11 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 	// Updating the proving status when finalizing without proof, thus the coordinator could omit this task.
 	// it isn't a necessary step, so don't put in a transaction with UpdateFinalizeTxHashAndRollupStatus
 	if !withProof {
-		txErr := r.db.Transaction(func(tx *gorm.DB) error {
-			if updateErr := r.batchOrm.UpdateProvingStatus(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
+		txErr := r.db.Transaction(func(dbTX *gorm.DB) error {
+			if updateErr := r.batchOrm.UpdateProvingStatus(r.ctx, dbBatch.Hash, types.ProvingTaskVerified, dbTX); updateErr != nil {
 				return updateErr
 			}
-			if updateErr := r.chunkOrm.UpdateProvingStatusByBatchHash(r.ctx, dbBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
+			if updateErr := r.chunkOrm.UpdateProvingStatusByBatchHash(r.ctx, dbBatch.Hash, types.ProvingTaskVerified, dbTX); updateErr != nil {
 				return updateErr
 			}
 			return nil
@@ -735,11 +734,11 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 	// Updating the proving status when finalizing without proof, thus the coordinator could omit this task.
 	// it isn't a necessary step, so don't put in a transaction with UpdateFinalizeTxHashAndRollupStatus
 	if !withProof {
-		txErr := r.db.Transaction(func(tx *gorm.DB) error {
-			if updateErr := r.bundleOrm.UpdateProvingStatus(r.ctx, bundle.Hash, types.ProvingTaskVerified); updateErr != nil {
+		txErr := r.db.Transaction(func(dbTX *gorm.DB) error {
+			if updateErr := r.bundleOrm.UpdateProvingStatus(r.ctx, bundle.Hash, types.ProvingTaskVerified, dbTX); updateErr != nil {
 				return updateErr
 			}
-			if updateErr := r.batchOrm.UpdateProvingStatusByBundleHash(r.ctx, bundle.Hash, types.ProvingTaskVerified); updateErr != nil {
+			if updateErr := r.batchOrm.UpdateProvingStatusByBundleHash(r.ctx, bundle.Hash, types.ProvingTaskVerified, dbTX); updateErr != nil {
 				return updateErr
 			}
 			for batchIndex := bundle.StartBatchIndex; batchIndex <= bundle.EndBatchIndex; batchIndex++ {
@@ -747,7 +746,7 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 				if getErr != nil {
 					return getErr
 				}
-				if updateErr := r.chunkOrm.UpdateProvingStatusByBatchHash(r.ctx, tmpBatch.Hash, types.ProvingTaskVerified); updateErr != nil {
+				if updateErr := r.chunkOrm.UpdateProvingStatusByBatchHash(r.ctx, tmpBatch.Hash, types.ProvingTaskVerified, dbTX); updateErr != nil {
 					return updateErr
 				}
 			}

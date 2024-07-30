@@ -488,7 +488,7 @@ func (o *Batch) UpdateProvingStatusByBundleHash(ctx context.Context, bundleHash 
 	return nil
 }
 
-// UpdateFinalizeTxHashAndRollupStatusByBundleHash updates the the finalize transaction hash and rollup status for batches within the specified bundle_hash
+// UpdateFinalizeTxHashAndRollupStatusByBundleHash updates the finalize transaction hash and rollup status for batches with the specified bundle_hash
 func (o *Batch) UpdateFinalizeTxHashAndRollupStatusByBundleHash(ctx context.Context, bundleHash string, finalizeTxHash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})
 	updateFields["finalize_tx_hash"] = finalizeTxHash

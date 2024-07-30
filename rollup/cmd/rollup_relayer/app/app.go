@@ -85,19 +85,8 @@ func action(ctx *cli.Context) error {
 	}
 
 	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, genesis.Config, db, registry)
-	if err != nil {
-		log.Crit("failed to create chunkProposer", "config file", cfgFile, "error", err)
-	}
-
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, genesis.Config, db, registry)
-	if err != nil {
-		log.Crit("failed to create batchProposer", "config file", cfgFile, "error", err)
-	}
-
 	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, genesis.Config, db, registry)
-	if err != nil {
-		log.Crit("failed to create bundleProposer", "config file", cfgFile, "error", err)
-	}
 
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, db, registry)
 

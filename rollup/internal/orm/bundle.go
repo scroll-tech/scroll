@@ -35,7 +35,6 @@ type Bundle struct {
 	BatchProofsStatus int16      `json:"batch_proofs_status" gorm:"column:batch_proofs_status;default:1"`
 	ProvingStatus     int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
 	Proof             []byte     `json:"proof" gorm:"column:proof;default:NULL"`
-	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt          *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
 	ProofTimeSec      int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 
@@ -214,10 +213,6 @@ func (o *Bundle) UpdateProvingStatus(ctx context.Context, hash string, status ty
 	updateFields["proving_status"] = int(status)
 
 	switch status {
-	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now()
-	case types.ProvingTaskUnassigned:
-		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskVerified:
 		updateFields["proved_at"] = time.Now()
 	}

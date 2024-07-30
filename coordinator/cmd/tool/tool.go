@@ -66,7 +66,7 @@ func action(ctx *cli.Context) error {
 	for _, batch := range batches {
 		var proof message.BatchProof
 		if encodeErr := json.Unmarshal(batch.Proof, &proof); encodeErr != nil {
-			log.Error("failed to unmarshal proof")
+			log.Error("failed to unmarshal batch proof")
 			return fmt.Errorf("failed to unmarshal proof: %w, bundle hash: %v, batch hash: %v", encodeErr, taskID, batch.Hash)
 		}
 		batchProofs = append(batchProofs, &proof)
@@ -78,8 +78,8 @@ func action(ctx *cli.Context) error {
 
 	batchProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		log.Error("failed to marshal proof")
-		return fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", taskID, err)
+		log.Error("failed to marshal batch proof")
+		return fmt.Errorf("failed to marshal batch proofs, taskID:%s err:%w", taskID, err)
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
