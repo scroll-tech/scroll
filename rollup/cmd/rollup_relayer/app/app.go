@@ -111,9 +111,9 @@ func action(ctx *cli.Context) error {
 		l2watcher.TryFetchRunningMissingBlocks(number)
 	})
 
-	go utils.Loop(subCtx, 2*time.Second, chunkProposer.TryProposeChunk)
+	go utils.Loop(subCtx, time.Duration(cfg.L2Config.ChunkProposerConfig.ProposeIntervalMilliseconds)*time.Millisecond, chunkProposer.TryProposeChunk)
 
-	go utils.Loop(subCtx, 10*time.Second, batchProposer.TryProposeBatch)
+	go utils.Loop(subCtx, time.Duration(cfg.L2Config.BatchProposerConfig.ProposeIntervalMilliseconds)*time.Millisecond, batchProposer.TryProposeBatch)
 
 	go utils.Loop(subCtx, 10*time.Second, bundleProposer.TryProposeBundle)
 
