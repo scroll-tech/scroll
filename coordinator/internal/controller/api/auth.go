@@ -8,9 +8,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/types/message"
-
+	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/auth"
+	"scroll-tech/coordinator/internal/logic/verifier"
 	"scroll-tech/coordinator/internal/types"
 )
 
@@ -20,9 +20,9 @@ type AuthController struct {
 }
 
 // NewAuthController returns an LoginController instance
-func NewAuthController(db *gorm.DB) *AuthController {
+func NewAuthController(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *AuthController {
 	return &AuthController{
-		loginLogic: auth.NewLoginLogic(db),
+		loginLogic: auth.NewLoginLogic(db, cfg, vf),
 	}
 }
 
@@ -40,6 +40,10 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return "", errors.New("check challenge failure for the not equal challenge string")
 	}
 
+	if err := a.loginLogic.Check(&login); err != nil {
+		return "", fmt.Errorf("check the login parameter failure: %w", err)
+	}
+
 	// check the challenge is used, if used, return failure
 	if err := a.loginLogic.InsertChallengeString(c, login.Message.Challenge); err != nil {
 		return "", fmt.Errorf("login insert challenge string failure:%w", err)
@@ -54,44 +58,10 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 		return jwt.MapClaims{}
 	}
 
-	var publicKey string
-	var err error
-	if v.Message.HardForkName != "" {
-		authMsg := message.AuthMsg{
-			Identity: &message.Identity{
-				Challenge:     v.Message.Challenge,
-				ProverName:    v.Message.ProverName,
-				ProverVersion: v.Message.ProverVersion,
-				HardForkName:  v.Message.HardForkName,
-			},
-			Signature: v.Signature,
-		}
-		publicKey, err = authMsg.PublicKey()
-	} else {
-		authMsg := message.LegacyAuthMsg{
-			Identity: &message.LegacyIdentity{
-				Challenge:     v.Message.Challenge,
-				ProverName:    v.Message.ProverName,
-				ProverVersion: v.Message.ProverVersion,
-			},
-			Signature: v.Signature,
-		}
-		publicKey, err = authMsg.PublicKey()
-	}
-
-	if err != nil {
-		return jwt.MapClaims{}
-	}
-
-	if v.Message.HardForkName == "" {
-		v.Message.HardForkName = "shanghai"
-	}
-
 	return jwt.MapClaims{
-		types.PublicKey:     publicKey,
+		types.PublicKey:     v.PublicKey,
 		types.ProverName:    v.Message.ProverName,
 		types.ProverVersion: v.Message.ProverVersion,
-		types.HardForkName:  v.Message.HardForkName,
 	}
 }
 
@@ -108,10 +78,6 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 
 	if proverVersion, ok := claims[types.ProverVersion]; ok {
 		c.Set(types.ProverVersion, proverVersion)
-	}
-
-	if hardForkName, ok := claims[types.HardForkName]; ok {
-		c.Set(types.HardForkName, hardForkName)
 	}
 	return nil
 }

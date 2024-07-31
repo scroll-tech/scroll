@@ -26,6 +26,9 @@ coordinator_api: libzkp ## Builds the Coordinator api instance.
 coordinator_cron:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_cron ./cmd/cron
 
+coordinator_tool:
+	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_tool ./cmd/tool
+
 coordinator_api_skip_libzkp:
 	go build -ldflags "-X scroll-tech/common/version.ZkVersion=${ZK_VERSION}" -o $(PWD)/build/bin/coordinator_api ./cmd/api
 

@@ -17,7 +17,6 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/provertask"
-	"scroll-tech/coordinator/internal/logic/verifier"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
@@ -29,9 +28,10 @@ type GetTaskController struct {
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, vf.ChunkVKMap, reg)
-	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, vf.BatchVKMap, reg)
+func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *GetTaskController {
+	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, reg)
+	bundleProverTask := provertask.NewBundleProverTask(cfg, chainCfg, db, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),
@@ -43,7 +43,7 @@ func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *
 
 	ptc.proverTasks[message.ProofTypeChunk] = chunkProverTask
 	ptc.proverTasks[message.ProofTypeBatch] = batchProverTask
-
+	ptc.proverTasks[message.ProofTypeBundle] = bundleProverTask
 	return ptc
 }
 
@@ -107,18 +107,25 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 }
 
 func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) message.ProofType {
-	proofType := message.ProofType(para.TaskType)
-
-	proofTypes := []message.ProofType{
-		message.ProofTypeChunk,
-		message.ProofTypeBatch,
+	var proofTypes []message.ProofType
+	if para.TaskType != 0 {
+		proofTypes = append(proofTypes, message.ProofType(para.TaskType))
 	}
 
-	if proofType == message.ProofTypeUndefined {
-		rand.Shuffle(len(proofTypes), func(i, j int) {
-			proofTypes[i], proofTypes[j] = proofTypes[j], proofTypes[i]
-		})
-		proofType = proofTypes[0]
+	for _, proofType := range para.TaskTypes {
+		proofTypes = append(proofTypes, message.ProofType(proofType))
 	}
-	return proofType
+
+	if len(proofTypes) == 0 {
+		proofTypes = []message.ProofType{
+			message.ProofTypeChunk,
+			message.ProofTypeBatch,
+			message.ProofTypeBundle,
+		}
+	}
+
+	rand.Shuffle(len(proofTypes), func(i, j int) {
+		proofTypes[i], proofTypes[j] = proofTypes[j], proofTypes[i]
+	})
+	return proofTypes[0]
 }

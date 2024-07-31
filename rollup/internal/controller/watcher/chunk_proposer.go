@@ -36,7 +36,6 @@ type ChunkProposer struct {
 	chunkTimeoutSec                 uint64
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
-	forkHeights                     []uint64
 
 	chainCfg *params.ChainConfig
 
@@ -62,16 +61,16 @@ type ChunkProposer struct {
 
 // NewChunkProposer creates a new ChunkProposer instance.
 func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *ChunkProposer {
-	forkHeights, _, _ := forks.CollectSortedForkHeights(chainCfg)
-	log.Debug("new chunk proposer",
+	log.Info("new chunk proposer",
+		"maxBlockNumPerChunk", cfg.MaxBlockNumPerChunk,
 		"maxTxNumPerChunk", cfg.MaxTxNumPerChunk,
 		"maxL1CommitGasPerChunk", cfg.MaxL1CommitGasPerChunk,
 		"maxL1CommitCalldataSizePerChunk", cfg.MaxL1CommitCalldataSizePerChunk,
 		"maxRowConsumptionPerChunk", cfg.MaxRowConsumptionPerChunk,
 		"chunkTimeoutSec", cfg.ChunkTimeoutSec,
 		"gasCostIncreaseMultiplier", cfg.GasCostIncreaseMultiplier,
-		"maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize,
-		"forkHeights", forkHeights)
+		"maxBlobSize", maxBlobSize,
+		"maxUncompressedBatchBytesSize", cfg.MaxUncompressedBatchBytesSize)
 
 	p := &ChunkProposer{
 		ctx:                             ctx,
@@ -86,7 +85,6 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
-		forkHeights:                     forkHeights,
 		chainCfg:                        chainCfg,
 
 		chunkProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -240,10 +238,6 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	maxBlocksThisChunk := p.maxBlockNumPerChunk
-	blocksUntilFork := forks.BlocksUntilFork(unchunkedBlockHeight, p.forkHeights)
-	if blocksUntilFork != 0 && blocksUntilFork < maxBlocksThisChunk {
-		maxBlocksThisChunk = blocksUntilFork
-	}
 
 	// select at most maxBlocksThisChunk blocks
 	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, int(maxBlocksThisChunk))
@@ -255,14 +249,19 @@ func (p *ChunkProposer) proposeChunk() error {
 		return nil
 	}
 
-	var codecVersion encoding.CodecVersion
-	if !p.chainCfg.IsBernoulli(blocks[0].Header.Number) {
-		codecVersion = encoding.CodecV0
-	} else if !p.chainCfg.IsCurie(blocks[0].Header.Number) {
-		codecVersion = encoding.CodecV1
-	} else {
-		codecVersion = encoding.CodecV2
+	// Ensure all blocks in the same chunk use the same hardfork name
+	// If a different hardfork name is found, truncate the blocks slice at that point
+	hardforkName := forks.GetHardforkName(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
+	for i := 1; i < len(blocks); i++ {
+		currentHardfork := forks.GetHardforkName(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
+		if currentHardfork != hardforkName {
+			blocks = blocks[:i]
+			maxBlocksThisChunk = uint64(i) // update maxBlocksThisChunk to trigger chunking, because these blocks are the last blocks before the hardfork
+			break
+		}
 	}
+
+	codecVersion := forks.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 
 	// Including Curie block in a sole chunk.
 	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number.Cmp(p.chainCfg.CurieBlock) == 0 {
@@ -334,10 +333,9 @@ func (p *ChunkProposer) proposeChunk() error {
 	currentTimeSec := uint64(time.Now().Unix())
 	if metrics.FirstBlockTimestamp+p.chunkTimeoutSec < currentTimeSec || metrics.NumBlocks == maxBlocksThisChunk {
 		log.Info("reached maximum number of blocks in chunk or first block timeout",
-			"start block number", chunk.Blocks[0].Header.Number,
 			"block count", len(chunk.Blocks),
-			"block number", chunk.Blocks[0].Header.Number,
-			"block timestamp", metrics.FirstBlockTimestamp,
+			"start block number", chunk.Blocks[0].Header.Number,
+			"start block timestamp", metrics.FirstBlockTimestamp,
 			"current time", currentTimeSec)
 
 		p.chunkFirstBlockTimeoutReached.Inc()

@@ -8,7 +8,8 @@ use crate::{
     coordinator_client::{listener::Listener, types::*, CoordinatorClient},
     geth_client::GethClient,
     key_signer::KeySigner,
-    types::{ProofFailureType, ProofStatus, ProofType},
+    types::{ProofFailureType, ProofStatus, ProverType},
+    utils::get_task_types,
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
 };
 
@@ -24,16 +25,11 @@ pub struct Prover<'a> {
 
 impl<'a> Prover<'a> {
     pub fn new(config: &'a Config, coordinator_listener: Box<dyn Listener>) -> Result<Self> {
-        let proof_type = config.proof_type;
+        let prover_type = config.prover_type;
         let keystore_path = &config.keystore_path;
         let keystore_password = &config.keystore_password;
 
-        let key_signer = Rc::new(KeySigner::new(keystore_path, keystore_password)?);
-        let coordinator_client =
-            CoordinatorClient::new(config, Rc::clone(&key_signer), coordinator_listener)
-                .context("failed to create coordinator_client")?;
-
-        let geth_client = if config.proof_type == ProofType::Chunk {
+        let geth_client = if config.prover_type == ProverType::Chunk {
             Some(Rc::new(RefCell::new(
                 GethClient::new(
                     &config.prover_name,
@@ -45,8 +41,15 @@ impl<'a> Prover<'a> {
             None
         };
 
-        let provider = CircuitsHandlerProvider::new(proof_type, config, geth_client.clone())
+        let provider = CircuitsHandlerProvider::new(prover_type, config, geth_client.clone())
             .context("failed to create circuits handler provider")?;
+
+        let vks = provider.init_vks(prover_type, config, geth_client.clone());
+
+        let key_signer = Rc::new(KeySigner::new(keystore_path, keystore_password)?);
+        let coordinator_client =
+            CoordinatorClient::new(config, Rc::clone(&key_signer), coordinator_listener, vks)
+                .context("failed to create coordinator_client")?;
 
         let prover = Prover {
             config,
@@ -59,10 +62,6 @@ impl<'a> Prover<'a> {
         Ok(prover)
     }
 
-    pub fn get_proof_type(&self) -> ProofType {
-        self.config.proof_type
-    }
-
     pub fn get_public_key(&self) -> String {
         self.key_signer.get_public_key()
     }
@@ -70,12 +69,11 @@ impl<'a> Prover<'a> {
     pub fn fetch_task(&self) -> Result<Task> {
         log::info!("[prover] start to fetch_task");
         let mut req = GetTaskRequest {
-            task_type: self.get_proof_type(),
+            task_types: get_task_types(self.config.prover_type),
             prover_height: None,
-            vks: self.circuits_handler_provider.borrow().get_vks(),
         };
 
-        if self.get_proof_type() == ProofType::Chunk {
+        if self.config.prover_type == ProverType::Chunk {
             let latest_block_number = self.get_latest_block_number_value()?;
             if let Some(v) = latest_block_number {
                 if v.as_u64() == 0 {
@@ -130,7 +128,6 @@ impl<'a> Prover<'a> {
             task_type: proof_detail.proof_type,
             status: ProofStatus::Ok,
             proof: proof_detail.proof_data,
-            hard_fork_name: task.hard_fork_name.clone(),
             ..Default::default()
         };
 
@@ -150,8 +147,7 @@ impl<'a> Prover<'a> {
             task_type: task.task_type,
             status: ProofStatus::Error,
             failure_type: Some(failure_type),
-            failure_msg: Some(error.to_string()),
-            hard_fork_name: task.hard_fork_name.clone(),
+            failure_msg: Some(format!("{:#}", error)),
             ..Default::default()
         };
         self.do_submit(&request)

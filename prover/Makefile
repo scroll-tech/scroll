@@ -37,14 +37,10 @@ endif
 
 prover:
 	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release
-	rm -rf ./lib && mkdir ./lib
-	find target/ -name "libzktrie.so" | xargs -I{} cp {} ./lib
 
 tests_binary:
 	cargo clean && cargo test --release --no-run
 	ls target/release/deps/prover* | grep -v "\.d" | xargs -I{} ln -sf {} ./prover.test
-	rm -rf ./lib && mkdir ./lib
-	find target/ -name "libzktrie.so" | xargs -I{} cp {} ./lib
 
 lint:
 	cargo check --all-features
