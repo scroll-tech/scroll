@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 
@@ -16,7 +17,6 @@ import (
 
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/provertask"
-	"scroll-tech/coordinator/internal/logic/verifier"
 	coordinatorType "scroll-tech/coordinator/internal/types"
 )
 
@@ -28,9 +28,10 @@ type GetTaskController struct {
 }
 
 // NewGetTaskController create a get prover task controller
-func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, vf *verifier.Verifier, reg prometheus.Registerer) *GetTaskController {
-	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, vf.ChunkVKMap, reg)
-	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, vf.BatchVKMap, reg)
+func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *GetTaskController {
+	chunkProverTask := provertask.NewChunkProverTask(cfg, chainCfg, db, reg)
+	batchProverTask := provertask.NewBatchProverTask(cfg, chainCfg, db, reg)
+	bundleProverTask := provertask.NewBundleProverTask(cfg, chainCfg, db, reg)
 
 	ptc := &GetTaskController{
 		proverTasks: make(map[message.ProofType]provertask.ProverTask),
@@ -42,22 +43,22 @@ func NewGetTaskController(cfg *config.Config, chainCfg *params.ChainConfig, db *
 
 	ptc.proverTasks[message.ProofTypeChunk] = chunkProverTask
 	ptc.proverTasks[message.ProofTypeBatch] = batchProverTask
-
+	ptc.proverTasks[message.ProofTypeBundle] = bundleProverTask
 	return ptc
 }
 
 func (ptc *GetTaskController) incGetTaskAccessCounter(ctx *gin.Context) error {
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
-		return fmt.Errorf("get public key from context failed")
+		return errors.New("get public key from context failed")
 	}
 	proverName, proverNameExist := ctx.Get(coordinatorType.ProverName)
 	if !proverNameExist {
-		return fmt.Errorf("get prover name from context failed")
+		return errors.New("get prover name from context failed")
 	}
 	proverVersion, proverVersionExist := ctx.Get(coordinatorType.ProverVersion)
 	if !proverVersionExist {
-		return fmt.Errorf("get prover version from context failed")
+		return errors.New("get prover version from context failed")
 	}
 
 	ptc.getTaskAccessCounter.With(prometheus.Labels{
@@ -97,7 +98,7 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 	}
 
 	if result == nil {
-		nerr := fmt.Errorf("get empty prover task")
+		nerr := errors.New("get empty prover task")
 		types.RenderFailure(ctx, types.ErrCoordinatorEmptyProofData, nerr)
 		return
 	}
@@ -106,18 +107,25 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 }
 
 func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) message.ProofType {
-	proofType := message.ProofType(para.TaskType)
-
-	proofTypes := []message.ProofType{
-		message.ProofTypeChunk,
-		message.ProofTypeBatch,
+	var proofTypes []message.ProofType
+	if para.TaskType != 0 {
+		proofTypes = append(proofTypes, message.ProofType(para.TaskType))
 	}
 
-	if proofType == message.ProofTypeUndefined {
-		rand.Shuffle(len(proofTypes), func(i, j int) {
-			proofTypes[i], proofTypes[j] = proofTypes[j], proofTypes[i]
-		})
-		proofType = proofTypes[0]
+	for _, proofType := range para.TaskTypes {
+		proofTypes = append(proofTypes, message.ProofType(proofType))
 	}
-	return proofType
+
+	if len(proofTypes) == 0 {
+		proofTypes = []message.ProofType{
+			message.ProofTypeChunk,
+			message.ProofTypeBatch,
+			message.ProofTypeBundle,
+		}
+	}
+
+	rand.Shuffle(len(proofTypes), func(i, j int) {
+		proofTypes[i], proofTypes[j] = proofTypes[j], proofTypes[i]
+	})
+	return proofTypes[0]
 }

@@ -38,7 +38,7 @@ func GetBlockNumber(ctx context.Context, client *ethclient.Client, confirmations
 // @todo: add unit test.
 func UnpackLog(c *abi.ABI, out interface{}, event string, log types.Log) error {
 	if log.Topics[0] != c.Events[event].ID {
-		return fmt.Errorf("event signature mismatch")
+		return errors.New("event signature mismatch")
 	}
 	if len(log.Data) > 0 {
 		if err := c.UnpackIntoInterface(out, event, log.Data); err != nil {

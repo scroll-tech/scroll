@@ -21,6 +21,8 @@ type ProverManager struct {
 	BatchCollectionTimeSec int `json:"batch_collection_time_sec"`
 	// ChunkCollectionTimeSec chunk Proof collection time (in seconds).
 	ChunkCollectionTimeSec int `json:"chunk_collection_time_sec"`
+	// BundleCollectionTimeSec bundle Proof collection time (in seconds).
+	BundleCollectionTimeSec int `json:"bundle_collection_time_sec"`
 	// Max number of workers in verifier worker pool
 	MaxVerifierWorkers int `json:"max_verifier_workers"`
 	// MinProverVersion is the minimum version of the prover that is required.
@@ -50,10 +52,11 @@ type Config struct {
 
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
-	ForkName   string `json:"fork_name"`
-	MockMode   bool   `json:"mock_mode"`
-	ParamsPath string `json:"params_path"`
-	AssetsPath string `json:"assets_path"`
+	ForkName     string `json:"fork_name"`
+	MockMode     bool   `json:"mock_mode"`
+	ParamsPath   string `json:"params_path"`
+	AssetsPathLo string `json:"assets_path_lo"` // lower version Verifier
+	AssetsPathHi string `json:"assets_path_hi"` // higher version Verifier
 }
 
 // NewConfig returns a new instance of Config.

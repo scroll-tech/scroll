@@ -2,13 +2,15 @@
   "prover_manager": {
     "provers_per_session": 1,
     "session_attempts": 5,
+    "bundle_collection_time_sec": 180,
     "batch_collection_time_sec": 180,
     "chunk_collection_time_sec": 180,
     "verifier": {
       "fork_name": "bernoulli",
       "mock_mode": true,
       "params_path": "",
-      "assets_path": ""
+      "assets_path_lo": "",
+      "assets_path_hi": ""
     },
     "max_verifier_workers": 4,
     "min_prover_version": "v1.0.0"
@@ -24,7 +26,7 @@
   },
   "auth": {
     "secret": "prover secret key",
-    "challenge_expire_duration_sec": 10,
+    "challenge_expire_duration_sec": 3600,
     "login_expire_duration_sec": 3600
   }
 }
