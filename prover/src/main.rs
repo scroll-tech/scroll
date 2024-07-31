@@ -65,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!(
         "prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",
         config.prover_name,
-        config.proof_type,
+        config.prover_type,
         prover.get_public_key(),
         version::get_version(),
     );

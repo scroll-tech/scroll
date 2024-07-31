@@ -1,7 +1,7 @@
 package sender
 
 import (
-	"fmt"
+	"errors"
 	"math/big"
 
 	"github.com/scroll-tech/go-ethereum"
@@ -150,7 +150,7 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *geth
 	}
 	if errStr != "" {
 		log.Error("CreateAccessList reported error", "error", errStr)
-		return gasLimitWithoutAccessList, nil, fmt.Errorf(errStr)
+		return gasLimitWithoutAccessList, nil, errors.New(errStr)
 	}
 
 	// Fine-tune accessList because 'to' address is automatically included in the access list by the Ethereum protocol: https://github.com/ethereum/go-ethereum/blob/v1.13.10/core/state/statedb.go#L1322

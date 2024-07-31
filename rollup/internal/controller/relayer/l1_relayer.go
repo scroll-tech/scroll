@@ -2,6 +2,7 @@ package relayer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -64,7 +65,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 		// Ensure test features aren't enabled on the scroll mainnet.
 		if gasOracleSender.GetChainID().Cmp(big.NewInt(534352)) == 0 && cfg.EnableTestEnvBypassFeatures {
-			return nil, fmt.Errorf("cannot enable test env features in mainnet")
+			return nil, errors.New("cannot enable test env features in mainnet")
 		}
 	default:
 		return nil, fmt.Errorf("invalid service type for l1_relayer: %v", serviceType)

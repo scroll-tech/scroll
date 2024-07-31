@@ -1,17 +1,22 @@
 use super::CircuitsHandler;
-use crate::{geth_client::GethClient, types::ProofType};
+use crate::{
+    geth_client::GethClient,
+    types::{ProverType, TaskType},
+};
 use anyhow::{bail, Context, Ok, Result};
+use once_cell::sync::Lazy;
 use serde::Deserialize;
 
 use crate::types::{CommonHash, Task};
-use std::{cell::RefCell, cmp::Ordering, rc::Rc};
+use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
-use prover_next::{
+use prover_curie::{
     aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver,
     BatchProof, BatchProvingTask, BlockTrace, ChunkInfo, ChunkProof, ChunkProvingTask,
 };
 
-use super::bernoulli::OUTPUT_DIR;
+// Only used for debugging.
+static OUTPUT_DIR: Lazy<Option<String>> = Lazy::new(|| env::var("PROVER_OUTPUT_DIR").ok());
 
 #[derive(Deserialize)]
 pub struct BatchTaskDetail {
@@ -29,33 +34,32 @@ fn get_block_number(block_trace: &BlockTrace) -> Option<u64> {
 }
 
 #[derive(Default)]
-pub struct NextCircuitsHandler {
+pub struct CurieHandler {
     chunk_prover: Option<RefCell<ChunkProver>>,
     batch_prover: Option<RefCell<BatchProver>>,
 
     geth_client: Option<Rc<RefCell<GethClient>>>,
 }
 
-impl NextCircuitsHandler {
+impl CurieHandler {
     pub fn new(
-        proof_type: ProofType,
+        prover_type: ProverType,
         params_dir: &str,
         assets_dir: &str,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Result<Self> {
-        match proof_type {
-            ProofType::Chunk => Ok(Self {
+        match prover_type {
+            ProverType::Chunk => Ok(Self {
                 chunk_prover: Some(RefCell::new(ChunkProver::from_dirs(params_dir, assets_dir))),
                 batch_prover: None,
                 geth_client,
             }),
 
-            ProofType::Batch => Ok(Self {
+            ProverType::Batch => Ok(Self {
                 batch_prover: Some(RefCell::new(BatchProver::from_dirs(params_dir, assets_dir))),
                 chunk_prover: None,
                 geth_client,
             }),
-            _ => bail!("proof type invalid"),
         }
     }
 
@@ -186,25 +190,26 @@ impl NextCircuitsHandler {
     }
 }
 
-impl CircuitsHandler for NextCircuitsHandler {
-    fn get_vk(&self, task_type: ProofType) -> Option<Vec<u8>> {
+impl CircuitsHandler for CurieHandler {
+    fn get_vk(&self, task_type: TaskType) -> Option<Vec<u8>> {
         match task_type {
-            ProofType::Chunk => self
+            TaskType::Chunk => self
                 .chunk_prover
                 .as_ref()
                 .and_then(|prover| prover.borrow().get_vk()),
-            ProofType::Batch => self
+            TaskType::Batch => self
                 .batch_prover
                 .as_ref()
                 .and_then(|prover| prover.borrow().get_vk()),
+            TaskType::Bundle => None,
             _ => unreachable!(),
         }
     }
 
-    fn get_proof_data(&self, task_type: ProofType, task: &crate::types::Task) -> Result<String> {
+    fn get_proof_data(&self, task_type: TaskType, task: &crate::types::Task) -> Result<String> {
         match task_type {
-            ProofType::Chunk => self.gen_chunk_proof(task),
-            ProofType::Batch => self.gen_batch_proof(task),
+            TaskType::Chunk => self.gen_chunk_proof(task),
+            TaskType::Batch => self.gen_batch_proof(task),
             _ => unreachable!(),
         }
     }
@@ -216,7 +221,7 @@ impl CircuitsHandler for NextCircuitsHandler {
 mod tests {
     use super::*;
     use crate::zk_circuits_handler::utils::encode_vk;
-    use prover_next::utils::chunk_trace_to_witness_block;
+    use prover_curie::utils::chunk_trace_to_witness_block;
     use std::{path::PathBuf, sync::LazyLock};
 
     #[ctor::ctor]
@@ -251,12 +256,11 @@ mod tests {
 
     #[test]
     fn test_circuits() -> Result<()> {
-        let chunk_handler =
-            NextCircuitsHandler::new(ProofType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let chunk_handler = CurieHandler::new(ProverType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
 
-        let chunk_vk = chunk_handler.get_vk(ProofType::Chunk).unwrap();
+        let chunk_vk = chunk_handler.get_vk(TaskType::Chunk).unwrap();
 
-        check_vk(ProofType::Chunk, chunk_vk, "chunk vk must be available");
+        check_vk(TaskType::Chunk, chunk_vk, "chunk vk must be available");
         let chunk_dir_paths = get_chunk_dir_paths()?;
         log::info!("chunk_dir_paths, {:?}", chunk_dir_paths);
         let mut chunk_infos = vec![];
@@ -276,10 +280,9 @@ mod tests {
             chunk_proofs.push(chunk_proof);
         }
 
-        let batch_handler =
-            NextCircuitsHandler::new(ProofType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
-        let batch_vk = batch_handler.get_vk(ProofType::Batch).unwrap();
-        check_vk(ProofType::Batch, batch_vk, "batch vk must be available");
+        let batch_handler = CurieHandler::new(ProverType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let batch_vk = batch_handler.get_vk(TaskType::Batch).unwrap();
+        check_vk(TaskType::Batch, batch_vk, "batch vk must be available");
         let chunk_hashes_proofs = chunk_infos.into_iter().zip(chunk_proofs).collect();
         log::info!("start to prove batch");
         let batch_proof = batch_handler.gen_batch_proof_raw(chunk_hashes_proofs)?;
@@ -289,18 +292,19 @@ mod tests {
         Ok(())
     }
 
-    fn check_vk(proof_type: ProofType, vk: Vec<u8>, info: &str) {
-        log::info!("check_vk, {:?}", proof_type);
-        let vk_from_file = read_vk(proof_type).unwrap();
+    fn check_vk(task_type: TaskType, vk: Vec<u8>, info: &str) {
+        log::info!("check_vk, {:?}", task_type);
+        let vk_from_file = read_vk(task_type).unwrap();
         assert_eq!(vk_from_file, encode_vk(vk), "{info}")
     }
 
-    fn read_vk(proof_type: ProofType) -> Result<String> {
-        log::info!("read_vk, {:?}", proof_type);
-        let vk_file = match proof_type {
-            ProofType::Chunk => CHUNK_VK_PATH.clone(),
-            ProofType::Batch => BATCH_VK_PATH.clone(),
-            ProofType::Undefined => unreachable!(),
+    fn read_vk(task_type: TaskType) -> Result<String> {
+        log::info!("read_vk, {:?}", task_type);
+        let vk_file = match task_type {
+            TaskType::Chunk => CHUNK_VK_PATH.clone(),
+            TaskType::Batch => BATCH_VK_PATH.clone(),
+            TaskType::Bundle => unreachable!(),
+            TaskType::Undefined => unreachable!(),
         };
 
         let data = std::fs::read(vk_file)?;

@@ -2,10 +2,9 @@ package types
 
 // GetTaskParameter for ProverTasks request parameter
 type GetTaskParameter struct {
-	ProverHeight uint64   `form:"prover_height" json:"prover_height"`
-	TaskType     int      `form:"task_type" json:"task_type"`
-	VK           string   `form:"vk" json:"vk"`   // will be deprecated after all go_prover offline
-	VKs          []string `form:"vks" json:"vks"` // for rust_prover that supporting multi-circuits
+	ProverHeight uint64 `form:"prover_height" json:"prover_height"`
+	TaskType     int    `form:"task_type" json:"task_type"`
+	TaskTypes    []int  `form:"task_types" json:"task_types"`
 }
 
 // GetTaskSchema the schema data return to prover for get prover task

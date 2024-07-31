@@ -23,38 +23,55 @@ type Collector struct {
 	db  *gorm.DB
 	ctx context.Context
 
-	stopChunkTimeoutChan       chan struct{}
-	stopBatchTimeoutChan       chan struct{}
-	stopBatchAllChunkReadyChan chan struct{}
-	stopCleanChallengeChan     chan struct{}
+	stopBundleTimeoutChan       chan struct{}
+	stopChunkTimeoutChan        chan struct{}
+	stopBatchTimeoutChan        chan struct{}
+	stopBatchAllChunkReadyChan  chan struct{}
+	stopBundleAllBatchReadyChan chan struct{}
+	stopCleanChallengeChan      chan struct{}
 
 	proverTaskOrm *orm.ProverTask
+	bundleOrm     *orm.Bundle
 	chunkOrm      *orm.Chunk
 	batchOrm      *orm.Batch
 	challenge     *orm.Challenge
 
-	timeoutBatchCheckerRunTotal     prometheus.Counter
-	batchProverTaskTimeoutTotal     prometheus.Counter
-	timeoutChunkCheckerRunTotal     prometheus.Counter
-	chunkProverTaskTimeoutTotal     prometheus.Counter
-	checkBatchAllChunkReadyRunTotal prometheus.Counter
+	timeoutBundleCheckerRunTotal     prometheus.Counter
+	bundleProverTaskTimeoutTotal     prometheus.Counter
+	timeoutBatchCheckerRunTotal      prometheus.Counter
+	batchProverTaskTimeoutTotal      prometheus.Counter
+	timeoutChunkCheckerRunTotal      prometheus.Counter
+	chunkProverTaskTimeoutTotal      prometheus.Counter
+	checkBatchAllChunkReadyRunTotal  prometheus.Counter
+	checkBundleAllBatchReadyRunTotal prometheus.Counter
 }
 
 // NewCollector create a collector to cron collect the data to send to prover
 func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config, reg prometheus.Registerer) *Collector {
 	c := &Collector{
-		cfg:                        cfg,
-		db:                         db,
-		ctx:                        ctx,
-		stopChunkTimeoutChan:       make(chan struct{}),
-		stopBatchTimeoutChan:       make(chan struct{}),
-		stopBatchAllChunkReadyChan: make(chan struct{}),
-		stopCleanChallengeChan:     make(chan struct{}),
-		proverTaskOrm:              orm.NewProverTask(db),
-		chunkOrm:                   orm.NewChunk(db),
-		batchOrm:                   orm.NewBatch(db),
-		challenge:                  orm.NewChallenge(db),
+		cfg:                         cfg,
+		db:                          db,
+		ctx:                         ctx,
+		stopBundleTimeoutChan:       make(chan struct{}),
+		stopChunkTimeoutChan:        make(chan struct{}),
+		stopBatchTimeoutChan:        make(chan struct{}),
+		stopBatchAllChunkReadyChan:  make(chan struct{}),
+		stopBundleAllBatchReadyChan: make(chan struct{}),
+		stopCleanChallengeChan:      make(chan struct{}),
+		proverTaskOrm:               orm.NewProverTask(db),
+		chunkOrm:                    orm.NewChunk(db),
+		batchOrm:                    orm.NewBatch(db),
+		bundleOrm:                   orm.NewBundle(db),
+		challenge:                   orm.NewChallenge(db),
 
+		timeoutBundleCheckerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_bundle_timeout_checker_run_total",
+			Help: "Total number of bundle timeout checker run.",
+		}),
+		bundleProverTaskTimeoutTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_bundle_prover_task_timeout_total",
+			Help: "Total number of bundle timeout prover task.",
+		}),
 		timeoutBatchCheckerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 			Name: "coordinator_batch_timeout_checker_run_total",
 			Help: "Total number of batch timeout checker run.",
@@ -75,11 +92,17 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config, reg prom
 			Name: "coordinator_check_batch_all_chunk_ready_run_total",
 			Help: "Total number of check batch all chunks ready total",
 		}),
+		checkBundleAllBatchReadyRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "coordinator_check_bundle_all_batch_ready_run_total",
+			Help: "Total number of check bundle all batches ready total",
+		}),
 	}
 
+	go c.timeoutBundleProofTask()
 	go c.timeoutBatchProofTask()
 	go c.timeoutChunkProofTask()
 	go c.checkBatchAllChunkReady()
+	go c.checkBundleAllBatchReady()
 	go c.cleanupChallenge()
 
 	log.Info("Start coordinator cron successfully.")
@@ -91,8 +114,43 @@ func NewCollector(ctx context.Context, db *gorm.DB, cfg *config.Config, reg prom
 func (c *Collector) Stop() {
 	c.stopChunkTimeoutChan <- struct{}{}
 	c.stopBatchTimeoutChan <- struct{}{}
+	c.stopBundleTimeoutChan <- struct{}{}
 	c.stopBatchAllChunkReadyChan <- struct{}{}
 	c.stopCleanChallengeChan <- struct{}{}
+}
+
+// timeoutBundleProofTask cron checks the send task is timeout. if timeout reached, restore the
+// bundle task to unassigned. then the bundle collector can retry it.
+func (c *Collector) timeoutBundleProofTask() {
+	defer func() {
+		if err := recover(); err != nil {
+			nerr := fmt.Errorf("timeout bundle proof task panic error:%v", err)
+			log.Warn(nerr.Error())
+		}
+	}()
+
+	ticker := time.NewTicker(time.Second * 2)
+	for {
+		select {
+		case <-ticker.C:
+			c.timeoutBundleCheckerRunTotal.Inc()
+			timeout := time.Duration(c.cfg.ProverManager.BundleCollectionTimeSec) * time.Second
+			assignedProverTasks, err := c.proverTaskOrm.GetTimeoutAssignedProverTasks(c.ctx, 10, message.ProofTypeBundle, timeout)
+			if err != nil {
+				log.Error("get unassigned session info failure", "error", err)
+				break
+			}
+			c.check(assignedProverTasks, c.bundleProverTaskTimeoutTotal)
+		case <-c.ctx.Done():
+			if c.ctx.Err() != nil {
+				log.Error("manager context canceled with error", "error", c.ctx.Err())
+			}
+			return
+		case <-c.stopBundleTimeoutChan:
+			log.Info("the coordinator timeoutBundleProofTask run loop exit")
+			return
+		}
+	}
 }
 
 // timeoutBatchProofTask cron check the send task is timeout. if timeout reached, restore the
@@ -202,6 +260,16 @@ func (c *Collector) check(assignedProverTasks []orm.ProverTask, timeout promethe
 					log.Error("update proving status failed failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
 					return err
 				}
+			case message.ProofTypeBundle:
+				if err := c.bundleOrm.DecreaseActiveAttemptsByHash(c.ctx, assignedProverTask.TaskID, tx); err != nil {
+					log.Error("decrease bundle active attempts failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+					return err
+				}
+
+				if err := c.bundleOrm.UpdateProvingStatusFailed(c.ctx, assignedProverTask.TaskID, c.cfg.ProverManager.SessionAttempts, tx); err != nil {
+					log.Error("update proving status failed failure", "uuid", assignedProverTask.UUID, "hash", assignedProverTask.TaskID, "pubKey", assignedProverTask.ProverPublicKey, "err", err)
+					return err
+				}
 			}
 
 			return nil
@@ -264,6 +332,63 @@ func (c *Collector) checkBatchAllChunkReady() {
 			return
 		case <-c.stopBatchAllChunkReadyChan:
 			log.Info("the coordinator checkBatchAllChunkReady run loop exit")
+			return
+		}
+	}
+}
+
+func (c *Collector) checkBundleAllBatchReady() {
+	defer func() {
+		if err := recover(); err != nil {
+			nerr := fmt.Errorf("check batch all batches ready panic error:%v", err)
+			log.Warn(nerr.Error())
+		}
+	}()
+
+	ticker := time.NewTicker(time.Second * 10)
+	for {
+		select {
+		case <-ticker.C:
+			c.checkBundleAllBatchReadyRunTotal.Inc()
+			page := 1
+			pageSize := 50
+			for {
+				offset := (page - 1) * pageSize
+				bundles, err := c.bundleOrm.GetUnassignedAndBatchesUnreadyBundles(c.ctx, offset, pageSize)
+				if err != nil {
+					log.Warn("checkBundleAllBatchReady GetUnassignedAndBatchesUnreadyBundles", "error", err)
+					break
+				}
+
+				for _, bundle := range bundles {
+					allReady, checkErr := c.batchOrm.CheckIfBundleBatchProofsAreReady(c.ctx, bundle.Hash)
+					if checkErr != nil {
+						log.Warn("checkBundleAllBatchReady CheckIfBundleBatchProofsAreReady failure", "error", checkErr, "hash", bundle.Hash)
+						continue
+					}
+
+					if !allReady {
+						continue
+					}
+
+					if updateErr := c.bundleOrm.UpdateBatchProofsStatusByBundleHash(c.ctx, bundle.Hash, types.BatchProofsStatusReady); updateErr != nil {
+						log.Warn("checkBundleAllBatchReady UpdateBatchProofsStatusByBundleHash failure", "error", checkErr, "hash", bundle.Hash)
+					}
+				}
+
+				if len(bundles) < pageSize {
+					break
+				}
+				page++
+			}
+
+		case <-c.ctx.Done():
+			if c.ctx.Err() != nil {
+				log.Error("manager context canceled with error", "error", c.ctx.Err())
+			}
+			return
+		case <-c.stopBundleAllBatchReadyChan:
+			log.Info("the coordinator checkBundleAllBatchReady run loop exit")
 			return
 		}
 	}

@@ -58,6 +58,7 @@
       },
       "enable_test_env_bypass_features": true,
       "finalize_batch_without_proof_timeout_sec": 7200,
+      "finalize_bundle_without_proof_timeout_sec": 7200,
       "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
       "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
       "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",
@@ -81,6 +82,10 @@
       "batch_timeout_sec": 300,
       "gas_cost_increase_multiplier": 1.2,
       "max_uncompressed_batch_bytes_size": 634880
+    },
+    "bundle_proposer_config": {
+      "max_batch_num_per_bundle": 20,
+      "bundle_timeout_sec": 36000
     }
   },
   "db_config": {

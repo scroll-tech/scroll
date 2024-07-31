@@ -74,6 +74,19 @@ func (o *L2Block) GetL2BlockHashesByChunkHash(ctx context.Context, chunkHash str
 	return blockHashes, nil
 }
 
+// GetL2BlockByNumber retrieves the L2 block by l2 block number
+func (o *L2Block) GetL2BlockByNumber(ctx context.Context, blockNumber uint64) (*L2Block, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&L2Block{})
+	db = db.Where("number = ?", blockNumber)
+
+	var l2Block L2Block
+	if err := db.First(&l2Block).Error; err != nil {
+		return nil, fmt.Errorf("L2Block.GetL2BlockByNumber error: %w, chunk block number: %v", err, blockNumber)
+	}
+	return &l2Block, nil
+}
+
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
 // for unit test
 func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) error {
