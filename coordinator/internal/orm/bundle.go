@@ -28,7 +28,6 @@ type Bundle struct {
 	BatchProofsStatus int16      `json:"batch_proofs_status" gorm:"column:batch_proofs_status;default:1"`
 	ProvingStatus     int16      `json:"proving_status" gorm:"column:proving_status;default:1"`
 	Proof             []byte     `json:"proof" gorm:"column:proof;default:NULL"`
-	ProverAssignedAt  *time.Time `json:"prover_assigned_at" gorm:"column:prover_assigned_at;default:NULL"`
 	ProvedAt          *time.Time `json:"proved_at" gorm:"column:proved_at;default:NULL"`
 	ProofTimeSec      int32      `json:"proof_time_sec" gorm:"column:proof_time_sec;default:NULL"`
 	TotalAttempts     int16      `json:"total_attempts" gorm:"column:total_attempts;default:0"`
@@ -136,14 +135,14 @@ func (o *Bundle) GetUnassignedAndBatchesUnreadyBundles(ctx context.Context, offs
 	return bundles, nil
 }
 
-// UpdateBatchProofsStatusByBatchHash updates the status of batch_proofs_status field for a given bundle hash.
-func (o *Bundle) UpdateBatchProofsStatusByBatchHash(ctx context.Context, bundleHash string, status types.BatchProofsStatus) error {
+// UpdateBatchProofsStatusByBundleHash updates the status of batch_proofs_status field for a given bundle hash.
+func (o *Bundle) UpdateBatchProofsStatusByBundleHash(ctx context.Context, bundleHash string, status types.BatchProofsStatus) error {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Bundle{})
 	db = db.Where("hash = ?", bundleHash)
 
 	if err := db.Update("batch_proofs_status", status).Error; err != nil {
-		return fmt.Errorf("Bundle.UpdateBatchProofsStatusByBatchHash error: %w, bundle hash: %v, status: %v", err, bundleHash, status.String())
+		return fmt.Errorf("Bundle.UpdateBatchProofsStatusByBundleHash error: %w, bundle hash: %v, status: %v", err, bundleHash, status.String())
 	}
 	return nil
 }

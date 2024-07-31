@@ -71,7 +71,6 @@ impl<'a> Prover<'a> {
         let mut req = GetTaskRequest {
             task_types: get_task_types(self.config.prover_type),
             prover_height: None,
-            // vks: self.circuits_handler_provider.borrow().get_vks(),
         };
 
         if self.config.prover_type == ProverType::Chunk {

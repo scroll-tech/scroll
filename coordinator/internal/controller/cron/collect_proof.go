@@ -363,7 +363,7 @@ func (c *Collector) checkBundleAllBatchReady() {
 				for _, bundle := range bundles {
 					allReady, checkErr := c.batchOrm.CheckIfBundleBatchProofsAreReady(c.ctx, bundle.Hash)
 					if checkErr != nil {
-						log.Warn("checkBatchAllChunkReady CheckIfBatchChunkProofsAreReady failure", "error", checkErr, "hash", bundle.Hash)
+						log.Warn("checkBundleAllBatchReady CheckIfBundleBatchProofsAreReady failure", "error", checkErr, "hash", bundle.Hash)
 						continue
 					}
 
@@ -371,8 +371,8 @@ func (c *Collector) checkBundleAllBatchReady() {
 						continue
 					}
 
-					if updateErr := c.bundleOrm.UpdateBatchProofsStatusByBatchHash(c.ctx, bundle.Hash, types.BatchProofsStatusReady); updateErr != nil {
-						log.Warn("checkBundleAllBatchReady UpdateBatchProofsStatusByBatchHash failure", "error", checkErr, "hash", bundle.Hash)
+					if updateErr := c.bundleOrm.UpdateBatchProofsStatusByBundleHash(c.ctx, bundle.Hash, types.BatchProofsStatusReady); updateErr != nil {
+						log.Warn("checkBundleAllBatchReady UpdateBatchProofsStatusByBundleHash failure", "error", checkErr, "hash", bundle.Hash)
 					}
 				}
 

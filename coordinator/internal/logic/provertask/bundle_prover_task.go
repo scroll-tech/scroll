@@ -205,7 +205,7 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 
 	batchProofsBytes, err := json.Marshal(taskDetail)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal chunk proofs, taskID:%s err:%w", task.TaskID, err)
+		return nil, fmt.Errorf("failed to marshal batch proofs, taskID:%s err:%w", task.TaskID, err)
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{

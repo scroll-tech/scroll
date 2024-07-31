@@ -211,23 +211,6 @@ func (o *Batch) GetBatchByHash(ctx context.Context, hash string) (*Batch, error)
 	return &batch, nil
 }
 
-// GetLatestFinalizedBatch retrieves the latest finalized batch from the database.
-func (o *Batch) GetLatestFinalizedBatch(ctx context.Context) (*Batch, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Batch{})
-	db = db.Where("rollup_status = ?", int(types.RollupFinalized))
-	db = db.Order("index desc")
-
-	var latestFinalizedBatch Batch
-	if err := db.First(&latestFinalizedBatch).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("Batch.GetLatestBatch error: %w", err)
-	}
-	return &latestFinalizedBatch, nil
-}
-
 // GetBatchesByBundleHash retrieves the given batch.
 func (o *Batch) GetBatchesByBundleHash(ctx context.Context, bundleHash string) ([]*Batch, error) {
 	db := o.db.WithContext(ctx)
