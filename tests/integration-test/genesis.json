@@ -14,6 +14,9 @@
     "londonBlock": 0,
     "archimedesBlock": 0,
     "shanghaiBlock": 0,
+    "bernoulliBlock": 0,
+    "curieBlock": 0,
+    "darwinTime": 0,
     "clique": {
       "period": 3,
       "epoch": 30000

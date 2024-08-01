@@ -585,7 +585,7 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 
 		patchGuard2 := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
 			if hash == originTxHash {
-				return nil, fmt.Errorf("simulated transaction receipt error")
+				return nil, errors.New("simulated transaction receipt error")
 			}
 			return &gethTypes.Receipt{TxHash: hash, BlockNumber: big.NewInt(0), Status: gethTypes.ReceiptStatusSuccessful}, nil
 		})
@@ -657,7 +657,7 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 					Status:      gethTypes.ReceiptStatusSuccessful,
 				}, nil
 			}
-			return nil, fmt.Errorf("simulated transaction receipt error")
+			return nil, errors.New("simulated transaction receipt error")
 		})
 
 		// Attempt to resubmit the transaction.
@@ -714,7 +714,7 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		assert.Equal(t, types.SenderTypeCommitBatch, txs[0].SenderType)
 
 		patchGuard2 := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
-			return nil, fmt.Errorf("simulated transaction receipt error")
+			return nil, errors.New("simulated transaction receipt error")
 		})
 
 		for i := 1; i <= 6; i++ {

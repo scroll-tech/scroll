@@ -74,11 +74,11 @@ func (*Chunk) TableName() string {
 
 // GetUnassignedChunk retrieves unassigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetUnassignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+func (o *Chunk) GetUnassignedChunk(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	var chunk Chunk
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND start_block_number >= %d AND end_block_number < %d AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;",
-		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, fromBlockNum, toBlockNum)
+	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;",
+		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts)
 	err := db.Raw(sql).Scan(&chunk).Error
 	if err != nil {
 		return nil, fmt.Errorf("Chunk.GetUnassignedChunk error: %w", err)
@@ -91,11 +91,11 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, fromBlockNum, toBlockNum
 
 // GetAssignedChunk retrieves assigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetAssignedChunk(ctx context.Context, fromBlockNum, toBlockNum uint64, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
+func (o *Chunk) GetAssignedChunk(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Chunk, error) {
 	var chunk Chunk
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND start_block_number >= %d AND end_block_number < %d AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;",
-		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, fromBlockNum, toBlockNum)
+	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d  AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;",
+		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts)
 	err := db.Raw(sql).Scan(&chunk).Error
 	if err != nil {
 		return nil, fmt.Errorf("Chunk.GetAssignedChunk error: %w", err)
@@ -340,18 +340,14 @@ func (o *Chunk) UpdateProvingStatusFailed(ctx context.Context, hash string, maxA
 }
 
 // UpdateProofAndProvingStatusByHash updates the chunk proof and proving_status by hash.
-func (o *Chunk) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof *message.ChunkProof, status types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
+func (o *Chunk) UpdateProofAndProvingStatusByHash(ctx context.Context, hash string, proof []byte, status types.ProvingStatus, proofTimeSec uint64, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
 	}
-	proofBytes, err := json.Marshal(proof)
-	if err != nil {
-		return err
-	}
 
 	updateFields := make(map[string]interface{})
-	updateFields["proof"] = proofBytes
+	updateFields["proof"] = proof
 	updateFields["proving_status"] = int(status)
 	updateFields["proof_time_sec"] = proofTimeSec
 	updateFields["proved_at"] = utils.NowUTC()

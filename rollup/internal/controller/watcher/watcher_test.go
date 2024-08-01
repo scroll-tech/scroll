@@ -103,18 +103,26 @@ func TestFunction(t *testing.T) {
 	t.Run("TestChunkProposerCodecv0Limits", testChunkProposerCodecv0Limits)
 	t.Run("TestChunkProposerCodecv1Limits", testChunkProposerCodecv1Limits)
 	t.Run("TestChunkProposerCodecv2Limits", testChunkProposerCodecv2Limits)
+	t.Run("TestChunkProposerCodecv3Limits", testChunkProposerCodecv3Limits)
 	t.Run("TestChunkProposerBlobSizeLimit", testChunkProposerBlobSizeLimit)
-	t.Run("TestChunkProposerIncludeCurieBlockInOneChunk", testChunkProposerIncludeCurieBlockInOneChunk)
+	t.Run("TestChunkProposerRespectHardforks", testChunkProposerRespectHardforks)
 
 	// Run batch proposer test cases.
 	t.Run("TestBatchProposerCodecv0Limits", testBatchProposerCodecv0Limits)
 	t.Run("TestBatchProposerCodecv1Limits", testBatchProposerCodecv1Limits)
 	t.Run("TestBatchProposerCodecv2Limits", testBatchProposerCodecv2Limits)
+	t.Run("TestBatchProposerCodecv3Limits", testBatchProposerCodecv3Limits)
 	t.Run("TestBatchCommitGasAndCalldataSizeCodecv0Estimation", testBatchCommitGasAndCalldataSizeCodecv0Estimation)
 	t.Run("TestBatchCommitGasAndCalldataSizeCodecv1Estimation", testBatchCommitGasAndCalldataSizeCodecv1Estimation)
 	t.Run("TestBatchCommitGasAndCalldataSizeCodecv2Estimation", testBatchCommitGasAndCalldataSizeCodecv2Estimation)
+	t.Run("TestBatchCommitGasAndCalldataSizeCodecv3Estimation", testBatchCommitGasAndCalldataSizeCodecv3Estimation)
 	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
 	t.Run("TestBatchProposerMaxChunkNumPerBatchLimit", testBatchProposerMaxChunkNumPerBatchLimit)
+	t.Run("TestBatchProposerRespectHardforks", testBatchProposerRespectHardforks)
+
+	// Run bundle proposer test cases.
+	t.Run("TestBundleProposerLimits", testBundleProposerLimits)
+	t.Run("TestBundleProposerRespectHardforks", testBundleProposerRespectHardforks)
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {
