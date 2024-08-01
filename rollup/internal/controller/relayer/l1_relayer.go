@@ -276,13 +276,14 @@ func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64
 
 func (r *Layer1Relayer) commitBatchReachTimeout() bool {
 	fields := map[string]interface{}{
-		"rollup_status": types.RollupCommitted,
+		"rollup_status IN ?": []types.RollupStatus{types.RollupCommitted, types.RollupFinalizing, types.RollupFinalized},
 	}
-	orderByList := []string{"updated_at DESC"}
+	orderByList := []string{"index DESC"}
 	limit := 1
 	batches, err := r.batchOrm.GetBatches(r.ctx, fields, orderByList, limit)
 	if err != nil {
-		log.Error("failed to fetch latest committing batches", "err", err)
+		log.Error("failed to fetch latest committed, finalizing or finalized batch", "err", err)
 	}
-	return len(batches) == 0 || utils.NowUTC().Sub(batches[0].UpdatedAt) > time.Duration(r.cfg.GasOracleConfig.CommitBatchTimeoutWindowMinutes)*time.Minute
+	// len(batches) == 0 probably shouldn't ever happen, but need to check this
+	return len(batches) == 0 || utils.NowUTC().Sub(*batches[0].CommittedAt) > time.Duration(r.cfg.GasOracleConfig.CommitBatchTimeoutWindowMinutes)*time.Minute
 }
