@@ -406,8 +406,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		if err != nil {
 			if errors.Is(err, sender.ErrTooManyPendingBlobTxs) {
 				r.metrics.rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal.Inc()
-				log.Debug("Didn't send commitBatch tx to layer 1",
-					"err", err)
+				log.Debug(
+					"Skipped sending commitBatch tx to L1: too many pending blob txs",
+					"maxPending", r.cfg.SenderConfig.MaxPendingBlobTxs,
+					"err", err,
+				)
 				return
 			}
 			log.Error(

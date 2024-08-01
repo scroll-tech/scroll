@@ -189,7 +189,8 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 			var numPendingTransactions int64
 			numPendingTransactions, err = s.pendingTransactionOrm.GetCountPendingTransactionsBySenderType(s.ctx, s.senderType)
 			if err != nil {
-				log.Error("failed to get pending or replaced transactions", "err: %w", err)
+				log.Error("failed to count pending transactions", "err: %w", err)
+				return common.Hash{}, fmt.Errorf("failed to count pending transactions, err: %w", err)
 			}
 			if numPendingTransactions >= s.config.MaxPendingBlobTxs {
 				return common.Hash{}, ErrTooManyPendingBlobTxs
