@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -231,6 +232,7 @@ func testImportDefaultL1GasPrice(t *testing.T) {
 	assert.NoError(t, err)
 	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
 	assert.NoError(t, err)
+	time.Sleep(1 * time.Second)
 
 	// relay gas price
 	// gas price will be relayed to some default value because we didn't commit batches for a l1CfgCopy.RelayerConfig.GasOracleConfig.CheckCommittedBatchesWindowMinutes = 0 minutes
