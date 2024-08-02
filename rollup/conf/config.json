@@ -44,7 +44,8 @@
         "max_blob_gas_price": 10000000000000,
         "tx_type": "DynamicFeeTx",
         "check_pending_time": 1,
-        "min_gas_tip": 100000000
+        "min_gas_tip": 100000000,
+        "max_pending_blob_txs": 3
       },
       "gas_oracle_config": {
         "min_gas_price": 0,

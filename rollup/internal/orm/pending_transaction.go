@@ -85,6 +85,19 @@ func (o *PendingTransaction) GetPendingOrReplacedTransactionsBySenderType(ctx co
 	return transactions, nil
 }
 
+// GetCountPendingTransactionsBySenderType retrieves number of pending transactions filtered by sender type
+func (o *PendingTransaction) GetCountPendingTransactionsBySenderType(ctx context.Context, senderType types.SenderType) (int64, error) {
+	var count int64
+	db := o.db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+	db = db.Where("sender_type = ?", senderType)
+	db = db.Where("status = ?", types.TxStatusPending)
+	if err := db.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("failed to count pending transactions by sender type, error: %w", err)
+	}
+	return count, nil
+}
+
 // GetConfirmedTransactionsBySenderType retrieves confirmed transactions filtered by sender type, limited to a specified count.
 // for unit test
 func (o *PendingTransaction) GetConfirmedTransactionsBySenderType(ctx context.Context, senderType types.SenderType, limit int) ([]PendingTransaction, error) {
