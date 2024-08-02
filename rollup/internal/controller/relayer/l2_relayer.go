@@ -414,6 +414,15 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		txHash, err := r.commitSender.SendTransaction(dbBatch.Hash, &r.cfg.RollupContractAddress, calldata, blob, fallbackGasLimit)
 		if err != nil {
+			if errors.Is(err, sender.ErrTooManyPendingBlobTxs) {
+				r.metrics.rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal.Inc()
+				log.Debug(
+					"Skipped sending commitBatch tx to L1: too many pending blob txs",
+					"maxPending", r.cfg.SenderConfig.MaxPendingBlobTxs,
+					"err", err,
+				)
+				return
+			}
 			log.Error(
 				"Failed to send commitBatch tx to layer1",
 				"index", dbBatch.Index,

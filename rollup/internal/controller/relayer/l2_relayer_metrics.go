@@ -8,26 +8,27 @@ import (
 )
 
 type l2RelayerMetrics struct {
-	rollupL2RelayerProcessPendingBatchTotal                     prometheus.Counter
-	rollupL2RelayerProcessPendingBatchSuccessTotal              prometheus.Counter
-	rollupL2RelayerGasPriceOraclerRunTotal                      prometheus.Counter
-	rollupL2RelayerLastGasPrice                                 prometheus.Gauge
-	rollupL2RelayerProcessCommittedBatchesTotal                 prometheus.Counter
-	rollupL2RelayerProcessCommittedBatchesFinalizedTotal        prometheus.Counter
-	rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal prometheus.Counter
-	rollupL2BatchesCommittedConfirmedTotal                      prometheus.Counter
-	rollupL2BatchesCommittedConfirmedFailedTotal                prometheus.Counter
-	rollupL2BatchesFinalizedConfirmedTotal                      prometheus.Counter
-	rollupL2BatchesFinalizedConfirmedFailedTotal                prometheus.Counter
-	rollupL2UpdateGasOracleConfirmedTotal                       prometheus.Counter
-	rollupL2UpdateGasOracleConfirmedFailedTotal                 prometheus.Counter
-	rollupL2ChainMonitorLatestFailedCall                        prometheus.Counter
-	rollupL2ChainMonitorLatestFailedBatchStatus                 prometheus.Counter
-	rollupL2RelayerProcessPendingBundlesTotal                   prometheus.Counter
-	rollupL2RelayerProcessPendingBundlesFinalizedTotal          prometheus.Counter
-	rollupL2RelayerProcessPendingBundlesFinalizedSuccessTotal   prometheus.Counter
-	rollupL2BundlesFinalizedConfirmedTotal                      prometheus.Counter
-	rollupL2BundlesFinalizedConfirmedFailedTotal                prometheus.Counter
+	rollupL2RelayerProcessPendingBatchTotal                         prometheus.Counter
+	rollupL2RelayerProcessPendingBatchSuccessTotal                  prometheus.Counter
+	rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal prometheus.Counter
+	rollupL2RelayerGasPriceOraclerRunTotal                          prometheus.Counter
+	rollupL2RelayerLastGasPrice                                     prometheus.Gauge
+	rollupL2RelayerProcessCommittedBatchesTotal                     prometheus.Counter
+	rollupL2RelayerProcessCommittedBatchesFinalizedTotal            prometheus.Counter
+	rollupL2RelayerProcessCommittedBatchesFinalizedSuccessTotal     prometheus.Counter
+	rollupL2BatchesCommittedConfirmedTotal                          prometheus.Counter
+	rollupL2BatchesCommittedConfirmedFailedTotal                    prometheus.Counter
+	rollupL2BatchesFinalizedConfirmedTotal                          prometheus.Counter
+	rollupL2BatchesFinalizedConfirmedFailedTotal                    prometheus.Counter
+	rollupL2UpdateGasOracleConfirmedTotal                           prometheus.Counter
+	rollupL2UpdateGasOracleConfirmedFailedTotal                     prometheus.Counter
+	rollupL2ChainMonitorLatestFailedCall                            prometheus.Counter
+	rollupL2ChainMonitorLatestFailedBatchStatus                     prometheus.Counter
+	rollupL2RelayerProcessPendingBundlesTotal                       prometheus.Counter
+	rollupL2RelayerProcessPendingBundlesFinalizedTotal              prometheus.Counter
+	rollupL2RelayerProcessPendingBundlesFinalizedSuccessTotal       prometheus.Counter
+	rollupL2BundlesFinalizedConfirmedTotal                          prometheus.Counter
+	rollupL2BundlesFinalizedConfirmedFailedTotal                    prometheus.Counter
 }
 
 var (
@@ -45,6 +46,10 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 			rollupL2RelayerProcessPendingBatchSuccessTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer2_process_pending_batch_success_total",
 				Help: "The total number of layer2 process pending success batch",
+			}),
+			rollupL2RelayerProcessPendingBatchErrTooManyPendingBlobTxsTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_layer2_process_pending_batch_err_too_many_pending_blob_txs_total",
+				Help: "The total number of layer2 process pending batch failed on too many pending blob txs",
 			}),
 			rollupL2RelayerGasPriceOraclerRunTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer2_gas_price_oracler_total",
