@@ -185,8 +185,13 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 	)
 
 	if blob != nil {
+		// check that number of pending blob-carrying txs is not too big
 		if s.senderType == types.SenderTypeCommitBatch {
 			var numPendingTransactions int64
+			// We should count here only blob-carrying txs, but due to check that blob != nil, we know that we already switched to blobs.
+			// Now all txs with SenderTypeCommitBatch will be blob-carrying, but some of previous pending txs could still be non-blob.
+			// But this can happen only once at the moment of switching from non-blob to blob (pre-Bernoulli and post-Bernoulli) and it doesn't break anything.
+			// So don't need to add check that tx carries blob
 			numPendingTransactions, err = s.pendingTransactionOrm.GetCountPendingTransactionsBySenderType(s.ctx, s.senderType)
 			if err != nil {
 				log.Error("failed to count pending transactions", "err: %w", err)
