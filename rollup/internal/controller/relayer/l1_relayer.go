@@ -157,7 +157,8 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			// It indicates the commit/finalize batch has been stuck for a long time, it's likely that the L1 gas fee spiked.
 			// If we are not committing batches due to high fees then we shouldn't update fees to prevent users from paying high l1_data_fee
 			// Also, set fees to some default value, because we have already updated fees to some high values, probably
-			if reachTimeout, err := r.commitBatchReachTimeout(); reachTimeout && err == nil {
+			var reachTimeout bool
+			if reachTimeout, err = r.commitBatchReachTimeout(); reachTimeout && err == nil {
 				if r.lastBaseFee == r.cfg.GasOracleConfig.L1BaseFeeDefault && r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BlobBaseFeeDefault {
 					return
 				}
