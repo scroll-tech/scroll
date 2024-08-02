@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 	"testing"
@@ -130,6 +131,7 @@ func TestSender(t *testing.T) {
 	t.Run("test resubmit under priced transaction", testResubmitUnderpricedTransaction)
 	t.Run("test resubmit dynamic fee transaction with rising base fee", testResubmitDynamicFeeTransactionWithRisingBaseFee)
 	t.Run("test resubmit blob transaction with rising base fee and blob base fee", testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee)
+	t.Run("test resubmit nonce gapped transaction", testResubmitNonceGappedTransaction)
 	t.Run("test check pending transaction tx confirmed", testCheckPendingTransactionTxConfirmed)
 	t.Run("test check pending transaction resubmit tx confirmed", testCheckPendingTransactionResubmitTxConfirmed)
 	t.Run("test check pending transaction replaced tx confirmed", testCheckPendingTransactionReplacedTxConfirmed)
@@ -517,6 +519,67 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 	s.Stop()
 }
 
+func testResubmitNonceGappedTransaction(t *testing.T) {
+	for i, txType := range txTypes {
+		sqlDB, err := db.DB()
+		assert.NoError(t, err)
+		assert.NoError(t, migrate.ResetDB(sqlDB))
+
+		cfgCopy := *cfg.L2Config.RelayerConfig.SenderConfig
+
+		// Bump gas price, gas tip cap and gas fee cap just touch the minimum threshold of 10% (default config of geth).
+		cfgCopy.EscalateMultipleNum = 110
+		cfgCopy.EscalateMultipleDen = 100
+		cfgCopy.TxType = txType
+
+		// resubmit immediately if not nonce gapped
+		cfgCopy.Confirmations = rpc.LatestBlockNumber
+		cfgCopy.EscalateBlocks = 0
+
+		// stop background check pending transaction
+		cfgCopy.CheckPendingTime = math.MaxUint32
+
+		s, err := NewSender(context.Background(), &cfgCopy, privateKey, "test", "test", types.SenderTypeUnknown, db, nil)
+		assert.NoError(t, err)
+
+		patchGuard1 := gomonkey.ApplyMethodFunc(s.client, "SendTransaction", func(_ context.Context, _ *gethTypes.Transaction) error {
+			return nil
+		})
+
+		// simulating not confirmed transaction
+		patchGuard2 := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
+			return nil, errors.New("simulated transaction receipt error")
+		})
+
+		_, err = s.SendTransaction("test-1", &common.Address{}, nil, txBlob[i], 0)
+		assert.NoError(t, err)
+
+		_, err = s.SendTransaction("test-2", &common.Address{}, nil, txBlob[i], 0)
+		assert.NoError(t, err)
+
+		s.checkPendingTransaction()
+
+		txs, err := s.pendingTransactionOrm.GetPendingOrReplacedTransactionsBySenderType(context.Background(), s.senderType, 10)
+		assert.NoError(t, err)
+		assert.Len(t, txs, 3)
+
+		assert.Equal(t, txs[0].Nonce, txs[1].Nonce)
+		assert.Equal(t, txs[0].Nonce+1, txs[2].Nonce)
+
+		// the first 2 transactions have the same nonce, with one replaced and another pending
+		assert.Equal(t, types.TxStatusReplaced, txs[0].Status)
+		assert.Equal(t, types.TxStatusPending, txs[1].Status)
+
+		// the third transaction has nonce + 1, which will not be replaced due to the nonce gap,
+		// thus the status should be pending
+		assert.Equal(t, types.TxStatusPending, txs[2].Status)
+
+		s.Stop()
+		patchGuard1.Reset()
+		patchGuard2.Reset()
+	}
+}
+
 func testCheckPendingTransactionTxConfirmed(t *testing.T) {
 	for _, txType := range txTypes {
 		sqlDB, err := db.DB()
@@ -585,7 +648,7 @@ func testCheckPendingTransactionResubmitTxConfirmed(t *testing.T) {
 
 		patchGuard2 := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
 			if hash == originTxHash {
-				return nil, fmt.Errorf("simulated transaction receipt error")
+				return nil, errors.New("simulated transaction receipt error")
 			}
 			return &gethTypes.Receipt{TxHash: hash, BlockNumber: big.NewInt(0), Status: gethTypes.ReceiptStatusSuccessful}, nil
 		})
@@ -657,7 +720,7 @@ func testCheckPendingTransactionReplacedTxConfirmed(t *testing.T) {
 					Status:      gethTypes.ReceiptStatusSuccessful,
 				}, nil
 			}
-			return nil, fmt.Errorf("simulated transaction receipt error")
+			return nil, errors.New("simulated transaction receipt error")
 		})
 
 		// Attempt to resubmit the transaction.
@@ -714,7 +777,7 @@ func testCheckPendingTransactionTxMultipleTimesWithOnlyOneTxPending(t *testing.T
 		assert.Equal(t, types.SenderTypeCommitBatch, txs[0].SenderType)
 
 		patchGuard2 := gomonkey.ApplyMethodFunc(s.client, "TransactionReceipt", func(_ context.Context, hash common.Hash) (*gethTypes.Receipt, error) {
-			return nil, fmt.Errorf("simulated transaction receipt error")
+			return nil, errors.New("simulated transaction receipt error")
 		})
 
 		for i := 1; i <= 6; i++ {

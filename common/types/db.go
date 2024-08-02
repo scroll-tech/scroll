@@ -109,6 +109,10 @@ const (
 	ProverTaskFailureTypeVerifiedFailed
 	// ProverTaskFailureTypeServerError collect occur error
 	ProverTaskFailureTypeServerError
+	// ProverTaskFailureTypeObjectAlreadyVerified object(batch/chunk) already verified, may exists in test env when ENABLE_TEST_ENV_BYPASS_FEATURES is true
+	ProverTaskFailureTypeObjectAlreadyVerified
+	// ProverTaskFailureTypeReassignedByAdmin reassigned by admin, this value is used in admin-system and defined here for clarity
+	ProverTaskFailureTypeReassignedByAdmin
 )
 
 func (r ProverTaskFailureType) String() string {
@@ -123,6 +127,10 @@ func (r ProverTaskFailureType) String() string {
 		return "prover task failure verified failed"
 	case ProverTaskFailureTypeServerError:
 		return "prover task failure server exception"
+	case ProverTaskFailureTypeObjectAlreadyVerified:
+		return "prover task failure object already verified"
+	case ProverTaskFailureTypeReassignedByAdmin:
+		return "prover task failure reassigned by admin"
 	default:
 		return fmt.Sprintf("illegal prover task failure type (%d)", int32(r))
 	}
@@ -185,6 +193,31 @@ func (s ChunkProofsStatus) String() string {
 		return "ChunkProofsStatusReady"
 	default:
 		return fmt.Sprintf("Undefined ChunkProofsStatus (%d)", int32(s))
+	}
+}
+
+// BatchProofsStatus describes the proving status of batches that belong to a bundle.
+type BatchProofsStatus int
+
+const (
+	// BatchProofsStatusUndefined represents an undefined batch proofs status
+	BatchProofsStatusUndefined BatchProofsStatus = iota
+
+	// BatchProofsStatusPending means that some batches that belong to this bundle have not been proven
+	BatchProofsStatusPending
+
+	// BatchProofsStatusReady means that all batches that belong to this bundle have been proven
+	BatchProofsStatusReady
+)
+
+func (s BatchProofsStatus) String() string {
+	switch s {
+	case BatchProofsStatusPending:
+		return "BatchProofsStatusPending"
+	case BatchProofsStatusReady:
+		return "BatchProofsStatusReady"
+	default:
+		return fmt.Sprintf("Undefined BatchProofsStatus (%d)", int32(s))
 	}
 }
 

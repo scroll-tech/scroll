@@ -124,11 +124,15 @@ func TestFunctions(t *testing.T) {
 	t.Run("TestCreateNewRelayer", testCreateNewRelayer)
 	t.Run("TestL2RelayerProcessPendingBatches", testL2RelayerProcessPendingBatches)
 	t.Run("TestL2RelayerProcessCommittedBatches", testL2RelayerProcessCommittedBatches)
+	t.Run("TestL2RelayerProcessPendingBundles", testL2RelayerProcessPendingBundles)
 	t.Run("TestL2RelayerFinalizeTimeoutBatches", testL2RelayerFinalizeTimeoutBatches)
+	t.Run("TestL2RelayerFinalizeTimeoutBundles", testL2RelayerFinalizeTimeoutBundles)
 	t.Run("TestL2RelayerCommitConfirm", testL2RelayerCommitConfirm)
-	t.Run("TestL2RelayerFinalizeConfirm", testL2RelayerFinalizeConfirm)
+	t.Run("TestL2RelayerFinalizeBatchConfirm", testL2RelayerFinalizeBatchConfirm)
+	t.Run("TestL2RelayerFinalizeBundleConfirm", testL2RelayerFinalizeBundleConfirm)
 	t.Run("TestL2RelayerGasOracleConfirm", testL2RelayerGasOracleConfirm)
 	t.Run("TestLayer2RelayerProcessGasPriceOracle", testLayer2RelayerProcessGasPriceOracle)
+
 	// test getBatchStatusByIndex
 	t.Run("TestGetBatchStatusByIndex", testGetBatchStatusByIndex)
 }

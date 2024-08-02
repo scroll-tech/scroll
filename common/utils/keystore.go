@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,7 +29,7 @@ func LoadOrCreateKey(keystorePath string, keystorePassword string) (*ecdsa.Priva
 	} else if err != nil {
 		return nil, err
 	} else if fi.IsDir() {
-		return nil, fmt.Errorf("keystorePath cannot be a dir")
+		return nil, errors.New("keystorePath cannot be a dir")
 	}
 
 	keyjson, err := os.ReadFile(filepath.Clean(keystorePath))

@@ -2,7 +2,7 @@ package logic
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -153,7 +153,7 @@ func (b *EventUpdateLogic) updateL2WithdrawMessageInfos(ctx context.Context, bat
 
 	if withdrawTrie.NextMessageNonce != l2WithdrawMessages[0].MessageNonce {
 		log.Error("nonce mismatch", "expected next message nonce", withdrawTrie.NextMessageNonce, "actual next message nonce", l2WithdrawMessages[0].MessageNonce)
-		return fmt.Errorf("nonce mismatch")
+		return errors.New("nonce mismatch")
 	}
 
 	messageHashes := make([]common.Hash, len(l2WithdrawMessages))
