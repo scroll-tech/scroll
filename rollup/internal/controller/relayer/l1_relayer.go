@@ -154,14 +154,17 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 		}
 
 		if r.shouldUpdateGasOracle(baseFee, blobBaseFee, isCurie) {
-			// if we are not committing batches due to high fees then we shouldn't update fees to prevent users from paying high l1_data_fee
-			// also, set fees to some default value, because we have already updated fees to some high values, probably
-			if r.commitBatchReachTimeout() {
-				if r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BaseFeeDefault && r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BlobBaseFeeDefault {
+			// It indicates the commit/finalize batch has been stuck for a long time, it's likely that the L1 gas fee spiked.
+			// If we are not committing batches due to high fees then we shouldn't update fees to prevent users from paying high l1_data_fee
+			// Also, set fees to some default value, because we have already updated fees to some high values, probably
+			if reachTimeout, err := r.commitBatchReachTimeout(); reachTimeout && err == nil {
+				if r.lastBaseFee == r.cfg.GasOracleConfig.L1BaseFeeDefault && r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BlobBaseFeeDefault {
 					return
 				}
 				baseFee = r.cfg.GasOracleConfig.L1BaseFeeDefault
 				blobBaseFee = r.cfg.GasOracleConfig.L1BlobBaseFeeDefault
+			} else if err != nil {
+				return
 			}
 			var data []byte
 			if isCurie {
@@ -274,7 +277,7 @@ func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64
 	return false
 }
 
-func (r *Layer1Relayer) commitBatchReachTimeout() bool {
+func (r *Layer1Relayer) commitBatchReachTimeout() (bool, error) {
 	fields := map[string]interface{}{
 		"rollup_status IN ?": []types.RollupStatus{types.RollupCommitted, types.RollupFinalizing, types.RollupFinalized},
 	}
@@ -282,8 +285,9 @@ func (r *Layer1Relayer) commitBatchReachTimeout() bool {
 	limit := 1
 	batches, err := r.batchOrm.GetBatches(r.ctx, fields, orderByList, limit)
 	if err != nil {
-		log.Error("failed to fetch latest committed, finalizing or finalized batch", "err", err)
+		log.Warn("failed to fetch latest committed, finalizing or finalized batch", "err", err)
+		return false, err
 	}
 	// len(batches) == 0 probably shouldn't ever happen, but need to check this
-	return len(batches) == 0 || utils.NowUTC().Sub(*batches[0].CommittedAt) > time.Duration(r.cfg.GasOracleConfig.CommitBatchTimeoutWindowMinutes)*time.Minute
+	return len(batches) == 0 || utils.NowUTC().Sub(*batches[0].CommittedAt) > time.Duration(r.cfg.GasOracleConfig.CheckCommittedBatchesWindowMinutes)*time.Minute, nil
 }
