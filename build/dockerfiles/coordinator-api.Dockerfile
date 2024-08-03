@@ -34,15 +34,16 @@ COPY . .
 RUN cp -r ./common/libzkp/interface ./coordinator/internal/logic/verifier/lib
 COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/logic/verifier/lib/
 RUN cd ./coordinator && CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_api_skip_libzkp && mv ./build/bin/coordinator_api /bin/coordinator_api && mv internal/logic/verifier/lib /bin/
+COPY ./coordinator/download_assets.sh /bin/
 
 # Pull coordinator into a second stage deploy ubuntu container
 FROM ubuntu:20.04
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
-# ENV CHAIN_ID=534353
 RUN mkdir -p /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/lib /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/coordinator_api /bin/
+RUN /bin/download_assets.sh
 RUN /bin/coordinator_api --version
 WORKDIR /app
 ENTRYPOINT ["/bin/coordinator_api"]
