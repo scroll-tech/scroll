@@ -36,7 +36,7 @@ COPY --from=zkp-builder /app/target/release/libzkp.so ./coordinator/internal/log
 RUN cd ./coordinator && \
     CGO_LDFLAGS="-Wl,--no-as-needed -ldl" make coordinator_api_skip_libzkp && \
     mv ./build/bin/coordinator_api /bin/coordinator_api && \
-    mv internal/logic/verifier/lib /bin/ \
+    mv internal/logic/verifier/lib /bin/ && \
     cp ./download_assets.sh /bin/
 
 # Pull coordinator into a second stage deploy ubuntu container
