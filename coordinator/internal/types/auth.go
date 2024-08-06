@@ -100,7 +100,6 @@ func (a *LoginParameter) RecoverPublicKeyFromSignature() (string, error) {
 		ProverName:    a.Message.ProverName,
 		ProverVersion: a.Message.ProverVersion,
 		Challenge:     a.Message.Challenge,
-		HardForkName:  "curie",
 	}
 
 	hash, err := curieIdentity.Hash()
