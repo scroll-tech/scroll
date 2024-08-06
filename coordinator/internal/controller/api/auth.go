@@ -6,6 +6,7 @@ import (
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
+	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/coordinator/internal/config"
@@ -58,8 +59,19 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 		return jwt.MapClaims{}
 	}
 
+	publicKey := v.PublicKey
+	if publicKey == "" {
+		var err error
+		publicKey, err = v.RecoverPublicKeyFromSignature()
+		if err != nil {
+			// do not handle error here since already called v.Verify() beforehands so there should be no error
+			// add log just in case some error happens
+			log.Error("failed to recover public key from signature", "error", err.Error())
+		}
+	}
+
 	return jwt.MapClaims{
-		types.PublicKey:     v.PublicKey,
+		types.PublicKey:     publicKey,
 		types.ProverName:    v.Message.ProverName,
 		types.ProverVersion: v.Message.ProverVersion,
 	}

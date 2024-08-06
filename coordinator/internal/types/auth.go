@@ -77,6 +77,22 @@ func (a *LoginParameter) Verify() (bool, error) {
 	return isValid, nil
 }
 
+// RecoverPublicKeyFromSignature get public key from signature.
+// This method is for pre-darwin's compatible.
+func (a *LoginParameter) RecoverPublicKeyFromSignature() (string, error) {
+	hash, err := a.Message.Hash()
+	if err != nil {
+		return "", err
+	}
+	sig := common.FromHex(a.Signature)
+	// recover public key
+	pk, err := crypto.SigToPub(hash, sig)
+	if err != nil {
+		return "", err
+	}
+	return common.Bytes2Hex(crypto.CompressPubkey(pk)), nil
+}
+
 // Hash returns the hash of the auth message, which should be the message used
 // to construct the Signature.
 func (i *Message) Hash() ([]byte, error) {
