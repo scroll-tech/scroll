@@ -66,7 +66,7 @@ func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
 		if err != nil {
 			// do not handle error here since already called v.Verify() beforehands so there should be no error
 			// add log just in case some error happens
-			log.Error("failed to recover public key from signature", "error", err.Error())
+			log.Error("impossible path: failed to recover public key from signature", "error", err.Error())
 		}
 	}
 
