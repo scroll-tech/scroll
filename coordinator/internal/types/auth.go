@@ -31,7 +31,6 @@ type identity struct {
 	ProverName    string `json:"prover_name"`
 	ProverVersion string `json:"prover_version"`
 	Challenge     string `json:"challenge"`
-	HardForkName  string `json:"hard_fork_name"`
 }
 
 func (i *identity) Hash() ([]byte, error) {
@@ -101,7 +100,6 @@ func (a *LoginParameter) RecoverPublicKeyFromSignature() (string, error) {
 		ProverName:    a.Message.ProverName,
 		ProverVersion: a.Message.ProverVersion,
 		Challenge:     a.Message.Challenge,
-		HardForkName:  "curie",
 	}
 
 	hash, err := curieIdentity.Hash()
