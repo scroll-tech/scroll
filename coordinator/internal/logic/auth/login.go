@@ -59,7 +59,8 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	if login.PublicKey != "" {
 		verify, err := login.Verify()
 		if err != nil || !verify {
-			log.Error("auth message verify failure", "prover_name", login.Message.ProverName, "prover_version", login.Message.ProverVersion)
+			log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
+				"prover_version", login.Message.ProverVersion, "signature", login.Signature)
 			return errors.New("auth message verify failure")
 		}
 	}
@@ -91,7 +92,8 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 
 		for _, vk := range login.Message.VKs {
 			if _, ok := vks[vk]; !ok {
-				log.Error("vk inconsistency", "prover vk", vk, "prover name", login.Message.ProverName, "prover_version", login.Message.ProverVersion)
+				log.Error("vk inconsistency", "prover vk", vk, "prover name", login.Message.ProverName,
+					"prover_version", login.Message.ProverVersion, "signature", login.Signature)
 				if !version.CheckScrollProverVersion(login.Message.ProverVersion) {
 					return fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s",
 						version.Version, login.Message.ProverVersion)
