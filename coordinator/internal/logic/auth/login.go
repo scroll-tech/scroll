@@ -92,9 +92,8 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 
 		for _, vk := range login.Message.VKs {
 			if _, ok := vks[vk]; !ok {
-				messageHash, _ := login.Message.Hash()
 				log.Error("vk inconsistency", "prover vk", vk, "prover name", login.Message.ProverName,
-					"prover_version", login.Message.ProverVersion, "message_hash", messageHash, "signature", login.Signature)
+					"prover_version", login.Message.ProverVersion, "message", login.Message)
 				if !version.CheckScrollProverVersion(login.Message.ProverVersion) {
 					return fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s",
 						version.Version, login.Message.ProverVersion)
