@@ -59,9 +59,8 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	if login.PublicKey != "" {
 		verify, err := login.Verify()
 		if err != nil || !verify {
-			messageHash, _ := login.Message.Hash()
 			log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
-				"prover_version", login.Message.ProverVersion, "message hash", messageHash, "signature", login.Signature)
+				"prover_version", login.Message.ProverVersion, "message", login.Message)
 			return errors.New("auth message verify failure")
 		}
 	}
