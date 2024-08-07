@@ -27,8 +27,8 @@ import (
 type ChunkProverTask struct {
 	BaseProverTask
 
-	chunkTaskGetTaskTotal    *prometheus.CounterVec
-	chunkTaskGetTaskProver   *prometheus.CounterVec
+	chunkTaskGetTaskTotal  *prometheus.CounterVec
+	chunkTaskGetTaskProver *prometheus.CounterVec
 }
 
 // NewChunkProverTask new a chunk prover task

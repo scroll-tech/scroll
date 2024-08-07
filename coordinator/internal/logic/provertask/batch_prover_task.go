@@ -29,8 +29,8 @@ import (
 type BatchProverTask struct {
 	BaseProverTask
 
-	batchTaskGetTaskTotal    *prometheus.CounterVec
-	batchTaskGetTaskProver   *prometheus.CounterVec
+	batchTaskGetTaskTotal  *prometheus.CounterVec
+	batchTaskGetTaskProver *prometheus.CounterVec
 }
 
 // NewBatchProverTask new a batch collector
