@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 
@@ -58,7 +59,18 @@ impl Config {
     }
 
     pub fn partner_name(&self) -> String {
-        todo!()
+        let prover_name = &self.prover_name;
+        let scroll_prefix = Regex::new(r"^scroll-.*").unwrap();
+        let idc_prefix = Regex::new(r"^idc-.*").unwrap();
+
+        if scroll_prefix.is_match(prover_name) || idc_prefix.is_match(prover_name) {
+            let parts = prover_name.split('-').collect::<Vec<&str>>();
+            format!("{}-{}", parts[0], parts[1])
+        } else {
+            let split_re = Regex::new(r"[-_]").unwrap();
+            let parts = split_re.split(prover_name).collect::<Vec<&str>>();
+            parts[0].to_string()
+        }
     }
 }
 

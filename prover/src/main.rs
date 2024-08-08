@@ -65,6 +65,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         sentry::configure_scope(|scope| {
             scope.set_tag("prover_type", config.prover_type);
             scope.set_tag("partner_name", config.partner_name());
+
+            let prover_name = sentry::protocol::Value::from(config.prover_name.clone());
+            scope.set_extra("prover_name", prover_name);
         });
 
         sentry::capture_message("test message on start", sentry::Level::Info);
