@@ -51,11 +51,8 @@ type L1FetcherLogic struct {
 // NewL1FetcherLogic creates L1 fetcher logic
 func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient.Client) *L1FetcherLogic {
 	addressList := []common.Address{
-		common.HexToAddress(cfg.ETHGatewayAddr),
-
 		common.HexToAddress(cfg.StandardERC20GatewayAddr),
 		common.HexToAddress(cfg.CustomERC20GatewayAddr),
-		common.HexToAddress(cfg.WETHGatewayAddr),
 		common.HexToAddress(cfg.DAIGatewayAddr),
 
 		common.HexToAddress(cfg.ERC721GatewayAddr),
@@ -69,11 +66,8 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 	}
 
 	gatewayList := []common.Address{
-		common.HexToAddress(cfg.ETHGatewayAddr),
-
 		common.HexToAddress(cfg.StandardERC20GatewayAddr),
 		common.HexToAddress(cfg.CustomERC20GatewayAddr),
-		common.HexToAddress(cfg.WETHGatewayAddr),
 		common.HexToAddress(cfg.DAIGatewayAddr),
 
 		common.HexToAddress(cfg.ERC721GatewayAddr),
@@ -103,6 +97,21 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 	if common.HexToAddress(cfg.BatchBridgeGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.BatchBridgeGatewayAddr))
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.BatchBridgeGatewayAddr))
+	}
+
+	if common.HexToAddress(cfg.ETHGatewayAddr) != (common.Address{}) {
+		addressList = append(addressList, common.HexToAddress(cfg.ETHGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.ETHGatewayAddr))
+	}
+	
+	if common.HexToAddress(cfg.WETHGatewayAddr) != (common.Address{}) {
+		addressList = append(addressList, common.HexToAddress(cfg.WETHGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.WETHGatewayAddr))
+	}
+
+	if common.HexToAddress(cfg.GasTokenGatewayAddr) != (common.Address{}) {
+		addressList = append(addressList, common.HexToAddress(cfg.GasTokenGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.GasTokenGatewayAddr))
 	}
 
 	log.Info("L1 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)

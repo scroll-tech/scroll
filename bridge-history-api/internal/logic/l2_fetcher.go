@@ -100,6 +100,11 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.BatchBridgeGatewayAddr))
 	}
 
+	if common.HexToAddress(cfg.WETHGatewayAddr) != (common.Address{}) {
+		addressList = append(addressList, common.HexToAddress(cfg.WETHGatewayAddr))
+		gatewayList = append(gatewayList, common.HexToAddress(cfg.WETHGatewayAddr))
+	}
+
 	log.Info("L2 Fetcher configured with the following address list", "addresses", addressList, "gateways", gatewayList)
 
 	f := &L2FetcherLogic{
