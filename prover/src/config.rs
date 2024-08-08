@@ -24,6 +24,12 @@ pub struct L2GethConfig {
     pub endpoint: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SentryConfig {
+    pub dsn: String,
+    pub enabled: bool,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub prover_name: String,
@@ -35,6 +41,7 @@ pub struct Config {
     pub high_version_circuit: CircuitConfig,
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
+    pub sentry: Option<SentryConfig>,
 }
 
 impl Config {
@@ -48,6 +55,10 @@ impl Config {
     pub fn from_file(file_name: String) -> Result<Self> {
         let file = File::open(file_name)?;
         Config::from_reader(&file)
+    }
+
+    pub fn partner_name(&self) -> String {
+        todo!()
     }
 }
 

@@ -45,9 +45,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         std::process::exit(0);
     }
 
-    utils::log_init(args.log_file);
-
     let config: Config = Config::from_file(args.config_file)?;
+
+    let _guard = config.sentry.as_ref().and_then(|conf| {
+        if conf.enabled {
+            Some(sentry::init((
+                conf.dsn.clone(),
+                sentry::ClientOptions {
+                    release: Some(version::get_version_cow()),
+                    ..Default::default()
+                },
+            )))
+        } else {
+            None
+        }
+    });
+
+    _guard.iter().for_each(|_| {
+        sentry::configure_scope(|scope| {
+            scope.set_tag("prover_type", config.prover_type);
+            scope.set_tag("partner_name", config.partner_name());
+        });
+
+        sentry::capture_message("test message on start", sentry::Level::Info);
+    });
+
+    utils::log_init(args.log_file, _guard.is_some());
 
     if let Err(e) = AssetsDirEnvConfig::init() {
         log::error!("AssetsDirEnvConfig init failed: {:#}", e);
@@ -61,6 +84,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let prover = Prover::new(&config, coordinator_listener)?;
+
+    _guard.iter().for_each(|_| {
+        sentry::configure_scope(|scope| {
+            let public_key = sentry::protocol::Value::from(prover.get_public_key());
+            scope.set_extra("public_key", public_key);
+        });
+    });
 
     log::info!(
         "prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",

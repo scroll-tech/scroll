@@ -1,4 +1,4 @@
-use std::cell::OnceCell;
+use std::{borrow::Cow, cell::OnceCell};
 
 static DEFAULT_COMMIT: &str = "unknown";
 static mut VERSION: OnceCell<String> = OnceCell::new();
@@ -15,4 +15,11 @@ fn init_version() -> String {
 
 pub fn get_version() -> String {
     unsafe { VERSION.get_or_init(init_version).clone() }
+}
+
+pub fn get_version_cow() -> Cow<'static, str> {
+    unsafe {
+        let release: &'static str = std::mem::transmute(get_version().as_str());
+        std::borrow::Cow::Borrowed(release)
+    }
 }

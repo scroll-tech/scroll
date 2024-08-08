@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use ethers_core::types::H256;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -98,6 +100,13 @@ impl<'de> Deserialize<'de> for ProverType {
     {
         let v: u8 = u8::deserialize(deserializer)?;
         Ok(ProverType::from_u8(v))
+    }
+}
+
+impl Display for ProverType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(format!("{:?}", self).as_str())?;
+        Ok(())
     }
 }
 

@@ -54,11 +54,14 @@ impl<'a> TaskProcessor<'a> {
             );
             let result = match self.prover.prove_task(&task_wrapper.task) {
                 Ok(proof_detail) => self.prover.submit_proof(proof_detail, &task_wrapper.task),
-                Err(error) => self.prover.submit_error(
-                    &task_wrapper.task,
-                    super::types::ProofFailureType::NoPanic,
-                    error,
-                ),
+                Err(error) => {
+                    log::error!("failed to prove task, {:#}", error);
+                    self.prover.submit_error(
+                        &task_wrapper.task,
+                        super::types::ProofFailureType::NoPanic,
+                        error,
+                    )
+                }
             };
             return result;
         }

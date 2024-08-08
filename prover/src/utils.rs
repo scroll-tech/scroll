@@ -6,7 +6,7 @@ use crate::types::{ProverType, TaskType};
 static LOG_INIT: Once = Once::new();
 
 /// Initialize log
-pub fn log_init(log_file: Option<String>) {
+pub fn log_init(log_file: Option<String>, sentry_enabled: bool) {
     LOG_INIT.call_once(|| {
         let mut builder = env_logger::Builder::from_env(Env::default().default_filter_or("info"));
         if let Some(file_path) = log_file {
@@ -20,7 +20,18 @@ pub fn log_init(log_file: Option<String>) {
             );
             builder.target(env_logger::Target::Pipe(target));
         }
-        builder.init();
+        let logger = builder.build();
+        let max_level = logger.filter();
+
+        let boxed_logger: Box<dyn log::Log> = if sentry_enabled {
+            Box::new(sentry_log::SentryLogger::with_dest(logger))
+        } else {
+            Box::new(logger)
+        };
+
+        log::set_boxed_logger(boxed_logger)
+            .map(|()| log::set_max_level(max_level))
+            .unwrap();
     });
 }
 
