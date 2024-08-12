@@ -31,6 +31,7 @@ type FetcherConfig struct {
 	MessageQueueAddr         string `json:"MessageQueueAddr"`
 	BatchBridgeGatewayAddr   string `json:"BatchBridgeGatewayAddr"`
 	GasTokenGatewayAddr      string `json:"GasTokenGatewayAddr"`
+	WrappedTokenGatewayAddr  string `json:"WrappedTokenGatewayAddr"`
 }
 
 // RedisConfig redis config

@@ -168,6 +168,14 @@ func (e *L1EventParser) ParseL1SingleCrossChainEventLogs(ctx context.Context, lo
 			lastMessage.L2TokenAddress = event.L2Token.String()
 			lastMessage.TokenIDs = utils.ConvertBigIntArrayToString(event.TokenIDs)
 			lastMessage.TokenAmounts = utils.ConvertBigIntArrayToString(event.TokenAmounts)
+		case backendabi.L1DepositWrappedTokenSig:
+			event := backendabi.WrappedTokenMessageEvent{}
+			if err := utils.UnpackLog(backendabi.L1WrappedTokenGatewayABI, &event, "DepositWrappedToken", vlog); err != nil {
+				log.Error("Failed to unpack DepositWrappedToken event", "err", err)
+				return nil, nil, err
+			}
+			lastMessage := l1DepositMessages[len(l1DepositMessages)-1]
+			lastMessage.Sender = event.From.String()
 		case backendabi.L1SentMessageEventSig:
 			event := backendabi.L1SentMessageEvent{}
 			if err := utils.UnpackLog(backendabi.IL1ScrollMessengerABI, &event, "SentMessage", vlog); err != nil {
