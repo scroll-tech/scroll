@@ -1,5 +1,5 @@
 use env_logger::Env;
-use std::{fs::OpenOptions, sync::Once};
+use std::{borrow::Cow, fs::OpenOptions, sync::Once};
 
 use crate::types::{ProverType, TaskType};
 
@@ -40,4 +40,21 @@ pub fn get_task_types(prover_type: ProverType) -> Vec<TaskType> {
         ProverType::Chunk => vec![TaskType::Chunk],
         ProverType::Batch => vec![TaskType::Batch, TaskType::Bundle],
     }
+}
+
+static ENV_UNKNOWN: &str = "unknown";
+static ENV_DEVNET: &str = "devnet";
+static ENV_SEPOLIA: &str = "sepolia";
+static ENV_MAINNET: &str = "mainnet";
+
+pub fn get_environment() -> Cow<'static, str> {
+    let env: &'static str = match std::env::var("CHAIN_ID") {
+        Ok(chain_id) => match chain_id.as_str() {
+            "534352" => ENV_MAINNET,
+            "534351" => ENV_SEPOLIA,
+            _ => ENV_DEVNET,
+        },
+        Err(_) => ENV_UNKNOWN,
+    };
+    std::borrow::Cow::Borrowed(env)
 }

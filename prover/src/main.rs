@@ -54,6 +54,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 conf.dsn.clone(),
                 sentry::ClientOptions {
                     release: Some(version::get_version_cow()),
+                    environment: Some(utils::get_environment()),
                     ..Default::default()
                 },
             )))
