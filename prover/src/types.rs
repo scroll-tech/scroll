@@ -252,3 +252,27 @@ impl Default for ProofStatus {
         Self::Ok
     }
 }
+
+// =================================== tests module ========================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::{Ok, Result};
+
+    #[ctor::ctor]
+    fn init() {
+        crate::utils::log_init(None, false);
+        log::info!("logger initialized");
+    }
+
+    #[test]
+    fn test_prover_type_display() -> Result<()> {
+        let chunk = ProverType::Chunk;
+        let batch = ProverType::Batch;
+
+        assert_eq!(chunk.to_string(), "Chunk");
+        assert_eq!(batch.to_string(), "Batch");
+        Ok(())
+    }
+}

@@ -1,6 +1,7 @@
 use super::{prover::Prover, task_cache::TaskCache};
 use anyhow::{Context, Result};
 use std::rc::Rc;
+use super::coordinator_client::GetEmptyTaskError;
 
 pub struct TaskProcessor<'a> {
     prover: &'a Prover<'a>,
@@ -16,7 +17,11 @@ impl<'a> TaskProcessor<'a> {
         loop {
             log::info!("start a new round.");
             if let Err(err) = self.prove_and_submit() {
-                log::error!("encounter error: {:#}", err);
+                if err.is::<GetEmptyTaskError>() {
+                    log::info!("get empty task, skip.");
+                } else {
+                    log::error!("encounter error: {:#}", err);
+                }
             } else {
                 log::info!("prove & submit succeed.");
             }
