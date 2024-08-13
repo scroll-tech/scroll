@@ -1,7 +1,6 @@
-use super::{prover::Prover, task_cache::TaskCache};
+use super::{coordinator_client::GetEmptyTaskError, prover::Prover, task_cache::TaskCache};
 use anyhow::{Context, Result};
 use std::rc::Rc;
-use super::coordinator_client::GetEmptyTaskError;
 
 pub struct TaskProcessor<'a> {
     prover: &'a Prover<'a>,

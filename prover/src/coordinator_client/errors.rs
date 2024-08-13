@@ -79,9 +79,13 @@ mod tests {
 
     #[test]
     fn test_anyhow_error_is() -> Result<()> {
-        let err: Result<()> = Err(anyhow::anyhow!(GetEmptyTaskError)).context("this is a test context");
+        let err: Result<()> =
+            Err(anyhow::anyhow!(GetEmptyTaskError)).context("this is a test context");
 
-        assert!(err.unwrap_err().is::<GetEmptyTaskError>(), "error matches after anyhow context");
+        assert!(
+            err.unwrap_err().is::<GetEmptyTaskError>(),
+            "error matches after anyhow context"
+        );
 
         Ok(())
     }

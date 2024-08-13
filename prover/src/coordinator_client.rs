@@ -7,11 +7,11 @@ use anyhow::{bail, Context, Ok, Result};
 use std::rc::Rc;
 
 use api::Api;
+pub use errors::GetEmptyTaskError;
 use errors::*;
 use listener::Listener;
 use tokio::runtime::Runtime;
 use types::*;
-pub use errors::GetEmptyTaskError;
 
 use crate::{config::Config, key_signer::KeySigner};
 
