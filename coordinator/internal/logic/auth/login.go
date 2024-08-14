@@ -59,6 +59,8 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	if login.PublicKey != "" {
 		verify, err := login.Verify()
 		if err != nil || !verify {
+			log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
+				"prover_version", login.Message.ProverVersion, "message", login.Message)
 			return errors.New("auth message verify failure")
 		}
 	}
@@ -84,13 +86,14 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 					vks[vk] = struct{}{}
 				}
 			default:
-				log.Error("invalid prover_type", "value", proverType)
+				log.Error("invalid prover_type", "value", proverType, "prover name", login.Message.ProverName, "prover_version", login.Message.ProverVersion)
 			}
 		}
 
 		for _, vk := range login.Message.VKs {
 			if _, ok := vks[vk]; !ok {
-				log.Error("vk inconsistency", "prover vk", vk)
+				log.Error("vk inconsistency", "prover vk", vk, "prover name", login.Message.ProverName,
+					"prover_version", login.Message.ProverVersion, "message", login.Message)
 				if !version.CheckScrollProverVersion(login.Message.ProverVersion) {
 					return fmt.Errorf("incompatible prover version. please upgrade your prover, expect version: %s, actual version: %s",
 						version.Version, login.Message.ProverVersion)

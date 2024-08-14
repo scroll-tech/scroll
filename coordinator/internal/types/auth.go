@@ -26,6 +26,22 @@ type LoginSchema struct {
 	Token string    `json:"token"`
 }
 
+// TODO just use for darwin upgrade, need delete next upgrade
+type identity struct {
+	ProverName    string `json:"prover_name"`
+	ProverVersion string `json:"prover_version"`
+	Challenge     string `json:"challenge"`
+}
+
+func (i *identity) Hash() ([]byte, error) {
+	byt, err := rlp.EncodeToBytes(i)
+	if err != nil {
+		return nil, err
+	}
+	hash := crypto.Keccak256Hash(byt)
+	return hash[:], nil
+}
+
 // Message the login message struct
 type Message struct {
 	Challenge     string       `form:"challenge" json:"challenge" binding:"required"`
@@ -75,6 +91,28 @@ func (a *LoginParameter) Verify() (bool, error) {
 	sig := common.FromHex(a.Signature)
 	isValid := crypto.VerifySignature(crypto.CompressPubkey(expectedPubKey), hash, sig[:len(sig)-1])
 	return isValid, nil
+}
+
+// RecoverPublicKeyFromSignature get public key from signature.
+// This method is for pre-darwin's compatible.
+func (a *LoginParameter) RecoverPublicKeyFromSignature() (string, error) {
+	curieIdentity := identity{
+		ProverName:    a.Message.ProverName,
+		ProverVersion: a.Message.ProverVersion,
+		Challenge:     a.Message.Challenge,
+	}
+
+	hash, err := curieIdentity.Hash()
+	if err != nil {
+		return "", err
+	}
+	sig := common.FromHex(a.Signature)
+	// recover public key
+	pk, err := crypto.SigToPub(hash, sig)
+	if err != nil {
+		return "", err
+	}
+	return common.Bytes2Hex(crypto.CompressPubkey(pk)), nil
 }
 
 // Hash returns the hash of the auth message, which should be the message used
