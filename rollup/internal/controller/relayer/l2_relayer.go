@@ -480,7 +480,6 @@ func (r *Layer2Relayer) ProcessCommittedBatches() {
 		}
 
 	case types.ProvingTaskVerified:
-		log.Info("Start to roll up zk proof", "hash", batch.Hash)
 		r.metrics.rollupL2RelayerProcessCommittedBatchesFinalizedTotal.Inc()
 		if err := r.finalizeBatch(batch, true); err != nil {
 			log.Error("Failed to finalize batch with proof", "index", batch.Index, "hash", batch.Hash, "err", err)
@@ -531,7 +530,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 		}
 
 	case types.ProvingTaskVerified:
-		log.Info("Start to roll up zk proof", "hash", bundle.Hash)
+		log.Info("Start to roll up zk proof", "bundle hash", bundle.Hash)
 		r.metrics.rollupL2RelayerProcessPendingBundlesFinalizedTotal.Inc()
 		if err := r.finalizeBundle(bundle, true); err != nil {
 			log.Error("Failed to finalize bundle with proof", "index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
@@ -598,11 +597,15 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 
 	var calldata []byte
 	if !r.chainCfg.IsBernoulli(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv0
+		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
+
 		calldata, err = r.constructFinalizeBatchPayloadCodecV0(dbBatch, dbParentBatch, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct finalizeBatch payload codecv0, index: %v, err: %w", dbBatch.Index, err)
 		}
 	} else if !r.chainCfg.IsCurie(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv1
+		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
+
 		chunks := make([]*encoding.Chunk, len(dbChunks))
 		for i, c := range dbChunks {
 			blocks, dbErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
@@ -617,6 +620,8 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 			return fmt.Errorf("failed to construct finalizeBatch payload codecv1, index: %v, err: %w", dbBatch.Index, err)
 		}
 	} else if !r.chainCfg.IsDarwin(dbChunks[0].StartBlockTime) { // codecv2
+		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
+
 		chunks := make([]*encoding.Chunk, len(dbChunks))
 		for i, c := range dbChunks {
 			blocks, dbErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
