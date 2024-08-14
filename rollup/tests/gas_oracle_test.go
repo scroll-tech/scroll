@@ -167,7 +167,7 @@ func testImportL1GasPriceAfterCurie(t *testing.T) {
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOracleImporting)
 }
 
-func testImportDefaultL1GasPrice(t *testing.T) {
+func testImportDefaultL1GasPriceDueToL1GasPriceSpike(t *testing.T) {
 	db := setupDB(t)
 	defer database.CloseDB(db)
 
