@@ -54,7 +54,6 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 
 		common.HexToAddress(cfg.StandardERC20GatewayAddr),
 		common.HexToAddress(cfg.CustomERC20GatewayAddr),
-		common.HexToAddress(cfg.WETHGatewayAddr),
 		common.HexToAddress(cfg.DAIGatewayAddr),
 
 		common.HexToAddress(cfg.ERC721GatewayAddr),
@@ -68,7 +67,6 @@ func NewL2FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 
 		common.HexToAddress(cfg.StandardERC20GatewayAddr),
 		common.HexToAddress(cfg.CustomERC20GatewayAddr),
-		common.HexToAddress(cfg.WETHGatewayAddr),
 		common.HexToAddress(cfg.DAIGatewayAddr),
 
 		common.HexToAddress(cfg.ERC721GatewayAddr),
