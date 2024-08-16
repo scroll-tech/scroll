@@ -103,7 +103,7 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		addressList = append(addressList, common.HexToAddress(cfg.ETHGatewayAddr))
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.ETHGatewayAddr))
 	}
-	
+
 	if common.HexToAddress(cfg.WETHGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.WETHGatewayAddr))
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.WETHGatewayAddr))
@@ -113,7 +113,7 @@ func NewL1FetcherLogic(cfg *config.FetcherConfig, db *gorm.DB, client *ethclient
 		addressList = append(addressList, common.HexToAddress(cfg.GasTokenGatewayAddr))
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.GasTokenGatewayAddr))
 	}
-	
+
 	if common.HexToAddress(cfg.WrappedTokenGatewayAddr) != (common.Address{}) {
 		addressList = append(addressList, common.HexToAddress(cfg.WrappedTokenGatewayAddr))
 		gatewayList = append(gatewayList, common.HexToAddress(cfg.WrappedTokenGatewayAddr))
