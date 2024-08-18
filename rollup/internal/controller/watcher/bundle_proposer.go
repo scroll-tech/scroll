@@ -140,21 +140,22 @@ func (p *BundleProposer) proposeBundle() error {
 		return nil
 	}
 
-	// Ensure all blocks in the same chunk use the same hardfork name
-	// If a different hardfork name is found, truncate the blocks slice at that point
+	// Ensure all blocks in the same chunk use the same hardfork name and same codec version
+	// If a different hardfork name or codec version are found, truncate the batches slice at that point
 	firstChunk, err := p.chunkOrm.GetChunkByIndex(p.ctx, batches[0].StartChunkIndex)
 	if err != nil {
 		return err
 	}
 	hardforkName := forks.GetHardforkName(p.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
-	codecVersion := forks.GetCodecVersion(p.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
+	codecVersion := encoding.CodecVersion(batches[0].CodecVersion)
 	for i := 1; i < len(batches); i++ {
 		chunk, err := p.chunkOrm.GetChunkByIndex(p.ctx, batches[i].StartChunkIndex)
 		if err != nil {
 			return err
 		}
 		currentHardfork := forks.GetHardforkName(p.chainCfg, chunk.StartBlockNumber, chunk.StartBlockTime)
-		if currentHardfork != hardforkName {
+		currentCodecVersion := encoding.CodecVersion(batches[i].CodecVersion)
+		if currentHardfork != hardforkName || currentCodecVersion != codecVersion {
 			batches = batches[:i]
 			maxBatchesThisBundle = uint64(i) // update maxBlocksThisChunk to trigger chunking, because these blocks are the last blocks before the hardfork
 			break

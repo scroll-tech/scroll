@@ -9,6 +9,7 @@ import (
 	"github.com/scroll-tech/da-codec/encoding/codecv1"
 	"github.com/scroll-tech/da-codec/encoding/codecv2"
 	"github.com/scroll-tech/da-codec/encoding/codecv3"
+	"github.com/scroll-tech/da-codec/encoding/codecv4"
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
@@ -36,7 +37,7 @@ type ChunkMetrics struct {
 }
 
 // CalculateChunkMetrics calculates chunk metrics.
-func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) (*ChunkMetrics, error) {
+func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, enableEncode bool) (*ChunkMetrics, error) {
 	var err error
 	metrics := &ChunkMetrics{
 		TxNum:               chunk.NumTransactions(),
@@ -111,6 +112,22 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 			return nil, fmt.Errorf("failed to estimate codecv3 chunk L1 commit batch size and blob size: %w", err)
 		}
 		return metrics, nil
+	case encoding.CodecV4:
+		start := time.Now()
+		metrics.L1CommitGas = codecv4.EstimateChunkL1CommitGas(chunk)
+		metrics.EstimateGasTime = time.Since(start)
+
+		start = time.Now()
+		metrics.L1CommitCalldataSize = codecv4.EstimateChunkL1CommitCalldataSize(chunk)
+		metrics.EstimateCalldataSizeTime = time.Since(start)
+
+		start = time.Now()
+		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv4.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk, enableEncode)
+		metrics.EstimateBlobSizeTime = time.Since(start)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate codecv4 chunk L1 commit batch size and blob size: %w", err)
+		}
+		return metrics, nil
 	default:
 		return nil, fmt.Errorf("unsupported codec version: %v", codecVersion)
 	}
@@ -125,6 +142,8 @@ func CheckChunkCompressedDataCompatibility(chunk *encoding.Chunk, codecVersion e
 		return codecv2.CheckChunkCompressedDataCompatibility(chunk)
 	case encoding.CodecV3:
 		return codecv3.CheckChunkCompressedDataCompatibility(chunk)
+	case encoding.CodecV4:
+		return codecv4.CheckChunkCompressedDataCompatibility(chunk)
 	default:
 		return false, fmt.Errorf("unsupported codec version: %v", codecVersion)
 	}
@@ -139,6 +158,8 @@ func CheckBatchCompressedDataCompatibility(batch *encoding.Batch, codecVersion e
 		return codecv2.CheckBatchCompressedDataCompatibility(batch)
 	case encoding.CodecV3:
 		return codecv3.CheckBatchCompressedDataCompatibility(batch)
+	case encoding.CodecV4:
+		return codecv4.CheckBatchCompressedDataCompatibility(batch)
 	default:
 		return false, fmt.Errorf("unsupported codec version: %v", codecVersion)
 	}
@@ -166,7 +187,7 @@ type BatchMetrics struct {
 }
 
 // CalculateBatchMetrics calculates batch metrics.
-func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetrics, error) {
+func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion, enableEncode bool) (*BatchMetrics, error) {
 	var err error
 	metrics := &BatchMetrics{
 		NumChunks:           uint64(len(batch.Chunks)),
@@ -235,6 +256,22 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 			return nil, fmt.Errorf("failed to estimate codecv3 batch L1 commit batch size and blob size: %w", err)
 		}
 		return metrics, nil
+	case encoding.CodecV4:
+		start := time.Now()
+		metrics.L1CommitGas = codecv4.EstimateBatchL1CommitGas(batch)
+		metrics.EstimateGasTime = time.Since(start)
+
+		start = time.Now()
+		metrics.L1CommitCalldataSize = codecv4.EstimateBatchL1CommitCalldataSize(batch)
+		metrics.EstimateCalldataSizeTime = time.Since(start)
+
+		start = time.Now()
+		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv4.EstimateBatchL1CommitBatchSizeAndBlobSize(batch, enableEncode)
+		metrics.EstimateBlobSizeTime = time.Since(start)
+		if err != nil {
+			return nil, fmt.Errorf("failed to estimate codecv4 batch L1 commit batch size and blob size: %w", err)
+		}
+		return metrics, nil
 	default:
 		return nil, fmt.Errorf("unsupported codec version: %v", codecVersion)
 	}
@@ -283,6 +320,16 @@ func GetChunkHash(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64, code
 			return common.Hash{}, fmt.Errorf("failed to get codecv3 DA chunk hash: %w", err)
 		}
 		return chunkHash, nil
+	case encoding.CodecV4:
+		daChunk, err := codecv4.NewDAChunk(chunk, totalL1MessagePoppedBefore)
+		if err != nil {
+			return common.Hash{}, fmt.Errorf("failed to create codecv4 DA chunk: %w", err)
+		}
+		chunkHash, err := daChunk.Hash()
+		if err != nil {
+			return common.Hash{}, fmt.Errorf("failed to get codecv4 DA chunk hash: %w", err)
+		}
+		return chunkHash, nil
 	default:
 		return common.Hash{}, fmt.Errorf("unsupported codec version: %v", codecVersion)
 	}
@@ -299,7 +346,10 @@ type BatchMetadata struct {
 }
 
 // GetBatchMetadata retrieves the metadata of a batch.
-func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetadata, error) {
+// TODO: refactor this function to reduce cyclomatic complexity
+//
+//gocyclo:ignore
+func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion, enableEncode bool) (*BatchMetadata, error) {
 	numChunks := len(batch.Chunks)
 	totalL1MessagePoppedBeforeEndDAChunk := batch.TotalL1MessagePoppedBefore
 	for i := 0; i < numChunks-1; i++ {
@@ -452,6 +502,44 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		batchMeta.EndChunkHash, err = endDAChunk.Hash()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get codecv3 end DA chunk hash: %w", err)
+		}
+		return batchMeta, nil
+	case encoding.CodecV4:
+		daBatch, err := codecv4.NewDABatch(batch, enableEncode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create codecv4 DA batch: %w", err)
+		}
+
+		blobDataProof, err := daBatch.BlobDataProofForPointEvaluation()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get codecv4 blob data proof for point evaluation: %w", err)
+		}
+
+		batchMeta := &BatchMetadata{
+			BatchHash:          daBatch.Hash(),
+			BatchDataHash:      daBatch.DataHash,
+			BatchBlobDataProof: blobDataProof,
+			BatchBytes:         daBatch.Encode(),
+		}
+
+		startDAChunk, err := codecv4.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create codecv4 start DA chunk: %w", err)
+		}
+
+		batchMeta.StartChunkHash, err = startDAChunk.Hash()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get codecv4 start DA chunk hash: %w", err)
+		}
+
+		endDAChunk, err := codecv4.NewDAChunk(batch.Chunks[numChunks-1], totalL1MessagePoppedBeforeEndDAChunk)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create codecv4 end DA chunk: %w", err)
+		}
+
+		batchMeta.EndChunkHash, err = endDAChunk.Hash()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get codecv4 end DA chunk hash: %w", err)
 		}
 		return batchMeta, nil
 	default:

@@ -72,7 +72,7 @@ func testBundleProposerLimits(t *testing.T) {
 				Blocks: []*encoding.Block{block},
 			}
 			chunkOrm := orm.NewChunk(db)
-			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, utils.ChunkMetrics{})
+			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, false, utils.ChunkMetrics{})
 			assert.NoError(t, err)
 			batch := &encoding.Batch{
 				Index:                      0,
@@ -81,7 +81,7 @@ func testBundleProposerLimits(t *testing.T) {
 				Chunks:                     []*encoding.Chunk{chunk},
 			}
 			batchOrm := orm.NewBatch(db)
-			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
+			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false, utils.BatchMetrics{})
 			assert.NoError(t, err)
 
 			l2BlockOrm := orm.NewL2Block(db)
@@ -156,7 +156,7 @@ func testBundleProposerRespectHardforks(t *testing.T) {
 		Blocks: []*encoding.Block{block},
 	}
 	chunkOrm := orm.NewChunk(db)
-	_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, utils.ChunkMetrics{})
+	_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, false, utils.ChunkMetrics{})
 	assert.NoError(t, err)
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -165,7 +165,7 @@ func testBundleProposerRespectHardforks(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 	}
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
+	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false, utils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{

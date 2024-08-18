@@ -63,6 +63,7 @@
       "l1_commit_gas_limit_multiplier": 1.2
     },
     "chunk_proposer_config": {
+      "enable_conditional_encoding": false,
       "propose_interval_milliseconds": 100,
       "max_block_num_per_chunk": 100,
       "max_tx_num_per_chunk": 100,

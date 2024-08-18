@@ -144,7 +144,7 @@ func testImportL2GasPrice(t *testing.T) {
 	}
 
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
+	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false, utils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	// check db status
