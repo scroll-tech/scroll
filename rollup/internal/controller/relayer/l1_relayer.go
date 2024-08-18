@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
@@ -15,6 +16,7 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
@@ -43,6 +45,7 @@ type Layer1Relayer struct {
 
 	l1BlockOrm *orm.L1Block
 	l2BlockOrm *orm.L2Block
+	batchOrm   *orm.Batch
 
 	metrics *l1RelayerMetrics
 }
@@ -84,6 +87,7 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 		ctx:        ctx,
 		l1BlockOrm: orm.NewL1Block(db),
 		l2BlockOrm: orm.NewL2Block(db),
+		batchOrm:   orm.NewBatch(db),
 
 		gasOracleSender: gasOracleSender,
 		l1GasOracleABI:  bridgeAbi.L1GasPriceOracleABI,
@@ -150,6 +154,19 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 		}
 
 		if r.shouldUpdateGasOracle(baseFee, blobBaseFee, isCurie) {
+			// It indicates the committing batch has been stuck for a long time, it's likely that the L1 gas fee spiked.
+			// If we are not committing batches due to high fees then we shouldn't update fees to prevent users from paying high l1_data_fee
+			// Also, set fees to some default value, because we have already updated fees to some high values, probably
+			var reachTimeout bool
+			if reachTimeout, err = r.commitBatchReachTimeout(); reachTimeout && err == nil {
+				if r.lastBaseFee == r.cfg.GasOracleConfig.L1BaseFeeDefault && r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BlobBaseFeeDefault {
+					return
+				}
+				baseFee = r.cfg.GasOracleConfig.L1BaseFeeDefault
+				blobBaseFee = r.cfg.GasOracleConfig.L1BlobBaseFeeDefault
+			} else if err != nil {
+				return
+			}
 			var data []byte
 			if isCurie {
 				data, err = r.l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", new(big.Int).SetUint64(baseFee), new(big.Int).SetUint64(blobBaseFee))
@@ -259,4 +276,19 @@ func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64
 	}
 
 	return false
+}
+
+func (r *Layer1Relayer) commitBatchReachTimeout() (bool, error) {
+	fields := map[string]interface{}{
+		"rollup_status IN ?": []types.RollupStatus{types.RollupCommitted, types.RollupFinalizing, types.RollupFinalized},
+	}
+	orderByList := []string{"index DESC"}
+	limit := 1
+	batches, err := r.batchOrm.GetBatches(r.ctx, fields, orderByList, limit)
+	if err != nil {
+		log.Warn("failed to fetch latest committed, finalizing or finalized batch", "err", err)
+		return false, err
+	}
+	// len(batches) == 0 probably shouldn't ever happen, but need to check this
+	return len(batches) == 0 || utils.NowUTC().Sub(*batches[0].CommittedAt) > time.Duration(r.cfg.GasOracleConfig.CheckCommittedBatchesWindowMinutes)*time.Minute, nil
 }
