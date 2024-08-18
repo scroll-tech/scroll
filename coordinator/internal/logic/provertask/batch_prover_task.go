@@ -9,7 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/da-codec/encoding/codecv3"
+	"github.com/scroll-tech/da-codec/encoding/codecv4"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
@@ -208,17 +210,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
 
-	taskDetail := message.BatchTaskDetail{
-		ChunkInfos:  chunkInfos,
-		ChunkProofs: chunkProofs,
-	}
-
-	if hardForkName == "darwin" {
-		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(batch.BatchHeader)
-		if decodeErr != nil {
-			return nil, fmt.Errorf("failed to decode batch header, taskID:%s err:%w", task.TaskID, decodeErr)
-		}
-		taskDetail.BatchHeader = batchHeader
+	taskDetail, err := bp.getBatchTaskDetail(ctx, hardForkName, batch, chunkInfos, chunkProofs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get batch task detail, taskID:%s err:%w", task.TaskID, err)
 	}
 
 	chunkProofsBytes, err := json.Marshal(taskDetail)
@@ -240,4 +234,79 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), batchTask.Hash); err != nil {
 		log.Error("failed to recover batch active attempts", "hash", batchTask.Hash, "error", err)
 	}
+}
+
+func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, hardForkName string, batch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchTaskDetail, error) {
+	taskDetail := &message.BatchTaskDetail{
+		ChunkInfos:  chunkInfos,
+		ChunkProofs: chunkProofs,
+	}
+
+	if hardForkName != "darwin" {
+		return taskDetail, nil
+	}
+
+	dbChunks, err := bp.chunkOrm.GetChunksInRange(ctx, batch.StartChunkIndex, batch.EndChunkIndex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chunks in range for batch %d (start: %d, end: %d): %w", batch.Index, batch.StartChunkIndex, batch.EndChunkIndex, err)
+	}
+
+	chunks := make([]*encoding.Chunk, len(dbChunks))
+	for i, c := range dbChunks {
+		blocks, getErr := bp.blockOrm.GetL2BlocksInRange(ctx, c.StartBlockNumber, c.EndBlockNumber)
+		if getErr != nil {
+			return nil, fmt.Errorf("failed to get blocks in range for batch %d, chunk %d, (start: %d, end: %d): %w", batch.Index, c.Index, c.StartBlockNumber, c.EndBlockNumber, getErr)
+		}
+		chunks[i] = &encoding.Chunk{Blocks: blocks}
+	}
+
+	dbParentBatch, getErr := bp.batchOrm.GetBatchByIndex(ctx, batch.Index-1)
+	if getErr != nil {
+		return nil, fmt.Errorf("failed to get parent batch header for batch %d: %w", batch.Index, getErr)
+	}
+
+	batchEncoding := &encoding.Batch{
+		Index:                      batch.Index,
+		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
+		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
+		Chunks:                     chunks,
+	}
+
+	if !batch.EnableEncode {
+		daBatch, createErr := codecv3.NewDABatch(batchEncoding)
+		if createErr != nil {
+			return nil, fmt.Errorf("failed to create DA batch (v3) for batch %d: %w", batch.Index, createErr)
+		}
+		taskDetail.BlobBytes = daBatch.Blob()[:]
+
+		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(batch.BatchHeader)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("failed to decode batch header (v3) for batch %d: %w", batch.Index, decodeErr)
+		}
+
+		jsonData, marshalErr := json.Marshal(batchHeader)
+		if marshalErr != nil {
+			return nil, fmt.Errorf("failed to marshal batch header (v3) for batch %d: %w", batch.Index, marshalErr)
+		}
+		taskDetail.BatchHeader = string(jsonData)
+	} else {
+		daBatch, createErr := codecv4.NewDABatch(batchEncoding, batch.EnableEncode)
+		if createErr != nil {
+			return nil, fmt.Errorf("failed to create DA batch (v4) for batch %d: %w", batch.Index, createErr)
+		}
+		taskDetail.BlobBytes = daBatch.Blob()[:]
+
+		batchHeader, decodeErr := codecv4.NewDABatchFromBytes(batch.BatchHeader)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("failed to decode batch header (v4) for batch %d: %w", batch.Index, decodeErr)
+		}
+
+		jsonData, marshalErr := json.Marshal(batchHeader)
+		if marshalErr != nil {
+			return nil, fmt.Errorf("failed to marshal batch header (v4) for batch %d: %w", batch.Index, marshalErr)
+		}
+		taskDetail.BatchHeader = string(jsonData)
+	}
+
+	return taskDetail, nil
 }
