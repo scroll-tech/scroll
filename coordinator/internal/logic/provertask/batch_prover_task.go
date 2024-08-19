@@ -260,7 +260,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, dbBatch *orm.
 		return nil, fmt.Errorf("failed to get parent batch header for batch %d: %w", dbBatch.Index, getErr)
 	}
 
-	batchEncoding := &encoding.Batch{
+	batch := &encoding.Batch{
 		Index:                      dbBatch.Index,
 		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
 		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
@@ -268,7 +268,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, dbBatch *orm.
 	}
 
 	if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV3 {
-		daBatch, createErr := codecv3.NewDABatch(batchEncoding)
+		daBatch, createErr := codecv3.NewDABatch(batch)
 		if createErr != nil {
 			return nil, fmt.Errorf("failed to create DA batch (v3) for batch %d: %w", dbBatch.Index, createErr)
 		}
@@ -281,7 +281,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, dbBatch *orm.
 
 		taskDetail.BatchHeader = batchHeader
 	} else {
-		daBatch, createErr := codecv4.NewDABatch(batchEncoding, dbBatch.EnableEncode)
+		daBatch, createErr := codecv4.NewDABatch(batch, dbBatch.EnableCompress)
 		if createErr != nil {
 			return nil, fmt.Errorf("failed to create DA batch (v4) for batch %d: %w", dbBatch.Index, createErr)
 		}

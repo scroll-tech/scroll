@@ -32,7 +32,7 @@ type Batch struct {
 	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 	CodecVersion    int16  `json:"codec_version" gorm:"column:codec_version"`
-	EnableEncode    bool   `json:"enable_encode" gorm:"column:enable_encode"`
+	EnableCompress  bool   `json:"enable_compress" gorm:"column:enable_compress"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
