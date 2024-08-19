@@ -3,12 +3,14 @@ package api
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
+	commonTypes "scroll-tech/common/types"
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/auth"
 	"scroll-tech/coordinator/internal/logic/verifier"
@@ -17,12 +19,14 @@ import (
 
 // AuthController is login API
 type AuthController struct {
+	cfg        *config.Config
 	loginLogic *auth.LoginLogic
 }
 
 // NewAuthController returns an LoginController instance
 func NewAuthController(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *AuthController {
 	return &AuthController{
+		cfg:        cfg,
 		loginLogic: auth.NewLoginLogic(db, cfg, vf),
 	}
 }
@@ -92,4 +96,14 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 		c.Set(types.ProverVersion, proverVersion)
 	}
 	return nil
+}
+
+// LoginResponse replies to client for /login
+func (a *AuthController) LoginResponse(c *gin.Context, code int, message string, time time.Time) {
+	resp := types.LoginSchema{
+		Time:           time,
+		Token:          message,
+		SentryEndpoint: a.cfg.ProverManager.ProverSentryEndpoint,
+	}
+	commonTypes.RenderSuccess(c, resp)
 }

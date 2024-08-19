@@ -22,8 +22,9 @@ const (
 
 // LoginSchema for /login response
 type LoginSchema struct {
-	Time  time.Time `json:"time"`
-	Token string    `json:"token"`
+	Time           time.Time `json:"time"`
+	Token          string    `json:"token"`
+	SentryEndpoint string    `json:"sentry_endpoint"`
 }
 
 // TODO just use for darwin upgrade, need delete next upgrade

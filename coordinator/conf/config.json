@@ -13,7 +13,8 @@
       "assets_path_hi": ""
     },
     "max_verifier_workers": 4,
-    "min_prover_version": "v1.0.0"
+    "min_prover_version": "v1.0.0",
+    "prover_sentry_endpoint": ""
   },
   "db": {
     "driver_name": "postgres",

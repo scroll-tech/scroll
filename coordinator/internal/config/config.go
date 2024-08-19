@@ -27,6 +27,8 @@ type ProverManager struct {
 	MaxVerifierWorkers int `json:"max_verifier_workers"`
 	// MinProverVersion is the minimum version of the prover that is required.
 	MinProverVersion string `json:"min_prover_version"`
+	// ProverSentryEndpoint the sentry endpoint being sent to each prover in login response
+	ProverSentryEndpoint string `json:"prover_sentry_endpoint"`
 }
 
 // L2 loads l2geth configuration items.
