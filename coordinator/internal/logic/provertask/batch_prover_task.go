@@ -273,14 +273,26 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, dbBatch *orm.
 			return nil, fmt.Errorf("failed to create DA batch (v3) for batch %d: %w", dbBatch.Index, createErr)
 		}
 		taskDetail.BlobBytes = daBatch.Blob()[:]
-		taskDetail.BatchHeader = daBatch.Encode()
+
+		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(dbBatch.BatchHeader)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("failed to decode batch header (v3) for batch %d: %w", dbBatch.Index, decodeErr)
+		}
+
+		taskDetail.BatchHeader = batchHeader
 	} else {
 		daBatch, createErr := codecv4.NewDABatch(batchEncoding, dbBatch.EnableEncode)
 		if createErr != nil {
 			return nil, fmt.Errorf("failed to create DA batch (v4) for batch %d: %w", dbBatch.Index, createErr)
 		}
 		taskDetail.BlobBytes = daBatch.Blob()[:]
-		taskDetail.BatchHeader = daBatch.Encode()
+
+		batchHeader, decodeErr := codecv4.NewDABatchFromBytes(dbBatch.BatchHeader)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("failed to decode batch header (v4) for batch %d: %w", dbBatch.Index, decodeErr)
+		}
+
+		taskDetail.BatchHeader = batchHeader
 	}
 
 	return taskDetail, nil
