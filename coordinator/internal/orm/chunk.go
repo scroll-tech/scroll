@@ -231,32 +231,6 @@ func (o *Chunk) GetAttemptsByHash(ctx context.Context, hash string) (int16, int1
 	return chunk.ActiveAttempts, chunk.TotalAttempts, nil
 }
 
-// GetChunksInRange retrieves chunks within a given range (inclusive) from the database.
-// The range is closed, i.e., it includes both start and end indices.
-// The returned chunks are sorted in ascending order by their index.
-func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endIndex uint64) ([]*Chunk, error) {
-	if startIndex > endIndex {
-		return nil, fmt.Errorf("Chunk.GetChunksInRange: start index should be less than or equal to end index, start index: %v, end index: %v", startIndex, endIndex)
-	}
-
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Chunk{})
-	db = db.Where("index >= ? AND index <= ?", startIndex, endIndex)
-	db = db.Order("index ASC")
-
-	var chunks []*Chunk
-	if err := db.Find(&chunks).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.GetChunksInRange error: %w, start index: %v, end index: %v", err, startIndex, endIndex)
-	}
-
-	// sanity check
-	if uint64(len(chunks)) != endIndex-startIndex+1 {
-		return nil, fmt.Errorf("Chunk.GetChunksInRange: incorrect number of chunks, expected: %v, got: %v, start index: %v, end index: %v", endIndex-startIndex+1, len(chunks), startIndex, endIndex)
-	}
-
-	return chunks, nil
-}
-
 // InsertChunk inserts a new chunk into the database.
 // for unit test
 func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...*gorm.DB) (*Chunk, error) {
