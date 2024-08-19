@@ -173,8 +173,8 @@ github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjR
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/scroll-tech/da-codec v0.0.0-20240818122843-6901956c9910 h1:c2siFeESs8MgppUAoatnkbnQMoFTq2DPT0TEdZFPbok=
-github.com/scroll-tech/da-codec v0.0.0-20240818122843-6901956c9910/go.mod h1:D6XEESeNVJkQJlv3eK+FyR+ufPkgVQbJzERylQi53Bs=
+github.com/scroll-tech/da-codec v0.0.0-20240819100936-c6af3bbe7068 h1:oVGwhg4cCq35B04eG/S4OBXDwXiFH7+LezuH2ZTRBPs=
+github.com/scroll-tech/da-codec v0.0.0-20240819100936-c6af3bbe7068/go.mod h1:D6XEESeNVJkQJlv3eK+FyR+ufPkgVQbJzERylQi53Bs=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20240626125436-418bc6f728b6 h1:Q8YyvrcPIcXQwE4ucm4bqmPh6TP6IB1GUTXripf2WyQ=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20240626125436-418bc6f728b6/go.mod h1:byf/mZ8jLYUCnUePTicjJWn+RvKdxDn7buS6glTnMwQ=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=
