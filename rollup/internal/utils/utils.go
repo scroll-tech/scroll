@@ -37,7 +37,7 @@ type ChunkMetrics struct {
 }
 
 // CalculateChunkMetrics calculates chunk metrics.
-func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, enableEncode bool) (*ChunkMetrics, error) {
+func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, enableCompress bool) (*ChunkMetrics, error) {
 	var err error
 	metrics := &ChunkMetrics{
 		TxNum:               chunk.NumTransactions(),
@@ -122,7 +122,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 		metrics.EstimateCalldataSizeTime = time.Since(start)
 
 		start = time.Now()
-		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv4.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk, enableEncode)
+		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv4.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk, enableCompress)
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv4 chunk L1 commit batch size and blob size: %w", err)
@@ -187,7 +187,7 @@ type BatchMetrics struct {
 }
 
 // CalculateBatchMetrics calculates batch metrics.
-func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion, enableEncode bool) (*BatchMetrics, error) {
+func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion, enableCompress bool) (*BatchMetrics, error) {
 	var err error
 	metrics := &BatchMetrics{
 		NumChunks:           uint64(len(batch.Chunks)),
@@ -266,7 +266,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 		metrics.EstimateCalldataSizeTime = time.Since(start)
 
 		start = time.Now()
-		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv4.EstimateBatchL1CommitBatchSizeAndBlobSize(batch, enableEncode)
+		metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codecv4.EstimateBatchL1CommitBatchSizeAndBlobSize(batch, enableCompress)
 		metrics.EstimateBlobSizeTime = time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("failed to estimate codecv4 batch L1 commit batch size and blob size: %w", err)
@@ -349,7 +349,7 @@ type BatchMetadata struct {
 // TODO: refactor this function to reduce cyclomatic complexity
 //
 //gocyclo:ignore
-func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion, enableEncode bool) (*BatchMetadata, error) {
+func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion, enableCompress bool) (*BatchMetadata, error) {
 	numChunks := len(batch.Chunks)
 	totalL1MessagePoppedBeforeEndDAChunk := batch.TotalL1MessagePoppedBefore
 	for i := 0; i < numChunks-1; i++ {
@@ -505,7 +505,7 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion,
 		}
 		return batchMeta, nil
 	case encoding.CodecV4:
-		daBatch, err := codecv4.NewDABatch(batch, enableEncode)
+		daBatch, err := codecv4.NewDABatch(batch, enableCompress)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create codecv4 DA batch: %w", err)
 		}

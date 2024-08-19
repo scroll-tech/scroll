@@ -151,7 +151,7 @@ func (p *BatchProposer) TryProposeBatch() {
 
 func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics *utils.BatchMetrics) error {
 	compatibilityBreachOccurred := false
-	enableEncode := true
+	enableCompress := true
 
 	for {
 		compatible, err := utils.CheckBatchCompressedDataCompatibility(batch, codecVersion)
@@ -169,7 +169,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 		if len(batch.Chunks) == 1 {
 			log.Warn("Disable encode: cannot truncate batch with only 1 chunk for compatibility", "start block number", batch.Chunks[0].Blocks[0].Header.Number.Uint64(),
 				"end block number", batch.Chunks[0].Blocks[len(batch.Chunks[0].Blocks)-1].Header.Number.Uint64())
-			enableEncode = false
+			enableCompress = false
 			break
 		}
 
@@ -183,7 +183,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 
 		// recalculate batch metrics after truncation
 		var calcErr error
-		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecVersion, enableEncode)
+		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecVersion, enableCompress)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics, batch index: %v, error: %w", batch.Index, calcErr)
 		}
@@ -194,9 +194,9 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 
 	p.proposeBatchUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, enableEncode, *metrics, dbTX)
+		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, enableCompress, *metrics, dbTX)
 		if dbErr != nil {
-			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "codec version", codecVersion, "enable encode", enableEncode, "error", dbErr)
+			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "codec version", codecVersion, "enable compress", enableCompress, "error", dbErr)
 			return dbErr
 		}
 		if dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex, dbBatch.Hash, dbTX); dbErr != nil {
@@ -266,7 +266,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
-		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion, true /* enable encode for codecv4 */)
+		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion, true /* enable compress for codecv4 */)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
@@ -295,7 +295,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 
-			metrics, err := utils.CalculateBatchMetrics(&batch, codecVersion, true /* enable encode for codecv4 */)
+			metrics, err := utils.CalculateBatchMetrics(&batch, codecVersion, true /* enable compress for codecv4 */)
 			if err != nil {
 				return fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
@@ -305,7 +305,7 @@ func (p *BatchProposer) proposeBatch() error {
 		}
 	}
 
-	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion, true /* enable encode for codecv4 */)
+	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion, true /* enable compress for codecv4 */)
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 	}
