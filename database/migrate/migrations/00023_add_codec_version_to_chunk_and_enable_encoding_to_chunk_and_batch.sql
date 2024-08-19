@@ -3,10 +3,10 @@
 
 ALTER TABLE chunk
 ADD COLUMN codec_version SMALLINT NOT NULL DEFAULT -1,
-ADD COLUMN enable_encode BOOLEAN NOT NULL DEFAULT false;
+ADD COLUMN enable_compress BOOLEAN NOT NULL DEFAULT false;
 
 ALTER TABLE batch
-ADD COLUMN enable_encode BOOLEAN NOT NULL DEFAULT false;
+ADD COLUMN enable_compress BOOLEAN NOT NULL DEFAULT false;
 
 -- +goose StatementEnd
 
@@ -14,10 +14,10 @@ ADD COLUMN enable_encode BOOLEAN NOT NULL DEFAULT false;
 -- +goose StatementBegin
 
 ALTER TABLE IF EXISTS chunk
-DROP COLUMN IF EXISTS enable_encode,
+DROP COLUMN IF EXISTS enable_compress,
 DROP COLUMN IF EXISTS codec_version;
 
 ALTER TABLE IF EXISTS batch
-DROP COLUMN IF EXISTS enable_encode;
+DROP COLUMN IF EXISTS enable_compress;
 
 -- +goose StatementEnd

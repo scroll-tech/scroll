@@ -35,7 +35,7 @@ type Batch struct {
 	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 	CodecVersion    int16  `json:"codec_version" gorm:"column:codec_version"`
-	EnableEncode    bool   `json:"enable_encode" gorm:"column:enable_encode"`
+	EnableCompress  bool   `json:"enable_compress" gorm:"column:enable_compress"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
@@ -249,7 +249,7 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, enableEncode bool, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, enableCompress bool, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
 	if batch == nil {
 		return nil, errors.New("invalid args: batch is nil")
 	}
@@ -270,7 +270,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		startChunkIndex = parentBatch.EndChunkIndex + 1
 	}
 
-	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion, enableEncode)
+	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion, enableCompress)
 	if err != nil {
 		log.Error("failed to get batch metadata", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
 			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
@@ -290,7 +290,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		ParentBatchHash:           batch.ParentBatchHash.Hex(),
 		BatchHeader:               batchMeta.BatchBytes,
 		CodecVersion:              int16(codecVersion),
-		EnableEncode:              enableEncode,
+		EnableCompress:            enableCompress,
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),

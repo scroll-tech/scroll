@@ -1068,7 +1068,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV4(dbBatch *orm.Batch, d
 		Chunks:                     chunks,
 	}
 
-	daBatch, createErr := codecv4.NewDABatch(batch, dbBatch.EnableEncode)
+	daBatch, createErr := codecv4.NewDABatch(batch, dbBatch.EnableCompress)
 	if createErr != nil {
 		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
 	}
