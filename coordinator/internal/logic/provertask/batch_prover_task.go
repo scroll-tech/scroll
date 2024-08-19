@@ -210,7 +210,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
 
-	taskDetail, err := bp.getBatchTaskDetail(ctx, hardForkName, batch, chunks, chunkInfos, chunkProofs)
+	taskDetail, err := bp.getBatchTaskDetail(ctx, batch, chunks, chunkInfos, chunkProofs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get batch task detail, taskID:%s err:%w", task.TaskID, err)
 	}
@@ -236,7 +236,7 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 	}
 }
 
-func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, hardForkName string, dbBatch *orm.Batch, dbChunks []*orm.Chunk, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchTaskDetail, error) {
+func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, dbBatch *orm.Batch, dbChunks []*orm.Chunk, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchTaskDetail, error) {
 	taskDetail := &message.BatchTaskDetail{
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
