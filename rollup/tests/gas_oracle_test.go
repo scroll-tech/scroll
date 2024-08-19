@@ -80,7 +80,7 @@ func testImportL1GasPrice(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 	}
 	batchOrm := orm.NewBatch(db)
-	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false, utils.BatchMetrics{})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
 	assert.NoError(t, err)
@@ -153,7 +153,7 @@ func testImportL1GasPriceAfterCurie(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 	}
 	batchOrm := orm.NewBatch(db)
-	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false, utils.BatchMetrics{})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
 	assert.NoError(t, err)
@@ -228,7 +228,7 @@ func testImportDefaultL1GasPriceDueToL1GasPriceSpike(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 	}
 	batchOrm := orm.NewBatch(db)
-	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false, utils.BatchMetrics{})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
 	assert.NoError(t, err)
