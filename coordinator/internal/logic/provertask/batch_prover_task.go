@@ -242,7 +242,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, hardForkName 
 		ChunkProofs: chunkProofs,
 	}
 
-	if hardForkName != "darwin" {
+	if encoding.CodecVersion(dbBatch.CodecVersion) != encoding.CodecV3 && encoding.CodecVersion(dbBatch.CodecVersion) != encoding.CodecV4 {
 		return taskDetail, nil
 	}
 
@@ -267,7 +267,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, hardForkName 
 		Chunks:                     chunks,
 	}
 
-	if !dbBatch.EnableEncode {
+	if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV3 {
 		daBatch, createErr := codecv3.NewDABatch(batchEncoding)
 		if createErr != nil {
 			return nil, fmt.Errorf("failed to create DA batch (v3) for batch %d: %w", dbBatch.Index, createErr)
@@ -279,11 +279,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, hardForkName 
 			return nil, fmt.Errorf("failed to decode batch header (v3) for batch %d: %w", dbBatch.Index, decodeErr)
 		}
 
-		jsonData, marshalErr := json.Marshal(batchHeader)
-		if marshalErr != nil {
-			return nil, fmt.Errorf("failed to marshal batch header (v3) for batch %d: %w", dbBatch.Index, marshalErr)
-		}
-		taskDetail.BatchHeader = string(jsonData)
+		taskDetail.BatchHeader = batchHeader
 	} else {
 		daBatch, createErr := codecv4.NewDABatch(batchEncoding, dbBatch.EnableEncode)
 		if createErr != nil {
@@ -296,11 +292,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, hardForkName 
 			return nil, fmt.Errorf("failed to decode batch header (v4) for batch %d: %w", dbBatch.Index, decodeErr)
 		}
 
-		jsonData, marshalErr := json.Marshal(batchHeader)
-		if marshalErr != nil {
-			return nil, fmt.Errorf("failed to marshal batch header (v4) for batch %d: %w", dbBatch.Index, marshalErr)
-		}
-		taskDetail.BatchHeader = string(jsonData)
+		taskDetail.BatchHeader = batchHeader
 	}
 
 	return taskDetail, nil

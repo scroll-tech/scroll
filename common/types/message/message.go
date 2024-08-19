@@ -53,7 +53,7 @@ type ChunkTaskDetail struct {
 type BatchTaskDetail struct {
 	ChunkInfos  []*ChunkInfo  `json:"chunk_infos"`
 	ChunkProofs []*ChunkProof `json:"chunk_proofs"`
-	BatchHeader string        `json:"batch_header"`
+	BatchHeader interface{}   `json:"batch_header"`
 	BlobBytes   []byte        `json:"blob_bytes"`
 }
 

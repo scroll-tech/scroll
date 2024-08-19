@@ -31,6 +31,7 @@ type Batch struct {
 	WithdrawRoot    string `json:"withdraw_root" gorm:"column:withdraw_root"`
 	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
+	CodecVersion    int16  `json:"codec_version" gorm:"column:codec_version"`
 	EnableEncode    bool   `json:"enable_encode" gorm:"column:enable_encode"`
 
 	// proof
