@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -56,6 +57,34 @@ func testImportL1GasPrice(t *testing.T) {
 	assert.Empty(t, blocks[0].OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
 
+	// add fake batch to pass check for commit batch timeout
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{
+			{
+				Header: &gethTypes.Header{
+					Number:     big.NewInt(1),
+					ParentHash: common.Hash{},
+					Difficulty: big.NewInt(0),
+					BaseFee:    big.NewInt(0),
+				},
+				Transactions:   nil,
+				WithdrawRoot:   common.Hash{},
+				RowConsumption: &gethTypes.RowConsumption{},
+			},
+		},
+	}
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+	}
+	batchOrm := orm.NewBatch(db)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false, utils.BatchMetrics{})
+	assert.NoError(t, err)
+	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
+	assert.NoError(t, err)
+
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
 	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
@@ -101,6 +130,34 @@ func testImportL1GasPriceAfterCurie(t *testing.T) {
 	assert.Empty(t, blocks[0].OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
 
+	// add fake batch to pass check for commit batch timeout
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{
+			{
+				Header: &gethTypes.Header{
+					Number:     big.NewInt(1),
+					ParentHash: common.Hash{},
+					Difficulty: big.NewInt(0),
+					BaseFee:    big.NewInt(0),
+				},
+				Transactions:   nil,
+				WithdrawRoot:   common.Hash{},
+				RowConsumption: &gethTypes.RowConsumption{},
+			},
+		},
+	}
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+	}
+	batchOrm := orm.NewBatch(db)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false, utils.BatchMetrics{})
+	assert.NoError(t, err)
+	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
+	assert.NoError(t, err)
+
 	// relay gas price
 	l1Relayer.ProcessGasPriceOracle()
 	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
@@ -108,6 +165,106 @@ func testImportL1GasPriceAfterCurie(t *testing.T) {
 	assert.Equal(t, len(blocks), 1)
 	assert.NotEmpty(t, blocks[0].OracleTxHash)
 	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOracleImporting)
+}
+
+func testImportDefaultL1GasPriceDueToL1GasPriceSpike(t *testing.T) {
+	db := setupDB(t)
+	defer database.CloseDB(db)
+
+	prepareContracts(t)
+
+	l1Cfg := rollupApp.Config.L1Config
+	l1CfgCopy := *l1Cfg
+	// set CheckCommittedBatchesWindowMinutes to zero to not pass check for commit batch timeout
+	l1CfgCopy.RelayerConfig.GasOracleConfig.CheckCommittedBatchesWindowMinutes = 0
+	// Create L1Relayer
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1CfgCopy.RelayerConfig, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}, relayer.ServiceTypeL1GasOracle, nil)
+	assert.NoError(t, err)
+	defer l1Relayer.StopSenders()
+
+	// Create L1Watcher
+	startHeight, err := l1Client.BlockNumber(context.Background())
+	assert.NoError(t, err)
+	l1Watcher := watcher.NewL1WatcherClient(context.Background(), l1Client, startHeight-2, db, nil)
+
+	// fetch new blocks
+	number, err := l1Client.BlockNumber(context.Background())
+	assert.Greater(t, number-1, startHeight-2)
+	assert.NoError(t, err)
+	err = l1Watcher.FetchBlockHeader(number - 1)
+	assert.NoError(t, err)
+
+	l1BlockOrm := orm.NewL1Block(db)
+	// check db status
+	latestBlockHeight, err := l1BlockOrm.GetLatestL1BlockHeight(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, number-1, latestBlockHeight)
+	blocks, err := l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
+	assert.NoError(t, err)
+	assert.Equal(t, len(blocks), 1)
+	assert.Empty(t, blocks[0].OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
+
+	// add fake batch
+	chunk := &encoding.Chunk{
+		Blocks: []*encoding.Block{
+			{
+				Header: &gethTypes.Header{
+					Number:     big.NewInt(1),
+					ParentHash: common.Hash{},
+					Difficulty: big.NewInt(0),
+					BaseFee:    big.NewInt(0),
+				},
+				Transactions:   nil,
+				WithdrawRoot:   common.Hash{},
+				RowConsumption: &gethTypes.RowConsumption{},
+			},
+		},
+	}
+	batch := &encoding.Batch{
+		Index:                      0,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+	}
+	batchOrm := orm.NewBatch(db)
+	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, false, utils.BatchMetrics{})
+	assert.NoError(t, err)
+	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
+	assert.NoError(t, err)
+	time.Sleep(1 * time.Second)
+
+	// relay gas price
+	// gas price will be relayed to some default value because we didn't commit batches for a l1CfgCopy.RelayerConfig.GasOracleConfig.CheckCommittedBatchesWindowMinutes = 0 minutes
+	l1Relayer.ProcessGasPriceOracle()
+	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
+	assert.NoError(t, err)
+	assert.Equal(t, len(blocks), 1)
+	assert.NotEmpty(t, blocks[0].OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOracleImporting)
+
+	// fetch new blocks
+	err = l1Watcher.FetchBlockHeader(number)
+	assert.NoError(t, err)
+
+	// check db status
+	latestBlockHeight, err = l1BlockOrm.GetLatestL1BlockHeight(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, number, latestBlockHeight)
+	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
+	assert.NoError(t, err)
+	assert.Equal(t, len(blocks), 1)
+	assert.Empty(t, blocks[0].OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
+
+	// relay gas price
+	// gas price should not be relayed one more time because previously we already set it do default value
+	l1Relayer.ProcessGasPriceOracle()
+	blocks, err = l1BlockOrm.GetL1Blocks(context.Background(), map[string]interface{}{"number": latestBlockHeight})
+	assert.NoError(t, err)
+	assert.Equal(t, len(blocks), 1)
+	assert.Empty(t, blocks[0].OracleTxHash)
+	assert.Equal(t, types.GasOracleStatus(blocks[0].GasOracleStatus), types.GasOraclePending)
 }
 
 func testImportL2GasPrice(t *testing.T) {
