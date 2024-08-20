@@ -125,6 +125,8 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
+	var circuitsVersion string
+
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,
@@ -144,7 +146,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, batchTask, hardForkName)
+	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, batchTask, hardForkName, circuitsVersion)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, batchTask)
 		log.Error("format prover task failure", "task_id", batchTask.Hash, "err", err)
@@ -175,7 +177,7 @@ func (bp *BatchProverTask) hardForkName(ctx *gin.Context, batchTask *orm.Batch) 
 	return hardForkName, nil
 }
 
-func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, batch *orm.Batch, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, batch *orm.Batch, hardForkName, circuitsVersion string) (*coordinatorType.GetTaskSchema, error) {
 	// get chunk from db
 	chunks, err := bp.chunkOrm.GetChunksByBatchHash(ctx, task.TaskID)
 	if err != nil {
@@ -221,11 +223,12 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		UUID:         task.UUID.String(),
-		TaskID:       task.TaskID,
-		TaskType:     int(message.ProofTypeBatch),
-		TaskData:     string(chunkProofsBytes),
-		HardForkName: hardForkName,
+		UUID:            task.UUID.String(),
+		TaskID:          task.TaskID,
+		TaskType:        int(message.ProofTypeBatch),
+		TaskData:        string(chunkProofsBytes),
+		HardForkName:    hardForkName,
+		CircuitsVersion: circuitsVersion,
 	}
 	return taskMsg, nil
 }

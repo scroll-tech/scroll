@@ -122,6 +122,8 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		return nil, ErrCoordinatorInternalFailure
 	}
 
+	var circuitsVersion string
+
 	proverTask := orm.ProverTask{
 		TaskID:          bundleTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,
@@ -141,7 +143,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
+	taskMsg, err := bp.formatProverTask(ctx.Copy(), &proverTask, hardForkName, circuitsVersion)
 	if err != nil {
 		bp.recoverActiveAttempts(ctx, bundleTask)
 		log.Error("format bundle prover task failure", "task_id", bundleTask.Hash, "err", err)
@@ -178,7 +180,7 @@ func (bp *BundleProverTask) hardForkName(ctx *gin.Context, bundleTask *orm.Bundl
 	return hardForkName, nil
 }
 
-func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
+func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName, circuitsVersion string) (*coordinatorType.GetTaskSchema, error) {
 	// get bundle from db
 	batches, err := bp.batchOrm.GetBatchesByBundleHash(ctx, task.TaskID)
 	if err != nil {
@@ -209,11 +211,12 @@ func (bp *BundleProverTask) formatProverTask(ctx context.Context, task *orm.Prov
 	}
 
 	taskMsg := &coordinatorType.GetTaskSchema{
-		UUID:         task.UUID.String(),
-		TaskID:       task.TaskID,
-		TaskType:     int(message.ProofTypeBundle),
-		TaskData:     string(batchProofsBytes),
-		HardForkName: hardForkName,
+		UUID:            task.UUID.String(),
+		TaskID:          task.TaskID,
+		TaskType:        int(message.ProofTypeBundle),
+		TaskData:        string(batchProofsBytes),
+		HardForkName:    hardForkName,
+		CircuitsVersion: circuitsVersion,
 	}
 	return taskMsg, nil
 }
