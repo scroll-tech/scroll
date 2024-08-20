@@ -52,6 +52,7 @@ pub struct LoginRequest {
 pub struct LoginResponseData {
     pub time: String,
     pub token: String,
+    pub sentry_endpoint: Option<String>,
 }
 
 pub type ChallengeResponseData = LoginResponseData;

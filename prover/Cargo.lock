@@ -156,6 +156,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "alterable_logger"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "914a2c81a0e8d57d88d11554612d5e0afe5f942cecbcc239b10a394fd7ce404b"
+dependencies = [
+ "arc-swap",
+ "log",
+ "once_cell",
+]
+
+[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3345,6 +3356,7 @@ dependencies = [
 name = "prover"
 version = "0.1.0"
 dependencies = [
+ "alterable_logger",
  "anyhow",
  "base64 0.13.1",
  "clap",
