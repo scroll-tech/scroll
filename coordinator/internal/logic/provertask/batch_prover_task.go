@@ -255,6 +255,10 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, dbBatch *orm.
 		chunks[i] = &encoding.Chunk{Blocks: blocks}
 	}
 
+	if dbBatch.Index == 0 {
+		return nil, fmt.Errorf("unexpected case: batch index should not be 0, i.e. genesis batch should have codec version 0")
+	}
+
 	dbParentBatch, getErr := bp.batchOrm.GetBatchByIndex(ctx, dbBatch.Index-1)
 	if getErr != nil {
 		return nil, fmt.Errorf("failed to get parent batch header for batch %d: %w", dbBatch.Index, getErr)
