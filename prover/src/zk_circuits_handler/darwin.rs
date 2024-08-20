@@ -265,9 +265,9 @@ mod tests {
     static BATCH_DIR_PATH: LazyLock<String> =
         LazyLock::new(|| format!("{}/traces/batch_24", *WORK_DIR));
     static BATCH_VK_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_assets/agg_vk.vkey", *WORK_DIR));
+        LazyLock::new(|| format!("{}/test_assets/vk_batch.vkey", *WORK_DIR));
     static CHUNK_VK_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_assets/chunk_vk.vkey", *WORK_DIR));
+        LazyLock::new(|| format!("{}/test_assets/vk_chunk.vkey", *WORK_DIR));
 
     #[test]
     fn it_works() {
