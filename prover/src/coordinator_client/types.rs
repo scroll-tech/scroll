@@ -69,6 +69,7 @@ pub struct GetTaskResponseData {
     pub task_type: TaskType,
     pub task_data: String,
     pub hard_fork_name: String,
+    pub circuits_version: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Default)]

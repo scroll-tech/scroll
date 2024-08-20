@@ -3,16 +3,18 @@
     "keystore_path": "keystore.json",
     "keystore_password": "prover-pwd",
     "db_path": "unique-db-path-for-prover-1",
-    "proof_type": 2,
+    "prover_type": 2,
     "low_version_circuit": {
         "hard_fork_name": "bernoulli",
         "params_path": "params",
-        "assets_path": "assets"
+        "assets_path": "assets",
+        "version": ""
     },
     "high_version_circuit": {
         "hard_fork_name": "curie",
         "params_path": "params",
-        "assets_path": "assets"
+        "assets_path": "assets",
+        "version": ""
     },
     "coordinator": {
         "base_url": "http://localhost:8555",

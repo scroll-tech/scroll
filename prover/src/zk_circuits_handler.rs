@@ -12,7 +12,7 @@ use darwin::DarwinHandler;
 use edison::EdisonHandler;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-type HardForkName = String;
+type CircuitsVersion = String;
 
 pub mod utils {
     pub fn encode_vk(vk: Vec<u8>) -> String {
@@ -36,9 +36,9 @@ pub struct CircuitsHandlerProvider<'a> {
     prover_type: ProverType,
     config: &'a Config,
     geth_client: Option<Rc<RefCell<GethClient>>>,
-    circuits_handler_builder_map: HashMap<HardForkName, CircuitsHandlerBuilder>,
+    circuits_handler_builder_map: HashMap<CircuitsVersion, CircuitsHandlerBuilder>,
 
-    current_hard_fork_name: Option<HardForkName>,
+    current_circuits_version: Option<CircuitsVersion>,
     current_circuit: Option<Rc<Box<dyn CircuitsHandler>>>,
 }
 
@@ -48,7 +48,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
         config: &'a Config,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Result<Self> {
-        let mut m: HashMap<HardForkName, CircuitsHandlerBuilder> = HashMap::new();
+        let mut m: HashMap<CircuitsVersion, CircuitsHandlerBuilder> = HashMap::new();
 
         fn handler_builder(
             prover_type: ProverType,
@@ -56,8 +56,9 @@ impl<'a> CircuitsHandlerProvider<'a> {
             geth_client: Option<Rc<RefCell<GethClient>>>,
         ) -> Result<Box<dyn CircuitsHandler>> {
             log::info!(
-                "now init zk circuits handler, hard_fork_name: {}",
-                &config.low_version_circuit.hard_fork_name
+                "now init zk circuits handler, hard_fork_name: {}, version: {}",
+                &config.low_version_circuit.hard_fork_name,
+                &config.low_version_circuit.circuits_version,
             );
             AssetsDirEnvConfig::enable_first();
             DarwinHandler::new(
@@ -69,7 +70,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
             .map(|handler| Box::new(handler) as Box<dyn CircuitsHandler>)
         }
         m.insert(
-            config.low_version_circuit.hard_fork_name.clone(),
+            config.low_version_circuit.circuits_version.clone(),
             handler_builder,
         );
 
@@ -79,8 +80,9 @@ impl<'a> CircuitsHandlerProvider<'a> {
             geth_client: Option<Rc<RefCell<GethClient>>>,
         ) -> Result<Box<dyn CircuitsHandler>> {
             log::info!(
-                "now init zk circuits handler, hard_fork_name: {}",
-                &config.high_version_circuit.hard_fork_name
+                "now init zk circuits handler, hard_fork_name: {}, version: {}",
+                &config.high_version_circuit.hard_fork_name,
+                &config.high_version_circuit.circuits_version
             );
             AssetsDirEnvConfig::enable_second();
             EdisonHandler::new(
@@ -93,7 +95,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
         }
 
         m.insert(
-            config.high_version_circuit.hard_fork_name.clone(),
+            config.high_version_circuit.circuits_version.clone(),
             next_handler_builder,
         );
 
@@ -102,7 +104,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
             config,
             geth_client,
             circuits_handler_builder_map: m,
-            current_hard_fork_name: None,
+            current_circuits_version: None,
             current_circuit: None,
         };
 
@@ -111,10 +113,10 @@ impl<'a> CircuitsHandlerProvider<'a> {
 
     pub fn get_circuits_handler(
         &mut self,
-        hard_fork_name: &String,
+        circuits_version: &String,
     ) -> Result<Rc<Box<dyn CircuitsHandler>>> {
-        match &self.current_hard_fork_name {
-            Some(name) if name == hard_fork_name => {
+        match &self.current_circuits_version {
+            Some(version) if version == circuits_version => {
                 log::info!("get circuits handler from cache");
                 if let Some(handler) = &self.current_circuit {
                     Ok(handler.clone())
@@ -125,13 +127,13 @@ impl<'a> CircuitsHandlerProvider<'a> {
             }
             _ => {
                 log::info!(
-                    "failed to get circuits handler from cache, create a new one: {hard_fork_name}"
+                    "failed to get circuits handler from cache, create a new one: {circuits_version}"
                 );
-                if let Some(builder) = self.circuits_handler_builder_map.get(hard_fork_name) {
-                    log::info!("building circuits handler for {hard_fork_name}");
+                if let Some(builder) = self.circuits_handler_builder_map.get(circuits_version) {
+                    log::info!("building circuits handler for {circuits_version}");
                     let handler = builder(self.prover_type, self.config, self.geth_client.clone())
                         .expect("failed to build circuits handler");
-                    self.current_hard_fork_name = Some(hard_fork_name.clone());
+                    self.current_circuits_version = Some(circuits_version.clone());
                     let rc_handler = Rc::new(handler);
                     self.current_circuit = Some(rc_handler.clone());
                     Ok(rc_handler)

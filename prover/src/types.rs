@@ -110,6 +110,7 @@ pub struct Task {
     pub task_data: String,
     #[serde(default)]
     pub hard_fork_name: String,
+    pub circuits_version: String,
 }
 
 impl From<GetTaskResponseData> for Task {
@@ -120,6 +121,7 @@ impl From<GetTaskResponseData> for Task {
             task_type: value.task_type,
             task_data: value.task_data,
             hard_fork_name: value.hard_fork_name,
+            circuits_version: value.circuits_version.unwrap_or("".to_string()),
         }
     }
 }

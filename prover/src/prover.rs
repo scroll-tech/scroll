@@ -100,7 +100,7 @@ impl<'a> Prover<'a> {
         let handler: Rc<Box<dyn CircuitsHandler>> = self
             .circuits_handler_provider
             .borrow_mut()
-            .get_circuits_handler(&task.hard_fork_name)
+            .get_circuits_handler(&task.circuits_version)
             .context("failed to get circuit handler")?;
         self.do_prove(task, handler)
     }

@@ -7,6 +7,7 @@ use crate::types::ProverType;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CircuitConfig {
     pub hard_fork_name: String,
+    pub circuits_version: String,
     pub params_path: String,
     pub assets_path: String,
 }
