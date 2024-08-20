@@ -210,7 +210,7 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
 
-	taskDetail, err := bp.getBatchTaskDetail(ctx, batch, chunks, chunkInfos, chunkProofs)
+	taskDetail, err := bp.getBatchTaskDetail(batch, chunkInfos, chunkProofs)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get batch task detail, taskID:%s err:%w", task.TaskID, err)
 	}
@@ -236,7 +236,7 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 	}
 }
 
-func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, dbBatch *orm.Batch, dbChunks []*orm.Chunk, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchTaskDetail, error) {
+func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchTaskDetail, error) {
 	taskDetail := &message.BatchTaskDetail{
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,
@@ -246,57 +246,22 @@ func (bp *BatchProverTask) getBatchTaskDetail(ctx context.Context, dbBatch *orm.
 		return taskDetail, nil
 	}
 
-	chunks := make([]*encoding.Chunk, len(dbChunks))
-	for i, c := range dbChunks {
-		blocks, getErr := bp.blockOrm.GetL2BlocksInRange(ctx, c.StartBlockNumber, c.EndBlockNumber)
-		if getErr != nil {
-			return nil, fmt.Errorf("failed to get blocks in range for batch %d, chunk %d, (start: %d, end: %d): %w", dbBatch.Index, c.Index, c.StartBlockNumber, c.EndBlockNumber, getErr)
-		}
-		chunks[i] = &encoding.Chunk{Blocks: blocks}
-	}
-
-	if dbBatch.Index == 0 {
-		return nil, fmt.Errorf("unexpected case: batch index should not be 0, i.e. genesis batch should have codec version 0")
-	}
-
-	dbParentBatch, getErr := bp.batchOrm.GetBatchByIndex(ctx, dbBatch.Index-1)
-	if getErr != nil {
-		return nil, fmt.Errorf("failed to get parent batch header for batch %d: %w", dbBatch.Index, getErr)
-	}
-
-	batch := &encoding.Batch{
-		Index:                      dbBatch.Index,
-		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
-		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
-		Chunks:                     chunks,
-	}
-
 	if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV3 {
-		daBatch, createErr := codecv3.NewDABatch(batch)
-		if createErr != nil {
-			return nil, fmt.Errorf("failed to create DA batch (v3) for batch %d: %w", dbBatch.Index, createErr)
-		}
-		taskDetail.BlobBytes = daBatch.BlobBytes()
-
 		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(dbBatch.BatchHeader)
 		if decodeErr != nil {
 			return nil, fmt.Errorf("failed to decode batch header (v3) for batch %d: %w", dbBatch.Index, decodeErr)
 		}
 
 		taskDetail.BatchHeader = batchHeader
+		taskDetail.BlobBytes = dbBatch.BlobBytes
 	} else {
-		daBatch, createErr := codecv4.NewDABatch(batch, dbBatch.EnableCompress)
-		if createErr != nil {
-			return nil, fmt.Errorf("failed to create DA batch (v4) for batch %d: %w", dbBatch.Index, createErr)
-		}
-		taskDetail.BlobBytes = daBatch.BlobBytes()
-
 		batchHeader, decodeErr := codecv4.NewDABatchFromBytes(dbBatch.BatchHeader)
 		if decodeErr != nil {
 			return nil, fmt.Errorf("failed to decode batch header (v4) for batch %d: %w", dbBatch.Index, decodeErr)
 		}
 
 		taskDetail.BatchHeader = batchHeader
+		taskDetail.BlobBytes = dbBatch.BlobBytes
 	}
 
 	return taskDetail, nil

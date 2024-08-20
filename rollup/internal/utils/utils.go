@@ -343,6 +343,7 @@ type BatchMetadata struct {
 	BatchBytes         []byte
 	StartChunkHash     common.Hash
 	EndChunkHash       common.Hash
+	BlobBytes          []byte
 }
 
 // GetBatchMetadata retrieves the metadata of a batch.
@@ -482,6 +483,7 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion,
 			BatchDataHash:      daBatch.DataHash,
 			BatchBlobDataProof: blobDataProof,
 			BatchBytes:         daBatch.Encode(),
+			BlobBytes:          daBatch.BlobBytes(),
 		}
 
 		startDAChunk, err := codecv3.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
@@ -520,6 +522,7 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion,
 			BatchDataHash:      daBatch.DataHash,
 			BatchBlobDataProof: blobDataProof,
 			BatchBytes:         daBatch.Encode(),
+			BlobBytes:          daBatch.BlobBytes(),
 		}
 
 		startDAChunk, err := codecv4.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
