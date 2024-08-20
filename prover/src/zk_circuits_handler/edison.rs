@@ -243,7 +243,6 @@ mod tests {
     use super::*;
     use crate::zk_circuits_handler::utils::encode_vk;
     use ethers_core::types::H256;
-    use prover_darwin::zkevm_circuits::witness::Block;
     use prover_edison::{
         aggregator::eip4844, utils::chunk_trace_to_witness_block, BatchData, BatchHeader,
         MAX_AGG_SNARKS,

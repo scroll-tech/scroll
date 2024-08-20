@@ -1,16 +1,14 @@
-mod verifier;
 mod utils;
+mod verifier;
 
-use prover_v5::utils::init_env_and_log;
 use crate::utils::{c_char_to_str, c_char_to_vec};
 use libc::c_char;
+use prover_v5::utils::init_env_and_log;
 use verifier::{TaskType, VerifierConfig};
 
 /// # Safety
 #[no_mangle]
-pub unsafe extern "C" fn init(
-    config: *const c_char,
-) {
+pub unsafe extern "C" fn init(config: *const c_char) {
     init_env_and_log("ffi_init");
 
     let config_str = c_char_to_str(config);
@@ -28,7 +26,8 @@ pub unsafe extern "C" fn verify_chunk_proof(
     verify_proof(proof, fork_name, circuits_version, TaskType::Chunk)
 }
 
-fn verify_proof(proof: *const c_char,
+fn verify_proof(
+    proof: *const c_char,
     _fork_name: *const c_char,
     circuits_version: *const c_char,
     task_type: TaskType,
@@ -47,7 +46,7 @@ fn verify_proof(proof: *const c_char,
             log::error!("{:?} verify failed, error: {:#}", task_type, e);
             false as c_char
         }
-        Ok(result) => result as c_char
+        Ok(result) => result as c_char,
     }
 }
 
