@@ -1,7 +1,7 @@
 use crate::utils::{c_char_to_str, c_char_to_vec, panic_catch};
 use libc::c_char;
-use prover_v3::BatchProof as BatchProofLoVersion;
-use prover_v4::{
+use prover_v4::BatchProof as BatchProofLoVersion;
+use prover_v5::{
     aggregator::Verifier as VerifierHiVersion, utils::init_env_and_log,
     BatchProof as BatchProofHiVersion, BundleProof,
 };
@@ -34,21 +34,16 @@ pub unsafe extern "C" fn verify_batch_proof(
     let proof = c_char_to_vec(proof);
     let fork_name_str = c_char_to_str(fork_name);
     let fork_id = match fork_name_str {
-        "curie" => 3,
         "darwin" => 4,
+        "edison" => 5,
         _ => {
-            log::warn!("unexpected fork_name {fork_name_str}, treated as darwin");
-            4
+            log::warn!("unexpected fork_name {fork_name_str}, treated as edison");
+            5
         }
     };
     let verified = panic_catch(|| {
-        if fork_id == 3 {
-            // As of upgrade #3 (Curie), we verify batch proofs on-chain (EVM).
-            let proof = serde_json::from_slice::<BatchProofLoVersion>(proof.as_slice()).unwrap();
-            verify_evm_calldata(
-                include_bytes!("plonk_verifier_0.11.4.bin").to_vec(),
-                proof.calldata(),
-            )
+        if fork_id == 4 {
+            unimplemented!("todo");
         } else {
             // Post upgrade #4 (Darwin), batch proofs are not EVM-verifiable. Instead they are
             // halo2 proofs meant to be bundled recursively.
