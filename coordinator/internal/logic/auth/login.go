@@ -35,15 +35,15 @@ func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *Logi
 		challengeOrm: orm.NewChallenge(db),
 	}
 
-	for _, vk := range vf.ChunkVKMap {
+	for vk := range vf.ChunkVKMap {
 		l.chunkVks[vk] = struct{}{}
 	}
 
-	for _, vk := range vf.BatchVKMap {
+	for vk := range vf.BatchVKMap {
 		l.batchVKs[vk] = struct{}{}
 	}
 
-	for _, vk := range vf.BundleVkMap {
+	for vk := range vf.BundleVkMap {
 		l.bundleVks[vk] = struct{}{}
 	}
 

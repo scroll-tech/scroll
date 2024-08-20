@@ -6,6 +6,7 @@ echo $work_dir
 
 rm $work_dir/*.vkey
 
-version=release-v0.11.4
-wget https://circuit-release.s3.us-west-2.amazonaws.com/${version}/chunk_vk.vkey -O $work_dir/chunk_vk.vkey
-wget https://circuit-release.s3.us-west-2.amazonaws.com/${version}/agg_vk.vkey -O $work_dir/agg_vk.vkey
+version=release-v0.12.0
+wget https://circuit-release.s3.us-west-2.amazonaws.com/${version}/vk_chunk.vkey -O $work_dir/vk_chunk.vkey
+wget https://circuit-release.s3.us-west-2.amazonaws.com/${version}/vk_batch.vkey -O $work_dir/vk_batch.vkey
+wget https://circuit-release.s3.us-west-2.amazonaws.com/${version}/vk_bundle.vkey -O $work_dir/vk_bundle.vkey

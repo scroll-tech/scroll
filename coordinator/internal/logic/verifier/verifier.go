@@ -60,9 +60,9 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 
 	v := &Verifier{
 		cfg:         cfg,
-		ChunkVKMap:  make(map[string]string),
-		BatchVKMap:  make(map[string]string),
-		BundleVkMap: make(map[string]string),
+		ChunkVKMap:  make(map[string]struct{}),
+		BatchVKMap:  make(map[string]struct{}),
+		BundleVkMap: make(map[string]struct{}),
 	}
 
 	bundleVK, err := v.readVK(path.Join(cfg.HighVersionCircuit.AssetsPath, "vk_bundle.vkey"))
@@ -77,9 +77,9 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if err != nil {
 		return nil, err
 	}
-	v.BundleVkMap[cfg.ForkName] = bundleVK
-	v.BatchVKMap[cfg.ForkName] = batchVK
-	v.ChunkVKMap[cfg.ForkName] = chunkVK
+	v.BundleVkMap[bundleVK] = struct{}{}
+	v.BatchVKMap[batchVK] = struct{}{}
+	v.ChunkVKMap[chunkVK] = struct{}{}
 
 	if err := v.loadEmbedVK(); err != nil {
 		return nil, err
@@ -190,19 +190,27 @@ func (v *Verifier) readVK(filePat string) (string, error) {
 var legacyVKFS embed.FS
 
 func (v *Verifier) loadEmbedVK() error {
-	batchVKBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/agg_vk.vkey")
-	if err != nil {
-		log.Error("load embed batch vk failure", "err", err)
-		return err
-	}
-
-	chunkVkBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/chunk_vk.vkey")
+	chunkVKBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/vk_chunk.vkey")
 	if err != nil {
 		log.Error("load embed chunk vk failure", "err", err)
 		return err
 	}
 
-	v.BatchVKMap["curie"] = base64.StdEncoding.EncodeToString(batchVKBytes)
-	v.ChunkVKMap["curie"] = base64.StdEncoding.EncodeToString(chunkVkBytes)
+	batchVKBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/vk_batch.vkey")
+	if err != nil {
+		log.Error("load embed batch vk failure", "err", err)
+		return err
+	}
+
+	bundleVKBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/vk_bundle.vkey")
+	if err != nil {
+		log.Error("load embed chunk vk failure", "err", err)
+		return err
+	}
+
+	v.ChunkVKMap[base64.StdEncoding.EncodeToString(chunkVKBytes)] = struct{}{}
+	v.BatchVKMap[base64.StdEncoding.EncodeToString(batchVKBytes)] = struct{}{}
+	v.BundleVkMap[base64.StdEncoding.EncodeToString(bundleVKBytes)] = struct{}{}
+
 	return nil
 }
