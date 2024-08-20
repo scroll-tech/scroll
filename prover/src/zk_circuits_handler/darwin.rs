@@ -253,7 +253,7 @@ mod tests {
 
     static DEFAULT_WORK_DIR: &str = "/assets";
     static WORK_DIR: LazyLock<String> = LazyLock::new(|| {
-        std::env::var("CURIE_TEST_DIR")
+        std::env::var("DARWIN_TEST_DIR")
             .unwrap_or(String::from(DEFAULT_WORK_DIR))
             .trim_end_matches('/')
             .to_string()

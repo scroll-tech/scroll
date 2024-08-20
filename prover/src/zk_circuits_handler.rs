@@ -1,5 +1,5 @@
-mod curie;
 mod darwin;
+mod edison;
 
 use super::geth_client::GethClient;
 use crate::{
@@ -8,8 +8,8 @@ use crate::{
     utils::get_task_types,
 };
 use anyhow::{bail, Result};
-use curie::CurieHandler;
 use darwin::DarwinHandler;
+use edison::EdisonHandler;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 type HardForkName = String;
@@ -60,7 +60,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 &config.low_version_circuit.hard_fork_name
             );
             AssetsDirEnvConfig::enable_first();
-            CurieHandler::new(
+            DarwinHandler::new(
                 prover_type,
                 &config.low_version_circuit.params_path,
                 &config.low_version_circuit.assets_path,
@@ -83,7 +83,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 &config.high_version_circuit.hard_fork_name
             );
             AssetsDirEnvConfig::enable_second();
-            DarwinHandler::new(
+            EdisonHandler::new(
                 prover_type,
                 &config.high_version_circuit.params_path,
                 &config.high_version_circuit.assets_path,
