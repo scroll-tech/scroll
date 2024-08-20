@@ -18,8 +18,8 @@ import (
 
 var (
 	paramsPath      = flag.String("params", "/assets/test_params", "params dir")
-	assetsPathLo    = flag.String("assets", "/assets/test_assets_lo", "assets dir")
-	assetsPathHi    = flag.String("assets", "/assets/test_assets_hi", "assets dir")
+	assetsPathLo    = flag.String("assets_lo", "/assets/test_assets_lo", "assets dir")
+	assetsPathHi    = flag.String("assets", "/assets/test_assets", "assets dir")
 	batchProofPath  = flag.String("batch_proof", "/assets/proof_data/batch_proof", "batch proof file path")
 	chunkProofPath1 = flag.String("chunk_proof1", "/assets/proof_data/chunk_proof1", "chunk proof file path 1")
 	chunkProofPath2 = flag.String("chunk_proof2", "/assets/proof_data/chunk_proof2", "chunk proof file path 2")
