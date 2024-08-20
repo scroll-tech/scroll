@@ -27,6 +27,11 @@ import (
 	"scroll-tech/coordinator/internal/config"
 )
 
+type rustVerifierConfig struct {
+	LowVersionCircuit  *config.CircuitConfig `json:"low_version_circuit"`
+	HighVersionCircuit *config.CircuitConfig `json:"high_version_circuit"`
+}
+
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if cfg.MockMode {
@@ -35,17 +40,23 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		bundleVKMap := map[string]string{cfg.ForkName: "mock_vk"}
 		return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap, BundleVkMap: bundleVKMap}, nil
 	}
-	paramsPathStr := C.CString(cfg.ParamsPath)
-	assetsPathLoStr := C.CString(cfg.AssetsPathLo)
-	assetsPathHiStr := C.CString(cfg.AssetsPathHi)
+	verifierConfig := rustVerifierConfig{
+		LowVersionCircuit:  cfg.LowVersionCircuit,
+		HighVersionCircuit: cfg.HighVersionCircuit,
+	}
+	configBytes, err := json.Marshal(verifierConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	configStr := C.CString(string(configBytes))
+	assetsPathHiStr := C.CString(cfg.HighVersionCircuit.AssetsPath)
 	defer func() {
-		C.free(unsafe.Pointer(paramsPathStr))
-		C.free(unsafe.Pointer(assetsPathLoStr))
+		C.free(unsafe.Pointer(configStr))
 		C.free(unsafe.Pointer(assetsPathHiStr))
 	}()
 
-	C.init_batch_verifier(paramsPathStr, assetsPathHiStr)
-	C.init_chunk_verifier(paramsPathStr, assetsPathLoStr, assetsPathHiStr)
+	C.init()
 
 	v := &Verifier{
 		cfg:         cfg,
@@ -54,15 +65,15 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		BundleVkMap: make(map[string]string),
 	}
 
-	bundleVK, err := v.readVK(path.Join(cfg.AssetsPathHi, "vk_bundle.vkey"))
+	bundleVK, err := v.readVK(path.Join(cfg.HighVersionCircuit.AssetsPath, "vk_bundle.vkey"))
 	if err != nil {
 		return nil, err
 	}
-	batchVK, err := v.readVK(path.Join(cfg.AssetsPathHi, "vk_batch.vkey"))
+	batchVK, err := v.readVK(path.Join(cfg.HighVersionCircuit.AssetsPath, "vk_batch.vkey"))
 	if err != nil {
 		return nil, err
 	}
-	chunkVK, err := v.readVK(path.Join(cfg.AssetsPathHi, "vk_chunk.vkey"))
+	chunkVK, err := v.readVK(path.Join(cfg.HighVersionCircuit.AssetsPath, "vk_chunk.vkey"))
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +88,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName, circuitsVersion string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, batch verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -94,17 +105,19 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) 
 	log.Info("Start to verify batch proof", "forkName", forkName)
 	proofStr := C.CString(string(buf))
 	forkNameStr := C.CString(forkName)
+	circuitsVersionStr := C.CString(circuitsVersion)
 	defer func() {
 		C.free(unsafe.Pointer(proofStr))
 		C.free(unsafe.Pointer(forkNameStr))
+		C.free(unsafe.Pointer(circuitsVersionStr))
 	}()
 
-	verified := C.verify_batch_proof(proofStr, forkNameStr)
+	verified := C.verify_batch_proof(proofStr, forkNameStr, circuitsVersionStr)
 	return verified != 0, nil
 }
 
 // VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName, circuitsVersion string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -121,17 +134,19 @@ func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) 
 	log.Info("Start to verify chunk proof", "forkName", forkName)
 	proofStr := C.CString(string(buf))
 	forkNameStr := C.CString(forkName)
+	circuitsVersionStr := C.CString(circuitsVersion)
 	defer func() {
 		C.free(unsafe.Pointer(proofStr))
 		C.free(unsafe.Pointer(forkNameStr))
+		C.free(unsafe.Pointer(circuitsVersionStr))
 	}()
 
-	verified := C.verify_chunk_proof(proofStr, forkNameStr)
+	verified := C.verify_chunk_proof(proofStr, forkNameStr, circuitsVersionStr)
 	return verified != 0, nil
 }
 
 // VerifyBundleProof Verify a ZkProof for a bundle of batches, by marshaling it and verifying it via the EVM verifier.
-func (v *Verifier) VerifyBundleProof(proof *message.BundleProof) (bool, error) {
+func (v *Verifier) VerifyBundleProof(proof *message.BundleProof, forkName, circuitsVersion string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -146,12 +161,16 @@ func (v *Verifier) VerifyBundleProof(proof *message.BundleProof) (bool, error) {
 	}
 
 	proofStr := C.CString(string(buf))
+	forkNameStr := C.CString(forkName)
+	circuitsVersionStr := C.CString(circuitsVersion)
 	defer func() {
 		C.free(unsafe.Pointer(proofStr))
+		C.free(unsafe.Pointer(forkNameStr))
+		C.free(unsafe.Pointer(circuitsVersionStr))
 	}()
 
 	log.Info("Start to verify bundle proof ...")
-	verified := C.verify_bundle_proof(proofStr)
+	verified := C.verify_bundle_proof(proofStr, forkNameStr, circuitsVersionStr)
 	return verified != 0, nil
 }
 

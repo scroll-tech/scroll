@@ -8,9 +8,16 @@
     "verifier": {
       "fork_name": "bernoulli",
       "mock_mode": true,
-      "params_path": "",
-      "assets_path_lo": "",
-      "assets_path_hi": ""
+      "low_version_circuit": {
+        "params_path": "params",
+        "assets_path": "assets",
+        "version": ""
+      },
+      "high_version_circuit": {
+        "params_path": "params",
+        "assets_path": "assets",
+        "version": ""
+      }
     },
     "max_verifier_workers": 4,
     "min_prover_version": "v1.0.0"
