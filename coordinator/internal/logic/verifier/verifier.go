@@ -56,7 +56,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		C.free(unsafe.Pointer(assetsPathHiStr))
 	}()
 
-	C.init()
+	C.init(configStr)
 
 	v := &Verifier{
 		cfg:         cfg,
