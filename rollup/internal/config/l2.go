@@ -37,7 +37,6 @@ type ChunkProposerConfig struct {
 	MaxRowConsumptionPerChunk       uint64  `json:"max_row_consumption_per_chunk"`
 	GasCostIncreaseMultiplier       float64 `json:"gas_cost_increase_multiplier"`
 	MaxUncompressedBatchBytesSize   uint64  `json:"max_uncompressed_batch_bytes_size"`
-	EnableConditionalCompress       bool    `json:"enable_conditional_compress"`
 }
 
 // BatchProposerConfig loads batch_proposer configuration items.
