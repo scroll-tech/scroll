@@ -43,12 +43,16 @@ pub fn init(config: VerifierConfig) {
     let verifier = DarwinVerifier::new(&low_conf.params_path, &low_conf.assets_path);
 
     unsafe {
-        VERIFIER_LOW.set(VerifierPair(low_conf.version, Rc::new(Box::new(verifier)))).unwrap_unchecked();
+        VERIFIER_LOW
+            .set(VerifierPair(low_conf.version, Rc::new(Box::new(verifier))))
+            .unwrap_unchecked();
     }
     let high_conf = config.high_version_circuit;
     let verifier = EdisonVerifier::new(&high_conf.params_path, &high_conf.assets_path);
     unsafe {
-        VERIFIER_HIGH.set(VerifierPair(high_conf.version, Rc::new(Box::new(verifier)))).unwrap_unchecked();
+        VERIFIER_HIGH
+            .set(VerifierPair(high_conf.version, Rc::new(Box::new(verifier))))
+            .unwrap_unchecked();
     }
 }
 
@@ -66,5 +70,8 @@ pub fn get_verifier(circuits_version: &str) -> Result<Rc<Box<dyn ProofVerifier>>
             }
         }
     }
-    bail!("failed to get verifier, key not found, {}", circuits_version)
+    bail!(
+        "failed to get verifier, key not found, {}",
+        circuits_version
+    )
 }
