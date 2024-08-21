@@ -10,13 +10,13 @@ import (
 
 // NewVerifier Sets up a mock verifier.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
-	batchVKMap := map[string]string{cfg.ForkName: "mock_vk"}
-	chunkVKMap := map[string]string{cfg.ForkName: "mock_vk"}
+	batchVKMap := map[string]struct{}{"mock_vk": struct{}{}}
+	chunkVKMap := map[string]struct{}{"mock_vk": struct{}{}}
 	return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap}, nil
 }
 
 // VerifyChunkProof return a mock verification result for a ChunkProof.
-func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName, circuitsVersion string) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}
@@ -24,7 +24,7 @@ func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) 
 }
 
 // VerifyBatchProof return a mock verification result for a BatchProof.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName, circuitsVersion string) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}
@@ -32,7 +32,7 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) 
 }
 
 // VerifyBundleProof return a mock verification result for a BundleProof.
-func (v *Verifier) VerifyBundleProof(proof *message.BundleProof) (bool, error) {
+func (v *Verifier) VerifyBundleProof(proof *message.BundleProof, forkName, circuitsVersion string) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}
