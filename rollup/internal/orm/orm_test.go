@@ -221,11 +221,11 @@ func TestChunkOrm(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, utils.CodecConfig{Version: encoding.CodecV3}, utils.ChunkMetrics{})
+		dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, utils.CodecConfig{Version: codecVersion}, utils.ChunkMetrics{})
 		assert.NoError(t, err)
 		assert.Equal(t, dbChunk1.Hash, chunkHash1.Hex())
 
-		dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2, utils.CodecConfig{Version: encoding.CodecV3}, utils.ChunkMetrics{})
+		dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2, utils.CodecConfig{Version: codecVersion}, utils.ChunkMetrics{})
 		assert.NoError(t, err)
 		assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
