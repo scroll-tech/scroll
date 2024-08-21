@@ -235,14 +235,12 @@ func (p *BatchProposer) proposeBatch() error {
 		return nil
 	}
 
-	// Ensure all chunks in the same batch use the same hardfork name and same codec version
-	// If a different hardfork name or codec version are found, truncate the chunks slice at that point
+	// Ensure all blocks in the same chunk use the same hardfork name
+	// If a different hardfork name is found, truncate the blocks slice at that point
 	hardforkName := forks.GetHardforkName(p.chainCfg, dbChunks[0].StartBlockNumber, dbChunks[0].StartBlockTime)
-	codecVersion := p.getChunkCodecVersion(firstUnbatchedChunk)
 	for i := 1; i < len(dbChunks); i++ {
 		currentHardfork := forks.GetHardforkName(p.chainCfg, dbChunks[i].StartBlockNumber, dbChunks[i].StartBlockTime)
-		currentCodecVersion := p.getChunkCodecVersion(dbChunks[i])
-		if currentHardfork != hardforkName || currentCodecVersion != codecVersion {
+		if currentHardfork != hardforkName {
 			dbChunks = dbChunks[:i]
 			maxChunksThisBatch = uint64(len(dbChunks)) // update maxChunksThisBatch to trigger batching, because these chunks are the last chunks before the hardfork
 			break
@@ -258,6 +256,8 @@ func (p *BatchProposer) proposeBatch() error {
 	if err != nil {
 		return err
 	}
+
+	codecVersion := forks.GetCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1
@@ -357,14 +357,4 @@ func (p *BatchProposer) recordTimerBatchMetrics(metrics *utils.BatchMetrics) {
 	p.batchEstimateGasTime.Set(float64(metrics.EstimateGasTime))
 	p.batchEstimateCalldataSizeTime.Set(float64(metrics.EstimateCalldataSizeTime))
 	p.batchEstimateBlobSizeTime.Set(float64(metrics.EstimateBlobSizeTime))
-}
-
-// getChunkCodecVersion returns the codec version for a given chunk.
-// For backward compatibility, it handles cases where some chunks may not have
-// codec version stored in the database.
-func (p *BatchProposer) getChunkCodecVersion(firstUnbatchedChunk *orm.Chunk) encoding.CodecVersion {
-	if firstUnbatchedChunk.CodecVersion == -1 {
-		return forks.GetCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime, false)
-	}
-	return encoding.CodecVersion(firstUnbatchedChunk.CodecVersion)
 }

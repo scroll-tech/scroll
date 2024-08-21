@@ -36,8 +36,6 @@ type ChunkProposer struct {
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
 
-	enableConditionalCompress bool
-
 	chainCfg *params.ChainConfig
 
 	chunkProposerCircleTotal           prometheus.Counter
@@ -86,7 +84,6 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 		chunkTimeoutSec:                 cfg.ChunkTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
-		enableConditionalCompress:       cfg.EnableConditionalCompress,
 		chainCfg:                        chainCfg,
 
 		chunkProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -265,7 +262,7 @@ func (p *ChunkProposer) proposeChunk() error {
 		}
 	}
 
-	codecVersion := forks.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time, p.enableConditionalCompress)
+	codecVersion := forks.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 
 	// Including Curie block in a sole chunk.
 	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number.Cmp(p.chainCfg.CurieBlock) == 0 {

@@ -23,19 +23,17 @@ func GetHardforkName(config *params.ChainConfig, blockHeight, blockTimestamp uin
 
 // GetCodecVersion returns the encoding codec version for the given block height and timestamp.
 // It determines the appropriate codec version based on the active hardfork.
-func GetCodecVersion(config *params.ChainConfig, blockHeight, blockTimestamp uint64, enableConditionalCompress bool) encoding.CodecVersion {
+func GetCodecVersion(config *params.ChainConfig, blockHeight, blockTimestamp uint64) encoding.CodecVersion {
 	if !config.IsBernoulli(new(big.Int).SetUint64(blockHeight)) {
 		return encoding.CodecV0
 	} else if !config.IsCurie(new(big.Int).SetUint64(blockHeight)) {
 		return encoding.CodecV1
 	} else if !config.IsDarwin(blockTimestamp) {
 		return encoding.CodecV2
+	} else if !config.IsDarwinV2(blockTimestamp) {
+		return encoding.CodecV3
 	} else {
-		if !enableConditionalCompress {
-			return encoding.CodecV3
-		} else {
-			return encoding.CodecV4
-		}
+		return encoding.CodecV4
 	}
 }
 
