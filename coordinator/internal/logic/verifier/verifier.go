@@ -11,11 +11,9 @@ package verifier
 import "C" //nolint:typecheck
 
 import (
-	"embed"
 	"encoding/base64"
 	"encoding/json"
 	"io"
-	"io/fs"
 	"os"
 	"path"
 	"unsafe"
@@ -81,7 +79,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	v.BatchVKMap[batchVK] = struct{}{}
 	v.ChunkVKMap[chunkVK] = struct{}{}
 
-	if err := v.loadEmbedVK(); err != nil {
+	if err := v.loadLowVersionVKs(cfg); err != nil {
 		return nil, err
 	}
 	return v, nil
@@ -186,31 +184,22 @@ func (v *Verifier) readVK(filePat string) (string, error) {
 	return base64.StdEncoding.EncodeToString(byt), nil
 }
 
-//go:embed legacy_vk/*
-var legacyVKFS embed.FS
-
-func (v *Verifier) loadEmbedVK() error {
-	chunkVKBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/vk_chunk.vkey")
+// load low version vks, current is darwin
+func (v *Verifier) loadLowVersionVKs(cfg *config.VerifierConfig) error {
+	bundleVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_bundle.vkey"))
 	if err != nil {
-		log.Error("load embed chunk vk failure", "err", err)
 		return err
 	}
-
-	batchVKBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/vk_batch.vkey")
+	batchVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_batch.vkey"))
 	if err != nil {
-		log.Error("load embed batch vk failure", "err", err)
 		return err
 	}
-
-	bundleVKBytes, err := fs.ReadFile(legacyVKFS, "legacy_vk/vk_bundle.vkey")
+	chunkVK, err := v.readVK(path.Join(cfg.LowVersionCircuit.AssetsPath, "vk_chunk.vkey"))
 	if err != nil {
-		log.Error("load embed chunk vk failure", "err", err)
 		return err
 	}
-
-	v.ChunkVKMap[base64.StdEncoding.EncodeToString(chunkVKBytes)] = struct{}{}
-	v.BatchVKMap[base64.StdEncoding.EncodeToString(batchVKBytes)] = struct{}{}
-	v.BundleVkMap[base64.StdEncoding.EncodeToString(bundleVKBytes)] = struct{}{}
-
+	v.BundleVkMap[bundleVK] = struct{}{}
+	v.BatchVKMap[batchVK] = struct{}{}
+	v.ChunkVKMap[chunkVK] = struct{}{}
 	return nil
 }
