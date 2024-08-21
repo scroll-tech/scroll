@@ -1,4 +1,4 @@
-use super::{prover::Prover, task_cache::TaskCache};
+use super::{coordinator_client::ProofStatusNotOKError, prover::Prover, task_cache::TaskCache};
 use anyhow::{Context, Result};
 use std::rc::Rc;
 
@@ -16,7 +16,11 @@ impl<'a> TaskProcessor<'a> {
         loop {
             log::info!("start a new round.");
             if let Err(err) = self.prove_and_submit() {
-                log::error!("encounter error: {:#}", err);
+                if err.is::<ProofStatusNotOKError>() {
+                    log::info!("proof status not ok, downgrade level to info.");
+                } else {
+                    log::error!("encounter error: {:#}", err);
+                }
             } else {
                 log::info!("prove & submit succeed.");
             }

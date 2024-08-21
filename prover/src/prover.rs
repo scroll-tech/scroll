@@ -114,8 +114,12 @@ impl<'a> Prover<'a> {
 
         match handler.get_proof_data(task.task_type, task) {
             Err(e) => {
-                log::error!("[prover] failed to get_proof_data, task id {}, error: {:#}", task.id, e);
-            },
+                log::error!(
+                    "[prover] failed to get_proof_data, task id {}, error: {:#}",
+                    task.id,
+                    e
+                );
+            }
             Result::Ok(proof) => proof_detail.proof_data = proof,
         }
 
