@@ -10,8 +10,8 @@ import (
 
 // NewVerifier Sets up a mock verifier.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
-	batchVKMap := map[string]struct{}{"mock_vk": struct{}{}}
-	chunkVKMap := map[string]struct{}{"mock_vk": struct{}{}}
+	batchVKMap := map[string]struct{}{"mock_vk": {}}
+	chunkVKMap := map[string]struct{}{"mock_vk": {}}
 	return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap}, nil
 }
 

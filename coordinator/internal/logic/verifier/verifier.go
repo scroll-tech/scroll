@@ -33,9 +33,9 @@ type rustVerifierConfig struct {
 // NewVerifier Sets up a rust ffi to call verify.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	if cfg.MockMode {
-		chunkVKMap := map[string]struct{}{"mock_vk": struct{}{}}
-		batchVKMap := map[string]struct{}{"mock_vk": struct{}{}}
-		bundleVKMap := map[string]struct{}{"mock_vk": struct{}{}}
+		chunkVKMap := map[string]struct{}{"mock_vk": {}}
+		batchVKMap := map[string]struct{}{"mock_vk": {}}
+		bundleVKMap := map[string]struct{}{"mock_vk": {}}
 		return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap, BundleVkMap: bundleVKMap}, nil
 	}
 	verifierConfig := rustVerifierConfig{
