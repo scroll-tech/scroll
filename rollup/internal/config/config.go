@@ -33,7 +33,7 @@ func NewConfig(file string) (*Config, error) {
 	}
 
 	// Override config with environment variables
-	err = overrideConfigWithEnv(cfg, "SDKROLLUP")
+	err = overrideConfigWithEnv(cfg, "SCROLL_ROLLUP")
 	if err != nil {
 		return nil, err
 	}
