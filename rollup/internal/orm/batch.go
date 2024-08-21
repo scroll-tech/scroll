@@ -249,7 +249,7 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, enableCompress bool, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecConfig rutils.CodecConfig, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
 	if batch == nil {
 		return nil, errors.New("invalid args: batch is nil")
 	}
@@ -270,7 +270,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		startChunkIndex = parentBatch.EndChunkIndex + 1
 	}
 
-	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion, enableCompress)
+	batchMeta, err := rutils.GetBatchMetadata(batch, codecConfig)
 	if err != nil {
 		log.Error("failed to get batch metadata", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
 			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
@@ -289,8 +289,8 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		WithdrawRoot:              batch.WithdrawRoot().Hex(),
 		ParentBatchHash:           batch.ParentBatchHash.Hex(),
 		BatchHeader:               batchMeta.BatchBytes,
-		CodecVersion:              int16(codecVersion),
-		EnableCompress:            enableCompress,
+		CodecVersion:              int16(codecConfig.Version),
+		EnableCompress:            codecConfig.EnableCompress,
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),
