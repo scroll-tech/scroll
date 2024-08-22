@@ -16,7 +16,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyChunkProof return a mock verification result for a ChunkProof.
-func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName, circuitsVersion string) (bool, error) {
+func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}
@@ -24,7 +24,7 @@ func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName, circuit
 }
 
 // VerifyBatchProof return a mock verification result for a BatchProof.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName, circuitsVersion string) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}
@@ -32,7 +32,7 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName, circuit
 }
 
 // VerifyBundleProof return a mock verification result for a BundleProof.
-func (v *Verifier) VerifyBundleProof(proof *message.BundleProof, forkName, circuitsVersion string) (bool, error) {
+func (v *Verifier) VerifyBundleProof(proof *message.BundleProof, forkName string) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}
