@@ -14,6 +14,8 @@ use types::*;
 
 use crate::{config::Config, key_signer::KeySigner};
 
+pub use errors::ProofStatusNotOKError;
+
 pub struct CoordinatorClient<'a> {
     api: Api,
     token: Option<String>,
