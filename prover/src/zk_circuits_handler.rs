@@ -119,7 +119,6 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 if let Some(handler) = &self.current_circuit {
                     Ok(handler.clone())
                 } else {
-                    log::error!("missing cached handler, there must be something wrong.");
                     bail!("missing cached handler, there must be something wrong.")
                 }
             }
@@ -136,7 +135,6 @@ impl<'a> CircuitsHandlerProvider<'a> {
                     self.current_circuit = Some(rc_handler.clone());
                     Ok(rc_handler)
                 } else {
-                    log::error!("missing builder, there must be something wrong.");
                     bail!("missing builder, there must be something wrong.")
                 }
             }

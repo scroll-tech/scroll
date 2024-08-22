@@ -1,4 +1,6 @@
-use super::types::*;
+use crate::{coordinator_client::ProofStatusNotOKError, types::ProofStatus};
+
+use super::{errors::*, types::*};
 use anyhow::{bail, Result};
 use core::time::Duration;
 use reqwest::{header::CONTENT_TYPE, Url};
@@ -76,7 +78,23 @@ impl Api {
         token: &String,
     ) -> Result<Response<SubmitProofResponseData>> {
         let method = "/coordinator/v1/submit_proof";
-        self.post_with_token(method, req, token).await
+        let response = self
+            .post_with_token::<SubmitProofRequest, Response<SubmitProofResponseData>>(
+                method, req, token,
+            )
+            .await?;
+
+        // when req's status already not ok, we mark the error returned from coordinator and will
+        // ignore it later.
+        if response.errcode == ErrorCode::ErrCoordinatorHandleZkProofFailure
+            && req.status != ProofStatus::Ok
+            && response
+                .errmsg
+                .contains("validator failure proof msg status not ok")
+        {
+            return Err(anyhow::anyhow!(ProofStatusNotOKError));
+        }
+        Ok(response)
     }
 
     async fn post_with_token<Req, Resp>(
