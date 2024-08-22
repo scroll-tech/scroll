@@ -107,9 +107,6 @@ impl<'a> CoordinatorClient<'a> {
             self.login().context("JWT expired, re-login failed")?;
             log::info!("re-login success");
             return self.action_with_re_login(req, f);
-        } else if response.errcode == ErrorCode::ErrCoordinatorEmptyProofData {
-            log::info!("coordinator return empty task");
-            return Err(anyhow::anyhow!(GetEmptyTaskError));
         } else if response.errcode != ErrorCode::Success {
             bail!("action failed: {}", response.errmsg)
         }
