@@ -92,7 +92,9 @@ impl<'a> CoordinatorClient<'a> {
         }
         if let Some(r) = login_response.data {
             token = r.token;
-            let _ = self.sentry_endpoint.set(r.sentry_endpoint.filter(|s| !s.is_empty()));
+            let _ = self
+                .sentry_endpoint
+                .set(r.sentry_endpoint.filter(|s| !s.is_empty()));
         } else {
             bail!("login failed: got empty token")
         }
