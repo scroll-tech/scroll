@@ -22,9 +22,5 @@
     },
     "l2geth": {
         "endpoint": "http://localhost:9999"
-    },
-    "sentry": {
-        "dsn": "",
-        "enabled": true
     }
 }
