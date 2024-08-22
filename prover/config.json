@@ -7,14 +7,12 @@
     "low_version_circuit": {
         "hard_fork_name": "bernoulli",
         "params_path": "params",
-        "assets_path": "assets",
-        "version": ""
+        "assets_path": "assets"
     },
     "high_version_circuit": {
         "hard_fork_name": "curie",
         "params_path": "params",
-        "assets_path": "assets",
-        "version": ""
+        "assets_path": "assets"
     },
     "coordinator": {
         "base_url": "http://localhost:8555",
