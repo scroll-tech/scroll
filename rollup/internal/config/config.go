@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"scroll-tech/common/database"
 
@@ -10,9 +9,9 @@ import (
 
 // Config load configuration items.
 type Config struct {
-	L1Config *L1Config        `json:"l1_config"`
-	L2Config *L2Config        `json:"l2_config"`
-	DBConfig *database.Config `json:"db_config"`
+	L1Config *L1Config        `mapstructure:"l1_config"`
+	L2Config *L2Config        `mapstructure:"l2_config"`
+	DBConfig *database.Config `mapstructure:"db_config"`
 }
 
 // NewConfig returns a new instance of Config.
@@ -29,15 +28,6 @@ func NewConfig(file string) (*Config, error) {
 		return nil, err
 	}
 	fmt.Println("Successfully read config file")
-
-	configContent := viper.AllSettings()
-	configJSON, err := json.MarshalIndent(configContent, "", "  ")
-	if err != nil {
-		fmt.Printf("Error marshaling config to JSON: %v\n", err)
-	} else {
-		fmt.Println("Config file content:")
-		fmt.Println(string(configJSON))
-	}
 
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
