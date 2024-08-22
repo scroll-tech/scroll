@@ -11,6 +11,7 @@ import (
 	"gorm.io/gorm"
 
 	commonTypes "scroll-tech/common/types"
+
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/logic/auth"
 	"scroll-tech/coordinator/internal/logic/verifier"
