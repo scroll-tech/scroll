@@ -16,6 +16,7 @@ import (
 
 	"github.com/modern-go/reflect2"
 	"github.com/scroll-tech/go-ethereum/core"
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 // TryTimes try run several times until the function return true.
