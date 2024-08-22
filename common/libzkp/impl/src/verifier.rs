@@ -1,9 +1,9 @@
 mod darwin;
-mod edison;
+mod darwin_v2;
 
 use anyhow::{bail, Result};
 use darwin::DarwinVerifier;
-use edison::EdisonVerifier;
+use darwin_v2::DarwinV2Verifier;
 use serde::{Deserialize, Serialize};
 use std::{cell::OnceCell, rc::Rc};
 
@@ -51,7 +51,7 @@ pub fn init(config: VerifierConfig) {
             .unwrap_unchecked();
     }
     let high_conf = config.high_version_circuit;
-    let verifier = EdisonVerifier::new(&high_conf.params_path, &high_conf.assets_path);
+    let verifier = DarwinV2Verifier::new(&high_conf.params_path, &high_conf.assets_path);
     unsafe {
         VERIFIER_HIGH
             .set(VerifierPair(

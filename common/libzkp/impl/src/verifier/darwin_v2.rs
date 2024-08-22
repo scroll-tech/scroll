@@ -8,12 +8,12 @@ use prover_v5::{
 };
 use std::env;
 
-pub struct EdisonVerifier {
+pub struct DarwinV2Verifier {
     verifier: Verifier,
     agg_verifier: AggVerifier,
 }
 
-impl EdisonVerifier {
+impl DarwinV2Verifier {
     pub fn new(params_dir: &str, assets_dir: &str) -> Self {
         env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
         let verifier = Verifier::from_dirs(params_dir, assets_dir);
@@ -27,7 +27,7 @@ impl EdisonVerifier {
     }
 }
 
-impl ProofVerifier for EdisonVerifier {
+impl ProofVerifier for DarwinV2Verifier {
     fn verify(&self, task_type: super::TaskType, proof: Vec<u8>) -> Result<bool> {
         let result = panic_catch(|| match task_type {
             TaskType::Chunk => {
