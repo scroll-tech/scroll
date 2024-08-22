@@ -120,8 +120,6 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	var circuitsVersion string
-
 	proverTask := orm.ProverTask{
 		TaskID:          chunkTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,
@@ -140,7 +138,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask, hardForkName, circuitsVersion)
+	taskMsg, err := cp.formatProverTask(ctx.Copy(), &proverTask, hardForkName)
 	if err != nil {
 		cp.recoverActiveAttempts(ctx, chunkTask)
 		log.Error("format prover task failure", "task_id", chunkTask.Hash, "err", err)
@@ -166,7 +164,7 @@ func (cp *ChunkProverTask) hardForkName(ctx *gin.Context, chunkTask *orm.Chunk) 
 	return hardForkName, nil
 }
 
-func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName, circuitsVersion string) (*coordinatorType.GetTaskSchema, error) {
+func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.ProverTask, hardForkName string) (*coordinatorType.GetTaskSchema, error) {
 	// Get block hashes.
 	blockHashes, dbErr := cp.blockOrm.GetL2BlockHashesByChunkHash(ctx, task.TaskID)
 	if dbErr != nil || len(blockHashes) == 0 {
@@ -182,12 +180,11 @@ func (cp *ChunkProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 	}
 
 	proverTaskSchema := &coordinatorType.GetTaskSchema{
-		UUID:            task.UUID.String(),
-		TaskID:          task.TaskID,
-		TaskType:        int(message.ProofTypeChunk),
-		TaskData:        string(blockHashesBytes),
-		HardForkName:    hardForkName,
-		CircuitsVersion: circuitsVersion,
+		UUID:         task.UUID.String(),
+		TaskID:       task.TaskID,
+		TaskType:     int(message.ProofTypeChunk),
+		TaskData:     string(blockHashesBytes),
+		HardForkName: hardForkName,
 	}
 
 	return proverTaskSchema, nil
