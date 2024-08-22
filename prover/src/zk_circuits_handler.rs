@@ -56,9 +56,8 @@ impl<'a> CircuitsHandlerProvider<'a> {
             geth_client: Option<Rc<RefCell<GethClient>>>,
         ) -> Result<Box<dyn CircuitsHandler>> {
             log::info!(
-                "now init zk circuits handler, hard_fork_name: {}, version: {}",
-                &config.low_version_circuit.hard_fork_name,
-                &config.low_version_circuit.hard_fork_name,
+                "now init zk circuits handler, hard_fork_name: {}",
+                &config.low_version_circuit.hard_fork_name
             );
             AssetsDirEnvConfig::enable_first();
             DarwinHandler::new(
@@ -80,8 +79,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
             geth_client: Option<Rc<RefCell<GethClient>>>,
         ) -> Result<Box<dyn CircuitsHandler>> {
             log::info!(
-                "now init zk circuits handler, hard_fork_name: {}, version: {}",
-                &config.high_version_circuit.hard_fork_name,
+                "now init zk circuits handler, hard_fork_name: {}",
                 &config.high_version_circuit.hard_fork_name
             );
             AssetsDirEnvConfig::enable_second();
