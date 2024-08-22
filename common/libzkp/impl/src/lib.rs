@@ -21,21 +21,15 @@ pub unsafe extern "C" fn init(config: *const c_char) {
 pub unsafe extern "C" fn verify_chunk_proof(
     proof: *const c_char,
     fork_name: *const c_char,
-    circuits_version: *const c_char,
 ) -> c_char {
-    verify_proof(proof, fork_name, circuits_version, TaskType::Chunk)
+    verify_proof(proof, fork_name, TaskType::Chunk)
 }
 
-fn verify_proof(
-    proof: *const c_char,
-    _fork_name: *const c_char,
-    circuits_version: *const c_char,
-    task_type: TaskType,
-) -> c_char {
+fn verify_proof(proof: *const c_char, fork_name: *const c_char, task_type: TaskType) -> c_char {
     let proof = c_char_to_vec(proof);
 
-    let circuits_version_str = c_char_to_str(circuits_version);
-    let verifier = verifier::get_verifier(circuits_version_str);
+    let fork_name_str = c_char_to_str(fork_name);
+    let verifier = verifier::get_verifier(fork_name_str);
 
     if let Err(e) = verifier {
         log::warn!("failed to get verifier, error: {:#}", e);
@@ -55,9 +49,8 @@ fn verify_proof(
 pub unsafe extern "C" fn verify_batch_proof(
     proof: *const c_char,
     fork_name: *const c_char,
-    circuits_version: *const c_char,
 ) -> c_char {
-    verify_proof(proof, fork_name, circuits_version, TaskType::Batch)
+    verify_proof(proof, fork_name, TaskType::Batch)
 }
 
 /// # Safety
@@ -65,7 +58,6 @@ pub unsafe extern "C" fn verify_batch_proof(
 pub unsafe extern "C" fn verify_bundle_proof(
     proof: *const c_char,
     fork_name: *const c_char,
-    circuits_version: *const c_char,
 ) -> c_char {
-    verify_proof(proof, fork_name, circuits_version, TaskType::Bundle)
+    verify_proof(proof, fork_name, TaskType::Bundle)
 }

@@ -20,7 +20,7 @@ pub trait ProofVerifier {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CircuitConfig {
-    pub version: String,
+    pub fork_name: String,
     pub params_path: String,
     pub assets_path: String,
 }
@@ -31,9 +31,9 @@ pub struct VerifierConfig {
     pub high_version_circuit: CircuitConfig,
 }
 
-type CircuitsVersion = String;
+type HardForkName = String;
 
-struct VerifierPair(CircuitsVersion, Rc<Box<dyn ProofVerifier>>);
+struct VerifierPair(HardForkName, Rc<Box<dyn ProofVerifier>>);
 
 static mut VERIFIER_HIGH: OnceCell<VerifierPair> = OnceCell::new();
 static mut VERIFIER_LOW: OnceCell<VerifierPair> = OnceCell::new();
@@ -44,34 +44,37 @@ pub fn init(config: VerifierConfig) {
 
     unsafe {
         VERIFIER_LOW
-            .set(VerifierPair(low_conf.version, Rc::new(Box::new(verifier))))
+            .set(VerifierPair(
+                low_conf.fork_name,
+                Rc::new(Box::new(verifier)),
+            ))
             .unwrap_unchecked();
     }
     let high_conf = config.high_version_circuit;
     let verifier = EdisonVerifier::new(&high_conf.params_path, &high_conf.assets_path);
     unsafe {
         VERIFIER_HIGH
-            .set(VerifierPair(high_conf.version, Rc::new(Box::new(verifier))))
+            .set(VerifierPair(
+                high_conf.fork_name,
+                Rc::new(Box::new(verifier)),
+            ))
             .unwrap_unchecked();
     }
 }
 
-pub fn get_verifier(circuits_version: &str) -> Result<Rc<Box<dyn ProofVerifier>>> {
+pub fn get_verifier(fork_name: &str) -> Result<Rc<Box<dyn ProofVerifier>>> {
     unsafe {
         if let Some(verifier) = VERIFIER_LOW.get() {
-            if verifier.0 == circuits_version {
+            if verifier.0 == fork_name {
                 return Ok(verifier.1.clone());
             }
         }
 
         if let Some(verifier) = VERIFIER_HIGH.get() {
-            if verifier.0 == circuits_version {
+            if verifier.0 == fork_name {
                 return Ok(verifier.1.clone());
             }
         }
     }
-    bail!(
-        "failed to get verifier, key not found, {}",
-        circuits_version
-    )
+    bail!("failed to get verifier, key not found, {}", fork_name)
 }

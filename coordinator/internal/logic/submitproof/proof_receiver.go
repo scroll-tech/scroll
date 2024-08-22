@@ -169,27 +169,25 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 		return ErrGetHardForkNameFailed
 	}
 
-	var circuitsVersion string
-
 	switch message.ProofType(proofParameter.TaskType) {
 	case message.ProofTypeChunk:
 		var chunkProof message.ChunkProof
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &chunkProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
-		success, verifyErr = m.verifier.VerifyChunkProof(&chunkProof, hardForkName, circuitsVersion)
+		success, verifyErr = m.verifier.VerifyChunkProof(&chunkProof, hardForkName)
 	case message.ProofTypeBatch:
 		var batchProof message.BatchProof
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &batchProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
-		success, verifyErr = m.verifier.VerifyBatchProof(&batchProof, hardForkName, circuitsVersion)
+		success, verifyErr = m.verifier.VerifyBatchProof(&batchProof, hardForkName)
 	case message.ProofTypeBundle:
 		var bundleProof message.BundleProof
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &bundleProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
-		success, verifyErr = m.verifier.VerifyBundleProof(&bundleProof, hardForkName, circuitsVersion)
+		success, verifyErr = m.verifier.VerifyBundleProof(&bundleProof, hardForkName)
 	}
 
 	if verifyErr != nil || !success {

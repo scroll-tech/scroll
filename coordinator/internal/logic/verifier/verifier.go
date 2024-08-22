@@ -86,7 +86,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName, circuitsVersion string) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, batch verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -103,19 +103,17 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName, circuit
 	log.Info("Start to verify batch proof", "forkName", forkName)
 	proofStr := C.CString(string(buf))
 	forkNameStr := C.CString(forkName)
-	circuitsVersionStr := C.CString(circuitsVersion)
 	defer func() {
 		C.free(unsafe.Pointer(proofStr))
 		C.free(unsafe.Pointer(forkNameStr))
-		C.free(unsafe.Pointer(circuitsVersionStr))
 	}()
 
-	verified := C.verify_batch_proof(proofStr, forkNameStr, circuitsVersionStr)
+	verified := C.verify_batch_proof(proofStr, forkNameStr)
 	return verified != 0, nil
 }
 
 // VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName, circuitsVersion string) (bool, error) {
+func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -132,19 +130,17 @@ func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName, circuit
 	log.Info("Start to verify chunk proof", "forkName", forkName)
 	proofStr := C.CString(string(buf))
 	forkNameStr := C.CString(forkName)
-	circuitsVersionStr := C.CString(circuitsVersion)
 	defer func() {
 		C.free(unsafe.Pointer(proofStr))
 		C.free(unsafe.Pointer(forkNameStr))
-		C.free(unsafe.Pointer(circuitsVersionStr))
 	}()
 
-	verified := C.verify_chunk_proof(proofStr, forkNameStr, circuitsVersionStr)
+	verified := C.verify_chunk_proof(proofStr, forkNameStr)
 	return verified != 0, nil
 }
 
 // VerifyBundleProof Verify a ZkProof for a bundle of batches, by marshaling it and verifying it via the EVM verifier.
-func (v *Verifier) VerifyBundleProof(proof *message.BundleProof, forkName, circuitsVersion string) (bool, error) {
+func (v *Verifier) VerifyBundleProof(proof *message.BundleProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
 		if string(proof.Proof) == InvalidTestProof {
@@ -160,15 +156,13 @@ func (v *Verifier) VerifyBundleProof(proof *message.BundleProof, forkName, circu
 
 	proofStr := C.CString(string(buf))
 	forkNameStr := C.CString(forkName)
-	circuitsVersionStr := C.CString(circuitsVersion)
 	defer func() {
 		C.free(unsafe.Pointer(proofStr))
 		C.free(unsafe.Pointer(forkNameStr))
-		C.free(unsafe.Pointer(circuitsVersionStr))
 	}()
 
 	log.Info("Start to verify bundle proof ...")
-	verified := C.verify_bundle_proof(proofStr, forkNameStr, circuitsVersionStr)
+	verified := C.verify_bundle_proof(proofStr, forkNameStr)
 	return verified != 0, nil
 }
 

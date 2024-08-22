@@ -6,17 +6,16 @@
     "batch_collection_time_sec": 180,
     "chunk_collection_time_sec": 180,
     "verifier": {
-      "fork_name": "bernoulli",
       "mock_mode": true,
       "low_version_circuit": {
         "params_path": "params",
         "assets_path": "assets",
-        "version": ""
+        "fork_name": ""
       },
       "high_version_circuit": {
         "params_path": "params",
         "assets_path": "assets",
-        "version": ""
+        "fork_name": ""
       }
     },
     "max_verifier_workers": 4,
