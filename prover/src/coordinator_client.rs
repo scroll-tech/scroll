@@ -7,13 +7,14 @@ use anyhow::{bail, Context, Ok, Result};
 use std::rc::Rc;
 
 use api::Api;
-pub use errors::GetEmptyTaskError;
 use errors::*;
 use listener::Listener;
 use tokio::runtime::Runtime;
 use types::*;
 
 use crate::{config::Config, key_signer::KeySigner};
+
+pub use errors::{GetEmptyTaskError, ProofStatusNotOKError};
 
 pub struct CoordinatorClient<'a> {
     api: Api,

@@ -1,4 +1,8 @@
-use super::{coordinator_client::GetEmptyTaskError, prover::Prover, task_cache::TaskCache};
+use super::{
+    coordinator_client::{GetEmptyTaskError, ProofStatusNotOKError},
+    prover::Prover,
+    task_cache::TaskCache,
+};
 use anyhow::{Context, Result};
 use std::rc::Rc;
 
@@ -18,6 +22,8 @@ impl<'a> TaskProcessor<'a> {
             if let Err(err) = self.prove_and_submit() {
                 if err.is::<GetEmptyTaskError>() {
                     log::info!("get empty task, skip.");
+                } else if err.is::<ProofStatusNotOKError>() {
+                    log::info!("proof status not ok, downgrade level to info.");
                 } else {
                     log::error!("encounter error: {:#}", err);
                 }
@@ -59,7 +65,11 @@ impl<'a> TaskProcessor<'a> {
             let result = match self.prover.prove_task(&task_wrapper.task) {
                 Ok(proof_detail) => self.prover.submit_proof(proof_detail, &task_wrapper.task),
                 Err(error) => {
-                    log::error!("failed to prove task, {:#}", error);
+                    log::error!(
+                        "failed to prove task, id: {}, error: {:#}",
+                        &task_wrapper.task.id,
+                        error
+                    );
                     self.prover.submit_error(
                         &task_wrapper.task,
                         super::types::ProofFailureType::NoPanic,

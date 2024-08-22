@@ -64,6 +64,15 @@ impl fmt::Display for GetEmptyTaskError {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ProofStatusNotOKError;
+
+impl fmt::Display for ProofStatusNotOKError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "proof status not ok")
+    }
+}
+
 // =================================== tests module ========================================
 
 #[cfg(test)]

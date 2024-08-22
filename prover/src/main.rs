@@ -38,7 +38,7 @@ struct Args {
     log_file: Option<String>,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn start() -> Result<()> {
     let args = Args::parse();
 
     if args.version {
@@ -108,4 +108,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     task_processor.start();
 
     Ok(())
+}
+
+fn main() {
+    let result = start();
+    if let Err(e) = result {
+        log::error!("main exit with error {:#}", e)
+    }
 }
