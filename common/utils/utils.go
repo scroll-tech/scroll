@@ -121,6 +121,7 @@ func OverrideConfigWithEnv(cfg interface{}, prefix string) error {
 			}
 		default:
 			if envValue, exists := os.LookupEnv(envKey); exists {
+				log.Info("Overriding config with env var", "key", envKey)
 				err := setField(fieldValue, envValue)
 				if err != nil {
 					return err
