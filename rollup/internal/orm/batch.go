@@ -292,7 +292,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecCon
 		BatchHeader:               batchMeta.BatchBytes,
 		CodecVersion:              int16(codecConfig.Version),
 		EnableCompress:            codecConfig.EnableCompress,
-    BlobBytes:                 batchMeta.BlobBytes,
+		BlobBytes:                 batchMeta.BlobBytes,
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),
