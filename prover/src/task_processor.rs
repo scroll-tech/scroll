@@ -1,4 +1,4 @@
-use super::{prover::Prover, task_cache::TaskCache};
+use super::{coordinator_client::ProofStatusNotOKError, prover::Prover, task_cache::TaskCache};
 use anyhow::{Context, Result};
 use std::rc::Rc;
 
@@ -16,7 +16,11 @@ impl<'a> TaskProcessor<'a> {
         loop {
             log::info!("start a new round.");
             if let Err(err) = self.prove_and_submit() {
-                log::error!("encounter error: {:#}", err);
+                if err.is::<ProofStatusNotOKError>() {
+                    log::info!("proof status not ok, downgrade level to info.");
+                } else {
+                    log::error!("encounter error: {:#}", err);
+                }
             } else {
                 log::info!("prove & submit succeed.");
             }
@@ -54,11 +58,18 @@ impl<'a> TaskProcessor<'a> {
             );
             let result = match self.prover.prove_task(&task_wrapper.task) {
                 Ok(proof_detail) => self.prover.submit_proof(proof_detail, &task_wrapper.task),
-                Err(error) => self.prover.submit_error(
-                    &task_wrapper.task,
-                    super::types::ProofFailureType::NoPanic,
-                    error,
-                ),
+                Err(error) => {
+                    log::error!(
+                        "failed to prove task, id: {}, error: {:#}",
+                        &task_wrapper.task.id,
+                        error
+                    );
+                    self.prover.submit_error(
+                        &task_wrapper.task,
+                        super::types::ProofFailureType::NoPanic,
+                        error,
+                    )
+                }
             };
             return result;
         }

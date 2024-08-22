@@ -13,6 +13,7 @@ import (
 	"scroll-tech/common/types"
 
 	"scroll-tech/rollup/internal/utils"
+	rutils "scroll-tech/rollup/internal/utils"
 )
 
 // Chunk represents a chunk of blocks in the database.
@@ -177,7 +178,7 @@ func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, enableCompress bool, metrics utils.ChunkMetrics, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecConfig rutils.CodecConfig, metrics utils.ChunkMetrics, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -202,7 +203,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
-	chunkHash, err := utils.GetChunkHash(chunk, totalL1MessagePoppedBefore, codecVersion)
+	chunkHash, err := utils.GetChunkHash(chunk, totalL1MessagePoppedBefore, codecConfig.Version)
 	if err != nil {
 		log.Error("failed to get chunk hash", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
@@ -227,8 +228,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
 		ParentChunkStateRoot:         parentChunkStateRoot,
 		WithdrawRoot:                 chunk.Blocks[numBlocks-1].WithdrawRoot.Hex(),
-		CodecVersion:                 int16(codecVersion),
-		EnableCompress:               enableCompress,
+		CodecVersion:                 int16(codecConfig.Version),
+		EnableCompress:               codecConfig.EnableCompress,
 		ProvingStatus:                int16(types.ProvingTaskUnassigned),
 		CrcMax:                       metrics.CrcMax,
 		BlobSize:                     metrics.L1CommitBlobSize,

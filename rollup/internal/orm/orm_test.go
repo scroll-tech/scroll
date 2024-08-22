@@ -221,11 +221,11 @@ func TestChunkOrm(t *testing.T) {
 			assert.NoError(t, err)
 		}
 
-		dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, false, utils.ChunkMetrics{})
+		dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, utils.CodecConfig{Version: codecVersion}, utils.ChunkMetrics{})
 		assert.NoError(t, err)
 		assert.Equal(t, dbChunk1.Hash, chunkHash1.Hex())
 
-		dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, false, utils.ChunkMetrics{})
+		dbChunk2, err := chunkOrm.InsertChunk(context.Background(), chunk2, utils.CodecConfig{Version: codecVersion}, utils.ChunkMetrics{})
 		assert.NoError(t, err)
 		assert.Equal(t, dbChunk2.Hash, chunkHash2.Hex())
 
@@ -275,7 +275,7 @@ func TestBatchOrm(t *testing.T) {
 			Index:  0,
 			Chunks: []*encoding.Chunk{chunk1},
 		}
-		batch1, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, false, utils.BatchMetrics{})
+		batch1, err := batchOrm.InsertBatch(context.Background(), batch, utils.CodecConfig{Version: codecVersion}, utils.BatchMetrics{})
 		assert.NoError(t, err)
 		hash1 := batch1.Hash
 
@@ -306,7 +306,7 @@ func TestBatchOrm(t *testing.T) {
 			Index:  1,
 			Chunks: []*encoding.Chunk{chunk2},
 		}
-		batch2, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, false, utils.BatchMetrics{})
+		batch2, err := batchOrm.InsertBatch(context.Background(), batch, utils.CodecConfig{Version: codecVersion}, utils.BatchMetrics{})
 		assert.NoError(t, err)
 		hash2 := batch2.Hash
 
@@ -432,7 +432,7 @@ func TestBundleOrm(t *testing.T) {
 		Index:  0,
 		Chunks: []*encoding.Chunk{chunk1},
 	}
-	dbBatch1, err := batchOrm.InsertBatch(context.Background(), batch1, encoding.CodecV3, false, utils.BatchMetrics{})
+	dbBatch1, err := batchOrm.InsertBatch(context.Background(), batch1, utils.CodecConfig{Version: encoding.CodecV3}, utils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	chunk2 := &encoding.Chunk{Blocks: []*encoding.Block{block2}}
@@ -440,7 +440,7 @@ func TestBundleOrm(t *testing.T) {
 		Index:  1,
 		Chunks: []*encoding.Chunk{chunk2},
 	}
-	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2, encoding.CodecV3, false, utils.BatchMetrics{})
+	dbBatch2, err := batchOrm.InsertBatch(context.Background(), batch2, utils.CodecConfig{Version: encoding.CodecV3}, utils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	var bundle1 *Bundle
