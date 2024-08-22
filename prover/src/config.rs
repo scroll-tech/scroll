@@ -25,12 +25,6 @@ pub struct L2GethConfig {
     pub endpoint: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SentryConfig {
-    pub dsn: String,
-    pub enabled: bool,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub prover_name: String,
@@ -42,7 +36,6 @@ pub struct Config {
     pub high_version_circuit: CircuitConfig,
     pub coordinator: CoordinatorConfig,
     pub l2geth: Option<L2GethConfig>,
-    pub sentry: Option<SentryConfig>,
 }
 
 impl Config {

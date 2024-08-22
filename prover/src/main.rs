@@ -48,32 +48,7 @@ fn start() -> Result<()> {
 
     let config: Config = Config::from_file(args.config_file)?;
 
-    let _guard = config.sentry.as_ref().and_then(|conf| {
-        if conf.enabled {
-            Some(sentry::init((
-                conf.dsn.clone(),
-                sentry::ClientOptions {
-                    release: Some(version::get_version_cow()),
-                    environment: Some(utils::get_environment()),
-                    ..Default::default()
-                },
-            )))
-        } else {
-            None
-        }
-    });
-
-    _guard.iter().for_each(|_| {
-        sentry::configure_scope(|scope| {
-            scope.set_tag("prover_type", config.prover_type);
-            scope.set_tag("partner_name", config.partner_name());
-            scope.set_tag("prover_name", config.prover_name.clone());
-        });
-
-        sentry::capture_message("test message on start", sentry::Level::Info);
-    });
-
-    utils::log_init(args.log_file, _guard.is_some());
+    utils::log_init(args.log_file.clone());
 
     if let Err(e) = AssetsDirEnvConfig::init() {
         log::error!("AssetsDirEnvConfig init failed: {:#}", e);
@@ -87,6 +62,34 @@ fn start() -> Result<()> {
     });
 
     let prover = Prover::new(&config, coordinator_listener)?;
+
+    let _guard = prover
+        .coordinator_client
+        .borrow()
+        .get_sentry_dsn()
+        .map(|dsn| {
+            log::info!("successfully get dsn from coordinator");
+            let gurad = Some(sentry::init((
+                dsn,
+                sentry::ClientOptions {
+                    release: Some(version::get_version_cow()),
+                    environment: Some(utils::get_environment()),
+                    ..Default::default()
+                },
+            )));
+            utils::set_logger_with_sentry(args.log_file);
+            gurad
+        });
+
+    _guard.iter().for_each(|_| {
+        sentry::configure_scope(|scope| {
+            scope.set_tag("prover_type", config.prover_type);
+            scope.set_tag("partner_name", config.partner_name());
+            scope.set_tag("prover_name", config.prover_name.clone());
+        });
+
+        sentry::capture_message("test message on start", sentry::Level::Info);
+    });
 
     _guard.iter().for_each(|_| {
         sentry::configure_scope(|scope| {

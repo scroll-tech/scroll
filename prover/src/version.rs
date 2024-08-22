@@ -21,7 +21,7 @@ mod tests {
 
     #[ctor::ctor]
     fn init() {
-        crate::utils::log_init(None, false);
+        crate::utils::log_init(None);
         log::info!("logger initialized");
     }
 
