@@ -192,6 +192,7 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 		if len(chunk.Blocks) == 1 {
 			log.Warn("Disable compression: cannot truncate chunk with only 1 block for compatibility", "block number", chunk.Blocks[0].Header.Number)
 			codecConfig.EnableCompress = false
+			break
 		}
 
 		chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]

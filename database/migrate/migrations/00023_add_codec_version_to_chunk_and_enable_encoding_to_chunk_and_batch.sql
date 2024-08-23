@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 
 ALTER TABLE chunk
-ADD COLUMN codec_version SMALLINT NOT NULL DEFAULT -1,
+ADD COLUMN codec_version SMALLINT NOT NULL DEFAULT 0,
 ADD COLUMN enable_compress BOOLEAN NOT NULL DEFAULT false;
 
 ALTER TABLE batch
