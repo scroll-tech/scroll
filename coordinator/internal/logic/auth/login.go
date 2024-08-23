@@ -105,8 +105,8 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	return nil
 }
 
-// ProverHardName retrieves hard fork name which prover belongs to
-func (l *LoginLogic) ProverHardName(login *types.LoginParameter) (string, error) {
+// ProverHardForkName retrieves hard fork name which prover belongs to
+func (l *LoginLogic) ProverHardForkName(login *types.LoginParameter) (string, error) {
 	proverVersionSplits := strings.Split(login.Message.ProverVersion, "-")
 	if len(proverVersionSplits) == 0 {
 		return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)
@@ -116,5 +116,6 @@ func (l *LoginLogic) ProverHardName(login *types.LoginParameter) (string, error)
 	if hardForkName, ok := l.proverVersionHardForkMap[proverVersion]; ok {
 		return hardForkName, nil
 	}
+
 	return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)
 }

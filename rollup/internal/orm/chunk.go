@@ -34,7 +34,7 @@ type Chunk struct {
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
 	WithdrawRoot                 string `json:"withdraw_root" gorm:"column:withdraw_root"`
-	CodecVersion                 int16  `json:"codec_version" gorm:"column:codec_version;default:-1"`
+	CodecVersion                 int16  `json:"codec_version" gorm:"column:codec_version"`
 	EnableCompress               bool   `json:"enable_compress" gorm:"column:enable_compress"` // use for debug
 
 	// proof

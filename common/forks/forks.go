@@ -16,8 +16,10 @@ func GetHardforkName(config *params.ChainConfig, blockHeight, blockTimestamp uin
 		return "bernoulli"
 	} else if !config.IsDarwin(blockTimestamp) {
 		return "curie"
-	} else {
+	} else if !config.IsDarwinV2(blockTimestamp) {
 		return "darwin"
+	} else {
+		return "darwinV2"
 	}
 }
 
@@ -45,6 +47,8 @@ func GetMaxChunksPerBatch(config *params.ChainConfig, blockHeight, blockTimestam
 	} else if !config.IsCurie(new(big.Int).SetUint64(blockHeight)) {
 		return 15
 	} else if !config.IsDarwin(blockTimestamp) {
+		return 45
+	} else if !config.IsDarwinV2(blockTimestamp) {
 		return 45
 	} else {
 		return 45
