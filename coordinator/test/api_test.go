@@ -95,7 +95,6 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			ChunkCollectionTimeSec:  10,
 			BundleCollectionTimeSec: 10,
 			SessionAttempts:         5,
-			MinProverVersion:        minProverVersion,
 		},
 		Auth: &config.Auth{
 			ChallengeExpireDurationSec: tokenTimeout,
