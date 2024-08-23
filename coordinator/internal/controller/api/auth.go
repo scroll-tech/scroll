@@ -44,14 +44,14 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return "", fmt.Errorf("check the login parameter failure: %w", err)
 	}
 
-	// check the challenge is used, if used, return failure
-	if err := a.loginLogic.InsertChallengeString(c, login.Message.Challenge); err != nil {
-		return "", fmt.Errorf("login insert challenge string failure:%w", err)
-	}
-
 	hardForkName, err := a.loginLogic.ProverHardName(&login)
 	if err != nil {
 		return "", fmt.Errorf("prover hard name failure:%w", err)
+	}
+
+	// check the challenge is used, if used, return failure
+	if err := a.loginLogic.InsertChallengeString(c, login.Message.Challenge); err != nil {
+		return "", fmt.Errorf("login insert challenge string failure:%w", err)
 	}
 
 	returnData := types.LoginParameterWithHardForkName{

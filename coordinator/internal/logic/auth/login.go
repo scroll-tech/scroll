@@ -29,6 +29,13 @@ type LoginLogic struct {
 
 // NewLoginLogic new a LoginLogic
 func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
+	if version.CheckScrollRepoVersion(cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion) {
+		log.Error("config file error, low verifier min_prover_version should not more than high verifier min_prover_version",
+			"low verifier min_prover_version", cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion,
+			"high verifier min_prover_version", cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion)
+		panic("verifier config file error")
+	}
+
 	proverVersionHardForkMap := map[string]string{
 		cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion:  cfg.ProverManager.Verifier.LowVersionCircuit.ForkName,
 		cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion: cfg.ProverManager.Verifier.HighVersionCircuit.ForkName,
@@ -60,11 +67,6 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion) {
 		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
 			l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, login.Message.ProverVersion)
-	}
-
-	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion) {
-		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
-			l.cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion, login.Message.ProverVersion)
 	}
 
 	if len(login.Message.ProverTypes) > 0 {
