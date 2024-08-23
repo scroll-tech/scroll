@@ -6,7 +6,6 @@ import (
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
-	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/coordinator/internal/config"
@@ -45,33 +44,34 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return "", fmt.Errorf("check the login parameter failure: %w", err)
 	}
 
+	hardForkName, err := a.loginLogic.ProverHardForkName(&login)
+	if err != nil {
+		return "", fmt.Errorf("prover hard name failure:%w", err)
+	}
+
 	// check the challenge is used, if used, return failure
 	if err := a.loginLogic.InsertChallengeString(c, login.Message.Challenge); err != nil {
 		return "", fmt.Errorf("login insert challenge string failure:%w", err)
 	}
-	return login, nil
+
+	returnData := types.LoginParameterWithHardForkName{
+		HardForkName:   hardForkName,
+		LoginParameter: login,
+	}
+
+	return returnData, nil
 }
 
 // PayloadFunc returns jwt.MapClaims with {public key, prover name}.
 func (a *AuthController) PayloadFunc(data interface{}) jwt.MapClaims {
-	v, ok := data.(types.LoginParameter)
+	v, ok := data.(types.LoginParameterWithHardForkName)
 	if !ok {
 		return jwt.MapClaims{}
 	}
 
-	publicKey := v.PublicKey
-	if publicKey == "" {
-		var err error
-		publicKey, err = v.RecoverPublicKeyFromSignature()
-		if err != nil {
-			// do not handle error here since already called v.Verify() beforehands so there should be no error
-			// add log just in case some error happens
-			log.Error("impossible path: failed to recover public key from signature", "error", err.Error())
-		}
-	}
-
 	return jwt.MapClaims{
-		types.PublicKey:     publicKey,
+		types.HardForkName:  v.HardForkName,
+		types.PublicKey:     v.PublicKey,
 		types.ProverName:    v.Message.ProverName,
 		types.ProverVersion: v.Message.ProverVersion,
 	}
@@ -91,5 +91,10 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 	if proverVersion, ok := claims[types.ProverVersion]; ok {
 		c.Set(types.ProverVersion, proverVersion)
 	}
+
+	if hardForkName, ok := claims[types.HardForkName]; ok {
+		c.Set(types.HardForkName, hardForkName)
+	}
+
 	return nil
 }

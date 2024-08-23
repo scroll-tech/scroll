@@ -10,16 +10,16 @@
       "low_version_circuit": {
         "params_path": "params",
         "assets_path": "assets",
-        "fork_name": ""
+        "fork_name": "darwin",
+        "min_prover_version": "v4.4.43-37af5ef5-38a68e2-1c5093c"
       },
       "high_version_circuit": {
         "params_path": "params",
         "assets_path": "assets",
-        "fork_name": ""
+        "fork_name": "darwinV2",
+        "min_prover_version": "v4.4.45"
       }
-    },
-    "max_verifier_workers": 4,
-    "min_prover_version": "v1.0.0"
+    }
   },
   "db": {
     "driver_name": "postgres",

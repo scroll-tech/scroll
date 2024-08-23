@@ -108,10 +108,6 @@ func (ptc *GetTaskController) GetTasks(ctx *gin.Context) {
 
 func (ptc *GetTaskController) proofType(para *coordinatorType.GetTaskParameter) message.ProofType {
 	var proofTypes []message.ProofType
-	if para.TaskType != 0 {
-		proofTypes = append(proofTypes, message.ProofType(para.TaskType))
-	}
-
 	for _, proofType := range para.TaskTypes {
 		proofTypes = append(proofTypes, message.ProofType(proofType))
 	}

@@ -23,10 +23,6 @@ type ProverManager struct {
 	ChunkCollectionTimeSec int `json:"chunk_collection_time_sec"`
 	// BundleCollectionTimeSec bundle Proof collection time (in seconds).
 	BundleCollectionTimeSec int `json:"bundle_collection_time_sec"`
-	// Max number of workers in verifier worker pool
-	MaxVerifierWorkers int `json:"max_verifier_workers"`
-	// MinProverVersion is the minimum version of the prover that is required.
-	MinProverVersion string `json:"min_prover_version"`
 }
 
 // L2 loads l2geth configuration items.
@@ -52,9 +48,10 @@ type Config struct {
 
 // CircuitConfig circuit items.
 type CircuitConfig struct {
-	ParamsPath string `json:"params_path"`
-	AssetsPath string `json:"assets_path"`
-	ForkName   string `json:"fork_name"`
+	ParamsPath       string `json:"params_path"`
+	AssetsPath       string `json:"assets_path"`
+	ForkName         string `json:"fork_name"`
+	MinProverVersion string `json:"min_prover_version"`
 }
 
 // VerifierConfig load zk verifier config.

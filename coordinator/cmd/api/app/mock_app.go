@@ -88,13 +88,25 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 	}
 	// Reset prover manager config for manager test cases.
 	cfg.ProverManager = &coordinatorConfig.ProverManager{
-		ProversPerSession:      1,
-		Verifier:               &coordinatorConfig.VerifierConfig{MockMode: true},
+		ProversPerSession: 1,
+		Verifier: &coordinatorConfig.VerifierConfig{
+			MockMode: true,
+			LowVersionCircuit: &coordinatorConfig.CircuitConfig{
+				ParamsPath:       "",
+				AssetsPath:       "",
+				ForkName:         "darwin",
+				MinProverVersion: "v4.2.0",
+			},
+			HighVersionCircuit: &coordinatorConfig.CircuitConfig{
+				ParamsPath:       "",
+				AssetsPath:       "",
+				ForkName:         "darwinV2",
+				MinProverVersion: "v4.3.0",
+			},
+		},
 		BatchCollectionTimeSec: 60,
 		ChunkCollectionTimeSec: 60,
 		SessionAttempts:        10,
-		MaxVerifierWorkers:     4,
-		MinProverVersion:       "v1.0.0",
 	}
 	endpoint, err := c.testApps.GetDBEndPoint()
 	if err != nil {

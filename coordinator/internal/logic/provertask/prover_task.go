@@ -49,6 +49,7 @@ type proverTaskContext struct {
 	PublicKey     string
 	ProverName    string
 	ProverVersion string
+	HardForkName  string
 }
 
 // checkParameter check the prover task parameter illegal
@@ -72,6 +73,12 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 		return nil, errors.New("get prover version from context failed")
 	}
 	ptc.ProverVersion = proverVersion.(string)
+
+	hardForkName, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
+	if !hardForkNameExist {
+		return nil, errors.New("get hard fork name from context failed")
+	}
+	ptc.HardForkName = hardForkName.(string)
 
 	isBlocked, err := b.proverBlockListOrm.IsPublicKeyBlocked(ctx.Copy(), publicKey.(string))
 	if err != nil {
