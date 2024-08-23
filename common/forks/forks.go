@@ -19,7 +19,7 @@ func GetHardforkName(config *params.ChainConfig, blockHeight, blockTimestamp uin
 	} else if !config.IsDarwinV2(blockTimestamp) {
 		return "darwin"
 	} else {
-		return "darwinv2"
+		return "darwinV2"
 	}
 }
 
