@@ -31,6 +31,9 @@ type Batch struct {
 	WithdrawRoot    string `json:"withdraw_root" gorm:"column:withdraw_root"`
 	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
+	CodecVersion    int16  `json:"codec_version" gorm:"column:codec_version"`
+	EnableCompress  bool   `json:"enable_compress" gorm:"column:enable_compress"`
+	BlobBytes       []byte `json:"blob_bytes" gorm:"column:blob_bytes"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
@@ -223,6 +226,19 @@ func (o *Batch) GetBatchesByBundleHash(ctx context.Context, bundleHash string) (
 		return nil, fmt.Errorf("Batch.GetBatchesByBundleHash error: %w, bundle hash: %v", err, bundleHash)
 	}
 	return batches, nil
+}
+
+// GetBatchByIndex retrieves the batch by the given index.
+func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("index = ?", index)
+
+	var batch Batch
+	if err := db.First(&batch).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetBatchByIndex error: %w, index: %v", err, index)
+	}
+	return &batch, nil
 }
 
 // InsertBatch inserts a new batch into the database.

@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -23,31 +24,31 @@ type LoginLogic struct {
 	chunkVks     map[string]struct{}
 	batchVKs     map[string]struct{}
 	bundleVks    map[string]struct{}
+
+	proverVersionHardForkMap map[string]string
 }
 
 // NewLoginLogic new a LoginLogic
 func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
-	l := &LoginLogic{
-		cfg:          cfg,
-		chunkVks:     make(map[string]struct{}),
-		batchVKs:     make(map[string]struct{}),
-		bundleVks:    make(map[string]struct{}),
-		challengeOrm: orm.NewChallenge(db),
+	proverVersionHardForkMap := make(map[string]string)
+	if version.CheckScrollRepoVersion(cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion) {
+		log.Error("config file error, low verifier min_prover_version should not more than high verifier min_prover_version",
+			"low verifier min_prover_version", cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion,
+			"high verifier min_prover_version", cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion)
+		panic("verifier config file error")
 	}
 
-	for _, vk := range vf.ChunkVKMap {
-		l.chunkVks[vk] = struct{}{}
-	}
+	proverVersionHardForkMap[cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion] = cfg.ProverManager.Verifier.LowVersionCircuit.ForkName
+	proverVersionHardForkMap[cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion] = cfg.ProverManager.Verifier.HighVersionCircuit.ForkName
 
-	for _, vk := range vf.BatchVKMap {
-		l.batchVKs[vk] = struct{}{}
+	return &LoginLogic{
+		cfg:                      cfg,
+		chunkVks:                 vf.ChunkVKMap,
+		batchVKs:                 vf.BatchVKMap,
+		bundleVks:                vf.BundleVkMap,
+		challengeOrm:             orm.NewChallenge(db),
+		proverVersionHardForkMap: proverVersionHardForkMap,
 	}
-
-	for _, vk := range vf.BundleVkMap {
-		l.bundleVks[vk] = struct{}{}
-	}
-
-	return l
 }
 
 // InsertChallengeString insert and check the challenge string is existed
@@ -56,18 +57,16 @@ func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, challenge string) e
 }
 
 func (l *LoginLogic) Check(login *types.LoginParameter) error {
-	if login.PublicKey != "" {
-		verify, err := login.Verify()
-		if err != nil || !verify {
-			log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
-				"prover_version", login.Message.ProverVersion, "message", login.Message)
-			return errors.New("auth message verify failure")
-		}
+	verify, err := login.Verify()
+	if err != nil || !verify {
+		log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
+			"prover_version", login.Message.ProverVersion, "message", login.Message)
+		return errors.New("auth message verify failure")
 	}
 
-	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.MinProverVersion) {
+	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion) {
 		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
-			l.cfg.ProverManager.MinProverVersion, login.Message.ProverVersion)
+			l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, login.Message.ProverVersion)
 	}
 
 	if len(login.Message.ProverTypes) > 0 {
@@ -104,4 +103,19 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 		}
 	}
 	return nil
+}
+
+// ProverHardForkName retrieves hard fork name which prover belongs to
+func (l *LoginLogic) ProverHardForkName(login *types.LoginParameter) (string, error) {
+	proverVersionSplits := strings.Split(login.Message.ProverVersion, "-")
+	if len(proverVersionSplits) == 0 {
+		return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)
+	}
+
+	proverVersion := proverVersionSplits[0]
+	if hardForkName, ok := l.proverVersionHardForkMap[proverVersion]; ok {
+		return hardForkName, nil
+	}
+
+	return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)
 }

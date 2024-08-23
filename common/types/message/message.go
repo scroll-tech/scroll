@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/scroll-tech/da-codec/encoding/codecv3"
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
@@ -52,9 +51,10 @@ type ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos  []*ChunkInfo     `json:"chunk_infos"`
-	ChunkProofs []*ChunkProof    `json:"chunk_proofs"`
-	BatchHeader *codecv3.DABatch `json:"batch_header"`
+	ChunkInfos  []*ChunkInfo  `json:"chunk_infos"`
+	ChunkProofs []*ChunkProof `json:"chunk_proofs"`
+	BatchHeader interface{}   `json:"batch_header"`
+	BlobBytes   []byte        `json:"blob_bytes"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.

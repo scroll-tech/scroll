@@ -36,6 +36,7 @@ type Batch struct {
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 	CodecVersion    int16  `json:"codec_version" gorm:"column:codec_version"`
 	EnableCompress  bool   `json:"enable_compress" gorm:"column:enable_compress"`
+	BlobBytes       []byte `json:"blob_bytes" gorm:"column:blob_bytes"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
@@ -291,6 +292,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecCon
 		BatchHeader:               batchMeta.BatchBytes,
 		CodecVersion:              int16(codecConfig.Version),
 		EnableCompress:            codecConfig.EnableCompress,
+		BlobBytes:                 batchMeta.BlobBytes,
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),
 		RollupStatus:              int16(types.RollupPending),
