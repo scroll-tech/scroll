@@ -10,7 +10,7 @@ use serde::Deserialize;
 use crate::types::{CommonHash, Task};
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
-use prover_edison::{
+use prover_darwin_v2::{
     aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver,
     BatchProof, BatchProvingTask, BlockTrace, BundleProof, BundleProvingTask, ChunkInfo,
     ChunkProof, ChunkProvingTask,
@@ -38,14 +38,14 @@ fn get_block_number(block_trace: &BlockTrace) -> Option<u64> {
 }
 
 #[derive(Default)]
-pub struct EdisonHandler {
+pub struct DarwinV2Handler {
     chunk_prover: Option<RefCell<ChunkProver>>,
     batch_prover: Option<RefCell<BatchProver>>,
 
     geth_client: Option<Rc<RefCell<GethClient>>>,
 }
 
-impl EdisonHandler {
+impl DarwinV2Handler {
     pub fn new(
         prover_type: ProverType,
         params_dir: &str,
@@ -207,7 +207,7 @@ impl EdisonHandler {
     }
 }
 
-impl CircuitsHandler for EdisonHandler {
+impl CircuitsHandler for DarwinV2Handler {
     fn get_vk(&self, task_type: TaskType) -> Option<Vec<u8>> {
         match task_type {
             TaskType::Chunk => self
@@ -243,8 +243,7 @@ mod tests {
     use super::*;
     use crate::zk_circuits_handler::utils::encode_vk;
     use ethers_core::types::H256;
-    use prover_darwin::zkevm_circuits::witness::Block;
-    use prover_edison::{
+    use prover_darwin_v2::{
         aggregator::eip4844, utils::chunk_trace_to_witness_block, BatchData, BatchHeader,
         MAX_AGG_SNARKS,
     };
@@ -258,7 +257,7 @@ mod tests {
 
     static DEFAULT_WORK_DIR: &str = "/assets";
     static WORK_DIR: LazyLock<String> = LazyLock::new(|| {
-        std::env::var("EDISON_TEST_DIR")
+        std::env::var("DARWIN_V2_TEST_DIR")
             .unwrap_or(String::from(DEFAULT_WORK_DIR))
             .trim_end_matches('/')
             .to_string()
@@ -283,7 +282,7 @@ mod tests {
     #[test]
     fn test_circuits() -> Result<()> {
         let chunk_handler =
-            EdisonHandler::new(ProverType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
+            DarwinV2Handler::new(ProverType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
 
         let chunk_vk = chunk_handler.get_vk(TaskType::Chunk).unwrap();
 
@@ -309,7 +308,7 @@ mod tests {
         }
 
         let batch_handler =
-            EdisonHandler::new(ProverType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
+            DarwinV2Handler::new(ProverType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
         let batch_vk = batch_handler.get_vk(TaskType::Batch).unwrap();
         check_vk(TaskType::Batch, batch_vk, "batch vk must be available");
         let batch_task_detail = make_batch_task_detail(chunk_traces, chunk_proofs, None);

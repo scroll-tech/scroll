@@ -187,7 +187,7 @@ func (m *ProofReceiverLogic) HandleZkProof(ctx *gin.Context, proofParameter coor
 		if unmarshalErr := json.Unmarshal([]byte(proofParameter.Proof), &bundleProof); unmarshalErr != nil {
 			return unmarshalErr
 		}
-		success, verifyErr = m.verifier.VerifyBundleProof(&bundleProof)
+		success, verifyErr = m.verifier.VerifyBundleProof(&bundleProof, hardForkName)
 	}
 
 	if verifyErr != nil || !success {

@@ -1,5 +1,5 @@
 mod darwin;
-mod edison;
+mod darwin_v2;
 
 use super::geth_client::GethClient;
 use crate::{
@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::{bail, Result};
 use darwin::DarwinHandler;
-use edison::EdisonHandler;
+use darwin_v2::DarwinV2Handler;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 type HardForkName = String;
@@ -38,7 +38,7 @@ pub struct CircuitsHandlerProvider<'a> {
     geth_client: Option<Rc<RefCell<GethClient>>>,
     circuits_handler_builder_map: HashMap<HardForkName, CircuitsHandlerBuilder>,
 
-    current_hard_fork_name: Option<HardForkName>,
+    current_fork_name: Option<HardForkName>,
     current_circuit: Option<Rc<Box<dyn CircuitsHandler>>>,
 }
 
@@ -83,7 +83,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 &config.high_version_circuit.hard_fork_name
             );
             AssetsDirEnvConfig::enable_second();
-            EdisonHandler::new(
+            DarwinV2Handler::new(
                 prover_type,
                 &config.high_version_circuit.params_path,
                 &config.high_version_circuit.assets_path,
@@ -102,7 +102,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
             config,
             geth_client,
             circuits_handler_builder_map: m,
-            current_hard_fork_name: None,
+            current_fork_name: None,
             current_circuit: None,
         };
 
@@ -113,8 +113,8 @@ impl<'a> CircuitsHandlerProvider<'a> {
         &mut self,
         hard_fork_name: &String,
     ) -> Result<Rc<Box<dyn CircuitsHandler>>> {
-        match &self.current_hard_fork_name {
-            Some(name) if name == hard_fork_name => {
+        match &self.current_fork_name {
+            Some(fork_name) if fork_name == hard_fork_name => {
                 log::info!("get circuits handler from cache");
                 if let Some(handler) = &self.current_circuit {
                     Ok(handler.clone())
@@ -131,7 +131,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                     log::info!("building circuits handler for {hard_fork_name}");
                     let handler = builder(self.prover_type, self.config, self.geth_client.clone())
                         .expect("failed to build circuits handler");
-                    self.current_hard_fork_name = Some(hard_fork_name.clone());
+                    self.current_fork_name = Some(hard_fork_name.clone());
                     let rc_handler = Rc::new(handler);
                     self.current_circuit = Some(rc_handler.clone());
                     Ok(rc_handler)

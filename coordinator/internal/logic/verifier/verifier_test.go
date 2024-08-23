@@ -39,19 +39,19 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 
 	chunkProof1 := readChunkProof(*chunkProofPath1, as)
-	chunkOk1, err := v.VerifyChunkProof(chunkProof1, "edison")
+	chunkOk1, err := v.VerifyChunkProof(chunkProof1, "darwin_v2")
 	as.NoError(err)
 	as.True(chunkOk1)
 	t.Log("Verified chunk proof 1")
 
 	chunkProof2 := readChunkProof(*chunkProofPath2, as)
-	chunkOk2, err := v.VerifyChunkProof(chunkProof2, "edison")
+	chunkOk2, err := v.VerifyChunkProof(chunkProof2, "darwin_v2")
 	as.NoError(err)
 	as.True(chunkOk2)
 	t.Log("Verified chunk proof 2")
 
 	batchProof := readBatchProof(*batchProofPath, as)
-	batchOk, err := v.VerifyBatchProof(batchProof, "edison")
+	batchOk, err := v.VerifyBatchProof(batchProof, "darwin_v2")
 	as.NoError(err)
 	as.True(batchOk)
 	t.Log("Verified batch proof")
