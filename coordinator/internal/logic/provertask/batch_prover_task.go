@@ -29,9 +29,8 @@ import (
 type BatchProverTask struct {
 	BaseProverTask
 
-	batchAttemptsExceedTotal prometheus.Counter
-	batchTaskGetTaskTotal    *prometheus.CounterVec
-	batchTaskGetTaskProver   *prometheus.CounterVec
+	batchTaskGetTaskTotal  *prometheus.CounterVec
+	batchTaskGetTaskProver *prometheus.CounterVec
 }
 
 // NewBatchProverTask new a batch collector
@@ -47,10 +46,6 @@ func NewBatchProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			proverTaskOrm:      orm.NewProverTask(db),
 			proverBlockListOrm: orm.NewProverBlockList(db),
 		},
-		batchAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "coordinator_batch_attempts_exceed_total",
-			Help: "Total number of batch attempts exceed.",
-		}),
 		batchTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_batch_get_task_total",
 			Help: "Total number of batch get task.",
