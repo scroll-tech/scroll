@@ -25,9 +25,36 @@ import (
 	"scroll-tech/coordinator/internal/config"
 )
 
+// This struct maps to `CircuitConfig` in common/libzkp/impl/src/verifier.rs
+// Define a brand new struct here is to eliminate side effects in case fields
+// in `*config.CircuitConfig` being changed
+type rustCircuitConfig struct {
+	ForkName   string `json:"fork_name"`
+	ParamsPath string `json:"params_path"`
+	AssetsPath string `json:"assets_path"`
+}
+
+func newRustCircuitConfig(cfg *config.CircuitConfig) *rustCircuitConfig {
+	return &rustCircuitConfig{
+		ForkName:   cfg.ForkName,
+		ParamsPath: cfg.ParamsPath,
+		AssetsPath: cfg.AssetsPath,
+	}
+}
+
+// This struct maps to `VerifierConfig` in common/libzkp/impl/src/verifier.rs
+// Define a brand new struct here is to eliminate side effects in case fields
+// in `*config.VerifierConfig` being changed
 type rustVerifierConfig struct {
-	LowVersionCircuit  *config.CircuitConfig `json:"low_version_circuit"`
-	HighVersionCircuit *config.CircuitConfig `json:"high_version_circuit"`
+	LowVersionCircuit  *rustCircuitConfig `json:"low_version_circuit"`
+	HighVersionCircuit *rustCircuitConfig `json:"high_version_circuit"`
+}
+
+func newRustVerifierConfig(cfg *config.VerifierConfig) *rustVerifierConfig {
+	return &rustVerifierConfig{
+		LowVersionCircuit:  newRustCircuitConfig(cfg.LowVersionCircuit),
+		HighVersionCircuit: newRustCircuitConfig(cfg.HighVersionCircuit),
+	}
 }
 
 // NewVerifier Sets up a rust ffi to call verify.
@@ -38,10 +65,7 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 		bundleVKMap := map[string]struct{}{"mock_vk": {}}
 		return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap, BundleVkMap: bundleVKMap}, nil
 	}
-	verifierConfig := rustVerifierConfig{
-		LowVersionCircuit:  cfg.LowVersionCircuit,
-		HighVersionCircuit: cfg.HighVersionCircuit,
-	}
+	verifierConfig := newRustVerifierConfig(cfg)
 	configBytes, err := json.Marshal(verifierConfig)
 	if err != nil {
 		return nil, err
