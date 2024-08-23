@@ -29,6 +29,7 @@ type LoginLogic struct {
 
 // NewLoginLogic new a LoginLogic
 func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
+	proverVersionHardForkMap := make(map[string]string)
 	if version.CheckScrollRepoVersion(cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion) {
 		log.Error("config file error, low verifier min_prover_version should not more than high verifier min_prover_version",
 			"low verifier min_prover_version", cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion,
@@ -36,10 +37,8 @@ func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *Logi
 		panic("verifier config file error")
 	}
 
-	proverVersionHardForkMap := map[string]string{
-		cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion:  cfg.ProverManager.Verifier.LowVersionCircuit.ForkName,
-		cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion: cfg.ProverManager.Verifier.HighVersionCircuit.ForkName,
-	}
+	proverVersionHardForkMap[cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion] = cfg.ProverManager.Verifier.LowVersionCircuit.ForkName
+	proverVersionHardForkMap[cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion] = cfg.ProverManager.Verifier.HighVersionCircuit.ForkName
 
 	return &LoginLogic{
 		cfg:                      cfg,
