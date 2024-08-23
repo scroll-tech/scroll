@@ -27,27 +27,13 @@ type LoginLogic struct {
 
 // NewLoginLogic new a LoginLogic
 func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
-	l := &LoginLogic{
+	return &LoginLogic{
 		cfg:          cfg,
-		chunkVks:     make(map[string]struct{}),
-		batchVKs:     make(map[string]struct{}),
-		bundleVks:    make(map[string]struct{}),
+		chunkVks:     vf.ChunkVKMap,
+		batchVKs:     vf.BatchVKMap,
+		bundleVks:    vf.BundleVkMap,
 		challengeOrm: orm.NewChallenge(db),
 	}
-
-	for _, vk := range vf.ChunkVKMap {
-		l.chunkVks[vk] = struct{}{}
-	}
-
-	for _, vk := range vf.BatchVKMap {
-		l.batchVKs[vk] = struct{}{}
-	}
-
-	for _, vk := range vf.BundleVkMap {
-		l.bundleVks[vk] = struct{}{}
-	}
-
-	return l
 }
 
 // InsertChallengeString insert and check the challenge string is existed

@@ -18,8 +18,8 @@ import (
 
 var (
 	paramsPath      = flag.String("params", "/assets/test_params", "params dir")
-	assetsPathLo    = flag.String("assets", "/assets/test_assets_lo", "assets dir")
-	assetsPathHi    = flag.String("assets", "/assets/test_assets_hi", "assets dir")
+	assetsPathLo    = flag.String("assets_lo", "/assets/test_assets_lo", "assets dir")
+	assetsPathHi    = flag.String("assets", "/assets/test_assets", "assets dir")
 	batchProofPath  = flag.String("batch_proof", "/assets/proof_data/batch_proof", "batch proof file path")
 	chunkProofPath1 = flag.String("chunk_proof1", "/assets/proof_data/chunk_proof1", "chunk proof file path 1")
 	chunkProofPath2 = flag.String("chunk_proof2", "/assets/proof_data/chunk_proof2", "chunk proof file path 2")
@@ -39,19 +39,19 @@ func TestFFI(t *testing.T) {
 	as.NoError(err)
 
 	chunkProof1 := readChunkProof(*chunkProofPath1, as)
-	chunkOk1, err := v.VerifyChunkProof(chunkProof1)
+	chunkOk1, err := v.VerifyChunkProof(chunkProof1, "darwin_v2")
 	as.NoError(err)
 	as.True(chunkOk1)
 	t.Log("Verified chunk proof 1")
 
 	chunkProof2 := readChunkProof(*chunkProofPath2, as)
-	chunkOk2, err := v.VerifyChunkProof(chunkProof2)
+	chunkOk2, err := v.VerifyChunkProof(chunkProof2, "darwin_v2")
 	as.NoError(err)
 	as.True(chunkOk2)
 	t.Log("Verified chunk proof 2")
 
 	batchProof := readBatchProof(*batchProofPath, as)
-	batchOk, err := v.VerifyBatchProof(batchProof, "curie")
+	batchOk, err := v.VerifyBatchProof(batchProof, "darwin_v2")
 	as.NoError(err)
 	as.True(batchOk)
 	t.Log("Verified batch proof")

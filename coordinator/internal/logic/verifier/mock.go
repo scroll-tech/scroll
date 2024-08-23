@@ -10,8 +10,8 @@ import (
 
 // NewVerifier Sets up a mock verifier.
 func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
-	batchVKMap := map[string]string{cfg.ForkName: "mock_vk"}
-	chunkVKMap := map[string]string{cfg.ForkName: "mock_vk"}
+	batchVKMap := map[string]struct{}{"mock_vk": {}}
+	chunkVKMap := map[string]struct{}{"mock_vk": {}}
 	return &Verifier{cfg: cfg, ChunkVKMap: chunkVKMap, BatchVKMap: batchVKMap}, nil
 }
 
@@ -32,7 +32,7 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) 
 }
 
 // VerifyBundleProof return a mock verification result for a BundleProof.
-func (v *Verifier) VerifyBundleProof(proof *message.BundleProof) (bool, error) {
+func (v *Verifier) VerifyBundleProof(proof *message.BundleProof, forkName string) (bool, error) {
 	if string(proof.Proof) == InvalidTestProof {
 		return false, nil
 	}
