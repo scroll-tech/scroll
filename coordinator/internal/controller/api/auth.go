@@ -44,7 +44,7 @@ func (a *AuthController) Login(c *gin.Context) (interface{}, error) {
 		return "", fmt.Errorf("check the login parameter failure: %w", err)
 	}
 
-	hardForkName, err := a.loginLogic.ProverHardforkName(&login)
+	hardForkName, err := a.loginLogic.ProverHardForkName(&login)
 	if err != nil {
 		return "", fmt.Errorf("prover hard name failure:%w", err)
 	}
