@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -106,8 +107,14 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 
 // ProverHardName retrieves hard fork name which prover belongs to
 func (l *LoginLogic) ProverHardName(login *types.LoginParameter) (string, error) {
-	if _, ok := l.proverVersionHardForkMap[login.Message.ProverVersion]; ok {
-		return l.proverVersionHardForkMap[login.Message.ProverVersion], nil
+	proverVersionSplits := strings.Split(login.Message.ProverVersion, "-")
+	if len(proverVersionSplits) == 0 {
+		return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)
+	}
+
+	proverVersion := proverVersionSplits[0]
+	if hardForkName, ok := l.proverVersionHardForkMap[proverVersion]; ok {
+		return hardForkName, nil
 	}
 	return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)
 }
