@@ -147,7 +147,7 @@ func (p *BundleProposer) proposeBundle() error {
 		return err
 	}
 	hardforkName := forks.GetHardforkName(p.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
-	codecVersion := forks.GetCodecVersion(p.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
+	codecVersion := encoding.CodecVersion(batches[0].CodecVersion)
 	for i := 1; i < len(batches); i++ {
 		chunk, err := p.chunkOrm.GetChunkByIndex(p.ctx, batches[i].StartChunkIndex)
 		if err != nil {
