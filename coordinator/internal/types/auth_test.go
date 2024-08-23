@@ -60,7 +60,7 @@ func TestGenerateSignature(t *testing.T) {
 	authMsg := LoginParameter{
 		Message: Message{
 			ProverName:    "test",
-			ProverVersion: "v4.4.43-37af5ef5-38a68e2-1c5093c",
+			ProverVersion: "v4.4.43",
 			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjQzODg4MTEsIm9yaWdfaWF0IjoxNzI0Mzg1MjExLCJyYW5kb20iOiItZ2UxTjhRc1NlTzhxRVdBTk5KWWtFVjU3ekhJX1JmTGw5Mjdkb2pMTm5JPSJ9.TmcRyXTyfCAHIk5WXdpShck0qUUesTDmi_0IhD87GmA",
 			ProverTypes:   []ProverType{ProverTypeChunk},
 			VKs:           []string{"mock_vk"},

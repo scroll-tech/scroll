@@ -11,7 +11,7 @@
         "params_path": "params",
         "assets_path": "assets",
         "fork_name": "darwin",
-        "min_prover_version": "v4.4.43-37af5ef5-38a68e2-1c5093c"
+        "min_prover_version": "v4.4.43"
       },
       "high_version_circuit": {
         "params_path": "params",
