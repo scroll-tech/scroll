@@ -127,11 +127,9 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 			return fmt.Errorf("failed to GetBlockByNumberOrHash: %v. number: %v", err, number)
 		}
 		if block.RowConsumption == nil {
-			if number == 6279234 {
-				block.RowConsumption = &gethTypes.RowConsumption{}
-			} else {
-				return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
-			}
+			block.RowConsumption = &gethTypes.RowConsumption{}
+		} else {
+			return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
 		}
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
