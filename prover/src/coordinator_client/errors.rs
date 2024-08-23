@@ -1,4 +1,5 @@
 use serde::{Deserialize, Deserializer};
+use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ErrorCode {
@@ -49,5 +50,16 @@ impl<'de> Deserialize<'de> for ErrorCode {
     {
         let v: i32 = i32::deserialize(deserializer)?;
         Ok(ErrorCode::from_i32(v))
+    }
+}
+
+// ====================================================
+
+#[derive(Debug, Clone)]
+pub struct ProofStatusNotOKError;
+
+impl fmt::Display for ProofStatusNotOKError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "proof status not ok")
     }
 }

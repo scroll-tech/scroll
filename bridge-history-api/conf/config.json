@@ -19,7 +19,9 @@
 		"ScrollChainAddr": "0xa13BAF47339d63B743e7Da8741db5456DAc1E556",
 		"GatewayRouterAddr": "0xF8B1378579659D8F7EE5f3C929c2f3E332E41Fd6",
 		"MessageQueueAddr": "0x0d7E906BD9cAFa154b048cFa766Cc1E54E39AF9B",
-		"BatchBridgeGatewayAddr": "0x5Bcfd99c34cf7E06fc756f6f5aE7400504852bc4"
+		"BatchBridgeGatewayAddr": "0x5Bcfd99c34cf7E06fc756f6f5aE7400504852bc4",
+		"GasTokenGatewayAddr": "0x0000000000000000000000000000000000000000",
+		"WrappedTokenGatewayAddr": "0x0000000000000000000000000000000000000000"
 	},
 	"L2": {
 		"confirmation": 0,
