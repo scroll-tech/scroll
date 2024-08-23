@@ -104,8 +104,8 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 	return nil
 }
 
-// ProverHardName retrieves hard fork name which prover belongs to
-func (l *LoginLogic) ProverHardName(login *types.LoginParameter) (string, error) {
+// ProverHardforkName retrieves hard fork name which prover belongs to
+func (l *LoginLogic) ProverHardforkName(login *types.LoginParameter) (string, error) {
 	if _, ok := l.proverVersionHardForkMap[login.Message.ProverVersion]; ok {
 		return l.proverVersionHardForkMap[login.Message.ProverVersion], nil
 	}
