@@ -93,7 +93,6 @@ func (c *CoordinatorApp) MockConfig(store bool) error {
 		BatchCollectionTimeSec: 60,
 		ChunkCollectionTimeSec: 60,
 		SessionAttempts:        10,
-		MaxVerifierWorkers:     4,
 		MinProverVersion:       "v1.0.0",
 	}
 	endpoint, err := c.testApps.GetDBEndPoint()

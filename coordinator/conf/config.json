@@ -10,16 +10,16 @@
       "low_version_circuit": {
         "params_path": "params",
         "assets_path": "assets",
-        "fork_name": ""
+        "fork_name": "",
+        "min_prover_version": "v1.0.0"
       },
       "high_version_circuit": {
         "params_path": "params",
         "assets_path": "assets",
-        "fork_name": ""
+        "fork_name": "",
+        "min_prover_version": "v1.0.0"
       }
-    },
-    "max_verifier_workers": 4,
-    "min_prover_version": "v1.0.0"
+    }
   },
   "db": {
     "driver_name": "postgres",

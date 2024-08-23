@@ -23,16 +23,24 @@ type LoginLogic struct {
 	chunkVks     map[string]struct{}
 	batchVKs     map[string]struct{}
 	bundleVks    map[string]struct{}
+
+	proverVersionHardForkMap map[string]string
 }
 
 // NewLoginLogic new a LoginLogic
 func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
+	proverVersionHardForkMap := map[string]string{
+		cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion:  cfg.ProverManager.Verifier.LowVersionCircuit.ForkName,
+		cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion: cfg.ProverManager.Verifier.HighVersionCircuit.ForkName,
+	}
+
 	return &LoginLogic{
-		cfg:          cfg,
-		chunkVks:     vf.ChunkVKMap,
-		batchVKs:     vf.BatchVKMap,
-		bundleVks:    vf.BundleVkMap,
-		challengeOrm: orm.NewChallenge(db),
+		cfg:                      cfg,
+		chunkVks:                 vf.ChunkVKMap,
+		batchVKs:                 vf.BatchVKMap,
+		bundleVks:                vf.BundleVkMap,
+		challengeOrm:             orm.NewChallenge(db),
+		proverVersionHardForkMap: proverVersionHardForkMap,
 	}
 }
 
@@ -42,18 +50,21 @@ func (l *LoginLogic) InsertChallengeString(ctx *gin.Context, challenge string) e
 }
 
 func (l *LoginLogic) Check(login *types.LoginParameter) error {
-	if login.PublicKey != "" {
-		verify, err := login.Verify()
-		if err != nil || !verify {
-			log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
-				"prover_version", login.Message.ProverVersion, "message", login.Message)
-			return errors.New("auth message verify failure")
-		}
+	verify, err := login.Verify()
+	if err != nil || !verify {
+		log.Error("auth message verify failure", "prover_name", login.Message.ProverName,
+			"prover_version", login.Message.ProverVersion, "message", login.Message)
+		return errors.New("auth message verify failure")
 	}
 
-	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.MinProverVersion) {
+	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion) {
 		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
-			l.cfg.ProverManager.MinProverVersion, login.Message.ProverVersion)
+			l.cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, login.Message.ProverVersion)
+	}
+
+	if !version.CheckScrollRepoVersion(login.Message.ProverVersion, l.cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion) {
+		return fmt.Errorf("incompatible prover version. please upgrade your prover, minimum allowed version: %s, actual version: %s",
+			l.cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion, login.Message.ProverVersion)
 	}
 
 	if len(login.Message.ProverTypes) > 0 {
@@ -90,4 +101,12 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 		}
 	}
 	return nil
+}
+
+// ProverHardName retrieves hard fork name which prover belongs to
+func (l *LoginLogic) ProverHardName(login *types.LoginParameter) (string, error) {
+	if _, ok := l.proverVersionHardForkMap[login.Message.ProverVersion]; ok {
+		return l.proverVersionHardForkMap[login.Message.ProverVersion], nil
+	}
+	return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)
 }

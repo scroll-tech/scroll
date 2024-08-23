@@ -94,7 +94,6 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 			BatchCollectionTimeSec:  10,
 			ChunkCollectionTimeSec:  10,
 			BundleCollectionTimeSec: 10,
-			MaxVerifierWorkers:      10,
 			SessionAttempts:         5,
 			MinProverVersion:        minProverVersion,
 		},
