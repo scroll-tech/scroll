@@ -27,9 +27,8 @@ import (
 type BundleProverTask struct {
 	BaseProverTask
 
-	bundleAttemptsExceedTotal prometheus.Counter
-	bundleTaskGetTaskTotal    *prometheus.CounterVec
-	bundleTaskGetTaskProver   *prometheus.CounterVec
+	bundleTaskGetTaskTotal  *prometheus.CounterVec
+	bundleTaskGetTaskProver *prometheus.CounterVec
 }
 
 // NewBundleProverTask new a bundle collector
@@ -46,10 +45,6 @@ func NewBundleProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *g
 			proverTaskOrm:      orm.NewProverTask(db),
 			proverBlockListOrm: orm.NewProverBlockList(db),
 		},
-		bundleAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "coordinator_bundle_attempts_exceed_total",
-			Help: "Total number of bundle attempts exceed.",
-		}),
 		bundleTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_bundle_get_task_total",
 			Help: "Total number of bundle get task.",

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"scroll-tech/common/database"
+	"scroll-tech/common/utils"
 )
 
 // ProverManager loads sequencer configuration items.
@@ -70,6 +71,12 @@ func NewConfig(file string) (*Config, error) {
 
 	cfg := &Config{}
 	err = json.Unmarshal(buf, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Override config with environment variables
+	err = utils.OverrideConfigWithEnv(cfg, "SCROLL_COORDINATOR")
 	if err != nil {
 		return nil, err
 	}

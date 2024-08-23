@@ -27,9 +27,8 @@ import (
 type ChunkProverTask struct {
 	BaseProverTask
 
-	chunkAttemptsExceedTotal prometheus.Counter
-	chunkTaskGetTaskTotal    *prometheus.CounterVec
-	chunkTaskGetTaskProver   *prometheus.CounterVec
+	chunkTaskGetTaskTotal  *prometheus.CounterVec
+	chunkTaskGetTaskProver *prometheus.CounterVec
 }
 
 // NewChunkProverTask new a chunk prover task
@@ -44,10 +43,6 @@ func NewChunkProverTask(cfg *config.Config, chainCfg *params.ChainConfig, db *go
 			proverTaskOrm:      orm.NewProverTask(db),
 			proverBlockListOrm: orm.NewProverBlockList(db),
 		},
-		chunkAttemptsExceedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
-			Name: "coordinator_chunk_attempts_exceed_total",
-			Help: "Total number of chunk attempts exceed.",
-		}),
 		chunkTaskGetTaskTotal: promauto.With(reg).NewCounterVec(prometheus.CounterOpts{
 			Name: "coordinator_chunk_get_task_total",
 			Help: "Total number of chunk get task.",
