@@ -128,8 +128,6 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 		}
 		if block.RowConsumption == nil {
 			block.RowConsumption = &gethTypes.RowConsumption{}
-		} else {
-			return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
 		}
 
 		log.Info("retrieved block", "height", block.Header().Number, "hash", block.Header().Hash().String())
