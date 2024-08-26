@@ -14,7 +14,6 @@ pub struct DarwinVerifier {
 }
 
 impl DarwinVerifier {
-    #[allow(dead_code)]
     pub fn new(params_dir: &str, assets_dir: &str) -> Self {
         env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
         let verifier = Verifier::from_dirs(params_dir, assets_dir);
