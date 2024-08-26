@@ -221,13 +221,21 @@ func testImportDefaultL1GasPriceDueToL1GasPriceSpike(t *testing.T) {
 			},
 		},
 	}
-	batch := &encoding.Batch{
+	batch0 := &encoding.Batch{
 		Index:                      0,
 		TotalL1MessagePoppedBefore: 0,
 		ParentBatchHash:            common.Hash{},
 		Chunks:                     []*encoding.Chunk{chunk},
 	}
+	batch := &encoding.Batch{
+		Index:                      1,
+		TotalL1MessagePoppedBefore: 0,
+		ParentBatchHash:            common.Hash{},
+		Chunks:                     []*encoding.Chunk{chunk},
+	}
 	batchOrm := orm.NewBatch(db)
+	_, err = batchOrm.InsertBatch(context.Background(), batch0, utils.CodecConfig{Version: encoding.CodecV0}, utils.BatchMetrics{})
+	assert.NoError(t, err)
 	dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, utils.CodecConfig{Version: encoding.CodecV0}, utils.BatchMetrics{})
 	assert.NoError(t, err)
 	err = batchOrm.UpdateCommitTxHashAndRollupStatus(context.Background(), dbBatch.Hash, common.Hash{}.String(), types.RollupCommitted)
