@@ -39,17 +39,17 @@ static mut VERIFIER_HIGH: OnceCell<VerifierPair> = OnceCell::new();
 static mut VERIFIER_LOW: OnceCell<VerifierPair> = OnceCell::new();
 
 pub fn init(config: VerifierConfig) {
-    let low_conf = config.low_version_circuit;
-    let verifier = DarwinVerifier::new(&low_conf.params_path, &low_conf.assets_path);
+    // let low_conf = config.low_version_circuit;
+    // let verifier = DarwinVerifier::new(&low_conf.params_path, &low_conf.assets_path);
 
-    unsafe {
-        VERIFIER_LOW
-            .set(VerifierPair(
-                low_conf.fork_name,
-                Rc::new(Box::new(verifier)),
-            ))
-            .unwrap_unchecked();
-    }
+    // unsafe {
+    //     VERIFIER_LOW
+    //         .set(VerifierPair(
+    //             low_conf.fork_name,
+    //             Rc::new(Box::new(verifier)),
+    //         ))
+    //         .unwrap_unchecked();
+    // }
     let high_conf = config.high_version_circuit;
     let verifier = DarwinV2Verifier::new(&high_conf.params_path, &high_conf.assets_path);
     unsafe {
@@ -64,7 +64,7 @@ pub fn init(config: VerifierConfig) {
 
 pub fn get_verifier(fork_name: &str) -> Result<Rc<Box<dyn ProofVerifier>>> {
     unsafe {
-        if let Some(verifier) = VERIFIER_LOW.get() {
+        if let Some(verifier) = VERIFIER_HIGH.get() {
             if verifier.0 == fork_name {
                 return Ok(verifier.1.clone());
             }
