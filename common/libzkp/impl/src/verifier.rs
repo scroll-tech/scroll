@@ -2,7 +2,7 @@ mod darwin;
 mod darwin_v2;
 
 use anyhow::{bail, Result};
-use darwin::DarwinVerifier;
+// use darwin::DarwinVerifier;
 use darwin_v2::DarwinV2Verifier;
 use serde::{Deserialize, Serialize};
 use std::{cell::OnceCell, rc::Rc};
@@ -36,7 +36,7 @@ type HardForkName = String;
 struct VerifierPair(HardForkName, Rc<Box<dyn ProofVerifier>>);
 
 static mut VERIFIER_HIGH: OnceCell<VerifierPair> = OnceCell::new();
-static mut VERIFIER_LOW: OnceCell<VerifierPair> = OnceCell::new();
+// static mut VERIFIER_LOW: OnceCell<VerifierPair> = OnceCell::new();
 
 pub fn init(config: VerifierConfig) {
     // let low_conf = config.low_version_circuit;
