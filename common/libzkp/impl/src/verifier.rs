@@ -4,8 +4,10 @@ mod darwin_v2;
 use anyhow::{bail, Result};
 use darwin::DarwinVerifier;
 use darwin_v2::DarwinV2Verifier;
+use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
+use prover_v4::utils::load_params;
 use serde::{Deserialize, Serialize};
-use std::{cell::OnceCell, rc::Rc};
+use std::{cell::OnceCell, collections::BTreeMap, rc::Rc};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskType {
@@ -37,10 +39,34 @@ struct VerifierPair(HardForkName, Rc<Box<dyn ProofVerifier>>);
 
 static mut VERIFIER_HIGH: OnceCell<VerifierPair> = OnceCell::new();
 static mut VERIFIER_LOW: OnceCell<VerifierPair> = OnceCell::new();
+static mut PARAMS_MAP: OnceCell<BTreeMap<u32, ParamsKZG<Bn256>>> = OnceCell::new();
 
 pub fn init(config: VerifierConfig) {
     let low_conf = config.low_version_circuit;
-    let verifier = DarwinVerifier::new(&low_conf.params_path, &low_conf.assets_path);
+
+    // params should be shared between low and high
+    let mut params_map = BTreeMap::new();
+    for degree in [
+        *prover_v4::config::LAYER2_DEGREE,
+        *prover_v4::config::LAYER4_DEGREE,
+    ] {
+        if let std::collections::btree_map::Entry::Vacant(e) = params_map.entry(degree) {
+            match load_params(&low_conf.params_path, degree, None) {
+                Ok(params) => {
+                    e.insert(params);
+                }
+                Err(e) => panic!(
+                    "failed to load params, degree {}, dir {}, err {}",
+                    degree, low_conf.params_path, e
+                ),
+            }
+        }
+    }
+    unsafe {
+        PARAMS_MAP.set(params_map).unwrap_unchecked();
+    }
+
+    let verifier = DarwinVerifier::new(unsafe { PARAMS_MAP.get().unwrap() }, &low_conf.assets_path);
 
     unsafe {
         VERIFIER_LOW
@@ -51,7 +77,8 @@ pub fn init(config: VerifierConfig) {
             .unwrap_unchecked();
     }
     let high_conf = config.high_version_circuit;
-    let verifier = DarwinV2Verifier::new(&high_conf.params_path, &high_conf.assets_path);
+    let verifier =
+        DarwinV2Verifier::new(unsafe { PARAMS_MAP.get().unwrap() }, &high_conf.assets_path);
     unsafe {
         VERIFIER_HIGH
             .set(VerifierPair(
