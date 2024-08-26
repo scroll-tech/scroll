@@ -15,10 +15,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/modern-go/reflect2"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
@@ -180,15 +180,15 @@ func setField(field reflect.Value, value string) error {
 		}
 		field.SetBool(boolValue)
 	case reflect.Ptr:
-        if field.Type().Elem().Kind() == reflect.Struct && field.Type().Elem().Name() == "PrivateKey" {
-            ptrValue, err := crypto.ToECDSA(common.FromHex(value))
-            if err != nil {
-                return fmt.Errorf("failed to convert to ecdsa.PrivateKey: %w", err)
-            }
-            field.Set(reflect.ValueOf(ptrValue))
-        } else {
-            return fmt.Errorf("unsupported struct type: %v", field.Type())
-        }
+		if field.Type().Elem().Kind() == reflect.Struct && field.Type().Elem().Name() == "PrivateKey" {
+			ptrValue, err := crypto.ToECDSA(common.FromHex(value))
+			if err != nil {
+				return fmt.Errorf("failed to convert to ecdsa.PrivateKey: %w", err)
+			}
+			field.Set(reflect.ValueOf(ptrValue))
+		} else {
+			return fmt.Errorf("unsupported struct type: %v", field.Type())
+		}
 	default:
 		return fmt.Errorf("unsupported type: %v", field.Kind())
 	}
@@ -200,7 +200,7 @@ func camelToUnderscore(str string) string {
 	re := regexp.MustCompile("[A-Z]")
 
 	result := re.ReplaceAllStringFunc(str, func(s string) string {
-			return "_" + strings.ToLower(s)
+		return "_" + strings.ToLower(s)
 	})
 
 	return result[1:]
