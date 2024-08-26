@@ -2,7 +2,7 @@ mod darwin;
 mod darwin_v2;
 
 use anyhow::{bail, Result};
-// use darwin::DarwinVerifier;
+use darwin::DarwinVerifier;
 use darwin_v2::DarwinV2Verifier;
 use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
 use prover_v4::utils::load_params;
@@ -38,11 +38,11 @@ type HardForkName = String;
 struct VerifierPair(HardForkName, Rc<Box<dyn ProofVerifier>>);
 
 static mut VERIFIER_HIGH: OnceCell<VerifierPair> = OnceCell::new();
-// static mut VERIFIER_LOW: OnceCell<VerifierPair> = OnceCell::new();
+static mut VERIFIER_LOW: OnceCell<VerifierPair> = OnceCell::new();
 static mut PARAMS_MAP: OnceCell<BTreeMap<u32, ParamsKZG<Bn256>>> = OnceCell::new();
 
 pub fn init(config: VerifierConfig) {
-    // let low_conf = config.low_version_circuit;
+    let low_conf = config.low_version_circuit;
 
     // params should be shared between low and high
     let mut params_map = BTreeMap::new();
@@ -68,14 +68,14 @@ pub fn init(config: VerifierConfig) {
 
     let verifier = DarwinVerifier::new(unsafe { PARAMS_MAP.get().unwrap() }, &low_conf.assets_path);
 
-    // unsafe {
-    //     VERIFIER_LOW
-    //         .set(VerifierPair(
-    //             low_conf.fork_name,
-    //             Rc::new(Box::new(verifier)),
-    //         ))
-    //         .unwrap_unchecked();
-    // }
+    unsafe {
+        VERIFIER_LOW
+            .set(VerifierPair(
+                low_conf.fork_name,
+                Rc::new(Box::new(verifier)),
+            ))
+            .unwrap_unchecked();
+    }
     let high_conf = config.high_version_circuit;
     let verifier =
         DarwinV2Verifier::new(unsafe { PARAMS_MAP.get().unwrap() }, &high_conf.assets_path);
@@ -91,7 +91,7 @@ pub fn init(config: VerifierConfig) {
 
 pub fn get_verifier(fork_name: &str) -> Result<Rc<Box<dyn ProofVerifier>>> {
     unsafe {
-        if let Some(verifier) = VERIFIER_HIGH.get() {
+        if let Some(verifier) = VERIFIER_LOW.get() {
             if verifier.0 == fork_name {
                 return Ok(verifier.1.clone());
             }
