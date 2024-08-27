@@ -1,14 +1,12 @@
 package config
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -67,6 +65,7 @@ func TestConfig(t *testing.T) {
 		os.Setenv("SCROLL_ROLLUP_L2_CONFIG_RELAYER_CONFIG_GAS_ORACLE_SENDER_PRIVATE_KEY", "1717171717171717171717171717171717171717171717171717171717171717")
 		os.Setenv("SCROLL_ROLLUP_L2_CONFIG_RELAYER_CONFIG_COMMIT_SENDER_PRIVATE_KEY", "1818181818181818181818181818181818181818181818181818181818181818")
 		os.Setenv("SCROLL_ROLLUP_L2_CONFIG_RELAYER_CONFIG_FINALIZE_SENDER_PRIVATE_KEY", "1919191919191919191919191919191919191919191919191919191919191919")
+
 		cfg2, err := NewConfig("../../conf/config.json")
 		assert.NoError(t, err)
 
@@ -77,9 +76,9 @@ func TestConfig(t *testing.T) {
 		assert.NotEqual(t, cfg.L2Config.RelayerConfig.FinalizeSenderPrivateKey, cfg2.L2Config.RelayerConfig.FinalizeSenderPrivateKey)
 
 		assert.Equal(t, cfg2.DBConfig.DSN, "postgres://test:test@postgresql:5432/scroll?sslmode=disable")
-		assert.Equal(t, hex.EncodeToString(crypto.FromECDSA(cfg2.L1Config.RelayerConfig.GasOracleSenderPrivateKey)), "1616161616161616161616161616161616161616161616161616161616161616")
-		assert.Equal(t, hex.EncodeToString(crypto.FromECDSA(cfg2.L2Config.RelayerConfig.GasOracleSenderPrivateKey)), "1717171717171717171717171717171717171717171717171717171717171717")
-		assert.Equal(t, hex.EncodeToString(crypto.FromECDSA(cfg2.L2Config.RelayerConfig.CommitSenderPrivateKey)), "1818181818181818181818181818181818181818181818181818181818181818")
-		assert.Equal(t, hex.EncodeToString(crypto.FromECDSA(cfg2.L2Config.RelayerConfig.FinalizeSenderPrivateKey)), "1919191919191919191919191919191919191919191919191919191919191919")
+		assert.Equal(t, "1616161616161616161616161616161616161616161616161616161616161616", cfg2.L1Config.RelayerConfig.GasOracleSenderPrivateKey)
+		assert.Equal(t, "1717171717171717171717171717171717171717171717171717171717171717", cfg2.L2Config.RelayerConfig.GasOracleSenderPrivateKey)
+		assert.Equal(t, "1818181818181818181818181818181818181818181818181818181818181818", cfg2.L2Config.RelayerConfig.CommitSenderPrivateKey)
+		assert.Equal(t, "1919191919191919191919191919191919191919191919191919191919191919", cfg2.L2Config.RelayerConfig.FinalizeSenderPrivateKey)
 	})
 }

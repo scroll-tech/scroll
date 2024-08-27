@@ -1,12 +1,7 @@
 package config
 
 import (
-	"crypto/ecdsa"
-	"encoding/json"
-	"fmt"
-
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/rpc"
 )
 
@@ -60,9 +55,9 @@ type RelayerConfig struct {
 	// L1CommitGasLimitMultiplier multiplier for fallback gas limit in commitBatch txs
 	L1CommitGasLimitMultiplier float64 `json:"l1_commit_gas_limit_multiplier,omitempty"`
 	// The private key of the relayer
-	GasOracleSenderPrivateKey *ecdsa.PrivateKey `json:"-"`
-	CommitSenderPrivateKey    *ecdsa.PrivateKey `json:"-"`
-	FinalizeSenderPrivateKey  *ecdsa.PrivateKey `json:"-"`
+	GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
+	CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
+	FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
 
 	// Indicates if bypass features specific to testing environments are enabled.
 	EnableTestEnvBypassFeatures bool `json:"enable_test_env_bypass_features"`
@@ -88,79 +83,4 @@ type GasOracleConfig struct {
 	CheckCommittedBatchesWindowMinutes int    `json:"check_committed_batches_window_minutes"`
 	L1BaseFeeDefault                   uint64 `json:"l1_base_fee_default"`
 	L1BlobBaseFeeDefault               uint64 `json:"l1_blob_base_fee_default"`
-}
-
-// relayerConfigAlias RelayerConfig alias name
-type relayerConfigAlias RelayerConfig
-
-func convertAndCheck(key string, uniqueAddressesSet map[string]struct{}) (*ecdsa.PrivateKey, error) {
-	if key == "" {
-		return nil, nil
-	}
-
-	privKey, err := crypto.ToECDSA(common.FromHex(key))
-	if err != nil {
-		return nil, err
-	}
-
-	addr := crypto.PubkeyToAddress(privKey.PublicKey).Hex()
-	if _, exists := uniqueAddressesSet[addr]; exists {
-		return nil, fmt.Errorf("detected duplicated address for private key: %s", addr)
-	}
-	uniqueAddressesSet[addr] = struct{}{}
-
-	return privKey, nil
-}
-
-// UnmarshalJSON unmarshal relayer_config struct.
-func (r *RelayerConfig) UnmarshalJSON(input []byte) error {
-	var privateKeysConfig struct {
-		relayerConfigAlias
-		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
-		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
-		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
-	}
-	var err error
-	if err = json.Unmarshal(input, &privateKeysConfig); err != nil {
-		return fmt.Errorf("failed to unmarshal private keys config: %w", err)
-	}
-
-	*r = RelayerConfig(privateKeysConfig.relayerConfigAlias)
-
-	uniqueAddressesSet := make(map[string]struct{})
-
-	r.GasOracleSenderPrivateKey, err = convertAndCheck(privateKeysConfig.GasOracleSenderPrivateKey, uniqueAddressesSet)
-	if err != nil {
-		return fmt.Errorf("error converting and checking gas oracle sender private key: %w", err)
-	}
-
-	r.CommitSenderPrivateKey, err = convertAndCheck(privateKeysConfig.CommitSenderPrivateKey, uniqueAddressesSet)
-	if err != nil {
-		return fmt.Errorf("error converting and checking commit sender private key: %w", err)
-	}
-
-	r.FinalizeSenderPrivateKey, err = convertAndCheck(privateKeysConfig.FinalizeSenderPrivateKey, uniqueAddressesSet)
-	if err != nil {
-		return fmt.Errorf("error converting and checking finalize sender private key: %w", err)
-	}
-
-	return nil
-}
-
-// MarshalJSON marshal RelayerConfig config, transfer private keys.
-func (r *RelayerConfig) MarshalJSON() ([]byte, error) {
-	privateKeysConfig := struct {
-		relayerConfigAlias
-		// The private key of the relayer
-		GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
-		CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
-		FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
-	}{}
-
-	privateKeysConfig.relayerConfigAlias = relayerConfigAlias(*r)
-	privateKeysConfig.GasOracleSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.GasOracleSenderPrivateKey))
-	privateKeysConfig.CommitSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.CommitSenderPrivateKey))
-	privateKeysConfig.FinalizeSenderPrivateKey = common.Bytes2Hex(crypto.FromECDSA(r.FinalizeSenderPrivateKey))
-
-	return json.Marshal(&privateKeysConfig)
 }
