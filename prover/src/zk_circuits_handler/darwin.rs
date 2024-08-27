@@ -11,9 +11,9 @@ use crate::types::{CommonHash, Task};
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
 use prover_darwin::{
-    aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver,
-    BatchProof, BatchProvingTask, BlockTrace, BundleProof, BundleProvingTask, ChunkInfo,
-    ChunkProof, ChunkProvingTask,
+    aggregator::Prover as BatchProver, check_chunk_hashes, common::Prover as CommonProver,
+    zkevm::Prover as ChunkProver, BatchProof, BatchProvingTask, BlockTrace, BundleProof,
+    BundleProvingTask, ChunkInfo, ChunkProof, ChunkProvingTask,
 };
 
 // Only used for debugging.
@@ -39,8 +39,8 @@ fn get_block_number(block_trace: &BlockTrace) -> Option<u64> {
 
 #[derive(Default)]
 pub struct DarwinHandler {
-    chunk_prover: Option<RefCell<ChunkProver>>,
-    batch_prover: Option<RefCell<BatchProver>>,
+    chunk_prover: Option<RefCell<ChunkProver<'static>>>,
+    batch_prover: Option<RefCell<BatchProver<'static>>>,
 
     geth_client: Option<Rc<RefCell<GethClient>>>,
 }
@@ -54,13 +54,29 @@ impl DarwinHandler {
     ) -> Result<Self> {
         match prover_type {
             ProverType::Chunk => Ok(Self {
-                chunk_prover: Some(RefCell::new(ChunkProver::from_dirs(params_dir, assets_dir))),
+                chunk_prover: {
+                    let degrees = prover_darwin::config::ZKEVM_DEGREES.clone();
+                    let params_map = super::common::get_params_map(|| {
+                        CommonProver::load_params_map(params_dir, &degrees)
+                    });
+                    Some(RefCell::new(ChunkProver::from_params_and_assets(
+                        params_map, assets_dir,
+                    )))
+                },
                 batch_prover: None,
                 geth_client,
             }),
 
             ProverType::Batch => Ok(Self {
-                batch_prover: Some(RefCell::new(BatchProver::from_dirs(params_dir, assets_dir))),
+                batch_prover: {
+                    let degrees = prover_darwin::config::AGG_DEGREES.clone();
+                    let params_map = super::common::get_params_map(|| {
+                        CommonProver::load_params_map(params_dir, &degrees)
+                    });
+                    Some(RefCell::new(BatchProver::from_params_and_assets(
+                        params_map, assets_dir,
+                    )))
+                },
                 chunk_prover: None,
                 geth_client,
             }),
