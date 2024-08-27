@@ -52,11 +52,18 @@ impl DarwinV2Handler {
         assets_dir: &str,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Result<Self> {
+        let class_name = std::intrinsics::type_name::<Self>();
         match prover_type {
             ProverType::Chunk => Ok(Self {
                 chunk_prover: {
                     let degrees = prover_darwin_v2::config::ZKEVM_DEGREES.clone();
                     let params_map = super::common::get_params_map(|| {
+                        log::info!(
+                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
+                            class_name,
+                            prover_type,
+                            degrees
+                        );
                         CommonProver::load_params_map(params_dir, &degrees)
                     });
                     Some(RefCell::new(ChunkProver::from_params_and_assets(
@@ -71,6 +78,12 @@ impl DarwinV2Handler {
                 batch_prover: {
                     let degrees = prover_darwin_v2::config::AGG_DEGREES.clone();
                     let params_map = super::common::get_params_map(|| {
+                        log::info!(
+                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
+                            class_name,
+                            prover_type,
+                            degrees
+                        );
                         CommonProver::load_params_map(params_dir, &degrees)
                     });
                     Some(RefCell::new(BatchProver::from_params_and_assets(
