@@ -30,18 +30,18 @@ func TestFFI(t *testing.T) {
 
 	cfg := &config.VerifierConfig{
 		MockMode:     false,
-		LowVersionCircuit: &CircuitConfig {
+		LowVersionCircuit: &config.CircuitConfig {
 			ParamsPath      : *paramsPath,
 			AssetsPath      : *assetsPathLo,
-			ForkName      :  "darwin"
-			MinProverVersion: ""
-		}
-		HighVersionCircuit: &CircuitConfig {
+			ForkName      :  "darwin",
+			MinProverVersion: "",
+		},
+		HighVersionCircuit: &config.CircuitConfig {
 			ParamsPath      : *paramsPath,
 			AssetsPath      : *assetsPathHi,
-			ForkName        : "darwinV2"
-			MinProverVersion: ""
-		}
+			ForkName        : "darwinV2",
+			MinProverVersion: "",
+		},
 	}
 
 	v, err := NewVerifier(cfg)
