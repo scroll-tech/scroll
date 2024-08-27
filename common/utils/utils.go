@@ -10,15 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/modern-go/reflect2"
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/core"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 )
 
@@ -108,19 +105,6 @@ func OverrideConfigWithEnv(cfg interface{}, prefix string) error {
 			tag = strings.ToLower(field.Name)
 		}
 
-		// This is a private key field, we should handle it specially
-		if tag == "-" {
-			envKey := prefix + "_" + strings.ToUpper(camelToUnderscore(field.Name))
-			if envValue, exists := os.LookupEnv(envKey); exists {
-				log.Info("Overriding private key with env var", "key", envKey)
-				err := setField(fieldValue, envValue)
-				if err != nil {
-					return err
-				}
-			}
-			continue
-		}
-
 		envKey := prefix + "_" + strings.ToUpper(tag)
 
 		switch fieldValue.Kind() {
@@ -179,29 +163,8 @@ func setField(field reflect.Value, value string) error {
 			return err
 		}
 		field.SetBool(boolValue)
-	case reflect.Ptr:
-		if field.Type().Elem().Kind() == reflect.Struct && field.Type().Elem().Name() == "PrivateKey" {
-			ptrValue, err := crypto.ToECDSA(common.FromHex(value))
-			if err != nil {
-				return fmt.Errorf("failed to convert to ecdsa.PrivateKey: %w", err)
-			}
-			field.Set(reflect.ValueOf(ptrValue))
-		} else {
-			return fmt.Errorf("unsupported struct type: %v", field.Type())
-		}
 	default:
 		return fmt.Errorf("unsupported type: %v", field.Kind())
 	}
 	return nil
-}
-
-// camelToUnderscore convert camel case tring to under score case string
-func camelToUnderscore(str string) string {
-	re := regexp.MustCompile("[A-Z]")
-
-	result := re.ReplaceAllStringFunc(str, func(s string) string {
-		return "_" + strings.ToLower(s)
-	})
-
-	return result[1:]
 }
