@@ -2,13 +2,13 @@ use super::{coordinator_client::ProofStatusNotOKError, prover::Prover, task_cach
 use anyhow::{Context, Result};
 use std::rc::Rc;
 
-pub struct TaskProcessor<'a> {
-    pub prover: &'a Prover<'a>,
+pub struct TaskProcessor<'a, 'b> {
+    pub prover: &'a Prover<'b>,
     pub task_cache: Rc<TaskCache>,
 }
 
-impl<'a> TaskProcessor<'a> {
-    pub fn new(prover: &'a Prover<'a>, task_cache: Rc<TaskCache>) -> Self {
+impl<'a, 'b> TaskProcessor<'a, 'b> {
+    pub fn new(prover: &'a Prover<'b>, task_cache: Rc<TaskCache>) -> Self {
         TaskProcessor { prover, task_cache }
     }
 
