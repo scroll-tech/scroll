@@ -1,4 +1,5 @@
 #![feature(lazy_cell)]
+#![feature(core_intrinsics)]
 
 mod config;
 mod coordinator_client;
