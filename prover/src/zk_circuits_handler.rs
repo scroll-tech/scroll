@@ -128,12 +128,7 @@ impl<'a, 'b> CircuitsHandlerProvider<'a, 'b> {
         }
     }
 
-    pub fn init_vks(
-        &self,
-        prover_type: ProverType,
-        config: &'a Config,
-        geth_client: Option<Rc<RefCell<GethClient>>>,
-    ) -> Vec<String> {
+    pub fn init_vks(&self, prover_type: ProverType, config: &'a Config) -> Vec<String> {
         [
             &config.low_version_circuit.hard_fork_name,
             &config.high_version_circuit.hard_fork_name,

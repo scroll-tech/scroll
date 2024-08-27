@@ -50,7 +50,7 @@ impl<'a> Prover<'a> {
             CircuitsHandlerProvider::new(prover_type, config, params_map, geth_client.clone())
                 .context("failed to create circuits handler provider")?;
 
-        let vks = provider.init_vks(prover_type, config, geth_client.clone());
+        let vks = provider.init_vks(prover_type, config);
 
         let key_signer = Rc::new(KeySigner::new(keystore_path, keystore_password)?);
         let coordinator_client =
