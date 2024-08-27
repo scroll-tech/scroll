@@ -1,24 +1,24 @@
 use super::{ProofVerifier, TaskType};
 
 use anyhow::Result;
+use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
 
 use crate::utils::panic_catch;
 use prover_v5::{
     aggregator::Verifier as AggVerifier, zkevm::Verifier, BatchProof, BundleProof, ChunkProof,
 };
-use std::env;
+use std::{collections::BTreeMap, env};
 
-pub struct DarwinV2Verifier {
-    verifier: Verifier,
-    agg_verifier: AggVerifier,
+pub struct DarwinV2Verifier<'params> {
+    verifier: Verifier<'params>,
+    agg_verifier: AggVerifier<'params>,
 }
 
-impl DarwinV2Verifier {
-    pub fn new(params_dir: &str, assets_dir: &str) -> Self {
+impl<'params> DarwinV2Verifier<'params> {
+    pub fn new(params_map: &'params BTreeMap<u32, ParamsKZG<Bn256>>, assets_dir: &str) -> Self {
         env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
-        let verifier = Verifier::from_dirs(params_dir, assets_dir);
-
-        let agg_verifier = AggVerifier::from_dirs(params_dir, assets_dir);
+        let verifier = Verifier::from_params_and_assets(params_map, assets_dir);
+        let agg_verifier = AggVerifier::from_params_and_assets(params_map, assets_dir);
 
         Self {
             verifier,
@@ -27,7 +27,7 @@ impl DarwinV2Verifier {
     }
 }
 
-impl ProofVerifier for DarwinV2Verifier {
+impl<'params> ProofVerifier for DarwinV2Verifier<'params> {
     fn verify(&self, task_type: super::TaskType, proof: Vec<u8>) -> Result<bool> {
         let result = panic_catch(|| match task_type {
             TaskType::Chunk => {
