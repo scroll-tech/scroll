@@ -17,7 +17,8 @@ RUN --mount=target=. \
 FROM ubuntu:20.04
 
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
-
+RUN apk update && apk add ca-certificates
+RUN update-ca-certificates
 COPY --from=builder /bin/bridgehistoryapi-fetcher /bin/
 WORKDIR /app
 ENTRYPOINT ["bridgehistoryapi-fetcher"]
