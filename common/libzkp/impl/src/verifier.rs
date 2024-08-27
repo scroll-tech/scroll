@@ -44,12 +44,15 @@ static mut PARAMS_MAP: OnceCell<BTreeMap<u32, ParamsKZG<Bn256>>> = OnceCell::new
 pub fn init(config: VerifierConfig) {
     let low_conf = config.low_version_circuit;
 
-    // params should be shared between low and high
-    let mut params_map = BTreeMap::new();
-    for degree in [
+    std::env::set_var("SCROLL_PROVER_ASSETS_DIR", &low_conf.assets_path);
+    let params_degrees = [
         *prover_v4::config::LAYER2_DEGREE,
         *prover_v4::config::LAYER4_DEGREE,
-    ] {
+    ];
+
+    // params should be shared between low and high
+    let mut params_map = BTreeMap::new();
+    for degree in params_degrees {
         if let std::collections::btree_map::Entry::Vacant(e) = params_map.entry(degree) {
             match load_params(&low_conf.params_path, degree, None) {
                 Ok(params) => {
