@@ -4,11 +4,12 @@ use crate::{
     types::{ProverType, TaskType},
 };
 use anyhow::{bail, Context, Ok, Result};
+use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
 use once_cell::sync::Lazy;
 use serde::Deserialize;
 
 use crate::types::{CommonHash, Task};
-use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
+use std::{cell::RefCell, cmp::Ordering, collections::BTreeMap, env, rc::Rc};
 
 use prover_darwin::{
     aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver,
@@ -38,29 +39,33 @@ fn get_block_number(block_trace: &BlockTrace) -> Option<u64> {
 }
 
 #[derive(Default)]
-pub struct DarwinHandler {
-    chunk_prover: Option<RefCell<ChunkProver>>,
-    batch_prover: Option<RefCell<BatchProver>>,
+pub struct DarwinHandler<'a> {
+    chunk_prover: Option<RefCell<ChunkProver<'a>>>,
+    batch_prover: Option<RefCell<BatchProver<'a>>>,
 
     geth_client: Option<Rc<RefCell<GethClient>>>,
 }
 
-impl DarwinHandler {
+impl<'a> DarwinHandler<'a> {
     pub fn new(
         prover_type: ProverType,
-        params_dir: &str,
+        params_map: &'a BTreeMap<u32, ParamsKZG<Bn256>>,
         assets_dir: &str,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Result<Self> {
         match prover_type {
             ProverType::Chunk => Ok(Self {
-                chunk_prover: Some(RefCell::new(ChunkProver::from_dirs(params_dir, assets_dir))),
+                chunk_prover: Some(RefCell::new(ChunkProver::from_params_and_assets(
+                    params_map, assets_dir,
+                ))),
                 batch_prover: None,
                 geth_client,
             }),
 
             ProverType::Batch => Ok(Self {
-                batch_prover: Some(RefCell::new(BatchProver::from_dirs(params_dir, assets_dir))),
+                batch_prover: Some(RefCell::new(BatchProver::from_params_and_assets(
+                    params_map, assets_dir,
+                ))),
                 chunk_prover: None,
                 geth_client,
             }),
@@ -207,7 +212,7 @@ impl DarwinHandler {
     }
 }
 
-impl CircuitsHandler for DarwinHandler {
+impl<'a> CircuitsHandler for DarwinHandler<'a> {
     fn get_vk(&self, task_type: TaskType) -> Option<Vec<u8>> {
         match task_type {
             TaskType::Chunk => self
@@ -277,8 +282,14 @@ mod tests {
 
     #[test]
     fn test_circuits() -> Result<()> {
-        let chunk_handler =
-            DarwinHandler::new(ProverType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let degrees: Vec<u32> = prover_darwin_v2::config::ZKEVM_DEGREES
+            .iter()
+            .copied()
+            .chain(prover_darwin_v2::config::AGG_DEGREES.iter().copied())
+            .collect();
+        let params_map = prover_darwin_v2::common::Prover::load_params_map(params_dir, &degrees);
+
+        let chunk_handler = DarwinHandler::new(ProverType::Chunk, &params_map, &ASSETS_PATH, None)?;
 
         let chunk_vk = chunk_handler.get_vk(TaskType::Chunk).unwrap();
 

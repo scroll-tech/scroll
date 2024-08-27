@@ -3,8 +3,8 @@ use anyhow::{Context, Result};
 use std::rc::Rc;
 
 pub struct TaskProcessor<'a> {
-    prover: &'a Prover<'a>,
-    task_cache: Rc<TaskCache>,
+    pub prover: &'a Prover<'a>,
+    pub task_cache: Rc<TaskCache>,
 }
 
 impl<'a> TaskProcessor<'a> {

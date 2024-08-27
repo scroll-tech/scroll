@@ -54,13 +54,23 @@ fn start() -> Result<()> {
         std::process::exit(-2);
     }
 
+    let degrees: Vec<u32> = prover_darwin_v2::config::ZKEVM_DEGREES
+        .iter()
+        .copied()
+        .chain(prover_darwin_v2::config::AGG_DEGREES.iter().copied())
+        .collect();
+    let params_map = prover_darwin_v2::common::Prover::load_params_map(
+        &config.high_version_circuit.params_path,
+        &degrees,
+    );
+
     let task_cache = Rc::new(TaskCache::new(&config.db_path)?);
 
     let coordinator_listener = Box::new(ClearCacheCoordinatorListener {
         task_cache: task_cache.clone(),
     });
 
-    let prover = Prover::new(&config, coordinator_listener)?;
+    let prover = Prover::new(&config, &params_map, coordinator_listener)?;
 
     log::info!(
         "prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",
@@ -71,7 +81,6 @@ fn start() -> Result<()> {
     );
 
     let task_processor = TaskProcessor::new(&prover, task_cache);
-
     task_processor.start();
 
     Ok(())

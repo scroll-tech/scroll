@@ -12,19 +12,24 @@ use crate::{
     utils::get_task_types,
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
 };
+use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
 
 use super::types::{ProofDetail, Task};
 
 pub struct Prover<'a> {
     config: &'a Config,
     key_signer: Rc<KeySigner>,
-    circuits_handler_provider: RefCell<CircuitsHandlerProvider<'a>>,
+    circuits_handler_provider: RefCell<CircuitsHandlerProvider<'a, 'a>>,
     coordinator_client: RefCell<CoordinatorClient<'a>>,
     geth_client: Option<Rc<RefCell<GethClient>>>,
 }
 
 impl<'a> Prover<'a> {
-    pub fn new(config: &'a Config, coordinator_listener: Box<dyn Listener>) -> Result<Self> {
+    pub fn new(
+        config: &'a Config,
+        params_map: &'a std::collections::BTreeMap<u32, ParamsKZG<Bn256>>,
+        coordinator_listener: Box<dyn Listener>,
+    ) -> Result<Self> {
         let prover_type = config.prover_type;
         let keystore_path = &config.keystore_path;
         let keystore_password = &config.keystore_password;
@@ -41,8 +46,9 @@ impl<'a> Prover<'a> {
             None
         };
 
-        let provider = CircuitsHandlerProvider::new(prover_type, config, geth_client.clone())
-            .context("failed to create circuits handler provider")?;
+        let provider =
+            CircuitsHandlerProvider::new(prover_type, config, params_map, geth_client.clone())
+                .context("failed to create circuits handler provider")?;
 
         let vks = provider.init_vks(prover_type, config, geth_client.clone());
 
@@ -97,7 +103,7 @@ impl<'a> Prover<'a> {
 
     pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
         log::info!("[prover] start to prove_task, task id: {}", task.id);
-        let handler: Rc<Box<dyn CircuitsHandler>> = self
+        let handler: Rc<Box<dyn CircuitsHandler + 'a>> = self
             .circuits_handler_provider
             .borrow_mut()
             .get_circuits_handler(&task.hard_fork_name)
@@ -105,7 +111,11 @@ impl<'a> Prover<'a> {
         self.do_prove(task, handler)
     }
 
-    fn do_prove(&self, task: &Task, handler: Rc<Box<dyn CircuitsHandler>>) -> Result<ProofDetail> {
+    fn do_prove(
+        &self,
+        task: &Task,
+        handler: Rc<Box<dyn CircuitsHandler + 'a>>,
+    ) -> Result<ProofDetail> {
         let mut proof_detail = ProofDetail {
             id: task.id.clone(),
             proof_type: task.task_type,

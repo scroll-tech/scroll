@@ -10,7 +10,13 @@ use crate::{
 use anyhow::{bail, Result};
 use darwin::DarwinHandler;
 use darwin_v2::DarwinV2Handler;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    rc::Rc,
+    sync::RwLock,
+};
 
 type HardForkName = String;
 
@@ -27,81 +33,64 @@ pub trait CircuitsHandler {
 }
 
 type CircuitsHandlerBuilder = fn(
+    params_map: &BTreeMap<u32, ParamsKZG<Bn256>>,
     prover_type: ProverType,
     config: &Config,
     geth_client: Option<Rc<RefCell<GethClient>>>,
 ) -> Result<Box<dyn CircuitsHandler>>;
 
-pub struct CircuitsHandlerProvider<'a> {
+pub struct CircuitsHandlerProvider<'a, 'b> {
     prover_type: ProverType,
     config: &'a Config,
     geth_client: Option<Rc<RefCell<GethClient>>>,
-    circuits_handler_builder_map: HashMap<HardForkName, CircuitsHandlerBuilder>,
-
+    //circuits_handler_builder_map: HashMap<HardForkName, CircuitsHandlerBuilder>,
+    params_map: &'b BTreeMap<u32, ParamsKZG<Bn256>>,
     current_fork_name: Option<HardForkName>,
-    current_circuit: Option<Rc<Box<dyn CircuitsHandler>>>,
+    current_circuit: Option<Rc<Box<dyn CircuitsHandler + 'b>>>,
 }
 
-impl<'a> CircuitsHandlerProvider<'a> {
+impl<'a, 'b> CircuitsHandlerProvider<'a, 'b> {
+    fn handler_builder(&self) -> Result<Box<dyn CircuitsHandler + 'b>> {
+        log::info!(
+            "now init zk circuits handler, hard_fork_name: {}",
+            &self.config.low_version_circuit.hard_fork_name
+        );
+        AssetsDirEnvConfig::enable_first();
+        DarwinHandler::new(
+            self.prover_type,
+            self.params_map,
+            &self.config.low_version_circuit.assets_path,
+            self.geth_client.clone(),
+        )
+        .map(move |handler| Box::new(handler) as Box<dyn CircuitsHandler + 'b>)
+    }
+
+    fn next_handler_builder(&self) -> Result<Box<dyn CircuitsHandler + 'b>> {
+        log::info!(
+            "now init zk circuits handler, hard_fork_name: {}",
+            &self.config.high_version_circuit.hard_fork_name
+        );
+        AssetsDirEnvConfig::enable_second();
+        DarwinV2Handler::new(
+            self.prover_type,
+            self.params_map,
+            &self.config.high_version_circuit.assets_path,
+            self.geth_client.clone(),
+        )
+        .map(move |handler| Box::new(handler) as Box<dyn CircuitsHandler + 'b>)
+    }
+
     pub fn new(
         prover_type: ProverType,
         config: &'a Config,
+        params_map: &'b BTreeMap<u32, ParamsKZG<Bn256>>,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Result<Self> {
-        let mut m: HashMap<HardForkName, CircuitsHandlerBuilder> = HashMap::new();
-
-        fn handler_builder(
-            prover_type: ProverType,
-            config: &Config,
-            geth_client: Option<Rc<RefCell<GethClient>>>,
-        ) -> Result<Box<dyn CircuitsHandler>> {
-            log::info!(
-                "now init zk circuits handler, hard_fork_name: {}",
-                &config.low_version_circuit.hard_fork_name
-            );
-            AssetsDirEnvConfig::enable_first();
-            DarwinHandler::new(
-                prover_type,
-                &config.low_version_circuit.params_path,
-                &config.low_version_circuit.assets_path,
-                geth_client,
-            )
-            .map(|handler| Box::new(handler) as Box<dyn CircuitsHandler>)
-        }
-        m.insert(
-            config.low_version_circuit.hard_fork_name.clone(),
-            handler_builder,
-        );
-
-        fn next_handler_builder(
-            prover_type: ProverType,
-            config: &Config,
-            geth_client: Option<Rc<RefCell<GethClient>>>,
-        ) -> Result<Box<dyn CircuitsHandler>> {
-            log::info!(
-                "now init zk circuits handler, hard_fork_name: {}",
-                &config.high_version_circuit.hard_fork_name
-            );
-            AssetsDirEnvConfig::enable_second();
-            DarwinV2Handler::new(
-                prover_type,
-                &config.high_version_circuit.params_path,
-                &config.high_version_circuit.assets_path,
-                geth_client,
-            )
-            .map(|handler| Box::new(handler) as Box<dyn CircuitsHandler>)
-        }
-
-        m.insert(
-            config.high_version_circuit.hard_fork_name.clone(),
-            next_handler_builder,
-        );
-
         let provider = CircuitsHandlerProvider {
             prover_type,
             config,
             geth_client,
-            circuits_handler_builder_map: m,
+            params_map,
             current_fork_name: None,
             current_circuit: None,
         };
@@ -112,7 +101,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
     pub fn get_circuits_handler(
         &mut self,
         hard_fork_name: &String,
-    ) -> Result<Rc<Box<dyn CircuitsHandler>>> {
+    ) -> Result<Rc<Box<dyn CircuitsHandler + 'b>>> {
         match &self.current_fork_name {
             Some(fork_name) if fork_name == hard_fork_name => {
                 log::info!("get circuits handler from cache");
@@ -126,17 +115,28 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 log::info!(
                     "failed to get circuits handler from cache, create a new one: {hard_fork_name}"
                 );
-                if let Some(builder) = self.circuits_handler_builder_map.get(hard_fork_name) {
-                    log::info!("building circuits handler for {hard_fork_name}");
-                    let handler = builder(self.prover_type, self.config, self.geth_client.clone())
-                        .expect("failed to build circuits handler");
-                    self.current_fork_name = Some(hard_fork_name.clone());
-                    let rc_handler = Rc::new(handler);
-                    self.current_circuit = Some(rc_handler.clone());
-                    Ok(rc_handler)
-                } else {
+                if ![
+                    &self.config.high_version_circuit.hard_fork_name,
+                    &self.config.low_version_circuit.hard_fork_name,
+                ]
+                .contains(&hard_fork_name)
+                {
                     bail!("missing builder, there must be something wrong.")
                 }
+
+                log::info!("building circuits handler for {hard_fork_name}");
+                self.current_fork_name = Some(hard_fork_name.clone());
+                let handler = if hard_fork_name == &self.config.high_version_circuit.hard_fork_name
+                {
+                    self.handler_builder()
+                        .expect("failed to build circuits handler")
+                } else {
+                    self.next_handler_builder()
+                        .expect("failed to build circuits handler")
+                };
+                let rc_handler = Rc::new(handler);
+                self.current_circuit = Some(rc_handler.clone());
+                Ok(rc_handler)
             }
         }
     }
@@ -147,27 +147,35 @@ impl<'a> CircuitsHandlerProvider<'a> {
         config: &'a Config,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Vec<String> {
-        self.circuits_handler_builder_map
-            .iter()
-            .flat_map(|(hard_fork_name, build)| {
-                let handler = build(prover_type, config, geth_client.clone())
-                    .expect("failed to build circuits handler");
+        [
+            &config.low_version_circuit.hard_fork_name,
+            &config.high_version_circuit.hard_fork_name,
+        ]
+        .into_iter()
+        .flat_map(|hard_fork_name| {
+            let handler = if hard_fork_name == &self.config.high_version_circuit.hard_fork_name {
+                self.handler_builder()
+                    .expect("failed to build circuits handler")
+            } else {
+                self.next_handler_builder()
+                    .expect("failed to build circuits handler")
+            };
 
-                get_task_types(prover_type)
-                    .into_iter()
-                    .map(|task_type| {
-                        let vk = handler
-                            .get_vk(task_type)
-                            .map_or("".to_string(), utils::encode_vk);
-                        log::info!(
-                            "vk for {hard_fork_name}, is {vk}, task_type: {:?}",
-                            task_type
-                        );
-                        vk
-                    })
-                    .filter(|vk| !vk.is_empty())
-                    .collect::<Vec<String>>()
-            })
-            .collect::<Vec<String>>()
+            get_task_types(prover_type)
+                .into_iter()
+                .map(|task_type| {
+                    let vk = handler
+                        .get_vk(task_type)
+                        .map_or("".to_string(), utils::encode_vk);
+                    log::info!(
+                        "vk for {hard_fork_name}, is {vk}, task_type: {:?}",
+                        task_type
+                    );
+                    vk
+                })
+                .filter(|vk| !vk.is_empty())
+                .collect::<Vec<String>>()
+        })
+        .collect::<Vec<String>>()
     }
 }
