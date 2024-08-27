@@ -11,11 +11,7 @@ use anyhow::{bail, Result};
 use darwin::DarwinHandler;
 use darwin_v2::DarwinV2Handler;
 use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
-use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    rc::Rc,
-};
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
 type HardForkName = String;
 
