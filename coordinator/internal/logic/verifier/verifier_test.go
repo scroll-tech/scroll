@@ -29,17 +29,17 @@ func TestFFI(t *testing.T) {
 	as := assert.New(t)
 
 	cfg := &config.VerifierConfig{
-		MockMode:     false,
-		LowVersionCircuit: &config.CircuitConfig {
-			ParamsPath      : *paramsPath,
-			AssetsPath      : *assetsPathLo,
-			ForkName      :  "darwin",
+		MockMode: false,
+		LowVersionCircuit: &config.CircuitConfig{
+			ParamsPath:       *paramsPath,
+			AssetsPath:       *assetsPathLo,
+			ForkName:         "darwin",
 			MinProverVersion: "",
 		},
-		HighVersionCircuit: &config.CircuitConfig {
-			ParamsPath      : *paramsPath,
-			AssetsPath      : *assetsPathHi,
-			ForkName        : "darwinV2",
+		HighVersionCircuit: &config.CircuitConfig{
+			ParamsPath:       *paramsPath,
+			AssetsPath:       *assetsPathHi,
+			ForkName:         "darwinV2",
 			MinProverVersion: "",
 		},
 	}
