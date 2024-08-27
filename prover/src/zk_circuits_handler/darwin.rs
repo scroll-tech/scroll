@@ -287,7 +287,7 @@ mod tests {
             .copied()
             .chain(prover_darwin_v2::config::AGG_DEGREES.iter().copied())
             .collect();
-        let params_map = prover_darwin_v2::common::Prover::load_params_map(params_dir, &degrees);
+        let params_map = prover_darwin_v2::common::Prover::load_params_map(&PARAMS_PATH, &degrees);
 
         let chunk_handler = DarwinHandler::new(ProverType::Chunk, &params_map, &ASSETS_PATH, None)?;
 
@@ -313,8 +313,7 @@ mod tests {
             chunk_proofs.push(chunk_proof);
         }
 
-        let batch_handler =
-            DarwinHandler::new(ProverType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let batch_handler = DarwinHandler::new(ProverType::Batch, &params_map, &ASSETS_PATH, None)?;
         let batch_vk = batch_handler.get_vk(TaskType::Batch).unwrap();
         check_vk(TaskType::Batch, batch_vk, "batch vk must be available");
         let batch_task_detail = make_batch_task_detail(chunk_infos, chunk_proofs);
