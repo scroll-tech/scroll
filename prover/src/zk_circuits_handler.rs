@@ -13,9 +13,8 @@ use darwin_v2::DarwinV2Handler;
 use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     rc::Rc,
-    sync::RwLock,
 };
 
 type HardForkName = String;
@@ -32,18 +31,10 @@ pub trait CircuitsHandler {
     fn get_proof_data(&self, task_type: TaskType, task: &Task) -> Result<String>;
 }
 
-type CircuitsHandlerBuilder = fn(
-    params_map: &BTreeMap<u32, ParamsKZG<Bn256>>,
-    prover_type: ProverType,
-    config: &Config,
-    geth_client: Option<Rc<RefCell<GethClient>>>,
-) -> Result<Box<dyn CircuitsHandler>>;
-
 pub struct CircuitsHandlerProvider<'a, 'b> {
     prover_type: ProverType,
     config: &'a Config,
     geth_client: Option<Rc<RefCell<GethClient>>>,
-    //circuits_handler_builder_map: HashMap<HardForkName, CircuitsHandlerBuilder>,
     params_map: &'b BTreeMap<u32, ParamsKZG<Bn256>>,
     current_fork_name: Option<HardForkName>,
     current_circuit: Option<Rc<Box<dyn CircuitsHandler + 'b>>>,
