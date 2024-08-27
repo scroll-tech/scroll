@@ -17,7 +17,6 @@ RUN --mount=target=. \
 FROM ubuntu:20.04
 
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
-
 COPY --from=builder /bin/bridgehistoryapi-api /bin/
 WORKDIR /app
 ENTRYPOINT ["bridgehistoryapi-api"]
