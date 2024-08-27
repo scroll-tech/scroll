@@ -72,10 +72,8 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 	}
 
 	configStr := C.CString(string(configBytes))
-	assetsPathHiStr := C.CString(cfg.HighVersionCircuit.AssetsPath)
 	defer func() {
 		C.free(unsafe.Pointer(configStr))
-		C.free(unsafe.Pointer(assetsPathHiStr))
 	}()
 
 	C.init(configStr)
