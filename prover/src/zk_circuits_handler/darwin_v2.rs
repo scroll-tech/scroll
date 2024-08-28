@@ -46,54 +46,66 @@ pub struct DarwinV2Handler {
 }
 
 impl DarwinV2Handler {
+    pub fn new_multi(
+        prover_types: Vec<ProverType>,
+        params_dir: &str,
+        assets_dir: &str,
+        geth_client: Option<Rc<RefCell<GethClient>>>,
+    ) -> Result<Self> {
+        let class_name = std::intrinsics::type_name::<Self>();
+        let prover_types_set = prover_types
+            .into_iter()
+            .collect::<std::collections::HashSet<ProverType>>();
+        let mut handler = Self {
+            batch_prover: None,
+            chunk_prover: None,
+            geth_client,
+        };
+        for prover_type in prover_types_set {
+            match prover_type {
+                ProverType::Chunk => {
+                    let degrees = prover_darwin::config::ZKEVM_DEGREES.clone();
+                    let params_map = super::common::get_params_map(|| {
+                        log::info!(
+                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
+                            class_name,
+                            prover_type,
+                            degrees
+                        );
+                        CommonProver::load_params_map(params_dir, &degrees)
+                    });
+                    handler.chunk_prover = Some(RefCell::new(ChunkProver::from_params_and_assets(
+                        params_map, assets_dir,
+                    )));
+                }
+
+                ProverType::Batch => {
+                    let degrees = prover_darwin::config::AGG_DEGREES.clone();
+                    let params_map = super::common::get_params_map(|| {
+                        log::info!(
+                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
+                            class_name,
+                            prover_type,
+                            degrees
+                        );
+                        CommonProver::load_params_map(params_dir, &degrees)
+                    });
+                    handler.batch_prover = Some(RefCell::new(BatchProver::from_params_and_assets(
+                        params_map, assets_dir,
+                    )))
+                }
+            }
+        }
+        Ok(handler)
+    }
+
     pub fn new(
         prover_type: ProverType,
         params_dir: &str,
         assets_dir: &str,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Result<Self> {
-        let class_name = std::intrinsics::type_name::<Self>();
-        match prover_type {
-            ProverType::Chunk => Ok(Self {
-                chunk_prover: {
-                    let degrees = prover_darwin_v2::config::ZKEVM_DEGREES.clone();
-                    let params_map = super::common::get_params_map(|| {
-                        log::info!(
-                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
-                            class_name,
-                            prover_type,
-                            degrees
-                        );
-                        CommonProver::load_params_map(params_dir, &degrees)
-                    });
-                    Some(RefCell::new(ChunkProver::from_params_and_assets(
-                        params_map, assets_dir,
-                    )))
-                },
-                batch_prover: None,
-                geth_client,
-            }),
-
-            ProverType::Batch => Ok(Self {
-                batch_prover: {
-                    let degrees = prover_darwin_v2::config::AGG_DEGREES.clone();
-                    let params_map = super::common::get_params_map(|| {
-                        log::info!(
-                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
-                            class_name,
-                            prover_type,
-                            degrees
-                        );
-                        CommonProver::load_params_map(params_dir, &degrees)
-                    });
-                    Some(RefCell::new(BatchProver::from_params_and_assets(
-                        params_map, assets_dir,
-                    )))
-                },
-                chunk_prover: None,
-                geth_client,
-            }),
-        }
+        Self::new_multi(vec![prover_type], params_dir, assets_dir, geth_client)
     }
 
     fn gen_chunk_proof_raw(&self, chunk_trace: Vec<BlockTrace>) -> Result<ChunkProof> {
@@ -310,9 +322,14 @@ mod tests {
 
     #[test]
     fn test_circuits() -> Result<()> {
-        let chunk_handler =
-            DarwinV2Handler::new(ProverType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let bi_handler = DarwinV2Handler::new_multi(
+            vec![ProverType::Chunk, ProverType::Batch],
+            &PARAMS_PATH,
+            &ASSETS_PATH,
+            None,
+        )?;
 
+        let chunk_handler = bi_handler;
         let chunk_vk = chunk_handler.get_vk(TaskType::Chunk).unwrap();
 
         check_vk(TaskType::Chunk, chunk_vk, "chunk vk must be available");
@@ -336,8 +353,7 @@ mod tests {
             chunk_proofs.push(chunk_proof);
         }
 
-        let batch_handler =
-            DarwinV2Handler::new(ProverType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let batch_handler = chunk_handler;
         let batch_vk = batch_handler.get_vk(TaskType::Batch).unwrap();
         check_vk(TaskType::Batch, batch_vk, "batch vk must be available");
         let batch_task_detail = make_batch_task_detail(chunk_traces, chunk_proofs, None);
