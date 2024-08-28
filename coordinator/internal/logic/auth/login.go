@@ -25,12 +25,12 @@ type LoginLogic struct {
 	batchVKs     map[string]struct{}
 	bundleVks    map[string]struct{}
 
-	proverVersionHardForkMap map[string]string
+	proverVersionHardForkMap map[string][]string
 }
 
 // NewLoginLogic new a LoginLogic
 func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *LoginLogic {
-	proverVersionHardForkMap := make(map[string]string)
+	proverVersionHardForkMap := make(map[string][]string)
 	if version.CheckScrollRepoVersion(cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion, cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion) {
 		log.Error("config file error, low verifier min_prover_version should not more than high verifier min_prover_version",
 			"low verifier min_prover_version", cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion,
@@ -38,8 +38,12 @@ func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *Logi
 		panic("verifier config file error")
 	}
 
-	proverVersionHardForkMap[cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion] = cfg.ProverManager.Verifier.LowVersionCircuit.ForkName
-	proverVersionHardForkMap[cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion] = cfg.ProverManager.Verifier.HighVersionCircuit.ForkName
+	var highHardForks []string
+	highHardForks = append(highHardForks, cfg.ProverManager.Verifier.HighVersionCircuit.ForkName)
+	highHardForks = append(highHardForks, cfg.ProverManager.Verifier.LowVersionCircuit.ForkName)
+	proverVersionHardForkMap[cfg.ProverManager.Verifier.HighVersionCircuit.MinProverVersion] = highHardForks
+
+	proverVersionHardForkMap[cfg.ProverManager.Verifier.LowVersionCircuit.MinProverVersion] = []string{cfg.ProverManager.Verifier.LowVersionCircuit.ForkName}
 
 	return &LoginLogic{
 		cfg:                      cfg,
@@ -113,8 +117,8 @@ func (l *LoginLogic) ProverHardForkName(login *types.LoginParameter) (string, er
 	}
 
 	proverVersion := proverVersionSplits[0]
-	if hardForkName, ok := l.proverVersionHardForkMap[proverVersion]; ok {
-		return hardForkName, nil
+	if hardForkNames, ok := l.proverVersionHardForkMap[proverVersion]; ok {
+		return strings.Join(hardForkNames, ","), nil
 	}
 
 	return "", fmt.Errorf("invalid prover prover_version:%s", login.Message.ProverVersion)

@@ -3,6 +3,7 @@ package provertask
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -49,12 +50,13 @@ type proverTaskContext struct {
 	PublicKey     string
 	ProverName    string
 	ProverVersion string
-	HardForkName  string
+	HardForkNames map[string]struct{}
 }
 
 // checkParameter check the prover task parameter illegal
 func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, error) {
 	var ptc proverTaskContext
+	ptc.HardForkNames = make(map[string]struct{})
 
 	publicKey, publicKeyExist := ctx.Get(coordinatorType.PublicKey)
 	if !publicKeyExist {
@@ -74,11 +76,14 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 	}
 	ptc.ProverVersion = proverVersion.(string)
 
-	hardForkName, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
+	hardForkNamesStr, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
 	if !hardForkNameExist {
 		return nil, errors.New("get hard fork name from context failed")
 	}
-	ptc.HardForkName = hardForkName.(string)
+	hardForkNames := strings.Split(hardForkNamesStr.(string), ",")
+	for _, hardForkName := range hardForkNames {
+		ptc.HardForkNames[hardForkName] = struct{}{}
+	}
 
 	isBlocked, err := b.proverBlockListOrm.IsPublicKeyBlocked(ctx.Copy(), publicKey.(string))
 	if err != nil {

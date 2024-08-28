@@ -115,10 +115,12 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	if hardForkName != taskCtx.HardForkName {
+	if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
 		cp.recoverActiveAttempts(ctx, chunkTask)
-		log.Error("incompatible prover version. requisite hard fork name:%s, prover hard fork name:%s, chunk task_id:%s",
-			hardForkName, taskCtx.HardForkName, "task_id", chunkTask.Hash)
+		log.Error("incompatible prover version",
+			"requisite hard fork name", hardForkName,
+			"prover hard fork name", taskCtx.HardForkNames,
+			"task_id", chunkTask.Hash)
 		return nil, ErrCoordinatorInternalFailure
 	}
 
