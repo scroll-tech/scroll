@@ -61,10 +61,10 @@ impl DarwinHandler {
             chunk_prover: None,
             geth_client,
         };
+        let degrees: Vec<u32> = Self::get_degrees(&prover_types_set);
         for prover_type in prover_types_set {
             match prover_type {
                 ProverType::Chunk => {
-                    let degrees = prover_darwin::config::ZKEVM_DEGREES.clone();
                     let params_map = super::common::get_params_map(|| {
                         log::info!(
                             "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
@@ -80,7 +80,6 @@ impl DarwinHandler {
                 }
 
                 ProverType::Batch => {
-                    let degrees = prover_darwin::config::AGG_DEGREES.clone();
                     let params_map = super::common::get_params_map(|| {
                         log::info!(
                             "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
@@ -97,6 +96,21 @@ impl DarwinHandler {
             }
         }
         Ok(handler)
+    }
+
+    fn get_degrees(prover_types: &std::collections::HashSet<ProverType>) -> Vec<u32> {
+        fn get_degrees_inner(prover_type: &ProverType) -> Vec<u32> {
+            match prover_type {
+                ProverType::Chunk => prover_darwin::config::ZKEVM_DEGREES.clone(),
+                ProverType::Batch => prover_darwin::config::AGG_DEGREES.clone(),
+            }
+        }
+        prover_types
+            .iter()
+            .flat_map(get_degrees_inner)
+            .collect::<std::collections::HashSet<u32>>()
+            .into_iter()
+            .collect()
     }
 
     pub fn new(
