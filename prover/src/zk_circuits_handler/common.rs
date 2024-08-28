@@ -1,5 +1,7 @@
 use std::{collections::BTreeMap, rc::Rc};
 
+use crate::types::ProverType;
+
 use once_cell::sync::OnceCell;
 
 use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
@@ -16,4 +18,16 @@ where
             Rc::new(params_map)
         })
     }
+}
+
+pub fn get_degrees<F>(prover_types: &std::collections::HashSet<ProverType>, f: F) -> Vec<u32>
+where
+    F: FnMut(&ProverType) -> Vec<u32>,
+{
+    prover_types
+        .iter()
+        .flat_map(f)
+        .collect::<std::collections::HashSet<u32>>()
+        .into_iter()
+        .collect()
 }

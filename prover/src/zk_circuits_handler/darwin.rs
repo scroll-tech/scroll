@@ -1,4 +1,4 @@
-use super::CircuitsHandler;
+use super::{common::*, CircuitsHandler};
 use crate::{
     geth_client::GethClient,
     types::{ProverType, TaskType},
@@ -11,9 +11,13 @@ use crate::types::{CommonHash, Task};
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
 use prover_darwin::{
-    aggregator::Prover as BatchProver, check_chunk_hashes, common::Prover as CommonProver,
-    zkevm::Prover as ChunkProver, BatchProof, BatchProvingTask, BlockTrace, BundleProof,
-    BundleProvingTask, ChunkInfo, ChunkProof, ChunkProvingTask,
+    aggregator::Prover as BatchProver,
+    check_chunk_hashes,
+    common::Prover as CommonProver,
+    config::{AGG_DEGREES, ZKEVM_DEGREES},
+    zkevm::Prover as ChunkProver,
+    BatchProof, BatchProvingTask, BlockTrace, BundleProof, BundleProvingTask, ChunkInfo,
+    ChunkProof, ChunkProvingTask,
 };
 
 // Only used for debugging.
@@ -61,8 +65,11 @@ impl DarwinHandler {
             chunk_prover: None,
             geth_client,
         };
-        let degrees: Vec<u32> = Self::get_degrees(&prover_types_set);
-        let params_map = super::common::get_params_map_instance(|| {
+        let degrees: Vec<u32> = get_degrees(&prover_types_set, |prover_type| match prover_type {
+            ProverType::Chunk => ZKEVM_DEGREES.clone(),
+            ProverType::Batch => AGG_DEGREES.clone(),
+        });
+        let params_map = get_params_map_instance(|| {
             log::info!(
                 "calling get_params_map from {}, prover_types: {:?}, degrees: {:?}",
                 class_name,
@@ -86,21 +93,6 @@ impl DarwinHandler {
             }
         }
         Ok(handler)
-    }
-
-    fn get_degrees(prover_types: &std::collections::HashSet<ProverType>) -> Vec<u32> {
-        fn get_degrees_inner(prover_type: &ProverType) -> Vec<u32> {
-            match prover_type {
-                ProverType::Chunk => prover_darwin::config::ZKEVM_DEGREES.clone(),
-                ProverType::Batch => prover_darwin::config::AGG_DEGREES.clone(),
-            }
-        }
-        prover_types
-            .iter()
-            .flat_map(get_degrees_inner)
-            .collect::<std::collections::HashSet<u32>>()
-            .into_iter()
-            .collect()
     }
 
     pub fn new(
