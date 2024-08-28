@@ -15,7 +15,5 @@ RUN --mount=target=. \
 # Pull db_cli into a second stage deploy alpine container
 FROM alpine:latest
 COPY --from=builder /bin/db_cli /bin/
-RUN apk update && apk add ca-certificates
-RUN update-ca-certificates
 WORKDIR /app
 ENTRYPOINT ["db_cli"]
