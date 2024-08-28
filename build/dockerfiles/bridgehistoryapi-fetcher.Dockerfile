@@ -17,7 +17,8 @@ RUN --mount=target=. \
 FROM ubuntu:20.04
 
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
-
+RUN apt update && apt install ca-certificates -y
+RUN update-ca-certificates
 COPY --from=builder /bin/bridgehistoryapi-fetcher /bin/
 WORKDIR /app
 ENTRYPOINT ["bridgehistoryapi-fetcher"]

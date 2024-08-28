@@ -120,12 +120,14 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
-	if hardForkName != taskCtx.HardForkName {
-		bp.recoverActiveAttempts(ctx, batchTask)
-		log.Error("incompatible prover version. requisite hard fork name:%s, prover hard fork name:%s, batch task_id:%s",
-			hardForkName, taskCtx.HardForkName, "task_id", batchTask.Hash)
-		return nil, ErrCoordinatorInternalFailure
-	}
+	//if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
+	//	bp.recoverActiveAttempts(ctx, batchTask)
+	//	log.Error("incompatible prover version",
+	//		"requisite hard fork name", hardForkName,
+	//		"prover hard fork name", taskCtx.HardForkNames,
+	//		"task_id", batchTask.Hash)
+	//	return nil, ErrCoordinatorInternalFailure
+	//}
 
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
