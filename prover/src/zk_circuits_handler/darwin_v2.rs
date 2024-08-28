@@ -62,33 +62,23 @@ impl DarwinV2Handler {
             geth_client,
         };
         let degrees: Vec<u32> = Self::get_degrees(&prover_types_set);
+        let params_map = super::common::get_params_map_instance(|| {
+            log::info!(
+                "calling get_params_map from {}, prover_types: {:?}, degrees: {:?}",
+                class_name,
+                prover_types_set,
+                degrees
+            );
+            CommonProver::load_params_map(params_dir, &degrees)
+        });
         for prover_type in prover_types_set {
             match prover_type {
                 ProverType::Chunk => {
-                    let params_map = super::common::get_params_map(|| {
-                        log::info!(
-                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
-                            class_name,
-                            prover_type,
-                            degrees
-                        );
-                        CommonProver::load_params_map(params_dir, &degrees)
-                    });
                     handler.chunk_prover = Some(RefCell::new(ChunkProver::from_params_and_assets(
                         params_map, assets_dir,
                     )));
                 }
-
                 ProverType::Batch => {
-                    let params_map = super::common::get_params_map(|| {
-                        log::info!(
-                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
-                            class_name,
-                            prover_type,
-                            degrees
-                        );
-                        CommonProver::load_params_map(params_dir, &degrees)
-                    });
                     handler.batch_prover = Some(RefCell::new(BatchProver::from_params_and_assets(
                         params_map, assets_dir,
                     )))
