@@ -1,4 +1,4 @@
-use super::CircuitsHandler;
+use super::{common::*, CircuitsHandler};
 use crate::{
     geth_client::GethClient,
     types::{ProverType, TaskType},
@@ -11,9 +11,13 @@ use crate::types::{CommonHash, Task};
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
 use prover_darwin_v2::{
-    aggregator::Prover as BatchProver, check_chunk_hashes, common::Prover as CommonProver,
-    zkevm::Prover as ChunkProver, BatchProof, BatchProvingTask, BlockTrace, BundleProof,
-    BundleProvingTask, ChunkInfo, ChunkProof, ChunkProvingTask,
+    aggregator::Prover as BatchProver,
+    check_chunk_hashes,
+    common::Prover as CommonProver,
+    config::{AGG_DEGREES, ZKEVM_DEGREES},
+    zkevm::Prover as ChunkProver,
+    BatchProof, BatchProvingTask, BlockTrace, BundleProof, BundleProvingTask, ChunkInfo,
+    ChunkProof, ChunkProvingTask,
 };
 
 // Only used for debugging.
@@ -61,35 +65,27 @@ impl DarwinV2Handler {
             chunk_prover: None,
             geth_client,
         };
+        let degrees: Vec<u32> = get_degrees(&prover_types_set, |prover_type| match prover_type {
+            ProverType::Chunk => ZKEVM_DEGREES.clone(),
+            ProverType::Batch => AGG_DEGREES.clone(),
+        });
+        let params_map = get_params_map_instance(|| {
+            log::info!(
+                "calling get_params_map from {}, prover_types: {:?}, degrees: {:?}",
+                class_name,
+                prover_types_set,
+                degrees
+            );
+            CommonProver::load_params_map(params_dir, &degrees)
+        });
         for prover_type in prover_types_set {
             match prover_type {
                 ProverType::Chunk => {
-                    let degrees = prover_darwin::config::ZKEVM_DEGREES.clone();
-                    let params_map = super::common::get_params_map(|| {
-                        log::info!(
-                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
-                            class_name,
-                            prover_type,
-                            degrees
-                        );
-                        CommonProver::load_params_map(params_dir, &degrees)
-                    });
                     handler.chunk_prover = Some(RefCell::new(ChunkProver::from_params_and_assets(
                         params_map, assets_dir,
                     )));
                 }
-
                 ProverType::Batch => {
-                    let degrees = prover_darwin::config::AGG_DEGREES.clone();
-                    let params_map = super::common::get_params_map(|| {
-                        log::info!(
-                            "calling get_params_map from {}, prover_type: {:?}, degrees: {:?}",
-                            class_name,
-                            prover_type,
-                            degrees
-                        );
-                        CommonProver::load_params_map(params_dir, &degrees)
-                    });
                     handler.batch_prover = Some(RefCell::new(BatchProver::from_params_and_assets(
                         params_map, assets_dir,
                     )))
