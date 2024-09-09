@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
+	"scroll-tech/common/utils"
 )
 
 // DBConfig db config
@@ -25,6 +27,12 @@ func NewConfig(file string) (*DBConfig, error) {
 
 	cfg := &DBConfig{}
 	err = json.Unmarshal(buf, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Override config with environment variables
+	err = utils.OverrideConfigWithEnv(cfg, "SCROLL_ROLLUP_DB_CONFIG")
 	if err != nil {
 		return nil, err
 	}
