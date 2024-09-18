@@ -207,7 +207,8 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 	}
 
 	if len(batch.Chunks) > 0 && len(batch.Chunks[len(batch.Chunks)-1].Blocks) > 0 {
-		lastBlock := batch.Chunks[len(batch.Chunks)-1].Blocks[len(batch.Chunks[len(batch.Chunks)-1].Blocks)-1]
+		lastChunk := batch.Chunks[len(batch.Chunks)-1]
+		lastBlock := lastChunk.Blocks[len(lastChunk.Blocks)-1]
 		p.batchProposeBlockHeight.Set(float64(lastBlock.Header.Number.Uint64()))
 	}
 
