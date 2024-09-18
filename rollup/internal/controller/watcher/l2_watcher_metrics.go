@@ -13,6 +13,8 @@ type l2WatcherMetrics struct {
 	rollupL2BlocksFetchedGap          prometheus.Gauge
 	rollupL2BlockL1CommitCalldataSize prometheus.Gauge
 	fetchNilRowConsumptionBlockTotal  prometheus.Counter
+
+	rollupL2WatcherSyncThroughput prometheus.Counter
 }
 
 var (
@@ -42,6 +44,10 @@ func initL2WatcherMetrics(reg prometheus.Registerer) *l2WatcherMetrics {
 			fetchNilRowConsumptionBlockTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_l2_watcher_fetch_nil_row_consumption_block_total",
 				Help: "The total number of occurrences where a fetched block has nil RowConsumption",
+			}),
+			rollupL2WatcherSyncThroughput: prometheus.NewCounter(prometheus.CounterOpts{
+				Name: "rollup_l2_watcher_sync_throughput",
+				Help: "The cumulative gas used in blocks that L2 watcher sync",
 			}),
 		}
 	})

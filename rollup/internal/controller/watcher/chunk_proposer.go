@@ -56,6 +56,9 @@ type ChunkProposer struct {
 
 	// total number of times that chunk proposer stops early due to compressed data compatibility breach
 	compressedDataCompatibilityBreachTotal prometheus.Counter
+
+	chunkProposeBlockHeight prometheus.Gauge
+	chunkProposeThroughput  prometheus.Counter
 }
 
 // NewChunkProposer creates a new ChunkProposer instance.
@@ -150,6 +153,14 @@ func NewChunkProposer(ctx context.Context, cfg *config.ChunkProposerConfig, chai
 			Name: "rollup_propose_chunk_estimate_blob_size_time",
 			Help: "Time taken to estimate blob size for the chunk.",
 		}),
+		chunkProposeBlockHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_chunk_propose_block_height",
+			Help: "The block height of the latest proposed chunk",
+		}),
+		chunkProposeThroughput: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "rollup_chunk_propose_throughput",
+			Help: "The total gas used in proposed chunks",
+		}),
 	}
 
 	return p
@@ -213,6 +224,11 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 		p.recordTimerChunkMetrics(metrics)
 		p.recordAllChunkMetrics(metrics)
 	}
+
+	if len(chunk.Blocks) > 0 {
+		p.chunkProposeBlockHeight.Set(float64(chunk.Blocks[len(chunk.Blocks)-1].Header.Number.Uint64()))
+	}
+	p.chunkProposeThroughput.Add(float64(chunk.L2GasUsed()))
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {

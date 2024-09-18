@@ -450,6 +450,18 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			log.Error("UpdateCommitTxHashAndRollupStatus failed", "hash", dbBatch.Hash, "index", dbBatch.Index, "err", err)
 			return
 		}
+
+		var maxBlockHeight uint64
+		var totalGasUsed uint64
+		for _, dbChunk := range dbChunks {
+			if dbChunk.EndBlockNumber > maxBlockHeight {
+				maxBlockHeight = dbChunk.EndBlockNumber
+			}
+			totalGasUsed += dbChunk.TotalL2TxGas
+		}
+		r.metrics.rollupL2RelayerCommitBlockHeight.Set(float64(maxBlockHeight))
+		r.metrics.rollupL2RelayerCommitThroughput.Add(float64(totalGasUsed))
+
 		r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Inc()
 		log.Info("Sent the commitBatch tx to layer1", "batch index", dbBatch.Index, "batch hash", dbBatch.Hash, "tx hash", txHash.String())
 	}
