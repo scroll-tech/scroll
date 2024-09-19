@@ -212,11 +212,11 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 		p.batchProposeBlockHeight.Set(float64(lastBlock.Header.Number.Uint64()))
 	}
 
-	var totalL2GasUsed uint64
+	var totalGasUsed uint64
 	for _, chunk := range batch.Chunks {
-		totalL2GasUsed += chunk.L2GasUsed()
+		totalGasUsed += chunk.L2GasUsed()
 	}
-	p.batchProposeThroughput.Add(float64(totalL2GasUsed))
+	p.batchProposeThroughput.Add(float64(totalGasUsed))
 
 	p.proposeBatchUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
