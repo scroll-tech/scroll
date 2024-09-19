@@ -53,6 +53,9 @@ type BatchProposer struct {
 
 	// total number of times that batch proposer stops early due to compressed data compatibility breach
 	compressedDataCompatibilityBreachTotal prometheus.Counter
+
+	batchProposeBlockHeight prometheus.Gauge
+	batchProposeThroughput  prometheus.Counter
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
@@ -134,6 +137,14 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 			Name: "rollup_propose_batch_estimate_blob_size_time",
 			Help: "Time taken to estimate blob size for the chunk.",
 		}),
+		batchProposeBlockHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_batch_propose_block_height",
+			Help: "The block height of the latest proposed batch",
+		}),
+		batchProposeThroughput: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "rollup_batch_propose_throughput",
+			Help: "The total gas used in proposed batches",
+		}),
 	}
 
 	return p
@@ -194,6 +205,18 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 		p.recordTimerBatchMetrics(metrics)
 		p.recordAllBatchMetrics(metrics)
 	}
+
+	if len(batch.Chunks) > 0 && len(batch.Chunks[len(batch.Chunks)-1].Blocks) > 0 {
+		lastChunk := batch.Chunks[len(batch.Chunks)-1]
+		lastBlock := lastChunk.Blocks[len(lastChunk.Blocks)-1]
+		p.batchProposeBlockHeight.Set(float64(lastBlock.Header.Number.Uint64()))
+	}
+
+	var totalGasUsed uint64
+	for _, chunk := range batch.Chunks {
+		totalGasUsed += chunk.L2GasUsed()
+	}
+	p.batchProposeThroughput.Add(float64(totalGasUsed))
 
 	p.proposeBatchUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {

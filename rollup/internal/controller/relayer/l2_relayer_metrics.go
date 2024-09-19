@@ -29,6 +29,9 @@ type l2RelayerMetrics struct {
 	rollupL2RelayerProcessPendingBundlesFinalizedSuccessTotal       prometheus.Counter
 	rollupL2BundlesFinalizedConfirmedTotal                          prometheus.Counter
 	rollupL2BundlesFinalizedConfirmedFailedTotal                    prometheus.Counter
+
+	rollupL2RelayerCommitBlockHeight prometheus.Gauge
+	rollupL2RelayerCommitThroughput  prometheus.Counter
 }
 
 var (
@@ -122,6 +125,14 @@ func initL2RelayerMetrics(reg prometheus.Registerer) *l2RelayerMetrics {
 			rollupL2BundlesFinalizedConfirmedFailedTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
 				Name: "rollup_layer2_bundles_finalized_confirmed_failed_total",
 				Help: "Total number of failed confirmations for finalized bundles on layer2.",
+			}),
+			rollupL2RelayerCommitBlockHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+				Name: "rollup_l2_relayer_commit_block_height",
+				Help: "The latest block height committed by the L2 relayer",
+			}),
+			rollupL2RelayerCommitThroughput: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+				Name: "rollup_l2_relayer_commit_throughput",
+				Help: "The cumulative gas used in blocks committed by the L2 relayer",
 			}),
 		}
 	})
