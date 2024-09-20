@@ -1,8 +1,8 @@
-mod darwin;
+// mod darwin;
 mod darwin_v2;
 
 use anyhow::{bail, Result};
-use darwin::DarwinVerifier;
+// use darwin::DarwinVerifier;
 use darwin_v2::DarwinV2Verifier;
 use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
 use prover_v4::utils::load_params;

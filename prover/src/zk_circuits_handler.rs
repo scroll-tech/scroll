@@ -1,5 +1,5 @@
 mod common;
-mod darwin;
+// mod darwin;
 mod darwin_v2;
 
 use super::geth_client::GethClient;
@@ -9,7 +9,7 @@ use crate::{
     utils::get_task_types,
 };
 use anyhow::{bail, Result};
-use darwin::DarwinHandler;
+// use darwin::DarwinHandler;
 use darwin_v2::DarwinV2Handler;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
@@ -61,7 +61,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 &config.low_version_circuit.hard_fork_name
             );
             AssetsDirEnvConfig::enable_first();
-            DarwinHandler::new(
+            DarwinV2Handler::new(
                 prover_type,
                 &config.low_version_circuit.params_path,
                 &config.low_version_circuit.assets_path,
