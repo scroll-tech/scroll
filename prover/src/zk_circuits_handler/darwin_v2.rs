@@ -11,14 +11,15 @@ use crate::types::{CommonHash, Task};
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
 use prover_darwin_v2::{
-    aggregator::Prover as BatchProver,
+    // aggregator::Prover as BatchProver,
     check_chunk_hashes,
-    common::Prover as CommonProver,
+    // common::Prover as CommonProver,
     config::{AGG_DEGREES, ZKEVM_DEGREES},
-    zkevm::Prover as ChunkProver,
+    // zkevm::Prover as ChunkProver,
     BatchProof, BatchProvingTask, BlockTrace, BundleProof, BundleProvingTask, ChunkInfo,
     ChunkProof, ChunkProvingTask,
 };
+
 
 // Only used for debugging.
 static OUTPUT_DIR: Lazy<Option<String>> = Lazy::new(|| env::var("PROVER_OUTPUT_DIR").ok());
@@ -43,8 +44,8 @@ fn get_block_number(block_trace: &BlockTrace) -> Option<u64> {
 
 #[derive(Default)]
 pub struct DarwinV2Handler {
-    chunk_prover: Option<RefCell<ChunkProver<'static>>>,
-    batch_prover: Option<RefCell<BatchProver<'static>>>,
+    chunk_prover: Option<RefCell<SindriChunkProver<'static>>>,
+    batch_prover: Option<RefCell<SindriBatchProver<'static>>>,
 
     geth_client: Option<Rc<RefCell<GethClient>>>,
 }
@@ -65,28 +66,15 @@ impl DarwinV2Handler {
             chunk_prover: None,
             geth_client,
         };
-        let degrees: Vec<u32> = get_degrees(&prover_types_set, |prover_type| match prover_type {
-            ProverType::Chunk => ZKEVM_DEGREES.clone(),
-            ProverType::Batch => AGG_DEGREES.clone(),
-        });
-        let params_map = get_params_map_instance(|| {
-            log::info!(
-                "calling get_params_map from {}, prover_types: {:?}, degrees: {:?}",
-                class_name,
-                prover_types_set,
-                degrees
-            );
-            CommonProver::load_params_map(params_dir, &degrees)
-        });
         for prover_type in prover_types_set {
             match prover_type {
                 ProverType::Chunk => {
-                    handler.chunk_prover = Some(RefCell::new(ChunkProver::from_params_and_assets(
+                    handler.chunk_prover = Some(RefCell::new(SindriChunkProver::new(
                         params_map, assets_dir,
                     )));
                 }
                 ProverType::Batch => {
-                    handler.batch_prover = Some(RefCell::new(BatchProver::from_params_and_assets(
+                    handler.batch_prover = Some(RefCell::new(SindriBatchProver::new(
                         params_map, assets_dir,
                     )))
                 }
@@ -246,21 +234,22 @@ impl DarwinV2Handler {
 
 impl CircuitsHandler for DarwinV2Handler {
     fn get_vk(&self, task_type: TaskType) -> Option<Vec<u8>> {
-        match task_type {
-            TaskType::Chunk => self
-                .chunk_prover
-                .as_ref()
-                .and_then(|prover| prover.borrow().get_vk()),
-            TaskType::Batch => self
-                .batch_prover
-                .as_ref()
-                .and_then(|prover| prover.borrow().get_batch_vk()),
-            TaskType::Bundle => self
-                .batch_prover
-                .as_ref()
-                .and_then(|prover| prover.borrow().get_bundle_vk()),
-            _ => unreachable!(),
-        }
+        todo!()
+        // match task_type {
+        //     TaskType::Chunk => self
+        //         .chunk_prover
+        //         .as_ref()
+        //         .and_then(|prover| prover.borrow().get_vk()),
+        //     TaskType::Batch => self
+        //         .batch_prover
+        //         .as_ref()
+        //         .and_then(|prover| prover.borrow().get_batch_vk()),
+        //     TaskType::Bundle => self
+        //         .batch_prover
+        //         .as_ref()
+        //         .and_then(|prover| prover.borrow().get_bundle_vk()),
+        //     _ => unreachable!(),
+        // }
     }
 
     fn get_proof_data(&self, task_type: TaskType, task: &crate::types::Task) -> Result<String> {

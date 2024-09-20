@@ -1,6 +1,7 @@
 mod common;
 // mod darwin;
 mod darwin_v2;
+mod sindri;
 
 use super::geth_client::GethClient;
 use crate::{
@@ -11,6 +12,7 @@ use crate::{
 use anyhow::{bail, Result};
 // use darwin::DarwinHandler;
 use darwin_v2::DarwinV2Handler;
+use sindri::SindriHandler;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 type HardForkName = String;
