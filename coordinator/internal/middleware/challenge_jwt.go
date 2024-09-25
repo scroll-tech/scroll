@@ -3,26 +3,26 @@ package middleware
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"time"
 
 	"github.com/gin-gonic/gin"
-
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/scroll-tech/go-ethereum/log"
-
 	"scroll-tech/coordinator/internal/config"
 )
 
-// ChallengeMiddleware jwt challenge middleware
 func ChallengeMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 	jwtMiddleware, err := jwt.New(&jwt.GinJWTMiddleware{
 		Authenticator: func(c *gin.Context) (interface{}, error) {
-			return nil, nil
+			log.Info("Attempting to authenticate user")
+			return nil, errors.New("authentication failed: no logic provided")
 		},
 		PayloadFunc: func(data interface{}) jwt.MapClaims {
 			b := make([]byte, 32)
 			_, err := rand.Read(b)
 			if err != nil {
+				log.Error("Error generating random bytes for JWT payload", "error", err)
 				return jwt.MapClaims{}
 			}
 			return jwt.MapClaims{
@@ -39,11 +39,13 @@ func ChallengeMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 	})
 
 	if err != nil {
-		log.Crit("new jwt middleware panic", "error", err)
+		log.Crit("Failed to create new JWT middleware", "error", err)
+		panic(err)
 	}
 
 	if errInit := jwtMiddleware.MiddlewareInit(); errInit != nil {
-		log.Crit("init jwt middleware panic", "error", errInit)
+		log.Crit("Failed to initialize JWT middleware", "error", errInit)
+		panic(errInit)
 	}
 
 	return jwtMiddleware
