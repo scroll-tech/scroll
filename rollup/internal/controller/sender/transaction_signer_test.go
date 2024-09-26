@@ -83,13 +83,15 @@ func testBothSignerTypes(t *testing.T) {
 			GasFeeCap: big.NewInt(3000),
 		},
 	}
+	var signedTx1 *gethTypes.Transaction
+	var signedTx2 *gethTypes.Transaction
 	for _, txData := range txDatas {
 		tx := gethTypes.NewTx(txData)
 
-		signedTx1, err := remoteSigner.SignTransaction(context.Background(), tx)
+		signedTx1, err = remoteSigner.SignTransaction(context.Background(), tx)
 		assert.NoError(t, err)
 
-		signedTx2, err := privateKeySigner.SignTransaction(context.Background(), tx)
+		signedTx2, err = privateKeySigner.SignTransaction(context.Background(), tx)
 		assert.NoError(t, err)
 
 		assert.Equal(t, signedTx1.Hash(), signedTx2.Hash())

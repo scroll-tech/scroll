@@ -76,9 +76,10 @@ type Layer2Relayer struct {
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
 
 	var gasOracleSender, commitSender, finalizeSender *sender.Sender
+	var err error
 	switch serviceType {
 	case ServiceTypeL2GasOracle:
-		gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderSignerConfig, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
+		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderSignerConfig, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
 		if err != nil {
 			return nil, fmt.Errorf("new gas oracle sender failed, err: %w", err)
 		}
@@ -89,7 +90,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		}
 
 	case ServiceTypeL2RollupRelayer:
-		commitSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderSignerConfig, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
+		commitSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderSignerConfig, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
 		if err != nil {
 			return nil, fmt.Errorf("new commit sender failed, err: %w", err)
 		}

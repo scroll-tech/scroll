@@ -52,10 +52,11 @@ type Layer1Relayer struct {
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
 func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, serviceType ServiceType, reg prometheus.Registerer) (*Layer1Relayer, error) {
 	var gasOracleSender *sender.Sender
+	var err error
 
 	switch serviceType {
 	case ServiceTypeL1GasOracle:
-		gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderSignerConfig, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, reg)
+		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderSignerConfig, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, reg)
 		if err != nil {
 			return nil, fmt.Errorf("new gas oracle sender failed, err: %w", err)
 		}
