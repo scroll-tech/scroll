@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+
 	"scroll-tech/rollup/internal/config"
 
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"

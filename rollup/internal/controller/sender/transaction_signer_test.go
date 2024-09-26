@@ -5,8 +5,9 @@ import (
 	"math/big"
 	"os"
 	"scroll-tech/common/testcontainers"
-	"scroll-tech/rollup/internal/config"
 	"testing"
+
+	"scroll-tech/rollup/internal/config"
 
 	"github.com/holiman/uint256"
 	"github.com/scroll-tech/go-ethereum/common"
