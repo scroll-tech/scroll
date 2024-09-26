@@ -10,8 +10,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
-	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -57,15 +55,9 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 	switch serviceType {
 	case ServiceTypeL1GasOracle:
-		pKey, err := crypto.ToECDSA(common.FromHex(cfg.GasOracleSenderPrivateKey))
+		gasOracleSender, err := sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderSignerConfig, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, reg)
 		if err != nil {
-			return nil, fmt.Errorf("new gas oracle sender failed, err: %v", err)
-		}
-
-		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, pKey, "l1_relayer", "gas_oracle_sender", types.SenderTypeL1GasOracle, db, reg)
-		if err != nil {
-			addr := crypto.PubkeyToAddress(pKey.PublicKey)
-			return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %v", addr.Hex(), err)
+			return nil, fmt.Errorf("new gas oracle sender failed, err: %w", err)
 		}
 
 		// Ensure test features aren't enabled on the scroll mainnet.

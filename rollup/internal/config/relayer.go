@@ -54,10 +54,11 @@ type RelayerConfig struct {
 	ChainMonitor *ChainMonitor `json:"chain_monitor"`
 	// L1CommitGasLimitMultiplier multiplier for fallback gas limit in commitBatch txs
 	L1CommitGasLimitMultiplier float64 `json:"l1_commit_gas_limit_multiplier,omitempty"`
-	// The private key of the relayer
-	GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
-	CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
-	FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
+
+	// Configs of transaction signers (GasOracle, Commit, Finalize)
+	GasOracleSenderSignerConfig *SignerConfig `json:"gas_oracle_sender_signer_config"`
+	CommitSenderSignerConfig    *SignerConfig `json:"commit_sender_signer_config"`
+	FinalizeSenderSignerConfig  *SignerConfig `json:"finalize_sender_signer_config"`
 
 	// Indicates if bypass features specific to testing environments are enabled.
 	EnableTestEnvBypassFeatures bool `json:"enable_test_env_bypass_features"`
@@ -83,4 +84,12 @@ type GasOracleConfig struct {
 	CheckCommittedBatchesWindowMinutes int    `json:"check_committed_batches_window_minutes"`
 	L1BaseFeeDefault                   uint64 `json:"l1_base_fee_default"`
 	L1BlobBaseFeeDefault               uint64 `json:"l1_blob_base_fee_default"`
+}
+
+// SignerConfig - config of signer, contains type and private_key/address,remoteUrl depending on type
+type SignerConfig struct {
+	SignerType      string `json:"signer_type"`       // type of signer can be PrivateKey or RemoteSigner
+	PrivateKey      string `json:"private_key"`       // private key of signer in case of PrivateKey signerType
+	RemoteSignerUrl string `json:"remote_signer_url"` // remote signer url (web3signer) if case of RemoteSigner signerType
+	SignerAddress   string `json:"signer_address"`    // address of signer
 }

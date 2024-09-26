@@ -24,7 +24,11 @@
         "l1_base_fee_default": 15000000000,
         "l1_blob_base_fee_default": 1
       },
-      "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313"
+      "gas_oracle_sender_signer_config": {
+        "signer_type": "RemoteSigner",
+        "remoteSignerUrl": "http://127.0.0.1:9000",
+        "signer_address": "0x03a1Bba60B5Aa37094cf16123AdD674c01589488"
+      }
     }
   },
   "l2_config": {
@@ -60,9 +64,20 @@
       "enable_test_env_bypass_features": true,
       "finalize_batch_without_proof_timeout_sec": 7200,
       "finalize_bundle_without_proof_timeout_sec": 7200,
-      "gas_oracle_sender_private_key": "1313131313131313131313131313131313131313131313131313131313131313",
-      "commit_sender_private_key": "1414141414141414141414141414141414141414141414141414141414141414",
-      "finalize_sender_private_key": "1515151515151515151515151515151515151515151515151515151515151515",
+      "gas_oracle_sender_signer_config": {
+        "signer_type": "RemoteSigner",
+        "remoteSignerUrl": "http://127.0.0.1:9000",
+        "signer_address": "0x03a1Bba60B5Aa37094cf16123AdD674c01589488"
+      },
+      "commit_sender_signer_config": {
+        "signer_type": "PrivateKey",
+        "private_key": "1414141414141414141414141414141414141414141414141414141414141414"
+      },
+      "finalize_sender_signer_config": {
+        "signer_type": "RemoteSigner",
+        "remoteSignerUrl": "http://127.0.0.1:9000",
+        "signer_address": "0x33e0F539E31B35170FAaA062af703b76a8282bf7"
+      },
       "l1_commit_gas_limit_multiplier": 1.2
     },
     "chunk_proposer_config": {
