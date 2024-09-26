@@ -110,7 +110,7 @@ func setupEnv(t *testing.T) {
 	l1Auth, err = bind.NewKeyedTransactorWithChainID(pKey, l1GethChainID)
 	assert.NoError(t, err)
 
-	pKey, err = crypto.ToECDSA(common.FromHex("1313131313131313131313131313131313131313131313131313131313131313"))
+	pKey, err = crypto.ToECDSA(common.FromHex(l2Cfg.RelayerConfig.GasOracleSenderSignerConfig.PrivateKey))
 	assert.NoError(t, err)
 	l2Auth, err = bind.NewKeyedTransactorWithChainID(pKey, l2GethChainID)
 	assert.NoError(t, err)
