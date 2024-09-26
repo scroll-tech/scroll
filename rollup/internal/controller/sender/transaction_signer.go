@@ -116,11 +116,11 @@ type RpcTransaction struct {
 	To                   *common.Address `json:"to"`
 	Gas                  uint64          `json:"gas"`
 	GasPrice             *big.Int        `json:"gasPrice,omitempty"`
-	MaxPriorityFeePerGas *big.Int        `json:"MaxPriorityFeePerGas,omitempty"`
+	MaxPriorityFeePerGas *big.Int        `json:"maxPriorityFeePerGas,omitempty"`
 	MaxFeePerGas         *big.Int        `json:"maxFeePerGas,omitempty"`
 	Nonce                uint64          `json:"nonce"`
 	Value                *big.Int        `json:"value"`
-	Data                 []byte          `json:"data"`
+	Data                 string          `json:"data"`
 }
 
 func txDataToRpcTx(from *common.Address, tx *gethTypes.Transaction) (*RpcTransaction, error) {
@@ -133,7 +133,7 @@ func txDataToRpcTx(from *common.Address, tx *gethTypes.Transaction) (*RpcTransac
 			GasPrice: tx.GasPrice(),
 			Nonce:    tx.Nonce(),
 			Value:    tx.Value(),
-			Data:     tx.Data(),
+			Data:     common.Bytes2Hex(tx.Data()),
 		}, nil
 	case gethTypes.DynamicFeeTxType:
 		return &RpcTransaction{
@@ -144,7 +144,7 @@ func txDataToRpcTx(from *common.Address, tx *gethTypes.Transaction) (*RpcTransac
 			MaxFeePerGas:         tx.GasFeeCap(),
 			Nonce:                tx.Nonce(),
 			Value:                tx.Value(),
-			Data:                 tx.Data(),
+			Data:                 common.Bytes2Hex(tx.Data()),
 		}, nil
 	default: // other tx types (BlobTx) currently not supported by web3signer
 		return nil, fmt.Errorf("failed to convert tx to RpcTransaction, unsupported tx type, %d", tx.Type())

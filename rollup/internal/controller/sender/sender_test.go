@@ -55,6 +55,9 @@ func TestMain(m *testing.M) {
 		if testApps != nil {
 			testApps.Free()
 		}
+		if testAppsSignerTest != nil {
+			testAppsSignerTest.Free()
+		}
 	}()
 	m.Run()
 }
