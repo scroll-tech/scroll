@@ -68,7 +68,6 @@ type Sender struct {
 	config            *config.SenderConfig
 	gethClient        *gethclient.Client
 	client            *ethclient.Client // The client to retrieve on chain data or send transaction.
-	rpcClient         *rpc.Client
 	transactionSigner *TransactionSigner
 	chainID           *big.Int // The chain id of the endpoint
 	ctx               context.Context
@@ -118,7 +117,6 @@ func NewSender(ctx context.Context, config *config.SenderConfig, signerConfig *c
 		config:                config,
 		gethClient:            gethclient.New(rpcClient),
 		client:                client,
-		rpcClient:             rpcClient,
 		chainID:               chainID,
 		transactionSigner:     transactionSigner,
 		db:                    db,
