@@ -52,6 +52,9 @@ func NewTransactionSigner(config *config.SignerConfig, chainID *big.Int) (*Trans
 			addr:      crypto.PubkeyToAddress(privKey.PublicKey),
 		}, nil
 	case RemoteSignerSignerType:
+		if config.SignerAddress == "" {
+			return nil, fmt.Errorf("failed to create RemoteSigner, signer address is empty")
+		}
 		rpcClient, err := rpc.Dial(config.RemoteSignerUrl)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dial rpc client, err: %w", err)
@@ -97,9 +100,6 @@ func (ts *TransactionSigner) SignTransaction(ctx context.Context, tx *gethTypes.
 }
 
 func (ts *TransactionSigner) SetNonce(nonce uint64) {
-	if ts.config.SignerType == PrivateKeySignerType {
-		ts.auth.Nonce = big.NewInt(int64(nonce))
-	}
 	ts.nonce = nonce
 }
 

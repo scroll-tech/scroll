@@ -467,7 +467,6 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 	log.Info("Transaction gas adjustment details", "service", s.service, "name", s.name, "txInfo", txInfo)
 
 	nonce := tx.Nonce()
-	tx.Hash()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
 	tx, err := s.createAndSendTx(&feeData, tx.To(), tx.Data(), tx.BlobTxSidecar(), &nonce)
 	if err != nil {
