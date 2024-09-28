@@ -1,8 +1,42 @@
 package config
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/rpc"
+)
+
+// ExchangeRateMode the mode to retrieve exchange rate
+type ExchangeRateMode string
+
+func (m *ExchangeRateMode) UnmarshalText(data []byte) error {
+	if len(data) == 0 {
+		// use fixed as default if mode is empty to achieve consistency
+		*m = FIXED
+		return nil
+	}
+	candidates := []string{
+		string(FIXED),
+		string(BINANCE_API),
+		// string(OKX_API), not supported yet
+		// string(UNISWAP), not supported yet
+	}
+	for _, i := range candidates {
+		if string(data) == i {
+			*m = ExchangeRateMode(i)
+			return nil
+		}
+	}
+	return fmt.Errorf("invalid mode: %s, must be one of %s", string(data), strings.Join(candidates, ","))
+}
+
+const (
+	FIXED       ExchangeRateMode = "fixed"
+	BINANCE_API ExchangeRateMode = "binance_api"
+	OKX_API     ExchangeRateMode = "okx_api"
+	UNISWAP     ExchangeRateMode = "uniswap"
 )
 
 // SenderConfig The config for transaction sender
@@ -80,7 +114,16 @@ type GasOracleConfig struct {
 	// The weight for L1 blob base fee.
 	L1BlobBaseFeeWeight float64 `json:"l1_blob_base_fee_weight"`
 	// CheckCommittedBatchesWindowMinutes the time frame to check if we committed batches to decide to update gas oracle or not in minutes
-	CheckCommittedBatchesWindowMinutes int    `json:"check_committed_batches_window_minutes"`
-	L1BaseFeeDefault                   uint64 `json:"l1_base_fee_default"`
-	L1BlobBaseFeeDefault               uint64 `json:"l1_blob_base_fee_default"`
+	CheckCommittedBatchesWindowMinutes int                        `json:"check_committed_batches_window_minutes"`
+	L1BaseFeeDefault                   uint64                     `json:"l1_base_fee_default"`
+	L1BlobBaseFeeDefault               uint64                     `json:"l1_blob_base_fee_default"`
+	AlternativeGasTokenConfig          *AlternativeGasTokenConfig `json:"alternative_gas_token_config"`
+}
+
+// AlternativeGasTokenConfig The config to help handling token exchange rate when updating gas price oracle.
+type AlternativeGasTokenConfig struct {
+	Enabled           bool             `json:"enabled"`
+	Mode              ExchangeRateMode `json:"mode"`
+	ApiEndpoint       string           `json:"api_endpoint"`
+	FixedExchangeRate float64          `json:"fixed_exchange_rate"`
 }

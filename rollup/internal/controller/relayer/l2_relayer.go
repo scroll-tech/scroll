@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 	"strings"
@@ -312,6 +313,30 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 			return
 		}
 		suggestGasPriceUint64 := uint64(suggestGasPrice.Int64())
+
+		// 
+		if r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Enabled {
+			log.Info("Gas price before exchange rate on L1", "suggestGasPrice", uint64(suggestGasPrice.Int64()))
+			switch r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode {
+			// The exchange rate represent the number of native token on L1 required to exchange for 1 native token on L2.
+			case config.FIXED:
+				log.Info("Exchange rate on L1", "FixedExchangeRate", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate)
+    			suggestGasPriceUint64 = uint64(math.Ceil(float64(suggestGasPriceUint64) * r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate))
+			case config.BINANCE_API:
+				exchangeRate, err := rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.ApiEndpoint)
+				if err != nil {
+					log.Error("Failed to get gas token exchange rate from Binance api", "endpoint", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.ApiEndpoint, "err", err)
+				}
+				log.Info("Exchange rate on L1", "FixedExchangeRate", exchangeRate)
+				suggestGasPriceUint64 = uint64(math.Ceil(float64(suggestGasPriceUint64) * exchangeRate))
+			default:
+				log.Error("Invalid alternative gas token mode", "mode", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode)
+				return 
+			}
+			suggestGasPrice = new(big.Int).SetUint64(suggestGasPriceUint64)
+			log.Info("Gas price after exchange rate on L1", "suggestGasPrice", uint64(suggestGasPrice.Int64()))
+		}
+		
 		expectedDelta := r.lastGasPrice * r.gasPriceDiff / gasPriceDiffPrecision
 		if r.lastGasPrice > 0 && expectedDelta == 0 {
 			expectedDelta = 1

@@ -18,6 +18,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
+	rutils "scroll-tech/rollup/internal/utils"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
@@ -156,6 +157,27 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			baseFee = uint64(math.Ceil(r.l1BaseFeeWeight*float64(block.BaseFee) + r.l1BlobBaseFeeWeight*float64(block.BlobBaseFee)))
 		} else {
 			baseFee = block.BaseFee
+		}
+
+		if r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Enabled {
+			log.Info("Gas price before exchange rate on L2", "baseFee", baseFee, "blobBaseFee", blobBaseFee)
+			switch r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode {
+			// The exchange rate represent the number of native token on L1 required to exchange for 1 native token on L2.
+			case config.FIXED:
+				baseFee = uint64(math.Ceil(float64(baseFee) / r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate))
+				blobBaseFee = uint64(math.Ceil(float64(blobBaseFee) / r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate)) 
+			case config.BINANCE_API:
+				exchangeRate, err := rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.ApiEndpoint)
+				if err != nil {
+					log.Error("Failed to get gas token exchange rate from Binance api", "endpoint", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.ApiEndpoint, "err", err)
+				}
+				baseFee = uint64(math.Ceil(float64(baseFee) / exchangeRate))
+				blobBaseFee = uint64(math.Ceil(float64(blobBaseFee) / exchangeRate))
+			default:
+				log.Error("Invalid alternative gas token mode", "mode", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode)
+				return 
+			}
+			log.Info("Gas price after exchange rate on L2", "baseFee", baseFee, "blobBaseFee", blobBaseFee)
 		}
 
 		if r.shouldUpdateGasOracle(baseFee, blobBaseFee, isCurie) {
