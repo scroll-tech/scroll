@@ -4,16 +4,17 @@ import (
 	"context"
 	"math/big"
 	"os"
-	"scroll-tech/common/testcontainers"
 	"testing"
-
-	"scroll-tech/rollup/internal/config"
 
 	"github.com/holiman/uint256"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
+
+	"scroll-tech/common/testcontainers"
+
+	"scroll-tech/rollup/internal/config"
 )
 
 var (

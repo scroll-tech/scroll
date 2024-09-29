@@ -20,6 +20,7 @@ import (
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -77,6 +78,25 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 
 	var gasOracleSender, commitSender, finalizeSender *sender.Sender
 	var err error
+
+	// check that all 3 signer addresses are different, because there will be a problem in managing nonce for different senders
+	gasOracleSenderAddr, err := addrFromSignerConfig(cfg.GasOracleSenderSignerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse addr from gas oracle signer config, err: %v", err)
+	}
+	commitSenderAddr, err := addrFromSignerConfig(cfg.CommitSenderSignerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse addr from commit sender config, err: %v", err)
+	}
+	finalizeSenderAddr, err := addrFromSignerConfig(cfg.FinalizeSenderSignerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse addr from finalize sender config, err: %v", err)
+	}
+	if gasOracleSenderAddr == commitSenderAddr || gasOracleSenderAddr == finalizeSenderAddr || commitSenderAddr == finalizeSenderAddr {
+		return nil, fmt.Errorf("gas oracle, commit, and finalize sender addresses must be different. Got: Gas Oracle=%s, Commit=%s, Finalize=%s",
+			gasOracleSenderAddr.Hex(), commitSenderAddr.Hex(), finalizeSenderAddr.Hex())
+	}
+
 	switch serviceType {
 	case ServiceTypeL2GasOracle:
 		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderSignerConfig, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
@@ -1276,5 +1296,23 @@ func (r *Layer2Relayer) StopSenders() {
 
 	if r.finalizeSender != nil {
 		r.finalizeSender.Stop()
+	}
+}
+
+func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {
+	switch config.SignerType {
+	case sender.PrivateKeySignerType:
+		privKey, err := crypto.ToECDSA(common.FromHex(config.PrivateKey))
+		if err != nil {
+			return common.Address{}, fmt.Errorf("parse sender private key failed: %w", err)
+		}
+		return crypto.PubkeyToAddress(privKey.PublicKey), nil
+	case sender.RemoteSignerSignerType:
+		if config.SignerAddress == "" {
+			return common.Address{}, fmt.Errorf("signer address is empty")
+		}
+		return common.HexToAddress(config.SignerAddress), nil
+	default:
+		return common.Address{}, fmt.Errorf("failed to determine signer address, unknown signer type: %v", config.SignerType)
 	}
 }

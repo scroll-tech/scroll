@@ -5,16 +5,15 @@ import (
 	"fmt"
 	"math/big"
 
-	"scroll-tech/rollup/internal/config"
-
 	"github.com/scroll-tech/go-ethereum/accounts/abi/bind"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
-
-	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/rpc"
+
+	"scroll-tech/rollup/internal/config"
 )
 
 const (
@@ -46,10 +45,9 @@ func NewTransactionSigner(config *config.SignerConfig, chainID *big.Int) (*Trans
 			return nil, fmt.Errorf("failed to create transactor with chain ID %v, err: %w", chainID, err)
 		}
 		return &TransactionSigner{
-			config:    config,
-			auth:      auth,
-			rpcClient: nil,
-			addr:      crypto.PubkeyToAddress(privKey.PublicKey),
+			config: config,
+			auth:   auth,
+			addr:   crypto.PubkeyToAddress(privKey.PublicKey),
 		}, nil
 	case RemoteSignerSignerType:
 		if config.SignerAddress == "" {
