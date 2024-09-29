@@ -39,6 +39,62 @@ struct Args {
     log_file: Option<String>,
 }
 
+fn start_loop<'a>(
+    config: &'a Config,
+    prover: &'a Prover<'a>,
+    task_cache: Rc<TaskCache>,
+    log_file: Option<String>,
+    current_dsn: Option<String>,
+) -> Option<String> {
+    let mut new_dsn: Option<String> = None;
+    let should_stop = || {
+        new_dsn = prover.coordinator_client.borrow().get_sentry_dsn();
+
+        current_dsn != new_dsn
+    };
+
+    let _guard = current_dsn.clone().map(|dsn| {
+        log::info!("successfully get dsn from coordinator");
+        let gurad = sentry::init((
+            dsn,
+            sentry::ClientOptions {
+                release: Some(version::get_version_cow()),
+                environment: Some(utils::get_environment()),
+                ..Default::default()
+            },
+        ));
+        utils::set_logger_with_sentry(log_file);
+        gurad
+    });
+
+    _guard.iter().for_each(|_| {
+        sentry::configure_scope(|scope| {
+            scope.set_tag("prover_type", config.prover_type);
+            scope.set_tag("partner_name", config.partner_name());
+            scope.set_tag("prover_name", config.prover_name.clone());
+
+            let public_key = sentry::protocol::Value::from(prover.get_public_key());
+            scope.set_extra("public_key", public_key);
+        });
+
+        sentry::capture_message("test message on start", sentry::Level::Info);
+    });
+
+    log::info!(
+        "prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",
+        config.prover_name,
+        config.prover_type,
+        prover.get_public_key(),
+        version::get_version(),
+    );
+
+    let task_processor = TaskProcessor::new(prover, task_cache);
+
+    task_processor.start(should_stop);
+
+    new_dsn
+}
+
 fn start() -> Result<()> {
     let args = Args::parse();
 
@@ -64,54 +120,16 @@ fn start() -> Result<()> {
 
     let prover = Prover::new(&config, coordinator_listener)?;
 
-    let _guard = prover
-        .coordinator_client
-        .borrow()
-        .get_sentry_dsn()
-        .map(|dsn| {
-            log::info!("successfully get dsn from coordinator");
-            let gurad = Some(sentry::init((
-                dsn,
-                sentry::ClientOptions {
-                    release: Some(version::get_version_cow()),
-                    environment: Some(utils::get_environment()),
-                    ..Default::default()
-                },
-            )));
-            utils::set_logger_with_sentry(args.log_file);
-            gurad
-        });
-
-    _guard.iter().for_each(|_| {
-        sentry::configure_scope(|scope| {
-            scope.set_tag("prover_type", config.prover_type);
-            scope.set_tag("partner_name", config.partner_name());
-            scope.set_tag("prover_name", config.prover_name.clone());
-        });
-
-        sentry::capture_message("test message on start", sentry::Level::Info);
-    });
-
-    _guard.iter().for_each(|_| {
-        sentry::configure_scope(|scope| {
-            let public_key = sentry::protocol::Value::from(prover.get_public_key());
-            scope.set_extra("public_key", public_key);
-        });
-    });
-
-    log::info!(
-        "prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",
-        config.prover_name,
-        config.prover_type,
-        prover.get_public_key(),
-        version::get_version(),
-    );
-
-    let task_processor = TaskProcessor::new(&prover, task_cache);
-
-    task_processor.start();
-
-    Ok(())
+    let mut current_dsn = None;
+    loop {
+        current_dsn = start_loop(
+            &config,
+            &prover,
+            task_cache.clone(),
+            args.log_file.clone(),
+            current_dsn,
+        );
+    }
 }
 
 fn main() {

@@ -16,8 +16,15 @@ impl<'a> TaskProcessor<'a> {
         TaskProcessor { prover, task_cache }
     }
 
-    pub fn start(&self) {
+    pub fn start<F>(&self, mut should_stop: F)
+    where
+        F: FnMut() -> bool,
+    {
         loop {
+            if should_stop() {
+                log::info!("task processor should stop.");
+                break;
+            }
             log::info!("start a new round.");
             if let Err(err) = self.prove_and_submit() {
                 if err.is::<GetEmptyTaskError>() {
