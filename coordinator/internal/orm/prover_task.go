@@ -116,25 +116,6 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, taskType messag
 	return proverTasks, nil
 }
 
-// GetAssignedProverTaskByTaskIDAndProver get prover task taskID and public key
-// TODO: when prover all upgrade need DEPRECATED this function
-func (o *ProverTask) GetAssignedProverTaskByTaskIDAndProver(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&ProverTask{})
-	db = db.Where("task_type", int(taskType))
-	db = db.Where("task_id", taskID)
-	db = db.Where("prover_public_key", proverPublicKey)
-	db = db.Where("prover_version", proverVersion)
-	db = db.Where("proving_status", types.ProverAssigned)
-
-	var proverTask ProverTask
-	err := db.First(&proverTask).Error
-	if err != nil {
-		return nil, fmt.Errorf("ProverTask.GetProverTaskByTaskIDAndProver err:%w, taskID:%s, pubkey:%s, prover_version:%s", err, taskID, proverPublicKey, proverVersion)
-	}
-	return &proverTask, nil
-}
-
 // GetProverTaskByUUIDAndPublicKey get prover task taskID by uuid and public key
 func (o *ProverTask) GetProverTaskByUUIDAndPublicKey(ctx context.Context, uuid, publicKey string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)

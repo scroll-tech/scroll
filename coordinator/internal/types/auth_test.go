@@ -60,11 +60,10 @@ func TestGenerateSignature(t *testing.T) {
 	authMsg := LoginParameter{
 		Message: Message{
 			ProverName:    "test",
-			ProverVersion: "v4.4.32-37af5ef5-38a68e2-1c5093c",
-			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjEzMjc5MTIsIm9yaWdfaWF0IjoxNzIxMzI0MzEyLCJyYW5kb20iOiJWMVFlT19yNEV5eGRmYUtDalprVExEa0ZIemEyNTdQRG93dTV4SnVxYTdZPSJ9.x-B_TnkTUvs8-hiMfJXejxetAP6rXfeRUmyZ3S0uBiM",
-			ProverTypes:   []ProverType{ProverTypeBatch},
-			VKs: []string{"AAAAGgAAAARX2S0K1wF333B1waOsnG/vcASJmWG9YM6SNWCBy1ywD9jfGkei+f0wNYpkjW7JO12EfU7CjYVBo+PGku3zaQJI64lbn6BwyTBa4RfrPFpV5mP47ix0sXZ+Wt5wklMLRW7OIJb1yfCDm+gkSsp3/Zqrxt4SY4rQ4WtHfynTCQ0KDi78jNuiFvwxO3ub3DkgGVaxMkGxTRP/Vz6E7MCZMUBR5wZFcMzJn+73f0wYjDxfj00krg9O1VrwVxbVV1ycLR6oQLcOgm/l+xwth8io0vDpF9OY21gD5DgJn9GgcYe8KoRVEbEqApLZPdBibpcSMTY9czZI2LnFcqrDDmYvhEwgjhZrsTog2xLXOODoOupZ/is5ekQ9Gi0y871b1mLlCGA=",
-				"AAAAGgAAAARX2S0K1wF333B1waOsnG/vcASJmWG9YM6SNWCBy1ywD1DEjW4Kell67H07wazT5DdzrSh4+amh+cmosQHp9p9snFypyoBGt3UHtoJGQBZlywZWDS9ht5pnaEoGBdaKcQk+lFb+WxTiId0KOAa0mafTZTQw8yToy57Jple64qzlRu1dux30tZZGuerLN1CKzg5Xl2iOpMK+l87jCINwVp5cUtF/XrvhBbU7onKh3KBiy99iUqVyA3Y6iiIZhGKWBSuSA4bNgDYIoVkqjHpdL35aEShoRO6pNXt7rDzxFoPzH0JuPI54nE4OhVrzZXwtkAEosxVa/fszcE092FH+HhhtxZBYe/KEzwdISU9TOPdId3UF/UMYC0MiYOlqffVTgAg="},
+			ProverVersion: "v4.4.45-37af5ef5-38a68e2-1c5093c",
+			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjQ4Mzg0ODUsIm9yaWdfaWF0IjoxNzI0ODM0ODg1LCJyYW5kb20iOiJ6QmdNZGstNGc4UzNUNTFrVEFsYk1RTXg2TGJ4SUs4czY3ejM2SlNuSFlJPSJ9.x9PvihhNx2w4_OX5uCrv8QJCNYVQkIi-K2k8XFXYmik",
+			ProverTypes:   []ProverType{ProverTypeChunk},
+			VKs:           []string{"mock_vk"},
 		},
 		PublicKey: publicKeyHex,
 	}

@@ -9,7 +9,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/da-codec/encoding/codecv3"
+	"github.com/scroll-tech/da-codec/encoding/codecv4"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
@@ -118,6 +120,15 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		return nil, ErrCoordinatorInternalFailure
 	}
 
+	//if _, ok := taskCtx.HardForkNames[hardForkName]; !ok {
+	//	bp.recoverActiveAttempts(ctx, batchTask)
+	//	log.Error("incompatible prover version",
+	//		"requisite hard fork name", hardForkName,
+	//		"prover hard fork name", taskCtx.HardForkNames,
+	//		"task_id", batchTask.Hash)
+	//	return nil, ErrCoordinatorInternalFailure
+	//}
+
 	proverTask := orm.ProverTask{
 		TaskID:          batchTask.Hash,
 		ProverPublicKey: taskCtx.PublicKey,
@@ -203,17 +214,9 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
 
-	taskDetail := message.BatchTaskDetail{
-		ChunkInfos:  chunkInfos,
-		ChunkProofs: chunkProofs,
-	}
-
-	if hardForkName == "darwin" {
-		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(batch.BatchHeader)
-		if decodeErr != nil {
-			return nil, fmt.Errorf("failed to decode batch header, taskID:%s err:%w", task.TaskID, decodeErr)
-		}
-		taskDetail.BatchHeader = batchHeader
+	taskDetail, err := bp.getBatchTaskDetail(batch, chunkInfos, chunkProofs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get batch task detail, taskID:%s err:%w", task.TaskID, err)
 	}
 
 	chunkProofsBytes, err := json.Marshal(taskDetail)
@@ -235,4 +238,35 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 	if err := bp.chunkOrm.DecreaseActiveAttemptsByHash(ctx.Copy(), batchTask.Hash); err != nil {
 		log.Error("failed to recover batch active attempts", "hash", batchTask.Hash, "error", err)
 	}
+}
+
+func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchTaskDetail, error) {
+	taskDetail := &message.BatchTaskDetail{
+		ChunkInfos:  chunkInfos,
+		ChunkProofs: chunkProofs,
+	}
+
+	if encoding.CodecVersion(dbBatch.CodecVersion) != encoding.CodecV3 && encoding.CodecVersion(dbBatch.CodecVersion) != encoding.CodecV4 {
+		return taskDetail, nil
+	}
+
+	if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV3 {
+		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(dbBatch.BatchHeader)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("failed to decode batch header (v3) for batch %d: %w", dbBatch.Index, decodeErr)
+		}
+
+		taskDetail.BatchHeader = batchHeader
+		taskDetail.BlobBytes = dbBatch.BlobBytes
+	} else {
+		batchHeader, decodeErr := codecv4.NewDABatchFromBytes(dbBatch.BatchHeader)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("failed to decode batch header (v4) for batch %d: %w", dbBatch.Index, decodeErr)
+		}
+
+		taskDetail.BatchHeader = batchHeader
+		taskDetail.BlobBytes = dbBatch.BlobBytes
+	}
+
+	return taskDetail, nil
 }

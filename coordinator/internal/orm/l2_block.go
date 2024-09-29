@@ -87,6 +87,55 @@ func (o *L2Block) GetL2BlockByNumber(ctx context.Context, blockNumber uint64) (*
 	return &l2Block, nil
 }
 
+// GetL2BlocksInRange retrieves the L2 blocks within the specified range (inclusive).
+// The range is closed, i.e., it includes both start and end block numbers.
+// The returned blocks are sorted in ascending order by their block number.
+func (o *L2Block) GetL2BlocksInRange(ctx context.Context, startBlockNumber uint64, endBlockNumber uint64) ([]*encoding.Block, error) {
+	if startBlockNumber > endBlockNumber {
+		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: start block number should be less than or equal to end block number, start block: %v, end block: %v", startBlockNumber, endBlockNumber)
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&L2Block{})
+	db = db.Select("header, transactions, withdraw_root, row_consumption")
+	db = db.Where("number >= ? AND number <= ?", startBlockNumber, endBlockNumber)
+	db = db.Order("number ASC")
+
+	var l2Blocks []L2Block
+	if err := db.Find(&l2Blocks).Error; err != nil {
+		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+	}
+
+	// sanity check
+	if uint64(len(l2Blocks)) != endBlockNumber-startBlockNumber+1 {
+		return nil, fmt.Errorf("L2Block.GetL2BlocksInRange: unexpected number of results, expected: %v, got: %v", endBlockNumber-startBlockNumber+1, len(l2Blocks))
+	}
+
+	var blocks []*encoding.Block
+	for _, v := range l2Blocks {
+		var block encoding.Block
+
+		if err := json.Unmarshal([]byte(v.Transactions), &block.Transactions); err != nil {
+			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+		}
+
+		block.Header = &gethTypes.Header{}
+		if err := json.Unmarshal([]byte(v.Header), block.Header); err != nil {
+			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+		}
+
+		block.WithdrawRoot = common.HexToHash(v.WithdrawRoot)
+
+		if err := json.Unmarshal([]byte(v.RowConsumption), &block.RowConsumption); err != nil {
+			return nil, fmt.Errorf("L2Block.GetL2BlocksInRange error: %w, start block: %v, end block: %v", err, startBlockNumber, endBlockNumber)
+		}
+
+		blocks = append(blocks, &block)
+	}
+
+	return blocks, nil
+}
+
 // InsertL2Blocks inserts l2 blocks into the "l2_block" table.
 // for unit test
 func (o *L2Block) InsertL2Blocks(ctx context.Context, blocks []*encoding.Block) error {

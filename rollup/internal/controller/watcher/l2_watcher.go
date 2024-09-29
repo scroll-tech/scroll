@@ -127,6 +127,7 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 			return fmt.Errorf("failed to GetBlockByNumberOrHash: %v. number: %v", err, number)
 		}
 		if block.RowConsumption == nil {
+			w.metrics.fetchNilRowConsumptionBlockTotal.Inc()
 			return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
 		}
 
@@ -151,6 +152,7 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 				return fmt.Errorf("failed to estimate block L1 commit calldata size: %v", err)
 			}
 			w.metrics.rollupL2BlockL1CommitCalldataSize.Set(float64(blockL1CommitCalldataSize))
+			w.metrics.rollupL2WatcherSyncThroughput.Add(float64(block.Header.GasUsed))
 		}
 		if err := w.l2BlockOrm.InsertL2Blocks(w.ctx, blocks); err != nil {
 			return fmt.Errorf("failed to batch insert BlockTraces: %v", err)

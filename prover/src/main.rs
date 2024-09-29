@@ -1,4 +1,5 @@
 #![feature(lazy_cell)]
+#![feature(core_intrinsics)]
 #![feature(const_option)]
 
 mod config;

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"scroll-tech/common/database"
+	"scroll-tech/common/utils"
 )
 
 // FetcherConfig is the configuration of Layer1 or Layer2 fetcher.
@@ -62,6 +63,12 @@ func NewConfig(file string) (*Config, error) {
 
 	cfg := &Config{}
 	err = json.Unmarshal(buf, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Override config with environment variables
+	err = utils.OverrideConfigWithEnv(cfg, "SCROLL_BRIDGE_HISTORY")
 	if err != nil {
 		return nil, err
 	}

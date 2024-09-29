@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"scroll-tech/common/database"
+	"scroll-tech/common/utils"
 )
 
 // ProverManager loads sequencer configuration items.
@@ -23,10 +24,6 @@ type ProverManager struct {
 	ChunkCollectionTimeSec int `json:"chunk_collection_time_sec"`
 	// BundleCollectionTimeSec bundle Proof collection time (in seconds).
 	BundleCollectionTimeSec int `json:"bundle_collection_time_sec"`
-	// Max number of workers in verifier worker pool
-	MaxVerifierWorkers int `json:"max_verifier_workers"`
-	// MinProverVersion is the minimum version of the prover that is required.
-	MinProverVersion string `json:"min_prover_version"`
 	// ProverSentryEndpoint the sentry endpoint being sent to each prover in login response
 	ProverSentryEndpoint string `json:"prover_sentry_endpoint"`
 }
@@ -52,13 +49,19 @@ type Config struct {
 	Auth          *Auth            `json:"auth"`
 }
 
+// CircuitConfig circuit items.
+type CircuitConfig struct {
+	ParamsPath       string `json:"params_path"`
+	AssetsPath       string `json:"assets_path"`
+	ForkName         string `json:"fork_name"`
+	MinProverVersion string `json:"min_prover_version"`
+}
+
 // VerifierConfig load zk verifier config.
 type VerifierConfig struct {
-	ForkName     string `json:"fork_name"`
-	MockMode     bool   `json:"mock_mode"`
-	ParamsPath   string `json:"params_path"`
-	AssetsPathLo string `json:"assets_path_lo"` // lower version Verifier
-	AssetsPathHi string `json:"assets_path_hi"` // higher version Verifier
+	MockMode           bool           `json:"mock_mode"`
+	LowVersionCircuit  *CircuitConfig `json:"low_version_circuit"`
+	HighVersionCircuit *CircuitConfig `json:"high_version_circuit"`
 }
 
 // NewConfig returns a new instance of Config.
@@ -70,6 +73,12 @@ func NewConfig(file string) (*Config, error) {
 
 	cfg := &Config{}
 	err = json.Unmarshal(buf, cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Override config with environment variables
+	err = utils.OverrideConfigWithEnv(cfg, "SCROLL_COORDINATOR")
 	if err != nil {
 		return nil, err
 	}

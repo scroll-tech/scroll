@@ -1,4 +1,4 @@
-use super::CircuitsHandler;
+use super::{common::*, CircuitsHandler};
 use crate::{
     geth_client::GethClient,
     types::{ProverType, TaskType},
@@ -11,7 +11,11 @@ use crate::types::{CommonHash, Task};
 use std::{cell::RefCell, cmp::Ordering, env, rc::Rc};
 
 use prover_darwin::{
-    aggregator::Prover as BatchProver, check_chunk_hashes, zkevm::Prover as ChunkProver,
+    aggregator::Prover as BatchProver,
+    check_chunk_hashes,
+    common::Prover as CommonProver,
+    config::{AGG_DEGREES, ZKEVM_DEGREES},
+    zkevm::Prover as ChunkProver,
     BatchProof, BatchProvingTask, BlockTrace, BundleProof, BundleProvingTask, ChunkInfo,
     ChunkProof, ChunkProvingTask,
 };
@@ -39,32 +43,65 @@ fn get_block_number(block_trace: &BlockTrace) -> Option<u64> {
 
 #[derive(Default)]
 pub struct DarwinHandler {
-    chunk_prover: Option<RefCell<ChunkProver>>,
-    batch_prover: Option<RefCell<BatchProver>>,
+    chunk_prover: Option<RefCell<ChunkProver<'static>>>,
+    batch_prover: Option<RefCell<BatchProver<'static>>>,
 
     geth_client: Option<Rc<RefCell<GethClient>>>,
 }
 
 impl DarwinHandler {
+    pub fn new_multi(
+        prover_types: Vec<ProverType>,
+        params_dir: &str,
+        assets_dir: &str,
+        geth_client: Option<Rc<RefCell<GethClient>>>,
+    ) -> Result<Self> {
+        let class_name = std::intrinsics::type_name::<Self>();
+        let prover_types_set = prover_types
+            .into_iter()
+            .collect::<std::collections::HashSet<ProverType>>();
+        let mut handler = Self {
+            batch_prover: None,
+            chunk_prover: None,
+            geth_client,
+        };
+        let degrees: Vec<u32> = get_degrees(&prover_types_set, |prover_type| match prover_type {
+            ProverType::Chunk => ZKEVM_DEGREES.clone(),
+            ProverType::Batch => AGG_DEGREES.clone(),
+        });
+        let params_map = get_params_map_instance(|| {
+            log::info!(
+                "calling get_params_map from {}, prover_types: {:?}, degrees: {:?}",
+                class_name,
+                prover_types_set,
+                degrees
+            );
+            CommonProver::load_params_map(params_dir, &degrees)
+        });
+        for prover_type in prover_types_set {
+            match prover_type {
+                ProverType::Chunk => {
+                    handler.chunk_prover = Some(RefCell::new(ChunkProver::from_params_and_assets(
+                        params_map, assets_dir,
+                    )));
+                }
+                ProverType::Batch => {
+                    handler.batch_prover = Some(RefCell::new(BatchProver::from_params_and_assets(
+                        params_map, assets_dir,
+                    )))
+                }
+            }
+        }
+        Ok(handler)
+    }
+
     pub fn new(
         prover_type: ProverType,
         params_dir: &str,
         assets_dir: &str,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Result<Self> {
-        match prover_type {
-            ProverType::Chunk => Ok(Self {
-                chunk_prover: Some(RefCell::new(ChunkProver::from_dirs(params_dir, assets_dir))),
-                batch_prover: None,
-                geth_client,
-            }),
-
-            ProverType::Batch => Ok(Self {
-                batch_prover: Some(RefCell::new(BatchProver::from_dirs(params_dir, assets_dir))),
-                chunk_prover: None,
-                geth_client,
-            }),
-        }
+        Self::new_multi(vec![prover_type], params_dir, assets_dir, geth_client)
     }
 
     fn gen_chunk_proof_raw(&self, chunk_trace: Vec<BlockTrace>) -> Result<ChunkProof> {
@@ -253,7 +290,7 @@ mod tests {
 
     static DEFAULT_WORK_DIR: &str = "/assets";
     static WORK_DIR: LazyLock<String> = LazyLock::new(|| {
-        std::env::var("CURIE_TEST_DIR")
+        std::env::var("DARWIN_TEST_DIR")
             .unwrap_or(String::from(DEFAULT_WORK_DIR))
             .trim_end_matches('/')
             .to_string()
@@ -265,9 +302,9 @@ mod tests {
     static BATCH_DIR_PATH: LazyLock<String> =
         LazyLock::new(|| format!("{}/traces/batch_24", *WORK_DIR));
     static BATCH_VK_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_assets/agg_vk.vkey", *WORK_DIR));
+        LazyLock::new(|| format!("{}/test_assets/vk_batch.vkey", *WORK_DIR));
     static CHUNK_VK_PATH: LazyLock<String> =
-        LazyLock::new(|| format!("{}/test_assets/chunk_vk.vkey", *WORK_DIR));
+        LazyLock::new(|| format!("{}/test_assets/vk_chunk.vkey", *WORK_DIR));
 
     #[test]
     fn it_works() {
@@ -277,9 +314,14 @@ mod tests {
 
     #[test]
     fn test_circuits() -> Result<()> {
-        let chunk_handler =
-            DarwinHandler::new(ProverType::Chunk, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let bi_handler = DarwinHandler::new_multi(
+            vec![ProverType::Chunk, ProverType::Batch],
+            &PARAMS_PATH,
+            &ASSETS_PATH,
+            None,
+        )?;
 
+        let chunk_handler = bi_handler;
         let chunk_vk = chunk_handler.get_vk(TaskType::Chunk).unwrap();
 
         check_vk(TaskType::Chunk, chunk_vk, "chunk vk must be available");
@@ -302,8 +344,7 @@ mod tests {
             chunk_proofs.push(chunk_proof);
         }
 
-        let batch_handler =
-            DarwinHandler::new(ProverType::Batch, &PARAMS_PATH, &ASSETS_PATH, None)?;
+        let batch_handler = chunk_handler;
         let batch_vk = batch_handler.get_vk(TaskType::Batch).unwrap();
         check_vk(TaskType::Batch, batch_vk, "batch vk must be available");
         let batch_task_detail = make_batch_task_detail(chunk_infos, chunk_proofs);

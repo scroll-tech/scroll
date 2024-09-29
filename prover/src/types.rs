@@ -56,7 +56,7 @@ impl Default for TaskType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ProverType {
     Chunk,
     Batch,

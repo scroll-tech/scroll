@@ -2,7 +2,6 @@ package watcher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -54,6 +53,9 @@ type BatchProposer struct {
 
 	// total number of times that batch proposer stops early due to compressed data compatibility breach
 	compressedDataCompatibilityBreachTotal prometheus.Counter
+
+	batchProposeBlockHeight prometheus.Gauge
+	batchProposeThroughput  prometheus.Counter
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
@@ -135,6 +137,14 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 			Name: "rollup_propose_batch_estimate_blob_size_time",
 			Help: "Time taken to estimate blob size for the chunk.",
 		}),
+		batchProposeBlockHeight: promauto.With(reg).NewGauge(prometheus.GaugeOpts{
+			Name: "rollup_batch_propose_block_height",
+			Help: "The block height of the latest proposed batch",
+		}),
+		batchProposeThroughput: promauto.With(reg).NewCounter(prometheus.CounterOpts{
+			Name: "rollup_batch_propose_throughput",
+			Help: "The total gas used in proposed batches",
+		}),
 	}
 
 	return p
@@ -152,6 +162,10 @@ func (p *BatchProposer) TryProposeBatch() {
 
 func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics *utils.BatchMetrics) error {
 	compatibilityBreachOccurred := false
+	codecConfig := utils.CodecConfig{
+		Version:        codecVersion,
+		EnableCompress: true, // codecv4 is the only version that supports conditional compression, default to enable compression
+	}
 
 	for {
 		compatible, err := utils.CheckBatchCompressedDataCompatibility(batch, codecVersion)
@@ -164,13 +178,15 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 			break
 		}
 
+		compatibilityBreachOccurred = true
+
 		if len(batch.Chunks) == 1 {
-			log.Error("Cannot truncate batch with only 1 chunk for compatibility", "start block number", batch.Chunks[0].Blocks[0].Header.Number.Uint64(),
+			log.Warn("Disable compression: cannot truncate batch with only 1 chunk for compatibility", "start block number", batch.Chunks[0].Blocks[0].Header.Number.Uint64(),
 				"end block number", batch.Chunks[0].Blocks[len(batch.Chunks[0].Blocks)-1].Header.Number.Uint64())
-			return errors.New("cannot truncate batch with only 1 chunk for compatibility")
+			codecConfig.EnableCompress = false
+			break
 		}
 
-		compatibilityBreachOccurred = true
 		batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 
 		log.Info("Batch not compatible with compressed data, removing last chunk", "batch index", batch.Index, "truncated chunk length", len(batch.Chunks))
@@ -181,7 +197,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 
 		// recalculate batch metrics after truncation
 		var calcErr error
-		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecVersion)
+		metrics, calcErr = utils.CalculateBatchMetrics(batch, codecConfig)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics, batch index: %v, error: %w", batch.Index, calcErr)
 		}
@@ -190,11 +206,23 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 		p.recordAllBatchMetrics(metrics)
 	}
 
+	if len(batch.Chunks) > 0 && len(batch.Chunks[len(batch.Chunks)-1].Blocks) > 0 {
+		lastChunk := batch.Chunks[len(batch.Chunks)-1]
+		lastBlock := lastChunk.Blocks[len(lastChunk.Blocks)-1]
+		p.batchProposeBlockHeight.Set(float64(lastBlock.Header.Number.Uint64()))
+	}
+
+	var totalGasUsed uint64
+	for _, chunk := range batch.Chunks {
+		totalGasUsed += chunk.L2GasUsed()
+	}
+	p.batchProposeThroughput.Add(float64(totalGasUsed))
+
 	p.proposeBatchUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, *metrics, dbTX)
+		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecConfig, *metrics, dbTX)
 		if dbErr != nil {
-			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "error", dbErr)
+			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "codec version", codecVersion, "enable compress", codecConfig.EnableCompress, "error", dbErr)
 			return dbErr
 		}
 		if dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex, dbBatch.Hash, dbTX); dbErr != nil {
@@ -255,7 +283,10 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	codecVersion := forks.GetCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
+	codecConfig := utils.CodecConfig{
+		Version:        forks.GetCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime),
+		EnableCompress: true, // codecv4 is the only version that supports conditional compression, default to enable compression
+	}
 
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1
@@ -264,7 +295,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
-		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
+		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecConfig)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
@@ -293,17 +324,17 @@ func (p *BatchProposer) proposeBatch() error {
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 
-			metrics, err := utils.CalculateBatchMetrics(&batch, codecVersion)
+			metrics, err := utils.CalculateBatchMetrics(&batch, codecConfig)
 			if err != nil {
 				return fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
 
 			p.recordAllBatchMetrics(metrics)
-			return p.updateDBBatchInfo(&batch, codecVersion, metrics)
+			return p.updateDBBatchInfo(&batch, codecConfig.Version, metrics)
 		}
 	}
 
-	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
+	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecConfig)
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 	}
@@ -317,7 +348,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.recordAllBatchMetrics(metrics)
-		return p.updateDBBatchInfo(&batch, codecVersion, metrics)
+		return p.updateDBBatchInfo(&batch, codecConfig.Version, metrics)
 	}
 
 	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")
