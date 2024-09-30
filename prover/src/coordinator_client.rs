@@ -4,7 +4,7 @@ pub mod listener;
 pub mod types;
 
 use anyhow::{bail, Context, Ok, Result};
-use std::{cell::OnceCell, rc::Rc};
+use std::rc::Rc;
 
 use api::Api;
 use errors::*;
@@ -19,7 +19,7 @@ pub use errors::{GetEmptyTaskError, ProofStatusNotOKError};
 pub struct CoordinatorClient<'a> {
     api: Api,
     token: Option<String>,
-    sentry_endpoint: OnceCell<Option<String>>,
+    sentry_endpoint: Option<String>,
     config: &'a Config,
     key_signer: Rc<KeySigner>,
     rt: Runtime,
@@ -47,7 +47,7 @@ impl<'a> CoordinatorClient<'a> {
         let mut client = Self {
             api,
             token: None,
-            sentry_endpoint: OnceCell::new(),
+            sentry_endpoint: None,
             config,
             key_signer,
             rt,
@@ -92,9 +92,7 @@ impl<'a> CoordinatorClient<'a> {
         }
         if let Some(r) = login_response.data {
             token = r.token;
-            let _ = self
-                .sentry_endpoint
-                .set(r.sentry_endpoint.filter(|s| !s.is_empty()));
+            self.sentry_endpoint = r.sentry_endpoint.filter(|s| !s.is_empty());
         } else {
             bail!("login failed: got empty token")
         }
@@ -146,6 +144,6 @@ impl<'a> CoordinatorClient<'a> {
     }
 
     pub fn get_sentry_dsn(&self) -> Option<String> {
-        self.sentry_endpoint.get().and_then(|v| v.clone())
+        self.sentry_endpoint.clone()
     }
 }
