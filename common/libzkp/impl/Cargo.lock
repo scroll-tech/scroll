@@ -55,8 +55,8 @@ dependencies = [
  "revm-primitives",
  "serde",
  "serde_json",
- "snark-verifier",
- "snark-verifier-sdk",
+ "snark-verifier 0.1.0 (git+https://github.com/scroll-tech/snark-verifier?branch=develop)",
+ "snark-verifier-sdk 0.0.1 (git+https://github.com/scroll-tech/snark-verifier?branch=develop)",
  "strum 0.25.0",
  "strum_macros 0.25.3",
  "zkevm-circuits 0.12.0",
@@ -65,7 +65,7 @@ dependencies = [
 [[package]]
 name = "aggregator"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "ark-std 0.3.0",
  "bitstream-io",
@@ -89,8 +89,8 @@ dependencies = [
  "revm-primitives",
  "serde",
  "serde_json",
- "snark-verifier",
- "snark-verifier-sdk",
+ "snark-verifier 0.1.0 (git+https://github.com/scroll-tech/snark-verifier?branch=v0.1)",
+ "snark-verifier-sdk 0.0.1 (git+https://github.com/scroll-tech/snark-verifier?branch=v0.1)",
  "strum 0.25.0",
  "strum_macros 0.25.3",
  "zkevm-circuits 0.13.0",
@@ -596,7 +596,7 @@ dependencies = [
 [[package]]
 name = "bus-mapping"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "eth-types 0.13.0",
  "ethers-core",
@@ -1211,7 +1211,7 @@ dependencies = [
 [[package]]
 name = "eth-types"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "base64 0.13.1",
  "ethers-core",
@@ -1380,7 +1380,7 @@ dependencies = [
 [[package]]
 name = "external-tracer"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "eth-types 0.13.0",
  "geth-utils 0.13.0",
@@ -1574,7 +1574,7 @@ dependencies = [
 [[package]]
 name = "gadgets"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "eth-types 0.13.0",
  "halo2_proofs",
@@ -1607,7 +1607,7 @@ dependencies = [
 [[package]]
 name = "geth-utils"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "env_logger 0.10.0",
  "gobuild",
@@ -2371,7 +2371,7 @@ dependencies = [
 [[package]]
 name = "mock"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "eth-types 0.13.0",
  "ethers-core",
@@ -2400,7 +2400,7 @@ dependencies = [
 [[package]]
 name = "mpt-zktrie"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "eth-types 0.13.0",
  "halo2curves",
@@ -2898,15 +2898,15 @@ dependencies = [
  "serde_json",
  "serde_stacker",
  "sha2",
- "snark-verifier",
- "snark-verifier-sdk",
+ "snark-verifier 0.1.0 (git+https://github.com/scroll-tech/snark-verifier?branch=develop)",
+ "snark-verifier-sdk 0.0.1 (git+https://github.com/scroll-tech/snark-verifier?branch=develop)",
  "zkevm-circuits 0.12.0",
 ]
 
 [[package]]
 name = "prover"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "aggregator 0.13.0",
  "anyhow",
@@ -2932,8 +2932,8 @@ dependencies = [
  "serde_json",
  "serde_stacker",
  "sha2",
- "snark-verifier",
- "snark-verifier-sdk",
+ "snark-verifier 0.1.0 (git+https://github.com/scroll-tech/snark-verifier?branch=v0.1)",
+ "snark-verifier-sdk 0.0.1 (git+https://github.com/scroll-tech/snark-verifier?branch=v0.1)",
  "zkevm-circuits 0.13.0",
 ]
 
@@ -3728,6 +3728,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "snark-verifier"
+version = "0.1.0"
+source = "git+https://github.com/scroll-tech/snark-verifier?branch=v0.1#58c46b74c73156b9e09dc27617369d2acfb4461b"
+dependencies = [
+ "bytes",
+ "ethereum-types",
+ "halo2-base",
+ "halo2-ecc",
+ "hex",
+ "itertools 0.12.1",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "poseidon",
+ "rand",
+ "revm",
+ "rlp",
+ "rustc-hash",
+ "serde",
+ "sha3 0.10.8",
+]
+
+[[package]]
 name = "snark-verifier-sdk"
 version = "0.0.1"
 source = "git+https://github.com/scroll-tech/snark-verifier?branch=develop#58c46b74c73156b9e09dc27617369d2acfb4461b"
@@ -3746,7 +3769,29 @@ dependencies = [
  "rand_chacha",
  "serde",
  "serde_json",
- "snark-verifier",
+ "snark-verifier 0.1.0 (git+https://github.com/scroll-tech/snark-verifier?branch=develop)",
+]
+
+[[package]]
+name = "snark-verifier-sdk"
+version = "0.0.1"
+source = "git+https://github.com/scroll-tech/snark-verifier?branch=v0.1#58c46b74c73156b9e09dc27617369d2acfb4461b"
+dependencies = [
+ "bincode",
+ "ethereum-types",
+ "ff",
+ "halo2-base",
+ "hex",
+ "itertools 0.12.1",
+ "log",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+ "rand",
+ "rand_chacha",
+ "serde",
+ "serde_json",
+ "snark-verifier 0.1.0 (git+https://github.com/scroll-tech/snark-verifier?branch=v0.1)",
 ]
 
 [[package]]
@@ -4575,8 +4620,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sha3 0.10.8",
- "snark-verifier",
- "snark-verifier-sdk",
+ "snark-verifier 0.1.0 (git+https://github.com/scroll-tech/snark-verifier?branch=develop)",
+ "snark-verifier-sdk 0.0.1 (git+https://github.com/scroll-tech/snark-verifier?branch=develop)",
  "strum 0.25.0",
  "strum_macros 0.25.3",
  "subtle",
@@ -4585,7 +4630,7 @@ dependencies = [
 [[package]]
 name = "zkevm-circuits"
 version = "0.13.0"
-source = "git+https://github.com/scroll-tech/zkevm-circuits.git?tag=v0.13.1#4009e5593f13ba73f64f556011ee5ef47bc4ebf3"
+source = "git+https://github.com/scroll-tech/zkevm-circuits.git?rev=6ac8a73c#6ac8a73c799f0006263ce438b3c582f98d98fc25"
 dependencies = [
  "array-init",
  "bus-mapping 0.13.0",
@@ -4617,8 +4662,8 @@ dependencies = [
  "serde",
  "serde_json",
  "sha3 0.10.8",
- "snark-verifier",
- "snark-verifier-sdk",
+ "snark-verifier 0.1.0 (git+https://github.com/scroll-tech/snark-verifier?branch=v0.1)",
+ "snark-verifier-sdk 0.0.1 (git+https://github.com/scroll-tech/snark-verifier?branch=v0.1)",
  "strum 0.25.0",
  "strum_macros 0.25.3",
  "subtle",
@@ -4640,7 +4685,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "snark-verifier-sdk",
+ "snark-verifier-sdk 0.0.1 (git+https://github.com/scroll-tech/snark-verifier?branch=develop)",
 ]
 
 [[package]]
