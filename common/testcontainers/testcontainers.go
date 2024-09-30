@@ -124,6 +124,8 @@ func (t *TestcontainerApps) StartWeb3SignerContainer(chainId int) error {
 	if rootDir, err = findProjectRootDir(); err != nil {
 		return fmt.Errorf("failed to find project root directory: %v", err)
 	}
+
+	// web3signerconf/keyconf.yaml may contain multiple keys configured and web3signer then choses one corresponding to from field of tx
 	web3SignerConfDir := filepath.Join(rootDir, "common", "testcontainers", "web3signerconf")
 
 	req := testcontainers.ContainerRequest{
