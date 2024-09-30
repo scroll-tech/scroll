@@ -136,7 +136,8 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *geth
 		return 0, nil, err
 	}
 
-	if s.config.TxType == LegacyTxType {
+	if s.config.TxType == LegacyTxType ||
+		s.transactionSigner.GetType() == RemoteSignerSignerType { // web3signer doesn't support access list
 		return gasLimitWithoutAccessList, nil, nil
 	}
 

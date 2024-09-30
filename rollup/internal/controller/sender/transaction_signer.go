@@ -109,6 +109,10 @@ func (ts *TransactionSigner) GetAddr() common.Address {
 	return ts.addr
 }
 
+func (ts *TransactionSigner) GetType() string {
+	return ts.config.SignerType
+}
+
 // RpcTransaction transaction that will be send through rpc to web3Signer
 type RpcTransaction struct {
 	From                 *common.Address `json:"from"`
