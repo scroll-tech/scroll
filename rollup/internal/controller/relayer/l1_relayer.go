@@ -159,15 +159,18 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			baseFee = block.BaseFee
 		}
 
-		if r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Enabled {
-			log.Info("Gas price before exchange rate on L2", "baseFee", baseFee, "blobBaseFee", blobBaseFee)
+		// include the token exchange rate in the fee data if alternative gas token enabled
+		if r.cfg.GasOracleConfig.AlternativeGasTokenConfig != nil && r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Enabled {
+			log.Info("Gas price before exchange rate on L22222222222", "baseFee", baseFee, "blobBaseFee", blobBaseFee)
 			switch r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode {
 			// The exchange rate represent the number of native token on L1 required to exchange for 1 native token on L2.
 			case config.FIXED:
+				fmt.Println("Exchange rate on L22222222", "FixedExchangeRate", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate)
 				baseFee = uint64(math.Ceil(float64(baseFee) / r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate))
 				blobBaseFee = uint64(math.Ceil(float64(blobBaseFee) / r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate)) 
 			case config.BINANCE_API:
 				exchangeRate, err := rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.ApiEndpoint)
+				fmt.Println("Exchange rate on L22222222", "FixedExchangeRate", exchangeRate)
 				if err != nil {
 					log.Error("Failed to get gas token exchange rate from Binance api", "endpoint", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.ApiEndpoint, "err", err)
 				}
@@ -177,7 +180,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				log.Error("Invalid alternative gas token mode", "mode", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode)
 				return 
 			}
-			log.Info("Gas price after exchange rate on L2", "baseFee", baseFee, "blobBaseFee", blobBaseFee)
+			log.Info("Gas price after exchange rate on L22222222222", "baseFee", baseFee, "blobBaseFee", blobBaseFee)
 		}
 
 		if r.shouldUpdateGasOracle(baseFee, blobBaseFee, isCurie) {
