@@ -20,8 +20,8 @@ const (
 	// PrivateKeySignerType
 	PrivateKeySignerType = "PrivateKey"
 
-	// RemoteSignerSignerType
-	RemoteSignerSignerType = "RemoteSigner"
+	// RemoteSignerType
+	RemoteSignerType = "RemoteSigner"
 )
 
 // TransactionSigner signs given transactions
@@ -36,7 +36,7 @@ type TransactionSigner struct {
 func NewTransactionSigner(config *config.SignerConfig, chainID *big.Int) (*TransactionSigner, error) {
 	switch config.SignerType {
 	case PrivateKeySignerType:
-		privKey, err := crypto.ToECDSA(common.FromHex(config.PrivateKey))
+		privKey, err := crypto.ToECDSA(common.FromHex(config.PrivateKeySignerConfig.PrivateKey))
 		if err != nil {
 			return nil, fmt.Errorf("parse sender private key failed: %w", err)
 		}
@@ -49,18 +49,18 @@ func NewTransactionSigner(config *config.SignerConfig, chainID *big.Int) (*Trans
 			auth:   auth,
 			addr:   crypto.PubkeyToAddress(privKey.PublicKey),
 		}, nil
-	case RemoteSignerSignerType:
-		if config.SignerAddress == "" {
+	case RemoteSignerType:
+		if config.RemoteSignerConfig.SignerAddress == "" {
 			return nil, fmt.Errorf("failed to create RemoteSigner, signer address is empty")
 		}
-		rpcClient, err := rpc.Dial(config.RemoteSignerUrl)
+		rpcClient, err := rpc.Dial(config.RemoteSignerConfig.RemoteSignerUrl)
 		if err != nil {
 			return nil, fmt.Errorf("failed to dial rpc client, err: %w", err)
 		}
 		return &TransactionSigner{
 			config:    config,
 			rpcClient: rpcClient,
-			addr:      common.HexToAddress(config.SignerAddress),
+			addr:      common.HexToAddress(config.RemoteSignerConfig.SignerAddress),
 		}, nil
 	default:
 		return nil, fmt.Errorf("failed to create new transaction signer, unknown type: %v", config.SignerType)
@@ -72,11 +72,11 @@ func (ts *TransactionSigner) SignTransaction(ctx context.Context, tx *gethTypes.
 	case PrivateKeySignerType:
 		signedTx, err := ts.auth.Signer(ts.addr, tx)
 		if err != nil {
-			log.Error("failed to sign tx", "address", ts.addr.String(), "err", err)
+			log.Info("failed to sign tx", "address", ts.addr.String(), "err", err)
 			return nil, err
 		}
 		return signedTx, nil
-	case RemoteSignerSignerType:
+	case RemoteSignerType:
 		rpcTx, err := txDataToRpcTx(&ts.addr, tx)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert txData to rpc transaction, err: %w", err)
@@ -84,6 +84,7 @@ func (ts *TransactionSigner) SignTransaction(ctx context.Context, tx *gethTypes.
 		var result hexutil.Bytes
 		err = ts.rpcClient.CallContext(ctx, &result, "eth_signTransaction", rpcTx)
 		if err != nil {
+			log.Info("failed to call remote rpc", "err", err)
 			return nil, err
 		}
 		signedTx := new(gethTypes.Transaction)

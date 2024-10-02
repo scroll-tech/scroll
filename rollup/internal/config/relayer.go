@@ -86,10 +86,20 @@ type GasOracleConfig struct {
 	L1BlobBaseFeeDefault               uint64 `json:"l1_blob_base_fee_default"`
 }
 
-// SignerConfig - config of signer, contains type, private key (for PrivateKey type), address and remote URL (for RemoteSigner type)
+// SignerConfig - config of signer, contains type and config corresponding to type
 type SignerConfig struct {
-	SignerType      string `json:"signer_type"`       // type of signer can be PrivateKey or RemoteSigner
-	PrivateKey      string `json:"private_key"`       // private key of signer in case of PrivateKey signerType
+	SignerType             string                  `json:"signer_type"` // type of signer can be PrivateKey or RemoteSigner
+	PrivateKeySignerConfig *PrivateKeySignerConfig `json:"private_key_signer_config"`
+	RemoteSignerConfig     *RemoteSignerConfig     `json:"remote_signer_config"`
+}
+
+// PrivateKeySignerConfig - config of private signer, contains private key
+type PrivateKeySignerConfig struct {
+	PrivateKey string `json:"private_key"` // private key of signer in case of PrivateKey signerType
+}
+
+// RemoteSignerConfig - config of private signer, contains address and remote URL
+type RemoteSignerConfig struct {
 	RemoteSignerUrl string `json:"remote_signer_url"` // remote signer url (web3signer) in case of RemoteSigner signerType
 	SignerAddress   string `json:"signer_address"`    // address of signer
 }

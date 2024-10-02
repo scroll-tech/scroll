@@ -73,7 +73,9 @@ func setupEnv(t *testing.T) {
 	privateKeyString = "1212121212121212121212121212121212121212121212121212121212121212"
 	signerConfig = &config.SignerConfig{
 		SignerType: "PrivateKey",
-		PrivateKey: privateKeyString,
+		PrivateKeySignerConfig: &config.PrivateKeySignerConfig{
+			PrivateKey: privateKeyString,
+		},
 	}
 	priv, err := crypto.HexToECDSA(privateKeyString)
 	assert.NoError(t, err)

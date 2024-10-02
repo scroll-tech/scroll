@@ -1302,16 +1302,16 @@ func (r *Layer2Relayer) StopSenders() {
 func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {
 	switch config.SignerType {
 	case sender.PrivateKeySignerType:
-		privKey, err := crypto.ToECDSA(common.FromHex(config.PrivateKey))
+		privKey, err := crypto.ToECDSA(common.FromHex(config.PrivateKeySignerConfig.PrivateKey))
 		if err != nil {
 			return common.Address{}, fmt.Errorf("parse sender private key failed: %w", err)
 		}
 		return crypto.PubkeyToAddress(privKey.PublicKey), nil
-	case sender.RemoteSignerSignerType:
-		if config.SignerAddress == "" {
+	case sender.RemoteSignerType:
+		if config.RemoteSignerConfig.SignerAddress == "" {
 			return common.Address{}, fmt.Errorf("signer address is empty")
 		}
-		return common.HexToAddress(config.SignerAddress), nil
+		return common.HexToAddress(config.RemoteSignerConfig.SignerAddress), nil
 	default:
 		return common.Address{}, fmt.Errorf("failed to determine signer address, unknown signer type: %v", config.SignerType)
 	}
