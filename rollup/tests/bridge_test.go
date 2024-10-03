@@ -105,12 +105,12 @@ func setupEnv(t *testing.T) {
 	l2Cfg.Confirmations = 0
 	l2Cfg.RelayerConfig.SenderConfig.Confirmations = 0
 
-	pKey, err := crypto.ToECDSA(common.FromHex(l2Cfg.RelayerConfig.CommitSenderPrivateKey))
+	pKey, err := crypto.ToECDSA(common.FromHex(l2Cfg.RelayerConfig.CommitSenderSignerConfig.PrivateKeySignerConfig.PrivateKey))
 	assert.NoError(t, err)
 	l1Auth, err = bind.NewKeyedTransactorWithChainID(pKey, l1GethChainID)
 	assert.NoError(t, err)
 
-	pKey, err = crypto.ToECDSA(common.FromHex(l2Cfg.RelayerConfig.GasOracleSenderPrivateKey))
+	pKey, err = crypto.ToECDSA(common.FromHex(l2Cfg.RelayerConfig.GasOracleSenderSignerConfig.PrivateKeySignerConfig.PrivateKey))
 	assert.NoError(t, err)
 	l2Auth, err = bind.NewKeyedTransactorWithChainID(pKey, l2GethChainID)
 	assert.NoError(t, err)

@@ -21,9 +21,10 @@ import (
 
 // TestcontainerApps testcontainers struct
 type TestcontainerApps struct {
-	postgresContainer *postgres.PostgresContainer
-	l2GethContainer   *testcontainers.DockerContainer
-	poSL1Container    compose.ComposeStack
+	postgresContainer   *postgres.PostgresContainer
+	l2GethContainer     *testcontainers.DockerContainer
+	poSL1Container      compose.ComposeStack
+	web3SignerContainer *testcontainers.DockerContainer
 
 	// common time stamp in nanoseconds.
 	Timestamp int
@@ -112,6 +113,47 @@ func (t *TestcontainerApps) StartPoSL1Container() error {
 	return nil
 }
 
+func (t *TestcontainerApps) StartWeb3SignerContainer(chainId int) error {
+	if t.web3SignerContainer != nil && t.web3SignerContainer.IsRunning() {
+		return nil
+	}
+	var (
+		err     error
+		rootDir string
+	)
+	if rootDir, err = findProjectRootDir(); err != nil {
+		return fmt.Errorf("failed to find project root directory: %v", err)
+	}
+
+	// web3signerconf/keyconf.yaml may contain multiple keys configured and web3signer then choses one corresponding to from field of tx
+	web3SignerConfDir := filepath.Join(rootDir, "common", "testcontainers", "web3signerconf")
+
+	req := testcontainers.ContainerRequest{
+		Image:        "consensys/web3signer:develop",
+		ExposedPorts: []string{"9000/tcp"},
+		Cmd:          []string{"--key-config-path", "/web3signerconf/", "eth1", "--chain-id", fmt.Sprintf("%d", chainId)},
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      web3SignerConfDir,
+				ContainerFilePath: "/",
+				FileMode:          0o777,
+			},
+		},
+		WaitingFor: wait.ForLog("ready to handle signing requests"),
+	}
+	genericContainerReq := testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Started:          true,
+	}
+	container, err := testcontainers.GenericContainer(context.Background(), genericContainerReq)
+	if err != nil {
+		log.Printf("failed to start web3signer container: %s", err)
+		return err
+	}
+	t.web3SignerContainer, _ = container.(*testcontainers.DockerContainer)
+	return nil
+}
+
 // GetPoSL1EndPoint returns the endpoint of the running PoS L1 endpoint
 func (t *TestcontainerApps) GetPoSL1EndPoint() (string, error) {
 	if t.poSL1Container == nil {
@@ -151,6 +193,14 @@ func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 		return "", err
 	}
 	return endpoint, nil
+}
+
+// GetL2GethEndPoint returns the endpoint of the running L2Geth container
+func (t *TestcontainerApps) GetWeb3SignerEndpoint() (string, error) {
+	if t.web3SignerContainer == nil || !t.web3SignerContainer.IsRunning() {
+		return "", errors.New("web3signer is not running")
+	}
+	return t.web3SignerContainer.PortEndpoint(context.Background(), "9000/tcp", "http")
 }
 
 // GetGormDBClient returns a gorm.DB by connecting to the running postgres container
@@ -199,6 +249,11 @@ func (t *TestcontainerApps) Free() {
 			log.Printf("failed to stop PoS L1 container: %s", err)
 		} else {
 			t.poSL1Container = nil
+		}
+	}
+	if t.web3SignerContainer != nil && t.web3SignerContainer.IsRunning() {
+		if err := t.web3SignerContainer.Terminate(ctx); err != nil {
+			log.Printf("failed to stop web3signer container: %s", err)
 		}
 	}
 }

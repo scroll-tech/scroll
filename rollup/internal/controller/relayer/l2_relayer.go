@@ -2,7 +2,6 @@ package relayer
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"errors"
 	"fmt"
 	"math/big"
@@ -76,18 +75,33 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
-	gasOracleSenderPrivateKey, commitSenderPrivateKey, finalizeSenderPrivateKey, err := parsePrivateKeys(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private keys provided by config, err: %v", err)
-	}
 
 	var gasOracleSender, commitSender, finalizeSender *sender.Sender
+	var err error
+
+	// check that all 3 signer addresses are different, because there will be a problem in managing nonce for different senders
+	gasOracleSenderAddr, err := addrFromSignerConfig(cfg.GasOracleSenderSignerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse addr from gas oracle signer config, err: %v", err)
+	}
+	commitSenderAddr, err := addrFromSignerConfig(cfg.CommitSenderSignerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse addr from commit sender config, err: %v", err)
+	}
+	finalizeSenderAddr, err := addrFromSignerConfig(cfg.FinalizeSenderSignerConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse addr from finalize sender config, err: %v", err)
+	}
+	if gasOracleSenderAddr == commitSenderAddr || gasOracleSenderAddr == finalizeSenderAddr || commitSenderAddr == finalizeSenderAddr {
+		return nil, fmt.Errorf("gas oracle, commit, and finalize sender addresses must be different. Got: Gas Oracle=%s, Commit=%s, Finalize=%s",
+			gasOracleSenderAddr.Hex(), commitSenderAddr.Hex(), finalizeSenderAddr.Hex())
+	}
+
 	switch serviceType {
 	case ServiceTypeL2GasOracle:
-		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, gasOracleSenderPrivateKey, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
+		gasOracleSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.GasOracleSenderSignerConfig, "l2_relayer", "gas_oracle_sender", types.SenderTypeL2GasOracle, db, reg)
 		if err != nil {
-			addr := crypto.PubkeyToAddress(gasOracleSenderPrivateKey.PublicKey)
-			return nil, fmt.Errorf("new gas oracle sender failed for address %s, err: %w", addr.Hex(), err)
+			return nil, fmt.Errorf("new gas oracle sender failed, err: %w", err)
 		}
 
 		// Ensure test features aren't enabled on the ethereum mainnet.
@@ -96,16 +110,14 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		}
 
 	case ServiceTypeL2RollupRelayer:
-		commitSender, err = sender.NewSender(ctx, cfg.SenderConfig, commitSenderPrivateKey, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
+		commitSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderSignerConfig, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
 		if err != nil {
-			addr := crypto.PubkeyToAddress(commitSenderPrivateKey.PublicKey)
-			return nil, fmt.Errorf("new commit sender failed for address %s, err: %w", addr.Hex(), err)
+			return nil, fmt.Errorf("new commit sender failed, err: %w", err)
 		}
 
-		finalizeSender, err = sender.NewSender(ctx, cfg.SenderConfig, finalizeSenderPrivateKey, "l2_relayer", "finalize_sender", types.SenderTypeFinalizeBatch, db, reg)
+		finalizeSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.FinalizeSenderSignerConfig, "l2_relayer", "finalize_sender", types.SenderTypeFinalizeBatch, db, reg)
 		if err != nil {
-			addr := crypto.PubkeyToAddress(finalizeSenderPrivateKey.PublicKey)
-			return nil, fmt.Errorf("new finalize sender failed for address %s, err: %w", addr.Hex(), err)
+			return nil, fmt.Errorf("new finalize sender failed, err: %w", err)
 		}
 
 		// Ensure test features aren't enabled on the ethereum mainnet.
@@ -1287,35 +1299,20 @@ func (r *Layer2Relayer) StopSenders() {
 	}
 }
 
-func parsePrivateKeys(cfg *config.RelayerConfig) (*ecdsa.PrivateKey, *ecdsa.PrivateKey, *ecdsa.PrivateKey, error) {
-	parseKey := func(hexKey string) (*ecdsa.PrivateKey, error) {
-		return crypto.ToECDSA(common.FromHex(hexKey))
+func addrFromSignerConfig(config *config.SignerConfig) (common.Address, error) {
+	switch config.SignerType {
+	case sender.PrivateKeySignerType:
+		privKey, err := crypto.ToECDSA(common.FromHex(config.PrivateKeySignerConfig.PrivateKey))
+		if err != nil {
+			return common.Address{}, fmt.Errorf("parse sender private key failed: %w", err)
+		}
+		return crypto.PubkeyToAddress(privKey.PublicKey), nil
+	case sender.RemoteSignerType:
+		if config.RemoteSignerConfig.SignerAddress == "" {
+			return common.Address{}, fmt.Errorf("signer address is empty")
+		}
+		return common.HexToAddress(config.RemoteSignerConfig.SignerAddress), nil
+	default:
+		return common.Address{}, fmt.Errorf("failed to determine signer address, unknown signer type: %v", config.SignerType)
 	}
-
-	gasOracleKey, err := parseKey(cfg.GasOracleSenderPrivateKey)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("parse gas oracle sender private key failed: %w", err)
-	}
-
-	commitKey, err := parseKey(cfg.CommitSenderPrivateKey)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("parse commit sender private key failed: %w", err)
-	}
-
-	finalizeKey, err := parseKey(cfg.FinalizeSenderPrivateKey)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("parse finalize sender private key failed: %w", err)
-	}
-
-	// Check if all three private keys are different
-	addrGasOracle := crypto.PubkeyToAddress(gasOracleKey.PublicKey)
-	addrCommit := crypto.PubkeyToAddress(commitKey.PublicKey)
-	addrFinalize := crypto.PubkeyToAddress(finalizeKey.PublicKey)
-
-	if addrGasOracle == addrCommit || addrGasOracle == addrFinalize || addrCommit == addrFinalize {
-		return nil, nil, nil, fmt.Errorf("gas oracle, commit, and finalize sender addresses must be different. Got: Gas Oracle=%s, Commit=%s, Finalize=%s",
-			addrGasOracle.Hex(), addrCommit.Hex(), addrFinalize.Hex())
-	}
-
-	return gasOracleKey, commitKey, finalizeKey, nil
 }
