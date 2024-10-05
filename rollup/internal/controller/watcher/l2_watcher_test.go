@@ -20,7 +20,7 @@ import (
 func setupL2Watcher(t *testing.T) (*L2WatcherClient, *gorm.DB) {
 	db := setupDB(t)
 	l2cfg := cfg.L2Config
-	watcher := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, db, nil)
+	watcher := NewL2WatcherClient(context.Background(), l2Cli, l2cfg.Confirmations, l2cfg.L2MessageQueueAddress, l2cfg.WithdrawTrieRootSlot, nil, db, nil)
 	return watcher, db
 }
 
@@ -44,5 +44,5 @@ func testFetchRunningMissingBlocks(t *testing.T) {
 
 func prepareWatcherClient(l2Cli *ethclient.Client, db *gorm.DB) *L2WatcherClient {
 	confirmations := rpc.LatestBlockNumber
-	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, common.Address{}, common.Hash{}, db, nil)
+	return NewL2WatcherClient(context.Background(), l2Cli, confirmations, common.Address{}, common.Hash{}, nil, db, nil)
 }

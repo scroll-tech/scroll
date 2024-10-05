@@ -11,8 +11,8 @@ require (
 	github.com/holiman/uint256 v1.2.4
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.16.0
-	github.com/scroll-tech/da-codec v0.1.1-0.20240819100936-c6af3bbe7068
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240821075135-bdd1b005d40f
+	github.com/scroll-tech/da-codec v0.1.1-0.20241007144555-0079225045cc
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20241004182217-88bdce77a6e7
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
@@ -64,6 +64,7 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect

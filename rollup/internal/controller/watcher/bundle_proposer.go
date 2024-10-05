@@ -11,8 +11,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/forks"
-
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 )
@@ -146,14 +144,14 @@ func (p *BundleProposer) proposeBundle() error {
 	if err != nil {
 		return err
 	}
-	hardforkName := forks.GetHardforkName(p.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
+	hardforkName := encoding.GetHardforkName(p.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
 	codecVersion := encoding.CodecVersion(batches[0].CodecVersion)
 	for i := 1; i < len(batches); i++ {
 		chunk, err := p.chunkOrm.GetChunkByIndex(p.ctx, batches[i].StartChunkIndex)
 		if err != nil {
 			return err
 		}
-		currentHardfork := forks.GetHardforkName(p.chainCfg, chunk.StartBlockNumber, chunk.StartBlockTime)
+		currentHardfork := encoding.GetHardforkName(p.chainCfg, chunk.StartBlockNumber, chunk.StartBlockTime)
 		if currentHardfork != hardforkName {
 			batches = batches[:i]
 			maxBatchesThisBundle = uint64(i) // update maxBlocksThisChunk to trigger chunking, because these blocks are the last blocks before the hardfork

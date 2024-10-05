@@ -8,10 +8,6 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/da-codec/encoding/codecv0"
-	"github.com/scroll-tech/da-codec/encoding/codecv1"
-	"github.com/scroll-tech/da-codec/encoding/codecv2"
-	"github.com/scroll-tech/da-codec/encoding/codecv3"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
@@ -179,47 +175,17 @@ func TestChunkOrm(t *testing.T) {
 		assert.NoError(t, migrate.ResetDB(sqlDB))
 		var chunkHash1 common.Hash
 		var chunkHash2 common.Hash
-		if codecVersion == encoding.CodecV0 {
-			daChunk1, createErr := codecv0.NewDAChunk(chunk1, 0)
-			assert.NoError(t, createErr)
-			chunkHash1, err = daChunk1.Hash()
-			assert.NoError(t, err)
+		codec, err := encoding.CodecFromVersion(codecVersion)
+		assert.NoError(t, err)
+		daChunk1, createErr := codec.NewDAChunk(chunk1, 0)
+		assert.NoError(t, createErr)
+		chunkHash1, err = daChunk1.Hash()
+		assert.NoError(t, err)
 
-			daChunk2, createErr := codecv0.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
-			assert.NoError(t, createErr)
-			chunkHash2, err = daChunk2.Hash()
-			assert.NoError(t, err)
-		} else if codecVersion == encoding.CodecV1 {
-			daChunk1, createErr := codecv1.NewDAChunk(chunk1, 0)
-			assert.NoError(t, createErr)
-			chunkHash1, err = daChunk1.Hash()
-			assert.NoError(t, err)
-
-			daChunk2, createErr := codecv1.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
-			assert.NoError(t, createErr)
-			chunkHash2, err = daChunk2.Hash()
-			assert.NoError(t, err)
-		} else if codecVersion == encoding.CodecV2 {
-			daChunk1, createErr := codecv2.NewDAChunk(chunk1, 0)
-			assert.NoError(t, createErr)
-			chunkHash1, err = daChunk1.Hash()
-			assert.NoError(t, err)
-
-			daChunk2, createErr := codecv2.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
-			assert.NoError(t, createErr)
-			chunkHash2, err = daChunk2.Hash()
-			assert.NoError(t, err)
-		} else {
-			daChunk1, createErr := codecv3.NewDAChunk(chunk1, 0)
-			assert.NoError(t, createErr)
-			chunkHash1, err = daChunk1.Hash()
-			assert.NoError(t, err)
-
-			daChunk2, createErr := codecv3.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
-			assert.NoError(t, createErr)
-			chunkHash2, err = daChunk2.Hash()
-			assert.NoError(t, err)
-		}
+		daChunk2, createErr := codec.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
+		assert.NoError(t, createErr)
+		chunkHash2, err = daChunk2.Hash()
+		assert.NoError(t, err)
 
 		dbChunk1, err := chunkOrm.InsertChunk(context.Background(), chunk1, utils.CodecConfig{Version: codecVersion}, utils.ChunkMetrics{})
 		assert.NoError(t, err)
@@ -282,24 +248,11 @@ func TestBatchOrm(t *testing.T) {
 		batch1, err = batchOrm.GetBatchByIndex(context.Background(), 0)
 		assert.NoError(t, err)
 
-		var batchHash1 string
-		if codecVersion == encoding.CodecV0 {
-			daBatch1, createErr := codecv0.NewDABatchFromBytes(batch1.BatchHeader)
-			assert.NoError(t, createErr)
-			batchHash1 = daBatch1.Hash().Hex()
-		} else if codecVersion == encoding.CodecV1 {
-			daBatch1, createErr := codecv1.NewDABatchFromBytes(batch1.BatchHeader)
-			assert.NoError(t, createErr)
-			batchHash1 = daBatch1.Hash().Hex()
-		} else if codecVersion == encoding.CodecV2 {
-			daBatch1, createErr := codecv2.NewDABatchFromBytes(batch1.BatchHeader)
-			assert.NoError(t, createErr)
-			batchHash1 = daBatch1.Hash().Hex()
-		} else {
-			daBatch1, createErr := codecv3.NewDABatchFromBytes(batch1.BatchHeader)
-			assert.NoError(t, createErr)
-			batchHash1 = daBatch1.Hash().Hex()
-		}
+		codec, err := encoding.CodecFromVersion(codecVersion)
+		assert.NoError(t, err)
+		daBatch1, createErr := codec.NewDABatchFromBytes(batch1.BatchHeader)
+		assert.NoError(t, createErr)
+		batchHash1 := daBatch1.Hash().Hex()
 		assert.Equal(t, hash1, batchHash1)
 
 		batch = &encoding.Batch{
@@ -313,16 +266,9 @@ func TestBatchOrm(t *testing.T) {
 		batch2, err = batchOrm.GetBatchByIndex(context.Background(), 1)
 		assert.NoError(t, err)
 
-		var batchHash2 string
-		if codecVersion == encoding.CodecV0 {
-			daBatch2, createErr := codecv0.NewDABatchFromBytes(batch2.BatchHeader)
-			assert.NoError(t, createErr)
-			batchHash2 = daBatch2.Hash().Hex()
-		} else {
-			daBatch2, createErr := codecv1.NewDABatchFromBytes(batch2.BatchHeader)
-			assert.NoError(t, createErr)
-			batchHash2 = daBatch2.Hash().Hex()
-		}
+		daBatch2, createErr := codec.NewDABatchFromBytes(batch2.BatchHeader)
+		assert.NoError(t, createErr)
+		batchHash2 := daBatch2.Hash().Hex()
 		assert.Equal(t, hash2, batchHash2)
 
 		count, err := batchOrm.GetBatchCount(context.Background())

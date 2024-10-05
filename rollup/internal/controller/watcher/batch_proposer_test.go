@@ -132,6 +132,7 @@ func testBatchProposerCodecv0Limits(t *testing.T) {
 				MaxL1CommitCalldataSizePerBatch: tt.maxL1CommitCalldataSize,
 				BatchTimeoutSec:                 tt.batchTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
+				MaxUncompressedBatchBytesSize:   math.MaxUint64,
 			}, &params.ChainConfig{}, db, nil)
 			bp.TryProposeBatch()
 
@@ -253,6 +254,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				MaxRowConsumptionPerChunk:       1000000,
 				ChunkTimeoutSec:                 300,
 				GasCostIncreaseMultiplier:       1.2,
+				MaxUncompressedBatchBytesSize:   math.MaxUint64,
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0),
 			}, db, nil)
@@ -271,6 +273,7 @@ func testBatchProposerCodecv1Limits(t *testing.T) {
 				MaxL1CommitCalldataSizePerBatch: tt.maxL1CommitCalldataSize,
 				BatchTimeoutSec:                 tt.batchTimeoutSec,
 				GasCostIncreaseMultiplier:       1.2,
+				MaxUncompressedBatchBytesSize:   math.MaxUint64,
 			}, &params.ChainConfig{
 				BernoulliBlock: big.NewInt(0),
 			}, db, nil)
@@ -629,6 +632,7 @@ func testBatchCommitGasAndCalldataSizeCodecv0Estimation(t *testing.T) {
 		MaxRowConsumptionPerChunk:       1000000,
 		ChunkTimeoutSec:                 300,
 		GasCostIncreaseMultiplier:       1.2,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
 	}, &params.ChainConfig{}, db, nil)
 	cp.TryProposeChunk() // chunk1 contains block1
 	cp.TryProposeChunk() // chunk2 contains block2
@@ -645,6 +649,7 @@ func testBatchCommitGasAndCalldataSizeCodecv0Estimation(t *testing.T) {
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1.2,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
 	}, &params.ChainConfig{}, db, nil)
 	bp.TryProposeBatch()
 
@@ -708,6 +713,7 @@ func testBatchCommitGasAndCalldataSizeCodecv1Estimation(t *testing.T) {
 		MaxRowConsumptionPerChunk:       1000000,
 		ChunkTimeoutSec:                 300,
 		GasCostIncreaseMultiplier:       1.2,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
 	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
 	cp.TryProposeChunk() // chunk1 contains block1
 	cp.TryProposeChunk() // chunk2 contains block2
@@ -724,6 +730,7 @@ func testBatchCommitGasAndCalldataSizeCodecv1Estimation(t *testing.T) {
 		MaxL1CommitCalldataSizePerBatch: 1000000,
 		BatchTimeoutSec:                 0,
 		GasCostIncreaseMultiplier:       1.2,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
 	}, &params.ChainConfig{BernoulliBlock: big.NewInt(0)}, db, nil)
 	bp.TryProposeBatch()
 

@@ -12,8 +12,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/forks"
-
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
@@ -188,7 +186,7 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 	}
 
 	for {
-		compatible, err := utils.CheckChunkCompressedDataCompatibility(chunk, codecVersion)
+		compatible, err := encoding.CheckChunkCompressedDataCompatibility(chunk, codecVersion)
 		if err != nil {
 			log.Error("Failed to check chunk compressed data compatibility", "start block number", chunk.Blocks[0].Header.Number, "codecVersion", codecVersion, "err", err)
 			return err
@@ -272,9 +270,9 @@ func (p *ChunkProposer) proposeChunk() error {
 
 	// Ensure all blocks in the same chunk use the same hardfork name
 	// If a different hardfork name is found, truncate the blocks slice at that point
-	hardforkName := forks.GetHardforkName(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
+	hardforkName := encoding.GetHardforkName(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 	for i := 1; i < len(blocks); i++ {
-		currentHardfork := forks.GetHardforkName(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
+		currentHardfork := encoding.GetHardforkName(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
 		if currentHardfork != hardforkName {
 			blocks = blocks[:i]
 			maxBlocksThisChunk = uint64(i) // update maxBlocksThisChunk to trigger chunking, because these blocks are the last blocks before the hardfork
@@ -283,7 +281,7 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	codecConfig := utils.CodecConfig{
-		Version:        forks.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time),
+		Version:        encoding.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time),
 		EnableCompress: true, // codecv4 is the only version that supports conditional compression, default to enable compression
 	}
 

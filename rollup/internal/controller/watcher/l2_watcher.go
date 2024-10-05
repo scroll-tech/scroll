@@ -7,13 +7,13 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/da-codec/encoding/codecv0"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/common/hexutil"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/event"
 	"github.com/scroll-tech/go-ethereum/log"
+	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/scroll-tech/go-ethereum/rpc"
 	"gorm.io/gorm"
 
@@ -35,10 +35,12 @@ type L2WatcherClient struct {
 	withdrawTrieRootSlot common.Hash
 
 	metrics *l2WatcherMetrics
+
+	chainCfg *params.ChainConfig
 }
 
 // NewL2WatcherClient take a l2geth instance to generate a l2watcherclient instance
-func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, db *gorm.DB, reg prometheus.Registerer) *L2WatcherClient {
+func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmations rpc.BlockNumber, messageQueueAddress common.Address, withdrawTrieRootSlot common.Hash, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *L2WatcherClient {
 	return &L2WatcherClient{
 		ctx:    ctx,
 		Client: client,
@@ -51,6 +53,8 @@ func NewL2WatcherClient(ctx context.Context, client *ethclient.Client, confirmat
 		withdrawTrieRootSlot: withdrawTrieRootSlot,
 
 		metrics: initL2WatcherMetrics(reg),
+
+		chainCfg: chainCfg,
 	}
 }
 
@@ -147,7 +151,8 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 
 	if len(blocks) > 0 {
 		for _, block := range blocks {
-			blockL1CommitCalldataSize, err := codecv0.EstimateBlockL1CommitCalldataSize(block)
+			codec := encoding.CodecFromConfig(w.chainCfg, block.Header.Number, block.Header.Time)
+			blockL1CommitCalldataSize, err := codec.EstimateBlockL1CommitCalldataSize(block)
 			if err != nil {
 				return fmt.Errorf("failed to estimate block L1 commit calldata size: %v", err)
 			}

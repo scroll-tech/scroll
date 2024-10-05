@@ -3,8 +3,8 @@ module scroll-tech/integration-test
 go 1.21
 
 require (
-	github.com/scroll-tech/da-codec v0.0.0-20240730031611-1b736159d5cb
-	github.com/scroll-tech/go-ethereum v1.10.14-0.20240626125436-418bc6f728b6
+	github.com/scroll-tech/da-codec v0.1.1-0.20241006200938-75812c4c0ba1
+	github.com/scroll-tech/go-ethereum v1.10.14-0.20241004182217-88bdce77a6e7
 	github.com/stretchr/testify v1.9.0
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
 )
@@ -26,6 +26,7 @@ require (
 	github.com/iden3/go-iden3-crypto v0.0.16 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rjeczalik/notify v0.9.1 // indirect

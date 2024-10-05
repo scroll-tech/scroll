@@ -688,6 +688,7 @@ github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 h1:DACJavvAHhabrF0
 github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0/go.mod h1:E/TSTwGwJL78qG/PmXZO1EjYhfJinVAhrmmHX6Z8B9k=
 github.com/golang/geo v0.0.0-20190916061304-5b978397cfec h1:lJwO/92dFXWeXOZdoGXgptLmNLwynMSHUmU6besqtiw=
 github.com/golang/geo v0.0.0-20190916061304-5b978397cfec/go.mod h1:QZ0nwyI2jOfgRAoBvP+ab5aRr7c9x7lhGEJrKvBwjWI=
+github.com/golang/glog v1.2.0 h1:uCdmnmatrKCgMBlM4rMuJZWOkPDqdbZPnrMXDY4gI68=
 github.com/golang/glog v1.2.0/go.mod h1:6AhwSGph0fcJtXVM/PEHPqZlFeoLxhs7/t5UDAwmO+w=
 github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
@@ -1016,7 +1017,16 @@ github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQD
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/sagikazarmark/crypt v0.19.0/go.mod h1:c6vimRziqqERhtSe0MhIvzE1w54FrCHtrXb5NH/ja78=
 github.com/scroll-tech/da-codec v0.0.0-20240605080813-32bfc9fccde7/go.mod h1:1wWYii0OPwd5kw+xrz0PFgS420xNadrNF1x/ELJT+TM=
+github.com/scroll-tech/da-codec v0.0.0-20241006192342-95d2bc79b7e8/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
+github.com/scroll-tech/da-codec v0.1.1-0.20241004100020-91ac897e28fc/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
+github.com/scroll-tech/da-codec v0.1.1-0.20241005161415-e6c8965dc0d7 h1:4QURqyAyOsUmLDhH/2BUQfWJk+RvsWHcrSyx/ikF/i4=
+github.com/scroll-tech/da-codec v0.1.1-0.20241005161415-e6c8965dc0d7/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
+github.com/scroll-tech/da-codec v0.1.1-0.20241005165808-ba853e3447d6 h1:cObIVAkNWfLxBxAOot+ERoszNtCTZaf8vSeQ7N5VyvQ=
+github.com/scroll-tech/da-codec v0.1.1-0.20241005165808-ba853e3447d6/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
+github.com/scroll-tech/da-codec v0.1.1-0.20241005172014-aca0bef21638 h1:2KIfClLB3iKr593Dia79/vkqMsqc29H0zcxp1/jel4k=
+github.com/scroll-tech/da-codec v0.1.1-0.20241005172014-aca0bef21638/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20240607130425-e2becce6a1a4/go.mod h1:byf/mZ8jLYUCnUePTicjJWn+RvKdxDn7buS6glTnMwQ=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20240821074444-b3fa00861e5e/go.mod h1:swB5NSp8pKNDuYsTxfR08bHS6L56i119PBx8fxvV8Cs=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/segmentio/kafka-go v0.1.0/go.mod h1:X6itGqS9L4jDletMsxZ7Dz+JFWxM6JHfPOCvTvk+EJo=
 github.com/segmentio/kafka-go v0.2.0 h1:HtCSf6B4gN/87yc5qTl7WsxPKQIIGXLPPM1bMCPOsoY=
