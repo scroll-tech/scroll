@@ -166,7 +166,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 	}
 
 	for {
-		compatible, err := utils.CheckBatchCompressedDataCompatibility(batch, codecVersion)
+		compatible, err := encoding.CheckBatchCompressedDataCompatibility(batch, codecVersion)
 		if err != nil {
 			log.Error("Failed to check batch compressed data compatibility", "batch index", batch.Index, "codecVersion", codecVersion, "err", err)
 			return err
