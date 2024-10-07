@@ -83,10 +83,11 @@ type RelayerConfig struct {
 	ChainMonitor *ChainMonitor `json:"chain_monitor"`
 	// L1CommitGasLimitMultiplier multiplier for fallback gas limit in commitBatch txs
 	L1CommitGasLimitMultiplier float64 `json:"l1_commit_gas_limit_multiplier,omitempty"`
-	// The private key of the relayer
-	GasOracleSenderPrivateKey string `json:"gas_oracle_sender_private_key"`
-	CommitSenderPrivateKey    string `json:"commit_sender_private_key"`
-	FinalizeSenderPrivateKey  string `json:"finalize_sender_private_key"`
+
+	// Configs of transaction signers (GasOracle, Commit, Finalize)
+	GasOracleSenderSignerConfig *SignerConfig `json:"gas_oracle_sender_signer_config"`
+	CommitSenderSignerConfig    *SignerConfig `json:"commit_sender_signer_config"`
+	FinalizeSenderSignerConfig  *SignerConfig `json:"finalize_sender_signer_config"`
 
 	// Indicates if bypass features specific to testing environments are enabled.
 	EnableTestEnvBypassFeatures bool `json:"enable_test_env_bypass_features"`
@@ -96,7 +97,7 @@ type RelayerConfig struct {
 	FinalizeBundleWithoutProofTimeoutSec uint64 `json:"finalize_bundle_without_proof_timeout_sec"`
 }
 
-// AlternativeGasTokenConfig The config to help handling token exchange rate when updating gas price oracle.
+// AlternativeGasTokenConfig The configuration for handling token exchange rates when updating the gas price oracle.
 type AlternativeGasTokenConfig struct {
 	Enabled           bool             `json:"enabled"`
 	Mode              ExchangeRateMode `json:"mode"`
@@ -110,6 +111,8 @@ type GasOracleConfig struct {
 	MinGasPrice uint64 `json:"min_gas_price"`
 	// GasPriceDiff is the minimum percentage of gas price difference to update gas oracle.
 	GasPriceDiff uint64 `json:"gas_price_diff"`
+  // AlternativeGasTokenConfig The configuration for handling token exchange rates when updating the gas price oracle.
+  AlternativeGasTokenConfig          *AlternativeGasTokenConfig `json:"alternative_gas_token_config"`
 
 	// The following configs are only for updating L1 gas price, used for sender in L2.
 	// The weight for L1 base fee.
@@ -120,5 +123,22 @@ type GasOracleConfig struct {
 	CheckCommittedBatchesWindowMinutes int                        `json:"check_committed_batches_window_minutes"`
 	L1BaseFeeDefault                   uint64                     `json:"l1_base_fee_default"`
 	L1BlobBaseFeeDefault               uint64                     `json:"l1_blob_base_fee_default"`
-	AlternativeGasTokenConfig          *AlternativeGasTokenConfig `json:"alternative_gas_token_config"`
+}
+
+// SignerConfig - config of signer, contains type and config corresponding to type
+type SignerConfig struct {
+	SignerType             string                  `json:"signer_type"` // type of signer can be PrivateKey or RemoteSigner
+	PrivateKeySignerConfig *PrivateKeySignerConfig `json:"private_key_signer_config"`
+	RemoteSignerConfig     *RemoteSignerConfig     `json:"remote_signer_config"`
+}
+
+// PrivateKeySignerConfig - config of private signer, contains private key
+type PrivateKeySignerConfig struct {
+	PrivateKey string `json:"private_key"` // private key of signer in case of PrivateKey signerType
+}
+
+// RemoteSignerConfig - config of private signer, contains address and remote URL
+type RemoteSignerConfig struct {
+	RemoteSignerUrl string `json:"remote_signer_url"` // remote signer url (web3signer) in case of RemoteSigner signerType
+	SignerAddress   string `json:"signer_address"`    // address of signer
 }

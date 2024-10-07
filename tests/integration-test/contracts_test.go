@@ -68,7 +68,7 @@ func testGreeter(t *testing.T) {
 
 	chainID, err := l2Cli.ChainID(context.Background())
 	assert.NoError(t, err)
-	pKey, err := crypto.ToECDSA(common.FromHex(rollupApp.Config.L2Config.RelayerConfig.CommitSenderPrivateKey))
+	pKey, err := crypto.ToECDSA(common.FromHex(rollupApp.Config.L2Config.RelayerConfig.CommitSenderSignerConfig.PrivateKeySignerConfig.PrivateKey))
 	assert.NoError(t, err)
 	auth, err := bind.NewKeyedTransactorWithChainID(pKey, chainID)
 	assert.NoError(t, err)

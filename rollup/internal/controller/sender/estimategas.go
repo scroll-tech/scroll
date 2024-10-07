@@ -25,8 +25,8 @@ func (s *Sender) estimateLegacyGas(to *common.Address, data []byte, fallbackGasL
 
 	gasLimit, _, err := s.estimateGasLimit(to, data, nil, gasPrice, nil, nil, nil)
 	if err != nil {
-		log.Error("estimateLegacyGas estimateGasLimit failure", "gas price", gasPrice, "from", s.auth.From.String(),
-			"nonce", s.auth.Nonce.Uint64(), "to address", to.String(), "fallback gas limit", fallbackGasLimit, "error", err)
+		log.Error("estimateLegacyGas estimateGasLimit failure", "gas price", gasPrice, "from", s.transactionSigner.GetAddr().String(),
+			"nonce", s.transactionSigner.GetNonce(), "to address", to.String(), "fallback gas limit", fallbackGasLimit, "error", err)
 		if fallbackGasLimit == 0 {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func (s *Sender) estimateDynamicGas(to *common.Address, data []byte, baseFee uin
 	gasLimit, accessList, err := s.estimateGasLimit(to, data, nil, nil, gasTipCap, gasFeeCap, nil)
 	if err != nil {
 		log.Error("estimateDynamicGas estimateGasLimit failure",
-			"from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "to address", to.String(),
+			"from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "to address", to.String(),
 			"fallback gas limit", fallbackGasLimit, "error", err)
 		if fallbackGasLimit == 0 {
 			return nil, err
@@ -93,7 +93,7 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *gethT
 	gasLimit, accessList, err := s.estimateGasLimit(to, data, sidecar, nil, gasTipCap, gasFeeCap, blobGasFeeCap)
 	if err != nil {
 		log.Error("estimateBlobGas estimateGasLimit failure",
-			"from", s.auth.From.String(), "nonce", s.auth.Nonce.Uint64(), "to address", to.String(),
+			"from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "to address", to.String(),
 			"fallback gas limit", fallbackGasLimit, "error", err)
 		if fallbackGasLimit == 0 {
 			return nil, err
@@ -117,7 +117,7 @@ func (s *Sender) estimateBlobGas(to *common.Address, data []byte, sidecar *gethT
 
 func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, gasPrice, gasTipCap, gasFeeCap, blobGasFeeCap *big.Int) (uint64, *types.AccessList, error) {
 	msg := ethereum.CallMsg{
-		From:      s.auth.From,
+		From:      s.transactionSigner.GetAddr(),
 		To:        to,
 		GasPrice:  gasPrice,
 		GasTipCap: gasTipCap,
@@ -136,7 +136,8 @@ func (s *Sender) estimateGasLimit(to *common.Address, data []byte, sidecar *geth
 		return 0, nil, err
 	}
 
-	if s.config.TxType == LegacyTxType {
+	if s.config.TxType == LegacyTxType ||
+		s.transactionSigner.GetType() == RemoteSignerType { // web3signer doesn't support access list
 		return gasLimitWithoutAccessList, nil, nil
 	}
 
