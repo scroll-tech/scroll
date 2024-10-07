@@ -53,7 +53,7 @@ func testCommitAndFinalizeGenesisBatch(t *testing.T) {
 }
 
 func testCommitBatchAndFinalizeBatchOrBundleWithAllCodecVersions(t *testing.T) {
-	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2, encoding.CodecV3}
+	codecVersions := []encoding.CodecVersion{encoding.CodecV0, encoding.CodecV1, encoding.CodecV2, encoding.CodecV3, encoding.CodecV4}
 	for _, codecVersion := range codecVersions {
 		db := setupDB(t)
 
@@ -66,6 +66,8 @@ func testCommitBatchAndFinalizeBatchOrBundleWithAllCodecVersions(t *testing.T) {
 			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0)}
 		} else if codecVersion == encoding.CodecV2 {
 			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
+		} else if codecVersion == encoding.CodecV3 {
+			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 		} else {
 			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 		}
