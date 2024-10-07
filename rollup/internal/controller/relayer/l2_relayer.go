@@ -319,7 +319,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 			switch r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode {
 			// The exchange rate represent the number of native token on L1 required to exchange for 1 native token on L2.
 			case config.FIXED:
-    			suggestGasPriceUint64 = uint64(math.Ceil(float64(suggestGasPriceUint64) * r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate))
+				suggestGasPriceUint64 = uint64(math.Ceil(float64(suggestGasPriceUint64) * r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate))
 			case config.BINANCE_API:
 				exchangeRate, err := rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.ApiEndpoint)
 				if err != nil {
@@ -328,11 +328,11 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				suggestGasPriceUint64 = uint64(math.Ceil(float64(suggestGasPriceUint64) * exchangeRate))
 			default:
 				log.Error("Invalid alternative gas token mode", "mode", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode)
-				return 
+				return
 			}
 			suggestGasPrice = new(big.Int).SetUint64(suggestGasPriceUint64)
 		}
-		
+
 		expectedDelta := r.lastGasPrice * r.gasPriceDiff / gasPriceDiffPrecision
 		if r.lastGasPrice > 0 && expectedDelta == 0 {
 			expectedDelta = 1
