@@ -337,6 +337,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				exchangeRate, err = rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair)
 				if err != nil {
 					log.Error("Failed to get gas token exchange rate from Binance api", "tokenSymbolPair", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair, "err", err)
+					return
 				}
 
 			default:
