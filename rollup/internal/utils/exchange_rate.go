@@ -23,7 +23,7 @@ func GetExchangeRateFromBinanceApi(tokenSymbolPair string) (float64, error) {
 		return 0, fmt.Errorf("error making HTTP request: %w", err)
 	}
 	defer func() {
-		err := resp.Body.Close()
+		err = resp.Body.Close()
 		if err != nil {
 			log.Error("error closing response body", "err", err)
 		}
