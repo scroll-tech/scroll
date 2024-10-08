@@ -338,7 +338,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				if err != nil {
 					log.Error("Failed to get gas token exchange rate from Binance api", "tokenSymbolPair", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair, "err", err)
 				}
-				
+
 			default:
 				log.Error("Invalid alternative gas token mode", "mode", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode)
 				return

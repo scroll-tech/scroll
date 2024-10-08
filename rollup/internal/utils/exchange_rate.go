@@ -20,12 +20,12 @@ func GetExchangeRateFromBinanceApi(tokenSymbolPair string) (float64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error making HTTP request: %w", err)
 	}
-    defer func() {
-        err = resp.Body.Close()
-        if err != nil {
-            fmt.Println("error closing response body:", err)
-        }
-    }()
+	defer func() {
+		err = resp.Body.Close()
+		if err != nil {
+			fmt.Println("error closing response body:", err)
+		}
+	}()
 
 	// check for successful response
 	if resp.StatusCode != http.StatusOK {
@@ -49,7 +49,7 @@ func GetExchangeRateFromBinanceApi(tokenSymbolPair string) (float64, error) {
 	price, err := strconv.ParseFloat(data.Price, 64)
 	if err != nil {
 		return 0, fmt.Errorf("error parsing price string: %w", err)
-    }
+	}
 
 	return price, nil
 }
