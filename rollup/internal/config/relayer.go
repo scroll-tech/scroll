@@ -9,10 +9,9 @@ import (
 )
 
 const (
-	FIXED       ExchangeRateMode = "fixed"
-	BINANCE_API ExchangeRateMode = "binance_api"
-	OKX_API     ExchangeRateMode = "okx_api"
-	UNISWAP     ExchangeRateMode = "uniswap"
+	FIXED       ExchangeRateMode = "Fixed"
+	BINANCE_API ExchangeRateMode = "BinanceApi"
+	UNISWAP     ExchangeRateMode = "Uniswap"
 )
 
 // ExchangeRateMode the mode to retrieve exchange rate
@@ -22,7 +21,6 @@ func (m *ExchangeRateMode) UnmarshalText(data []byte) error {
 	candidates := []string{
 		string(FIXED),
 		string(BINANCE_API),
-		// string(OKX_API), not supported yet
 		// string(UNISWAP), not supported yet
 	}
 	for _, i := range candidates {
