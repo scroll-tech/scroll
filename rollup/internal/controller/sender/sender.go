@@ -159,7 +159,16 @@ func (s *Sender) SendConfirmation(cfm *Confirmation) {
 func (s *Sender) getFeeData(target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, baseFee, blobBaseFee uint64, fallbackGasLimit uint64) (*FeeData, error) {
 	switch s.config.TxType {
 	case LegacyTxType:
-		return s.estimateLegacyGas(target, data, fallbackGasLimit)
+		feeData, err := s.estimateLegacyGas(target, data, fallbackGasLimit)
+		if err != nil {
+			return nil, err
+		}
+		baseFeeInt := new(big.Int).SetUint64(baseFee)
+		maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
+		if feeData.gasPrice.Cmp(baseFeeInt) < 0 && baseFeeInt.Cmp(maxGasPrice) <= 0 {
+			feeData.gasPrice = baseFeeInt
+		}
+		return feeData, nil
 	case DynamicFeeTxType:
 		if sidecar == nil {
 			return s.estimateDynamicGas(target, data, baseFee, fallbackGasLimit)
@@ -357,6 +366,10 @@ func (s *Sender) resubmitTransaction(tx *gethTypes.Transaction, baseFee, blobBas
 		originalGasPrice := tx.GasPrice()
 		gasPrice := new(big.Int).Mul(originalGasPrice, escalateMultipleNum)
 		gasPrice = new(big.Int).Div(gasPrice, escalateMultipleDen)
+		baseFeeInt := new(big.Int).SetUint64(baseFee)
+		if gasPrice.Cmp(baseFeeInt) < 0 {
+			gasPrice = baseFeeInt
+		}
 		if gasPrice.Cmp(maxGasPrice) > 0 {
 			gasPrice = maxGasPrice
 		}
