@@ -16,6 +16,7 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/utils"
+
 	rutils "scroll-tech/rollup/internal/utils"
 
 	bridgeAbi "scroll-tech/rollup/abi"

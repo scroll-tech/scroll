@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+
+	"github.com/scroll-tech/go-ethereum/log"
 )
 
 var BinanceApiEndpoint string = "https://api.binance.com/api/v3/ticker/price?symbol=%s"
@@ -21,9 +23,9 @@ func GetExchangeRateFromBinanceApi(tokenSymbolPair string) (float64, error) {
 		return 0, fmt.Errorf("error making HTTP request: %w", err)
 	}
 	defer func() {
-		err = resp.Body.Close()
+		err := resp.Body.Close()
 		if err != nil {
-			fmt.Println("error closing response body:", err)
+			log.Error("error closing response body", "err", err)
 		}
 	}()
 
