@@ -334,9 +334,9 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 			case config.FIXED:
 				exchangeRate = r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate
 			case config.BINANCE_API:
-				exchangeRate, err = rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.ApiEndpoint)
+				exchangeRate, err = rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair)
 				if err != nil {
-					log.Error("Failed to get gas token exchange rate from Binance api", "endpoint", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.ApiEndpoint, "err", err)
+					log.Error("Failed to get gas token exchange rate from Binance api", "tokenSymbolPair", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair, "err", err)
 				}
 				
 			default:

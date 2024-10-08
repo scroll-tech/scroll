@@ -8,18 +8,20 @@ import (
 	"strconv"
 )
 
+var BinanceApiEndpoint string = "https://api.binance.com/api/v3/ticker/price?symbol=%s"
+
 type BinanceResponse struct {
 	Price string `json:"price"`
 }
 
-func GetExchangeRateFromBinanceApi(endpoint string) (float64, error) {
+func GetExchangeRateFromBinanceApi(tokenSymbolPair string) (float64, error) {
 	// make HTTP GET request
-	resp, err := http.Get(endpoint)
+	resp, err := http.Get(fmt.Sprintf(BinanceApiEndpoint, tokenSymbolPair))
 	if err != nil {
 		return 0, fmt.Errorf("error making HTTP request: %w", err)
 	}
     defer func() {
-        err := resp.Body.Close()
+        err = resp.Body.Close()
         if err != nil {
             fmt.Println("error closing response body:", err)
         }

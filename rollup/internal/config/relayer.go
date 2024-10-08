@@ -102,7 +102,7 @@ type AlternativeGasTokenConfig struct {
 	Enabled           bool             `json:"enabled"`
 	Mode              ExchangeRateMode `json:"mode"`
 	FixedExchangeRate float64          `json:"fixed_exchange_rate"`
-	ApiEndpoint       string           `json:"api_endpoint"`
+	TokenSymbolPair   string           `json:"token_symbol_pair"`
 }
 
 // GasOracleConfig The config for updating gas price oracle.

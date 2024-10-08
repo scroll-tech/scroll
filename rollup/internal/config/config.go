@@ -66,6 +66,14 @@ func NewConfig(file string) (*Config, error) {
 					return common.HexToHash(s), nil
 				}
 
+				if to == reflect.TypeOf(common.Hash{}) {
+					s, ok := data.(string)
+					if !ok {
+						return nil, fmt.Errorf("invalid hash, data: %v", data)
+					}
+					return common.HexToHash(s), nil
+				}
+
 				return data, nil
 			},
 		),
