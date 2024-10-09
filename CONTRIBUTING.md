@@ -11,7 +11,7 @@ Please note that this project is released with a [Contributor Code of Conduct][c
 
 ## Contribute to Scroll
 
-Did you know there are many ways of contributing to Scroll? If you are looking to contribute to by adding Scroll to existing Dev Tools or by doing integrations please go to the [Contribute to Scroll](https://github.com/scroll-tech/contribute-to-scroll) repo instead. If you are looking to contribute to Scroll's Halo2 zkEVM circuits please refer to the [zkEVM circuits](https://github.com/scroll-tech/zkevm-circuits) repo. This repository covers the Scroll infrastructure and smart contracts, if you want to contribute to these areas continue reading this document.
+Did you know there are many ways of contributing to Scroll? If you are looking to contribute by adding Scroll to existing Dev Tools or by doing integrations please go to the [Contribute to Scroll](https://github.com/scroll-tech/contribute-to-scroll) repo instead. If you are looking to contribute to Scroll's Halo2 zkEVM circuits please refer to the [zkEVM circuits](https://github.com/scroll-tech/zkevm-circuits) repo. This repository covers the Scroll infrastructure and smart contracts, if you want to contribute to these areas continue reading this document.
 
 ## Issues and PRs
 
