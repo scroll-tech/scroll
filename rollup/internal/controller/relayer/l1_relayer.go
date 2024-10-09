@@ -170,6 +170,10 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 				log.Error("Invalid alternative gas token mode", "mode", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode)
 				return
 			}
+			if exchangeRate == 0 {
+				log.Error("Invalid exchange rate", "exchangeRate", exchangeRate)
+				return
+			}
 			baseFee = uint64(math.Ceil(float64(baseFee) / exchangeRate))
 			blobBaseFee = uint64(math.Ceil(float64(blobBaseFee) / exchangeRate))
 		}

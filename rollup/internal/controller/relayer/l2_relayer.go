@@ -344,6 +344,10 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 				log.Error("Invalid alternative gas token mode", "mode", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode)
 				return
 			}
+			if exchangeRate == 0 {
+				log.Error("Invalid exchange rate", "exchangeRate", exchangeRate)
+				return
+			}
 			suggestGasPriceUint64 = uint64(math.Ceil(float64(suggestGasPriceUint64) * exchangeRate))
 			suggestGasPrice = new(big.Int).SetUint64(suggestGasPriceUint64)
 		}
