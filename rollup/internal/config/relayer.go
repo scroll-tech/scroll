@@ -99,7 +99,7 @@ type RelayerConfig struct {
 type AlternativeGasTokenConfig struct {
 	Enabled           bool             `json:"enabled"`
 	Mode              ExchangeRateMode `json:"mode"`
-	FixedExchangeRate float64          `json:"fixed_exchange_rate"`
+	FixedExchangeRate float64          `json:"fixed_exchange_rate"` // fixed exchange rate of L2 gas token / L1 gas token
 	TokenSymbolPair   string           `json:"token_symbol_pair"` // The pair should be L2 gas token symbol + L1 gas token symbol
 }
 
