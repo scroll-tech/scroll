@@ -182,7 +182,7 @@ require (
 	github.com/rjeczalik/notify v0.9.1 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/da-codec v0.0.1-20240730031611-1b736159d5cb // indirect
+	github.com/scroll-tech/da-codec v0.0.0-20240730031611-1b736159d5cb // indirect
 	github.com/scroll-tech/zktrie v0.8.4 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.4.0 // indirect
 	github.com/serialx/hashring v0.0.0-20190422032157-8b2912629002 // indirect
