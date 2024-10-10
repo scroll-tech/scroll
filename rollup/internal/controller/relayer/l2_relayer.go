@@ -614,16 +614,17 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 
 	var calldata []byte
 	codecVersion := encoding.GetCodecVersion(r.chainCfg, dbChunks[0].StartBlockNumber, dbChunks[0].StartBlockTime)
-	if codecVersion == encoding.CodecV0 {
-		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
 
+	switch codecVersion {
+	case encoding.CodecV0:
+		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
 		calldata, err = r.constructFinalizeBatchPayloadCodecV0(dbBatch, dbParentBatch, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct finalizeBatch payload codecv0, index: %v, err: %w", dbBatch.Index, err)
 		}
-	} else if codecVersion == encoding.CodecV1 || codecVersion == encoding.CodecV2 {
-		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
 
+	case encoding.CodecV1, encoding.CodecV2:
+		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
 		chunks := make([]*encoding.Chunk, len(dbChunks))
 		for i, c := range dbChunks {
 			blocks, dbErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
@@ -632,14 +633,17 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 			}
 			chunks[i] = &encoding.Chunk{Blocks: blocks}
 		}
-
 		calldata, err = r.constructFinalizeBatchPayloadCodecV1AndV2(dbBatch, dbParentBatch, dbChunks, chunks, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct finalizeBatch payload codecv1, index: %v, err: %w", dbBatch.Index, err)
 		}
-	} else { // >= codecv3
-		log.Debug("encoding is codecv3, using finalizeBundle instead", "index", dbBatch.Index)
+
+	case encoding.CodecV3, encoding.CodecV4:
+		log.Debug("using finalizeBundle instead", "index", dbBatch.Index, "codec version", codecVersion)
 		return nil
+
+	default:
+		return fmt.Errorf("unsupported codec version: %v", codecVersion)
 	}
 
 	txHash, err := r.finalizeSender.SendTransaction(dbBatch.Hash, &r.cfg.RollupContractAddress, calldata, nil, 0)
