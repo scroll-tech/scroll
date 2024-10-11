@@ -70,7 +70,14 @@ jobs:
       working-directory: 'coordinator'
       run: |
         if [ -n "$(git status --porcelain)" ]; then
+          echo "Error: Detected uncommitted changes after running goimports and go mod tidy"
+          echo "The following files have been modified:"
+          git status --porcelain
+          echo "Diff of changes:"
+          git diff
           exit 1
+        else
+          echo "No changes detected. All files are properly formatted and modules are tidy."
         fi
   # docker-build:
   #   if: github.event.pull_request.draft == false
