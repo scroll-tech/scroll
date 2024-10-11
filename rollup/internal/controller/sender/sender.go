@@ -12,7 +12,7 @@ import (
 	"github.com/holiman/uint256"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/common"
-	"github.com/scroll-tech/go-ethereum/consensus/misc"
+	"github.com/scroll-tech/go-ethereum/consensus/misc/eip4844"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
 	"github.com/scroll-tech/go-ethereum/ethclient"
@@ -638,8 +638,8 @@ func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64
 
 	var blobBaseFee uint64
 	if header.ExcessBlobGas != nil && header.BlobGasUsed != nil {
-		parentExcessBlobGas := misc.CalcExcessBlobGas(*header.ExcessBlobGas, *header.BlobGasUsed)
-		blobBaseFee = misc.CalcBlobFee(parentExcessBlobGas).Uint64()
+		parentExcessBlobGas := eip4844.CalcExcessBlobGas(*header.ExcessBlobGas, *header.BlobGasUsed)
+		blobBaseFee = eip4844.CalcBlobFee(parentExcessBlobGas).Uint64()
 	}
 	return header.Number.Uint64(), baseFee, blobBaseFee, nil
 }
