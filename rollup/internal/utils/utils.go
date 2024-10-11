@@ -8,12 +8,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
-// CodecConfig holds the configuration for codec-related operations
-type CodecConfig struct {
-	Version        encoding.CodecVersion
-	EnableCompress bool
-}
-
 // ChunkMetrics indicates the metrics for proposing a chunk.
 type ChunkMetrics struct {
 	// common metrics
@@ -38,7 +32,7 @@ type ChunkMetrics struct {
 }
 
 // CalculateChunkMetrics calculates chunk metrics.
-func CalculateChunkMetrics(chunk *encoding.Chunk, codecConfig CodecConfig) (*ChunkMetrics, error) {
+func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVersion) (*ChunkMetrics, error) {
 	var err error
 	metrics := &ChunkMetrics{
 		TxNum:               chunk.NumTransactions(),
@@ -51,11 +45,10 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecConfig CodecConfig) (*Chu
 		return nil, fmt.Errorf("failed to get crc max: %w", err)
 	}
 
-	codec, err := encoding.CodecFromVersion(codecConfig.Version)
+	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get codec from version: %w", err)
 	}
-	codec.SetCompression(codecConfig.EnableCompress)
 
 	start := time.Now()
 	metrics.L1CommitGas, err = codec.EstimateChunkL1CommitGas(chunk)
@@ -77,7 +70,6 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecConfig CodecConfig) (*Chu
 	if err != nil {
 		return nil, fmt.Errorf("failed to estimate chunk L1 commit batch size and blob size: %w", err)
 	}
-
 	return metrics, nil
 }
 
@@ -103,29 +95,31 @@ type BatchMetrics struct {
 }
 
 // CalculateBatchMetrics calculates batch metrics.
-func CalculateBatchMetrics(batch *encoding.Batch, codecConfig CodecConfig) (*BatchMetrics, error) {
+func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetrics, error) {
 	var err error
 	metrics := &BatchMetrics{
 		NumChunks:           uint64(len(batch.Chunks)),
 		FirstBlockTimestamp: batch.Chunks[0].Blocks[0].Header.Time,
 	}
 
-	codec, err := encoding.CodecFromVersion(codecConfig.Version)
+	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get codec from version: %w", err)
 	}
-	codec.SetCompression(codecConfig.EnableCompress)
+
 	start := time.Now()
 	metrics.L1CommitGas, err = codec.EstimateBatchL1CommitGas(batch)
 	metrics.EstimateGasTime = time.Since(start)
 	if err != nil {
 		return nil, fmt.Errorf("failed to estimate batch L1 commit gas: %w", err)
 	}
+
 	metrics.L1CommitCalldataSize, err = codec.EstimateBatchL1CommitCalldataSize(batch)
 	metrics.EstimateCalldataSizeTime = time.Since(start)
 	if err != nil {
 		return nil, fmt.Errorf("failed to estimate batch L1 commit calldata size: %w", err)
 	}
+
 	start = time.Now()
 	metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codec.EstimateBatchL1CommitBatchSizeAndBlobSize(batch)
 	metrics.EstimateBlobSizeTime = time.Since(start)
@@ -167,13 +161,11 @@ type BatchMetadata struct {
 }
 
 // GetBatchMetadata retrieves the metadata of a batch.
-func GetBatchMetadata(batch *encoding.Batch, codecConfig CodecConfig) (*BatchMetadata, error) {
-	codec, err := encoding.CodecFromVersion(codecConfig.Version)
+func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetadata, error) {
+	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get codec from version: %w", err)
 	}
-
-	codec.SetCompression(codecConfig.EnableCompress)
 
 	daBatch, err := codec.NewDABatch(batch)
 	if err != nil {
