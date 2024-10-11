@@ -88,7 +88,7 @@ func testBundleProposerLimits(t *testing.T) {
 			err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 			assert.NoError(t, err)
 
-			chainConfig := &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
+			chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             1,
@@ -140,6 +140,7 @@ func testBundleProposerRespectHardforks(t *testing.T) {
 	defer database.CloseDB(db)
 
 	chainConfig := &params.ChainConfig{
+		LondonBlock:    big.NewInt(0),
 		BernoulliBlock: big.NewInt(1),
 		CurieBlock:     big.NewInt(2),
 		DarwinTime:     func() *uint64 { t := uint64(4); return &t }(),

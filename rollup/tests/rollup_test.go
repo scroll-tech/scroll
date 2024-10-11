@@ -67,9 +67,9 @@ func testCommitBatchAndFinalizeBatchOrBundleWithAllCodecVersions(t *testing.T) {
 		} else if codecVersion == encoding.CodecV2 {
 			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}
 		} else if codecVersion == encoding.CodecV3 {
-			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
+			chainConfig = &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 		} else {
-			chainConfig = &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
+			chainConfig = &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 		}
 
 		// Create L2Relayer
@@ -234,7 +234,7 @@ func testCommitBatchAndFinalizeBatchOrBundleCrossingAllTransitions(t *testing.T)
 
 	// Create L2Relayer
 	l2Cfg := rollupApp.Config.L2Config
-	chainConfig := &params.ChainConfig{BernoulliBlock: big.NewInt(1), CurieBlock: big.NewInt(2), DarwinTime: func() *uint64 { t := uint64(4); return &t }()}
+	chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(1), CurieBlock: big.NewInt(2), DarwinTime: func() *uint64 { t := uint64(4); return &t }()}
 	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
 	assert.NoError(t, err)
 	defer l2Relayer.StopSenders()
