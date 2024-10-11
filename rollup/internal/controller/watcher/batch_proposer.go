@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -247,7 +248,8 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	maxChunksThisBatch := encoding.GetMaxChunksPerBatch(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
+	codec := encoding.CodecFromConfig(p.chainCfg, new(big.Int).SetUint64(firstUnbatchedChunk.StartBlockNumber), firstUnbatchedChunk.StartBlockTime)
+	maxChunksThisBatch := codec.MaxNumChunksPerBatch()
 
 	// select at most maxChunkNumPerBatch chunks
 	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, int(maxChunksThisBatch))
