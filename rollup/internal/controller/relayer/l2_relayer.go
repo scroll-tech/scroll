@@ -331,15 +331,14 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 			// The exchange rate represent the number of native token on L1 required to exchange for 1 native token on L2.
 			var exchangeRate float64
 			switch r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode {
-			case config.FIXED:
+			case "Fixed":
 				exchangeRate = r.cfg.GasOracleConfig.AlternativeGasTokenConfig.FixedExchangeRate
-			case config.BINANCE_API:
-				exchangeRate, err = rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair)
+			case "BinanceApi":
+				exchangeRate, err = rutils.GetExchangeRateFromBinanceApi(r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair, 5)
 				if err != nil {
 					log.Error("Failed to get gas token exchange rate from Binance api", "tokenSymbolPair", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.TokenSymbolPair, "err", err)
 					return
 				}
-
 			default:
 				log.Error("Invalid alternative gas token mode", "mode", r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Mode)
 				return

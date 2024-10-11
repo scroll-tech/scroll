@@ -1,36 +1,9 @@
 package config
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/rpc"
 )
-
-const (
-	FIXED       ExchangeRateMode = "Fixed"
-	BINANCE_API ExchangeRateMode = "BinanceApi"
-	UNISWAP     ExchangeRateMode = "Uniswap"
-)
-
-// ExchangeRateMode the mode to retrieve exchange rate
-type ExchangeRateMode string
-
-func (m *ExchangeRateMode) UnmarshalText(data []byte) error {
-	candidates := []string{
-		string(FIXED),
-		string(BINANCE_API),
-		// string(UNISWAP), not supported yet
-	}
-	for _, i := range candidates {
-		if string(data) == i {
-			*m = ExchangeRateMode(i)
-			return nil
-		}
-	}
-	return fmt.Errorf("invalid mode: %s, must be one of %s", string(data), strings.Join(candidates, ","))
-}
 
 // SenderConfig The config for transaction sender
 type SenderConfig struct {
@@ -97,10 +70,10 @@ type RelayerConfig struct {
 
 // AlternativeGasTokenConfig The configuration for handling token exchange rates when updating the gas price oracle.
 type AlternativeGasTokenConfig struct {
-	Enabled           bool             `json:"enabled"`
-	Mode              ExchangeRateMode `json:"mode"`
-	FixedExchangeRate float64          `json:"fixed_exchange_rate"` // fixed exchange rate of L2 gas token / L1 gas token
-	TokenSymbolPair   string           `json:"token_symbol_pair"`   // The pair should be L2 gas token symbol + L1 gas token symbol
+	Enabled           bool    `json:"enabled"`
+	Mode              string  `json:"mode"`
+	FixedExchangeRate float64 `json:"fixed_exchange_rate"` // fixed exchange rate of L2 gas token / L1 gas token
+	TokenSymbolPair   string  `json:"token_symbol_pair"`   // The pair should be L2 gas token symbol + L1 gas token symbol
 }
 
 // GasOracleConfig The config for updating gas price oracle.
