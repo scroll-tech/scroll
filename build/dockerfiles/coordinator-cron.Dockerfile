@@ -19,9 +19,8 @@ RUN --mount=target=. \
 
 # Pull coordinator into a second stage deploy ubuntu container
 FROM ubuntu:20.04
-
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
-
+RUN apt update && apt install vim netcat-openbsd net-tools curl -y
 COPY --from=builder /bin/coordinator_cron /bin/
 WORKDIR /app
 ENTRYPOINT ["coordinator_cron"]
