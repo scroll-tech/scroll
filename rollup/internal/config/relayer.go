@@ -68,12 +68,22 @@ type RelayerConfig struct {
 	FinalizeBundleWithoutProofTimeoutSec uint64 `json:"finalize_bundle_without_proof_timeout_sec"`
 }
 
+// AlternativeGasTokenConfig The configuration for handling token exchange rates when updating the gas price oracle.
+type AlternativeGasTokenConfig struct {
+	Enabled           bool    `json:"enabled"`
+	Mode              string  `json:"mode"`
+	FixedExchangeRate float64 `json:"fixed_exchange_rate"` // fixed exchange rate of L2 gas token / L1 gas token
+	TokenSymbolPair   string  `json:"token_symbol_pair"`   // The pair should be L2 gas token symbol + L1 gas token symbol
+}
+
 // GasOracleConfig The config for updating gas price oracle.
 type GasOracleConfig struct {
 	// MinGasPrice store the minimum gas price to set.
 	MinGasPrice uint64 `json:"min_gas_price"`
 	// GasPriceDiff is the minimum percentage of gas price difference to update gas oracle.
 	GasPriceDiff uint64 `json:"gas_price_diff"`
+	// AlternativeGasTokenConfig The configuration for handling token exchange rates when updating the gas price oracle.
+	AlternativeGasTokenConfig *AlternativeGasTokenConfig `json:"alternative_gas_token_config"`
 
 	// The following configs are only for updating L1 gas price, used for sender in L2.
 	// The weight for L1 base fee.
