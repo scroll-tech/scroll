@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -144,6 +145,12 @@ func (p *BundleProposer) proposeBundle() error {
 	if err != nil {
 		return err
 	}
+
+	if firstChunk == nil {
+		log.Error("first chunk not found", "start chunk index", batches[0].StartChunkIndex, "start batch index", batches[0].Index, "firstUnbundledBatchIndex", firstUnbundledBatchIndex)
+		return errors.New("first chunk not found in proposeBundle")
+	}
+
 	hardforkName := encoding.GetHardforkName(p.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
 	codecVersion := encoding.CodecVersion(batches[0].CodecVersion)
 	for i := 1; i < len(batches); i++ {
