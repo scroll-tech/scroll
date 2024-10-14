@@ -14,11 +14,12 @@ use types::*;
 
 use crate::{config::Config, key_signer::KeySigner};
 
-pub use errors::ProofStatusNotOKError;
+pub use errors::{GetEmptyTaskError, ProofStatusNotOKError};
 
 pub struct CoordinatorClient<'a> {
     api: Api,
     token: Option<String>,
+    sentry_endpoint: Option<String>,
     config: &'a Config,
     key_signer: Rc<KeySigner>,
     rt: Runtime,
@@ -46,6 +47,7 @@ impl<'a> CoordinatorClient<'a> {
         let mut client = Self {
             api,
             token: None,
+            sentry_endpoint: None,
             config,
             key_signer,
             rt,
@@ -90,6 +92,7 @@ impl<'a> CoordinatorClient<'a> {
         }
         if let Some(r) = login_response.data {
             token = r.token;
+            self.sentry_endpoint = r.sentry_endpoint.filter(|s| !s.is_empty());
         } else {
             bail!("login failed: got empty token")
         }
@@ -138,5 +141,9 @@ impl<'a> CoordinatorClient<'a> {
         req: &SubmitProofRequest,
     ) -> Result<Response<SubmitProofResponseData>> {
         self.action_with_re_login(req, |s, req| s.do_submit_proof(req))
+    }
+
+    pub fn get_sentry_dsn(&self) -> Option<String> {
+        self.sentry_endpoint.clone()
     }
 }

@@ -1,4 +1,8 @@
-use super::{coordinator_client::ProofStatusNotOKError, prover::Prover, task_cache::TaskCache};
+use super::{
+    coordinator_client::{GetEmptyTaskError, ProofStatusNotOKError},
+    prover::Prover,
+    task_cache::TaskCache,
+};
 use anyhow::{Context, Result};
 use std::rc::Rc;
 
@@ -12,11 +16,20 @@ impl<'a> TaskProcessor<'a> {
         TaskProcessor { prover, task_cache }
     }
 
-    pub fn start(&self) {
+    pub fn start<F>(&self, mut should_stop: F)
+    where
+        F: FnMut() -> bool,
+    {
         loop {
+            if should_stop() {
+                log::info!("task processor should stop.");
+                break;
+            }
             log::info!("start a new round.");
             if let Err(err) = self.prove_and_submit() {
-                if err.is::<ProofStatusNotOKError>() {
+                if err.is::<GetEmptyTaskError>() {
+                    log::info!("get empty task, skip.");
+                } else if err.is::<ProofStatusNotOKError>() {
                     log::info!("proof status not ok, downgrade level to info.");
                 } else {
                     log::error!("encounter error: {:#}", err);

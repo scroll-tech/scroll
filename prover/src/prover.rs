@@ -19,7 +19,7 @@ pub struct Prover<'a> {
     config: &'a Config,
     key_signer: Rc<KeySigner>,
     circuits_handler_provider: RefCell<CircuitsHandlerProvider<'a>>,
-    coordinator_client: RefCell<CoordinatorClient<'a>>,
+    pub coordinator_client: RefCell<CoordinatorClient<'a>>,
     geth_client: Option<Rc<RefCell<GethClient>>>,
 }
 
