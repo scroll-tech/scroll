@@ -10,7 +10,6 @@ import (
 
 // ChunkMetrics indicates the metrics for proposing a chunk.
 type ChunkMetrics struct {
-	// common metrics
 	NumBlocks           uint64
 	TxNum               uint64
 	CrcMax              uint64
@@ -19,10 +18,7 @@ type ChunkMetrics struct {
 	L1CommitCalldataSize uint64
 	L1CommitGas          uint64
 
-	// codecv1 metrics, default 0 for codecv0
-	L1CommitBlobSize uint64
-
-	// codecv2 metrics, default 0 for codecv0 & codecv1
+	L1CommitBlobSize                   uint64
 	L1CommitUncompressedBatchBytesSize uint64
 
 	// timing metrics
@@ -42,7 +38,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 
 	metrics.CrcMax, err = chunk.CrcMax()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get crc max: %w", err)
+		return nil, fmt.Errorf("failed to get crc max, version: %v, err: %w", codecVersion, err)
 	}
 
 	codec, err := encoding.CodecFromVersion(codecVersion)
@@ -54,38 +50,34 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 	metrics.L1CommitGas, err = codec.EstimateChunkL1CommitGas(chunk)
 	metrics.EstimateGasTime = time.Since(start)
 	if err != nil {
-		return nil, fmt.Errorf("failed to estimate chunk L1 commit gas: %w", err)
+		return nil, fmt.Errorf("failed to estimate chunk L1 commit gas, version: %v, err: %w", codecVersion, err)
 	}
 
 	start = time.Now()
 	metrics.L1CommitCalldataSize, err = codec.EstimateChunkL1CommitCalldataSize(chunk)
 	metrics.EstimateCalldataSizeTime = time.Since(start)
 	if err != nil {
-		return nil, fmt.Errorf("failed to estimate chunk L1 commit calldata size: %w", err)
+		return nil, fmt.Errorf("failed to estimate chunk L1 commit calldata size, version: %v, err: %w", codecVersion, err)
 	}
 
 	start = time.Now()
 	metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codec.EstimateChunkL1CommitBatchSizeAndBlobSize(chunk)
 	metrics.EstimateBlobSizeTime = time.Since(start)
 	if err != nil {
-		return nil, fmt.Errorf("failed to estimate chunk L1 commit batch size and blob size: %w", err)
+		return nil, fmt.Errorf("failed to estimate chunk L1 commit batch size and blob size, version: %v, err: %w", codecVersion, err)
 	}
 	return metrics, nil
 }
 
 // BatchMetrics indicates the metrics for proposing a batch.
 type BatchMetrics struct {
-	// common metrics
 	NumChunks           uint64
 	FirstBlockTimestamp uint64
 
 	L1CommitCalldataSize uint64
 	L1CommitGas          uint64
 
-	// codecv1 metrics, default 0 for codecv0
-	L1CommitBlobSize uint64
-
-	// codecv2 metrics, default 0 for codecv0 & codecv1
+	L1CommitBlobSize                   uint64
 	L1CommitUncompressedBatchBytesSize uint64
 
 	// timing metrics
@@ -111,20 +103,20 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 	metrics.L1CommitGas, err = codec.EstimateBatchL1CommitGas(batch)
 	metrics.EstimateGasTime = time.Since(start)
 	if err != nil {
-		return nil, fmt.Errorf("failed to estimate batch L1 commit gas: %w", err)
+		return nil, fmt.Errorf("failed to estimate batch L1 commit gas, version: %v, err: %w", codecVersion, err)
 	}
 
 	metrics.L1CommitCalldataSize, err = codec.EstimateBatchL1CommitCalldataSize(batch)
 	metrics.EstimateCalldataSizeTime = time.Since(start)
 	if err != nil {
-		return nil, fmt.Errorf("failed to estimate batch L1 commit calldata size: %w", err)
+		return nil, fmt.Errorf("failed to estimate batch L1 commit calldata size, version: %v, err: %w", codecVersion, err)
 	}
 
 	start = time.Now()
 	metrics.L1CommitUncompressedBatchBytesSize, metrics.L1CommitBlobSize, err = codec.EstimateBatchL1CommitBatchSizeAndBlobSize(batch)
 	metrics.EstimateBlobSizeTime = time.Since(start)
 	if err != nil {
-		return nil, fmt.Errorf("failed to estimate batch L1 commit batch size and blob size: %w", err)
+		return nil, fmt.Errorf("failed to estimate batch L1 commit batch size and blob size, version: %v, err: %w", codecVersion, err)
 	}
 	return metrics, nil
 }
@@ -138,12 +130,12 @@ func GetChunkHash(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64, code
 
 	daChunk, err := codec.NewDAChunk(chunk, totalL1MessagePoppedBefore)
 	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to create DA chunk: %w", err)
+		return common.Hash{}, fmt.Errorf("failed to create DA chunk, version: %v, err: %w", codecVersion, err)
 	}
 
 	chunkHash, err := daChunk.Hash()
 	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to get DA chunk hash: %w", err)
+		return common.Hash{}, fmt.Errorf("failed to get DA chunk hash, version: %v, err: %w", codecVersion, err)
 	}
 
 	return chunkHash, nil
@@ -169,7 +161,7 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 
 	daBatch, err := codec.NewDABatch(batch)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create DA batch: %w", err)
+		return nil, fmt.Errorf("failed to create DA batch, version: %v, err: %w", codecVersion, err)
 	}
 
 	batchMeta := &BatchMetadata{
@@ -181,22 +173,22 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 
 	batchMeta.BatchBlobDataProof, err = daBatch.BlobDataProofForPointEvaluation()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get blob data proof: %w", err)
+		return nil, fmt.Errorf("failed to get blob data proof, version: %v, err: %w", codecVersion, err)
 	}
 
 	numChunks := len(batch.Chunks)
 	if numChunks == 0 {
-		return nil, fmt.Errorf("batch contains no chunks")
+		return nil, fmt.Errorf("batch contains no chunks, version: %v, index: %v", codecVersion, batch.Index)
 	}
 
 	startDAChunk, err := codec.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create start DA chunk: %w", err)
+		return nil, fmt.Errorf("failed to create start DA chunk, version: %v, err: %w", codecVersion, err)
 	}
 
 	batchMeta.StartChunkHash, err = startDAChunk.Hash()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get start DA chunk hash: %w", err)
+		return nil, fmt.Errorf("failed to get start DA chunk hash, version: %v, err: %w", codecVersion, err)
 	}
 
 	var totalL1MessagePoppedBeforeEndDAChunk uint64
@@ -205,12 +197,12 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 	}
 	endDAChunk, err := codec.NewDAChunk(batch.Chunks[numChunks-1], totalL1MessagePoppedBeforeEndDAChunk)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create end DA chunk: %w", err)
+		return nil, fmt.Errorf("failed to create end DA chunk, version: %v, err: %w", codecVersion, err)
 	}
 
 	batchMeta.EndChunkHash, err = endDAChunk.Hash()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get end DA chunk hash: %w", err)
+		return nil, fmt.Errorf("failed to get end DA chunk hash, version: %v, err: %w", codecVersion, err)
 	}
 
 	return batchMeta, nil
