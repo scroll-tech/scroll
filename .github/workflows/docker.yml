@@ -49,8 +49,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
@@ -94,8 +94,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
@@ -139,8 +139,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
@@ -184,8 +184,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
@@ -229,8 +229,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
@@ -274,8 +274,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
@@ -318,8 +318,8 @@ jobs:
           file: ./build/dockerfiles/coordinator-api.Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
 
@@ -363,7 +363,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPOSITORY }}:latest
+            scrolltech/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+            scrolltech/${{ env.REPOSITORY }}:latest
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
             ${{ env.ECR_REGISTRY }}/${{ env.REPOSITORY }}:latest
