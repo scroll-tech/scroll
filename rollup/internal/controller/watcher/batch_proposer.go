@@ -208,7 +208,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 
 	var totalGasUsed uint64
 	for _, chunk := range batch.Chunks {
-		totalGasUsed += chunk.L2GasUsed()
+		totalGasUsed += chunk.TotalGasUsed()
 	}
 	p.batchProposeThroughput.Add(float64(totalGasUsed))
 

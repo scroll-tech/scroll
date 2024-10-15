@@ -221,7 +221,7 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 	if len(chunk.Blocks) > 0 {
 		p.chunkProposeBlockHeight.Set(float64(chunk.Blocks[len(chunk.Blocks)-1].Header.Number.Uint64()))
 	}
-	p.chunkProposeThroughput.Add(float64(chunk.L2GasUsed()))
+	p.chunkProposeThroughput.Add(float64(chunk.TotalGasUsed()))
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {

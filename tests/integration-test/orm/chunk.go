@@ -146,7 +146,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		StartBlockHash:               chunk.Blocks[0].Header.Hash().Hex(),
 		EndBlockNumber:               chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
 		EndBlockHash:                 chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
-		TotalL2TxGas:                 chunk.L2GasUsed(),
+		TotalL2TxGas:                 chunk.TotalGasUsed(),
 		TotalL2TxNum:                 chunk.NumL2Transactions(),
 		TotalL1CommitCalldataSize:    totalL1CommitCalldataSize,
 		TotalL1CommitGas:             totalL1CommitGas,

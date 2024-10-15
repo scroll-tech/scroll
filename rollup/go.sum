@@ -265,8 +265,8 @@ github.com/sagikazarmark/locafero v0.4.0 h1:HApY1R9zGo4DBgr7dqsTH/JJxLTTsOt7u6ke
 github.com/sagikazarmark/locafero v0.4.0/go.mod h1:Pe1W6UlPYUk/+wc/6KFhbORCfqzgYEpgQ3O5fPuL3H4=
 github.com/sagikazarmark/slog-shim v0.1.0 h1:diDBnUNK9N/354PgrxMywXnAwEr1QZcOr6gto+ugjYE=
 github.com/sagikazarmark/slog-shim v0.1.0/go.mod h1:SrcSrq8aKtyuqEI1uvTDTK1arOWRIczQRv+GVI1AkeQ=
-github.com/scroll-tech/da-codec v0.1.1-0.20241014152913-2703f226fb0b h1:5H6V6ybacXFJ2ti+eFwtf+12Otufod6goxK6/u7Nu1k=
-github.com/scroll-tech/da-codec v0.1.1-0.20241014152913-2703f226fb0b/go.mod h1:48uxaqVgpD8ulH8p+nrBtfeLHZ9tX82bVVdPNkW3rPE=
+github.com/scroll-tech/da-codec v0.1.1-0.20241015063757-e36ee98736a0 h1:ROmcrXa637V3nypHn/6acqWvls7yBdvp6Oux5JPKE7U=
+github.com/scroll-tech/da-codec v0.1.1-0.20241015063757-e36ee98736a0/go.mod h1:48uxaqVgpD8ulH8p+nrBtfeLHZ9tX82bVVdPNkW3rPE=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20241011150208-4742882675d8 h1:pEP6+ThQIgSRO5SILiO6iBpWnxAUjoRNBA9Nc6ooOS0=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20241011150208-4742882675d8/go.mod h1:MBHX2RcAV9KLWblo9DSa/xyPYd1Wpwnt64JSDOy85po=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=
