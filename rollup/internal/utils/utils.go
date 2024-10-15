@@ -47,7 +47,7 @@ func CalculateChunkMetrics(chunk *encoding.Chunk, codecVersion encoding.CodecVer
 
 	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get codec from version: %w", err)
+		return nil, fmt.Errorf("failed to get codec from version: %v, err: %w", codecVersion, err)
 	}
 
 	start := time.Now()
@@ -104,7 +104,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 
 	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get codec from version: %w", err)
+		return nil, fmt.Errorf("failed to get codec from version: %v, err: %w", codecVersion, err)
 	}
 
 	start := time.Now()
@@ -133,7 +133,7 @@ func CalculateBatchMetrics(batch *encoding.Batch, codecVersion encoding.CodecVer
 func GetChunkHash(chunk *encoding.Chunk, totalL1MessagePoppedBefore uint64, codecVersion encoding.CodecVersion) (common.Hash, error) {
 	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to get codec from version: %w", err)
+		return common.Hash{}, fmt.Errorf("failed to get codec from version: %v, err: %w", codecVersion, err)
 	}
 
 	daChunk, err := codec.NewDAChunk(chunk, totalL1MessagePoppedBefore)
@@ -164,7 +164,7 @@ type BatchMetadata struct {
 func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion) (*BatchMetadata, error) {
 	codec, err := encoding.CodecFromVersion(codecVersion)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get codec from version: %w", err)
+		return nil, fmt.Errorf("failed to get codec from version: %v, err: %w", codecVersion, err)
 	}
 
 	daBatch, err := codec.NewDABatch(batch)
@@ -174,7 +174,7 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 
 	batchMeta := &BatchMetadata{
 		BatchHash:     daBatch.Hash(),
-		BatchDataHash: common.Hash{}, // Assuming DataHash is not directly accessible from DABatch interface
+		BatchDataHash: daBatch.DataHash(),
 		BatchBytes:    daBatch.Encode(),
 		BlobBytes:     daBatch.BlobBytes(),
 	}

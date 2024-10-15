@@ -966,7 +966,7 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 func (r *Layer2Relayer) constructCommitBatchPayloadCodecV0AndV1AndV2(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
 	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get codec from version: %w", err)
+		return nil, nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
 	}
 
 	batch := &encoding.Batch{
@@ -1011,7 +1011,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV3AndV4(dbBatch *orm.Bat
 
 	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get codec from version: %w", err)
+		return nil, nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
 	}
 
 	daBatch, createErr := codec.NewDABatch(batch)
@@ -1083,7 +1083,7 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1AndV2(dbBatch *orm.B
 
 	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get codec from version: %w", err)
+		return nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
 	}
 
 	daBatch, createErr := codec.NewDABatch(batch)

@@ -210,7 +210,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 
 	enableCompress, err := encoding.GetChunkEnableCompression(codecVersion, chunk)
 	if err != nil {
-		log.Error("failed to get chunk enable compression", "err", err)
+		log.Error("failed to get chunk enable compression", "version", codecVersion, "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 

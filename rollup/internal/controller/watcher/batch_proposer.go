@@ -278,8 +278,6 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	codecVersion := encoding.GetCodecVersion(p.chainCfg, firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
-
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1
 	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
@@ -287,7 +285,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
-		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
+		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version())
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 		}
@@ -316,17 +314,17 @@ func (p *BatchProposer) proposeBatch() error {
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
 
-			metrics, err := utils.CalculateBatchMetrics(&batch, codecVersion)
+			metrics, err := utils.CalculateBatchMetrics(&batch, codec.Version())
 			if err != nil {
 				return fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
 
 			p.recordAllBatchMetrics(metrics)
-			return p.updateDBBatchInfo(&batch, codecVersion, metrics)
+			return p.updateDBBatchInfo(&batch, codec.Version(), metrics)
 		}
 	}
 
-	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codecVersion)
+	metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version())
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 	}
@@ -340,7 +338,7 @@ func (p *BatchProposer) proposeBatch() error {
 
 		p.batchFirstBlockTimeoutReached.Inc()
 		p.recordAllBatchMetrics(metrics)
-		return p.updateDBBatchInfo(&batch, codecVersion, metrics)
+		return p.updateDBBatchInfo(&batch, codec.Version(), metrics)
 	}
 
 	log.Debug("pending chunks do not reach one of the constraints or contain a timeout block")
