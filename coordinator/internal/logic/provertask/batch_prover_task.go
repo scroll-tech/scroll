@@ -247,7 +247,7 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 		return taskDetail, nil
 	}
 
-	codec, err := encoding.CodecFromVersion(encoding.CodecV0)
+	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get codec from version: %w", err)
 	}
