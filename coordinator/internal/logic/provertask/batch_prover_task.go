@@ -249,12 +249,12 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 
 	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get codec from version: %w", err)
+		return nil, fmt.Errorf("failed to get codec from version %d: %w", dbBatch.CodecVersion, err)
 	}
 
 	batchHeader, decodeErr := codec.NewDABatchFromBytes(dbBatch.BatchHeader)
 	if decodeErr != nil {
-		return nil, fmt.Errorf("failed to decode batch header (v3) for batch %d: %w", dbBatch.Index, decodeErr)
+		return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
 	}
 	taskDetail.BatchHeader = batchHeader
 	taskDetail.BlobBytes = dbBatch.BlobBytes
