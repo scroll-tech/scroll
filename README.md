@@ -12,7 +12,7 @@
 ## Directory Structure
 
 <pre>
-├── <a href="./bridge-history-api/">bridge-history-api</a>: Bridge history service that collects deposit and withdraw events from both L1 and L2 chains and generates withdrawal proofs
+├── <a href="./bridge-history-api/">bridge-history-api</a>: Bridge history service that collects deposit and withdraws events from both L1 and L2 chains and generates withdrawal proofs
 ├── <a href="./common/">common</a>: Common libraries and types
 ├── <a href="./coordinator/">coordinator</a>: Prover coordinator service that dispatches proving tasks to provers
 ├── <a href="./database">database</a>: Database client and schema definition
@@ -32,7 +32,7 @@ We welcome community contributions to this repository. Before you submit any iss
 + Hardhat / Foundry
 + Docker
 
-To run the tests, it is essential to first pull or build the required Docker images. Execute the following commands in the root directory of the repository to do this:
+To run the tests, it is essential first to pull or build the required Docker images. Execute the following commands in the root directory of the repository to do this:
 
 ```bash
 docker pull postgres
