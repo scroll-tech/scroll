@@ -191,6 +191,11 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			} else if err != nil {
 				return
 			}
+
+			if err != nil {
+				fmt.Println(111)
+			}
+
 			var data []byte
 			if isCurie {
 				data, err = r.l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", new(big.Int).SetUint64(baseFee), new(big.Int).SetUint64(blobBaseFee))
