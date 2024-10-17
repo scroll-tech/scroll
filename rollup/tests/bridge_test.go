@@ -63,15 +63,16 @@ func setupDB(t *testing.T) *gorm.DB {
 }
 
 func TestMain(m *testing.M) {
-	defer func() {
-		if testApps != nil {
-			testApps.Free()
-		}
-		if rollupApp != nil {
-			rollupApp.Free()
-		}
-	}()
-	m.Run()
+    code := m.Run()  // Run tests and capture exit code before defer
+    defer func() {
+        if testApps != nil {
+            testApps.Free()
+        }
+        if rollupApp != nil {
+            rollupApp.Free()
+        }
+    }()
+    os.Exit(code)  // Ensure proper exit with the test code
 }
 
 func setupEnv(t *testing.T) {
