@@ -35,7 +35,7 @@ type Batch struct {
 	ParentBatchHash string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
 	BatchHeader     []byte `json:"batch_header" gorm:"column:batch_header"`
 	CodecVersion    int16  `json:"codec_version" gorm:"column:codec_version"`
-	EnableCompress  bool   `json:"enable_compress" gorm:"column:enable_compress"`
+	EnableCompress  bool   `json:"enable_compress" gorm:"column:enable_compress"` // use for debug
 	BlobBytes       []byte `json:"blob_bytes" gorm:"column:blob_bytes"`
 
 	// proof
@@ -250,7 +250,7 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecConfig rutils.CodecConfig, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
 	if batch == nil {
 		return nil, errors.New("invalid args: batch is nil")
 	}
@@ -271,9 +271,16 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecCon
 		startChunkIndex = parentBatch.EndChunkIndex + 1
 	}
 
-	batchMeta, err := rutils.GetBatchMetadata(batch, codecConfig)
+	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion)
 	if err != nil {
 		log.Error("failed to get batch metadata", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
+			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
+	}
+
+	enableCompress, err := encoding.GetBatchEnableCompression(codecVersion, batch)
+	if err != nil {
+		log.Error("failed to get batch enable compress", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
 			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
@@ -290,8 +297,8 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecCon
 		WithdrawRoot:              batch.WithdrawRoot().Hex(),
 		ParentBatchHash:           batch.ParentBatchHash.Hex(),
 		BatchHeader:               batchMeta.BatchBytes,
-		CodecVersion:              int16(codecConfig.Version),
-		EnableCompress:            codecConfig.EnableCompress,
+		CodecVersion:              int16(codecVersion),
+		EnableCompress:            enableCompress,
 		BlobBytes:                 batchMeta.BlobBytes,
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),
 		ProvingStatus:             int16(types.ProvingTaskUnassigned),

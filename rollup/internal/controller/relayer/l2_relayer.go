@@ -13,11 +13,6 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/da-codec/encoding/codecv0"
-	"github.com/scroll-tech/da-codec/encoding/codecv1"
-	"github.com/scroll-tech/da-codec/encoding/codecv2"
-	"github.com/scroll-tech/da-codec/encoding/codecv3"
-	"github.com/scroll-tech/da-codec/encoding/codecv4"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
@@ -218,7 +213,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		var dbChunk *orm.Chunk
-		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, rutils.CodecConfig{Version: encoding.CodecV0}, rutils.ChunkMetrics{}, dbTX)
+		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, encoding.CodecV0, rutils.ChunkMetrics{}, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert chunk: %v", err)
 		}
@@ -235,7 +230,7 @@ func (r *Layer2Relayer) initializeGenesis() error {
 		}
 
 		var dbBatch *orm.Batch
-		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, rutils.CodecConfig{Version: encoding.CodecV0}, rutils.BatchMetrics{}, dbTX)
+		dbBatch, err = r.batchOrm.InsertBatch(r.ctx, batch, encoding.CodecV0, rutils.BatchMetrics{}, dbTX)
 		if err != nil {
 			return fmt.Errorf("failed to insert batch: %v", err)
 		}
@@ -422,36 +417,23 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 		var calldata []byte
 		var blob *kzg4844.Blob
-		if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV0 {
-			calldata, err = r.constructCommitBatchPayloadCodecV0(dbBatch, dbParentBatch, dbChunks, chunks)
+		codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
+		switch codecVersion {
+		case encoding.CodecV0, encoding.CodecV1, encoding.CodecV2:
+			calldata, blob, err = r.constructCommitBatchPayloadCodecV0AndV1AndV2(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
-				log.Error("failed to construct commitBatch payload codecv0", "index", dbBatch.Index, "err", err)
+				log.Error("failed to construct commitBatch payload for V0/V1/V2", "codecVersion", codecVersion, "index", dbBatch.Index, "err", err)
 				return
 			}
-		} else if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV1 {
-			calldata, blob, err = r.constructCommitBatchPayloadCodecV1(dbBatch, dbParentBatch, dbChunks, chunks)
+		case encoding.CodecV3, encoding.CodecV4:
+			calldata, blob, err = r.constructCommitBatchPayloadCodecV3AndV4(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
-				log.Error("failed to construct commitBatch payload codecv1", "index", dbBatch.Index, "err", err)
+				log.Error("failed to construct commitBatchWithBlobProof payload for V3/V4", "codecVersion", codecVersion, "index", dbBatch.Index, "err", err)
 				return
 			}
-		} else if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV2 {
-			calldata, blob, err = r.constructCommitBatchPayloadCodecV2(dbBatch, dbParentBatch, dbChunks, chunks)
-			if err != nil {
-				log.Error("failed to construct commitBatch payload codecv2", "index", dbBatch.Index, "err", err)
-				return
-			}
-		} else if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV3 {
-			calldata, blob, err = r.constructCommitBatchPayloadCodecV3(dbBatch, dbParentBatch, dbChunks, chunks)
-			if err != nil {
-				log.Error("failed to construct commitBatchWithBlobProof payload codecv3", "index", dbBatch.Index, "err", err)
-				return
-			}
-		} else if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV4 {
-			calldata, blob, err = r.constructCommitBatchPayloadCodecV4(dbBatch, dbParentBatch, dbChunks, chunks)
-			if err != nil {
-				log.Error("failed to construct commitBatchWithBlobProof payload codecv4", "index", dbBatch.Index, "err", err)
-				return
-			}
+		default:
+			log.Error("unsupported codec version", "codecVersion", codecVersion)
+			return
 		}
 
 		// fallbackGasLimit is non-zero only in sending non-blob transactions.
@@ -658,16 +640,18 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 	}
 
 	var calldata []byte
-	if !r.chainCfg.IsBernoulli(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv0
-		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
+	codecVersion := encoding.GetCodecVersion(r.chainCfg, dbChunks[0].StartBlockNumber, dbChunks[0].StartBlockTime)
 
+	switch codecVersion {
+	case encoding.CodecV0:
+		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
 		calldata, err = r.constructFinalizeBatchPayloadCodecV0(dbBatch, dbParentBatch, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct finalizeBatch payload codecv0, index: %v, err: %w", dbBatch.Index, err)
 		}
-	} else if !r.chainCfg.IsCurie(new(big.Int).SetUint64(dbChunks[0].StartBlockNumber)) { // codecv1
-		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
 
+	case encoding.CodecV1, encoding.CodecV2:
+		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
 		chunks := make([]*encoding.Chunk, len(dbChunks))
 		for i, c := range dbChunks {
 			blocks, dbErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
@@ -676,30 +660,17 @@ func (r *Layer2Relayer) finalizeBatch(dbBatch *orm.Batch, withProof bool) error 
 			}
 			chunks[i] = &encoding.Chunk{Blocks: blocks}
 		}
-
-		calldata, err = r.constructFinalizeBatchPayloadCodecV1(dbBatch, dbParentBatch, dbChunks, chunks, aggProof)
+		calldata, err = r.constructFinalizeBatchPayloadCodecV1AndV2(dbBatch, dbParentBatch, dbChunks, chunks, aggProof)
 		if err != nil {
 			return fmt.Errorf("failed to construct finalizeBatch payload codecv1, index: %v, err: %w", dbBatch.Index, err)
 		}
-	} else if !r.chainCfg.IsDarwin(dbChunks[0].StartBlockTime) { // codecv2
-		log.Info("Start to roll up zk proof", "batch hash", dbBatch.Hash)
 
-		chunks := make([]*encoding.Chunk, len(dbChunks))
-		for i, c := range dbChunks {
-			blocks, dbErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
-			if dbErr != nil {
-				return fmt.Errorf("failed to fetch blocks: %w", dbErr)
-			}
-			chunks[i] = &encoding.Chunk{Blocks: blocks}
-		}
-
-		calldata, err = r.constructFinalizeBatchPayloadCodecV2(dbBatch, dbParentBatch, dbChunks, chunks, aggProof)
-		if err != nil {
-			return fmt.Errorf("failed to construct finalizeBatch payload codecv2, index: %v, err: %w", dbBatch.Index, err)
-		}
-	} else { // codecv3
-		log.Debug("encoding is codecv3, using finalizeBundle instead", "index", dbBatch.Index)
+	case encoding.CodecV3, encoding.CodecV4:
+		log.Debug("using finalizeBundle instead", "index", dbBatch.Index, "codec version", codecVersion)
 		return nil
+
+	default:
+		return fmt.Errorf("unsupported codec version: %v", codecVersion)
 	}
 
 	txHash, err := r.finalizeSender.SendTransaction(dbBatch.Hash, &r.cfg.RollupContractAddress, calldata, nil, 0)
@@ -992,62 +963,45 @@ func (r *Layer2Relayer) handleL2RollupRelayerConfirmLoop(ctx context.Context) {
 	}
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV0(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, error) {
-	daBatch, err := codecv0.NewDABatchFromBytes(dbBatch.BatchHeader)
+func (r *Layer2Relayer) constructCommitBatchPayloadCodecV0AndV1AndV2(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
+	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create DA batch from bytes: %w", err)
+		return nil, nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
+	}
+
+	batch := &encoding.Batch{
+		Index:                      dbBatch.Index,
+		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
+		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
+		Chunks:                     chunks,
+	}
+
+	daBatch, createErr := codec.NewDABatch(batch)
+	if createErr != nil {
+		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
 	}
 
 	encodedChunks := make([][]byte, len(dbChunks))
 	for i, c := range dbChunks {
-		daChunk, createErr := codecv0.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
+		daChunk, createErr := codec.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
 		if createErr != nil {
-			return nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
+			return nil, nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
 		}
 		daChunkBytes, encodeErr := daChunk.Encode()
 		if encodeErr != nil {
-			return nil, fmt.Errorf("failed to encode DA chunk: %w", encodeErr)
+			return nil, nil, fmt.Errorf("failed to encode DA chunk: %w", encodeErr)
 		}
 		encodedChunks[i] = daChunkBytes
 	}
 
-	calldata, packErr := r.l1RollupABI.Pack("commitBatch", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap)
-	if packErr != nil {
-		return nil, fmt.Errorf("failed to pack commitBatch: %w", packErr)
-	}
-	return calldata, nil
-}
-
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
-	batch := &encoding.Batch{
-		Index:                      dbBatch.Index,
-		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
-		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
-		Chunks:                     chunks,
-	}
-
-	daBatch, createErr := codecv1.NewDABatch(batch)
-	if createErr != nil {
-		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
-	}
-
-	encodedChunks := make([][]byte, len(dbChunks))
-	for i, c := range dbChunks {
-		daChunk, createErr := codecv1.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
-		if createErr != nil {
-			return nil, nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
-		}
-		encodedChunks[i] = daChunk.Encode()
-	}
-
-	calldata, packErr := r.l1RollupABI.Pack("commitBatch", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap)
+	calldata, packErr := r.l1RollupABI.Pack("commitBatch", daBatch.Version(), dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap())
 	if packErr != nil {
 		return nil, nil, fmt.Errorf("failed to pack commitBatch: %w", packErr)
 	}
 	return calldata, daBatch.Blob(), nil
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV2(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
+func (r *Layer2Relayer) constructCommitBatchPayloadCodecV3AndV4(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
 	batch := &encoding.Batch{
 		Index:                      dbBatch.Index,
 		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
@@ -1055,47 +1009,26 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV2(dbBatch *orm.Batch, d
 		Chunks:                     chunks,
 	}
 
-	daBatch, createErr := codecv2.NewDABatch(batch)
+	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
+	}
+
+	daBatch, createErr := codec.NewDABatch(batch)
 	if createErr != nil {
 		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
 	}
 
 	encodedChunks := make([][]byte, len(dbChunks))
 	for i, c := range dbChunks {
-		daChunk, createErr := codecv2.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
+		daChunk, createErr := codec.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
 		if createErr != nil {
 			return nil, nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
 		}
-		encodedChunks[i] = daChunk.Encode()
-	}
-
-	calldata, packErr := r.l1RollupABI.Pack("commitBatch", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap)
-	if packErr != nil {
-		return nil, nil, fmt.Errorf("failed to pack commitBatch: %w", packErr)
-	}
-	return calldata, daBatch.Blob(), nil
-}
-
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV3(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
-	batch := &encoding.Batch{
-		Index:                      dbBatch.Index,
-		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
-		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
-		Chunks:                     chunks,
-	}
-
-	daBatch, createErr := codecv3.NewDABatch(batch)
-	if createErr != nil {
-		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
-	}
-
-	encodedChunks := make([][]byte, len(dbChunks))
-	for i, c := range dbChunks {
-		daChunk, createErr := codecv3.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
-		if createErr != nil {
-			return nil, nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
+		encodedChunks[i], err = daChunk.Encode()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to encode DA chunk: %w", err)
 		}
-		encodedChunks[i] = daChunk.Encode()
 	}
 
 	blobDataProof, err := daBatch.BlobDataProofForPointEvaluation()
@@ -1103,51 +1036,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV3(dbBatch *orm.Batch, d
 		return nil, nil, fmt.Errorf("failed to get blob data proof for point evaluation: %w", err)
 	}
 
-	skippedL1MessageBitmap, _, err := encoding.ConstructSkippedBitmap(batch.Index, batch.Chunks, batch.TotalL1MessagePoppedBefore)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to construct skipped L1 message bitmap: %w", err)
-	}
-
-	calldata, packErr := r.l1RollupABI.Pack("commitBatchWithBlobProof", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, skippedL1MessageBitmap, blobDataProof)
-	if packErr != nil {
-		return nil, nil, fmt.Errorf("failed to pack commitBatchWithBlobProof: %w", packErr)
-	}
-	return calldata, daBatch.Blob(), nil
-}
-
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV4(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk) ([]byte, *kzg4844.Blob, error) {
-	batch := &encoding.Batch{
-		Index:                      dbBatch.Index,
-		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
-		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
-		Chunks:                     chunks,
-	}
-
-	daBatch, createErr := codecv4.NewDABatch(batch, dbBatch.EnableCompress)
-	if createErr != nil {
-		return nil, nil, fmt.Errorf("failed to create DA batch: %w", createErr)
-	}
-
-	encodedChunks := make([][]byte, len(dbChunks))
-	for i, c := range dbChunks {
-		daChunk, createErr := codecv4.NewDAChunk(chunks[i], c.TotalL1MessagesPoppedBefore)
-		if createErr != nil {
-			return nil, nil, fmt.Errorf("failed to create DA chunk: %w", createErr)
-		}
-		encodedChunks[i] = daChunk.Encode()
-	}
-
-	blobDataProof, err := daBatch.BlobDataProofForPointEvaluation()
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to get blob data proof for point evaluation: %w", err)
-	}
-
-	skippedL1MessageBitmap, _, err := encoding.ConstructSkippedBitmap(batch.Index, batch.Chunks, batch.TotalL1MessagePoppedBefore)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to construct skipped L1 message bitmap: %w", err)
-	}
-
-	calldata, packErr := r.l1RollupABI.Pack("commitBatchWithBlobProof", daBatch.Version, dbParentBatch.BatchHeader, encodedChunks, skippedL1MessageBitmap, blobDataProof)
+	calldata, packErr := r.l1RollupABI.Pack("commitBatchWithBlobProof", daBatch.Version(), dbParentBatch.BatchHeader, encodedChunks, daBatch.SkippedL1MessageBitmap(), blobDataProof)
 	if packErr != nil {
 		return nil, nil, fmt.Errorf("failed to pack commitBatchWithBlobProof: %w", packErr)
 	}
@@ -1184,7 +1073,7 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV0(dbBatch *orm.Batch,
 	return calldata, nil
 }
 
-func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk, aggProof *message.BatchProof) ([]byte, error) {
+func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1AndV2(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk, aggProof *message.BatchProof) ([]byte, error) {
 	batch := &encoding.Batch{
 		Index:                      dbBatch.Index,
 		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
@@ -1192,61 +1081,17 @@ func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV1(dbBatch *orm.Batch,
 		Chunks:                     chunks,
 	}
 
-	daBatch, createErr := codecv1.NewDABatch(batch)
+	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
+	}
+
+	daBatch, createErr := codec.NewDABatch(batch)
 	if createErr != nil {
 		return nil, fmt.Errorf("failed to create DA batch: %w", createErr)
 	}
 
-	blobDataProof, getErr := daBatch.BlobDataProof()
-	if getErr != nil {
-		return nil, fmt.Errorf("failed to get blob data proof: %w", getErr)
-	}
-
-	if aggProof != nil { // finalizeBatch4844 with proof.
-		calldata, packErr := r.l1RollupABI.Pack(
-			"finalizeBatchWithProof4844",
-			dbBatch.BatchHeader,
-			common.HexToHash(dbParentBatch.StateRoot),
-			common.HexToHash(dbBatch.StateRoot),
-			common.HexToHash(dbBatch.WithdrawRoot),
-			blobDataProof,
-			aggProof.Proof,
-		)
-		if packErr != nil {
-			return nil, fmt.Errorf("failed to pack finalizeBatchWithProof4844: %w", packErr)
-		}
-		return calldata, nil
-	}
-
-	// finalizeBatch4844 without proof.
-	calldata, packErr := r.l1RollupABI.Pack(
-		"finalizeBatch4844",
-		dbBatch.BatchHeader,
-		common.HexToHash(dbParentBatch.StateRoot),
-		common.HexToHash(dbBatch.StateRoot),
-		common.HexToHash(dbBatch.WithdrawRoot),
-		blobDataProof,
-	)
-	if packErr != nil {
-		return nil, fmt.Errorf("failed to pack finalizeBatch4844: %w", packErr)
-	}
-	return calldata, nil
-}
-
-func (r *Layer2Relayer) constructFinalizeBatchPayloadCodecV2(dbBatch *orm.Batch, dbParentBatch *orm.Batch, dbChunks []*orm.Chunk, chunks []*encoding.Chunk, aggProof *message.BatchProof) ([]byte, error) {
-	batch := &encoding.Batch{
-		Index:                      dbBatch.Index,
-		TotalL1MessagePoppedBefore: dbChunks[0].TotalL1MessagesPoppedBefore,
-		ParentBatchHash:            common.HexToHash(dbParentBatch.Hash),
-		Chunks:                     chunks,
-	}
-
-	daBatch, createErr := codecv2.NewDABatch(batch)
-	if createErr != nil {
-		return nil, fmt.Errorf("failed to create DA batch: %w", createErr)
-	}
-
-	blobDataProof, getErr := daBatch.BlobDataProof()
+	blobDataProof, getErr := daBatch.BlobDataProofForPointEvaluation()
 	if getErr != nil {
 		return nil, fmt.Errorf("failed to get blob data proof: %w", getErr)
 	}

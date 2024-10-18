@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/da-codec/encoding/codecv0"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
@@ -83,7 +82,9 @@ func setupEnv(t *testing.T) {
 	err = json.Unmarshal(templateBlockTrace1, block1)
 	assert.NoError(t, err)
 	chunk1 = &encoding.Chunk{Blocks: []*encoding.Block{block1}}
-	daChunk1, err := codecv0.NewDAChunk(chunk1, 0)
+	codec, err := encoding.CodecFromVersion(encoding.CodecV0)
+	assert.NoError(t, err)
+	daChunk1, err := codec.NewDAChunk(chunk1, 0)
 	assert.NoError(t, err)
 	chunkHash1, err = daChunk1.Hash()
 	assert.NoError(t, err)
@@ -94,7 +95,7 @@ func setupEnv(t *testing.T) {
 	err = json.Unmarshal(templateBlockTrace2, block2)
 	assert.NoError(t, err)
 	chunk2 = &encoding.Chunk{Blocks: []*encoding.Block{block2}}
-	daChunk2, err := codecv0.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
+	daChunk2, err := codec.NewDAChunk(chunk2, chunk1.NumL1Messages(0))
 	assert.NoError(t, err)
 	chunkHash2, err = daChunk2.Hash()
 	assert.NoError(t, err)
