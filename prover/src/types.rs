@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use ethers_core::types::H256;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -98,6 +100,13 @@ impl<'de> Deserialize<'de> for ProverType {
     {
         let v: u8 = u8::deserialize(deserializer)?;
         Ok(ProverType::from_u8(v))
+    }
+}
+
+impl Display for ProverType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(format!("{:?}", self).as_str())?;
+        Ok(())
     }
 }
 
@@ -241,5 +250,29 @@ impl<'de> Deserialize<'de> for ProofStatus {
 impl Default for ProofStatus {
     fn default() -> Self {
         Self::Ok
+    }
+}
+
+// =================================== tests module ========================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::{Ok, Result};
+
+    #[ctor::ctor]
+    fn init() {
+        crate::utils::log_init(None);
+        log::info!("logger initialized");
+    }
+
+    #[test]
+    fn test_prover_type_display() -> Result<()> {
+        let chunk = ProverType::Chunk;
+        let batch = ProverType::Batch;
+
+        assert_eq!(chunk.to_string(), "Chunk");
+        assert_eq!(batch.to_string(), "Batch");
+        Ok(())
     }
 }

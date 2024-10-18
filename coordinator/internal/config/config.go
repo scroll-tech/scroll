@@ -24,6 +24,8 @@ type ProverManager struct {
 	ChunkCollectionTimeSec int `json:"chunk_collection_time_sec"`
 	// BundleCollectionTimeSec bundle Proof collection time (in seconds).
 	BundleCollectionTimeSec int `json:"bundle_collection_time_sec"`
+	// ProverSentryEndpoint the sentry endpoint being sent to each prover in login response
+	ProverSentryEndpoint string `json:"prover_sentry_endpoint"`
 }
 
 // L2 loads l2geth configuration items.

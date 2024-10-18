@@ -24,7 +24,7 @@ func LoginMiddleware(conf *config.Config) *jwt.GinJWTMiddleware {
 		TokenLookup:     "header: Authorization, query: token, cookie: jwt",
 		TokenHeadName:   "Bearer",
 		TimeFunc:        time.Now,
-		LoginResponse:   loginResponse,
+		LoginResponse:   api.Auth.LoginResponse,
 	})
 
 	if err != nil {

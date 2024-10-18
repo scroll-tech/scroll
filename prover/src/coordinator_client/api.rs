@@ -69,7 +69,15 @@ impl Api {
         token: &String,
     ) -> Result<Response<GetTaskResponseData>> {
         let method = "/coordinator/v1/get_task";
-        self.post_with_token(method, req, token).await
+        let response = self
+            .post_with_token::<GetTaskRequest, Response<GetTaskResponseData>>(method, req, token)
+            .await?;
+
+        if response.errcode == ErrorCode::ErrCoordinatorEmptyProofData {
+            log::info!("coordinator return empty task");
+            return Err(anyhow::anyhow!(GetEmptyTaskError));
+        }
+        Ok(response)
     }
 
     pub async fn submit_proof(

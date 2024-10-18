@@ -35,8 +35,10 @@ else
     ZK_VERSION=${ZKEVM_COMMIT}-${HALO2_GPU_VERSION}
 endif
 
+RELEASE_VERSION=${GO_TAG}-${GIT_REV}-${ZK_VERSION}
+
 prover:
-	GO_TAG=${GO_TAG} GIT_REV=${GIT_REV} ZK_VERSION=${ZK_VERSION} cargo build --release
+	RELEASE_VERSION=${RELEASE_VERSION} cargo build --release
 
 tests_binary:
 	cargo clean && cargo test --release --no-run

@@ -2,9 +2,6 @@
   "prover_manager": {
     "provers_per_session": 1,
     "session_attempts": 5,
-    "bundle_collection_time_sec": 180,
-    "batch_collection_time_sec": 180,
-    "chunk_collection_time_sec": 180,
     "verifier": {
       "mock_mode": true,
       "low_version_circuit": {
@@ -19,7 +16,11 @@
         "fork_name": "darwinV2",
         "min_prover_version": "v4.4.45"
       }
-    }
+    },
+    "bundle_collection_time_sec": 180,
+    "batch_collection_time_sec": 180,
+    "chunk_collection_time_sec": 180,
+    "prover_sentry_endpoint": ""
   },
   "db": {
     "driver_name": "postgres",
