@@ -193,7 +193,7 @@ require (
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/da-codec v0.1.1-0.20241011143254-6e28644ea0e4 // indirect
+	github.com/scroll-tech/da-codec v0.1.1-0.20241018070049-0e831aae778a // indirect
 	github.com/scroll-tech/zktrie v0.8.4 // indirect
 	github.com/secure-systems-lab/go-securesystemslib v0.4.0 // indirect
 	github.com/serialx/hashring v0.0.0-20190422032157-8b2912629002 // indirect

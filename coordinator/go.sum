@@ -3,6 +3,8 @@ github.com/DataDog/zstd v1.4.5/go.mod h1:1jcaCB/ufaK+sKp1NBhlGmpz41jOoPQ35bpF36t
 github.com/VictoriaMetrics/fastcache v1.12.1 h1:i0mICQuojGDL3KblA7wUNlY5lOK6a4bwt3uRKnkZU40=
 github.com/VictoriaMetrics/fastcache v1.12.1/go.mod h1:tX04vaqcNoQeGLD+ra5pU5sWkuxnzWhEzLwhP9w653o=
 github.com/aead/siphash v1.0.1/go.mod h1:Nywa3cDsYNNK3gaciGTWPwHt0wlpNV15vwmswBAUSII=
+github.com/agiledragon/gomonkey/v2 v2.12.0 h1:ek0dYu9K1rSV+TgkW5LvNNPRWyDZVIxGMCFI6Pz9o38=
+github.com/agiledragon/gomonkey/v2 v2.12.0/go.mod h1:ap1AmDzcVOAz1YpeJ3TCzIgstoaWLA6jbbgxfB4w2iY=
 github.com/appleboy/gin-jwt/v2 v2.9.1 h1:l29et8iLW6omcHltsOP6LLk4s3v4g2FbFs0koxGWVZs=
 github.com/appleboy/gin-jwt/v2 v2.9.1/go.mod h1:jwcPZJ92uoC9nOUTOKWoN/f6JZOgMSKlFSHw5/FrRUk=
 github.com/appleboy/gofight/v2 v2.1.2 h1:VOy3jow4vIK8BRQJoC/I9muxyYlJ2yb9ht2hZoS3rf4=
@@ -197,8 +199,8 @@ github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjR
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
-github.com/scroll-tech/da-codec v0.1.1-0.20241011143254-6e28644ea0e4 h1:spSbOqr5VmlRcn1RzqTAGTV0TQwPW1trxBt6mq/gdPg=
-github.com/scroll-tech/da-codec v0.1.1-0.20241011143254-6e28644ea0e4/go.mod h1:48uxaqVgpD8ulH8p+nrBtfeLHZ9tX82bVVdPNkW3rPE=
+github.com/scroll-tech/da-codec v0.1.1-0.20241018070049-0e831aae778a h1:uj4cijjskzj/QIOt3opclG8y60rSbBescA5FqBovQTQ=
+github.com/scroll-tech/da-codec v0.1.1-0.20241018070049-0e831aae778a/go.mod h1:odz1ck3umvYccCG03osaQBISAYGinZktZYbpk94fYRE=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20241011150208-4742882675d8 h1:pEP6+ThQIgSRO5SILiO6iBpWnxAUjoRNBA9Nc6ooOS0=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20241011150208-4742882675d8/go.mod h1:MBHX2RcAV9KLWblo9DSa/xyPYd1Wpwnt64JSDOy85po=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=

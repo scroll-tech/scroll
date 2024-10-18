@@ -247,7 +247,7 @@ func (p *BatchProposer) proposeBatch() error {
 	maxChunksThisBatch := codec.MaxNumChunksPerBatch()
 
 	// select at most maxChunkNumPerBatch chunks
-	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, int(maxChunksThisBatch))
+	dbChunks, err := p.chunkOrm.GetChunksGEIndex(p.ctx, firstUnbatchedChunkIndex, maxChunksThisBatch)
 	if err != nil {
 		return err
 	}
@@ -263,7 +263,7 @@ func (p *BatchProposer) proposeBatch() error {
 		currentHardfork := encoding.GetHardforkName(p.chainCfg, dbChunks[i].StartBlockNumber, dbChunks[i].StartBlockTime)
 		if currentHardfork != hardforkName {
 			dbChunks = dbChunks[:i]
-			maxChunksThisBatch = uint64(len(dbChunks)) // update maxChunksThisBatch to trigger batching, because these chunks are the last chunks before the hardfork
+			maxChunksThisBatch = len(dbChunks) // update maxChunksThisBatch to trigger batching, because these chunks are the last chunks before the hardfork
 			break
 		}
 	}
@@ -329,7 +329,7 @@ func (p *BatchProposer) proposeBatch() error {
 		return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
 	}
 	currentTimeSec := uint64(time.Now().Unix())
-	if metrics.FirstBlockTimestamp+p.batchTimeoutSec < currentTimeSec || metrics.NumChunks == maxChunksThisBatch {
+	if metrics.FirstBlockTimestamp+p.batchTimeoutSec < currentTimeSec || metrics.NumChunks == uint64(maxChunksThisBatch) {
 		log.Info("reached maximum number of chunks in batch or first block timeout",
 			"chunk count", metrics.NumChunks,
 			"start block number", dbChunks[0].StartBlockNumber,

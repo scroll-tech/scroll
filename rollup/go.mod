@@ -3,7 +3,7 @@ module scroll-tech/rollup
 go 1.21
 
 require (
-	github.com/agiledragon/gomonkey/v2 v2.11.0
+	github.com/agiledragon/gomonkey/v2 v2.12.0
 	github.com/consensys/gnark-crypto v0.12.1
 	github.com/crate-crypto/go-kzg-4844 v1.0.0
 	github.com/gin-gonic/gin v1.9.1
@@ -11,7 +11,7 @@ require (
 	github.com/holiman/uint256 v1.2.4
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.16.0
-	github.com/scroll-tech/da-codec v0.1.1-0.20241015063757-e36ee98736a0
+	github.com/scroll-tech/da-codec v0.1.1-0.20241018070049-0e831aae778a
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20241011150208-4742882675d8
 	github.com/smartystreets/goconvey v1.8.0
 	github.com/spf13/viper v1.19.0
