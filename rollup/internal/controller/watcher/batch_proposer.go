@@ -216,7 +216,7 @@ func (p *BatchProposer) updateDBBatchInfo(batch *encoding.Batch, codecVersion en
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
 		dbBatch, dbErr := p.batchOrm.InsertBatch(p.ctx, batch, codecVersion, *metrics, dbTX)
 		if dbErr != nil {
-			log.Warn("BatchProposer.updateBatchInfoInDB insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "codec version", codecVersion, "error", dbErr)
+			log.Warn("BatchProposer.updateDBBatchInfo insert batch failure", "index", batch.Index, "parent hash", batch.ParentBatchHash.Hex(), "codec version", codecVersion, "error", dbErr)
 			return dbErr
 		}
 		if dbErr = p.chunkOrm.UpdateBatchHashInRange(p.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex, dbBatch.Hash, dbTX); dbErr != nil {
@@ -244,6 +244,9 @@ func (p *BatchProposer) proposeBatch() error {
 	}
 
 	codec := encoding.CodecFromConfig(p.chainCfg, new(big.Int).SetUint64(firstUnbatchedChunk.StartBlockNumber), firstUnbatchedChunk.StartBlockTime)
+	if codec == nil {
+		return fmt.Errorf("failed to retrieve codec for block number %v and time %v", firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
+	}
 	maxChunksThisBatch := codec.MaxNumChunksPerBatch()
 
 	// select at most maxChunkNumPerBatch chunks

@@ -152,6 +152,9 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 	if len(blocks) > 0 {
 		for _, block := range blocks {
 			codec := encoding.CodecFromConfig(w.chainCfg, block.Header.Number, block.Header.Time)
+			if codec == nil {
+				return fmt.Errorf("failed to retrieve codec for block number %v and time %v", block.Header.Number, block.Header.Time)
+			}
 			blockL1CommitCalldataSize, err := codec.EstimateBlockL1CommitCalldataSize(block)
 			if err != nil {
 				return fmt.Errorf("failed to estimate block L1 commit calldata size: %v", err)
