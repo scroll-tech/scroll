@@ -3,7 +3,7 @@ module scroll-tech/integration-test
 go 1.21
 
 require (
-	github.com/scroll-tech/da-codec v0.1.1-0.20241018084142-cb6acfa44b91
+	github.com/scroll-tech/da-codec v0.1.1-0.20241020160143-e971fc973c48
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20241011150208-4742882675d8
 	github.com/stretchr/testify v1.9.0
 	gorm.io/gorm v1.25.7-0.20240204074919-46816ad31dde
