@@ -101,7 +101,7 @@ require (
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/rs/cors v1.7.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/scroll-tech/da-codec v0.1.1-0.20241018070049-0e831aae778a // indirect
+	github.com/scroll-tech/da-codec v0.1.1-0.20241018084142-cb6acfa44b91 // indirect
 	github.com/scroll-tech/zktrie v0.8.4 // indirect
 	github.com/sethvargo/go-retry v0.2.4 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
