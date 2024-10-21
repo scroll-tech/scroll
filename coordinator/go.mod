@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/prometheus/client_golang v1.19.0
-	github.com/scroll-tech/da-codec v0.1.1-0.20241020160143-e971fc973c48
+	github.com/scroll-tech/da-codec v0.1.1-0.20241021081245-8c5d2f0cd707
 	github.com/scroll-tech/go-ethereum v1.10.14-0.20241011150208-4742882675d8
 	github.com/shopspring/decimal v1.3.1
 	github.com/stretchr/testify v1.9.0
