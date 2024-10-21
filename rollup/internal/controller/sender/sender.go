@@ -38,7 +38,7 @@ const (
 )
 
 var (
-	// ErrTooManyPendingBlobTxs
+	// ErrTooManyPendingBlobTxs error for too many pending blob txs
 	ErrTooManyPendingBlobTxs = errors.New("the limit of pending blob-carrying transactions has been exceeded")
 )
 

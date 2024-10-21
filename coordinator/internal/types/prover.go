@@ -30,8 +30,8 @@ const (
 )
 
 // MakeProverType make ProverType from ProofType
-func MakeProverType(proof_type message.ProofType) ProverType {
-	switch proof_type {
+func MakeProverType(proofType message.ProofType) ProverType {
+	switch proofType {
 	case message.ProofTypeChunk:
 		return ProverTypeChunk
 	case message.ProofTypeBatch, message.ProofTypeBundle:

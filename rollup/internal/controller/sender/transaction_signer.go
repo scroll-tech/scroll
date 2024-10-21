@@ -17,10 +17,10 @@ import (
 )
 
 const (
-	// PrivateKeySignerType
+	// PrivateKeySignerType is the type of signer that uses a private key to sign transactions
 	PrivateKeySignerType = "PrivateKey"
 
-	// RemoteSignerType
+	// RemoteSignerType is the type of signer that uses a remote signer to sign transactions
 	RemoteSignerType = "RemoteSigner"
 )
 
