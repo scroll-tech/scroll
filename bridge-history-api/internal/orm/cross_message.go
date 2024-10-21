@@ -131,7 +131,7 @@ func (c *CrossMessage) GetL2WithdrawalsByBlockRange(ctx context.Context, startBl
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get latest L2 finalized sent message event, error: %w", err)
+		return nil, fmt.Errorf("failed to get L2 withdrawals by block range, error: %v", err)
 	}
 	return messages, nil
 }
