@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/da-codec/encoding/codecv0"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -98,7 +97,12 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		return nil, errors.New("invalid args: batch contains 0 chunk")
 	}
 
-	daBatch, err := codecv0.NewDABatch(batch)
+	codec, err := encoding.CodecFromVersion(encoding.CodecV0)
+	if err != nil {
+		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
+	}
+
+	daBatch, err := codec.NewDABatch(batch)
 	if err != nil {
 		log.Error("failed to create new DA batch",
 			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
@@ -121,7 +125,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 		startChunkIndex = parentBatch.EndChunkIndex + 1
 	}
 
-	startDAChunk, err := codecv0.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
+	startDAChunk, err := codec.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
 	if err != nil {
 		log.Error("failed to create start DA chunk", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
 			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
@@ -139,7 +143,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	for i := uint64(0); i < numChunks-1; i++ {
 		totalL1MessagePoppedBeforeEndDAChunk += batch.Chunks[i].NumL1Messages(totalL1MessagePoppedBeforeEndDAChunk)
 	}
-	endDAChunk, err := codecv0.NewDAChunk(batch.Chunks[numChunks-1], totalL1MessagePoppedBeforeEndDAChunk)
+	endDAChunk, err := codec.NewDAChunk(batch.Chunks[numChunks-1], totalL1MessagePoppedBeforeEndDAChunk)
 	if err != nil {
 		log.Error("failed to create end DA chunk", "index", batch.Index, "total l1 message popped before", totalL1MessagePoppedBeforeEndDAChunk,
 			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
@@ -156,7 +160,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	newBatch := Batch{
 		Index:             batch.Index,
 		Hash:              daBatch.Hash().Hex(),
-		DataHash:          daBatch.DataHash.Hex(),
+		DataHash:          daBatch.DataHash().Hex(),
 		StartChunkHash:    startDAChunkHash.Hex(),
 		StartChunkIndex:   startChunkIndex,
 		EndChunkHash:      endDAChunkHash.Hex(),
