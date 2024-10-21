@@ -195,7 +195,7 @@ func (t *TestcontainerApps) GetL2GethEndPoint() (string, error) {
 	return endpoint, nil
 }
 
-// GetL2GethEndPoint returns the endpoint of the running L2Geth container
+// GetWeb3SignerEndpoint returns the endpoint of the running L2Geth container
 func (t *TestcontainerApps) GetWeb3SignerEndpoint() (string, error) {
 	if t.web3SignerContainer == nil || !t.web3SignerContainer.IsRunning() {
 		return "", errors.New("web3signer is not running")
