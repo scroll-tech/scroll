@@ -1126,6 +1126,8 @@ github.com/sagikazarmark/crypt v0.19.0/go.mod h1:c6vimRziqqERhtSe0MhIvzE1w54FrCH
 github.com/schollz/closestmatch v2.1.0+incompatible/go.mod h1:RtP1ddjLong6gTkbtmuhtR2uUrrJOpYzYRvbcPAid+g=
 github.com/scroll-tech/da-codec v0.0.0-20240605080813-32bfc9fccde7/go.mod h1:1wWYii0OPwd5kw+xrz0PFgS420xNadrNF1x/ELJT+TM=
 github.com/scroll-tech/da-codec v0.0.0-20241006192342-95d2bc79b7e8/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
+github.com/scroll-tech/da-codec v0.0.1/go.mod h1:odz1ck3umvYccCG03osaQBISAYGinZktZYbpk94fYRE=
+github.com/scroll-tech/da-codec v0.1.0/go.mod h1:1wWYii0OPwd5kw+xrz0PFgS420xNadrNF1x/ELJT+TM=
 github.com/scroll-tech/da-codec v0.1.1-0.20241004100020-91ac897e28fc/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
 github.com/scroll-tech/da-codec v0.1.1-0.20241005161415-e6c8965dc0d7 h1:4QURqyAyOsUmLDhH/2BUQfWJk+RvsWHcrSyx/ikF/i4=
 github.com/scroll-tech/da-codec v0.1.1-0.20241005161415-e6c8965dc0d7/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
@@ -1133,11 +1135,10 @@ github.com/scroll-tech/da-codec v0.1.1-0.20241005165808-ba853e3447d6 h1:cObIVAkN
 github.com/scroll-tech/da-codec v0.1.1-0.20241005165808-ba853e3447d6/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
 github.com/scroll-tech/da-codec v0.1.1-0.20241005172014-aca0bef21638 h1:2KIfClLB3iKr593Dia79/vkqMsqc29H0zcxp1/jel4k=
 github.com/scroll-tech/da-codec v0.1.1-0.20241005172014-aca0bef21638/go.mod h1:6jxEQvNc7GQKMSUi25PthAUY3WnZL8CN0yWivBgAXi0=
-github.com/scroll-tech/da-codec v0.1.1-0.20241011143254-6e28644ea0e4/go.mod h1:48uxaqVgpD8ulH8p+nrBtfeLHZ9tX82bVVdPNkW3rPE=
 github.com/scroll-tech/da-codec v0.1.1-0.20241014152913-2703f226fb0b h1:5H6V6ybacXFJ2ti+eFwtf+12Otufod6goxK6/u7Nu1k=
 github.com/scroll-tech/da-codec v0.1.1-0.20241014152913-2703f226fb0b/go.mod h1:48uxaqVgpD8ulH8p+nrBtfeLHZ9tX82bVVdPNkW3rPE=
-github.com/scroll-tech/da-codec v0.1.1-0.20241021081245-8c5d2f0cd707 h1:uuBhIvpUK0+HuupF7TJAokdnRJc2FGrPQqplRY8jegw=
-github.com/scroll-tech/da-codec v0.1.1-0.20241021081245-8c5d2f0cd707/go.mod h1:odz1ck3umvYccCG03osaQBISAYGinZktZYbpk94fYRE=
+github.com/scroll-tech/da-codec v0.1.2 h1:QyJ+dQ4zWVVJwuqxNt4MiKyrymVc6rHe4YPtURkjiRc=
+github.com/scroll-tech/da-codec v0.1.2/go.mod h1:odz1ck3umvYccCG03osaQBISAYGinZktZYbpk94fYRE=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20240607130425-e2becce6a1a4/go.mod h1:byf/mZ8jLYUCnUePTicjJWn+RvKdxDn7buS6glTnMwQ=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20240821074444-b3fa00861e5e/go.mod h1:swB5NSp8pKNDuYsTxfR08bHS6L56i119PBx8fxvV8Cs=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20241010064814-3d88e870ae22/go.mod h1:r9FwtxCtybMkTbWYCyBuevT9TW3zHmOTHqD082Uh+Oo=
