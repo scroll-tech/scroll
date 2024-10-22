@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/da-codec/encoding/codecv0"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -258,7 +257,12 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
-	daChunk, err := codecv0.NewDAChunk(chunk, totalL1MessagePoppedBefore)
+	codec, err := encoding.CodecFromVersion(encoding.CodecV0)
+	if err != nil {
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
+	}
+
+	daChunk, err := codec.NewDAChunk(chunk, totalL1MessagePoppedBefore)
 	if err != nil {
 		log.Error("failed to initialize new DA chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
@@ -270,13 +274,13 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
-	totalL1CommitCalldataSize, err := codecv0.EstimateChunkL1CommitCalldataSize(chunk)
+	totalL1CommitCalldataSize, err := codec.EstimateChunkL1CommitCalldataSize(chunk)
 	if err != nil {
 		log.Error("failed to estimate chunk L1 commit calldata size", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
 	}
 
-	totalL1CommitGas, err := codecv0.EstimateChunkL1CommitGas(chunk)
+	totalL1CommitGas, err := codec.EstimateChunkL1CommitGas(chunk)
 	if err != nil {
 		log.Error("failed to estimate chunk L1 commit gas", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
@@ -290,7 +294,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, dbTX ...
 		StartBlockHash:               chunk.Blocks[0].Header.Hash().Hex(),
 		EndBlockNumber:               chunk.Blocks[numBlocks-1].Header.Number.Uint64(),
 		EndBlockHash:                 chunk.Blocks[numBlocks-1].Header.Hash().Hex(),
-		TotalL2TxGas:                 chunk.L2GasUsed(),
+		TotalL2TxGas:                 chunk.TotalGasUsed(),
 		TotalL2TxNum:                 chunk.NumL2Transactions(),
 		TotalL1CommitCalldataSize:    totalL1CommitCalldataSize,
 		TotalL1CommitGas:             totalL1CommitGas,
