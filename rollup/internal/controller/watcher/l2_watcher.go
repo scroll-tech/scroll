@@ -77,7 +77,7 @@ func (w *L2WatcherClient) TryFetchRunningMissingBlocks(blockHeight uint64) {
 			to = blockHeight
 		}
 
-		if err = w.getAndStoreBlocks(w.ctx, from, to); err != nil {
+		if err = w.GetAndStoreBlocks(w.ctx, from, to); err != nil {
 			log.Error("fail to getAndStoreBlockTraces", "from", from, "to", to, "err", err)
 			return
 		}
@@ -122,7 +122,7 @@ func txsToTxsData(txs gethTypes.Transactions) []*gethTypes.TransactionData {
 	return txsData
 }
 
-func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64) error {
+func (w *L2WatcherClient) GetAndStoreBlocks(ctx context.Context, from, to uint64) error {
 	var blocks []*encoding.Block
 	for number := from; number <= to; number++ {
 		log.Debug("retrieving block", "height", number)

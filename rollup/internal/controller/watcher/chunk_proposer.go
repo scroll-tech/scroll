@@ -174,6 +174,10 @@ func (p *ChunkProposer) TryProposeChunk() {
 	}
 }
 
+func (p *ChunkProposer) ChunkORM() *orm.Chunk {
+	return p.chunkOrm
+}
+
 func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion encoding.CodecVersion, metrics *utils.ChunkMetrics) error {
 	if chunk == nil {
 		return nil
@@ -246,6 +250,7 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 
 func (p *ChunkProposer) proposeChunk() error {
 	// unchunkedBlockHeight >= 1, assuming genesis batch with chunk 0, block 0 is committed.
+	// TODO: need latest chunk in DB
 	unchunkedBlockHeight, err := p.chunkOrm.GetUnchunkedBlockHeight(p.ctx)
 	if err != nil {
 		return err
@@ -254,6 +259,7 @@ func (p *ChunkProposer) proposeChunk() error {
 	maxBlocksThisChunk := p.maxBlockNumPerChunk
 
 	// select at most maxBlocksThisChunk blocks
+	// TODO: should be ok if I can get blocks into DB
 	blocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, unchunkedBlockHeight, int(maxBlocksThisChunk))
 	if err != nil {
 		return err

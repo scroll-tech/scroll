@@ -324,6 +324,56 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 	return &newBatch, nil
 }
 
+func (o *Batch) InsertBatchRaw(ctx context.Context, batch *encoding.DABatch) error {
+	newBatch := &Batch{
+		db:                        nil,
+		Index:                     0,
+		Hash:                      "",
+		DataHash:                  "",
+		StartChunkIndex:           0,
+		StartChunkHash:            "",
+		EndChunkIndex:             0,
+		EndChunkHash:              "",
+		StateRoot:                 "",
+		WithdrawRoot:              "",
+		ParentBatchHash:           "",
+		BatchHeader:               nil,
+		CodecVersion:              0,
+		EnableCompress:            false,
+		BlobBytes:                 nil,
+		ChunkProofsStatus:         0,
+		ProvingStatus:             0,
+		Proof:                     nil,
+		ProverAssignedAt:          nil,
+		ProvedAt:                  nil,
+		ProofTimeSec:              0,
+		RollupStatus:              0,
+		CommitTxHash:              "",
+		CommittedAt:               nil,
+		FinalizeTxHash:            "",
+		FinalizedAt:               nil,
+		OracleStatus:              0,
+		OracleTxHash:              "",
+		BlobDataProof:             nil,
+		BlobSize:                  0,
+		BundleHash:                "",
+		TotalL1CommitGas:          0,
+		TotalL1CommitCalldataSize: 0,
+		CreatedAt:                 time.Time{},
+		UpdatedAt:                 time.Time{},
+		DeletedAt:                 gorm.DeletedAt{},
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+
+	if err := db.Create(newBatch).Error; err != nil {
+		return fmt.Errorf("Batch.InsertBatchRaw error: %w", err)
+	}
+	return nil
+
+}
+
 // UpdateL2GasOracleStatusAndOracleTxHash updates the L2 gas oracle status and transaction hash for a batch.
 func (o *Batch) UpdateL2GasOracleStatusAndOracleTxHash(ctx context.Context, hash string, status types.GasOracleStatus, txHash string) error {
 	updateFields := make(map[string]interface{})
