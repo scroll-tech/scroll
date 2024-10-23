@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -45,7 +46,7 @@ func (c *BatchEvent) GetBatchEventSyncedHeightInDB(ctx context.Context) (uint64,
 	db = db.Model(&BatchEvent{})
 	db = db.Order("l1_block_number desc")
 	if err := db.First(&batch).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return 0, nil
 		}
 		return 0, fmt.Errorf("failed to get batch synced height in db, error: %w", err)
@@ -62,7 +63,7 @@ func (c *BatchEvent) GetLastUpdatedFinalizedBlockHeight(ctx context.Context) (ui
 	db = db.Where("update_status = ?", btypes.UpdateStatusTypeUpdated)
 	db = db.Order("batch_index desc")
 	if err := db.First(&batch).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			// No finalized batch found, return genesis batch's end block number.
 			return 0, nil
 		}
@@ -81,7 +82,7 @@ func (c *BatchEvent) GetUnupdatedFinalizedBatchesLEBlockHeight(ctx context.Conte
 	db = db.Where("update_status = ?", btypes.UpdateStatusTypeUnupdated)
 	db = db.Order("batch_index asc")
 	if err := db.Find(&batches).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get unupdated finalized batches >= block height, error: %w", err)
