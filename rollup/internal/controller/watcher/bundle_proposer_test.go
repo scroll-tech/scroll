@@ -72,7 +72,7 @@ func testBundleProposerLimits(t *testing.T) {
 				Blocks: []*encoding.Block{block},
 			}
 			chunkOrm := orm.NewChunk(db)
-			_, err := chunkOrm.InsertChunk(context.Background(), chunk, utils.CodecConfig{Version: encoding.CodecV0}, utils.ChunkMetrics{})
+			_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, utils.ChunkMetrics{})
 			assert.NoError(t, err)
 			batch := &encoding.Batch{
 				Index:                      0,
@@ -81,14 +81,14 @@ func testBundleProposerLimits(t *testing.T) {
 				Chunks:                     []*encoding.Chunk{chunk},
 			}
 			batchOrm := orm.NewBatch(db)
-			_, err = batchOrm.InsertBatch(context.Background(), batch, utils.CodecConfig{Version: encoding.CodecV0}, utils.BatchMetrics{})
+			_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
 			assert.NoError(t, err)
 
 			l2BlockOrm := orm.NewL2Block(db)
 			err = l2BlockOrm.InsertL2Blocks(context.Background(), []*encoding.Block{block1, block2})
 			assert.NoError(t, err)
 
-			chainConfig := &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
+			chainConfig := &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64)}
 
 			cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
 				MaxBlockNumPerChunk:             1,
@@ -140,6 +140,7 @@ func testBundleProposerRespectHardforks(t *testing.T) {
 	defer database.CloseDB(db)
 
 	chainConfig := &params.ChainConfig{
+		LondonBlock:    big.NewInt(0),
 		BernoulliBlock: big.NewInt(1),
 		CurieBlock:     big.NewInt(2),
 		DarwinTime:     func() *uint64 { t := uint64(4); return &t }(),
@@ -156,7 +157,7 @@ func testBundleProposerRespectHardforks(t *testing.T) {
 		Blocks: []*encoding.Block{block},
 	}
 	chunkOrm := orm.NewChunk(db)
-	_, err := chunkOrm.InsertChunk(context.Background(), chunk, utils.CodecConfig{Version: encoding.CodecV0}, utils.ChunkMetrics{})
+	_, err := chunkOrm.InsertChunk(context.Background(), chunk, encoding.CodecV0, utils.ChunkMetrics{})
 	assert.NoError(t, err)
 	batch := &encoding.Batch{
 		Index:                      0,
@@ -165,7 +166,7 @@ func testBundleProposerRespectHardforks(t *testing.T) {
 		Chunks:                     []*encoding.Chunk{chunk},
 	}
 	batchOrm := orm.NewBatch(db)
-	_, err = batchOrm.InsertBatch(context.Background(), batch, utils.CodecConfig{Version: encoding.CodecV0}, utils.BatchMetrics{})
+	_, err = batchOrm.InsertBatch(context.Background(), batch, encoding.CodecV0, utils.BatchMetrics{})
 	assert.NoError(t, err)
 
 	cp := NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
