@@ -8,7 +8,8 @@ pub type CommonHash = H256;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TaskType {
     Undefined,
-    Chunk,
+    ChunkHalo2,
+    ChunkSp1,
     Batch,
     Bundle,
 }
@@ -16,9 +17,10 @@ pub enum TaskType {
 impl TaskType {
     fn from_u8(v: u8) -> Self {
         match v {
-            1 => TaskType::Chunk,
+            1 => TaskType::ChunkHalo2,
             2 => TaskType::Batch,
             3 => TaskType::Bundle,
+            4 => TaskType::ChunkSp1,
             _ => TaskType::Undefined,
         }
     }
@@ -31,9 +33,10 @@ impl Serialize for TaskType {
     {
         match *self {
             TaskType::Undefined => serializer.serialize_u8(0),
-            TaskType::Chunk => serializer.serialize_u8(1),
+            TaskType::ChunkHalo2 => serializer.serialize_u8(1),
             TaskType::Batch => serializer.serialize_u8(2),
             TaskType::Bundle => serializer.serialize_u8(3),
+            TaskType::ChunkSp1 => serializer.serialize_u8(4),
         }
     }
 }
@@ -56,15 +59,19 @@ impl Default for TaskType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ProverType {
-    Chunk,
+    ChunkHalo2,
+    ChunkSp1,
+    ChunkAll,
     Batch,
 }
 
 impl ProverType {
     fn from_u8(v: u8) -> Self {
         match v {
-            1 => ProverType::Chunk,
+            1 => ProverType::ChunkHalo2,
             2 => ProverType::Batch,
+            3 => ProverType::ChunkSp1,
+            4 => ProverType::ChunkAll,
             _ => {
                 panic!("invalid prover_type")
             }
@@ -73,8 +80,10 @@ impl ProverType {
 
     pub fn to_u8(self) -> u8 {
         match self {
-            ProverType::Chunk => 1,
+            ProverType::ChunkHalo2 => 1,
             ProverType::Batch => 2,
+            ProverType::ChunkSp1 => 3,
+            ProverType::ChunkAll => 4,
         }
     }
 }
@@ -85,8 +94,10 @@ impl Serialize for ProverType {
         S: Serializer,
     {
         match *self {
-            ProverType::Chunk => serializer.serialize_u8(1),
+            ProverType::ChunkHalo2 => serializer.serialize_u8(1),
             ProverType::Batch => serializer.serialize_u8(2),
+            ProverType::ChunkSp1 => serializer.serialize_u8(3),
+            ProverType::ChunkAll => serializer.serialize_u8(4),
         }
     }
 }

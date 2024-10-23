@@ -29,7 +29,10 @@ impl<'a> Prover<'a> {
         let keystore_path = &config.keystore_path;
         let keystore_password = &config.keystore_password;
 
-        let geth_client = if config.prover_type == ProverType::Chunk {
+        let geth_client = if matches!(
+            config.prover_type,
+            ProverType::ChunkHalo2 | ProverType::ChunkSp1 | ProverType::ChunkAll
+        ) {
             Some(Rc::new(RefCell::new(
                 GethClient::new(
                     &config.prover_name,
@@ -73,7 +76,10 @@ impl<'a> Prover<'a> {
             prover_height: None,
         };
 
-        if self.config.prover_type == ProverType::Chunk {
+        if matches!(
+            self.config.prover_type,
+            ProverType::ChunkHalo2 | ProverType::ChunkSp1 | ProverType::ChunkAll
+        ) {
             let latest_block_number = self.get_latest_block_number_value()?;
             if let Some(v) = latest_block_number {
                 if v.as_u64() == 0 {

@@ -24,7 +24,7 @@ use prover_darwin::{
 static OUTPUT_DIR: Lazy<Option<String>> = Lazy::new(|| env::var("PROVER_OUTPUT_DIR").ok());
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct BatchTaskDetail {
+struct BatchTaskDetail {
     pub chunk_infos: Vec<ChunkInfo>,
     #[serde(flatten)]
     pub batch_proving_task: BatchProvingTask,
@@ -66,8 +66,9 @@ impl DarwinHandler {
             geth_client,
         };
         let degrees: Vec<u32> = get_degrees(&prover_types_set, |prover_type| match prover_type {
-            ProverType::Chunk => ZKEVM_DEGREES.clone(),
+            ProverType::ChunkHalo2 => ZKEVM_DEGREES.clone(),
             ProverType::Batch => AGG_DEGREES.clone(),
+            _ => unreachable!("Darwin supports prover types in [ChunkHalo2 and Batch] only"),
         });
         let params_map = get_params_map_instance(|| {
             log::info!(
@@ -80,7 +81,7 @@ impl DarwinHandler {
         });
         for prover_type in prover_types_set {
             match prover_type {
-                ProverType::Chunk => {
+                ProverType::ChunkHalo2 => {
                     handler.chunk_prover = Some(RefCell::new(ChunkProver::from_params_and_assets(
                         params_map, assets_dir,
                     )));
@@ -90,6 +91,7 @@ impl DarwinHandler {
                         params_map, assets_dir,
                     )))
                 }
+                _ => unreachable!("Darwin supports prover types in [ChunkHalo2 and Batch] only"),
             }
         }
         Ok(handler)
@@ -247,7 +249,7 @@ impl DarwinHandler {
 impl CircuitsHandler for DarwinHandler {
     fn get_vk(&self, task_type: TaskType) -> Option<Vec<u8>> {
         match task_type {
-            TaskType::Chunk => self
+            TaskType::ChunkHalo2 => self
                 .chunk_prover
                 .as_ref()
                 .and_then(|prover| prover.borrow().get_vk()),
@@ -265,7 +267,7 @@ impl CircuitsHandler for DarwinHandler {
 
     fn get_proof_data(&self, task_type: TaskType, task: &crate::types::Task) -> Result<String> {
         match task_type {
-            TaskType::Chunk => self.gen_chunk_proof(task),
+            TaskType::ChunkHalo2 => self.gen_chunk_proof(task),
             TaskType::Batch => self.gen_batch_proof(task),
             TaskType::Bundle => self.gen_bundle_proof(task),
             _ => unreachable!(),
@@ -279,7 +281,11 @@ impl CircuitsHandler for DarwinHandler {
 mod tests {
     use super::*;
     use crate::zk_circuits_handler::utils::encode_vk;
-    use prover_darwin::utils::chunk_trace_to_witness_block;
+    use ethers_core::types::H256;
+    use prover_darwin_v2::{
+        aggregator::eip4844, utils::chunk_trace_to_witness_block, BatchData, BatchHeader,
+        MAX_AGG_SNARKS,
+    };
     use std::{path::PathBuf, sync::LazyLock};
 
     #[ctor::ctor]
@@ -290,7 +296,7 @@ mod tests {
 
     static DEFAULT_WORK_DIR: &str = "/assets";
     static WORK_DIR: LazyLock<String> = LazyLock::new(|| {
-        std::env::var("DARWIN_TEST_DIR")
+        std::env::var("DARWIN_V2_TEST_DIR")
             .unwrap_or(String::from(DEFAULT_WORK_DIR))
             .trim_end_matches('/')
             .to_string()
@@ -315,7 +321,7 @@ mod tests {
     #[test]
     fn test_circuits() -> Result<()> {
         let bi_handler = DarwinHandler::new_multi(
-            vec![ProverType::Chunk, ProverType::Batch],
+            vec![ProverType::ChunkHalo2, ProverType::Batch],
             &PARAMS_PATH,
             &ASSETS_PATH,
             None,
@@ -327,13 +333,14 @@ mod tests {
         check_vk(TaskType::Chunk, chunk_vk, "chunk vk must be available");
         let chunk_dir_paths = get_chunk_dir_paths()?;
         log::info!("chunk_dir_paths, {:?}", chunk_dir_paths);
+        let mut chunk_traces = vec![];
         let mut chunk_infos = vec![];
         let mut chunk_proofs = vec![];
         for (id, chunk_path) in chunk_dir_paths.into_iter().enumerate() {
             let chunk_id = format!("chunk_proof{}", id + 1);
             log::info!("start to process {chunk_id}");
             let chunk_trace = read_chunk_trace(chunk_path)?;
-
+            chunk_traces.push(chunk_trace.clone());
             let chunk_info = traces_to_chunk_info(chunk_trace.clone())?;
             chunk_infos.push(chunk_info);
 
@@ -347,7 +354,7 @@ mod tests {
         let batch_handler = chunk_handler;
         let batch_vk = batch_handler.get_vk(TaskType::Batch).unwrap();
         check_vk(TaskType::Batch, batch_vk, "batch vk must be available");
-        let batch_task_detail = make_batch_task_detail(chunk_infos, chunk_proofs);
+        let batch_task_detail = make_batch_task_detail(chunk_traces, chunk_proofs, None);
         log::info!("start to prove batch");
         let batch_proof = batch_handler.gen_batch_proof_raw(batch_task_detail)?;
         let proof_data = serde_json::to_string(&batch_proof)?;
@@ -356,17 +363,70 @@ mod tests {
         Ok(())
     }
 
-    fn make_batch_task_detail(_: Vec<ChunkInfo>, _: Vec<ChunkProof>) -> BatchTaskDetail {
-        todo!();
-        // BatchTaskDetail {
-        //     chunk_infos,
-        //     batch_proving_task: BatchProvingTask {
-        //         parent_batch_hash: todo!(),
-        //         parent_state_root: todo!(),
-        //         batch_header: todo!(),
-        //         chunk_proofs,
-        //     },
-        // }
+    // copied from https://github.com/scroll-tech/scroll-prover/blob/main/integration/src/prove.rs
+    fn get_blob_from_chunks(chunks: &[ChunkInfo]) -> Vec<u8> {
+        let num_chunks = chunks.len();
+
+        let padded_chunk =
+            ChunkInfo::mock_padded_chunk_info_for_testing(chunks.last().as_ref().unwrap());
+        let chunks_with_padding = [
+            chunks.to_vec(),
+            vec![padded_chunk; MAX_AGG_SNARKS - num_chunks],
+        ]
+        .concat();
+        let batch_data = BatchData::<{ MAX_AGG_SNARKS }>::new(chunks.len(), &chunks_with_padding);
+        let batch_bytes = batch_data.get_batch_data_bytes();
+        let blob_bytes = eip4844::get_blob_bytes(&batch_bytes);
+        log::info!("blob_bytes len {}", blob_bytes.len());
+        blob_bytes
+    }
+
+    // TODO: chunk_infos can be extracted from chunk_proofs.
+    // Still needed?
+    fn make_batch_task_detail(
+        chunk_traces: Vec<Vec<BlockTrace>>,
+        chunk_proofs: Vec<ChunkProof>,
+        last_batcher_header: Option<BatchHeader<{ MAX_AGG_SNARKS }>>,
+    ) -> BatchTaskDetail {
+        // dummy parent batch hash
+        let dummy_parent_batch_hash = H256([
+            0xab, 0xac, 0xad, 0xae, 0xaf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0,
+        ]);
+        let chunk_infos: Vec<_> = chunk_proofs.iter().map(|p| p.chunk_info.clone()).collect();
+
+        let l1_message_popped = chunk_traces
+            .iter()
+            .flatten()
+            .map(|chunk| chunk.num_l1_txs())
+            .sum();
+        let last_block_timestamp = chunk_traces.last().map_or(0, |block_traces| {
+            block_traces
+                .last()
+                .map_or(0, |block_trace| block_trace.header.timestamp.as_u64())
+        });
+
+        let blob_bytes = get_blob_from_chunks(&chunk_infos);
+        let batch_header = BatchHeader::construct_from_chunks(
+            last_batcher_header.map_or(4, |header| header.version),
+            last_batcher_header.map_or(123, |header| header.batch_index + 1),
+            l1_message_popped,
+            last_batcher_header.map_or(l1_message_popped, |header| {
+                header.total_l1_message_popped + l1_message_popped
+            }),
+            last_batcher_header.map_or(dummy_parent_batch_hash, |header| header.batch_hash()),
+            last_block_timestamp,
+            &chunk_infos,
+            &blob_bytes,
+        );
+        BatchTaskDetail {
+            chunk_infos,
+            batch_proving_task: BatchProvingTask {
+                chunk_proofs,
+                batch_header,
+                blob_bytes,
+            },
+        }
     }
 
     fn check_vk(proof_type: TaskType, vk: Vec<u8>, info: &str) {

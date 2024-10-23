@@ -26,7 +26,9 @@ pub fn log_init(log_file: Option<String>) {
 
 pub fn get_task_types(prover_type: ProverType) -> Vec<TaskType> {
     match prover_type {
-        ProverType::Chunk => vec![TaskType::Chunk],
+        ProverType::ChunkHalo2 => vec![TaskType::ChunkHalo2],
+        ProverType::ChunkSp1 => vec![TaskType::ChunkSp1],
+        ProverType::ChunkAll => vec![TaskType::ChunkHalo2, TaskType::ChunkSp1],
         ProverType::Batch => vec![TaskType::Batch, TaskType::Bundle],
     }
 }

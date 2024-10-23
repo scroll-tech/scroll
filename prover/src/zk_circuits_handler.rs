@@ -1,6 +1,6 @@
 mod common;
 mod darwin;
-mod darwin_v2;
+mod euclid;
 
 use super::geth_client::GethClient;
 use crate::{
@@ -10,7 +10,7 @@ use crate::{
 };
 use anyhow::{bail, Result};
 use darwin::DarwinHandler;
-use darwin_v2::DarwinV2Handler;
+use euclid::EuclidHandler;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 type HardForkName = String;
@@ -84,7 +84,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                 &config.high_version_circuit.hard_fork_name
             );
             AssetsDirEnvConfig::enable_second();
-            DarwinV2Handler::new(
+            EuclidHandler::new(
                 prover_type,
                 &config.high_version_circuit.params_path,
                 &config.high_version_circuit.assets_path,
