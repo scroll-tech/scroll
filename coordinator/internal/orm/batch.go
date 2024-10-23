@@ -260,7 +260,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	if err != nil {
 		log.Error("failed to create new DA batch",
 			"index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)
 		return nil, err
 	}
 
@@ -268,7 +268,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	parentBatch, err := o.GetLatestBatch(ctx)
 	if err != nil {
 		log.Error("failed to get latest batch", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
@@ -282,14 +282,14 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	startDAChunk, err := codec.NewDAChunk(batch.Chunks[0], batch.TotalL1MessagePoppedBefore)
 	if err != nil {
 		log.Error("failed to create start DA chunk", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
 	startDAChunkHash, err := startDAChunk.Hash()
 	if err != nil {
 		log.Error("failed to get start DA chunk hash", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
@@ -300,14 +300,14 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, dbTX ...
 	endDAChunk, err := codec.NewDAChunk(batch.Chunks[numChunks-1], totalL1MessagePoppedBeforeEndDAChunk)
 	if err != nil {
 		log.Error("failed to create end DA chunk", "index", batch.Index, "total l1 message popped before", totalL1MessagePoppedBeforeEndDAChunk,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
 	endDAChunkHash, err := endDAChunk.Hash()
 	if err != nil {
 		log.Error("failed to get end DA chunk hash", "index", batch.Index, "total l1 message popped before", totalL1MessagePoppedBeforeEndDAChunk,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
