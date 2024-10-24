@@ -8,6 +8,7 @@ import (
 
 	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -255,12 +256,20 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 	return &newChunk, nil
 }
 
-func (o *Chunk) InsertChunkRaw(ctx context.Context, codecVersion encoding.CodecVersion, chunk *encoding.DAChunkRawTx, totalL1MessagePoppedBefore uint64) error {
+func (o *Chunk) InsertChunkRaw(ctx context.Context, codecVersion encoding.CodecVersion, chunk *encoding.DAChunkRawTx, totalL1MessagePoppedBefore uint64) (*Chunk, error) {
+	// Create some unique identifier. It is not really used for anything except in DB.
+	var chunkBytes []byte
+	for _, block := range chunk.Blocks {
+		blockBytes := block.Encode()
+		chunkBytes = append(chunkBytes, blockBytes...)
+	}
+	hash := crypto.Keccak256Hash(chunkBytes)
+
 	numBlocks := len(chunk.Blocks)
 	emptyHash := common.Hash{}.Hex()
-	newChunk := Chunk{
-		Index:                        0,
-		Hash:                         emptyHash,
+	newChunk := &Chunk{
+		Index:                        1337,
+		Hash:                         hash.Hex(),
 		StartBlockNumber:             chunk.Blocks[0].Number(),
 		StartBlockHash:               emptyHash,
 		EndBlockNumber:               chunk.Blocks[numBlocks-1].Number(),
@@ -286,11 +295,11 @@ func (o *Chunk) InsertChunkRaw(ctx context.Context, codecVersion encoding.CodecV
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 
-	if err := db.Create(&newChunk).Error; err != nil {
-		return fmt.Errorf("Chunk.InsertChunk error: %w, chunk hash: %v", err, newChunk.Hash)
+	if err := db.Create(newChunk).Error; err != nil {
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w, chunk hash: %v", err, newChunk.Hash)
 	}
 
-	return nil
+	return newChunk, nil
 }
 
 // UpdateProvingStatus updates the proving status of a chunk.

@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -324,34 +326,34 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 	return &newBatch, nil
 }
 
-func (o *Batch) InsertBatchRaw(ctx context.Context, batch *encoding.DABatch) error {
+func (o *Batch) InsertBatchRaw(ctx context.Context, batchIndex *big.Int, batchHash common.Hash, codecVersion encoding.CodecVersion, chunk *Chunk) (*Batch, error) {
+	now := time.Now()
 	newBatch := &Batch{
-		db:                        nil,
-		Index:                     0,
-		Hash:                      "",
+		Index:                     batchIndex.Uint64(),
+		Hash:                      batchHash.Hex(),
 		DataHash:                  "",
-		StartChunkIndex:           0,
-		StartChunkHash:            "",
-		EndChunkIndex:             0,
-		EndChunkHash:              "",
+		StartChunkIndex:           chunk.Index,
+		StartChunkHash:            chunk.Hash,
+		EndChunkIndex:             chunk.Index,
+		EndChunkHash:              chunk.Hash,
 		StateRoot:                 "",
 		WithdrawRoot:              "",
 		ParentBatchHash:           "",
-		BatchHeader:               nil,
-		CodecVersion:              0,
+		BatchHeader:               []byte{1, 2, 3},
+		CodecVersion:              int16(codecVersion),
 		EnableCompress:            false,
 		BlobBytes:                 nil,
 		ChunkProofsStatus:         0,
-		ProvingStatus:             0,
+		ProvingStatus:             int16(types.ProvingTaskVerified),
 		Proof:                     nil,
 		ProverAssignedAt:          nil,
-		ProvedAt:                  nil,
+		ProvedAt:                  &now,
 		ProofTimeSec:              0,
 		RollupStatus:              0,
 		CommitTxHash:              "",
 		CommittedAt:               nil,
 		FinalizeTxHash:            "",
-		FinalizedAt:               nil,
+		FinalizedAt:               &now,
 		OracleStatus:              0,
 		OracleTxHash:              "",
 		BlobDataProof:             nil,
@@ -359,19 +361,16 @@ func (o *Batch) InsertBatchRaw(ctx context.Context, batch *encoding.DABatch) err
 		BundleHash:                "",
 		TotalL1CommitGas:          0,
 		TotalL1CommitCalldataSize: 0,
-		CreatedAt:                 time.Time{},
-		UpdatedAt:                 time.Time{},
-		DeletedAt:                 gorm.DeletedAt{},
 	}
 
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Batch{})
 
 	if err := db.Create(newBatch).Error; err != nil {
-		return fmt.Errorf("Batch.InsertBatchRaw error: %w", err)
+		return nil, fmt.Errorf("Batch.InsertBatchRaw error: %w", err)
 	}
-	return nil
 
+	return newBatch, nil
 }
 
 // UpdateL2GasOracleStatusAndOracleTxHash updates the L2 gas oracle status and transaction hash for a batch.
