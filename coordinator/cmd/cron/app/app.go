@@ -44,6 +44,8 @@ func action(ctx *cli.Context) error {
 	}
 
 	subCtx, cancel := context.WithCancel(ctx.Context)
+	defer cancel()
+	
 	db, err := database.InitDB(cfg.DB)
 	if err != nil {
 		log.Crit("failed to init db connection", "err", err)
@@ -55,7 +57,7 @@ func action(ctx *cli.Context) error {
 	proofCollector := cron.NewCollector(subCtx, db, cfg, registry)
 	defer func() {
 		proofCollector.Stop()
-		cancel()
+		// cancel()
 		if err = database.CloseDB(db); err != nil {
 			log.Error("can not close db connection", "error", err)
 		}
