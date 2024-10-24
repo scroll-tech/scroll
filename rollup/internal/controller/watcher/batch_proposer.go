@@ -149,6 +149,10 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 	return p
 }
 
+func (p *BatchProposer) BatchORM() *orm.Batch {
+	return p.batchOrm
+}
+
 // TryProposeBatch tries to propose a new batches.
 func (p *BatchProposer) TryProposeBatch() {
 	p.batchProposerCircleTotal.Inc()

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/go-ethereum/common"
+	"github.com/scroll-tech/go-ethereum/crypto"
 	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
@@ -96,8 +98,8 @@ func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endInde
 	return chunks, nil
 }
 
-// getLatestChunk retrieves the latest chunk from the database.
-func (o *Chunk) getLatestChunk(ctx context.Context) (*Chunk, error) {
+// GetLatestChunk retrieves the latest chunk from the database.
+func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Order("index desc")
@@ -115,7 +117,7 @@ func (o *Chunk) getLatestChunk(ctx context.Context) (*Chunk, error) {
 // GetUnchunkedBlockHeight retrieves the first unchunked block number.
 func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 	// Get the latest chunk
-	latestChunk, err := o.getLatestChunk(ctx)
+	latestChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("Chunk.GetUnchunkedBlockHeight error: %w", err)
 	}
@@ -186,7 +188,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
-	parentChunk, err := o.getLatestChunk(ctx)
+	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
@@ -202,6 +204,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
+	fmt.Println("insertChunk", totalL1MessagePoppedBefore, chunkIndex, parentChunkHash)
 	chunkHash, err := utils.GetChunkHash(chunk, totalL1MessagePoppedBefore, codecVersion)
 	if err != nil {
 		log.Error("failed to get chunk hash", "err", err)
@@ -252,6 +255,52 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 	}
 
 	return &newChunk, nil
+}
+
+func (o *Chunk) InsertChunkRaw(ctx context.Context, codecVersion encoding.CodecVersion, chunk *encoding.DAChunkRawTx, totalL1MessagePoppedBefore uint64) (*Chunk, error) {
+	// Create some unique identifier. It is not really used for anything except in DB.
+	var chunkBytes []byte
+	for _, block := range chunk.Blocks {
+		blockBytes := block.Encode()
+		chunkBytes = append(chunkBytes, blockBytes...)
+	}
+	hash := crypto.Keccak256Hash(chunkBytes)
+
+	numBlocks := len(chunk.Blocks)
+	emptyHash := common.Hash{}.Hex()
+	newChunk := &Chunk{
+		Index:                        1337,
+		Hash:                         hash.Hex(),
+		StartBlockNumber:             chunk.Blocks[0].Number(),
+		StartBlockHash:               emptyHash,
+		EndBlockNumber:               chunk.Blocks[numBlocks-1].Number(),
+		EndBlockHash:                 emptyHash,
+		TotalL2TxGas:                 0,
+		TotalL2TxNum:                 0,
+		TotalL1CommitCalldataSize:    0,
+		TotalL1CommitGas:             0,
+		StartBlockTime:               chunk.Blocks[0].Timestamp(),
+		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
+		TotalL1MessagesPoppedInChunk: 0,
+		ParentChunkHash:              emptyHash,
+		StateRoot:                    emptyHash,
+		ParentChunkStateRoot:         emptyHash,
+		WithdrawRoot:                 emptyHash,
+		CodecVersion:                 int16(codecVersion),
+		EnableCompress:               false,
+		ProvingStatus:                int16(types.ProvingTaskVerified),
+		CrcMax:                       0,
+		BlobSize:                     0,
+	}
+
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+
+	if err := db.Create(newChunk).Error; err != nil {
+		return nil, fmt.Errorf("Chunk.InsertChunk error: %w, chunk hash: %v", err, newChunk.Hash)
+	}
+
+	return newChunk, nil
 }
 
 // UpdateProvingStatus updates the proving status of a chunk.

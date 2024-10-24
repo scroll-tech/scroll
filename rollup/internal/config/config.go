@@ -3,8 +3,9 @@ package config
 import (
 	"fmt"
 	"reflect"
-	"scroll-tech/common/database"
 	"strings"
+
+	"scroll-tech/common/database"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/scroll-tech/go-ethereum/common"
@@ -14,9 +15,10 @@ import (
 
 // Config load configuration items.
 type Config struct {
-	L1Config *L1Config        `json:"l1_config"`
-	L2Config *L2Config        `json:"l2_config"`
-	DBConfig *database.Config `json:"db_config"`
+	L1Config       *L1Config        `json:"l1_config"`
+	L2Config       *L2Config        `json:"l2_config"`
+	DBConfig       *database.Config `json:"db_config"`
+	RecoveryConfig *RecoveryConfig  `json:"recovery_config"`
 }
 
 // NewConfig returns a new instance of Config.
