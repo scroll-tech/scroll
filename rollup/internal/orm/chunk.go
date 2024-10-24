@@ -98,8 +98,8 @@ func (o *Chunk) GetChunksInRange(ctx context.Context, startIndex uint64, endInde
 	return chunks, nil
 }
 
-// getLatestChunk retrieves the latest chunk from the database.
-func (o *Chunk) getLatestChunk(ctx context.Context) (*Chunk, error) {
+// GetLatestChunk retrieves the latest chunk from the database.
+func (o *Chunk) GetLatestChunk(ctx context.Context) (*Chunk, error) {
 	db := o.db.WithContext(ctx)
 	db = db.Model(&Chunk{})
 	db = db.Order("index desc")
@@ -117,7 +117,7 @@ func (o *Chunk) getLatestChunk(ctx context.Context) (*Chunk, error) {
 // GetUnchunkedBlockHeight retrieves the first unchunked block number.
 func (o *Chunk) GetUnchunkedBlockHeight(ctx context.Context) (uint64, error) {
 	// Get the latest chunk
-	latestChunk, err := o.getLatestChunk(ctx)
+	latestChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("Chunk.GetUnchunkedBlockHeight error: %w", err)
 	}
@@ -188,7 +188,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 	var totalL1MessagePoppedBefore uint64
 	var parentChunkHash string
 	var parentChunkStateRoot string
-	parentChunk, err := o.getLatestChunk(ctx)
+	parentChunk, err := o.GetLatestChunk(ctx)
 	if err != nil {
 		log.Error("failed to get latest chunk", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
@@ -204,6 +204,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
+	fmt.Println("insertChunk", totalL1MessagePoppedBefore, chunkIndex, parentChunkHash)
 	chunkHash, err := utils.GetChunkHash(chunk, totalL1MessagePoppedBefore, codecVersion)
 	if err != nil {
 		log.Error("failed to get chunk hash", "err", err)

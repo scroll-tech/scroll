@@ -77,29 +77,66 @@ func action(ctx *cli.Context) error {
 	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, genesis.Config, db, registry)
 	//bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, genesis.Config, db, registry)
 
-	// Finish start all rollup relayer functions.
-	log.Info("Start rollup-relayer successfully", "version", version.Version)
-
 	fmt.Println(cfg.L1Config)
 	fmt.Println(cfg.L2Config)
 	fmt.Println(cfg.DBConfig)
 	fmt.Println(cfg.RecoveryConfig)
 
-	chunk, batch, err := restoreMinimalPreviousState(cfg, chunkProposer, batchProposer)
+	// Restore minimal previous state required to be able to create new chunks, batches and bundles.
+	latestFinalizedChunk, latestFinalizedBatch, err := restoreMinimalPreviousState(cfg, chunkProposer, batchProposer)
 	if err != nil {
 		return fmt.Errorf("failed to restore minimal previous state: %w", err)
 	}
 
-	// Fetch and insert the missing blocks from the last block in the batch to the latest L2 block.
-	fromBlock := chunk.EndBlockNumber + 1
+	// Fetch and insert the missing blocks from the last block in the latestFinalizedBatch to the latest L2 block.
+	fromBlock := latestFinalizedChunk.EndBlockNumber + 1
 	toBlock, err := fetchL2Blocks(subCtx, cfg, genesis, db, registry, fromBlock, cfg.RecoveryConfig.L2BlockHeightLimit)
 	if err != nil {
 		return fmt.Errorf("failed to fetch L2 blocks: %w", err)
 	}
 
-	fmt.Println(chunk.Index, batch.Index, fromBlock, toBlock)
+	fmt.Println(latestFinalizedChunk.Index, latestFinalizedBatch.Index, fromBlock, toBlock)
 
-	// TODO: maybe start new goroutine for chunk and batch proposers like usual and stop them once max L2 blocks reached
+	// Create chunks for L2 blocks.
+	log.Info("Creating chunks for L2 blocks", "from", fromBlock, "to", toBlock)
+
+	var latestChunk *orm.Chunk
+	var count int
+	for {
+		if err = chunkProposer.ProposeChunk(); err != nil {
+			return fmt.Errorf("failed to propose chunk: %w", err)
+		}
+		count++
+
+		latestChunk, err = chunkProposer.ChunkORM().GetLatestChunk(subCtx)
+		if err != nil {
+			return fmt.Errorf("failed to get latest latestFinalizedChunk: %w", err)
+		}
+
+		log.Info("Chunk created", "index", latestChunk.Index, "hash", latestChunk.Hash, "StartBlockNumber", latestChunk.StartBlockNumber, "EndBlockNumber", latestChunk.EndBlockNumber, "TotalL1MessagesPoppedBefore", latestChunk.TotalL1MessagesPoppedBefore)
+
+		// We have created chunks for all available L2 blocks.
+		if latestChunk.EndBlockNumber >= toBlock {
+			break
+		}
+	}
+
+	log.Info("Chunks created", "count", count, "latest latestFinalizedChunk", latestChunk.Index, "hash", latestChunk.Hash, "StartBlockNumber", latestChunk.StartBlockNumber, "EndBlockNumber", latestChunk.EndBlockNumber, "TotalL1MessagesPoppedBefore", latestChunk.TotalL1MessagesPoppedBefore)
+
+	// Create batch for the created chunks. We only allow 1 batch it needs to be submitted (and finalized) with a proof in a single step.
+	log.Info("Creating batch for chunks", "from", latestFinalizedChunk.Index+1, "to", latestChunk.Index)
+
+	batchProposer.TryProposeBatch()
+	latestBatch, err := batchProposer.BatchORM().GetLatestBatch(subCtx)
+	if err != nil {
+		return fmt.Errorf("failed to get latest latestFinalizedBatch: %w", err)
+	}
+
+	if latestBatch.EndChunkIndex != latestChunk.Index {
+		return fmt.Errorf("latest chunk in produced batch %d != %d, too many L2 blocks - specify less L2 blocks and retry again", latestBatch.EndChunkIndex, latestChunk.Index)
+	}
+
+	log.Info("Batch created", "index", latestBatch.Index, "hash", latestBatch.Hash, "StartChunkIndex", latestBatch.StartChunkIndex, "EndChunkIndex", latestBatch.EndChunkIndex)
 
 	// Catch CTRL-C to ensure a graceful shutdown.
 	interrupt := make(chan os.Signal, 1)
@@ -267,6 +304,8 @@ func restoreMinimalPreviousState(cfg *config.Config, chunkProposer *watcher.Chun
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get L1 messages count: %w", err)
 	}
+	// TODO: remove this. only for testing
+	l1MessagesCount = 220853
 
 	log.Info("L1 messages count after latest finalized batch", "batch", batchCommitEvent.BatchIndex(), "count", l1MessagesCount)
 
