@@ -60,9 +60,25 @@ func (c *Cmd) WaitExit() {
 	// should use `_ = c.app.Process.Wait()` here, but we have some bugs in coordinator's graceful exit,
 	// so we use `Kill` as a temp workaround. And since `WaitExit` is only used in integration tests, so
 	// it won't really affect our functionalities.
-	if err = c.app.Process.Signal(syscall.SIGTERM); err != nil {
-		_ = c.app.Process.Kill()
+	//if err = c.app.Process.Signal(syscall.SIGTERM); err != nil {
+	//	_ = c.app.Process.Kill()
+	//}
+	// Send interrupt signal.
+
+
+    	// Attempt graceful shutdown, then fallback to kill if necessary.
+    	if err = c.app.Process.Signal(syscall.SIGTERM); err != nil {
+        	log.Error("failed to send SIGTERM, attempting to kill process", "err", err)
+        	if killErr := c.app.Process.Kill(); killErr != nil {
+            		log.Error("failed to kill process", "kill error", killErr)
+        	}
+    	} else {
+        	// Use Wait to ensure the process terminates gracefully.
+        	if waitErr := c.app.Process.Wait(); waitErr != nil {
+            		log.Error("failed to wait for process termination", "wait error", waitErr)
+        	}
 	}
+    
 }
 
 // Interrupt send interrupt signal.
