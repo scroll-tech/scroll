@@ -265,7 +265,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		parentBatch, getErr := o.GetBatchByIndex(ctx, batch.Index-1)
 		if getErr != nil {
 			log.Error("failed to get batch by index", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-				"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", getErr)
+				"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", getErr)
 			return nil, fmt.Errorf("Batch.InsertBatch error: %w", getErr)
 		}
 		startChunkIndex = parentBatch.EndChunkIndex + 1
@@ -274,14 +274,14 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion)
 	if err != nil {
 		log.Error("failed to get batch metadata", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 
 	enableCompress, err := encoding.GetBatchEnableCompression(codecVersion, batch)
 	if err != nil {
 		log.Error("failed to get batch enable compress", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
-			"parent hash", batch.ParentBatchHash, "number of chunks", numChunks, "err", err)
+			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)
 		return nil, fmt.Errorf("Batch.InsertBatch error: %w", err)
 	}
 

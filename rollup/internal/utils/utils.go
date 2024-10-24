@@ -199,7 +199,7 @@ func GetBatchMetadata(batch *encoding.Batch, codecVersion encoding.CodecVersion)
 		return nil, fmt.Errorf("failed to get start DA chunk hash, version: %v, err: %w", codecVersion, err)
 	}
 
-	var totalL1MessagePoppedBeforeEndDAChunk uint64
+	totalL1MessagePoppedBeforeEndDAChunk := batch.TotalL1MessagePoppedBefore
 	for i := 0; i < len(batch.Chunks)-1; i++ {
 		totalL1MessagePoppedBeforeEndDAChunk += batch.Chunks[i].NumL1Messages(totalL1MessagePoppedBeforeEndDAChunk)
 	}
