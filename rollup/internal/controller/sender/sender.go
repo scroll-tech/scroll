@@ -642,7 +642,7 @@ func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64
 		blobBaseFee = eip4844.CalcBlobFee(parentExcessBlobGas).Uint64()
 	}
 	// header.Number.Uint64() returns the pendingBlockNumber, so we minus 1 to get the latestBlockNumber.
-	return header.Number.Uint64()-1, baseFee, blobBaseFee, nil
+	return header.Number.Uint64() - 1, baseFee, blobBaseFee, nil
 }
 
 func makeSidecar(blob *kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
