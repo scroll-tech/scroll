@@ -626,7 +626,7 @@ func (s *Sender) getSenderMeta() *orm.SenderMeta {
 }
 
 func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64, uint64, uint64, error) {
-	header, err := s.client.HeaderByNumber(ctx, nil)
+	header, err := s.client.HeaderByNumber(ctx, big.NewInt(rpc.PendingBlockNumber.Int64()))
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to get header by number, err: %w", err)
 	}
