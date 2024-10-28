@@ -637,9 +637,8 @@ func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64
 	}
 
 	var blobBaseFee uint64
-	if header.ExcessBlobGas != nil && header.BlobGasUsed != nil {
-		parentExcessBlobGas := eip4844.CalcExcessBlobGas(*header.ExcessBlobGas, *header.BlobGasUsed)
-		blobBaseFee = eip4844.CalcBlobFee(parentExcessBlobGas).Uint64()
+	if excess := header.ExcessBlobGas; excess != nil {
+		blobBaseFee = eip4844.CalcBlobFee(*excess).Uint64()
 	}
 	// header.Number.Uint64() returns the pendingBlockNumber, so we minus 1 to get the latestBlockNumber.
 	return header.Number.Uint64() - 1, baseFee, blobBaseFee, nil
