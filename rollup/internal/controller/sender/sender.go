@@ -626,7 +626,7 @@ func (s *Sender) getSenderMeta() *orm.SenderMeta {
 }
 
 func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64, uint64, uint64, error) {
-	header, err := s.client.HeaderByNumber(ctx, nil)
+	header, err := s.client.HeaderByNumber(ctx, big.NewInt(rpc.PendingBlockNumber.Int64()))
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to get header by number, err: %w", err)
 	}
@@ -637,11 +637,11 @@ func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64
 	}
 
 	var blobBaseFee uint64
-	if header.ExcessBlobGas != nil && header.BlobGasUsed != nil {
-		parentExcessBlobGas := eip4844.CalcExcessBlobGas(*header.ExcessBlobGas, *header.BlobGasUsed)
-		blobBaseFee = eip4844.CalcBlobFee(parentExcessBlobGas).Uint64()
+	if excess := header.ExcessBlobGas; excess != nil {
+		blobBaseFee = eip4844.CalcBlobFee(*excess).Uint64()
 	}
-	return header.Number.Uint64(), baseFee, blobBaseFee, nil
+	// header.Number.Uint64() returns the pendingBlockNumber, so we minus 1 to get the latestBlockNumber.
+	return header.Number.Uint64() - 1, baseFee, blobBaseFee, nil
 }
 
 func makeSidecar(blob *kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
