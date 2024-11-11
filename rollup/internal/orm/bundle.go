@@ -189,7 +189,7 @@ func (o *Bundle) InsertBundle(ctx context.Context, batches []*Batch, codecVersio
 }
 
 // UpdateFinalizeTxHashAndRollupStatus updates the finalize transaction hash and rollup status for a bundle.
-func (o *Bundle) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus) error {
+func (o *Bundle) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash string, finalizeTxHash string, status types.RollupStatus, dbTX ...*gorm.DB) error {
 	updateFields := make(map[string]interface{})
 	updateFields["finalize_tx_hash"] = finalizeTxHash
 	updateFields["rollup_status"] = int(status)
@@ -197,7 +197,11 @@ func (o *Bundle) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash s
 		updateFields["finalized_at"] = time.Now()
 	}
 
-	db := o.db.WithContext(ctx)
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
 	db = db.Model(&Bundle{})
 	db = db.Where("hash", hash)
 
