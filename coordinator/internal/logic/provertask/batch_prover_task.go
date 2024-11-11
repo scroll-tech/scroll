@@ -10,14 +10,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/da-codec/encoding"
-	"github.com/scroll-tech/da-codec/encoding/codecv3"
-	"github.com/scroll-tech/da-codec/encoding/codecv4"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/forks"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -175,7 +172,7 @@ func (bp *BatchProverTask) hardForkName(ctx *gin.Context, batchTask *orm.Batch) 
 	if getBlockErr != nil {
 		return "", getBlockErr
 	}
-	hardForkName := forks.GetHardforkName(bp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
+	hardForkName := encoding.GetHardforkName(bp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
 	return hardForkName, nil
 }
 
@@ -250,23 +247,17 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 		return taskDetail, nil
 	}
 
-	if encoding.CodecVersion(dbBatch.CodecVersion) == encoding.CodecV3 {
-		batchHeader, decodeErr := codecv3.NewDABatchFromBytes(dbBatch.BatchHeader)
-		if decodeErr != nil {
-			return nil, fmt.Errorf("failed to decode batch header (v3) for batch %d: %w", dbBatch.Index, decodeErr)
-		}
-
-		taskDetail.BatchHeader = batchHeader
-		taskDetail.BlobBytes = dbBatch.BlobBytes
-	} else {
-		batchHeader, decodeErr := codecv4.NewDABatchFromBytes(dbBatch.BatchHeader)
-		if decodeErr != nil {
-			return nil, fmt.Errorf("failed to decode batch header (v4) for batch %d: %w", dbBatch.Index, decodeErr)
-		}
-
-		taskDetail.BatchHeader = batchHeader
-		taskDetail.BlobBytes = dbBatch.BlobBytes
+	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get codec from version %d, err: %w", dbBatch.CodecVersion, err)
 	}
+
+	batchHeader, decodeErr := codec.NewDABatchFromBytes(dbBatch.BatchHeader)
+	if decodeErr != nil {
+		return nil, fmt.Errorf("failed to decode batch header version %d: %w", dbBatch.CodecVersion, decodeErr)
+	}
+	taskDetail.BatchHeader = batchHeader
+	taskDetail.BlobBytes = dbBatch.BlobBytes
 
 	return taskDetail, nil
 }

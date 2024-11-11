@@ -9,11 +9,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/forks"
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
@@ -178,7 +178,7 @@ func (bp *BundleProverTask) hardForkName(ctx *gin.Context, bundleTask *orm.Bundl
 		return "", getBlockErr
 	}
 
-	hardForkName := forks.GetHardforkName(bp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
+	hardForkName := encoding.GetHardforkName(bp.chainCfg, l2Block.Number, l2Block.BlockTimestamp)
 	return hardForkName, nil
 }
 
