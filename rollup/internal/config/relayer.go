@@ -85,11 +85,6 @@ type GasOracleConfig struct {
 	// AlternativeGasTokenConfig The configuration for handling token exchange rates when updating the gas price oracle.
 	AlternativeGasTokenConfig *AlternativeGasTokenConfig `json:"alternative_gas_token_config"`
 
-	// The following configs are only for updating L1 gas price, used for sender in L2.
-	// The weight for L1 base fee.
-	L1BaseFeeWeight float64 `json:"l1_base_fee_weight"`
-	// The weight for L1 blob base fee.
-	L1BlobBaseFeeWeight float64 `json:"l1_blob_base_fee_weight"`
 	// CheckCommittedBatchesWindowMinutes the time frame to check if we committed batches to decide to update gas oracle or not in minutes
 	CheckCommittedBatchesWindowMinutes int    `json:"check_committed_batches_window_minutes"`
 	L1BaseFeeDefault                   uint64 `json:"l1_base_fee_default"`
