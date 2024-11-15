@@ -87,13 +87,13 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 				LowVersionCircuit: &config.CircuitConfig{
 					ParamsPath:       "",
 					AssetsPath:       "",
-					ForkName:         "darwin",
+					ForkName:         "homestead",
 					MinProverVersion: "v4.2.0",
 				},
 				HighVersionCircuit: &config.CircuitConfig{
 					ParamsPath:       "",
 					AssetsPath:       "",
-					ForkName:         "darwinV2",
+					ForkName:         "bernoulli",
 					MinProverVersion: "v4.3.0",
 				},
 			},
@@ -109,16 +109,12 @@ func setupCoordinator(t *testing.T, proversPerSession uint8, coordinatorURL stri
 	}
 
 	var chainConf params.ChainConfig
-	chainConf.LondonBlock = big.NewInt(0)
-	chainConf.BernoulliBlock = big.NewInt(0)
-	chainConf.CurieBlock = big.NewInt(0)
 	for _, forkName := range forks {
 		switch forkName {
-		case "darwinV2":
-			chainConf.DarwinTime = new(uint64)
-			chainConf.DarwinV2Time = new(uint64)
-		case "darwin":
-			chainConf.DarwinTime = new(uint64)
+		case "bernoulli":
+			chainConf.BernoulliBlock = big.NewInt(100)
+		case "homestead":
+			chainConf.HomesteadBlock = big.NewInt(0)
 		}
 	}
 
@@ -201,7 +197,7 @@ func TestApis(t *testing.T) {
 func testHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []string{"darwinV2"})
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []string{"homestead"})
 	defer func() {
 		proofCollector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -214,7 +210,7 @@ func testHandshake(t *testing.T) {
 func testFailedHandshake(t *testing.T) {
 	// Setup coordinator and http server.
 	coordinatorURL := randomURL()
-	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []string{"darwinV2"})
+	proofCollector, httpHandler := setupCoordinator(t, 1, coordinatorURL, []string{"homestead"})
 	defer func() {
 		proofCollector.Stop()
 	}()
@@ -232,7 +228,7 @@ func testFailedHandshake(t *testing.T) {
 
 func testGetTaskBlocked(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"darwinV2"})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"homestead"})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -276,7 +272,7 @@ func testGetTaskBlocked(t *testing.T) {
 
 func testOutdatedProverVersion(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"darwinV2"})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"homestead"})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
@@ -303,7 +299,7 @@ func testOutdatedProverVersion(t *testing.T) {
 
 func testValidProof(t *testing.T) {
 	coordinatorURL := randomURL()
-	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"darwinV2"})
+	collector, httpHandler := setupCoordinator(t, 3, coordinatorURL, []string{"homestead"})
 	defer func() {
 		collector.Stop()
 		assert.NoError(t, httpHandler.Shutdown(context.Background()))
