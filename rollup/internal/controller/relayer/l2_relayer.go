@@ -568,6 +568,22 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
 		if r.cfg.EnableTestEnvBypassFeatures && utils.NowUTC().Sub(bundle.CreatedAt) > time.Duration(r.cfg.FinalizeBundleWithoutProofTimeoutSec)*time.Second {
+			// check if last batch is finalized, because in fake finalize bundle mode, we have not verified if the previous bundle or batch is finalized.
+			if bundle.StartBatchIndex == 0 {
+				log.Error("invalid args: start batch index of bundle is 0", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex)
+				return
+			}
+
+			lastBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex-1)
+			if err != nil {
+				log.Error("failed to get last batch", "index", bundle.StartBatchIndex-1, "err", err)
+				return
+			}
+
+			if types.RollupStatus(lastBatch.RollupStatus) != types.RollupFinalized {
+				log.Error("previous bundle or batch is not finalized", "index", lastBatch.Index, "hash", lastBatch.Hash, "rollup status", types.RollupStatus(lastBatch.RollupStatus))
+			}
+
 			if err := r.finalizeBundle(bundle, false); err != nil {
 				log.Error("Failed to finalize timeout bundle without proof", "index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
 			}
