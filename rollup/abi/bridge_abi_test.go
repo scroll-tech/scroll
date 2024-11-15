@@ -52,7 +52,7 @@ func TestPackImportGenesisBatch(t *testing.T) {
 	assert.NoError(err)
 }
 
-func TestPackSetL1BaseFee(t *testing.T) {
+func TestPackSetL1BaseFeeAndBlobBaseFee(t *testing.T) {
 	assert := assert.New(t)
 
 	l1GasOracleABI, err := L1GasPriceOracleMetaData.GetAbi()
