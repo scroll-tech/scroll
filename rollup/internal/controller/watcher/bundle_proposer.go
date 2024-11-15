@@ -155,7 +155,7 @@ func (p *BundleProposer) proposeBundle() error {
 	hardforkName := encoding.GetHardforkName(p.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
 	codecVersion := encoding.CodecVersion(batches[0].CodecVersion)
 
-	if codecVersion <= encoding.CodecV3 {
+	if codecVersion < encoding.CodecV4 {
 		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codecVersion, encoding.CodecV4)
 	}
 

@@ -277,7 +277,7 @@ func (p *ChunkProposer) proposeChunk() error {
 
 	codecVersion := encoding.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 
-	if codecVersion <= encoding.CodecV3 {
+	if codecVersion < encoding.CodecV4 {
 		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codecVersion, encoding.CodecV4)
 	}
 
