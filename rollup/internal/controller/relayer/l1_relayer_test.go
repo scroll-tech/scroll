@@ -141,14 +141,6 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 		return tmpInfo, nil
 	})
 
-	convey.Convey("setL1BaseFee failure", t, func() {
-		targetErr := errors.New("pack setL1BaseFee error")
-		patchGuard.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
-			return nil, targetErr
-		})
-		l1Relayer.ProcessGasPriceOracle()
-	})
-
 	patchGuard.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
 		return []byte("for test"), nil
 	})

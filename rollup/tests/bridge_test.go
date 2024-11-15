@@ -213,7 +213,6 @@ func TestFunction(t *testing.T) {
 
 	// l1/l2 gas oracle
 	t.Run("TestImportL1GasPrice", testImportL1GasPrice)
-	t.Run("TestImportL1GasPriceAfterCurie", testImportL1GasPriceAfterCurie)
 	t.Run("TestImportDefaultL1GasPriceDueToL1GasPriceSpike", testImportDefaultL1GasPriceDueToL1GasPriceSpike)
 	t.Run("TestImportL2GasPrice", testImportL2GasPrice)
 }

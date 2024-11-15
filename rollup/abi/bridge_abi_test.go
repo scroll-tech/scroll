@@ -59,7 +59,8 @@ func TestPackSetL1BaseFee(t *testing.T) {
 	assert.NoError(err)
 
 	baseFee := big.NewInt(2333)
-	_, err = l1GasOracleABI.Pack("setL1BaseFee", baseFee)
+	blobBaseFee := big.NewInt(1)
+	_, err = l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", baseFee, blobBaseFee)
 	assert.NoError(err)
 }
 

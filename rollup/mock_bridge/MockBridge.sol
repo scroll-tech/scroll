@@ -102,10 +102,6 @@ contract MockBridge {
 
     mapping(uint256 => bytes32) public withdrawRoots;
 
-    function setL1BaseFee(uint256 _l1BaseFee) external {
-        l1BaseFee = _l1BaseFee;
-    }
-
     function setL1BaseFeeAndBlobBaseFee(uint256 _l1BaseFee, uint256 _l1BlobBaseFee) external {
         l1BaseFee = _l1BaseFee;
         l1BlobBaseFee = _l1BlobBaseFee;
