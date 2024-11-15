@@ -568,7 +568,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 	switch status {
 	case types.ProvingTaskUnassigned, types.ProvingTaskAssigned:
 		if r.cfg.EnableTestEnvBypassFeatures && utils.NowUTC().Sub(bundle.CreatedAt) > time.Duration(r.cfg.FinalizeBundleWithoutProofTimeoutSec)*time.Second {
-			// check if last batch is finalized, because in fake finalize bundle mode, we have not verified if the previous bundle or batch is finalized.
+			// check if last batch is finalized, because in fake finalize bundle mode, the contract does not verify if the previous bundle or batch is finalized.
 			if bundle.StartBatchIndex == 0 {
 				log.Error("invalid args: start batch index of bundle is 0", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex)
 				return
