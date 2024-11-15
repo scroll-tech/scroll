@@ -329,7 +329,7 @@ func testBatchProposerBlobSizeLimitCodecV4(t *testing.T) {
 
 		var expectedNumBatches int
 		var numChunksMultiplier uint64
-		if codecVersion == encoding.CodecV4
+		if codecVersion == encoding.CodecV4 {
 			expectedNumBatches = 2
 			numChunksMultiplier = 45
 		} else {

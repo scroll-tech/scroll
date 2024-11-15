@@ -422,7 +422,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		case encoding.CodecV4:
 			calldata, blob, err = r.constructCommitBatchPayloadCodecV4(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
-				log.Error("failed to construct commitBatchWithBlobProof payload for V3/V4", "codecVersion", codecVersion, "index", dbBatch.Index, "err", err)
+				log.Error("failed to construct commitBatchWithBlobProof payload for V4", "codecVersion", codecVersion, "index", dbBatch.Index, "err", err)
 				return
 			}
 		default:
