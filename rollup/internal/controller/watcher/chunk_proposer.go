@@ -12,8 +12,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
-	"scroll-tech/common/forks"
-
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/orm"
 	"scroll-tech/rollup/internal/utils"
@@ -182,13 +180,9 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 	}
 
 	compatibilityBreachOccurred := false
-	codecConfig := utils.CodecConfig{
-		Version:        codecVersion,
-		EnableCompress: true,
-	}
 
 	for {
-		compatible, err := utils.CheckChunkCompressedDataCompatibility(chunk, codecVersion)
+		compatible, err := encoding.CheckChunkCompressedDataCompatibility(chunk, codecVersion)
 		if err != nil {
 			log.Error("Failed to check chunk compressed data compatibility", "start block number", chunk.Blocks[0].Header.Number, "codecVersion", codecVersion, "err", err)
 			return err
@@ -202,7 +196,6 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 
 		if len(chunk.Blocks) == 1 {
 			log.Warn("Disable compression: cannot truncate chunk with only 1 block for compatibility", "block number", chunk.Blocks[0].Header.Number)
-			codecConfig.EnableCompress = false
 			break
 		}
 
@@ -216,7 +209,7 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 
 		// recalculate chunk metrics after truncation
 		var calcErr error
-		metrics, calcErr = utils.CalculateChunkMetrics(chunk, codecConfig)
+		metrics, calcErr = utils.CalculateChunkMetrics(chunk, codecVersion)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate chunk metrics, start block number: %v, error: %w", chunk.Blocks[0].Header.Number, calcErr)
 		}
@@ -228,13 +221,13 @@ func (p *ChunkProposer) updateDBChunkInfo(chunk *encoding.Chunk, codecVersion en
 	if len(chunk.Blocks) > 0 {
 		p.chunkProposeBlockHeight.Set(float64(chunk.Blocks[len(chunk.Blocks)-1].Header.Number.Uint64()))
 	}
-	p.chunkProposeThroughput.Add(float64(chunk.L2GasUsed()))
+	p.chunkProposeThroughput.Add(float64(chunk.TotalGasUsed()))
 
 	p.proposeChunkUpdateInfoTotal.Inc()
 	err := p.db.Transaction(func(dbTX *gorm.DB) error {
-		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecConfig, *metrics, dbTX)
+		dbChunk, err := p.chunkOrm.InsertChunk(p.ctx, chunk, codecVersion, *metrics, dbTX)
 		if err != nil {
-			log.Warn("ChunkProposer.InsertChunk failed", "codec version", codecVersion, "enable compress", codecConfig.EnableCompress, "err", err)
+			log.Warn("ChunkProposer.InsertChunk failed", "codec version", codecVersion, "err", err)
 			return err
 		}
 		if err := p.l2BlockOrm.UpdateChunkHashInRange(p.ctx, dbChunk.StartBlockNumber, dbChunk.EndBlockNumber, dbChunk.Hash, dbTX); err != nil {
@@ -272,9 +265,9 @@ func (p *ChunkProposer) proposeChunk() error {
 
 	// Ensure all blocks in the same chunk use the same hardfork name
 	// If a different hardfork name is found, truncate the blocks slice at that point
-	hardforkName := forks.GetHardforkName(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
+	hardforkName := encoding.GetHardforkName(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 	for i := 1; i < len(blocks); i++ {
-		currentHardfork := forks.GetHardforkName(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
+		currentHardfork := encoding.GetHardforkName(p.chainCfg, blocks[i].Header.Number.Uint64(), blocks[i].Header.Time)
 		if currentHardfork != hardforkName {
 			blocks = blocks[:i]
 			maxBlocksThisChunk = uint64(i) // update maxBlocksThisChunk to trigger chunking, because these blocks are the last blocks before the hardfork
@@ -282,27 +275,24 @@ func (p *ChunkProposer) proposeChunk() error {
 		}
 	}
 
-	codecConfig := utils.CodecConfig{
-		Version:        forks.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time),
-		EnableCompress: true, // codecv4 is the only version that supports conditional compression, default to enable compression
-	}
+	codecVersion := encoding.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 
 	// Including Curie block in a sole chunk.
 	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number.Cmp(p.chainCfg.CurieBlock) == 0 {
 		chunk := encoding.Chunk{Blocks: blocks[:1]}
-		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecConfig)
+		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 		}
 		p.recordTimerChunkMetrics(metrics)
-		return p.updateDBChunkInfo(&chunk, codecConfig.Version, metrics)
+		return p.updateDBChunkInfo(&chunk, codecVersion, metrics)
 	}
 
 	var chunk encoding.Chunk
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)
 
-		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecConfig)
+		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 		}
@@ -339,17 +329,17 @@ func (p *ChunkProposer) proposeChunk() error {
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
 
-			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecConfig)
+			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 			if calcErr != nil {
 				return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 			}
 
 			p.recordAllChunkMetrics(metrics)
-			return p.updateDBChunkInfo(&chunk, codecConfig.Version, metrics)
+			return p.updateDBChunkInfo(&chunk, codecVersion, metrics)
 		}
 	}
 
-	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecConfig)
+	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 	if calcErr != nil {
 		return fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
 	}
@@ -364,7 +354,7 @@ func (p *ChunkProposer) proposeChunk() error {
 
 		p.chunkFirstBlockTimeoutReached.Inc()
 		p.recordAllChunkMetrics(metrics)
-		return p.updateDBChunkInfo(&chunk, codecConfig.Version, metrics)
+		return p.updateDBChunkInfo(&chunk, codecVersion, metrics)
 	}
 
 	log.Debug("pending blocks do not reach one of the constraints or contain a timeout block")

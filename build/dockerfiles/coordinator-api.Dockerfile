@@ -40,6 +40,7 @@ FROM ubuntu:20.04
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/src/coordinator/internal/logic/verifier/lib
 ENV CGO_LDFLAGS="-Wl,--no-as-needed -ldl"
 # ENV CHAIN_ID=534353
+RUN apt update && apt install vim netcat-openbsd net-tools curl jq -y
 RUN mkdir -p /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/lib /src/coordinator/internal/logic/verifier/lib
 COPY --from=builder /bin/coordinator_api /bin/

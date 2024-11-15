@@ -21,7 +21,7 @@ RUN --mount=target=. \
 # Pull rollup_relayer into a second stage deploy ubuntu container
 FROM ubuntu:20.04
 
-RUN apt update && apt install ca-certificates -y
+RUN apt update && apt install vim netcat-openbsd net-tools curl ca-certificates -y
 
 ENV CGO_LDFLAGS="-ldl"
 
