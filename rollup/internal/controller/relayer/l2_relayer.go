@@ -582,10 +582,12 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 
 			if types.RollupStatus(lastBatch.RollupStatus) != types.RollupFinalized {
 				log.Error("previous bundle or batch is not finalized", "index", lastBatch.Index, "hash", lastBatch.Hash, "rollup status", types.RollupStatus(lastBatch.RollupStatus))
+				return
 			}
 
 			if err := r.finalizeBundle(bundle, false); err != nil {
 				log.Error("Failed to finalize timeout bundle without proof", "index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
+				return
 			}
 		}
 
@@ -594,6 +596,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 		r.metrics.rollupL2RelayerProcessPendingBundlesFinalizedTotal.Inc()
 		if err := r.finalizeBundle(bundle, true); err != nil {
 			log.Error("Failed to finalize bundle with proof", "index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
+			return
 		}
 
 	case types.ProvingTaskFailed:
