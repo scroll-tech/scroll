@@ -247,6 +247,11 @@ func (p *BatchProposer) proposeBatch() error {
 	if codec == nil {
 		return fmt.Errorf("failed to retrieve codec for block number %v and time %v", firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 	}
+
+	if codec.Version() <= encoding.CodecV3 {
+		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codec.Version(), encoding.CodecV4)
+	}
+
 	maxChunksThisBatch := codec.MaxNumChunksPerBatch()
 
 	// select at most maxChunkNumPerBatch chunks

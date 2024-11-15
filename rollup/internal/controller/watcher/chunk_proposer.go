@@ -277,6 +277,10 @@ func (p *ChunkProposer) proposeChunk() error {
 
 	codecVersion := encoding.GetCodecVersion(p.chainCfg, blocks[0].Header.Number.Uint64(), blocks[0].Header.Time)
 
+	if codecVersion <= encoding.CodecV3 {
+		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codecVersion, encoding.CodecV4)
+	}
+
 	// Including Curie block in a sole chunk.
 	if p.chainCfg.CurieBlock != nil && blocks[0].Header.Number.Cmp(p.chainCfg.CurieBlock) == 0 {
 		chunk := encoding.Chunk{Blocks: blocks[:1]}

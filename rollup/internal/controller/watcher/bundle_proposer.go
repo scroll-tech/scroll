@@ -3,6 +3,7 @@ package watcher
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -130,7 +131,7 @@ func (p *BundleProposer) proposeBundle() error {
 
 	// select at most maxBlocksThisChunk blocks
 	maxBatchesThisBundle := p.maxBatchNumPerBundle
-	batches, err := p.batchOrm.GetBatchesGEIndexGECodecVersion(p.ctx, firstUnbundledBatchIndex, encoding.CodecV3, int(maxBatchesThisBundle))
+	batches, err := p.batchOrm.GetBatchesGEIndexGECodecVersion(p.ctx, firstUnbundledBatchIndex, encoding.CodecV4, int(maxBatchesThisBundle))
 	if err != nil {
 		return err
 	}
@@ -153,6 +154,11 @@ func (p *BundleProposer) proposeBundle() error {
 
 	hardforkName := encoding.GetHardforkName(p.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
 	codecVersion := encoding.CodecVersion(batches[0].CodecVersion)
+
+	if codecVersion <= encoding.CodecV3 {
+		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codecVersion, encoding.CodecV4)
+	}
+
 	for i := 1; i < len(batches); i++ {
 		chunk, err := p.chunkOrm.GetChunkByIndex(p.ctx, batches[i].StartChunkIndex)
 		if err != nil {
