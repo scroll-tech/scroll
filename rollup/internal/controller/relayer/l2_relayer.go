@@ -415,6 +415,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			return
 		}
 
+		if dbParentBatch.CodecVersion > dbBatch.CodecVersion {
+			log.Error("parent batch codec version is greater than current batch codec version", "index", dbBatch.Index, "hash", dbBatch.Hash, "parent codec version", dbParentBatch.CodecVersion, "current codec version", dbBatch.CodecVersion)
+			return
+		}
+
 		var calldata []byte
 		var blob *kzg4844.Blob
 		codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
