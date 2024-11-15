@@ -243,8 +243,8 @@ func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*
 		ChunkProofs: chunkProofs,
 	}
 
-	if encoding.CodecVersion(dbBatch.CodecVersion) != encoding.CodecV4 {
-		return nil, fmt.Errorf("unsupported codec version: %v, expected at least %v", dbBatch.CodecVersion, encoding.CodecV4)
+	if encoding.CodecVersion(dbBatch.CodecVersion) != encoding.CodecV3 && encoding.CodecVersion(dbBatch.CodecVersion) != encoding.CodecV4 {
+		return taskDetail, nil
 	}
 
 	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(dbBatch.CodecVersion))
