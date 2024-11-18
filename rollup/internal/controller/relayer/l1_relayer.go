@@ -36,12 +36,10 @@ type Layer1Relayer struct {
 	gasOracleSender *sender.Sender
 	l1GasOracleABI  *abi.ABI
 
-	lastBaseFee         uint64
-	lastBlobBaseFee     uint64
-	minGasPrice         uint64
-	gasPriceDiff        uint64
-	l1BaseFeeWeight     float64
-	l1BlobBaseFeeWeight float64
+	lastBaseFee     uint64
+	lastBlobBaseFee uint64
+	minGasPrice     uint64
+	gasPriceDiff    uint64
 
 	l1BlockOrm *orm.L1Block
 	l2BlockOrm *orm.L2Block
@@ -91,10 +89,8 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 		gasOracleSender: gasOracleSender,
 		l1GasOracleABI:  bridgeAbi.L1GasPriceOracleABI,
 
-		minGasPrice:         minGasPrice,
-		gasPriceDiff:        gasPriceDiff,
-		l1BaseFeeWeight:     cfg.GasOracleConfig.L1BaseFeeWeight,
-		l1BlobBaseFeeWeight: cfg.GasOracleConfig.L1BlobBaseFeeWeight,
+		minGasPrice:  minGasPrice,
+		gasPriceDiff: gasPriceDiff,
 	}
 
 	l1Relayer.metrics = initL1RelayerMetrics(reg)
@@ -132,25 +128,13 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 	block := blocks[0]
 
 	if types.GasOracleStatus(block.GasOracleStatus) == types.GasOraclePending {
-		latestL2Height, err := r.l2BlockOrm.GetL2BlocksLatestHeight(r.ctx)
-		if err != nil {
-			log.Warn("Failed to fetch latest L2 block height from db", "err", err)
+		if block.BaseFee == 0 || block.BlobBaseFee == 0 {
+			log.Error("Invalid base fee or blob base fee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", block.BaseFee, "block.BlobBaseFee", block.BlobBaseFee)
 			return
 		}
 
-		var isBernoulli = block.BlobBaseFee > 0 && r.chainCfg.IsBernoulli(new(big.Int).SetUint64(latestL2Height))
-		var isCurie = block.BlobBaseFee > 0 && r.chainCfg.IsCurie(new(big.Int).SetUint64(latestL2Height))
-
-		var baseFee uint64
-		var blobBaseFee uint64
-		if isCurie {
-			baseFee = block.BaseFee
-			blobBaseFee = block.BlobBaseFee
-		} else if isBernoulli {
-			baseFee = uint64(math.Ceil(r.l1BaseFeeWeight*float64(block.BaseFee) + r.l1BlobBaseFeeWeight*float64(block.BlobBaseFee)))
-		} else {
-			baseFee = block.BaseFee
-		}
+		baseFee := block.BaseFee
+		blobBaseFee := block.BlobBaseFee
 
 		// include the token exchange rate in the fee data if alternative gas token enabled
 		if r.cfg.GasOracleConfig.AlternativeGasTokenConfig != nil && r.cfg.GasOracleConfig.AlternativeGasTokenConfig.Enabled {
@@ -177,7 +161,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			blobBaseFee = uint64(math.Ceil(float64(blobBaseFee) / exchangeRate))
 		}
 
-		if r.shouldUpdateGasOracle(baseFee, blobBaseFee, isCurie) {
+		if r.shouldUpdateGasOracle(baseFee, blobBaseFee) {
 			// It indicates the committing batch has been stuck for a long time, it's likely that the L1 gas fee spiked.
 			// If we are not committing batches due to high fees then we shouldn't update fees to prevent users from paying high l1_data_fee
 			// Also, set fees to some default value, because we have already updated fees to some high values, probably
@@ -191,24 +175,15 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			} else if err != nil {
 				return
 			}
-			var data []byte
-			if isCurie {
-				data, err = r.l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", new(big.Int).SetUint64(baseFee), new(big.Int).SetUint64(blobBaseFee))
-				if err != nil {
-					log.Error("Failed to pack setL1BaseFeeAndBlobBaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "isBernoulli", isBernoulli, "isCurie", isCurie, "err", err)
-					return
-				}
-			} else {
-				data, err = r.l1GasOracleABI.Pack("setL1BaseFee", new(big.Int).SetUint64(baseFee))
-				if err != nil {
-					log.Error("Failed to pack setL1BaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "isBernoulli", isBernoulli, "isCurie", isCurie, "err", err)
-					return
-				}
+			data, err := r.l1GasOracleABI.Pack("setL1BaseFeeAndBlobBaseFee", new(big.Int).SetUint64(baseFee), new(big.Int).SetUint64(blobBaseFee))
+			if err != nil {
+				log.Error("Failed to pack setL1BaseFeeAndBlobBaseFee", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "err", err)
+				return
 			}
 
 			hash, err := r.gasOracleSender.SendTransaction(block.Hash, &r.cfg.GasPriceOracleContractAddress, data, nil, 0)
 			if err != nil {
-				log.Error("Failed to send gas oracle update tx to layer2", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "isBernoulli", isBernoulli, "isCurie", isCurie, "err", err)
+				log.Error("Failed to send gas oracle update tx to layer2", "block.Hash", block.Hash, "block.Height", block.Number, "block.BaseFee", baseFee, "block.BlobBaseFee", blobBaseFee, "err", err)
 				return
 			}
 
@@ -222,7 +197,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			r.lastBlobBaseFee = blobBaseFee
 			r.metrics.rollupL1RelayerLatestBaseFee.Set(float64(r.lastBaseFee))
 			r.metrics.rollupL1RelayerLatestBlobBaseFee.Set(float64(r.lastBlobBaseFee))
-			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee, "blobBaseFee", blobBaseFee, "isBernoulli", isBernoulli, "isCurie", isCurie)
+			log.Info("Update l1 base fee", "txHash", hash.String(), "baseFee", baseFee, "blobBaseFee", blobBaseFee)
 		}
 	}
 }
@@ -271,24 +246,15 @@ func (r *Layer1Relayer) StopSenders() {
 	}
 }
 
-func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64, isCurie bool) bool {
+func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64) bool {
 	// Right after restarting.
 	if r.lastBaseFee == 0 {
+		log.Info("First time to update gas oracle after restarting", "baseFee", baseFee, "blobBaseFee", blobBaseFee)
 		return true
 	}
 
 	expectedBaseFeeDelta := r.lastBaseFee*r.gasPriceDiff/gasPriceDiffPrecision + 1
 	if baseFee >= r.minGasPrice && (baseFee >= r.lastBaseFee+expectedBaseFeeDelta || baseFee+expectedBaseFeeDelta <= r.lastBaseFee) {
-		return true
-	}
-
-	// Omitting blob base fee checks before Curie.
-	if !isCurie {
-		return false
-	}
-
-	// Right after enabling Curie.
-	if r.lastBlobBaseFee == 0 {
 		return true
 	}
 
