@@ -576,17 +576,17 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 
 			lastBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex-1)
 			if err != nil {
-				log.Error("failed to get last batch", "index", bundle.StartBatchIndex-1, "err", err)
+				log.Error("failed to get last batch", "batch index", bundle.StartBatchIndex-1, "err", err)
 				return
 			}
 
 			if types.RollupStatus(lastBatch.RollupStatus) != types.RollupFinalized {
-				log.Error("previous bundle or batch is not finalized", "index", lastBatch.Index, "hash", lastBatch.Hash, "rollup status", types.RollupStatus(lastBatch.RollupStatus))
+				log.Error("previous bundle or batch is not finalized", "batch index", lastBatch.Index, "batch hash", lastBatch.Hash, "rollup status", types.RollupStatus(lastBatch.RollupStatus))
 				return
 			}
 
 			if err := r.finalizeBundle(bundle, false); err != nil {
-				log.Error("Failed to finalize timeout bundle without proof", "index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
+				log.Error("Failed to finalize timeout bundle without proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
 				return
 			}
 		}
@@ -595,7 +595,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 		log.Info("Start to roll up zk proof", "bundle hash", bundle.Hash)
 		r.metrics.rollupL2RelayerProcessPendingBundlesFinalizedTotal.Inc()
 		if err := r.finalizeBundle(bundle, true); err != nil {
-			log.Error("Failed to finalize bundle with proof", "index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
+			log.Error("Failed to finalize bundle with proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
 			return
 		}
 
@@ -608,7 +608,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 		//     stop the ledger, fix the limit, revert all the violating blocks,
 		//     chunks, batches, bundles and all subsequent ones, and resume,
 		//     i.e. this case requires manual resolution.
-		log.Error("bundle proving failed", "index", bundle.Index, "hash", bundle.Hash, "proved at", bundle.ProvedAt, "proof time sec", bundle.ProofTimeSec)
+		log.Error("bundle proving failed", "bundle index", bundle.Index, "bundle hash", bundle.Hash, "proved at", bundle.ProvedAt, "proof time sec", bundle.ProofTimeSec)
 
 	default:
 		log.Error("encounter unreachable case in ProcessPendingBundles", "proving status", status)
