@@ -591,11 +591,9 @@ func (s *Sender) checkPendingTransaction() {
 			// A corner case is that the transaction is inserted into the table but not sent to the chain, because the server is stopped in the middle.
 			// This case will be handled by the checkPendingTransaction function.
 			if dbTxErr := s.db.Transaction(func(dbTX *gorm.DB) error {
-				// Update the status of the original transaction as replaced, while still checking its confirmation status.
 				if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusReplaced, dbTX); updateErr != nil {
 					return fmt.Errorf("failed to update status of transaction with hash %s to TxStatusReplaced, err: %w", newSignedTx.Hash().String(), updateErr)
 				}
-				// Record the new transaction that has replaced the original one.
 				if updateErr := s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, txnToCheck.ContextID, s.getSenderMeta(), newSignedTx, blockNumber, dbTX); updateErr != nil {
 					return fmt.Errorf("failed to insert new pending transaction with context ID: %s, nonce: %d, hash: %v, previous block number: %v, current block number: %v, err: %w", txnToCheck.ContextID, newSignedTx.Nonce(), newSignedTx.Hash().String(), txnToCheck.SubmitBlockNumber, blockNumber, updateErr)
 				}
