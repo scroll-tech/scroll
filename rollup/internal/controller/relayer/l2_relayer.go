@@ -394,6 +394,14 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			return
 		}
 
+		// check codec version
+		for _, dbChunk := range dbChunks {
+			if dbBatch.CodecVersion != dbChunk.CodecVersion {
+				log.Error("batch codec version is different from chunk codec version", "batch index", dbBatch.Index, "chunk index", dbChunk.Index, "batch codec version", dbBatch.CodecVersion, "chunk codec version", dbChunk.CodecVersion)
+				return
+			}
+		}
+
 		chunks := make([]*encoding.Chunk, len(dbChunks))
 		for i, c := range dbChunks {
 			blocks, getErr := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
@@ -412,6 +420,11 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		dbParentBatch, getErr := r.batchOrm.GetBatchByIndex(r.ctx, dbBatch.Index-1)
 		if getErr != nil {
 			log.Error("failed to get parent batch header", "err", getErr)
+			return
+		}
+
+		if dbParentBatch.CodecVersion > dbBatch.CodecVersion {
+			log.Error("parent batch codec version is greater than current batch codec version", "index", dbBatch.Index, "hash", dbBatch.Hash, "parent codec version", dbParentBatch.CodecVersion, "current codec version", dbBatch.CodecVersion)
 			return
 		}
 
@@ -528,14 +541,41 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 }
 
 func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error {
+	// Check if current bundle codec version is not less than the preceding one
+	if bundle.StartBatchIndex > 0 {
+		prevBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex-1)
+		if err != nil {
+			log.Error("failed to get previous batch",
+				"current bundle index", bundle.Index,
+				"start batch index", bundle.StartBatchIndex,
+				"error", err)
+			return err
+		}
+		if bundle.CodecVersion < prevBatch.CodecVersion {
+			log.Error("current bundle codec version is less than the preceding batch",
+				"current bundle index", bundle.Index,
+				"current codec version", bundle.CodecVersion,
+				"prev batch index", prevBatch.Index,
+				"prev codec version", prevBatch.CodecVersion)
+			return errors.New("current bundle codec version cannot be less than the preceding batch")
+		}
+	}
+
 	// Check batch status before sending `finalizeBundle` tx.
-	if r.cfg.ChainMonitor.Enabled {
-		for batchIndex := bundle.StartBatchIndex; batchIndex <= bundle.EndBatchIndex; batchIndex++ {
-			tmpBatch, getErr := r.batchOrm.GetBatchByIndex(r.ctx, batchIndex)
-			if getErr != nil {
-				log.Error("failed to get batch by index", "batch index", batchIndex, "error", getErr)
-				return getErr
-			}
+	for batchIndex := bundle.StartBatchIndex; batchIndex <= bundle.EndBatchIndex; batchIndex++ {
+		tmpBatch, getErr := r.batchOrm.GetBatchByIndex(r.ctx, batchIndex)
+		if getErr != nil {
+			log.Error("failed to get batch by index", "batch index", batchIndex, "error", getErr)
+			return getErr
+		}
+
+		// check codec version
+		if tmpBatch.CodecVersion != bundle.CodecVersion {
+			log.Error("bundle codec version is different from batch codec version", "bundle index", bundle.Index, "batch index", tmpBatch.Index, "bundle codec version", bundle.CodecVersion, "batch codec version", tmpBatch.CodecVersion)
+			return errors.New("bundle codec version is different from batch codec version")
+		}
+
+		if r.cfg.ChainMonitor.Enabled {
 			batchStatus, getErr := r.getBatchStatusByIndex(tmpBatch)
 			if getErr != nil {
 				r.metrics.rollupL2ChainMonitorLatestFailedCall.Inc()
