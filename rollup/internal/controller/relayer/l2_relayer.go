@@ -586,7 +586,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 			}
 
 			if err := r.finalizeBundle(bundle, false); err != nil {
-				log.Error("Failed to finalize timeout bundle without proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
+				log.Error("failed to finalize timeout bundle without proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
 				return
 			}
 		}
@@ -595,7 +595,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 		log.Info("Start to roll up zk proof", "bundle hash", bundle.Hash)
 		r.metrics.rollupL2RelayerProcessPendingBundlesFinalizedTotal.Inc()
 		if err := r.finalizeBundle(bundle, true); err != nil {
-			log.Error("Failed to finalize bundle with proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
+			log.Error("failed to finalize bundle with proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
 			return
 		}
 
