@@ -282,13 +282,17 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(0),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, nil, nil)
+		tx, err := s.createTx(feeData, &common.Address{}, nil, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
+		err = s.client.SendTransaction(s.ctx, tx)
+		assert.NoError(t, err)
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
 		// Bumping the fees enough times to let the transaction be included in a block.
 		for i := 0; i < 30; i++ {
-			tx, err = s.resubmitTransaction(tx, 0, 0)
+			tx, err = s.createReplacingTransaction(tx, 0, 0)
+			assert.NoError(t, err)
+			err = s.client.SendTransaction(s.ctx, tx)
 			assert.NoError(t, err)
 		}
 
@@ -369,10 +373,14 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 			sidecar, err = makeSidecar(txBlob[i])
 			assert.NoError(t, err)
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, sidecar, nil)
+		tx, err := s.createTx(feeData, &common.Address{}, nil, sidecar, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		resubmittedTx, err := s.resubmitTransaction(tx, 0, 0)
+		err = s.client.SendTransaction(s.ctx, tx)
+		assert.NoError(t, err)
+		resubmittedTx, err := s.createReplacingTransaction(tx, 0, 0)
+		assert.NoError(t, err)
+		err = s.client.SendTransaction(s.ctx, resubmittedTx)
 		assert.NoError(t, err)
 
 		assert.Eventually(t, func() bool {
@@ -412,10 +420,14 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(1000000000),
 			gasLimit:  50000,
 		}
-		tx, err := s.createAndSendTx(feeData, &common.Address{}, nil, nil, nil)
+		tx, err := s.createTx(feeData, &common.Address{}, nil, nil, nil)
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
-		_, err = s.resubmitTransaction(tx, 0, 0)
+		err = s.client.SendTransaction(s.ctx, tx)
+		assert.NoError(t, err)
+		resubmittedTx, err := s.createReplacingTransaction(tx, 0, 0)
+		assert.NoError(t, err)
+		err = s.client.SendTransaction(s.ctx, resubmittedTx)
 		assert.Error(t, err, "replacement transaction underpriced")
 
 		assert.Eventually(t, func() bool {
@@ -462,7 +474,9 @@ func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 	// bump the basefee by 10x
 	baseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.resubmitTransaction(tx, baseFeePerGas, 0)
+	resubmittedTx, err := s.createReplacingTransaction(tx, baseFeePerGas, 0)
+	assert.NoError(t, err)
+	err = s.client.SendTransaction(s.ctx, resubmittedTx)
 	assert.NoError(t, err)
 
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -471,7 +485,7 @@ func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 		expectedGasFeeCap = maxGasPrice
 	}
 
-	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())
+	assert.Equal(t, expectedGasFeeCap.Uint64(), resubmittedTx.GasFeeCap().Uint64())
 	s.Stop()
 }
 
@@ -511,7 +525,9 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 	baseFeePerGas *= 10
 	blobBaseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.resubmitTransaction(tx, baseFeePerGas, blobBaseFeePerGas)
+	resubmittedTx, err := s.createReplacingTransaction(tx, baseFeePerGas, blobBaseFeePerGas)
+	assert.NoError(t, err)
+	err = s.client.SendTransaction(s.ctx, resubmittedTx)
 	assert.NoError(t, err)
 
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -526,8 +542,8 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 		expectedBlobGasFeeCap = maxBlobGasPrice
 	}
 
-	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())
-	assert.Equal(t, expectedBlobGasFeeCap.Uint64(), newTx.BlobGasFeeCap().Uint64())
+	assert.Equal(t, expectedGasFeeCap.Uint64(), resubmittedTx.GasFeeCap().Uint64())
+	assert.Equal(t, expectedBlobGasFeeCap.Uint64(), resubmittedTx.BlobGasFeeCap().Uint64())
 	s.Stop()
 }
 

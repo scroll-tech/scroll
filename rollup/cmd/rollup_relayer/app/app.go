@@ -20,7 +20,7 @@ import (
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"
-	butils "scroll-tech/rollup/internal/utils"
+	rutils "scroll-tech/rollup/internal/utils"
 )
 
 var app *cli.App
@@ -92,7 +92,7 @@ func action(ctx *cli.Context) error {
 
 	// Watcher loop to fetch missing blocks
 	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
-		number, loopErr := butils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
+		number, loopErr := rutils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
 			return
