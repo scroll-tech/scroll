@@ -474,9 +474,9 @@ func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 	// bump the basefee by 10x
 	baseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.createReplacingTransaction(tx, baseFeePerGas, 0)
+	resubmittedTx, err := s.createReplacingTransaction(tx, baseFeePerGas, 0)
 	assert.NoError(t, err)
-	err = s.client.SendTransaction(s.ctx, newTx)
+	err = s.client.SendTransaction(s.ctx, resubmittedTx)
 	assert.NoError(t, err)
 
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -485,7 +485,7 @@ func testResubmitDynamicFeeTransactionWithRisingBaseFee(t *testing.T) {
 		expectedGasFeeCap = maxGasPrice
 	}
 
-	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())
+	assert.Equal(t, expectedGasFeeCap.Uint64(), resubmittedTx.GasFeeCap().Uint64())
 	s.Stop()
 }
 
@@ -525,9 +525,9 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 	baseFeePerGas *= 10
 	blobBaseFeePerGas *= 10
 	// resubmit and check that the gas fee has been adjusted accordingly
-	newTx, err := s.createReplacingTransaction(tx, baseFeePerGas, blobBaseFeePerGas)
+	resubmittedTx, err := s.createReplacingTransaction(tx, baseFeePerGas, blobBaseFeePerGas)
 	assert.NoError(t, err)
-	err = s.client.SendTransaction(s.ctx, newTx)
+	err = s.client.SendTransaction(s.ctx, resubmittedTx)
 	assert.NoError(t, err)
 
 	maxGasPrice := new(big.Int).SetUint64(s.config.MaxGasPrice)
@@ -542,8 +542,8 @@ func testResubmitBlobTransactionWithRisingBaseFeeAndBlobBaseFee(t *testing.T) {
 		expectedBlobGasFeeCap = maxBlobGasPrice
 	}
 
-	assert.Equal(t, expectedGasFeeCap.Uint64(), newTx.GasFeeCap().Uint64())
-	assert.Equal(t, expectedBlobGasFeeCap.Uint64(), newTx.BlobGasFeeCap().Uint64())
+	assert.Equal(t, expectedGasFeeCap.Uint64(), resubmittedTx.GasFeeCap().Uint64())
+	assert.Equal(t, expectedBlobGasFeeCap.Uint64(), resubmittedTx.BlobGasFeeCap().Uint64())
 	s.Stop()
 }
 
