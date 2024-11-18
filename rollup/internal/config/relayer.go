@@ -89,6 +89,9 @@ type GasOracleConfig struct {
 	CheckCommittedBatchesWindowMinutes int    `json:"check_committed_batches_window_minutes"`
 	L1BaseFeeDefault                   uint64 `json:"l1_base_fee_default"`
 	L1BlobBaseFeeDefault               uint64 `json:"l1_blob_base_fee_default"`
+
+	// L1BlobBaseFeeThreshold the threshold of L1 blob base fee to enter the default gas price mode
+	L1BlobBaseFeeThreshold uint64 `json:"l1_blob_base_fee_threshold"`
 }
 
 // SignerConfig - config of signer, contains type and config corresponding to type

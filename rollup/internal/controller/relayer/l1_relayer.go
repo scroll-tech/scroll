@@ -166,7 +166,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			// If we are not committing batches due to high fees then we shouldn't update fees to prevent users from paying high l1_data_fee
 			// Also, set fees to some default value, because we have already updated fees to some high values, probably
 			var reachTimeout bool
-			if reachTimeout, err = r.commitBatchReachTimeout(); reachTimeout && err == nil {
+			if reachTimeout, err = r.commitBatchReachTimeout(); reachTimeout && block.BlobBaseFee > r.cfg.GasOracleConfig.L1BlobBaseFeeThreshold && err == nil {
 				if r.lastBaseFee == r.cfg.GasOracleConfig.L1BaseFeeDefault && r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BlobBaseFeeDefault {
 					return
 				}
