@@ -542,19 +542,22 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 
 func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error {
 	// Check if current bundle codec version is not less than the preceding one
-	if bundle.Index > 0 {
-		prevBundle, err := r.bundleOrm.GetBundleByIndex(r.ctx, bundle.Index-1)
+	if bundle.StartBatchIndex > 0 {
+		prevBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex-1)
 		if err != nil {
-			log.Error("failed to get previous bundle", "current bundle index", bundle.Index, "error", err)
+			log.Error("failed to get previous batch",
+				"current bundle index", bundle.Index,
+				"start batch index", bundle.StartBatchIndex,
+				"error", err)
 			return err
 		}
-		if bundle.CodecVersion < prevBundle.CodecVersion {
-			log.Error("current bundle codec version is less than the preceding one",
+		if bundle.CodecVersion < prevBatch.CodecVersion {
+			log.Error("current bundle codec version is less than the preceding batch",
 				"current bundle index", bundle.Index,
 				"current codec version", bundle.CodecVersion,
-				"prev bundle index", prevBundle.Index,
-				"prev codec version", prevBundle.CodecVersion)
-			return errors.New("current bundle codec version cannot be less than the preceding one")
+				"prev batch index", prevBatch.Index,
+				"prev codec version", prevBatch.CodecVersion)
+			return errors.New("current bundle codec version cannot be less than the preceding batch")
 		}
 	}
 

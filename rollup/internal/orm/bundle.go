@@ -75,22 +75,6 @@ func (o *Bundle) getLatestBundle(ctx context.Context) (*Bundle, error) {
 	return &latestBundle, nil
 }
 
-// GetBundleByIndex retrieves a bundle by its index from the database.
-func (o *Bundle) GetBundleByIndex(ctx context.Context, index uint64) (*Bundle, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Bundle{})
-	db = db.Where("index = ?", index)
-
-	var bundle Bundle
-	if err := db.First(&bundle).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, fmt.Errorf("bundle not found with index: %d", index)
-		}
-		return nil, fmt.Errorf("failed to get bundle by index %d: %w", index, err)
-	}
-	return &bundle, nil
-}
-
 // GetBundles retrieves selected bundles from the database.
 // The returned bundles are sorted in ascending order by their index.
 // only used in unit tests.
