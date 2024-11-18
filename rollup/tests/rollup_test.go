@@ -97,19 +97,19 @@ func testCommitBatchAndFinalizeBundleCodecV4(t *testing.T) {
 			MaxRowConsumptionPerChunk:       1048319,
 			ChunkTimeoutSec:                 300,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
-		}, chainConfig, db, nil)
+		}, encoding.CodecV4, chainConfig, db, nil)
 
 		bap := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
 			MaxL1CommitGasPerBatch:          50000000000,
 			MaxL1CommitCalldataSizePerBatch: 1000000,
 			BatchTimeoutSec:                 300,
 			MaxUncompressedBatchBytesSize:   math.MaxUint64,
-		}, chainConfig, db, nil)
+		}, encoding.CodecV4, chainConfig, db, nil)
 
 		bup := watcher.NewBundleProposer(context.Background(), &config.BundleProposerConfig{
 			MaxBatchNumPerBundle: 1000000,
 			BundleTimeoutSec:     300,
-		}, chainConfig, db, nil)
+		}, encoding.CodecV4, chainConfig, db, nil)
 
 		l2BlockOrm := orm.NewL2Block(db)
 		err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[:5])
