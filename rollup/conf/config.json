@@ -20,7 +20,8 @@
         "gas_price_diff": 50000,
         "check_committed_batches_window_minutes": 5,
         "l1_base_fee_default": 15000000000,
-        "l1_blob_base_fee_default": 1
+        "l1_blob_base_fee_default": 1,
+        "l1_blob_base_fee_threshold": 0
       },
       "gas_oracle_sender_signer_config": {
         "signer_type": "PrivateKey",

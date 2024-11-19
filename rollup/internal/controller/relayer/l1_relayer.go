@@ -11,7 +11,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/go-ethereum/accounts/abi"
 	"github.com/scroll-tech/go-ethereum/log"
-	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -30,8 +29,7 @@ import (
 type Layer1Relayer struct {
 	ctx context.Context
 
-	cfg      *config.RelayerConfig
-	chainCfg *params.ChainConfig
+	cfg *config.RelayerConfig
 
 	gasOracleSender *sender.Sender
 	l1GasOracleABI  *abi.ABI
@@ -49,7 +47,7 @@ type Layer1Relayer struct {
 }
 
 // NewLayer1Relayer will return a new instance of Layer1RelayerClient
-func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, serviceType ServiceType, reg prometheus.Registerer) (*Layer1Relayer, error) {
+func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfig, serviceType ServiceType, reg prometheus.Registerer) (*Layer1Relayer, error) {
 	var gasOracleSender *sender.Sender
 	var err error
 
@@ -80,7 +78,6 @@ func NewLayer1Relayer(ctx context.Context, db *gorm.DB, cfg *config.RelayerConfi
 
 	l1Relayer := &Layer1Relayer{
 		cfg:        cfg,
-		chainCfg:   chainCfg,
 		ctx:        ctx,
 		l1BlockOrm: orm.NewL1Block(db),
 		l2BlockOrm: orm.NewL2Block(db),
@@ -166,7 +163,7 @@ func (r *Layer1Relayer) ProcessGasPriceOracle() {
 			// If we are not committing batches due to high fees then we shouldn't update fees to prevent users from paying high l1_data_fee
 			// Also, set fees to some default value, because we have already updated fees to some high values, probably
 			var reachTimeout bool
-			if reachTimeout, err = r.commitBatchReachTimeout(); reachTimeout && err == nil {
+			if reachTimeout, err = r.commitBatchReachTimeout(); reachTimeout && block.BlobBaseFee > r.cfg.GasOracleConfig.L1BlobBaseFeeThreshold && err == nil {
 				if r.lastBaseFee == r.cfg.GasOracleConfig.L1BaseFeeDefault && r.lastBlobBaseFee == r.cfg.GasOracleConfig.L1BlobBaseFeeDefault {
 					return
 				}

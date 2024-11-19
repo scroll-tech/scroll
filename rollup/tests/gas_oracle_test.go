@@ -30,7 +30,7 @@ func testImportL1GasPrice(t *testing.T) {
 	l1Cfg := rollupApp.Config.L1Config
 
 	// Create L1Relayer
-	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, &params.ChainConfig{LondonBlock: big.NewInt(0), BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0), DarwinTime: new(uint64), DarwinV2Time: new(uint64)}, relayer.ServiceTypeL1GasOracle, nil)
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1Cfg.RelayerConfig, relayer.ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	defer l1Relayer.StopSenders()
 
@@ -105,7 +105,7 @@ func testImportDefaultL1GasPriceDueToL1GasPriceSpike(t *testing.T) {
 	// set CheckCommittedBatchesWindowMinutes to zero to not pass check for commit batch timeout
 	l1CfgCopy.RelayerConfig.GasOracleConfig.CheckCommittedBatchesWindowMinutes = 0
 	// Create L1Relayer
-	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1CfgCopy.RelayerConfig, &params.ChainConfig{BernoulliBlock: big.NewInt(0), CurieBlock: big.NewInt(0)}, relayer.ServiceTypeL1GasOracle, nil)
+	l1Relayer, err := relayer.NewLayer1Relayer(context.Background(), db, l1CfgCopy.RelayerConfig, relayer.ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	defer l1Relayer.StopSenders()
 
