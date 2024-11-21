@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/scroll-tech/da-codec/encoding"
 	"github.com/scroll-tech/go-ethereum/ethclient"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/urfave/cli/v2"
@@ -20,7 +21,7 @@ import (
 	"scroll-tech/rollup/internal/config"
 	"scroll-tech/rollup/internal/controller/relayer"
 	"scroll-tech/rollup/internal/controller/watcher"
-	butils "scroll-tech/rollup/internal/utils"
+	rutils "scroll-tech/rollup/internal/utils"
 )
 
 var app *cli.App
@@ -84,15 +85,16 @@ func action(ctx *cli.Context) error {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)
 	}
 
-	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, genesis.Config, db, registry)
-	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, genesis.Config, db, registry)
-	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, genesis.Config, db, registry)
+	minCodecVersion := encoding.CodecVersion(ctx.Uint(utils.MinCodecVersionFlag.Name))
+	chunkProposer := watcher.NewChunkProposer(subCtx, cfg.L2Config.ChunkProposerConfig, minCodecVersion, genesis.Config, db, registry)
+	batchProposer := watcher.NewBatchProposer(subCtx, cfg.L2Config.BatchProposerConfig, minCodecVersion, genesis.Config, db, registry)
+	bundleProposer := watcher.NewBundleProposer(subCtx, cfg.L2Config.BundleProposerConfig, minCodecVersion, genesis.Config, db, registry)
 
 	l2watcher := watcher.NewL2WatcherClient(subCtx, l2client, cfg.L2Config.Confirmations, cfg.L2Config.L2MessageQueueAddress, cfg.L2Config.WithdrawTrieRootSlot, genesis.Config, db, registry)
 
 	// Watcher loop to fetch missing blocks
 	go utils.LoopWithContext(subCtx, 2*time.Second, func(ctx context.Context) {
-		number, loopErr := butils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
+		number, loopErr := rutils.GetLatestConfirmedBlockNumber(ctx, l2client, cfg.L2Config.Confirmations)
 		if loopErr != nil {
 			log.Error("failed to get block number", "err", loopErr)
 			return
@@ -107,8 +109,6 @@ func action(ctx *cli.Context) error {
 	go utils.Loop(subCtx, 10*time.Second, bundleProposer.TryProposeBundle)
 
 	go utils.Loop(subCtx, 2*time.Second, l2relayer.ProcessPendingBatches)
-
-	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessCommittedBatches)
 
 	go utils.Loop(subCtx, 15*time.Second, l2relayer.ProcessPendingBundles)
 

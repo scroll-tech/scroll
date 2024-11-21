@@ -34,7 +34,8 @@ type BatchProposer struct {
 	gasCostIncreaseMultiplier       float64
 	maxUncompressedBatchBytesSize   uint64
 
-	chainCfg *params.ChainConfig
+	minCodecVersion encoding.CodecVersion
+	chainCfg        *params.ChainConfig
 
 	batchProposerCircleTotal           prometheus.Counter
 	proposeBatchFailureTotal           prometheus.Counter
@@ -58,7 +59,7 @@ type BatchProposer struct {
 }
 
 // NewBatchProposer creates a new BatchProposer instance.
-func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
+func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, minCodecVersion encoding.CodecVersion, chainCfg *params.ChainConfig, db *gorm.DB, reg prometheus.Registerer) *BatchProposer {
 	log.Info("new batch proposer",
 		"maxL1CommitGasPerBatch", cfg.MaxL1CommitGasPerBatch,
 		"maxL1CommitCalldataSizePerBatch", cfg.MaxL1CommitCalldataSizePerBatch,
@@ -78,6 +79,7 @@ func NewBatchProposer(ctx context.Context, cfg *config.BatchProposerConfig, chai
 		batchTimeoutSec:                 cfg.BatchTimeoutSec,
 		gasCostIncreaseMultiplier:       cfg.GasCostIncreaseMultiplier,
 		maxUncompressedBatchBytesSize:   cfg.MaxUncompressedBatchBytesSize,
+		minCodecVersion:                 minCodecVersion,
 		chainCfg:                        chainCfg,
 
 		batchProposerCircleTotal: promauto.With(reg).NewCounter(prometheus.CounterOpts{
@@ -247,6 +249,11 @@ func (p *BatchProposer) proposeBatch() error {
 	if codec == nil {
 		return fmt.Errorf("failed to retrieve codec for block number %v and time %v", firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
 	}
+
+	if codec.Version() < p.minCodecVersion {
+		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codec.Version(), p.minCodecVersion)
+	}
+
 	maxChunksThisBatch := codec.MaxNumChunksPerBatch()
 
 	// select at most maxChunkNumPerBatch chunks

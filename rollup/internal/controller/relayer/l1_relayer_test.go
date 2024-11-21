@@ -8,7 +8,6 @@ import (
 	"github.com/agiledragon/gomonkey/v2"
 	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/crypto/kzg4844"
-	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/smartystreets/goconvey/convey"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
@@ -36,7 +35,7 @@ func setupL1RelayerDB(t *testing.T) *gorm.DB {
 func testCreateNewL1Relayer(t *testing.T) {
 	db := setupL1RelayerDB(t)
 	defer database.CloseDB(db)
-	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig, &params.ChainConfig{}, ServiceTypeL1GasOracle, nil)
+	relayer, err := NewLayer1Relayer(context.Background(), db, cfg.L2Config.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, relayer)
 	defer relayer.StopSenders()
@@ -58,7 +57,7 @@ func testL1RelayerGasOracleConfirm(t *testing.T) {
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, &params.ChainConfig{}, ServiceTypeL1GasOracle, nil)
+	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	defer l1Relayer.StopSenders()
 
@@ -91,7 +90,7 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 	l1Cfg := cfg.L1Config
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, &params.ChainConfig{}, ServiceTypeL1GasOracle, nil)
+	l1Relayer, err := NewLayer1Relayer(ctx, db, l1Cfg.RelayerConfig, ServiceTypeL1GasOracle, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, l1Relayer)
 	defer l1Relayer.StopSenders()
@@ -139,14 +138,6 @@ func testL1RelayerProcessGasPriceOracle(t *testing.T) {
 			},
 		}
 		return tmpInfo, nil
-	})
-
-	convey.Convey("setL1BaseFee failure", t, func() {
-		targetErr := errors.New("pack setL1BaseFee error")
-		patchGuard.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
-			return nil, targetErr
-		})
-		l1Relayer.ProcessGasPriceOracle()
 	})
 
 	patchGuard.ApplyMethodFunc(l1Relayer.l1GasOracleABI, "Pack", func(name string, args ...interface{}) ([]byte, error) {
