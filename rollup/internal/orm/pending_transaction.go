@@ -163,6 +163,9 @@ func (o *PendingTransaction) DeletePendingTransactionByTxHash(ctx context.Contex
 	if result.Error != nil {
 		return fmt.Errorf("failed to delete pending transaction, err: %w", result.Error)
 	}
+	if result.RowsAffected == 0 {
+		return fmt.Errorf("no pending transaction found with hash: %s", hash.String())
+	}
 	return nil
 }
 
