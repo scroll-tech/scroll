@@ -235,6 +235,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		// SendTransaction failed, mark the transaction as failed
 		if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, signedTx.Hash(), types.TxStatusSentFailed, nil); updateErr != nil {
 			log.Error("failed to mark transaction as sent failed", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "sendTxErr", err, "updateErr", updateErr)
+			return common.Hash{}, fmt.Errorf("failed to mark transaction as sent failed, err: %w", updateErr)
 		}
 
 		log.Error("failed to send tx", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", err)
