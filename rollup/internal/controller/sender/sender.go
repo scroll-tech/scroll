@@ -232,10 +232,10 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 	}
 
 	if err := s.client.SendTransaction(s.ctx, signedTx); err != nil {
-		// SendTransaction failed, mark the transaction as failed
-		if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, signedTx.Hash(), types.TxStatusSentFailed, nil); updateErr != nil {
-			log.Error("failed to mark transaction as sent failed", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "sendTxErr", err, "updateErr", updateErr)
-			return common.Hash{}, fmt.Errorf("failed to mark transaction as sent failed, err: %w", updateErr)
+		// Delete the transaction from the pending transaction table if it fails to send.
+		if updateErr := s.pendingTransactionOrm.DeletePendingTransactionByTxHash(s.ctx, signedTx.Hash()); updateErr != nil {
+			log.Error("failed to delete transaction", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", updateErr)
+			return common.Hash{}, fmt.Errorf("failed to delete transaction, err: %w", updateErr)
 		}
 
 		log.Error("failed to send tx", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", err)
@@ -629,9 +629,9 @@ func (s *Sender) checkPendingTransaction() {
 					if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusPending, tx); updateErr != nil {
 						return fmt.Errorf("failed to rollback status of original transaction, err: %w", updateErr)
 					}
-					// Mark the new transaction as sent failed instead of deleting it
-					if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, newSignedTx.Hash(), types.TxStatusSentFailed, tx); updateErr != nil {
-						return fmt.Errorf("failed to mark transaction as sent failed, err: %w", updateErr)
+					// Delete the new transaction that was inserted
+					if updateErr := s.pendingTransactionOrm.DeletePendingTransactionByTxHash(s.ctx, newSignedTx.Hash(), tx); updateErr != nil {
+						return fmt.Errorf("failed to delete new transaction, err: %w", updateErr)
 					}
 					return nil
 				}); rollbackErr != nil {

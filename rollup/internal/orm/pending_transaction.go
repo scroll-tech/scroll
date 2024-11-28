@@ -150,6 +150,22 @@ func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 	return nil
 }
 
+// DeletePendingTransactionByTxHash deletes a pending transaction record from the database by transaction hash.
+func (o *PendingTransaction) DeletePendingTransactionByTxHash(ctx context.Context, hash common.Hash, dbTX ...*gorm.DB) error {
+	db := o.db
+	if len(dbTX) > 0 && dbTX[0] != nil {
+		db = dbTX[0]
+	}
+	db = db.WithContext(ctx)
+	db = db.Model(&PendingTransaction{})
+
+	result := db.Where("hash = ?", hash.String()).Delete(&PendingTransaction{})
+	if result.Error != nil {
+		return fmt.Errorf("failed to delete pending transaction, err: %w", result.Error)
+	}
+	return nil
+}
+
 // UpdatePendingTransactionStatusByTxHash updates the status of a transaction based on the transaction hash.
 func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.Context, hash common.Hash, status types.TxStatus, dbTX ...*gorm.DB) error {
 	db := o.db
