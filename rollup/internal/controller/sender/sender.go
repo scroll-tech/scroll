@@ -232,6 +232,11 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 	}
 
 	if err := s.client.SendTransaction(s.ctx, signedTx); err != nil {
+		// SendTransaction failed, mark the transaction as failed
+		if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, signedTx.Hash(), types.TxStatusSentFailed, nil); updateErr != nil {
+			log.Error("failed to mark transaction as sent failed", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "sendTxErr", err, "updateErr", updateErr)
+		}
+
 		log.Error("failed to send tx", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", err)
 		// Check if contain nonce, and reset nonce
 		// only reset nonce when it is not from resubmit
@@ -458,6 +463,15 @@ func (s *Sender) createReplacingTransaction(tx *gethTypes.Transaction, baseFee, 
 				blobGasFeeCap = maxBlobGasPrice
 			}
 
+			// Check if any fee cap is less than double
+			doubledTipCap := new(big.Int).Mul(originalGasTipCap, big.NewInt(2))
+			doubledFeeCap := new(big.Int).Mul(originalGasFeeCap, big.NewInt(2))
+			doubledBlobFeeCap := new(big.Int).Mul(originalBlobGasFeeCap, big.NewInt(2))
+			if gasTipCap.Cmp(doubledTipCap) < 0 || gasFeeCap.Cmp(doubledFeeCap) < 0 || blobGasFeeCap.Cmp(doubledBlobFeeCap) < 0 {
+				log.Error("gas fees must be at least double", "originalTipCap", originalGasTipCap, "currentTipCap", gasTipCap, "requiredTipCap", doubledTipCap, "originalFeeCap", originalGasFeeCap, "currentFeeCap", gasFeeCap, "requiredFeeCap", doubledFeeCap, "originalBlobFeeCap", originalBlobGasFeeCap, "currentBlobFeeCap", blobGasFeeCap, "requiredBlobFeeCap", doubledBlobFeeCap)
+				return nil, errors.New("gas fees must be at least double")
+			}
+
 			feeData.gasFeeCap = gasFeeCap
 			feeData.gasTipCap = gasTipCap
 			feeData.blobGasFeeCap = blobGasFeeCap
@@ -608,6 +622,23 @@ func (s *Sender) checkPendingTransaction() {
 			}
 
 			if err := s.client.SendTransaction(s.ctx, newSignedTx); err != nil {
+				// SendTransaction failed, need to rollback the previous database changes
+				if rollbackErr := s.db.Transaction(func(tx *gorm.DB) error {
+					// Restore original transaction status back to pending
+					if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusPending, tx); updateErr != nil {
+						return fmt.Errorf("failed to rollback status of original transaction, err: %w", updateErr)
+					}
+					// Mark the new transaction as sent failed instead of deleting it
+					if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, newSignedTx.Hash(), types.TxStatusSentFailed, tx); updateErr != nil {
+						return fmt.Errorf("failed to mark transaction as sent failed, err: %w", updateErr)
+					}
+					return nil
+				}); rollbackErr != nil {
+					// Both SendTransaction and rollback failed
+					log.Error("failed to rollback database after SendTransaction failed", "tx hash", newSignedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", newSignedTx.Nonce(), "sendTxErr", err, "rollbackErr", rollbackErr)
+					return
+				}
+
 				log.Error("failed to send replacing tx", "tx hash", newSignedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", newSignedTx.Nonce(), "err", err)
 				return
 			}

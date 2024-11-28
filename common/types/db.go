@@ -310,6 +310,8 @@ const (
 	TxStatusConfirmed
 	// TxStatusConfirmedFailed indicates that the transaction has failed during processing.
 	TxStatusConfirmedFailed
+	// TxStatusSentFailed indicates that the transaction has failed to be sent.
+	TxStatusSentFailed
 )
 
 func (s TxStatus) String() string {
@@ -322,6 +324,8 @@ func (s TxStatus) String() string {
 		return "TxStatusConfirmed"
 	case TxStatusConfirmedFailed:
 		return "TxStatusConfirmedFailed"
+	case TxStatusSentFailed:
+		return "TxStatusSentFailed"
 	default:
 		return fmt.Sprintf("Unknown TxStatus (%d)", int32(s))
 	}
