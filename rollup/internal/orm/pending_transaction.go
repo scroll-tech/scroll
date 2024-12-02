@@ -8,6 +8,7 @@ import (
 
 	"github.com/scroll-tech/go-ethereum/common"
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
+	"github.com/scroll-tech/go-ethereum/log"
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
@@ -165,6 +166,9 @@ func (o *PendingTransaction) DeleteTransactionByTxHash(ctx context.Context, hash
 	}
 	if result.RowsAffected == 0 {
 		return fmt.Errorf("no pending transaction found with hash: %s", hash.String())
+	}
+	if result.RowsAffected > 0 {
+		log.Warn("Successfully deleted pending transaction", "hash", hash.String())
 	}
 	return nil
 }
