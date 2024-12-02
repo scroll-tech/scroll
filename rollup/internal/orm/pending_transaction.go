@@ -151,7 +151,9 @@ func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 	return nil
 }
 
-// DeleteTransactionByTxHash deletes a transaction record from the database by transaction hash.
+// DeleteTransactionByTxHash permanently deletes a transaction record from the database by transaction hash.
+// Using hard delete instead of soft delete to prevent database bloat, as repeated SendTransaction failures
+// could write a large number of transactions to the database.
 func (o *PendingTransaction) DeleteTransactionByTxHash(ctx context.Context, hash common.Hash, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
@@ -160,15 +162,16 @@ func (o *PendingTransaction) DeleteTransactionByTxHash(ctx context.Context, hash
 	db = db.WithContext(ctx)
 	db = db.Model(&PendingTransaction{})
 
-	result := db.Where("hash = ?", hash.String()).Delete(&PendingTransaction{})
+	// Perform hard delete by using Unscoped()
+	result := db.Where("hash = ?", hash.String()).Unscoped().Delete(&PendingTransaction{})
 	if result.Error != nil {
-		return fmt.Errorf("failed to delete pending transaction, err: %w", result.Error)
+		return fmt.Errorf("failed to delete transaction, err: %w", result.Error)
 	}
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("no pending transaction found with hash: %s", hash.String())
+		return fmt.Errorf("no transaction found with hash: %s", hash.String())
 	}
 	if result.RowsAffected > 0 {
-		log.Warn("Successfully deleted pending transaction", "hash", hash.String())
+		log.Warn("Successfully deleted transaction", "hash", hash.String())
 	}
 	return nil
 }

@@ -594,4 +594,17 @@ func TestPendingTransactionOrm(t *testing.T) {
 	status, err := pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx0.Hash())
 	assert.NoError(t, err)
 	assert.Equal(t, types.TxStatusConfirmedFailed, status)
+
+	// Test DeleteTransactionByTxHash
+	err = pendingTransactionOrm.DeleteTransactionByTxHash(context.Background(), tx0.Hash())
+	assert.NoError(t, err)
+
+	// Verify the transaction is deleted
+	status, err = pendingTransactionOrm.GetTxStatusByTxHash(context.Background(), tx0.Hash())
+	assert.NoError(t, err)
+	assert.Equal(t, types.TxStatusUnknown, status) // Should return unknown status for deleted transaction
+
+	// Try to delete non-existent transaction
+	err = pendingTransactionOrm.DeleteTransactionByTxHash(context.Background(), common.HexToHash("0x123"))
+	assert.Error(t, err) // Should return error for non-existent transaction
 }
