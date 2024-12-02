@@ -150,8 +150,8 @@ func (o *PendingTransaction) InsertPendingTransaction(ctx context.Context, conte
 	return nil
 }
 
-// DeletePendingTransactionByTxHash deletes a pending transaction record from the database by transaction hash.
-func (o *PendingTransaction) DeletePendingTransactionByTxHash(ctx context.Context, hash common.Hash, dbTX ...*gorm.DB) error {
+// DeleteTransactionByTxHash deletes a transaction record from the database by transaction hash.
+func (o *PendingTransaction) DeleteTransactionByTxHash(ctx context.Context, hash common.Hash, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -169,8 +169,8 @@ func (o *PendingTransaction) DeletePendingTransactionByTxHash(ctx context.Contex
 	return nil
 }
 
-// UpdatePendingTransactionStatusByTxHash updates the status of a transaction based on the transaction hash.
-func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.Context, hash common.Hash, status types.TxStatus, dbTX ...*gorm.DB) error {
+// UpdateTransactionStatusByTxHash updates the status of a transaction based on the transaction hash.
+func (o *PendingTransaction) UpdateTransactionStatusByTxHash(ctx context.Context, hash common.Hash, status types.TxStatus, dbTX ...*gorm.DB) error {
 	db := o.db
 	if len(dbTX) > 0 && dbTX[0] != nil {
 		db = dbTX[0]
@@ -179,7 +179,7 @@ func (o *PendingTransaction) UpdatePendingTransactionStatusByTxHash(ctx context.
 	db = db.Model(&PendingTransaction{})
 	db = db.Where("hash = ?", hash.String())
 	if err := db.Update("status", status).Error; err != nil {
-		return fmt.Errorf("failed to UpdatePendingTransactionStatusByTxHash, txHash: %s, error: %w", hash, err)
+		return fmt.Errorf("failed to UpdateTransactionStatusByTxHash, txHash: %s, error: %w", hash, err)
 	}
 	return nil
 }

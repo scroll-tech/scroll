@@ -233,7 +233,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 
 	if err := s.client.SendTransaction(s.ctx, signedTx); err != nil {
 		// Delete the transaction from the pending transaction table if it fails to send.
-		if updateErr := s.pendingTransactionOrm.DeletePendingTransactionByTxHash(s.ctx, signedTx.Hash()); updateErr != nil {
+		if updateErr := s.pendingTransactionOrm.DeleteTransactionByTxHash(s.ctx, signedTx.Hash()); updateErr != nil {
 			log.Error("failed to delete transaction", "tx hash", signedTx.Hash().String(), "from", s.transactionSigner.GetAddr().String(), "nonce", signedTx.Nonce(), "err", updateErr)
 			return common.Hash{}, fmt.Errorf("failed to delete transaction, err: %w", updateErr)
 		}
@@ -535,7 +535,7 @@ func (s *Sender) checkPendingTransaction() {
 			if receipt.BlockNumber.Uint64() <= confirmed {
 				if dbTxErr := s.db.Transaction(func(dbTX *gorm.DB) error {
 					// Update the status of the transaction to TxStatusConfirmed.
-					if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusConfirmed, dbTX); updateErr != nil {
+					if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusConfirmed, dbTX); updateErr != nil {
 						log.Error("failed to update transaction status by tx hash", "hash", originalTx.Hash().String(), "sender meta", s.getSenderMeta(), "from", s.transactionSigner.GetAddr().String(), "nonce", originalTx.Nonce(), "err", updateErr)
 						return updateErr
 					}
@@ -610,7 +610,7 @@ func (s *Sender) checkPendingTransaction() {
 			// A corner case is that the transaction is inserted into the table but not sent to the chain, because the server is stopped in the middle.
 			// This case will be handled by the checkPendingTransaction function.
 			if dbTxErr := s.db.Transaction(func(dbTX *gorm.DB) error {
-				if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusReplaced, dbTX); updateErr != nil {
+				if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusReplaced, dbTX); updateErr != nil {
 					return fmt.Errorf("failed to update status of transaction with hash %s to TxStatusReplaced, err: %w", newSignedTx.Hash().String(), updateErr)
 				}
 				if updateErr := s.pendingTransactionOrm.InsertPendingTransaction(s.ctx, txnToCheck.ContextID, s.getSenderMeta(), newSignedTx, blockNumber, dbTX); updateErr != nil {
@@ -626,11 +626,11 @@ func (s *Sender) checkPendingTransaction() {
 				// SendTransaction failed, need to rollback the previous database changes
 				if rollbackErr := s.db.Transaction(func(tx *gorm.DB) error {
 					// Restore original transaction status back to pending
-					if updateErr := s.pendingTransactionOrm.UpdatePendingTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusPending, tx); updateErr != nil {
+					if updateErr := s.pendingTransactionOrm.UpdateTransactionStatusByTxHash(s.ctx, originalTx.Hash(), types.TxStatusPending, tx); updateErr != nil {
 						return fmt.Errorf("failed to rollback status of original transaction, err: %w", updateErr)
 					}
 					// Delete the new transaction that was inserted
-					if updateErr := s.pendingTransactionOrm.DeletePendingTransactionByTxHash(s.ctx, newSignedTx.Hash(), tx); updateErr != nil {
+					if updateErr := s.pendingTransactionOrm.DeleteTransactionByTxHash(s.ctx, newSignedTx.Hash(), tx); updateErr != nil {
 						return fmt.Errorf("failed to delete new transaction, err: %w", updateErr)
 					}
 					return nil
