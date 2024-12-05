@@ -71,27 +71,8 @@ type Layer2Relayer struct {
 
 // NewLayer2Relayer will return a new instance of Layer2RelayerClient
 func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.DB, cfg *config.RelayerConfig, chainCfg *params.ChainConfig, initGenesis bool, serviceType ServiceType, reg prometheus.Registerer) (*Layer2Relayer, error) {
-
 	var gasOracleSender, commitSender, finalizeSender *sender.Sender
 	var err error
-
-	// check that all 3 signer addresses are different, because there will be a problem in managing nonce for different senders
-	gasOracleSenderAddr, err := addrFromSignerConfig(cfg.GasOracleSenderSignerConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse addr from gas oracle signer config, err: %v", err)
-	}
-	commitSenderAddr, err := addrFromSignerConfig(cfg.CommitSenderSignerConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse addr from commit sender config, err: %v", err)
-	}
-	finalizeSenderAddr, err := addrFromSignerConfig(cfg.FinalizeSenderSignerConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse addr from finalize sender config, err: %v", err)
-	}
-	if gasOracleSenderAddr == commitSenderAddr || gasOracleSenderAddr == finalizeSenderAddr || commitSenderAddr == finalizeSenderAddr {
-		return nil, fmt.Errorf("gas oracle, commit, and finalize sender addresses must be different. Got: Gas Oracle=%s, Commit=%s, Finalize=%s",
-			gasOracleSenderAddr.Hex(), commitSenderAddr.Hex(), finalizeSenderAddr.Hex())
-	}
 
 	switch serviceType {
 	case ServiceTypeL2GasOracle:
@@ -106,6 +87,18 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 		}
 
 	case ServiceTypeL2RollupRelayer:
+		commitSenderAddr, err := addrFromSignerConfig(cfg.CommitSenderSignerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse addr from commit sender config, err: %v", err)
+		}
+		finalizeSenderAddr, err := addrFromSignerConfig(cfg.FinalizeSenderSignerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse addr from finalize sender config, err: %v", err)
+		}
+		if commitSenderAddr == finalizeSenderAddr {
+			return nil, fmt.Errorf("commit, and finalize sender addresses must be different. Got: Commit=%s, Finalize=%s", commitSenderAddr.Hex(), finalizeSenderAddr.Hex())
+		}
+
 		commitSender, err = sender.NewSender(ctx, cfg.SenderConfig, cfg.CommitSenderSignerConfig, "l2_relayer", "commit_sender", types.SenderTypeCommitBatch, db, reg)
 		if err != nil {
 			return nil, fmt.Errorf("new commit sender failed, err: %w", err)
