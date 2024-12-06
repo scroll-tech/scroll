@@ -154,7 +154,7 @@ func NewLayer2Relayer(ctx context.Context, l2Client *ethclient.Client, db *gorm.
 	}
 
 	// chain_monitor client
-	if cfg.ChainMonitor.Enabled {
+	if serviceType == ServiceTypeL2RollupRelayer && cfg.ChainMonitor.Enabled {
 		layer2Relayer.chainMonitorClient = resty.New()
 		layer2Relayer.chainMonitorClient.SetRetryCount(cfg.ChainMonitor.TryTimes)
 		layer2Relayer.chainMonitorClient.SetTimeout(time.Duration(cfg.ChainMonitor.TimeOut) * time.Second)
