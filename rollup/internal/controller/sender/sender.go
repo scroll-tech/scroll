@@ -216,7 +216,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		return common.Hash{}, fmt.Errorf("failed to get fee data, err: %w", err)
 	}
 
-	signedTx, err := s.createTx(feeData, target, data, sidecar, nil)
+	signedTx, err := s.createTx(feeData, target, data, sidecar, s.transactionSigner.GetNonce())
 	if err != nil {
 		s.metrics.sendTransactionFailureSendTx.WithLabelValues(s.service, s.name).Inc()
 		log.Error("failed to create signed tx (non-resubmit case)", "from", s.transactionSigner.GetAddr().String(), "nonce", s.transactionSigner.GetNonce(), "err", err)
@@ -247,19 +247,13 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		return common.Hash{}, fmt.Errorf("failed to send transaction, err: %w", err)
 	}
 
+	s.transactionSigner.SetNonce(s.transactionSigner.GetNonce() + 1)
+
 	return signedTx.Hash(), nil
 }
 
-func (s *Sender) createTx(feeData *FeeData, target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, overrideNonce *uint64) (*gethTypes.Transaction, error) {
-	var (
-		nonce  = s.transactionSigner.GetNonce()
-		txData gethTypes.TxData
-	)
-
-	// this is a resubmit call, override the nonce
-	if overrideNonce != nil {
-		nonce = *overrideNonce
-	}
+func (s *Sender) createTx(feeData *FeeData, target *common.Address, data []byte, sidecar *gethTypes.BlobTxSidecar, nonce uint64) (*gethTypes.Transaction, error) {
+	var txData gethTypes.TxData
 
 	switch s.config.TxType {
 	case LegacyTxType:
@@ -310,11 +304,6 @@ func (s *Sender) createTx(feeData *FeeData, target *common.Address, data []byte,
 	if err != nil {
 		log.Error("failed to sign tx", "address", s.transactionSigner.GetAddr().String(), "err", err)
 		return nil, err
-	}
-
-	// update nonce when it is not from resubmit
-	if overrideNonce == nil {
-		s.transactionSigner.SetNonce(nonce + 1)
 	}
 
 	if feeData.gasTipCap != nil {
@@ -492,7 +481,7 @@ func (s *Sender) createReplacingTransaction(tx *gethTypes.Transaction, baseFee, 
 
 	nonce := tx.Nonce()
 	s.metrics.resubmitTransactionTotal.WithLabelValues(s.service, s.name).Inc()
-	signedTx, err := s.createTx(&feeData, tx.To(), tx.Data(), tx.BlobTxSidecar(), &nonce)
+	signedTx, err := s.createTx(&feeData, tx.To(), tx.Data(), tx.BlobTxSidecar(), nonce)
 	if err != nil {
 		log.Error("failed to create signed tx (resubmit case)", "from", s.transactionSigner.GetAddr().String(), "nonce", nonce, "err", err)
 		return nil, err

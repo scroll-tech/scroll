@@ -282,7 +282,7 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(0),
 			gasLimit:  50000,
 		}
-		tx, err := s.createTx(feeData, &common.Address{}, nil, nil, nil)
+		tx, err := s.createTx(feeData, &common.Address{}, nil, nil, s.transactionSigner.GetNonce())
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		err = s.client.SendTransaction(s.ctx, tx)
@@ -373,7 +373,7 @@ func testResubmitNonZeroGasPriceTransaction(t *testing.T) {
 			sidecar, err = makeSidecar(txBlob[i])
 			assert.NoError(t, err)
 		}
-		tx, err := s.createTx(feeData, &common.Address{}, nil, sidecar, nil)
+		tx, err := s.createTx(feeData, &common.Address{}, nil, sidecar, s.transactionSigner.GetNonce())
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		err = s.client.SendTransaction(s.ctx, tx)
@@ -420,7 +420,7 @@ func testResubmitUnderpricedTransaction(t *testing.T) {
 			gasFeeCap: big.NewInt(1000000000),
 			gasLimit:  50000,
 		}
-		tx, err := s.createTx(feeData, &common.Address{}, nil, nil, nil)
+		tx, err := s.createTx(feeData, &common.Address{}, nil, nil, s.transactionSigner.GetNonce())
 		assert.NoError(t, err)
 		assert.NotNil(t, tx)
 		err = s.client.SendTransaction(s.ctx, tx)
