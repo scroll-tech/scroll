@@ -100,29 +100,17 @@ func TestFunction(t *testing.T) {
 	t.Run("TestFetchRunningMissingBlocks", testFetchRunningMissingBlocks)
 
 	// Run chunk proposer test cases.
-	t.Run("TestChunkProposerCodecv0Limits", testChunkProposerCodecv0Limits)
-	t.Run("TestChunkProposerCodecv1Limits", testChunkProposerCodecv1Limits)
-	t.Run("TestChunkProposerCodecv2Limits", testChunkProposerCodecv2Limits)
-	t.Run("TestChunkProposerCodecv3Limits", testChunkProposerCodecv3Limits)
-	t.Run("TestChunkProposerBlobSizeLimit", testChunkProposerBlobSizeLimit)
-	t.Run("TestChunkProposerRespectHardforks", testChunkProposerRespectHardforks)
+	t.Run("TestChunkProposerLimitsCodecV4", testChunkProposerLimitsCodecV4)
+	t.Run("TestChunkProposerBlobSizeLimitCodecV4", testChunkProposerBlobSizeLimitCodecV4)
 
 	// Run batch proposer test cases.
-	t.Run("TestBatchProposerCodecv0Limits", testBatchProposerCodecv0Limits)
-	t.Run("TestBatchProposerCodecv1Limits", testBatchProposerCodecv1Limits)
-	t.Run("TestBatchProposerCodecv2Limits", testBatchProposerCodecv2Limits)
-	t.Run("TestBatchProposerCodecv3Limits", testBatchProposerCodecv3Limits)
-	t.Run("TestBatchCommitGasAndCalldataSizeCodecv0Estimation", testBatchCommitGasAndCalldataSizeCodecv0Estimation)
-	t.Run("TestBatchCommitGasAndCalldataSizeCodecv1Estimation", testBatchCommitGasAndCalldataSizeCodecv1Estimation)
-	t.Run("TestBatchCommitGasAndCalldataSizeCodecv2Estimation", testBatchCommitGasAndCalldataSizeCodecv2Estimation)
-	t.Run("TestBatchCommitGasAndCalldataSizeCodecv3Estimation", testBatchCommitGasAndCalldataSizeCodecv3Estimation)
-	t.Run("TestBatchProposerBlobSizeLimit", testBatchProposerBlobSizeLimit)
-	t.Run("TestBatchProposerMaxChunkNumPerBatchLimit", testBatchProposerMaxChunkNumPerBatchLimit)
-	t.Run("TestBatchProposerRespectHardforks", testBatchProposerRespectHardforks)
+	t.Run("TestBatchProposerLimitsCodecV4", testBatchProposerLimitsCodecV4)
+	t.Run("TestBatchCommitGasAndCalldataSizeEstimationCodecV4", testBatchCommitGasAndCalldataSizeEstimationCodecV4)
+	t.Run("TestBatchProposerBlobSizeLimitCodecV4", testBatchProposerBlobSizeLimitCodecV4)
+	t.Run("TestBatchProposerMaxChunkNumPerBatchLimitCodecV4", testBatchProposerMaxChunkNumPerBatchLimitCodecV4)
 
 	// Run bundle proposer test cases.
-	t.Run("TestBundleProposerLimits", testBundleProposerLimits)
-	t.Run("TestBundleProposerRespectHardforks", testBundleProposerRespectHardforks)
+	t.Run("TestBundleProposerLimitsCodecV4", testBundleProposerLimitsCodecV4)
 }
 
 func readBlockFromJSON(t *testing.T, filename string) *encoding.Block {

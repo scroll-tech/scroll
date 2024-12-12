@@ -21,6 +21,7 @@ var (
 	// RollupRelayerFlags contains flags only used in rollup-relayer
 	RollupRelayerFlags = []cli.Flag{
 		&ImportGenesisFlag,
+		&MinCodecVersionFlag,
 	}
 	// ConfigFileFlag load json type config file.
 	ConfigFileFlag = cli.StringFlag{
@@ -89,5 +90,11 @@ var (
 		Name:  "genesis",
 		Usage: "Genesis file of the network",
 		Value: "./conf/genesis.json",
+	}
+	// MinCodecVersionFlag defines the minimum codec version required for the chunk/batch/bundle proposers
+	MinCodecVersionFlag = cli.UintFlag{
+		Name:     "min-codec-version",
+		Usage:    "Minimum required codec version for the chunk/batch/bundle proposers",
+		Required: true,
 	}
 )
