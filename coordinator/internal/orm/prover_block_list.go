@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -65,7 +66,7 @@ func (p *ProverBlockList) IsPublicKeyBlocked(ctx context.Context, publicKey stri
 	db = db.Model(&ProverBlockList{})
 	db = db.Where("public_key = ?", publicKey)
 	if err := db.First(&ProverBlockList{}).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil // Public key not found, hence it's not blocked.
 		}
 		return true, fmt.Errorf("ProverBlockList.IsPublicKeyBlocked error: %w, public key: %v", err, publicKey)

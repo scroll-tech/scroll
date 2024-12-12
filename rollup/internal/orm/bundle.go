@@ -67,7 +67,7 @@ func (o *Bundle) getLatestBundle(ctx context.Context) (*Bundle, error) {
 
 	var latestBundle Bundle
 	if err := db.First(&latestBundle).Error; err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("getLatestBundle error: %w", err)
