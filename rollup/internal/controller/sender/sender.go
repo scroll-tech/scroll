@@ -247,7 +247,7 @@ func (s *Sender) SendTransaction(contextID string, target *common.Address, data 
 		return common.Hash{}, fmt.Errorf("failed to send transaction, err: %w", err)
 	}
 
-	s.transactionSigner.SetNonce(s.transactionSigner.GetNonce() + 1)
+	s.transactionSigner.SetNonce(signedTx.Nonce() + 1)
 
 	return signedTx.Hash(), nil
 }
