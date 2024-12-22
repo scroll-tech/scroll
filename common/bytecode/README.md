@@ -22,7 +22,7 @@
 ```
 
 ## How to get contract abi?
-* Other contracts' step same to eth20, e.g:
+* Other contracts' step same to erc20, e.g:
 1. Install solc.
    
     *Reference to https://docs.soliditylang.org/en/latest/installing-solidity.html*
