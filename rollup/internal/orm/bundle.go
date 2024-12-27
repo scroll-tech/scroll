@@ -15,7 +15,6 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
-	"scroll-tech/common/utils"
 )
 
 // Bundle represents a bundle of batches.
@@ -194,7 +193,7 @@ func (o *Bundle) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash s
 	updateFields["finalize_tx_hash"] = finalizeTxHash
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
-		updateFields["finalized_at"] = time.Now()
+		updateFields["finalized_at"] = time.Now().UTC()
 	}
 
 	db := o.db
@@ -218,7 +217,7 @@ func (o *Bundle) UpdateProvingStatus(ctx context.Context, hash string, status ty
 
 	switch status {
 	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
+		updateFields["proved_at"] = time.Now().UTC()
 	}
 
 	db := o.db
@@ -241,7 +240,7 @@ func (o *Bundle) UpdateRollupStatus(ctx context.Context, hash string, status typ
 	updateFields := make(map[string]interface{})
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
-		updateFields["finalized_at"] = time.Now()
+		updateFields["finalized_at"] = time.Now().UTC()
 	}
 
 	db := o.db.WithContext(ctx)
@@ -271,7 +270,7 @@ func (o *Bundle) UpdateProofAndProvingStatusByHash(ctx context.Context, hash str
 	updateFields["proof"] = proofBytes
 	updateFields["proving_status"] = provingStatus
 	updateFields["proof_time_sec"] = proofTimeSec
-	updateFields["proved_at"] = utils.NowUTC()
+	updateFields["proved_at"] = time.Now().UTC()
 
 	db = db.WithContext(ctx)
 	db = db.Model(&Bundle{})
