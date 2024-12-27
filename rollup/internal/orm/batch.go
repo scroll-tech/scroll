@@ -13,8 +13,9 @@ import (
 
 	"scroll-tech/common/types"
 	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 
-	"scroll-tech/rollup/internal/utils"
+	rutils "scroll-tech/rollup/internal/utils"
 )
 
 // Batch represents a batch of chunks.
@@ -249,7 +250,7 @@ func (o *Batch) GetBatchByIndex(ctx context.Context, index uint64) (*Batch, erro
 }
 
 // InsertBatch inserts a new batch into the database.
-func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics utils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
+func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVersion encoding.CodecVersion, metrics rutils.BatchMetrics, dbTX ...*gorm.DB) (*Batch, error) {
 	if batch == nil {
 		return nil, errors.New("invalid args: batch is nil")
 	}
@@ -270,7 +271,7 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		startChunkIndex = parentBatch.EndChunkIndex + 1
 	}
 
-	batchMeta, err := utils.GetBatchMetadata(batch, codecVersion)
+	batchMeta, err := rutils.GetBatchMetadata(batch, codecVersion)
 	if err != nil {
 		log.Error("failed to get batch metadata", "index", batch.Index, "total l1 message popped before", batch.TotalL1MessagePoppedBefore,
 			"parent hash", batch.ParentBatchHash.Hex(), "number of chunks", numChunks, "err", err)
@@ -346,11 +347,11 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 
 	switch status {
 	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now().UTC()
+		updateFields["prover_assigned_at"] = utils.NowUTC()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now().UTC()
+		updateFields["proved_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -374,9 +375,9 @@ func (o *Batch) UpdateRollupStatus(ctx context.Context, hash string, status type
 
 	switch status {
 	case types.RollupCommitted:
-		updateFields["committed_at"] = time.Now().UTC()
+		updateFields["committed_at"] = utils.NowUTC()
 	case types.RollupFinalized:
-		updateFields["finalized_at"] = time.Now().UTC()
+		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -399,7 +400,7 @@ func (o *Batch) UpdateCommitTxHashAndRollupStatus(ctx context.Context, hash stri
 	updateFields["commit_tx_hash"] = commitTxHash
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupCommitted {
-		updateFields["committed_at"] = time.Now().UTC()
+		updateFields["committed_at"] = utils.NowUTC()
 	}
 
 	db := o.db.WithContext(ctx)
@@ -418,7 +419,7 @@ func (o *Batch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash st
 	updateFields["finalize_tx_hash"] = finalizeTxHash
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
-		updateFields["finalized_at"] = time.Now().UTC()
+		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
 	db := o.db.WithContext(ctx)
@@ -477,11 +478,11 @@ func (o *Batch) UpdateProvingStatusByBundleHash(ctx context.Context, bundleHash 
 
 	switch status {
 	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now().UTC()
+		updateFields["prover_assigned_at"] = utils.NowUTC()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now().UTC()
+		updateFields["proved_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -506,7 +507,7 @@ func (o *Batch) UpdateFinalizeTxHashAndRollupStatusByBundleHash(ctx context.Cont
 
 	switch status {
 	case types.RollupFinalized:
-		updateFields["finalized_at"] = time.Now().UTC()
+		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
 	db := o.db
