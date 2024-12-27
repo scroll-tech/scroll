@@ -529,7 +529,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 		}
 
 	case types.ProvingTaskVerified:
-		log.Info("Start to roll up zk proof", "bundle hash", bundle.Hash)
+		log.Info("Start to roll up zk proof", "index", bundle.Index, "bundle hash", bundle.Hash)
 		r.metrics.rollupL2RelayerProcessPendingBundlesFinalizedTotal.Inc()
 		if err := r.finalizeBundle(bundle, true); err != nil {
 			log.Error("failed to finalize bundle with proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
@@ -638,12 +638,12 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 	// Updating rollup status in database.
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
 		if err = r.batchOrm.UpdateFinalizeTxHashAndRollupStatusByBundleHash(r.ctx, bundle.Hash, txHash.String(), types.RollupFinalizing, dbTX); err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatusByBundleHash failed", "bundle hash", bundle.Hash, "tx hash", txHash.String(), "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatusByBundleHash failed", "index", bundle.Index, "bundle hash", bundle.Hash, "tx hash", txHash.String(), "err", err)
 			return err
 		}
 
 		if err = r.bundleOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, bundle.Hash, txHash.String(), types.RollupFinalizing, dbTX); err != nil {
-			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "bundle hash", bundle.Hash, "tx hash", txHash.String(), "err", err)
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "index", bundle.Index, "bundle hash", bundle.Hash, "tx hash", txHash.String(), "err", err)
 			return err
 		}
 
