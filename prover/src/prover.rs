@@ -82,7 +82,7 @@ impl<'a> Prover<'a> {
                 });
 
         let mut req = GetTaskRequest {
-            task_types: task_types,
+            task_types,
             prover_height: None,
         };
 

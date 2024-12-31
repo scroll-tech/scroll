@@ -129,7 +129,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
                     let handler = builder(prover_type, self.config, self.geth_client.clone())
                         .expect("failed to build circuits handler");
                     self.current_fork_name = Some(hard_fork_name.clone());
-                    self.current_prover_type = Some(prover_type.clone());
+                    self.current_prover_type = Some(prover_type);
                     let rc_handler = Rc::new(handler);
                     self.current_circuit = Some(rc_handler.clone());
                     Ok(rc_handler)
