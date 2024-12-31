@@ -45,10 +45,10 @@ pub fn get_task_types(prover_type: ProverType) -> Vec<TaskType> {
 }
 
 pub fn get_prover_type(task_type: TaskType) -> Option<ProverType> {
-        match task_type {
-            TaskType::Undefined => None,
-            TaskType::Chunk => Some(ProverType::Chunk),
-            TaskType::Batch => Some(ProverType::Batch),
-            TaskType::Bundle => Some(ProverType::Batch),
-        }
+    match task_type {
+        TaskType::Undefined => None,
+        TaskType::Chunk => Some(ProverType::Chunk),
+        TaskType::Batch => Some(ProverType::Batch),
+        TaskType::Bundle => Some(ProverType::Batch),
+    }
 }

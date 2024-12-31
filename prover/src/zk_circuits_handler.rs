@@ -44,10 +44,7 @@ pub struct CircuitsHandlerProvider<'a> {
 }
 
 impl<'a> CircuitsHandlerProvider<'a> {
-    pub fn new(
-        config: &'a Config,
-        geth_client: Option<Rc<RefCell<GethClient>>>,
-    ) -> Result<Self> {
+    pub fn new(config: &'a Config, geth_client: Option<Rc<RefCell<GethClient>>>) -> Result<Self> {
         let mut m: HashMap<HardForkName, CircuitsHandlerBuilder> = HashMap::new();
 
         fn handler_builder(
@@ -112,7 +109,7 @@ impl<'a> CircuitsHandlerProvider<'a> {
     pub fn get_circuits_handler(
         &mut self,
         hard_fork_name: &String,
-        prover_type: ProverType
+        prover_type: ProverType,
     ) -> Result<Rc<Box<dyn CircuitsHandler>>> {
         match &self.current_fork_name {
             Some(fork_name) if fork_name == hard_fork_name => {
@@ -153,25 +150,28 @@ impl<'a> CircuitsHandlerProvider<'a> {
             .iter()
             .flat_map(|(hard_fork_name, build)| {
                 let geth_client_clone = geth_client.clone();
-                prover_types.iter().flat_map(move |prover_type| {
-                    let handler = build(*prover_type, config, geth_client_clone.clone())
-                        .expect("failed to build circuits handler");
-    
-                    get_task_types(*prover_type)
-                        .into_iter()
-                        .map(move |task_type| {
-                            let vk = handler
-                                .get_vk(task_type)
-                                .map_or("".to_string(), utils::encode_vk);
-                            log::info!(
-                                "vk for {hard_fork_name}, is {vk}, task_type: {:?}",
-                                task_type
-                            );
-                            vk
-                        })
-                        .filter(|vk| !vk.is_empty())
-                        .collect::<Vec<String>>()
-                }).collect::<Vec<String>>()
+                prover_types
+                    .iter()
+                    .flat_map(move |prover_type| {
+                        let handler = build(*prover_type, config, geth_client_clone.clone())
+                            .expect("failed to build circuits handler");
+
+                        get_task_types(*prover_type)
+                            .into_iter()
+                            .map(move |task_type| {
+                                let vk = handler
+                                    .get_vk(task_type)
+                                    .map_or("".to_string(), utils::encode_vk);
+                                log::info!(
+                                    "vk for {hard_fork_name}, is {vk}, task_type: {:?}",
+                                    task_type
+                                );
+                                vk
+                            })
+                            .filter(|vk| !vk.is_empty())
+                            .collect::<Vec<String>>()
+                    })
+                    .collect::<Vec<String>>()
             })
             .collect()
     }

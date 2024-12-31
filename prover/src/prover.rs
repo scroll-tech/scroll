@@ -9,7 +9,7 @@ use crate::{
     geth_client::GethClient,
     key_signer::KeySigner,
     types::{ProofFailureType, ProofStatus, ProverType, TaskType},
-    utils::{get_task_types, get_prover_type},
+    utils::{get_prover_type, get_task_types},
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
 };
 
@@ -28,7 +28,11 @@ impl<'a> Prover<'a> {
         let keystore_path = &config.keystore_path;
         let keystore_password = &config.keystore_password;
 
-        let geth_client = if config.prover_types.iter().any(|element| *element == ProverType::Chunk) {
+        let geth_client = if config
+            .prover_types
+            .iter()
+            .any(|element| *element == ProverType::Chunk)
+        {
             Some(Rc::new(RefCell::new(
                 GethClient::new(
                     &config.prover_name,
@@ -68,17 +72,26 @@ impl<'a> Prover<'a> {
     pub fn fetch_task(&self) -> Result<Task> {
         log::info!("[prover] start to fetch_task");
 
-        let task_types: Vec<TaskType> = self.config.prover_types.iter().fold(Vec::new(), |mut acc, prover_type| {
-            acc.extend(get_task_types(*prover_type));
-            acc
-        });
+        let task_types: Vec<TaskType> =
+            self.config
+                .prover_types
+                .iter()
+                .fold(Vec::new(), |mut acc, prover_type| {
+                    acc.extend(get_task_types(*prover_type));
+                    acc
+                });
 
         let mut req = GetTaskRequest {
             task_types: task_types,
             prover_height: None,
         };
 
-        if self.config.prover_types.iter().any(|element| *element == ProverType::Chunk) {
+        if self
+            .config
+            .prover_types
+            .iter()
+            .any(|element| *element == ProverType::Chunk)
+        {
             let latest_block_number = self.get_latest_block_number_value()?;
             if let Some(v) = latest_block_number {
                 if v.as_u64() == 0 {
