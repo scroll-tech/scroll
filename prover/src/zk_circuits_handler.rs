@@ -149,25 +149,30 @@ impl<'a> CircuitsHandlerProvider<'a> {
         config: &'a Config,
         geth_client: Option<Rc<RefCell<GethClient>>>,
     ) -> Vec<String> {
-        let mut vks = Vec::new();
-        for (hard_fork_name, build) in self.circuits_handler_builder_map.iter() {
-            for prover_type in prover_types.iter() {
-                let handler = build(*prover_type, config, geth_client.clone())
-                    .expect("failed to build circuits handler");
-                for task_type in get_task_types(*prover_type) {
-                    let vk = handler 
-                        .get_vk(task_type)
-                        .map_or("".to_string(), utils::encode_vk);
-                    log::info!(
-                        "vk for {hard_fork_name}, is {vk}, task_type: {:?}",
-                        task_type
-                    );
-                    if !vk.is_empty() {
-                        vks.push(vk);
-                    }
-                }
-            }
-        }
-        vks
+        self.circuits_handler_builder_map
+            .iter()
+            .flat_map(|(hard_fork_name, build)| {
+                let geth_client_clone = geth_client.clone();
+                prover_types.iter().flat_map(move |prover_type| {
+                    let handler = build(*prover_type, config, geth_client_clone.clone())
+                        .expect("failed to build circuits handler");
+    
+                    get_task_types(*prover_type)
+                        .into_iter()
+                        .map(move |task_type| {
+                            let vk = handler
+                                .get_vk(task_type)
+                                .map_or("".to_string(), utils::encode_vk);
+                            log::info!(
+                                "vk for {hard_fork_name}, is {vk}, task_type: {:?}",
+                                task_type
+                            );
+                            vk
+                        })
+                        .filter(|vk| !vk.is_empty())
+                        .collect::<Vec<String>>()
+                }).collect::<Vec<String>>()
+            })
+            .collect()
     }
 }
