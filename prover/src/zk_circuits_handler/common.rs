@@ -6,14 +6,7 @@ use once_cell::sync::OnceCell;
 
 use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
 
-use prover_darwin::BlockTrace as BlockTraceDarwin;
-use prover_darwin_v2::BlockTrace as BlockTraceDarwinV2;
-
 static mut PARAMS_MAP: OnceCell<Rc<BTreeMap<u32, ParamsKZG<Bn256>>>> = OnceCell::new();
-pub enum BlockTraceType {
-    LowVersion(Vec<BlockTraceDarwin>),
-    HighVersion(Vec<BlockTraceDarwinV2>),
-}
 
 pub fn get_params_map_instance<'a, F>(load_params_func: F) -> &'a BTreeMap<u32, ParamsKZG<Bn256>>
 where

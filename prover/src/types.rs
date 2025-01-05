@@ -1,7 +1,6 @@
 use ethers_core::types::H256;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::coordinator_client::types::GetTaskResponseData;
 use scroll_proving_sdk::prover::types::CircuitType;
 
 pub type CommonHash = H256;
@@ -20,13 +19,6 @@ impl ProverType {
             _ => {
                 panic!("invalid prover_type")
             }
-        }
-    }
-
-    pub fn to_u8(self) -> u8 {
-        match self {
-            ProverType::Chunk => 1,
-            ProverType::Batch => 2,
         }
     }
 }
@@ -60,38 +52,6 @@ pub struct Task {
     pub task_data: String,
     #[serde(default)]
     pub hard_fork_name: String,
-}
-
-impl From<GetTaskResponseData> for Task {
-    fn from(value: GetTaskResponseData) -> Self {
-        Self {
-            task_type: value.task_type,
-            task_data: value.task_data,
-            hard_fork_name: value.hard_fork_name,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Default)]
-pub struct TaskWrapper {
-    pub task: Task,
-    count: usize,
-}
-
-impl TaskWrapper {
-    pub fn increment_count(&mut self) {
-        self.count += 1;
-    }
-
-    pub fn get_count(&self) -> usize {
-        self.count
-    }
-}
-
-impl From<Task> for TaskWrapper {
-    fn from(task: Task) -> Self {
-        TaskWrapper { task, count: 0 }
-    }
 }
 
 #[derive(Serialize, Deserialize, Default)]

@@ -2,20 +2,16 @@ mod common;
 mod darwin;
 mod darwin_v2;
 
-use crate::{
-    config::AssetsDirEnvConfig,
-    types::ProverType,
-    utils::get_circuit_types,
-};
+use crate::{config::AssetsDirEnvConfig, types::ProverType, utils::get_circuit_types};
 use anyhow::{bail, Result};
+use async_trait::async_trait;
 use darwin::DarwinHandler;
 use darwin_v2::DarwinV2Handler;
-use async_trait::async_trait;
+use scroll_proving_sdk::{
+    config::LocalProverConfig,
+    prover::{proving_service::ProveRequest, CircuitType},
+};
 use std::{collections::HashMap, sync::Arc};
-use scroll_proving_sdk::{prover::{
-        proving_service::ProveRequest,
-        CircuitType,
-    }, config::LocalProverConfig};
 
 type HardForkName = String;
 
@@ -29,14 +25,11 @@ pub mod utils {
 pub trait CircuitsHandler: Send + Sync {
     async fn get_vk(&self, task_type: CircuitType) -> Option<Vec<u8>>;
 
-    async fn get_proof_data(&self, prove_request:ProveRequest) -> Result<String>;
+    async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String>;
 }
 
-type CircuitsHandlerBuilder = fn(
-    prover_type: ProverType,
-    config: &LocalProverConfig,
-) -> Result<Box<dyn CircuitsHandler>>;
-
+type CircuitsHandlerBuilder =
+    fn(prover_type: ProverType, config: &LocalProverConfig) -> Result<Box<dyn CircuitsHandler>>;
 
 pub struct CircuitsHandlerProvider {
     config: LocalProverConfig,
@@ -50,6 +43,11 @@ pub struct CircuitsHandlerProvider {
 impl CircuitsHandlerProvider {
     pub fn new(config: LocalProverConfig) -> Result<Self> {
         let mut m: HashMap<HardForkName, CircuitsHandlerBuilder> = HashMap::new();
+
+        if let Err(e) = AssetsDirEnvConfig::init() {
+            log::error!("AssetsDirEnvConfig init failed: {:#}", e);
+            std::process::exit(-2);
+        }
 
         fn handler_builder(
             prover_type: ProverType,
@@ -147,8 +145,8 @@ impl CircuitsHandlerProvider {
         let mut vks: Vec<String> = Vec::new();
         for (hard_fork_name, build) in self.circuits_handler_builder_map.iter() {
             for prover_type in prover_types.iter() {
-                let handler = build(*prover_type, config)
-                    .expect("failed to build circuits handler");
+                let handler =
+                    build(*prover_type, config).expect("failed to build circuits handler");
 
                 for task_type in get_circuit_types(*prover_type).into_iter() {
                     let vk = handler
@@ -162,10 +160,9 @@ impl CircuitsHandlerProvider {
                     if !vk.is_empty() {
                         vks.push(vk)
                     }
-                    
                 }
             }
-        };
+        }
         vks
     }
 }

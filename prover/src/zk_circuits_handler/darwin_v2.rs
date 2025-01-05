@@ -1,12 +1,9 @@
 use super::{common::*, CircuitsHandler};
 use crate::types::ProverType;
-use async_trait::async_trait;
-use scroll_proving_sdk::prover::{
-    proving_service::ProveRequest,
-    CircuitType,
-};
 use anyhow::{bail, Context, Ok, Result};
+use async_trait::async_trait;
 use once_cell::sync::Lazy;
+use scroll_proving_sdk::prover::{proving_service::ProveRequest, CircuitType};
 use serde::Deserialize;
 use tokio::sync::RwLock;
 
@@ -38,10 +35,6 @@ type BundleTaskDetail = BundleProvingTask;
 #[derive(Debug, Clone, Deserialize)]
 pub struct ChunkTaskDetail {
     pub block_hashes: Vec<CommonHash>,
-}
-
-fn get_block_number(block_trace: &BlockTrace) -> Option<u64> {
-    block_trace.header.number.map(|n| n.as_u64())
 }
 
 #[derive(Default)]
@@ -94,11 +87,7 @@ impl DarwinV2Handler {
         Ok(handler)
     }
 
-    pub fn new(
-        prover_type: ProverType,
-        params_dir: &str,
-        assets_dir: &str,
-    ) -> Result<Self> {
+    pub fn new(prover_type: ProverType, params_dir: &str, assets_dir: &str) -> Result<Self> {
         Self::new_multi(vec![prover_type], params_dir, assets_dir)
     }
 
@@ -158,7 +147,10 @@ impl DarwinV2Handler {
         Ok(serde_json::to_string(&batch_proof)?)
     }
 
-    async fn gen_bundle_proof_raw(&self, bundle_task_detail: BundleTaskDetail) -> Result<BundleProof> {
+    async fn gen_bundle_proof_raw(
+        &self,
+        bundle_task_detail: BundleTaskDetail,
+    ) -> Result<BundleProof> {
         if let Some(prover) = self.batch_prover.as_ref() {
             let bundle_proof = prover.write().await.gen_bundle_proof(
                 bundle_task_detail,
@@ -187,8 +179,20 @@ impl CircuitsHandler for DarwinV2Handler {
     async fn get_vk(&self, task_type: CircuitType) -> Option<Vec<u8>> {
         match task_type {
             CircuitType::Chunk => self.chunk_prover.as_ref().unwrap().read().await.get_vk(),
-                CircuitType::Batch => self.batch_prover.as_ref().unwrap().read().await.get_batch_vk(),
-                CircuitType::Bundle => self.batch_prover.as_ref().unwrap().read().await.get_bundle_vk(),
+            CircuitType::Batch => self
+                .batch_prover
+                .as_ref()
+                .unwrap()
+                .read()
+                .await
+                .get_batch_vk(),
+            CircuitType::Bundle => self
+                .batch_prover
+                .as_ref()
+                .unwrap()
+                .read()
+                .await
+                .get_bundle_vk(),
             _ => unreachable!(),
         }
     }

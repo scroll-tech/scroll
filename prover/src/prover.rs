@@ -1,23 +1,24 @@
-use async_trait::async_trait;
+use crate::{
+    utils::get_prover_type,
+    zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
+};
 use anyhow::{Context, Result};
-use tokio::{task::JoinHandle, runtime::Runtime};
-use std::{sync::{Arc, Mutex}, cell::RefCell};
+use async_trait::async_trait;
 use scroll_proving_sdk::{
+    config::LocalProverConfig,
     prover::{
         proving_service::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
             QueryTaskResponse, TaskStatus,
         },
         CircuitType, ProvingService,
-    }, config::{ProverConfig, LocalProverConfig},
+    },
 };
-use crate::{
-    utils::get_prover_type,
-    zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider}, types::ProverType,
+use std::{
+    sync::{Arc, Mutex},
+    time::{SystemTime, UNIX_EPOCH},
 };
-use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::sync::RwLock;
-
+use tokio::{runtime::Runtime, sync::RwLock, task::JoinHandle};
 
 pub struct LocalProver {
     config: LocalProverConfig,
@@ -34,28 +35,32 @@ impl ProvingService for LocalProver {
     async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
         let mut prover_types = vec![];
         req.circuit_types.iter().for_each(|circuit_type| {
-            match get_prover_type(*circuit_type) {
-                Some(pt) => {
-                    if !prover_types.contains(&pt) {
-                        prover_types.push(pt);
-                    }
+            if let Some(pt) = get_prover_type(*circuit_type) {
+                if !prover_types.contains(&pt) {
+                    prover_types.push(pt);
                 }
-                None => {}
             }
         });
 
         let local_prover_config = self.config.clone();
-        let vks = self.circuits_handler_provider.read().await.init_vks(&local_prover_config, prover_types).await;
-        GetVkResponse {
-            vks: vks,
-            error: None
-        }
+        let vks = self
+            .circuits_handler_provider
+            .read()
+            .await
+            .init_vks(&local_prover_config, prover_types)
+            .await;
+        GetVkResponse { vks, error: None }
     }
     async fn prove(&self, req: ProveRequest) -> ProveResponse {
         let prover_type = match get_prover_type(req.circuit_type) {
             Some(pt) => pt,
             None => {
-                return build_prove_error_response(&req, "unsupported prover_type")
+                return build_prove_error_response(
+                    String::new(),
+                    TaskStatus::Failed,
+                    None,
+                    String::from("unsupported prover_type"),
+                )
             }
         };
         let handler = self
@@ -63,17 +68,18 @@ impl ProvingService for LocalProver {
             .write()
             .await
             .get_circuits_handler(&req.hard_fork_name, prover_type)
-            .context("failed to get circuit handler").unwrap();
-        
-        match self
-            .do_prove(req.clone(), handler) 
-        {
-            Ok(resp) => resp,
-            Err(e) => {
-                return build_prove_error_response(&req, &format!("Failed to request proof: {}", e))
-            }
-        }
+            .context("failed to get circuit handler")
+            .unwrap();
 
+        match self.do_prove(req.clone(), handler) {
+            Ok(resp) => resp,
+            Err(e) => build_prove_error_response(
+                String::new(),
+                TaskStatus::Failed,
+                None,
+                String::from(&format!("failed to request proof: {}", e)),
+            ),
+        }
     }
 
     async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
@@ -84,85 +90,46 @@ impl ProvingService for LocalProver {
                 let result = Runtime::new().unwrap().block_on(handle).unwrap();
                 match result {
                     Ok(proof) => {
-                        return QueryTaskResponse {
-                            task_id: "".to_string(),
-                            circuit_type: CircuitType::Undefined,
-                            circuit_version: "".to_string(),
-                            hard_fork_name: "".to_string(),
-                            status: TaskStatus::Success,
-                            created_at: 0.0,
-                            started_at: None,
-                            finished_at: None,
-                            compute_time_sec: None,
-                            input: None,
-                            proof: Some(proof),
-                            vk: None,
-                            error: None,
-                        };
+                        return build_query_task_response(
+                            req.task_id,
+                            TaskStatus::Success,
+                            Some(proof),
+                            None,
+                        )
                     }
                     Err(e) => {
-                        return QueryTaskResponse {
-                            task_id: "".to_string(),
-                            circuit_type: CircuitType::Undefined,
-                            circuit_version: "".to_string(),
-                            hard_fork_name: "".to_string(),
-                            status: TaskStatus::Failed,
-                            created_at: 0.0,
-                            started_at: None,
-                            finished_at: None,
-                            compute_time_sec: None,
-                            input: None,
-                            proof: None,
-                            vk: None,
-                            error: Some(e.to_string()),
-                        };
-                    } 
+                        return build_query_task_response(
+                            req.task_id,
+                            TaskStatus::Failed,
+                            None,
+                            Some(e.to_string()),
+                        )
+                    }
                 }
-
             } else {
                 *current_task = Some(handle);
-                return QueryTaskResponse {
-                    task_id: "".to_string(),
-                    circuit_type: CircuitType::Undefined,
-                    circuit_version: "".to_string(),
-                    hard_fork_name: "".to_string(),
-                    status: TaskStatus::Proving,
-                    created_at: 0.0,
-                    started_at: None,
-                    finished_at: None,
-                    compute_time_sec: None,
-                    input: None,
-                    proof: None,
-                    vk: None,
-                    error: None,
-                };
+                return build_query_task_response(req.task_id, TaskStatus::Proving, None, None);
             }
         } else {
-            return QueryTaskResponse {
-                    task_id: "".to_string(),
-                    circuit_type: CircuitType::Undefined,
-                    circuit_version: "".to_string(),
-                    hard_fork_name: "".to_string(),
-                    status: TaskStatus::Failed,
-                    created_at: 0.0,
-                    started_at: None,
-                    finished_at: None,
-                    compute_time_sec: None,
-                    input: None,
-                    proof: None,
-                    vk: None,
-                    error: None,
-            };
+            let task_id = req.task_id.clone();
+            return build_query_task_response(
+                req.task_id,
+                TaskStatus::Failed,
+                None,
+                Some(String::from(&format!(
+                    "failed to query task, task_id: {}",
+                    task_id
+                ))),
+            );
         }
-
     }
 }
 
 impl LocalProver {
     pub fn new(config: LocalProverConfig) -> Self {
-
         let circuits_handler_provider = CircuitsHandlerProvider::new(config.clone())
-        .context("failed to create circuits handler provider").unwrap();
+            .context("failed to create circuits handler provider")
+            .unwrap();
 
         Self {
             config,
@@ -172,7 +139,11 @@ impl LocalProver {
         }
     }
 
-    fn do_prove(&self, req: ProveRequest, handler: Arc<Box<dyn CircuitsHandler>>) -> Result<ProveResponse> {
+    fn do_prove(
+        &self,
+        req: ProveRequest,
+        handler: Arc<Box<dyn CircuitsHandler>>,
+    ) -> Result<ProveResponse> {
         let mut current_task = self.current_task.lock().unwrap();
         if current_task.is_some() {
             return Err(anyhow::Error::msg("prover working on previous task"));
@@ -185,17 +156,13 @@ impl LocalProver {
         };
 
         let req_clone = req.clone();
-        let handle = tokio::spawn(async move {
-            handler.get_proof_data(req_clone).await
-
-        });
+        let handle = tokio::spawn(async move { handler.get_proof_data(req_clone).await });
         *current_task = Some(handle);
 
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
 
-        Ok(
-            ProveResponse {
+        Ok(ProveResponse {
             task_id: task_id.to_string(),
             circuit_type: req.circuit_type,
             circuit_version: req.circuit_version.clone(),
@@ -213,20 +180,48 @@ impl LocalProver {
     }
 }
 
-fn build_prove_error_response(req: &ProveRequest, error_msg: &str) -> ProveResponse {
+fn build_prove_error_response(
+    task_id: String,
+    status: TaskStatus,
+    proof: Option<String>,
+    error_msg: String,
+) -> ProveResponse {
     ProveResponse {
-        task_id: String::new(),
-        circuit_type: req.circuit_type,
-        circuit_version: req.circuit_version.clone(),
-        hard_fork_name: req.hard_fork_name.clone(),
-        status: TaskStatus::Failed,
+        task_id,
+        circuit_type: CircuitType::Undefined, // TODO
+        circuit_version: "".to_string(),
+        hard_fork_name: "".to_string(),
+        status,
         created_at: 0.0,
         started_at: None,
         finished_at: None,
         compute_time_sec: None,
-        input: Some(req.input.clone()),
-        proof: None,
+        input: None,
+        proof,
         vk: None,
-        error: Some(error_msg.to_string()),
+        error: Some(error_msg),
+    }
+}
+
+fn build_query_task_response(
+    task_id: String,
+    status: TaskStatus,
+    proof: Option<String>,
+    error_msg: Option<String>,
+) -> QueryTaskResponse {
+    QueryTaskResponse {
+        task_id,
+        circuit_type: CircuitType::Undefined, // TODO
+        circuit_version: "".to_string(),
+        hard_fork_name: "".to_string(),
+        status,
+        created_at: 0.0,
+        started_at: None,
+        finished_at: None,
+        compute_time_sec: None,
+        input: None,
+        proof,
+        vk: None,
+        error: error_msg,
     }
 }
