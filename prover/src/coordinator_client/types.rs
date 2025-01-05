@@ -1,7 +1,8 @@
 use super::errors::ErrorCode;
-use crate::types::{ProofFailureType, ProofStatus, ProverType, TaskType};
+use crate::types::{ProofFailureType, ProofStatus, ProverType};
 use rlp::{Encodable, RlpStream};
 use serde::{Deserialize, Serialize};
+use scroll_proving_sdk::prover::types::CircuitType;
 
 #[derive(Deserialize)]
 pub struct Response<T> {
@@ -58,7 +59,7 @@ pub type ChallengeResponseData = LoginResponseData;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct GetTaskRequest {
-    pub task_types: Vec<TaskType>,
+    pub task_types: Vec<CircuitType>,
     pub prover_height: Option<u64>,
 }
 
@@ -66,7 +67,7 @@ pub struct GetTaskRequest {
 pub struct GetTaskResponseData {
     pub uuid: String,
     pub task_id: String,
-    pub task_type: TaskType,
+    pub task_type: CircuitType,
     pub task_data: String,
     pub hard_fork_name: String,
 }
@@ -75,7 +76,7 @@ pub struct GetTaskResponseData {
 pub struct SubmitProofRequest {
     pub uuid: String,
     pub task_id: String,
-    pub task_type: TaskType,
+    pub task_type: CircuitType,
     pub status: ProofStatus,
     pub proof: String,
     pub failure_type: Option<ProofFailureType>,

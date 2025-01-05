@@ -1,7 +1,8 @@
 use env_logger::Env;
 use std::{fs::OpenOptions, sync::Once};
 
-use crate::types::{ProverType, TaskType};
+use crate::types::ProverType;
+use scroll_proving_sdk::prover::types::CircuitType;
 
 static LOG_INIT: Once = Once::new();
 
@@ -24,31 +25,18 @@ pub fn log_init(log_file: Option<String>) {
     });
 }
 
-// pub fn get_task_types(prover_types: Vec<ProverType>) -> Vec<TaskType> {
-//     prover_types.into_iter().fold(Vec::new(), |mut acc, prover_type| {
-//         match prover_type {
-//             ProverType::Chunk => acc.push(TaskType::Chunk),
-//             ProverType::Batch => {
-//                 acc.push(TaskType::Batch);
-//                 acc.push(TaskType::Bundle);
-//             }
-//         }
-//         acc
-//     })
-// }
-
-pub fn get_task_types(prover_type: ProverType) -> Vec<TaskType> {
+pub fn get_circuit_types(prover_type: ProverType) -> Vec<CircuitType> {
     match prover_type {
-        ProverType::Chunk => vec![TaskType::Chunk],
-        ProverType::Batch => vec![TaskType::Batch, TaskType::Bundle],
+        ProverType::Chunk => vec![CircuitType::Chunk],
+        ProverType::Batch => vec![CircuitType::Batch, CircuitType::Bundle],
     }
 }
 
-pub fn get_prover_type(task_type: TaskType) -> Option<ProverType> {
+pub fn get_prover_type(task_type: CircuitType) -> Option<ProverType> {
     match task_type {
-        TaskType::Undefined => None,
-        TaskType::Chunk => Some(ProverType::Chunk),
-        TaskType::Batch => Some(ProverType::Batch),
-        TaskType::Bundle => Some(ProverType::Batch),
+        CircuitType::Undefined => None,
+        CircuitType::Chunk => Some(ProverType::Chunk),
+        CircuitType::Batch => Some(ProverType::Batch),
+        CircuitType::Bundle => Some(ProverType::Batch),
     }
 }

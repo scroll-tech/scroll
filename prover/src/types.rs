@@ -2,57 +2,9 @@ use ethers_core::types::H256;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::coordinator_client::types::GetTaskResponseData;
+use scroll_proving_sdk::prover::types::CircuitType;
 
 pub type CommonHash = H256;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum TaskType {
-    Undefined,
-    Chunk,
-    Batch,
-    Bundle,
-}
-
-impl TaskType {
-    fn from_u8(v: u8) -> Self {
-        match v {
-            1 => TaskType::Chunk,
-            2 => TaskType::Batch,
-            3 => TaskType::Bundle,
-            _ => TaskType::Undefined,
-        }
-    }
-}
-
-impl Serialize for TaskType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match *self {
-            TaskType::Undefined => serializer.serialize_u8(0),
-            TaskType::Chunk => serializer.serialize_u8(1),
-            TaskType::Batch => serializer.serialize_u8(2),
-            TaskType::Bundle => serializer.serialize_u8(3),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for TaskType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let v: u8 = u8::deserialize(deserializer)?;
-        Ok(TaskType::from_u8(v))
-    }
-}
-
-impl Default for TaskType {
-    fn default() -> Self {
-        Self::Undefined
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ProverType {
@@ -103,10 +55,8 @@ impl<'de> Deserialize<'de> for ProverType {
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Task {
-    pub uuid: String,
-    pub id: String,
     #[serde(rename = "type", default)]
-    pub task_type: TaskType,
+    pub task_type: CircuitType,
     pub task_data: String,
     #[serde(default)]
     pub hard_fork_name: String,
@@ -115,8 +65,6 @@ pub struct Task {
 impl From<GetTaskResponseData> for Task {
     fn from(value: GetTaskResponseData) -> Self {
         Self {
-            uuid: value.uuid,
-            id: value.task_id,
             task_type: value.task_type,
             task_data: value.task_data,
             hard_fork_name: value.hard_fork_name,
@@ -150,7 +98,7 @@ impl From<Task> for TaskWrapper {
 pub struct ProofDetail {
     pub id: String,
     #[serde(rename = "type", default)]
-    pub proof_type: TaskType,
+    pub proof_type: CircuitType,
     pub proof_data: String,
     pub error: String,
 }
