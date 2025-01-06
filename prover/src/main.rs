@@ -42,7 +42,12 @@ async fn main() -> anyhow::Result<()> {
     utils::log_init(args.log_file);
 
     let cfg: Config = Config::from_file(args.config_file)?;
-    let local_prover = LocalProver::new(cfg.prover.local.clone().unwrap());
+    let local_prover = LocalProver::new(
+        cfg.prover
+            .local
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("Missing local prover configuration"))?,
+    );
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(local_prover))
         .build()
