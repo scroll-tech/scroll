@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -62,59 +61,29 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := cp.cfg.ProverManager.SessionAttempts
-	if strings.HasPrefix(taskCtx.ProverName, ExternalProverNamePrefix) {
-		unassignedChunkCount, getCountError := cp.chunkOrm.GetUnassignedChunkCount(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight)
-		if getCountError != nil {
-			log.Error("failed to get unassigned chunk proving tasks count", "height", getTaskParameter.ProverHeight, "err", err)
-			return nil, ErrCoordinatorInternalFailure
-		}
-		// Assign external prover if unassigned task number exceeds threshold
-		if unassignedChunkCount < cp.cfg.ProverManager.ExternalProverThreshold {
-			return nil, nil
-		}
-	}
-
 	var chunkTask *orm.Chunk
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpChunkTask *orm.Chunk
-		var assignedOffset, unassignedOffset = 0, 0
-		tmpAssignedChunkTasks, getTaskError := cp.chunkOrm.GetAssignedChunks(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight, 50)
+		tmpChunkTask, getTaskError = cp.chunkOrm.GetAssignedChunk(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight)
 		if getTaskError != nil {
 			log.Error("failed to get assigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
+
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
 		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
-		tmpUnassignedChunkTask, getTaskError := cp.chunkOrm.GetUnassignedChunk(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight, 50)
-		if getTaskError != nil {
-			log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
-			return nil, ErrCoordinatorInternalFailure
-		}
-		for {
-			tmpChunkTask = nil
-			if assignedOffset < len(tmpAssignedChunkTasks) {
-				tmpChunkTask = tmpAssignedChunkTasks[assignedOffset]
-				assignedOffset++
-			} else if unassignedOffset < len(tmpUnassignedChunkTask) {
-				tmpChunkTask = tmpUnassignedChunkTask[unassignedOffset]
-				unassignedOffset++
-			}
-
-			if tmpChunkTask == nil {
-				log.Debug("get empty chunk", "height", getTaskParameter.ProverHeight)
-				return nil, nil
-			}
-
-			// Don't dispatch the same failing job to the same prover
-			proverTask, getTaskError := cp.proverTaskOrm.GetTaskOfProver(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, taskCtx.PublicKey, taskCtx.ProverVersion)
+		if tmpChunkTask == nil {
+			tmpChunkTask, getTaskError = cp.chunkOrm.GetUnassignedChunk(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight)
 			if getTaskError != nil {
-				log.Error("failed to get prover task of prover", "proof_type", message.ProofTypeChunk.String(), "taskID", tmpChunkTask.Hash, "key", taskCtx.PublicKey, "Prover_version", taskCtx.ProverVersion, "error", getTaskError)
+				log.Error("failed to get unassigned chunk proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
 			}
-			if proverTask == nil || types.ProverProveStatus(proverTask.ProvingStatus) != types.ProverProofInvalid {
-				break
-			}
+		}
+
+		if tmpChunkTask == nil {
+			log.Debug("get empty chunk", "height", getTaskParameter.ProverHeight)
+			return nil, nil
 		}
 
 		rowsAffected, updateAttemptsErr := cp.chunkOrm.UpdateChunkAttempts(ctx.Copy(), tmpChunkTask.Index, tmpChunkTask.ActiveAttempts, tmpChunkTask.TotalAttempts)
