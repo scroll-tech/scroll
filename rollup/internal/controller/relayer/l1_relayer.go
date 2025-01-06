@@ -251,14 +251,14 @@ func (r *Layer1Relayer) shouldUpdateGasOracle(baseFee uint64, blobBaseFee uint64
 	}
 
 	expectedBaseFeeDelta := r.lastBaseFee*r.gasPriceDiff/gasPriceDiffPrecision + 1
-	if baseFee >= r.minGasPrice && (baseFee >= r.lastBaseFee+expectedBaseFeeDelta || baseFee+expectedBaseFeeDelta <= r.lastBaseFee) {
+	if baseFee >= r.minGasPrice && math.Abs(float64(baseFee)-float64(r.lastBaseFee)) >= float64(expectedBaseFeeDelta) {
 		return true
 	}
 
 	expectedBlobBaseFeeDelta := r.lastBlobBaseFee * r.gasPriceDiff / gasPriceDiffPrecision
 	// Plus a minimum of 0.01 gwei, since the blob base fee is usually low, preventing short-time flunctuation.
 	expectedBlobBaseFeeDelta += 10000000
-	if blobBaseFee >= r.minGasPrice && (blobBaseFee >= r.lastBlobBaseFee+expectedBlobBaseFeeDelta || blobBaseFee+expectedBlobBaseFeeDelta <= r.lastBlobBaseFee) {
+	if blobBaseFee >= r.minGasPrice && math.Abs(float64(blobBaseFee)-float64(r.lastBlobBaseFee)) >= float64(expectedBlobBaseFeeDelta) {
 		return true
 	}
 
