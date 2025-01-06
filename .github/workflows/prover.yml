@@ -7,7 +7,6 @@ on:
       - staging
       - develop
       - alpha
-      - fix-ci-prover-fmt-timeout
     paths:
       - 'prover/**'
       - '.github/workflows/prover.yml'
