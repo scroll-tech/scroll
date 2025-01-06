@@ -7,6 +7,7 @@ on:
       - staging
       - develop
       - alpha
+      - fix-ci-prover-fmt-timeout
     paths:
       - 'prover/**'
       - '.github/workflows/prover.yml'
@@ -43,7 +44,7 @@ jobs:
       github.event.pull_request.draft == false &&
       (github.event.action == 'ready_for_review' || needs.skip_check.outputs.should_skip != 'true')
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
