@@ -4237,7 +4237,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 [[package]]
 name = "scroll-proving-sdk"
 version = "0.1.0"
-source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=f289997#f289997d11fbc11a1a2f90553fb0f9a086447340"
+source = "git+https://github.com/scroll-tech/scroll-proving-sdk.git?rev=4dab63a#4dab63a1d84ba608a263b744caad45395eca277a"
 dependencies = [
  "anyhow",
  "async-trait",
