@@ -78,18 +78,21 @@ func (*Batch) TableName() string {
 	return "batch"
 }
 
-// GetUnassignedBatches retrieves unassigned batches based on the specified limit.
+// GetUnassignedBatch retrieves unassigned batch based on the specified limit.
 // The returned batches are sorted in ascending order by their index.
-func (o *Batch) GetUnassignedBatches(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8, limit uint64) ([]*Batch, error) {
-	var batch []*Batch
+func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
+	var batch Batch
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT %d;",
-		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady), limit)
+	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
+		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady))
 	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
-		return nil, fmt.Errorf("Batch.GetUnassignedBatches error: %w", err)
+		return nil, fmt.Errorf("Batch.GetUnassignedBatch error: %w", err)
 	}
-	return batch, nil
+	if batch.Hash == "" {
+		return nil, nil
+	}
+	return &batch, nil
 }
 
 // GetUnassignedBatchCount retrieves unassigned batch count based on the specified limit.
@@ -108,18 +111,21 @@ func (o *Batch) GetUnassignedBatchCount(ctx context.Context, maxActiveAttempts, 
 	return count, nil
 }
 
-// GetAssignedBatches retrieves assigned batches based on the specified limit.
+// GetAssignedBatch retrieves assigned batch based on the specified limit.
 // The returned batches are sorted in ascending order by their index.
-func (o *Batch) GetAssignedBatches(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8, limit uint64) ([]*Batch, error) {
-	var batch []*Batch
+func (o *Batch) GetAssignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {
+	var batch Batch
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT %d;",
-		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady), limit)
+	sql := fmt.Sprintf("SELECT * FROM batch WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND chunk_proofs_status = %d AND batch.deleted_at IS NULL ORDER BY batch.index LIMIT 1;",
+		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.ChunkProofsStatusReady))
 	err := db.Raw(sql).Scan(&batch).Error
 	if err != nil {
-		return nil, fmt.Errorf("Batch.GetAssignedBatches error: %w", err)
+		return nil, fmt.Errorf("Batch.GetAssignedBatch error: %w", err)
 	}
-	return batch, nil
+	if batch.Hash == "" {
+		return nil, nil
+	}
+	return &batch, nil
 }
 
 // GetUnassignedAndChunksUnreadyBatches get the batches which is unassigned and chunks is not ready
@@ -140,6 +146,19 @@ func (o *Batch) GetUnassignedAndChunksUnreadyBatches(ctx context.Context, offset
 		return nil, fmt.Errorf("Batch.GetUnassignedAndChunksUnreadyBatches error: %w", err)
 	}
 	return batches, nil
+}
+
+// GetAssignedBatches retrieves all batches whose proving_status is either types.ProvingTaskAssigned.
+func (o *Batch) GetAssignedBatches(ctx context.Context) ([]*Batch, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskAssigned))
+
+	var assignedBatches []*Batch
+	if err := db.Find(&assignedBatches).Error; err != nil {
+		return nil, fmt.Errorf("Batch.GetAssignedBatches error: %w", err)
+	}
+	return assignedBatches, nil
 }
 
 // GetProvingStatusByHash retrieves the proving status of a batch given its hash.

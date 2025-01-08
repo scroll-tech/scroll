@@ -80,43 +80,36 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	for i := 0; i < 5; i++ {
 		var getTaskError error
 		var tmpBundleTask *orm.Bundle
-		var assignedOffset, unassignedOffset = 0, 0
-		tmpAssignedBundleTasks, getTaskError := bp.bundleOrm.GetAssignedBundles(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, 50)
+		tmpBundleTask, getTaskError = bp.bundleOrm.GetAssignedBundle(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
 		if getTaskError != nil {
-			log.Error("failed to get assigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
+			log.Error("failed to get assigned bundle proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
+
 		// Why here need get again? In order to support a task can assign to multiple prover, need also assign `ProvingTaskAssigned`
-		// chunk to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
-		tmpUnassignedBundleTask, getTaskError := bp.bundleOrm.GetUnassignedBundles(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, 50)
-		if getTaskError != nil {
-			log.Error("failed to get unassigned batch proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
-			return nil, ErrCoordinatorInternalFailure
-		}
-		for {
-			tmpBundleTask = nil
-			if assignedOffset < len(tmpAssignedBundleTasks) {
-				tmpBundleTask = tmpAssignedBundleTasks[assignedOffset]
-				assignedOffset++
-			} else if unassignedOffset < len(tmpUnassignedBundleTask) {
-				tmpBundleTask = tmpUnassignedBundleTask[unassignedOffset]
-				unassignedOffset++
-			}
-
-			if tmpBundleTask == nil {
-				log.Debug("get empty bundle", "height", getTaskParameter.ProverHeight)
-				return nil, nil
-			}
-
-			// Don't dispatch the same failing job to the same prover
-			proverTask, getTaskError := bp.proverTaskOrm.GetTaskOfProver(ctx.Copy(), message.ProofTypeBatch, tmpBundleTask.Hash, taskCtx.PublicKey, taskCtx.ProverVersion)
+		// bundle to prover. But use `proving_status in (1, 2)` will not use the postgres index. So need split the sql.
+		if tmpBundleTask == nil {
+			tmpBundleTask, getTaskError = bp.bundleOrm.GetUnassignedBundle(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
 			if getTaskError != nil {
-				log.Error("failed to get prover task of prover", "proof_type", message.ProofTypeBatch.String(), "taskID", tmpBundleTask.Hash, "key", taskCtx.PublicKey, "Prover_version", taskCtx.ProverVersion, "error", getTaskError)
+				log.Error("failed to get unassigned bundle proving tasks", "height", getTaskParameter.ProverHeight, "err", getTaskError)
 				return nil, ErrCoordinatorInternalFailure
 			}
-			if proverTask == nil || types.ProverProveStatus(proverTask.ProvingStatus) != types.ProverProofInvalid {
-				break
-			}
+		}
+
+		if tmpBundleTask == nil {
+			log.Debug("get empty bundle", "height", getTaskParameter.ProverHeight)
+			return nil, nil
+		}
+
+		// Don't dispatch the same failing job to the same prover
+		proverTask, getTaskError := bp.proverTaskOrm.GetTaskOfProver(ctx.Copy(), message.ProofTypeBatch, tmpBundleTask.Hash, taskCtx.PublicKey, taskCtx.ProverVersion)
+		if getTaskError != nil {
+			log.Error("failed to get prover task of prover", "proof_type", message.ProofTypeBatch.String(), "taskID", tmpBundleTask.Hash, "key", taskCtx.PublicKey, "Prover_version", taskCtx.ProverVersion, "error", getTaskError)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		if proverTask != nil && types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofInvalid {
+			log.Debug("get empty bundle, the prover already failed this task", "height", getTaskParameter.ProverHeight)
+			return nil, nil
 		}
 
 		rowsAffected, updateAttemptsErr := bp.bundleOrm.UpdateBundleAttempts(ctx.Copy(), tmpBundleTask.Hash, tmpBundleTask.ActiveAttempts, tmpBundleTask.TotalAttempts)

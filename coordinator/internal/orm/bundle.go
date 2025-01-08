@@ -54,18 +54,21 @@ func (*Bundle) TableName() string {
 	return "bundle"
 }
 
-// GetUnassignedBundles retrieves unassigned bundle based on the specified limit.
+// GetUnassignedBundle retrieves unassigned bundle based on the specified limit.
 // The returned batch sorts in ascending order by their index.
-func (o *Bundle) GetUnassignedBundles(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8, limit uint64) ([]*Bundle, error) {
-	var bundle []*Bundle
+func (o *Bundle) GetUnassignedBundle(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Bundle, error) {
+	var bundle Bundle
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM bundle WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND batch_proofs_status = %d AND bundle.deleted_at IS NULL ORDER BY bundle.index LIMIT %d;",
-		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.BatchProofsStatusReady), limit)
+	sql := fmt.Sprintf("SELECT * FROM bundle WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND batch_proofs_status = %d AND bundle.deleted_at IS NULL ORDER BY bundle.index LIMIT 1;",
+		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, int(types.BatchProofsStatusReady))
 	err := db.Raw(sql).Scan(&bundle).Error
 	if err != nil {
-		return nil, fmt.Errorf("Batch.GetUnassignedBundles error: %w", err)
+		return nil, fmt.Errorf("Batch.GetUnassignedBundle error: %w", err)
 	}
-	return bundle, nil
+	if bundle.StartBatchHash == "" || bundle.EndBatchHash == "" {
+		return nil, nil
+	}
+	return &bundle, nil
 }
 
 // GetUnassignedBundleCount retrieves unassigned bundle count based on the specified limit.
@@ -83,18 +86,21 @@ func (o *Bundle) GetUnassignedBundleCount(ctx context.Context, maxActiveAttempts
 	return count, nil
 }
 
-// GetAssignedBundles retrieves assigned bundles based on the specified limit.
+// GetAssignedBundle retrieves assigned bundle based on the specified limit.
 // The returned bundle sorts in ascending order by their index.
-func (o *Bundle) GetAssignedBundles(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8, limit uint64) ([]*Bundle, error) {
-	var bundle []*Bundle
+func (o *Bundle) GetAssignedBundle(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Bundle, error) {
+	var bundle Bundle
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM bundle WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND batch_proofs_status = %d AND bundle.deleted_at IS NULL ORDER BY bundle.index LIMIT %d;",
-		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.BatchProofsStatusReady), limit)
+	sql := fmt.Sprintf("SELECT * FROM bundle WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND batch_proofs_status = %d AND bundle.deleted_at IS NULL ORDER BY bundle.index LIMIT 1;",
+		int(types.ProvingTaskAssigned), maxTotalAttempts, maxActiveAttempts, int(types.BatchProofsStatusReady))
 	err := db.Raw(sql).Scan(&bundle).Error
 	if err != nil {
-		return nil, fmt.Errorf("Bundle.GetAssignedBundles error: %w", err)
+		return nil, fmt.Errorf("Bundle.GetAssignedBatch error: %w", err)
 	}
-	return bundle, nil
+	if bundle.StartBatchHash == "" || bundle.EndBatchHash == "" {
+		return nil, nil
+	}
+	return &bundle, nil
 }
 
 // GetProvingStatusByHash retrieves the proving status of a bundle given its hash.
