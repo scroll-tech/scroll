@@ -102,7 +102,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// Don't dispatch the same failing job to the same prover
 		proverTask, getTaskError := cp.proverTaskOrm.GetTaskOfProver(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, taskCtx.PublicKey, taskCtx.ProverVersion)
 		if getTaskError != nil {
-			log.Error("failed to get prover task of prover", "proof_type", message.ProofTypeChunk.String(), "taskID", tmpChunkTask.Hash, "key", taskCtx.PublicKey, "Prover_version", taskCtx.ProverVersion, "error", getTaskError)
+			log.Error("failed to get prover task of prover", "proof type", message.ProofTypeChunk.String(), "task ID", tmpChunkTask.Hash, "key", taskCtx.PublicKey, "prover version", taskCtx.ProverVersion, "error", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if proverTask != nil && types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofInvalid {
