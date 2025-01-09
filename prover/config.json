@@ -11,7 +11,7 @@
       "endpoint": "http://localhost:9999"
     },
     "prover": {
-      "circuit_type": [1,2,3],
+      "circuit_types": [1,2,3],
       "circuit_version": "v0.13.1",
       "local": {
         "low_version_circuit": {
