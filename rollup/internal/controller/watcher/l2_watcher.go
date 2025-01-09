@@ -130,7 +130,7 @@ func (w *L2WatcherClient) getAndStoreBlocks(ctx context.Context, from, to uint64
 		if err != nil {
 			return fmt.Errorf("failed to GetBlockByNumberOrHash: %v. number: %v", err, number)
 		}
-		if block.RowConsumption == nil {
+		if block.RowConsumption == nil && !w.chainCfg.IsEuclid(block.Time()) {
 			w.metrics.fetchNilRowConsumptionBlockTotal.Inc()
 			return fmt.Errorf("fetched block does not contain RowConsumption. number: %v", number)
 		}
