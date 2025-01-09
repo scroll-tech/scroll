@@ -67,7 +67,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 	if strings.HasPrefix(taskCtx.ProverName, ExternalProverNamePrefix) {
 		unassignedBundleCount, getCountError := bp.bundleOrm.GetUnassignedBundleCount(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
 		if getCountError != nil {
-			log.Error("failed to get unassigned batch proving tasks count", "height", getTaskParameter.ProverHeight, "err", err)
+			log.Error("failed to get unassigned batch proving tasks count", "height", getTaskParameter.ProverHeight, "err", getCountError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		// Assign external prover if unassigned task number exceeds threshold
