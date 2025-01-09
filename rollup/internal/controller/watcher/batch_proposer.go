@@ -3,7 +3,6 @@ package watcher
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -245,9 +244,9 @@ func (p *BatchProposer) proposeBatch() error {
 		return err
 	}
 
-	codec := encoding.CodecFromConfig(p.chainCfg, new(big.Int).SetUint64(firstUnbatchedChunk.StartBlockNumber), firstUnbatchedChunk.StartBlockTime)
-	if codec == nil {
-		return fmt.Errorf("failed to retrieve codec for block number %v and time %v", firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime)
+	codec, err := encoding.CodecFromVersion(encoding.CodecVersion(firstUnbatchedChunk.CodecVersion))
+	if codec == nil || err != nil {
+		return fmt.Errorf("failed to retrieve codec for block number %v and time %v: %w", firstUnbatchedChunk.StartBlockNumber, firstUnbatchedChunk.StartBlockTime, err)
 	}
 
 	if codec.Version() < p.minCodecVersion {
