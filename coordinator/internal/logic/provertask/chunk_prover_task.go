@@ -65,7 +65,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if strings.HasPrefix(taskCtx.ProverName, ExternalProverNamePrefix) {
 		unassignedChunkCount, getCountError := cp.chunkOrm.GetUnassignedChunkCount(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight)
 		if getCountError != nil {
-			log.Error("failed to get unassigned chunk proving tasks count", "height", getTaskParameter.ProverHeight, "err", err)
+			log.Error("failed to get unassigned chunk proving tasks count", "height", getTaskParameter.ProverHeight, "err", getCountError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		// Assign external prover if unassigned task number exceeds threshold
