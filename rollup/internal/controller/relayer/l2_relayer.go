@@ -205,6 +205,10 @@ func (r *Layer2Relayer) initializeGenesis() error {
 	}
 
 	err = r.db.Transaction(func(dbTX *gorm.DB) error {
+		if err = r.l2BlockOrm.InsertL2Blocks(r.ctx, chunk.Blocks); err != nil {
+			return fmt.Errorf("failed to insert genesis block: %v", err)
+		}
+
 		var dbChunk *orm.Chunk
 		dbChunk, err = r.chunkOrm.InsertChunk(r.ctx, chunk, encoding.CodecV0, rutils.ChunkMetrics{}, dbTX)
 		if err != nil {
@@ -426,7 +430,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		var blob *kzg4844.Blob
 		codecVersion := encoding.CodecVersion(dbBatch.CodecVersion)
 		switch codecVersion {
-		case encoding.CodecV4:
+		case encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
 			calldata, blob, err = r.constructCommitBatchPayloadCodecV4(dbBatch, dbParentBatch, dbChunks, chunks)
 			if err != nil {
 				log.Error("failed to construct commitBatchWithBlobProof payload for V4", "codecVersion", codecVersion, "index", dbBatch.Index, "err", err)
