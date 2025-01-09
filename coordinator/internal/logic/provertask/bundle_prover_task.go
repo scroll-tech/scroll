@@ -104,7 +104,7 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		// Don't dispatch the same failing job to the same prover
 		proverTask, getTaskError := bp.proverTaskOrm.GetTaskOfProver(ctx.Copy(), message.ProofTypeBatch, tmpBundleTask.Hash, taskCtx.PublicKey, taskCtx.ProverVersion)
 		if getTaskError != nil {
-			log.Error("failed to get prover task of prover", "proof_type", message.ProofTypeBatch.String(), "taskID", tmpBundleTask.Hash, "key", taskCtx.PublicKey, "Prover_version", taskCtx.ProverVersion, "error", getTaskError)
+			log.Error("failed to get prover task of prover", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBundleTask.Hash, "key", taskCtx.PublicKey, "prover version", taskCtx.ProverVersion, "error", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		if proverTask != nil && types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofInvalid {
