@@ -87,8 +87,8 @@ impl DarwinHandler {
         Ok(handler)
     }
 
-    pub fn new(prover_type: ProverType, params_dir: &str, assets_dir: &str) -> Result<Self> {
-        Self::new_multi(vec![prover_type], params_dir, assets_dir)
+    pub fn new(prover_types: Vec<ProverType>, params_dir: &str, assets_dir: &str) -> Result<Self> {
+        Self::new_multi(prover_types, params_dir, assets_dir)
     }
 
     async fn gen_chunk_proof_raw(&self, chunk_trace: Vec<BlockTrace>) -> Result<ChunkProof> {
@@ -214,11 +214,12 @@ mod tests {
     use super::*;
     use crate::zk_circuits_handler::utils::encode_vk;
     use prover_darwin::utils::chunk_trace_to_witness_block;
+    use scroll_proving_sdk::utils::init_tracing;
     use std::{path::PathBuf, sync::LazyLock};
 
     #[ctor::ctor]
     fn init() {
-        crate::utils::log_init(None);
+        init_tracing();
         log::info!("logger initialized");
     }
 

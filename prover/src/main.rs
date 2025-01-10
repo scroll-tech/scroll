@@ -1,16 +1,19 @@
 #![feature(lazy_cell)]
 #![feature(core_intrinsics)]
 
-mod config;
 mod prover;
 mod types;
 mod utils;
-mod version;
 mod zk_circuits_handler;
 
 use clap::{ArgAction, Parser};
 use prover::LocalProver;
-use scroll_proving_sdk::{config::Config, prover::ProverBuilder, utils::init_tracing};
+use scroll_proving_sdk::{
+    config::Config,
+    prover::ProverBuilder,
+    utils::{get_version, init_tracing},
+};
+use utils::get_prover_type;
 
 #[derive(Parser, Debug)]
 #[clap(disable_version_flag = true)]
@@ -35,18 +38,25 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     if args.version {
-        println!("version is {}", version::get_version());
+        println!("version is {}", get_version());
         std::process::exit(0);
     }
 
-    utils::log_init(args.log_file);
-
     let cfg: Config = Config::from_file(args.config_file)?;
+    let mut prover_types = vec![];
+    cfg.prover.circuit_types.iter().for_each(|circuit_type| {
+        if let Some(pt) = get_prover_type(*circuit_type) {
+            if !prover_types.contains(&pt) {
+                prover_types.push(pt);
+            }
+        }
+    });
     let local_prover = LocalProver::new(
         cfg.prover
             .local
             .clone()
             .ok_or_else(|| anyhow::anyhow!("Missing local prover configuration"))?,
+        prover_types,
     );
     let prover = ProverBuilder::new(cfg)
         .with_proving_service(Box::new(local_prover))

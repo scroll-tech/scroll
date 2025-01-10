@@ -1,4 +1,5 @@
 use crate::{
+    types::ProverType,
     utils::get_prover_type,
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
 };
@@ -18,13 +19,14 @@ use std::{
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
-use tokio::{runtime::Runtime, sync::RwLock, task::JoinHandle};
+use tokio::sync::RwLock;
 
 pub struct LocalProver {
     config: LocalProverConfig,
+    prover_types: Vec<ProverType>,
     circuits_handler_provider: RwLock<CircuitsHandlerProvider>,
-    current_task: Arc<Mutex<Option<JoinHandle<Result<String>>>>>,
     next_task_id: Arc<Mutex<u64>>,
+    result: Arc<Mutex<Result<String>>>,
 }
 
 #[async_trait]
@@ -52,26 +54,15 @@ impl ProvingService for LocalProver {
         GetVkResponse { vks, error: None }
     }
     async fn prove(&self, req: ProveRequest) -> ProveResponse {
-        let prover_type = match get_prover_type(req.circuit_type) {
-            Some(pt) => pt,
-            None => {
-                return build_prove_error_response(
-                    String::new(),
-                    TaskStatus::Failed,
-                    None,
-                    String::from("unsupported prover_type"),
-                )
-            }
-        };
         let handler = self
             .circuits_handler_provider
             .write()
             .await
-            .get_circuits_handler(&req.hard_fork_name, prover_type)
+            .get_circuits_handler(&req.hard_fork_name, self.prover_types.clone())
             .context("failed to get circuit handler")
             .unwrap();
 
-        match self.do_prove(req.clone(), handler) {
+        match self.do_prove(req.clone(), handler).await {
             Ok(resp) => resp,
             Err(e) => build_prove_error_response(
                 String::new(),
@@ -83,84 +74,57 @@ impl ProvingService for LocalProver {
     }
 
     async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
-        let mut current_task = self.current_task.lock().unwrap();
-
-        if let Some(handle) = current_task.take() {
-            if handle.is_finished() {
-                let result = Runtime::new().unwrap().block_on(handle).unwrap();
-                match result {
-                    Ok(proof) => {
-                        return build_query_task_response(
-                            req.task_id,
-                            TaskStatus::Success,
-                            Some(proof),
-                            None,
-                        )
-                    }
-                    Err(e) => {
-                        return build_query_task_response(
-                            req.task_id,
-                            TaskStatus::Failed,
-                            None,
-                            Some(e.to_string()),
-                        )
-                    }
-                }
-            } else {
-                *current_task = Some(handle);
-                return build_query_task_response(req.task_id, TaskStatus::Proving, None, None);
-            }
-        } else {
-            let task_id = req.task_id.clone();
-            return build_query_task_response(
+        let mut result_guard = self.result.lock().unwrap();
+        let resp = match result_guard.as_ref() {
+            Ok(proof) => build_query_task_response(
+                req.task_id,
+                TaskStatus::Success,
+                Some(proof.clone()),
+                None,
+            ),
+            Err(e) => build_query_task_response(
                 req.task_id,
                 TaskStatus::Failed,
                 None,
-                Some(String::from(&format!(
-                    "failed to query task, task_id: {}",
-                    task_id
-                ))),
-            );
-        }
+                Some(e.to_string()),
+            ),
+        };
+        *result_guard = Err(anyhow::Error::msg("prover not started"));
+        resp
     }
 }
 
 impl LocalProver {
-    pub fn new(config: LocalProverConfig) -> Self {
+    pub fn new(config: LocalProverConfig, prover_types: Vec<ProverType>) -> Self {
         let circuits_handler_provider = CircuitsHandlerProvider::new(config.clone())
             .context("failed to create circuits handler provider")
             .unwrap();
 
         Self {
             config,
+            prover_types,
             circuits_handler_provider: RwLock::new(circuits_handler_provider),
-            current_task: Arc::new(Mutex::new(None)),
             next_task_id: Arc::new(Mutex::new(0)),
+            result: Arc::new(Mutex::new(Err(anyhow::Error::msg("prover not started")))),
         }
     }
 
-    fn do_prove(
+    async fn do_prove(
         &self,
         req: ProveRequest,
         handler: Arc<Box<dyn CircuitsHandler>>,
     ) -> Result<ProveResponse> {
-        let mut current_task = self.current_task.lock().unwrap();
-        if current_task.is_some() {
-            return Err(anyhow::Error::msg("prover working on previous task"));
-        }
-
         let task_id = {
             let mut next_task_id = self.next_task_id.lock().unwrap();
             *next_task_id += 1;
             *next_task_id
         };
 
-        let req_clone = req.clone();
-        let handle = tokio::spawn(async move { handler.get_proof_data(req_clone).await });
-        *current_task = Some(handle);
-
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
+
+        let result = handler.get_proof_data(req.clone()).await;
+        *self.result.lock().unwrap() = result;
 
         Ok(ProveResponse {
             task_id: task_id.to_string(),

@@ -2,7 +2,7 @@ mod common;
 mod darwin;
 mod darwin_v2;
 
-use crate::{config::AssetsDirEnvConfig, types::ProverType, utils::get_circuit_types};
+use crate::{types::ProverType, utils::get_circuit_types};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use darwin::DarwinHandler;
@@ -28,15 +28,15 @@ pub trait CircuitsHandler: Send + Sync {
     async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String>;
 }
 
-type CircuitsHandlerBuilder =
-    fn(prover_type: ProverType, config: &LocalProverConfig) -> Result<Box<dyn CircuitsHandler>>;
+type CircuitsHandlerBuilder = fn(
+    prover_types: Vec<ProverType>,
+    config: &LocalProverConfig,
+) -> Result<Box<dyn CircuitsHandler>>;
 
 pub struct CircuitsHandlerProvider {
     config: LocalProverConfig,
     circuits_handler_builder_map: HashMap<HardForkName, CircuitsHandlerBuilder>,
-
     current_fork_name: Option<HardForkName>,
-    current_prover_type: Option<ProverType>,
     current_circuit: Option<Arc<Box<dyn CircuitsHandler>>>,
 }
 
@@ -44,22 +44,16 @@ impl CircuitsHandlerProvider {
     pub fn new(config: LocalProverConfig) -> Result<Self> {
         let mut m: HashMap<HardForkName, CircuitsHandlerBuilder> = HashMap::new();
 
-        if let Err(e) = AssetsDirEnvConfig::init() {
-            log::error!("AssetsDirEnvConfig init failed: {:#}", e);
-            std::process::exit(-2);
-        }
-
         fn handler_builder(
-            prover_type: ProverType,
+            prover_types: Vec<ProverType>,
             config: &LocalProverConfig,
         ) -> Result<Box<dyn CircuitsHandler>> {
             log::info!(
                 "now init zk circuits handler, hard_fork_name: {}",
                 &config.low_version_circuit.hard_fork_name
             );
-            AssetsDirEnvConfig::enable_first();
             DarwinHandler::new(
-                prover_type,
+                prover_types,
                 &config.low_version_circuit.params_path,
                 &config.low_version_circuit.assets_path,
             )
@@ -71,16 +65,15 @@ impl CircuitsHandlerProvider {
         );
 
         fn next_handler_builder(
-            prover_type: ProverType,
+            prover_types: Vec<ProverType>,
             config: &LocalProverConfig,
         ) -> Result<Box<dyn CircuitsHandler>> {
             log::info!(
                 "now init zk circuits handler, hard_fork_name: {}",
                 &config.high_version_circuit.hard_fork_name
             );
-            AssetsDirEnvConfig::enable_second();
             DarwinV2Handler::new(
-                prover_type,
+                prover_types,
                 &config.high_version_circuit.params_path,
                 &config.high_version_circuit.assets_path,
             )
@@ -96,7 +89,6 @@ impl CircuitsHandlerProvider {
             config,
             circuits_handler_builder_map: m,
             current_fork_name: None,
-            current_prover_type: None,
             current_circuit: None,
         };
 
@@ -106,7 +98,7 @@ impl CircuitsHandlerProvider {
     pub fn get_circuits_handler(
         &mut self,
         hard_fork_name: &String,
-        prover_type: ProverType,
+        prover_types: Vec<ProverType>,
     ) -> Result<Arc<Box<dyn CircuitsHandler>>> {
         match &self.current_fork_name {
             Some(fork_name) if fork_name == hard_fork_name => {
@@ -123,13 +115,12 @@ impl CircuitsHandlerProvider {
                 );
                 if let Some(builder) = self.circuits_handler_builder_map.get(hard_fork_name) {
                     log::info!("building circuits handler for {hard_fork_name}");
-                    let handler = builder(prover_type, &self.config)
+                    let handler = builder(prover_types, &self.config)
                         .expect("failed to build circuits handler");
                     self.current_fork_name = Some(hard_fork_name.clone());
-                    self.current_prover_type = Some(prover_type);
-                    let rc_handler = Arc::new(handler);
-                    self.current_circuit = Some(rc_handler.clone());
-                    Ok(rc_handler)
+                    let arc_handler = Arc::new(handler);
+                    self.current_circuit = Some(arc_handler.clone());
+                    Ok(arc_handler)
                 } else {
                     bail!("missing builder, there must be something wrong.")
                 }
@@ -144,10 +135,10 @@ impl CircuitsHandlerProvider {
     ) -> Vec<String> {
         let mut vks: Vec<String> = Vec::new();
         for (hard_fork_name, build) in self.circuits_handler_builder_map.iter() {
-            for prover_type in prover_types.iter() {
-                let handler =
-                    build(*prover_type, config).expect("failed to build circuits handler");
+            let handler =
+                build(prover_types.clone(), config).expect("failed to build circuits handler");
 
+            for prover_type in prover_types.iter() {
                 for task_type in get_circuit_types(*prover_type).into_iter() {
                     let vk = handler
                         .get_vk(task_type)
