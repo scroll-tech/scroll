@@ -1,6 +1,7 @@
 #![feature(lazy_cell)]
 #![feature(core_intrinsics)]
 
+mod config;
 mod prover;
 mod types;
 mod utils;

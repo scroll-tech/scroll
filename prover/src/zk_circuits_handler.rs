@@ -2,7 +2,7 @@ mod common;
 mod darwin;
 mod darwin_v2;
 
-use crate::{types::ProverType, utils::get_circuit_types};
+use crate::{config::AssetsDirEnvConfig, types::ProverType, utils::get_circuit_types};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use darwin::DarwinHandler;
@@ -44,6 +44,11 @@ impl CircuitsHandlerProvider {
     pub fn new(config: LocalProverConfig) -> Result<Self> {
         let mut m: HashMap<HardForkName, CircuitsHandlerBuilder> = HashMap::new();
 
+        if let Err(e) = AssetsDirEnvConfig::init() {
+            log::error!("AssetsDirEnvConfig init failed: {:#}", e);
+            std::process::exit(-2);
+        }
+
         fn handler_builder(
             prover_types: Vec<ProverType>,
             config: &LocalProverConfig,
@@ -52,6 +57,7 @@ impl CircuitsHandlerProvider {
                 "now init zk circuits handler, hard_fork_name: {}",
                 &config.low_version_circuit.hard_fork_name
             );
+            AssetsDirEnvConfig::enable_first();
             DarwinHandler::new(
                 prover_types,
                 &config.low_version_circuit.params_path,
@@ -72,6 +78,7 @@ impl CircuitsHandlerProvider {
                 "now init zk circuits handler, hard_fork_name: {}",
                 &config.high_version_circuit.hard_fork_name
             );
+            AssetsDirEnvConfig::enable_second();
             DarwinV2Handler::new(
                 prover_types,
                 &config.high_version_circuit.params_path,
