@@ -97,5 +97,9 @@ func (a *AuthController) IdentityHandler(c *gin.Context) interface{} {
 		c.Set(types.HardForkName, hardForkName)
 	}
 
+	if providerType, ok := claims[types.ProverProviderTypeKey]; ok {
+		c.Set(types.ProverProviderTypeKey, providerType)
+	}
+
 	return nil
 }
