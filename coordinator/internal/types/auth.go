@@ -18,6 +18,8 @@ const (
 	ProverName = "prover_name"
 	// ProverVersion the prover version for context
 	ProverVersion = "prover_version"
+	// ProverProviderTypeKey the prover provider type for context
+	ProverProviderTypeKey = "prover_provider_type"
 	// HardForkName the hard fork name for context
 	HardForkName = "hard_fork_name"
 )
@@ -30,11 +32,12 @@ type LoginSchema struct {
 
 // Message the login message struct
 type Message struct {
-	Challenge     string       `form:"challenge" json:"challenge" binding:"required"`
-	ProverVersion string       `form:"prover_version" json:"prover_version" binding:"required"`
-	ProverName    string       `form:"prover_name" json:"prover_name" binding:"required"`
-	ProverTypes   []ProverType `form:"prover_types" json:"prover_types"`
-	VKs           []string     `form:"vks" json:"vks"`
+	Challenge          string             `form:"challenge" json:"challenge" binding:"required"`
+	ProverVersion      string             `form:"prover_version" json:"prover_version" binding:"required"`
+	ProverName         string             `form:"prover_name" json:"prover_name" binding:"required"`
+	ProverProviderType ProverProviderType `form:"prover_provider_type" json:"prover_provider_type" binding:"required"`
+	ProverTypes        []ProverType       `form:"prover_types" json:"prover_types"`
+	VKs                []string           `form:"vks" json:"vks"`
 }
 
 // LoginParameterWithHardForkName constructs new payload for login

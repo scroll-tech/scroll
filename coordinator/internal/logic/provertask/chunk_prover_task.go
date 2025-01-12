@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +21,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+	cutils "scroll-tech/coordinator/internal/utils"
 )
 
 // ChunkProverTask the chunk prover task
@@ -62,7 +62,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	maxActiveAttempts := cp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := cp.cfg.ProverManager.SessionAttempts
-	if strings.HasPrefix(taskCtx.ProverName, ExternalProverNamePrefix) {
+	if taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) {
 		unassignedChunkCount, getCountError := cp.chunkOrm.GetUnassignedChunkCount(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight)
 		if getCountError != nil {
 			log.Error("failed to get unassigned chunk proving tasks count", "height", getTaskParameter.ProverHeight, "err", err)
@@ -100,15 +100,19 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 
 		// Don't dispatch the same failing job to the same prover
-		proverTask, getTaskError := cp.proverTaskOrm.GetTaskOfProver(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, taskCtx.PublicKey, taskCtx.ProverVersion)
+		proverTasks, getTaskError := cp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, 2)
 		if getTaskError != nil {
-			log.Error("failed to get prover task of prover", "proof_type", message.ProofTypeChunk.String(), "taskID", tmpChunkTask.Hash, "key", taskCtx.PublicKey, "Prover_version", taskCtx.ProverVersion, "error", getTaskError)
+			log.Error("failed to get prover tasks", "proof_type", message.ProofTypeChunk.String(), "taskID", tmpChunkTask.Hash, "error", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
-		if proverTask != nil && types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofInvalid {
-			log.Debug("get empty chunk, the prover already failed this task", "height", getTaskParameter.ProverHeight)
-			return nil, nil
+		for i := 0; i < len(proverTasks); i++ {
+			if proverTasks[i].ProverName == taskCtx.ProverName ||
+				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+				log.Debug("get empty chunk, the prover already failed this task", "height", getTaskParameter.ProverHeight)
+				return nil, nil
+			}
 		}
+
 		rowsAffected, updateAttemptsErr := cp.chunkOrm.UpdateChunkAttempts(ctx.Copy(), tmpChunkTask.Index, tmpChunkTask.ActiveAttempts, tmpChunkTask.TotalAttempts)
 		if updateAttemptsErr != nil {
 			log.Error("failed to update chunk attempts", "height", getTaskParameter.ProverHeight, "err", updateAttemptsErr)

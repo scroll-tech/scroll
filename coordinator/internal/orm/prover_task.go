@@ -117,6 +117,27 @@ func (o *ProverTask) GetProverTasksByHashes(ctx context.Context, taskType messag
 	return proverTasks, nil
 }
 
+// GetFailedProverTasksByHash retrieves the failed ProverTask records associated with the specified hash.
+// The returned prover task objects are sorted in descending order by their ids.
+func (o *ProverTask) GetFailedProverTasksByHash(ctx context.Context, taskType message.ProofType, hash string, limit int) ([]*ProverTask, error) {
+	db := o.db.WithContext(ctx)
+	db = db.Model(&ProverTask{})
+	db = db.Where("task_type", int(taskType))
+	db = db.Where("task_id ?", hash)
+	db = db.Where("proving_status = ?", int(types.ProverProofInvalid))
+	db = db.Order("id desc")
+
+	if limit != 0 {
+		db = db.Limit(limit)
+	}
+
+	var proverTasks []*ProverTask
+	if err := db.Find(&proverTasks).Error; err != nil {
+		return nil, fmt.Errorf("ProverTask.GetFailedProverTasksByHash error: %w, hash: %v", err, hash)
+	}
+	return proverTasks, nil
+}
+
 // GetProverTaskByUUIDAndPublicKey get prover task taskID by uuid and public key
 func (o *ProverTask) GetProverTaskByUUIDAndPublicKey(ctx context.Context, uuid, publicKey string) (*ProverTask, error) {
 	db := o.db.WithContext(ctx)
@@ -146,24 +167,6 @@ func (o *ProverTask) GetAssignedTaskOfOtherProvers(ctx context.Context, taskType
 		return nil, fmt.Errorf("ProverTask.GetAssignedProverTask error: %w, taskID: %v", err, taskID)
 	}
 	return proverTasks, nil
-}
-
-// GetTaskOfOtherProvers get the chunk/batch task of prover
-func (o *ProverTask) GetTaskOfProver(ctx context.Context, taskType message.ProofType, taskID, proverPublicKey, proverVersion string) (*ProverTask, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&ProverTask{})
-	db = db.Where("task_type", int(taskType))
-	db = db.Where("task_id", taskID)
-	db = db.Where("prover_public_key", proverPublicKey)
-	db = db.Where("prover_version", proverVersion)
-	db = db.Limit(1)
-
-	var proverTask ProverTask
-	err := db.Find(&proverTask).Error
-	if err != nil {
-		return nil, fmt.Errorf("ProverTask.GetTaskOfProver error: %w, taskID: %v, publicKey:%s", err, taskID, proverPublicKey)
-	}
-	return &proverTask, nil
 }
 
 // GetProvingStatusByTaskID retrieves the proving status of a prover task

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +22,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+	cutils "scroll-tech/coordinator/internal/utils"
 )
 
 // BatchProverTask is prover task implement for batch proof
@@ -64,7 +64,7 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
-	if strings.HasPrefix(taskCtx.ProverName, ExternalProverNamePrefix) {
+	if taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) {
 		unassignedBatchCount, getCountError := bp.batchOrm.GetUnassignedBatchCount(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
 		if getCountError != nil {
 			log.Error("failed to get unassigned batch proving tasks count", "height", getTaskParameter.ProverHeight, "err", err)
@@ -102,14 +102,17 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		}
 
 		// Don't dispatch the same failing job to the same prover
-		proverTask, getTaskError := bp.proverTaskOrm.GetTaskOfProver(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, taskCtx.PublicKey, taskCtx.ProverVersion)
+		proverTasks, getTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
 		if getTaskError != nil {
-			log.Error("failed to get prover task of prover", "proof_type", message.ProofTypeBatch.String(), "taskID", tmpBatchTask.Hash, "key", taskCtx.PublicKey, "Prover_version", taskCtx.ProverVersion, "error", getTaskError)
+			log.Error("failed to get prover tasks", "proof_type", message.ProofTypeBatch.String(), "taskID", tmpBatchTask.Hash, "error", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
-		if proverTask != nil && types.ProverProveStatus(proverTask.ProvingStatus) == types.ProverProofInvalid {
-			log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight)
-			return nil, nil
+		for i := 0; i < len(proverTasks); i++ {
+			if proverTasks[i].ProverName == taskCtx.ProverName ||
+				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+				log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight)
+				return nil, nil
+			}
 		}
 
 		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx.Copy(), tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)
