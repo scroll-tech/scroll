@@ -65,7 +65,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 	if taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) {
 		unassignedChunkCount, getCountError := cp.chunkOrm.GetUnassignedChunkCount(ctx.Copy(), maxActiveAttempts, maxTotalAttempts, getTaskParameter.ProverHeight)
 		if getCountError != nil {
-			log.Error("failed to get unassigned chunk proving tasks count", "height", getTaskParameter.ProverHeight, "err", err)
+			log.Error("failed to get unassigned chunk proving tasks count", "height", getTaskParameter.ProverHeight, "err", getCountError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		// Assign external prover if unassigned task number exceeds threshold
@@ -102,7 +102,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		// Don't dispatch the same failing job to the same prover
 		proverTasks, getTaskError := cp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeChunk, tmpChunkTask.Hash, 2)
 		if getTaskError != nil {
-			log.Error("failed to get prover tasks", "proof_type", message.ProofTypeChunk.String(), "taskID", tmpChunkTask.Hash, "error", getTaskError)
+			log.Error("failed to get prover tasks", "proof type", message.ProofTypeChunk.String(), "task ID", tmpChunkTask.Hash, "error", getTaskError)
 			return nil, ErrCoordinatorInternalFailure
 		}
 		for i := 0; i < len(proverTasks); i++ {
