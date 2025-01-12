@@ -27,11 +27,6 @@ var (
 	getTaskCounterVec      *prometheus.CounterVec = nil
 )
 
-var (
-	// ExternalProverNamePrefix prefix of prover name
-	ExternalProverNamePrefix = "external"
-)
-
 // ProverTask the interface of a collector who send data to prover
 type ProverTask interface {
 	Assign(ctx *gin.Context, getTaskParameter *coordinatorType.GetTaskParameter) (*coordinatorType.GetTaskSchema, error)
