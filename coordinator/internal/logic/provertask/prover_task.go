@@ -81,7 +81,7 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 	if !ProverProviderTypeExist {
 		return nil, errors.New("get prover provider type from context failed")
 	}
-	ptc.ProverProviderType = ProverProviderType.(uint8)
+	ptc.ProverProviderType = uint8(ProverProviderType.(float64))
 
 	hardForkNamesStr, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
 	if !hardForkNameExist {

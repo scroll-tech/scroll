@@ -123,7 +123,7 @@ func (o *ProverTask) GetFailedProverTasksByHash(ctx context.Context, taskType me
 	db := o.db.WithContext(ctx)
 	db = db.Model(&ProverTask{})
 	db = db.Where("task_type", int(taskType))
-	db = db.Where("task_id ?", hash)
+	db = db.Where("task_id", hash)
 	db = db.Where("proving_status = ?", int(types.ProverProofInvalid))
 	db = db.Order("id desc")
 
