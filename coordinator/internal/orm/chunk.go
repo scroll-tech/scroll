@@ -88,7 +88,7 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, maxActiveAttempts, maxTo
 	return &chunk, nil
 }
 
-// GetUnassignedChunkCount retrieves unassigned chunk count based on the specified limit.
+// GetUnassignedChunkCount retrieves unassigned chunk count.
 func (o *Chunk) GetUnassignedChunkCount(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8, height uint64) (int64, error) {
 	var count int64
 	db := o.db.WithContext(ctx)

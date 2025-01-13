@@ -182,7 +182,7 @@ func (o *ProverTask) GetTaskOfProver(ctx context.Context, taskType message.Proof
 	var proverTask ProverTask
 	err := db.Find(&proverTask).Error
 	if err != nil {
-		return nil, fmt.Errorf("ProverTask.GetTaskOfProver error: %w, taskID: %v, publicKey:%s", err, taskID, proverPublicKey)
+		return nil, fmt.Errorf("ProverTask.GetTaskOfProver error: %w, taskID: %v, publicKey: %s", err, taskID, proverPublicKey)
 	}
 	return &proverTask, nil
 }

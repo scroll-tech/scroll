@@ -95,7 +95,7 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTo
 	return &batch, nil
 }
 
-// GetUnassignedBatchCount retrieves unassigned batch count based on the specified limit.
+// GetUnassignedBatchCount retrieves unassigned batch count.
 func (o *Batch) GetUnassignedBatchCount(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (int64, error) {
 	var count int64
 	db := o.db.WithContext(ctx)

@@ -71,7 +71,7 @@ func (o *Bundle) GetUnassignedBundle(ctx context.Context, maxActiveAttempts, max
 	return &bundle, nil
 }
 
-// GetUnassignedBundleCount retrieves unassigned bundle count based on the specified limit.
+// GetUnassignedBundleCount retrieves unassigned bundle count.
 func (o *Bundle) GetUnassignedBundleCount(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (int64, error) {
 	var count int64
 	db := o.db.WithContext(ctx)
