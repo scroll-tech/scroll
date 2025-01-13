@@ -79,6 +79,7 @@ func (o *Bundle) GetUnassignedBundleCount(ctx context.Context, maxActiveAttempts
 	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
+	db = db.Where("batch_proofs_status = ?", int(types.BatchProofsStatusReady))
 	db = db.Where("bundle.deleted_at IS NULL")
 	if err := db.Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("Bundle.GetUnassignedBundleCount error: %w", err)

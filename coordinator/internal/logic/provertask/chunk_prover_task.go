@@ -106,7 +106,7 @@ func (cp *ChunkProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 			return nil, ErrCoordinatorInternalFailure
 		}
 		for i := 0; i < len(proverTasks); i++ {
-			if proverTasks[i].ProverName == taskCtx.ProverName ||
+			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
 				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
 				log.Debug("get empty chunk, the prover already failed this task", "height", getTaskParameter.ProverHeight)
 				return nil, nil

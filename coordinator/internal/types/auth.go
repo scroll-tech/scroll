@@ -35,7 +35,7 @@ type Message struct {
 	Challenge          string             `form:"challenge" json:"challenge" binding:"required"`
 	ProverVersion      string             `form:"prover_version" json:"prover_version" binding:"required"`
 	ProverName         string             `form:"prover_name" json:"prover_name" binding:"required"`
-	ProverProviderType ProverProviderType `form:"prover_provider_type" json:"prover_provider_type" binding:"required"`
+	ProverProviderType ProverProviderType `form:"prover_provider_type" json:"prover_provider_type,omitempty"`
 	ProverTypes        []ProverType       `form:"prover_types" json:"prover_types"`
 	VKs                []string           `form:"vks" json:"vks"`
 }

@@ -107,9 +107,15 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 		}
 	}
 
+	
 	if login.Message.ProverProviderType != types.ProverProviderTypeInternal && login.Message.ProverProviderType != types.ProverProviderTypeExternal {
-		log.Error("invalid prover_provider_type", "value", login.Message.ProverProviderType, "prover name", login.Message.ProverName, "prover_version", login.Message.ProverVersion)
-		return errors.New("invalid prover provider type.")
+		// for backward compatibility, set ProverProviderType as internal
+		if login.Message.ProverProviderType == types.ProverProviderTypeUndefined {
+			login.Message.ProverProviderType = types.ProverProviderTypeInternal
+		} else {
+			log.Error("invalid prover_provider_type", "value", login.Message.ProverProviderType, "prover name", login.Message.ProverName, "prover_version", login.Message.ProverVersion)
+			return errors.New("invalid prover provider type.")
+		}
 	}
 
 	return nil
