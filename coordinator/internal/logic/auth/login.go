@@ -107,7 +107,6 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 		}
 	}
 
-	
 	if login.Message.ProverProviderType != types.ProverProviderTypeInternal && login.Message.ProverProviderType != types.ProverProviderTypeExternal {
 		// for backward compatibility, set ProverProviderType as internal
 		if login.Message.ProverProviderType == types.ProverProviderTypeUndefined {
