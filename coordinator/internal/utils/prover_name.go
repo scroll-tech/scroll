@@ -10,6 +10,6 @@ func IsExternalProverNameMatch(localName, remoteName string) bool {
 		return false
 	}
 
-	// note the name of cloud prover is in fact in the format of "cloud_prover_{provider-name}_index"
+	// note the name of cloud prover is in the format of "cloud_prover_{provider-name}_index"
 	return local[0] == remote[0] && local[1] == remote[1] && local[2] == remote[2]
 }

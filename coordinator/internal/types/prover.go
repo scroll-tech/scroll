@@ -51,7 +51,7 @@ func (r ProverProviderType) String() string {
 	case ProverProviderTypeExternal:
 		return "prover provider type external"
 	default:
-		return fmt.Sprintf("prover provider type type: %d", r)
+		return fmt.Sprintf("prover provider type: %d", r)
 	}
 }
 
