@@ -2,6 +2,8 @@ package utils
 
 import "strings"
 
+// IsExternalProverNameMatch checks if the local and remote external prover names belong to the same provider.
+// It returns true if they do, otherwise false.
 func IsExternalProverNameMatch(localName, remoteName string) bool {
 	local := strings.Split(localName, "_")
 	remote := strings.Split(remoteName, "_")
