@@ -47,10 +47,11 @@ type BaseProverTask struct {
 }
 
 type proverTaskContext struct {
-	PublicKey     string
-	ProverName    string
-	ProverVersion string
-	HardForkNames map[string]struct{}
+	PublicKey          string
+	ProverName         string
+	ProverVersion      string
+	ProverProviderType uint8
+	HardForkNames      map[string]struct{}
 }
 
 // checkParameter check the prover task parameter illegal
@@ -75,6 +76,12 @@ func (b *BaseProverTask) checkParameter(ctx *gin.Context) (*proverTaskContext, e
 		return nil, errors.New("get prover version from context failed")
 	}
 	ptc.ProverVersion = proverVersion.(string)
+
+	ProverProviderType, ProverProviderTypeExist := ctx.Get(coordinatorType.ProverProviderTypeKey)
+	if !ProverProviderTypeExist {
+		return nil, errors.New("get prover provider type from context failed")
+	}
+	ptc.ProverProviderType = uint8(ProverProviderType.(float64))
 
 	hardForkNamesStr, hardForkNameExist := ctx.Get(coordinatorType.HardForkName)
 	if !hardForkNameExist {

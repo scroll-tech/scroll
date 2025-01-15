@@ -21,6 +21,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+	cutils "scroll-tech/coordinator/internal/utils"
 )
 
 // BundleProverTask is prover task implement for bundle proof
@@ -63,6 +64,18 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
+	if taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) {
+		unassignedBundleCount, getCountError := bp.bundleOrm.GetUnassignedBundleCount(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
+		if getCountError != nil {
+			log.Error("failed to get unassigned bundle proving tasks count", "height", getTaskParameter.ProverHeight, "err", getCountError)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		// Assign external prover if unassigned task number exceeds threshold
+		if unassignedBundleCount < bp.cfg.ProverManager.ExternalProverThreshold {
+			return nil, nil
+		}
+	}
+
 	var bundleTask *orm.Bundle
 	for i := 0; i < 5; i++ {
 		var getTaskError error
@@ -86,6 +99,20 @@ func (bp *BundleProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinat
 		if tmpBundleTask == nil {
 			log.Debug("get empty bundle", "height", getTaskParameter.ProverHeight)
 			return nil, nil
+		}
+
+		// Don't dispatch the same failing job to the same prover
+		proverTasks, getTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBundle, tmpBundleTask.Hash, 2)
+		if getTaskError != nil {
+			log.Error("failed to get prover tasks", "proof type", message.ProofTypeBundle.String(), "task ID", tmpBundleTask.Hash, "error", getTaskError)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		for i := 0; i < len(proverTasks); i++ {
+			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
+				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+				log.Debug("get empty bundle, the prover already failed this task", "height", getTaskParameter.ProverHeight)
+				return nil, nil
+			}
 		}
 
 		rowsAffected, updateAttemptsErr := bp.bundleOrm.UpdateBundleAttempts(ctx.Copy(), tmpBundleTask.Hash, tmpBundleTask.ActiveAttempts, tmpBundleTask.TotalAttempts)

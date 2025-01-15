@@ -95,6 +95,22 @@ func (o *Batch) GetUnassignedBatch(ctx context.Context, maxActiveAttempts, maxTo
 	return &batch, nil
 }
 
+// GetUnassignedBatchCount retrieves unassigned batch count.
+func (o *Batch) GetUnassignedBatchCount(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (int64, error) {
+	var count int64
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Batch{})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
+	db = db.Where("total_attempts < ?", maxTotalAttempts)
+	db = db.Where("active_attempts < ?", maxActiveAttempts)
+	db = db.Where("chunk_proofs_status = ?", int(types.ChunkProofsStatusReady))
+	db = db.Where("batch.deleted_at IS NULL")
+	if err := db.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("Batch.GetUnassignedBatchCount error: %w", err)
+	}
+	return count, nil
+}
+
 // GetAssignedBatch retrieves assigned batch based on the specified limit.
 // The returned batches are sorted in ascending order by their index.
 func (o *Batch) GetAssignedBatch(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Batch, error) {

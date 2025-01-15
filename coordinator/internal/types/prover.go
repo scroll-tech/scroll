@@ -40,3 +40,26 @@ func MakeProverType(proofType message.ProofType) ProverType {
 		return ProverTypeUndefined
 	}
 }
+
+// ProverProviderType represents the type of prover provider.
+type ProverProviderType uint8
+
+func (r ProverProviderType) String() string {
+	switch r {
+	case ProverProviderTypeInternal:
+		return "prover provider type internal"
+	case ProverProviderTypeExternal:
+		return "prover provider type external"
+	default:
+		return fmt.Sprintf("prover provider type: %d", r)
+	}
+}
+
+const (
+	// ProverProviderTypeUndefined is an unknown prover provider type
+	ProverProviderTypeUndefined ProverProviderType = iota
+	// ProverProviderTypeInternal is an internal prover provider type
+	ProverProviderTypeInternal
+	// ProverProviderTypeExternal is an external prover provider type
+	ProverProviderTypeExternal
+)

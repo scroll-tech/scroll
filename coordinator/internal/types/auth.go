@@ -18,6 +18,8 @@ const (
 	ProverName = "prover_name"
 	// ProverVersion the prover version for context
 	ProverVersion = "prover_version"
+	// ProverProviderTypeKey the prover provider type for context
+	ProverProviderTypeKey = "prover_provider_type"
 	// HardForkName the hard fork name for context
 	HardForkName = "hard_fork_name"
 )
@@ -28,13 +30,22 @@ type LoginSchema struct {
 	Token string    `json:"token"`
 }
 
+type MessageWithoutProverProviderType struct {
+	Challenge     string       `json:"challenge"`
+	ProverVersion string       `json:"prover_version"`
+	ProverName    string       `json:"prover_name"`
+	ProverTypes   []ProverType `json:"prover_types"`
+	VKs           []string     `json:"vks"`
+}
+
 // Message the login message struct
 type Message struct {
-	Challenge     string       `form:"challenge" json:"challenge" binding:"required"`
-	ProverVersion string       `form:"prover_version" json:"prover_version" binding:"required"`
-	ProverName    string       `form:"prover_name" json:"prover_name" binding:"required"`
-	ProverTypes   []ProverType `form:"prover_types" json:"prover_types"`
-	VKs           []string     `form:"vks" json:"vks"`
+	Challenge          string             `form:"challenge" json:"challenge" binding:"required"`
+	ProverVersion      string             `form:"prover_version" json:"prover_version" binding:"required"`
+	ProverName         string             `form:"prover_name" json:"prover_name" binding:"required"`
+	ProverProviderType ProverProviderType `form:"prover_provider_type" json:"prover_provider_type,omitempty"`
+	ProverTypes        []ProverType       `form:"prover_types" json:"prover_types"`
+	VKs                []string           `form:"vks" json:"vks"`
 }
 
 // LoginParameterWithHardForkName constructs new payload for login
@@ -53,7 +64,7 @@ type LoginParameter struct {
 // SignWithKey auth message with private key and set public key in auth message's Identity
 func (a *LoginParameter) SignWithKey(priv *ecdsa.PrivateKey) error {
 	// Hash identity content
-	hash, err := a.Message.Hash()
+	hash, err := Hash(a.Message)
 	if err != nil {
 		return err
 	}
@@ -70,7 +81,14 @@ func (a *LoginParameter) SignWithKey(priv *ecdsa.PrivateKey) error {
 
 // Verify verifies the message of auth.
 func (a *LoginParameter) Verify() (bool, error) {
-	hash, err := a.Message.Hash()
+	var hash []byte
+	var err error
+	if a.Message.ProverProviderType == ProverProviderTypeUndefined {
+		// for backward compatibility, calculate hash without ProverProviderType
+		hash, err = Hash(a.Message.ToMessageWithoutProverProviderType())
+	} else {
+		hash, err = Hash(a.Message)
+	}
 	if err != nil {
 		return false, err
 	}
@@ -85,15 +103,14 @@ func (a *LoginParameter) Verify() (bool, error) {
 	return isValid, nil
 }
 
-// Hash returns the hash of the auth message, which should be the message used
-// to construct the Signature.
-func (i *Message) Hash() ([]byte, error) {
-	byt, err := rlp.EncodeToBytes(i)
-	if err != nil {
-		return nil, err
+func (m *Message) ToMessageWithoutProverProviderType() MessageWithoutProverProviderType {
+	return MessageWithoutProverProviderType{
+		Challenge:     m.Challenge,
+		ProverVersion: m.ProverVersion,
+		ProverName:    m.ProverName,
+		ProverTypes:   m.ProverTypes,
+		VKs:           m.VKs,
 	}
-	hash := crypto.Keccak256Hash(byt)
-	return hash[:], nil
 }
 
 // DecodeAndUnmarshalPubkey decodes a hex-encoded public key and unmarshal it into an ecdsa.PublicKey
@@ -110,4 +127,15 @@ func (i *Message) DecodeAndUnmarshalPubkey(pubKeyHex string) (*ecdsa.PublicKey, 
 		return nil, err
 	}
 	return pubKey, nil
+}
+
+// Hash returns the hash of the auth message, which should be the message used
+// to construct the Signature.
+func Hash(i interface{}) ([]byte, error) {
+	byt, err := rlp.EncodeToBytes(i)
+	if err != nil {
+		return nil, err
+	}
+	hash := crypto.Keccak256Hash(byt)
+	return hash[:], nil
 }
