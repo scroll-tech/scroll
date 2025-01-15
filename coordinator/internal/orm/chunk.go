@@ -88,6 +88,22 @@ func (o *Chunk) GetUnassignedChunk(ctx context.Context, maxActiveAttempts, maxTo
 	return &chunk, nil
 }
 
+// GetUnassignedChunkCount retrieves unassigned chunk count.
+func (o *Chunk) GetUnassignedChunkCount(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8, height uint64) (int64, error) {
+	var count int64
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Chunk{})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
+	db = db.Where("total_attempts < ?", maxTotalAttempts)
+	db = db.Where("active_attempts < ?", maxActiveAttempts)
+	db = db.Where("end_block_number <= ?", height)
+	db = db.Where("chunk.deleted_at IS NULL")
+	if err := db.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("Chunk.GetUnassignedChunkCount error: %w", err)
+	}
+	return count, nil
+}
+
 // GetAssignedChunk retrieves assigned chunk based on the specified limit.
 // The returned chunks are sorted in ascending order by their index.
 func (o *Chunk) GetAssignedChunk(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8, height uint64) (*Chunk, error) {

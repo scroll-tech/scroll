@@ -22,6 +22,7 @@ import (
 	"scroll-tech/coordinator/internal/config"
 	"scroll-tech/coordinator/internal/orm"
 	coordinatorType "scroll-tech/coordinator/internal/types"
+	cutils "scroll-tech/coordinator/internal/utils"
 )
 
 // BatchProverTask is prover task implement for batch proof
@@ -63,6 +64,18 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 
 	maxActiveAttempts := bp.cfg.ProverManager.ProversPerSession
 	maxTotalAttempts := bp.cfg.ProverManager.SessionAttempts
+	if taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) {
+		unassignedBatchCount, getCountError := bp.batchOrm.GetUnassignedBatchCount(ctx.Copy(), maxActiveAttempts, maxTotalAttempts)
+		if getCountError != nil {
+			log.Error("failed to get unassigned batch proving tasks count", "height", getTaskParameter.ProverHeight, "err", getCountError)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		// Assign external prover if unassigned task number exceeds threshold
+		if unassignedBatchCount < bp.cfg.ProverManager.ExternalProverThreshold {
+			return nil, nil
+		}
+	}
+
 	var batchTask *orm.Batch
 	for i := 0; i < 5; i++ {
 		var getTaskError error
@@ -86,6 +99,20 @@ func (bp *BatchProverTask) Assign(ctx *gin.Context, getTaskParameter *coordinato
 		if tmpBatchTask == nil {
 			log.Debug("get empty batch", "height", getTaskParameter.ProverHeight)
 			return nil, nil
+		}
+
+		// Don't dispatch the same failing job to the same prover
+		proverTasks, getTaskError := bp.proverTaskOrm.GetFailedProverTasksByHash(ctx.Copy(), message.ProofTypeBatch, tmpBatchTask.Hash, 2)
+		if getTaskError != nil {
+			log.Error("failed to get prover tasks", "proof type", message.ProofTypeBatch.String(), "task ID", tmpBatchTask.Hash, "error", getTaskError)
+			return nil, ErrCoordinatorInternalFailure
+		}
+		for i := 0; i < len(proverTasks); i++ {
+			if proverTasks[i].ProverPublicKey == taskCtx.PublicKey ||
+				taskCtx.ProverProviderType == uint8(coordinatorType.ProverProviderTypeExternal) && cutils.IsExternalProverNameMatch(proverTasks[i].ProverName, taskCtx.ProverName) {
+				log.Debug("get empty batch, the prover already failed this task", "height", getTaskParameter.ProverHeight)
+				return nil, nil
+			}
 		}
 
 		rowsAffected, updateAttemptsErr := bp.batchOrm.UpdateBatchAttempts(ctx.Copy(), tmpBatchTask.Index, tmpBatchTask.ActiveAttempts, tmpBatchTask.TotalAttempts)

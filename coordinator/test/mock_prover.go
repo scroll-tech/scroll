@@ -79,11 +79,12 @@ func (r *mockProver) challenge(t *testing.T) string {
 func (r *mockProver) login(t *testing.T, challengeString string, proverTypes []types.ProverType) (string, int, string) {
 	authMsg := types.LoginParameter{
 		Message: types.Message{
-			Challenge:     challengeString,
-			ProverName:    r.proverName,
-			ProverVersion: r.proverVersion,
-			ProverTypes:   proverTypes,
-			VKs:           []string{"mock_vk"},
+			Challenge:          challengeString,
+			ProverName:         r.proverName,
+			ProverVersion:      r.proverVersion,
+			ProverProviderType: types.ProverProviderTypeInternal,
+			ProverTypes:        proverTypes,
+			VKs:                []string{"mock_vk"},
 		},
 		PublicKey: r.publicKey(),
 	}

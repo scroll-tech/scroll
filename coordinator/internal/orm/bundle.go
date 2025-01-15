@@ -71,6 +71,22 @@ func (o *Bundle) GetUnassignedBundle(ctx context.Context, maxActiveAttempts, max
 	return &bundle, nil
 }
 
+// GetUnassignedBundleCount retrieves unassigned bundle count.
+func (o *Bundle) GetUnassignedBundleCount(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (int64, error) {
+	var count int64
+	db := o.db.WithContext(ctx)
+	db = db.Model(&Bundle{})
+	db = db.Where("proving_status = ?", int(types.ProvingTaskUnassigned))
+	db = db.Where("total_attempts < ?", maxTotalAttempts)
+	db = db.Where("active_attempts < ?", maxActiveAttempts)
+	db = db.Where("batch_proofs_status = ?", int(types.BatchProofsStatusReady))
+	db = db.Where("bundle.deleted_at IS NULL")
+	if err := db.Count(&count).Error; err != nil {
+		return 0, fmt.Errorf("Bundle.GetUnassignedBundleCount error: %w", err)
+	}
+	return count, nil
+}
+
 // GetAssignedBundle retrieves assigned bundle based on the specified limit.
 // The returned bundle sorts in ascending order by their index.
 func (o *Bundle) GetAssignedBundle(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8) (*Bundle, error) {
