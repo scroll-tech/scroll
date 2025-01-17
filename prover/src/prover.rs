@@ -19,14 +19,15 @@ use std::{
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
-use tokio::sync::RwLock;
+use tokio::{runtime::Handle, sync::RwLock, task::JoinHandle};
 
 pub struct LocalProver {
     config: LocalProverConfig,
     prover_types: Vec<ProverType>,
     circuits_handler_provider: RwLock<CircuitsHandlerProvider>,
     next_task_id: Arc<Mutex<u64>>,
-    result: Arc<Mutex<Result<String>>>,
+    current_task: Arc<Mutex<Option<JoinHandle<Result<String>>>>>,
+    // result: Arc<Mutex<Result<String>>>,
 }
 
 #[async_trait]
@@ -74,23 +75,55 @@ impl ProvingService for LocalProver {
     }
 
     async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
-        let mut result_guard = self.result.lock().unwrap();
-        let resp = match result_guard.as_ref() {
-            Ok(proof) => build_query_task_response(
-                req.task_id,
-                TaskStatus::Success,
-                Some(proof.clone()),
-                None,
-            ),
-            Err(e) => build_query_task_response(
+        let handle = {
+            let mut current_task = self.current_task.lock().unwrap();
+            current_task.take()
+        };
+        
+        if let Some(handle) = handle {
+            if handle.is_finished() {
+                match handle.await {
+                    Ok(result) => match result {
+                        Ok(proof) => build_query_task_response(
+                            req.task_id,
+                            TaskStatus::Success,
+                            Some(proof),
+                            None,
+                        ),
+                        Err(e) => build_query_task_response(
+                            req.task_id,
+                            TaskStatus::Failed,
+                            None,
+                            Some(e.to_string()),
+                        ),
+                    },
+                    Err(_) => build_query_task_response(
+                        req.task_id,
+                        TaskStatus::Failed,
+                        None,
+                        Some("Task panicked".to_string()),
+                    ),
+                }
+            } else {
+                {
+                    let mut current_task = self.current_task.lock().unwrap();
+                    *current_task = Some(handle);
+                }
+                build_query_task_response(
+                    req.task_id,
+                    TaskStatus::Proving,
+                    None,
+                    None,
+                )
+            }
+        } else {
+            build_query_task_response(
                 req.task_id,
                 TaskStatus::Failed,
                 None,
-                Some(e.to_string()),
-            ),
-        };
-        *result_guard = Err(anyhow::Error::msg("prover not started"));
-        resp
+                Some("No task running".to_string()),
+            )
+        }
     }
 }
 
@@ -105,7 +138,8 @@ impl LocalProver {
             prover_types,
             circuits_handler_provider: RwLock::new(circuits_handler_provider),
             next_task_id: Arc::new(Mutex::new(0)),
-            result: Arc::new(Mutex::new(Err(anyhow::Error::msg("prover not started")))),
+            current_task: Arc::new(Mutex::new(None)),
+            // result: Arc::new(Mutex::new(Err(anyhow::Error::msg("prover not started")))),
         }
     }
 
@@ -124,13 +158,12 @@ impl LocalProver {
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
 
         let req_clone = req.clone();
-        let result = tokio::task::spawn(async move {
-            handler.get_proof_data(req_clone).await
-        })
-        .await
-        .unwrap();
-
-        *self.result.lock().unwrap() = result;
+        let handle = Handle::current();
+        let task_handle = tokio::task::spawn_blocking(move || {
+            handle.block_on(handler.get_proof_data(req_clone))
+        });
+        
+        *self.current_task.lock().unwrap() = Some(task_handle);
 
         Ok(ProveResponse {
             task_id: task_id.to_string(),
