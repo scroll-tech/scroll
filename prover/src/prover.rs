@@ -123,7 +123,13 @@ impl LocalProver {
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
         let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
 
-        let result = handler.get_proof_data(req.clone()).await;
+        let req_clone = req.clone();
+        let result = tokio::task::spawn(async move {
+            handler.get_proof_data(req_clone).await
+        })
+        .await
+        .unwrap();
+
         *self.result.lock().unwrap() = result;
 
         Ok(ProveResponse {
