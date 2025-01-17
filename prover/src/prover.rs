@@ -27,7 +27,6 @@ pub struct LocalProver {
     circuits_handler_provider: RwLock<CircuitsHandlerProvider>,
     next_task_id: Arc<Mutex<u64>>,
     current_task: Arc<Mutex<Option<JoinHandle<Result<String>>>>>,
-    // result: Arc<Mutex<Result<String>>>,
 }
 
 #[async_trait]
@@ -75,11 +74,7 @@ impl ProvingService for LocalProver {
     }
 
     async fn query_task(&self, req: QueryTaskRequest) -> QueryTaskResponse {
-        let handle = {
-            let mut current_task = self.current_task.lock().unwrap();
-            current_task.take()
-        };
-        
+        let handle = self.current_task.lock().unwrap().take();
         if let Some(handle) = handle {
             if handle.is_finished() {
                 match handle.await {
@@ -94,34 +89,26 @@ impl ProvingService for LocalProver {
                             req.task_id,
                             TaskStatus::Failed,
                             None,
-                            Some(e.to_string()),
+                            Some(format!("proving task failed: {}", e)),
                         ),
                     },
-                    Err(_) => build_query_task_response(
+                    Err(e) => build_query_task_response(
                         req.task_id,
                         TaskStatus::Failed,
                         None,
-                        Some("Task panicked".to_string()),
+                        Some(format!("proving task panicked: {}", e)),
                     ),
                 }
             } else {
-                {
-                    let mut current_task = self.current_task.lock().unwrap();
-                    *current_task = Some(handle);
-                }
-                build_query_task_response(
-                    req.task_id,
-                    TaskStatus::Proving,
-                    None,
-                    None,
-                )
+                *self.current_task.lock().unwrap() = Some(handle);
+                build_query_task_response(req.task_id, TaskStatus::Proving, None, None)
             }
         } else {
             build_query_task_response(
                 req.task_id,
                 TaskStatus::Failed,
                 None,
-                Some("No task running".to_string()),
+                Some("no proving task is running".to_string()),
             )
         }
     }
@@ -159,10 +146,9 @@ impl LocalProver {
 
         let req_clone = req.clone();
         let handle = Handle::current();
-        let task_handle = tokio::task::spawn_blocking(move || {
-            handle.block_on(handler.get_proof_data(req_clone))
-        });
-        
+        let task_handle =
+            tokio::task::spawn_blocking(move || handle.block_on(handler.get_proof_data(req_clone)));
+
         *self.current_task.lock().unwrap() = Some(task_handle);
 
         Ok(ProveResponse {
