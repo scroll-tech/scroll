@@ -45,8 +45,7 @@ impl CircuitsHandlerProvider {
         let mut m: HashMap<HardForkName, CircuitsHandlerBuilder> = HashMap::new();
 
         if let Err(e) = AssetsDirEnvConfig::init() {
-            log::error!("AssetsDirEnvConfig init failed: {:#}", e);
-            std::process::exit(-2);
+            panic!("AssetsDirEnvConfig init failed: {:#}", e);
         }
 
         fn handler_builder(
@@ -140,7 +139,7 @@ impl CircuitsHandlerProvider {
         config: &LocalProverConfig,
         prover_types: Vec<ProverType>,
     ) -> Vec<String> {
-        let mut vks: Vec<String> = Vec::new();
+        let mut vks = Vec::new();
         for (hard_fork_name, build) in self.circuits_handler_builder_map.iter() {
             let handler =
                 build(prover_types.clone(), config).expect("failed to build circuits handler");

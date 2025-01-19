@@ -3,7 +3,7 @@ use crate::{
     utils::get_prover_type,
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
 };
-use anyhow::{Context, Result};
+use anyhow::Result;
 use async_trait::async_trait;
 use scroll_proving_sdk::{
     config::LocalProverConfig,
@@ -12,7 +12,7 @@ use scroll_proving_sdk::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
             QueryTaskResponse, TaskStatus,
         },
-        CircuitType, ProvingService,
+        ProvingService,
     },
 };
 use std::{
@@ -44,12 +44,11 @@ impl ProvingService for LocalProver {
             }
         });
 
-        let local_prover_config = self.config.clone();
         let vks = self
             .circuits_handler_provider
             .read()
             .await
-            .init_vks(&local_prover_config, prover_types)
+            .init_vks(&self.config, prover_types)
             .await;
         GetVkResponse { vks, error: None }
     }
@@ -59,17 +58,15 @@ impl ProvingService for LocalProver {
             .write()
             .await
             .get_circuits_handler(&req.hard_fork_name, self.prover_types.clone())
-            .context("failed to get circuit handler")
-            .unwrap();
+            .expect("failed to get circuit handler");
 
         match self.do_prove(req.clone(), handler).await {
             Ok(resp) => resp,
-            Err(e) => build_prove_error_response(
-                String::new(),
-                TaskStatus::Failed,
-                None,
-                String::from(&format!("failed to request proof: {}", e)),
-            ),
+            Err(e) => ProveResponse {
+                status: TaskStatus::Failed,
+                error: Some(format!("failed to request proof: {}", e)),
+                ..Default::default()
+            },
         }
     }
 
@@ -77,39 +74,41 @@ impl ProvingService for LocalProver {
         let handle = self.current_task.lock().unwrap().take();
         if let Some(handle) = handle {
             if handle.is_finished() {
-                match handle.await {
-                    Ok(result) => match result {
-                        Ok(proof) => build_query_task_response(
-                            req.task_id,
-                            TaskStatus::Success,
-                            Some(proof),
-                            None,
-                        ),
-                        Err(e) => build_query_task_response(
-                            req.task_id,
-                            TaskStatus::Failed,
-                            None,
-                            Some(format!("proving task failed: {}", e)),
-                        ),
+                return match handle.await {
+                    Ok(Ok(proof)) => QueryTaskResponse {
+                        task_id: req.task_id,
+                        status: TaskStatus::Success,
+                        proof: Some(proof),
+                        ..Default::default()
                     },
-                    Err(e) => build_query_task_response(
-                        req.task_id,
-                        TaskStatus::Failed,
-                        None,
-                        Some(format!("proving task panicked: {}", e)),
-                    ),
-                }
+                    Ok(Err(e)) => QueryTaskResponse {
+                        task_id: req.task_id,
+                        status: TaskStatus::Failed,
+                        error: Some(format!("proving task failed: {}", e)),
+                        ..Default::default()
+                    },
+                    Err(e) => QueryTaskResponse {
+                        task_id: req.task_id,
+                        status: TaskStatus::Failed,
+                        error: Some(format!("proving task panicked: {}", e)),
+                        ..Default::default()
+                    },
+                };
             } else {
                 *self.current_task.lock().unwrap() = Some(handle);
-                build_query_task_response(req.task_id, TaskStatus::Proving, None, None)
+                return QueryTaskResponse {
+                    task_id: req.task_id,
+                    status: TaskStatus::Proving,
+                    ..Default::default()
+                };
             }
-        } else {
-            build_query_task_response(
-                req.task_id,
-                TaskStatus::Failed,
-                None,
-                Some("no proving task is running".to_string()),
-            )
+        }
+        // If no handle is found
+        QueryTaskResponse {
+            task_id: req.task_id,
+            status: TaskStatus::Failed,
+            error: Some("no proving task is running".to_string()),
+            ..Default::default()
         }
     }
 }
@@ -117,8 +116,7 @@ impl ProvingService for LocalProver {
 impl LocalProver {
     pub fn new(config: LocalProverConfig, prover_types: Vec<ProverType>) -> Self {
         let circuits_handler_provider = CircuitsHandlerProvider::new(config.clone())
-            .context("failed to create circuits handler provider")
-            .unwrap();
+            .expect("failed to create circuits handler provider");
 
         Self {
             config,
@@ -126,7 +124,6 @@ impl LocalProver {
             circuits_handler_provider: RwLock::new(circuits_handler_provider),
             next_task_id: Arc::new(Mutex::new(0)),
             current_task: Arc::new(Mutex::new(None)),
-            // result: Arc::new(Mutex::new(Err(anyhow::Error::msg("prover not started")))),
         }
     }
 
@@ -166,51 +163,5 @@ impl LocalProver {
             vk: None,
             error: None,
         })
-    }
-}
-
-fn build_prove_error_response(
-    task_id: String,
-    status: TaskStatus,
-    proof: Option<String>,
-    error_msg: String,
-) -> ProveResponse {
-    ProveResponse {
-        task_id,
-        circuit_type: CircuitType::Undefined, // TODO
-        circuit_version: "".to_string(),
-        hard_fork_name: "".to_string(),
-        status,
-        created_at: 0.0,
-        started_at: None,
-        finished_at: None,
-        compute_time_sec: None,
-        input: None,
-        proof,
-        vk: None,
-        error: Some(error_msg),
-    }
-}
-
-fn build_query_task_response(
-    task_id: String,
-    status: TaskStatus,
-    proof: Option<String>,
-    error_msg: Option<String>,
-) -> QueryTaskResponse {
-    QueryTaskResponse {
-        task_id,
-        circuit_type: CircuitType::Undefined, // TODO
-        circuit_version: "".to_string(),
-        hard_fork_name: "".to_string(),
-        status,
-        created_at: 0.0,
-        started_at: None,
-        finished_at: None,
-        compute_time_sec: None,
-        input: None,
-        proof,
-        vk: None,
-        error: error_msg,
     }
 }
