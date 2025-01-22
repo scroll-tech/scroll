@@ -60,7 +60,7 @@ impl ProvingService for LocalProver {
             .get_circuits_handler(&req.hard_fork_name, self.prover_types.clone())
             .expect("failed to get circuit handler");
 
-        match self.do_prove(req.clone(), handler).await {
+        match self.do_prove(req, handler).await {
             Ok(resp) => resp,
             Err(e) => ProveResponse {
                 status: TaskStatus::Failed,
@@ -151,17 +151,12 @@ impl LocalProver {
         Ok(ProveResponse {
             task_id: task_id.to_string(),
             circuit_type: req.circuit_type,
-            circuit_version: req.circuit_version.clone(),
-            hard_fork_name: req.hard_fork_name.clone(),
+            circuit_version: req.circuit_version,
+            hard_fork_name: req.hard_fork_name,
             status: TaskStatus::Proving,
             created_at,
-            started_at: None,
-            finished_at: None,
-            compute_time_sec: None,
             input: Some(req.input),
-            proof: None,
-            vk: None,
-            error: None,
+            ..Default::default()
         })
     }
 }
