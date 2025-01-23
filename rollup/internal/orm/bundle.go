@@ -194,7 +194,7 @@ func (o *Bundle) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash s
 	updateFields["finalize_tx_hash"] = finalizeTxHash
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
-		updateFields["finalized_at"] = time.Now()
+		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -218,7 +218,7 @@ func (o *Bundle) UpdateProvingStatus(ctx context.Context, hash string, status ty
 
 	switch status {
 	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
+		updateFields["proved_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -241,7 +241,7 @@ func (o *Bundle) UpdateRollupStatus(ctx context.Context, hash string, status typ
 	updateFields := make(map[string]interface{})
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
-		updateFields["finalized_at"] = time.Now()
+		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
 	db := o.db.WithContext(ctx)

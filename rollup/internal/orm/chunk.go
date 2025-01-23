@@ -11,8 +11,9 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
+	"scroll-tech/common/utils"
 
-	"scroll-tech/rollup/internal/utils"
+	rutils "scroll-tech/rollup/internal/utils"
 )
 
 // Chunk represents a chunk of blocks in the database.
@@ -177,7 +178,7 @@ func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*
 }
 
 // InsertChunk inserts a new chunk into the database.
-func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, metrics utils.ChunkMetrics, dbTX ...*gorm.DB) (*Chunk, error) {
+func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVersion encoding.CodecVersion, metrics rutils.ChunkMetrics, dbTX ...*gorm.DB) (*Chunk, error) {
 	if chunk == nil || len(chunk.Blocks) == 0 {
 		return nil, errors.New("invalid args")
 	}
@@ -202,7 +203,7 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		parentChunkStateRoot = parentChunk.StateRoot
 	}
 
-	chunkHash, err := utils.GetChunkHash(chunk, totalL1MessagePoppedBefore, codecVersion)
+	chunkHash, err := rutils.GetChunkHash(chunk, totalL1MessagePoppedBefore, codecVersion)
 	if err != nil {
 		log.Error("failed to get chunk hash", "err", err)
 		return nil, fmt.Errorf("Chunk.InsertChunk error: %w", err)
@@ -261,11 +262,11 @@ func (o *Chunk) UpdateProvingStatus(ctx context.Context, hash string, status typ
 
 	switch status {
 	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now()
+		updateFields["prover_assigned_at"] = utils.NowUTC()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
+		updateFields["proved_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -289,11 +290,11 @@ func (o *Chunk) UpdateProvingStatusByBatchHash(ctx context.Context, batchHash st
 
 	switch status {
 	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now()
+		updateFields["prover_assigned_at"] = utils.NowUTC()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
+		updateFields["proved_at"] = utils.NowUTC()
 	}
 
 	db := o.db

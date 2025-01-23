@@ -344,8 +344,9 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 			expectedDelta = 1
 		}
 
-		// last is undefine or (suggestGasPriceUint64 >= minGasPrice && exceed diff)
-		if r.lastGasPrice == 0 || (suggestGasPriceUint64 >= r.minGasPrice && (suggestGasPriceUint64 >= r.lastGasPrice+expectedDelta || suggestGasPriceUint64+expectedDelta <= r.lastGasPrice)) {
+		// last is undefined or (suggestGasPriceUint64 >= minGasPrice && exceed diff)
+		if r.lastGasPrice == 0 || (suggestGasPriceUint64 >= r.minGasPrice &&
+			(math.Abs(float64(suggestGasPriceUint64)-float64(r.lastGasPrice)) >= float64(expectedDelta))) {
 			data, err := r.l2GasOracleABI.Pack("setL2BaseFee", suggestGasPrice)
 			if err != nil {
 				log.Error("Failed to pack setL2BaseFee", "batch.Hash", batch.Hash, "GasPrice", suggestGasPrice.Uint64(), "err", err)
@@ -529,7 +530,7 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 		}
 
 	case types.ProvingTaskVerified:
-		log.Info("Start to roll up zk proof", "bundle hash", bundle.Hash)
+		log.Info("Start to roll up zk proof", "index", bundle.Index, "bundle hash", bundle.Hash)
 		r.metrics.rollupL2RelayerProcessPendingBundlesFinalizedTotal.Inc()
 		if err := r.finalizeBundle(bundle, true); err != nil {
 			log.Error("failed to finalize bundle with proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
@@ -636,8 +637,22 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 	log.Info("finalizeBundle in layer1", "with proof", withProof, "index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "tx hash", txHash.String())
 
 	// Updating rollup status in database.
-	if err := r.bundleOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, bundle.Hash, txHash.String(), types.RollupFinalizing); err != nil {
-		log.Error("UpdateFinalizeTxHashAndRollupStatus failed", "index", bundle.Index, "bundle hash", bundle.Hash, "tx hash", txHash.String(), "err", err)
+	err = r.db.Transaction(func(dbTX *gorm.DB) error {
+		if err = r.batchOrm.UpdateFinalizeTxHashAndRollupStatusByBundleHash(r.ctx, bundle.Hash, txHash.String(), types.RollupFinalizing, dbTX); err != nil {
+			log.Warn("UpdateFinalizeTxHashAndRollupStatusByBundleHash failed", "index", bundle.Index, "bundle hash", bundle.Hash, "tx hash", txHash.String(), "err", err)
+			return err
+		}
+
+		if err = r.bundleOrm.UpdateFinalizeTxHashAndRollupStatus(r.ctx, bundle.Hash, txHash.String(), types.RollupFinalizing, dbTX); err != nil {
+			log.Warn("UpdateFinalizeTxHashAndRollupStatus failed", "index", bundle.Index, "bundle hash", bundle.Hash, "tx hash", txHash.String(), "err", err)
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		log.Warn("failed to update rollup status of bundle and batches", "err", err)
 		return err
 	}
 

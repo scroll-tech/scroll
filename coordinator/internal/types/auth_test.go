@@ -18,11 +18,12 @@ func TestAuthMessageSignAndVerify(t *testing.T) {
 	t.Run("sign", func(t *testing.T) {
 		authMsg = LoginParameter{
 			Message: Message{
-				ProverName:    "test1",
-				ProverVersion: "v0.0.1",
-				Challenge:     "abcdef",
-				ProverTypes:   []ProverType{ProverTypeBatch},
-				VKs:           []string{"vk1", "vk2"},
+				ProverName:         "test1",
+				ProverVersion:      "v0.0.1",
+				Challenge:          "abcdef",
+				ProverProviderType: ProverProviderTypeInternal,
+				ProverTypes:        []ProverType{ProverTypeBatch},
+				VKs:                []string{"vk1", "vk2"},
 			},
 			PublicKey: publicKeyHex,
 		}
@@ -59,11 +60,12 @@ func TestGenerateSignature(t *testing.T) {
 
 	authMsg := LoginParameter{
 		Message: Message{
-			ProverName:    "test",
-			ProverVersion: "v4.4.45-37af5ef5-38a68e2-1c5093c",
-			Challenge:     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjQ4Mzg0ODUsIm9yaWdfaWF0IjoxNzI0ODM0ODg1LCJyYW5kb20iOiJ6QmdNZGstNGc4UzNUNTFrVEFsYk1RTXg2TGJ4SUs4czY3ejM2SlNuSFlJPSJ9.x9PvihhNx2w4_OX5uCrv8QJCNYVQkIi-K2k8XFXYmik",
-			ProverTypes:   []ProverType{ProverTypeChunk},
-			VKs:           []string{"mock_vk"},
+			ProverName:         "test",
+			ProverVersion:      "v4.4.45-37af5ef5-38a68e2-1c5093c",
+			Challenge:          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MjQ4Mzg0ODUsIm9yaWdfaWF0IjoxNzI0ODM0ODg1LCJyYW5kb20iOiJ6QmdNZGstNGc4UzNUNTFrVEFsYk1RTXg2TGJ4SUs4czY3ejM2SlNuSFlJPSJ9.x9PvihhNx2w4_OX5uCrv8QJCNYVQkIi-K2k8XFXYmik",
+			ProverProviderType: ProverProviderTypeInternal,
+			ProverTypes:        []ProverType{ProverTypeChunk},
+			VKs:                []string{"mock_vk"},
 		},
 		PublicKey: publicKeyHex,
 	}
