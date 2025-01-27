@@ -15,7 +15,7 @@ mod zk_circuits_handler;
 
 use anyhow::Result;
 use clap::{ArgAction, Parser};
-use config::{AssetsDirEnvConfig, Config};
+use config::Config;
 use prover::Prover;
 use std::rc::Rc;
 use task_cache::{ClearCacheCoordinatorListener, TaskCache};
@@ -49,29 +49,23 @@ fn start() -> Result<()> {
     utils::log_init(args.log_file);
 
     let config: Config = Config::from_file(args.config_file)?;
-
-    if let Err(e) = AssetsDirEnvConfig::init() {
-        log::error!("AssetsDirEnvConfig init failed: {:#}", e);
-        std::process::exit(-2);
-    }
-
     let task_cache = Rc::new(TaskCache::new(&config.db_path)?);
 
     let coordinator_listener = Box::new(ClearCacheCoordinatorListener {
         task_cache: task_cache.clone(),
     });
 
-    let prover = Prover::new(&config, coordinator_listener)?;
+    let prover = Prover::new(config.clone(), coordinator_listener)?;
 
     log::info!(
-        "prover start successfully. name: {}, type: {:?}, publickey: {}, version: {}",
+        "starting prover. name: {}, type: {:?}, publickey: {}, version: {}",
         config.prover_name,
         config.prover_type,
-        prover.get_public_key(),
+        prover.public_key,
         version::get_version(),
     );
 
-    let task_processor = TaskProcessor::new(&prover, task_cache);
+    let task_processor = TaskProcessor::new(prover, task_cache);
 
     task_processor.start();
 

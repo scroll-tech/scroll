@@ -1,91 +1,76 @@
 use anyhow::{bail, Context, Error, Ok, Result};
-use ethers_core::types::U64;
-
-use std::{cell::RefCell, rc::Rc};
 
 use crate::{
     config::Config,
     coordinator_client::{listener::Listener, types::*, CoordinatorClient},
     geth_client::GethClient,
     key_signer::KeySigner,
-    types::{ProofFailureType, ProofStatus, ProverType},
-    utils::get_task_types,
-    zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
+    types::{ProofFailureType, ProofStatus, TaskType},
+    zk_circuits_handler::{euclid::EuclidHandler, CircuitsHandler},
 };
 
 use super::types::{ProofDetail, Task};
 
-pub struct Prover<'a> {
-    config: &'a Config,
-    key_signer: Rc<KeySigner>,
-    circuits_handler_provider: RefCell<CircuitsHandlerProvider<'a>>,
-    coordinator_client: RefCell<CoordinatorClient<'a>>,
-    geth_client: Option<Rc<RefCell<GethClient>>>,
+pub struct Prover {
+    config: Config,
+    pub public_key: String,
+    coordinator_client: CoordinatorClient,
+    geth_client: GethClient,
+
+    active_handler: Option<(String, Box<dyn CircuitsHandler>)>,
 }
 
-impl<'a> Prover<'a> {
-    pub fn new(config: &'a Config, coordinator_listener: Box<dyn Listener>) -> Result<Self> {
-        let prover_type = config.prover_type;
+impl Prover {
+    pub fn new(config: Config, coordinator_listener: Box<dyn Listener>) -> Result<Self> {
         let keystore_path = &config.keystore_path;
         let keystore_password = &config.keystore_password;
 
-        let geth_client = if config.prover_type == ProverType::Chunk {
-            Some(Rc::new(RefCell::new(
-                GethClient::new(
-                    &config.prover_name,
-                    &config.l2geth.as_ref().unwrap().endpoint,
-                )
-                .context("failed to create l2 geth_client")?,
-            )))
-        } else {
-            None
-        };
+        let geth_client = GethClient::new(
+            &config.prover_name,
+            &config.l2geth.as_ref().unwrap().endpoint,
+        )
+        .context("failed to create l2 geth_client")?;
 
-        let provider = CircuitsHandlerProvider::new(prover_type, config, geth_client.clone())
-            .context("failed to create circuits handler provider")?;
+        let key_signer = KeySigner::new(keystore_path, keystore_password)?;
+        let public_key = key_signer.get_public_key();
 
-        let vks = provider.init_vks(prover_type, config, geth_client.clone());
-
-        let key_signer = Rc::new(KeySigner::new(keystore_path, keystore_password)?);
-        let coordinator_client =
-            CoordinatorClient::new(config, Rc::clone(&key_signer), coordinator_listener, vks)
-                .context("failed to create coordinator_client")?;
+        let coordinator_client = CoordinatorClient::new(
+            config.clone(),
+            key_signer,
+            coordinator_listener,
+            vec![], /* todo: vks */
+        )
+        .context("failed to create coordinator_client")?;
 
         let prover = Prover {
             config,
-            key_signer: Rc::clone(&key_signer),
-            circuits_handler_provider: RefCell::new(provider),
-            coordinator_client: RefCell::new(coordinator_client),
+            public_key,
+            coordinator_client,
             geth_client,
+            active_handler: None,
         };
 
         Ok(prover)
     }
 
-    pub fn get_public_key(&self) -> String {
-        self.key_signer.get_public_key()
-    }
-
-    pub fn fetch_task(&self) -> Result<Task> {
+    pub fn fetch_task(&mut self) -> Result<Task> {
         log::info!("[prover] start to fetch_task");
         let mut req = GetTaskRequest {
-            task_types: get_task_types(self.config.prover_type),
+            task_types: vec![TaskType::Chunk, TaskType::Batch, TaskType::Bundle],
             prover_height: None,
         };
 
-        if self.config.prover_type == ProverType::Chunk {
-            let latest_block_number = self.get_latest_block_number_value()?;
-            if let Some(v) = latest_block_number {
-                if v.as_u64() == 0 {
-                    bail!("omit to prove task of the genesis block")
-                }
-                req.prover_height = Some(v.as_u64());
-            } else {
-                log::error!("[prover] failed to fetch latest confirmed block number, got None");
-                bail!("failed to fetch latest confirmed block number, got None")
+        let latest_block_number = self.geth_client.block_number()?.as_number();
+        if let Some(v) = latest_block_number {
+            if v.as_u64() == 0 {
+                bail!("omit to prove task of the genesis block")
             }
+            req.prover_height = Some(v.as_u64());
+        } else {
+            log::error!("[prover] failed to fetch latest confirmed block number, got None");
+            bail!("failed to fetch latest confirmed block number, got None")
         }
-        let resp = self.coordinator_client.borrow_mut().get_task(&req)?;
+        let resp = self.coordinator_client.get_task(&req)?;
 
         match resp.data {
             Some(d) => Ok(Task::from(d)),
@@ -95,28 +80,43 @@ impl<'a> Prover<'a> {
         }
     }
 
-    pub fn prove_task(&self, task: &Task) -> Result<ProofDetail> {
-        log::info!("[prover] start to prove_task, task id: {}", task.id);
-        let handler: Rc<Box<dyn CircuitsHandler>> = self
-            .circuits_handler_provider
-            .borrow_mut()
-            .get_circuits_handler(&task.hard_fork_name)
-            .context("failed to get circuit handler")?;
-        self.do_prove(task, handler)
+    fn set_active_handler(&mut self, hard_fork_name: &str) {
+        if let Some(handler) = &self.active_handler {
+            if handler.0 == hard_fork_name {
+                return;
+            }
+        }
+
+        // if we got assigned a task for an unknown hard fork, there is something wrong in the
+        // coordinator
+        let config = self.config.circuits.get(hard_fork_name).unwrap();
+
+        let handler = Box::new(match hard_fork_name {
+            "euclid" => EuclidHandler::new(&config.workspace_path),
+            _ => unreachable!(),
+        }) as Box<dyn CircuitsHandler>;
+        self.active_handler = Some((hard_fork_name.to_string(), handler));
     }
 
-    fn do_prove(&self, task: &Task, handler: Rc<Box<dyn CircuitsHandler>>) -> Result<ProofDetail> {
+    pub fn prove_task(&mut self, task: &Task) -> Result<ProofDetail> {
+        log::info!("[prover] start to prove_task, task id: {}", task.id);
         let mut proof_detail = ProofDetail {
             id: task.id.clone(),
             proof_type: task.task_type,
             ..Default::default()
         };
 
-        proof_detail.proof_data = handler.get_proof_data(task.task_type, task)?;
+        self.set_active_handler(&task.hard_fork_name);
+        proof_detail.proof_data = self
+            .active_handler
+            .as_ref()
+            .unwrap()
+            .1
+            .get_proof_data(task, &self.geth_client)?;
         Ok(proof_detail)
     }
 
-    pub fn submit_proof(&self, proof_detail: ProofDetail, task: &Task) -> Result<()> {
+    pub fn submit_proof(&mut self, proof_detail: ProofDetail, task: &Task) -> Result<()> {
         log::info!(
             "[prover] start to submit_proof, task id: {}",
             proof_detail.id
@@ -131,11 +131,11 @@ impl<'a> Prover<'a> {
             ..Default::default()
         };
 
-        self.do_submit(&request)
+        self.coordinator_client.submit_proof(&request).map(|_r| ())
     }
 
     pub fn submit_error(
-        &self,
+        &mut self,
         task: &Task,
         failure_type: ProofFailureType,
         error: Error,
@@ -150,21 +150,7 @@ impl<'a> Prover<'a> {
             failure_msg: Some(format!("{:#}", error)),
             ..Default::default()
         };
-        self.do_submit(&request)
-    }
 
-    fn do_submit(&self, request: &SubmitProofRequest) -> Result<()> {
-        self.coordinator_client.borrow_mut().submit_proof(request)?;
-        Ok(())
-    }
-
-    fn get_latest_block_number_value(&self) -> Result<Option<U64>> {
-        let number = self
-            .geth_client
-            .as_ref()
-            .unwrap()
-            .borrow_mut()
-            .block_number()?;
-        Ok(number.as_number())
+        self.coordinator_client.submit_proof(&request).map(|_r| ())
     }
 }

@@ -27,6 +27,8 @@ const (
 	ProverTypeChunk
 	// ProverTypeBatch signals it's a batch prover, which can prove batch_tasks and bundle_tasks
 	ProverTypeBatch
+	// ProverTypeOpenVM signals it's an openvm prover
+	ProverTypeOpenVM
 )
 
 // MakeProverType make ProverType from ProofType
