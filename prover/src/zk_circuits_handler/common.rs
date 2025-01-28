@@ -1,10 +1,9 @@
 use std::{collections::BTreeMap, rc::Rc};
 
-use crate::types::ProverType;
-
 use once_cell::sync::OnceCell;
 
 use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
+use scroll_proving_sdk::prover::ProofType;
 
 static mut PARAMS_MAP: OnceCell<Rc<BTreeMap<u32, ParamsKZG<Bn256>>>> = OnceCell::new();
 
@@ -20,9 +19,9 @@ where
     }
 }
 
-pub fn get_degrees<F>(prover_types: &std::collections::HashSet<ProverType>, f: F) -> Vec<u32>
+pub fn get_degrees<F>(prover_types: &std::collections::HashSet<ProofType>, f: F) -> Vec<u32>
 where
-    F: FnMut(&ProverType) -> Vec<u32>,
+    F: FnMut(&ProofType) -> Vec<u32>,
 {
     prover_types
         .iter()

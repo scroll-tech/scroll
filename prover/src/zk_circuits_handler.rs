@@ -2,15 +2,12 @@ mod common;
 mod darwin;
 mod darwin_v2;
 
-use crate::{config::AssetsDirEnvConfig, types::ProverType, utils::get_circuit_types};
+use crate::{config::AssetsDirEnvConfig, prover::LocalProverConfig};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use darwin::DarwinHandler;
 use darwin_v2::DarwinV2Handler;
-use scroll_proving_sdk::{
-    config::LocalProverConfig,
-    prover::{proving_service::ProveRequest, CircuitType},
-};
+use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};
 use std::{collections::HashMap, sync::Arc};
 
 type HardForkName = String;
@@ -23,15 +20,13 @@ pub mod utils {
 
 #[async_trait]
 pub trait CircuitsHandler: Send + Sync {
-    async fn get_vk(&self, task_type: CircuitType) -> Option<Vec<u8>>;
+    async fn get_vk(&self, task_type: ProofType) -> Option<Vec<u8>>;
 
     async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String>;
 }
 
-type CircuitsHandlerBuilder = fn(
-    prover_types: Vec<ProverType>,
-    config: &LocalProverConfig,
-) -> Result<Box<dyn CircuitsHandler>>;
+type CircuitsHandlerBuilder =
+    fn(proof_types: Vec<ProofType>, config: &LocalProverConfig) -> Result<Box<dyn CircuitsHandler>>;
 
 pub struct CircuitsHandlerProvider {
     config: LocalProverConfig,
@@ -49,7 +44,7 @@ impl CircuitsHandlerProvider {
         }
 
         fn handler_builder(
-            prover_types: Vec<ProverType>,
+            proof_types: Vec<ProofType>,
             config: &LocalProverConfig,
         ) -> Result<Box<dyn CircuitsHandler>> {
             log::info!(
@@ -58,7 +53,7 @@ impl CircuitsHandlerProvider {
             );
             AssetsDirEnvConfig::enable_first();
             DarwinHandler::new(
-                prover_types,
+                proof_types,
                 &config.low_version_circuit.params_path,
                 &config.low_version_circuit.assets_path,
             )
@@ -70,7 +65,7 @@ impl CircuitsHandlerProvider {
         );
 
         fn next_handler_builder(
-            prover_types: Vec<ProverType>,
+            proof_types: Vec<ProofType>,
             config: &LocalProverConfig,
         ) -> Result<Box<dyn CircuitsHandler>> {
             log::info!(
@@ -79,7 +74,7 @@ impl CircuitsHandlerProvider {
             );
             AssetsDirEnvConfig::enable_second();
             DarwinV2Handler::new(
-                prover_types,
+                proof_types,
                 &config.high_version_circuit.params_path,
                 &config.high_version_circuit.assets_path,
             )
@@ -104,7 +99,6 @@ impl CircuitsHandlerProvider {
     pub fn get_circuits_handler(
         &mut self,
         hard_fork_name: &String,
-        prover_types: Vec<ProverType>,
     ) -> Result<Arc<Box<dyn CircuitsHandler>>> {
         match &self.current_fork_name {
             Some(fork_name) if fork_name == hard_fork_name => {
@@ -121,8 +115,11 @@ impl CircuitsHandlerProvider {
                 );
                 if let Some(builder) = self.circuits_handler_builder_map.get(hard_fork_name) {
                     log::info!("building circuits handler for {hard_fork_name}");
-                    let handler = builder(prover_types, &self.config)
-                        .expect("failed to build circuits handler");
+                    let handler = builder(
+                        self.config.sdk_config.prover.supported_proof_types.clone(),
+                        &self.config,
+                    )
+                    .expect("failed to build circuits handler");
                     self.current_fork_name = Some(hard_fork_name.clone());
                     let arc_handler = Arc::new(handler);
                     self.current_circuit = Some(arc_handler.clone());
@@ -137,26 +134,24 @@ impl CircuitsHandlerProvider {
     pub async fn init_vks(
         &self,
         config: &LocalProverConfig,
-        prover_types: Vec<ProverType>,
+        proof_types: Vec<ProofType>,
     ) -> Vec<String> {
         let mut vks = Vec::new();
         for (hard_fork_name, build) in self.circuits_handler_builder_map.iter() {
             let handler =
-                build(prover_types.clone(), config).expect("failed to build circuits handler");
+                build(proof_types.clone(), config).expect("failed to build circuits handler");
 
-            for prover_type in prover_types.iter() {
-                for task_type in get_circuit_types(*prover_type).into_iter() {
-                    let vk = handler
-                        .get_vk(task_type)
-                        .await
-                        .map_or("".to_string(), utils::encode_vk);
-                    log::info!(
-                        "vk for {hard_fork_name}, is {vk}, task_type: {:?}",
-                        task_type
-                    );
-                    if !vk.is_empty() {
-                        vks.push(vk)
-                    }
+            for prover_type in &proof_types {
+                let vk = handler
+                    .get_vk(*prover_type)
+                    .await
+                    .map_or("".to_string(), utils::encode_vk);
+                log::info!(
+                    "vk for {hard_fork_name}, is {vk}, prover_type: {:?}",
+                    prover_type
+                );
+                if !vk.is_empty() {
+                    vks.push(vk)
                 }
             }
         }
