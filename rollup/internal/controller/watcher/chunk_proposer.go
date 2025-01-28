@@ -294,6 +294,10 @@ func (p *ChunkProposer) proposeChunk() error {
 		return p.updateDBChunkInfo(&chunk, codecVersion, metrics)
 	}
 
+	if proposed, err := p.tryProposeEuclidTransitionChunk(blocks); proposed || err != nil {
+		return err
+	}
+
 	var chunk encoding.Chunk
 	chunk.Blocks = make([]*encoding.Block, 0, len(blocks))
 	for i, block := range blocks {
@@ -386,4 +390,33 @@ func (p *ChunkProposer) recordTimerChunkMetrics(metrics *utils.ChunkMetrics) {
 	p.chunkEstimateGasTime.Set(float64(metrics.EstimateGasTime))
 	p.chunkEstimateCalldataSizeTime.Set(float64(metrics.EstimateCalldataSizeTime))
 	p.chunkEstimateBlobSizeTime.Set(float64(metrics.EstimateBlobSizeTime))
+}
+
+func (p *ChunkProposer) tryProposeEuclidTransitionChunk(blocks []*encoding.Block) (bool, error) {
+	if !p.chainCfg.IsEuclid(blocks[0].Header.Time) {
+		return false, nil
+	}
+
+	prevBlocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, blocks[0].Header.Number.Uint64()-1, 1)
+	if err != nil || len(prevBlocks) == 0 || prevBlocks[0].Header.Hash() != blocks[0].Header.ParentHash {
+		return false, fmt.Errorf("failed to get parent block: %w", err)
+	}
+
+	if p.chainCfg.IsEuclid(prevBlocks[0].Header.Time) {
+		// Parent is still Euclid, transition happened already
+		return false, nil
+	}
+
+	// blocks[0] is Euclid, but parent is not, propose a chunk with only blocks[0]
+	chunk := encoding.Chunk{Blocks: blocks[:1]}
+	codecVersion := encoding.CodecV5
+	metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
+	if calcErr != nil {
+		return false, fmt.Errorf("failed to calculate chunk metrics: %w", calcErr)
+	}
+	p.recordTimerChunkMetrics(metrics)
+	if err := p.updateDBChunkInfo(&chunk, codecVersion, metrics); err != nil {
+		return false, err
+	}
+	return true, nil
 }

@@ -4,7 +4,6 @@ pub mod listener;
 pub mod types;
 
 use anyhow::{bail, Context, Ok, Result};
-use std::rc::Rc;
 
 use api::Api;
 use errors::*;
@@ -16,20 +15,20 @@ use crate::{config::Config, key_signer::KeySigner};
 
 pub use errors::ProofStatusNotOKError;
 
-pub struct CoordinatorClient<'a> {
+pub struct CoordinatorClient {
     api: Api,
     token: Option<String>,
-    config: &'a Config,
-    key_signer: Rc<KeySigner>,
+    config: Config,
+    key_signer: KeySigner,
     rt: Runtime,
     listener: Box<dyn Listener>,
     vks: Vec<String>,
 }
 
-impl<'a> CoordinatorClient<'a> {
+impl CoordinatorClient {
     pub fn new(
-        config: &'a Config,
-        key_signer: Rc<KeySigner>,
+        config: Config,
+        key_signer: KeySigner,
         listener: Box<dyn Listener>,
         vks: Vec<String>,
     ) -> Result<Self> {

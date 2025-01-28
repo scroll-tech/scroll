@@ -56,15 +56,17 @@ impl Default for TaskType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ProverType {
-    Chunk,
-    Batch,
+    Deprecated1,
+    Deprecated2,
+    OpenVM,
 }
 
 impl ProverType {
     fn from_u8(v: u8) -> Self {
         match v {
-            1 => ProverType::Chunk,
-            2 => ProverType::Batch,
+            1 => ProverType::Deprecated1,
+            2 => ProverType::Deprecated2,
+            3 => ProverType::OpenVM,
             _ => {
                 panic!("invalid prover_type")
             }
@@ -73,8 +75,9 @@ impl ProverType {
 
     pub fn to_u8(self) -> u8 {
         match self {
-            ProverType::Chunk => 1,
-            ProverType::Batch => 2,
+            ProverType::Deprecated1 => 1,
+            ProverType::Deprecated2 => 2,
+            ProverType::OpenVM => 3,
         }
     }
 }
@@ -84,10 +87,7 @@ impl Serialize for ProverType {
     where
         S: Serializer,
     {
-        match *self {
-            ProverType::Chunk => serializer.serialize_u8(1),
-            ProverType::Batch => serializer.serialize_u8(2),
-        }
+        serializer.serialize_u8(self.to_u8())
     }
 }
 

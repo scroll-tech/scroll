@@ -2,20 +2,20 @@ use super::{coordinator_client::ProofStatusNotOKError, prover::Prover, task_cach
 use anyhow::{Context, Result};
 use std::rc::Rc;
 
-pub struct TaskProcessor<'a> {
-    prover: &'a Prover<'a>,
+pub struct TaskProcessor {
+    prover: Prover,
     task_cache: Rc<TaskCache>,
 }
 
-impl<'a> TaskProcessor<'a> {
-    pub fn new(prover: &'a Prover<'a>, task_cache: Rc<TaskCache>) -> Self {
+impl TaskProcessor {
+    pub fn new(prover: Prover, task_cache: Rc<TaskCache>) -> Self {
         TaskProcessor { prover, task_cache }
     }
 
-    pub fn start(&self) {
+    pub fn start(mut self) {
         loop {
             log::info!("start a new round.");
-            if let Err(err) = self.prove_and_submit() {
+            if let Err(err) = &self.prove_and_submit() {
                 if err.is::<ProofStatusNotOKError>() {
                     log::info!("proof status not ok, downgrade level to info.");
                 } else {
@@ -27,7 +27,7 @@ impl<'a> TaskProcessor<'a> {
         }
     }
 
-    fn prove_and_submit(&self) -> Result<()> {
+    fn prove_and_submit(&mut self) -> Result<()> {
         let task_from_cache = self
             .task_cache
             .get_last_task()

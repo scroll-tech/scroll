@@ -161,6 +161,11 @@ func (p *BundleProposer) proposeBundle() error {
 		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codecVersion, p.minCodecVersion)
 	}
 
+	if codecVersion == encoding.CodecV5 {
+		maxBatchesThisBundle = 1
+		batches = batches[:maxBatchesThisBundle]
+	}
+
 	for i := 1; i < len(batches); i++ {
 		chunk, err := p.chunkOrm.GetChunkByIndex(p.ctx, batches[i].StartChunkIndex)
 		if err != nil {

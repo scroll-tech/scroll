@@ -347,11 +347,11 @@ func (o *Batch) UpdateProvingStatus(ctx context.Context, hash string, status typ
 
 	switch status {
 	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now()
+		updateFields["prover_assigned_at"] = utils.NowUTC()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
+		updateFields["proved_at"] = utils.NowUTC()
 	}
 
 	db := o.db
@@ -423,7 +423,7 @@ func (o *Batch) UpdateFinalizeTxHashAndRollupStatus(ctx context.Context, hash st
 	updateFields["finalize_tx_hash"] = finalizeTxHash
 	updateFields["rollup_status"] = int(status)
 	if status == types.RollupFinalized {
-		updateFields["finalized_at"] = time.Now()
+		updateFields["finalized_at"] = utils.NowUTC()
 	}
 
 	db := o.db.WithContext(ctx)
@@ -482,11 +482,11 @@ func (o *Batch) UpdateProvingStatusByBundleHash(ctx context.Context, bundleHash 
 
 	switch status {
 	case types.ProvingTaskAssigned:
-		updateFields["prover_assigned_at"] = time.Now()
+		updateFields["prover_assigned_at"] = utils.NowUTC()
 	case types.ProvingTaskUnassigned:
 		updateFields["prover_assigned_at"] = nil
 	case types.ProvingTaskVerified:
-		updateFields["proved_at"] = time.Now()
+		updateFields["proved_at"] = utils.NowUTC()
 	}
 
 	db := o.db
