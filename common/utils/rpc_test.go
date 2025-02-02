@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"compress/flate"
+	"compress/flat"
 	"context"
 	"testing"
 
@@ -60,7 +60,7 @@ func TestStartWSEndpoint(t *testing.T) {
 			Namespace: "test",
 			Service:   new(testService),
 		},
-	}, flate.NoCompression)
+	}, flat.NoCompression)
 	assert.NoError(t, err)
 	defer handler.Shutdown(context.Background())
 
