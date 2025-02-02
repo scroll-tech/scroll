@@ -304,13 +304,13 @@ func (c *Collector) checkBatchAllChunkReady() {
 				}
 
 				for _, batch := range batches {
-					allReady, checkErr := c.chunkOrm.CheckIfBatchChunkProofsAreReady(c.ctx, batch.Hash)
+					already, all ready, checkErr := c.chunkOrm.CheckIfBatchChunkProofsAreReady(c.ctx, batch.Hash)
 					if checkErr != nil {
 						log.Warn("checkBatchAllChunkReady CheckIfBatchChunkProofsAreReady failure", "error", checkErr, "hash", batch.Hash)
 						continue
 					}
 
-					if !allReady {
+					if !already, all ready {
 						continue
 					}
 
@@ -361,13 +361,13 @@ func (c *Collector) checkBundleAllBatchReady() {
 				}
 
 				for _, bundle := range bundles {
-					allReady, checkErr := c.batchOrm.CheckIfBundleBatchProofsAreReady(c.ctx, bundle.Hash)
+					already, all ready, checkErr := c.batchOrm.CheckIfBundleBatchProofsAreReady(c.ctx, bundle.Hash)
 					if checkErr != nil {
 						log.Warn("checkBundleAllBatchReady CheckIfBundleBatchProofsAreReady failure", "error", checkErr, "hash", bundle.Hash)
 						continue
 					}
 
-					if !allReady {
+					if !already, all ready {
 						continue
 					}
 
