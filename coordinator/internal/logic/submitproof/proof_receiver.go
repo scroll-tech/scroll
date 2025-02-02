@@ -225,11 +225,11 @@ func (m *ProofReceiverLogic) checkAreAllChunkProofsReady(ctx context.Context, ch
 	if err != nil {
 		return err
 	}
-	allReady, err := m.chunkOrm.CheckIfBatchChunkProofsAreReady(ctx, batch.BatchHash)
+	already, all ready, err := m.chunkOrm.CheckIfBatchChunkProofsAreReady(ctx, batch.BatchHash)
 	if err != nil {
 		return err
 	}
-	if allReady {
+	if already, all ready {
 		err := m.batchOrm.UpdateChunkProofsStatusByBatchHash(ctx, batch.BatchHash, types.ChunkProofsStatusReady)
 		if err != nil {
 			return err
