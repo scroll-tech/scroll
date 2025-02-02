@@ -159,11 +159,11 @@ func (t *TestcontainerApps) GetPoSL1EndPoint() (string, error) {
 	if t.poSL1Container == nil {
 		return "", errors.New("PoS L1 container is not running")
 	}
-	contrainer, err := t.poSL1Container.ServiceContainer(context.Background(), "geth")
+	container, constrained, err := t.poSL1Container.ServiceContainer(context.Background(), "geth")
 	if err != nil {
 		return "", err
 	}
-	return contrainer.PortEndpoint(context.Background(), "8545/tcp", "http")
+	return container, constrained.PortEndpoint(context.Background(), "8545/tcp", "http")
 }
 
 // GetPoSL1Client returns a ethclient by dialing running PoS L1 client
