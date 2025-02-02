@@ -56,7 +56,7 @@ func InitDB(config *Config) (*gorm.DB, error) {
 			// why set time to UTC.
 			// if now set this, the inserted data time will use local timezone. like 2023-07-18 18:24:00 CST+8
 			// but when inserted, store to postgres is 2023-07-18 18:24:00 UTC+0 the timezone is incorrect.
-			// As mysql dsn user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local, we cant set
+			// As mysql dsn user:pass@tcp(127.0.0.1:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local, we can't set
 			// the timezone by loc=Local. but postgres's dsn don't have loc option to set timezone, so just need set the gorm option like that.
 			return cutils.NowUTC()
 		},
