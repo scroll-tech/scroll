@@ -8456,6 +8456,7 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 [[package]]
 name = "scroll-zkvm-circuit-input-types"
 version = "0.1.0-rc.1"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.1#c20eb9ad3c43a3d78a4bb641dae491dfdbd7d1e1"
 dependencies = [
  "alloy-primitives 0.8.18",
  "alloy-serde",
@@ -8470,6 +8471,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-prover"
 version = "0.1.0-rc.1"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.1#c20eb9ad3c43a3d78a4bb641dae491dfdbd7d1e1"
 dependencies = [
  "alloy-primitives 0.8.18",
  "base64 0.22.1",
@@ -8477,6 +8479,7 @@ dependencies = [
  "hex",
  "once_cell",
  "openvm-circuit",
+ "openvm-native-circuit",
  "openvm-native-recursion",
  "openvm-sdk",
  "openvm-stark-sdk",
@@ -8496,6 +8499,7 @@ dependencies = [
 [[package]]
 name = "scroll-zkvm-verifier"
 version = "0.1.0-rc.1"
+source = "git+https://github.com/scroll-tech/zkvm-prover.git?tag=v0.1.0-rc.1#c20eb9ad3c43a3d78a4bb641dae491dfdbd7d1e1"
 dependencies = [
  "openvm-native-recursion",
  "revm 18.0.0",

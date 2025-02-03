@@ -13,6 +13,14 @@ halo2curves = { git = "https://github.com/scroll-tech/halo2curves", branch = "v0
 ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 ethers-signers  = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
+# patched add rkyv support & MSRV 1.77
+ruint = { git = "https://github.com/scroll-tech/uint.git", branch = "v1.12.3" }
+alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "v0.8.18" }
+revm = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
+revm-interpreter = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
+revm-precompile = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
+revm-primitives = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
+
 [patch."https://github.com/privacy-scaling-explorations/halo2.git"]
 halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "v1.1"  }
 [patch."https://github.com/privacy-scaling-explorations/poseidon.git"]
@@ -28,6 +36,9 @@ snark-verifier-sdk = { git = "https://github.com/scroll-tech/snark-verifier", br
 prover_v4 = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.12.2", package = "prover", default-features = false, features = ["parallel_syn", "scroll"] }
 # darwin_v2
 prover_v5 = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.13.1", package = "prover", default-features = false, features = ["parallel_syn", "scroll"] }
+# euclid
+prover_v7 = { git = "https://github.com/scroll-tech/zkvm-prover.git", tag = "v0.1.0-rc.1", package = "scroll-zkvm-prover" }
+verifier_v7 = { git = "https://github.com/scroll-tech/zkvm-prover.git", tag = "v0.1.0-rc.1", package = "scroll-zkvm-verifier" }
 
 base64 = "0.13.0"
 env_logger = "0.9.0"
