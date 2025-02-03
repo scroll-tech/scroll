@@ -1,9 +1,6 @@
-use ethers_core::types::H256;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use scroll_proving_sdk::prover::types::CircuitType;
-
-pub type CommonHash = H256;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Task {

@@ -7,15 +7,13 @@ edition = "2021"
 
 
 [patch.crates-io]
-ethers-signers = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
-halo2curves = { git = "https://github.com/scroll-tech/halo2curves", branch = "v0.1.0" }
-[patch."https://github.com/privacy-scaling-explorations/halo2.git"]
-halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "v1.1" }
-[patch."https://github.com/privacy-scaling-explorations/poseidon.git"]
-poseidon = { git = "https://github.com/scroll-tech/poseidon.git", branch = "main" }
-[patch."https://github.com/privacy-scaling-explorations/bls12_381"]
-bls12_381 = { git = "https://github.com/scroll-tech/bls12_381", branch = "feat/impl_scalar_field" }
-
+# patched add rkyv support & MSRV 1.77
+ruint = { git = "https://github.com/scroll-tech/uint.git", branch = "v1.12.3" }
+alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "v0.8.18" }
+revm = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
+revm-interpreter = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
+revm-precompile = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
+revm-primitives = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
 
 [dependencies]
 anyhow = "1.0"
@@ -27,21 +25,9 @@ futures = "0.3.30"
 
 ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
-halo2_proofs = { git = "https://github.com/scroll-tech/halo2.git", branch = "v1.1" }
-snark-verifier-sdk = { git = "https://github.com/scroll-tech/snark-verifier", branch = "develop", default-features = false, features = [
-    "loader_halo2",
-    "loader_evm",
-    "halo2-pse",
+scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "ca6f4c4", features = [
+    "openvm",
 ] }
-prover_darwin = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.12.2", package = "prover", default-features = false, features = [
-    "parallel_syn",
-    "scroll",
-] }
-prover_darwin_v2 = { git = "https://github.com/scroll-tech/zkevm-circuits.git", tag = "v0.13.1", package = "prover", default-features = false, features = [
-    "parallel_syn",
-    "scroll",
-] }
-scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "ca6f4c4" }
 base64 = "0.13.1"
 reqwest = { version = "0.12.4", features = ["gzip"] }
 reqwest-middleware = "0.3"
