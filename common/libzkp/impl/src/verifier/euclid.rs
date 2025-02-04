@@ -18,13 +18,14 @@ impl EuclidVerifier {
     // layer so `bundle_verifier` can manage the params by itself
     pub fn new(_params_map: &BTreeMap<u32, ParamsKZG<Bn256>>, assets_dir: &str) -> Self {
         env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
-        let chunk_asset_dir = Path::new(assets_dir).join("chunk");
+        let zkvm_release_path = Path::new(assets_dir).join("scroll-zkvm").join("current");
+        let chunk_asset_dir = Path::new(&zkvm_release_path).join("chunk");
         let chunk_verifier = ChunkProver::setup(&chunk_asset_dir, &chunk_asset_dir, None).unwrap();
 
-        let batch_asset_dir = Path::new(assets_dir).join("batch");
+        let batch_asset_dir = Path::new(&zkvm_release_path).join("batch");
         let batch_verifier = BatchProver::setup(&batch_asset_dir, &batch_asset_dir, None).unwrap();
 
-        let bundle_asset_dir = Path::new(assets_dir).join("bundle");
+        let bundle_asset_dir = Path::new(&zkvm_release_path).join("bundle");
         let bundle_verifier =
             BundleProver::setup(&bundle_asset_dir, &bundle_asset_dir, None).unwrap();
 
