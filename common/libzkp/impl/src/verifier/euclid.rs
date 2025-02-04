@@ -5,7 +5,7 @@ use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
 
 use crate::utils::panic_catch;
 use prover_v7::{BatchProof, BatchProver, BundleProof, BundleProver, ChunkProof, ChunkProver};
-use std::{collections::BTreeMap, env};
+use std::{collections::BTreeMap, env, path::Path};
 
 pub struct EuclidVerifier {
     chunk_verifier: ChunkProver,
@@ -18,11 +18,15 @@ impl EuclidVerifier {
     // layer so `bundle_verifier` can manage the params by itself
     pub fn new(_params_map: &BTreeMap<u32, ParamsKZG<Bn256>>, assets_dir: &str) -> Self {
         env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
-        let chunk_verifier = ChunkProver::setup(assets_dir, assets_dir, None).unwrap();
+        let chunk_asset_dir = Path::new(assets_dir).join("chunk");
+        let chunk_verifier = ChunkProver::setup(&chunk_asset_dir, &chunk_asset_dir, None).unwrap();
 
-        let batch_verifier = BatchProver::setup(assets_dir, assets_dir, None).unwrap();
+        let batch_asset_dir = Path::new(assets_dir).join("batch");
+        let batch_verifier = BatchProver::setup(&batch_asset_dir, &batch_asset_dir, None).unwrap();
 
-        let bundle_verifier = BundleProver::setup(assets_dir, assets_dir, None).unwrap();
+        let bundle_asset_dir = Path::new(assets_dir).join("bundle");
+        let bundle_verifier =
+            BundleProver::setup(&bundle_asset_dir, &bundle_asset_dir, None).unwrap();
 
         Self {
             chunk_verifier,
