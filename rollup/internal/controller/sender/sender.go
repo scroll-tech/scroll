@@ -682,8 +682,8 @@ func (s *Sender) getBlockNumberAndBaseFeeAndBlobFee(ctx context.Context) (uint64
 }
 
 func makeSidecar(blobsInput []*kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
-	if blobsInput == nil {
-		return nil, errors.New("blobs cannot be nil")
+	if len(blobsInput) == 0 {
+		return nil, errors.New("blobsInput is empty")
 	}
 
 	blobs := make([]kzg4844.Blob, len(blobsInput))

@@ -387,8 +387,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	var batchesToSubmit []*dbBatchWithChunksAndParent
 	var forceSubmit bool
 	for i, dbBatch := range dbBatches {
-		if i == 0 && encoding.CodecVersion(dbBatch.CodecVersion) < encoding.CodecV6 {
-			// if the first batch is not >= V6 then we need to submit batches one by one
+		if i == 0 && encoding.CodecVersion(dbBatch.CodecVersion) < encoding.CodecV7 {
+			// if the first batch is not >= V7 then we need to submit batches one by one
 			r.processPendingBatchesV4(dbBatches)
 			return
 		}
@@ -418,9 +418,20 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 				return
 			}
 
-			dbParentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, dbBatch.Index-1)
-			if err != nil {
-				log.Error("failed to get parent batch header", "err", err)
+			// get parent batch
+			if i == 0 {
+				dbParentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, dbBatch.Index-1)
+				if err != nil {
+					log.Error("failed to get parent batch header", "err", err)
+					return
+				}
+			} else {
+				dbParentBatch = dbBatches[i-1]
+			}
+
+			// make sure batch index is continuous
+			if dbParentBatch.Index != dbBatch.Index-1 {
+				log.Error("parent batch index is not equal to current batch index - 1", "index", dbBatch.Index, "parent index", dbParentBatch.Index)
 				return
 			}
 
@@ -442,12 +453,16 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			forceSubmit = true
 		}
 
-		if batchesToSubmitLen <= r.cfg.SenderConfig.BatchSubmission.MaxBatches {
+		if batchesToSubmitLen < r.cfg.SenderConfig.BatchSubmission.MaxBatches {
 			batchesToSubmit = append(batchesToSubmit, &dbBatchWithChunksAndParent{
 				Batch:       dbBatch,
 				Chunks:      dbChunks,
 				ParentBatch: dbParentBatch,
 			})
+		}
+
+		if len(batchesToSubmit) >= r.cfg.SenderConfig.BatchSubmission.MaxBatches {
+			break
 		}
 	}
 
@@ -471,10 +486,10 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 
 	codecVersion := encoding.CodecVersion(firstBatch.CodecVersion)
 	switch codecVersion {
-	case encoding.CodecV6:
-		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV6(batchesToSubmit)
+	case encoding.CodecV7:
+		calldata, blobs, maxBlockHeight, totalGasUsed, err = r.constructCommitBatchPayloadCodecV7(batchesToSubmit)
 		if err != nil {
-			log.Error("failed to construct commitBatchWithBlobProof payload for V6", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
+			log.Error("failed to construct commitBatchWithBlobProof payload for V7", "codecVersion", codecVersion, "start index", firstBatch.Index, "end index", lastBatch.Index, "err", err)
 			return
 		}
 	default:
@@ -521,7 +536,8 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.metrics.rollupL2RelayerCommitBlockHeight.Set(float64(maxBlockHeight))
 	r.metrics.rollupL2RelayerCommitThroughput.Add(float64(totalGasUsed))
 	r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Add(float64(len(batchesToSubmit)))
-
+	r.metrics.rollupL2RelayerProcessBatchesPerTxCount.Set(float64(len(batchesToSubmit)))
+	
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
@@ -1062,7 +1078,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV4(dbBatch *orm.Batch, d
 	return calldata, daBatch.Blob(), nil
 }
 
-func (r *Layer2Relayer) constructCommitBatchPayloadCodecV6(batchesToSubmit []*dbBatchWithChunksAndParent) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
+func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*dbBatchWithChunksAndParent) ([]byte, []*kzg4844.Blob, uint64, uint64, error) {
 	var maxBlockHeight uint64
 	var totalGasUsed uint64
 	blobs := make([]*kzg4844.Blob, len(batchesToSubmit))
