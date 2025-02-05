@@ -688,6 +688,9 @@ func makeSidecar(blobsInput []*kzg4844.Blob) (*gethTypes.BlobTxSidecar, error) {
 
 	blobs := make([]kzg4844.Blob, len(blobsInput))
 	for i, blob := range blobsInput {
+		if blob == nil {
+			return nil, fmt.Errorf("blob at index %d is nil", i)
+		}
 		blobs[i] = *blob
 	}
 
