@@ -542,7 +542,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 }
 
 func (r *Layer2Relayer) contextIDFromBatches(batches []*dbBatchWithChunksAndParent) string {
-	contextIDs := []string{"v6"}
+	contextIDs := []string{"v7"}
 
 	for _, batch := range batches {
 		contextIDs = append(contextIDs, batch.Batch.Hash)
@@ -552,7 +552,7 @@ func (r *Layer2Relayer) contextIDFromBatches(batches []*dbBatchWithChunksAndPare
 }
 
 func (r *Layer2Relayer) batchHashesFromContextID(contextID string) []string {
-	if strings.HasPrefix(contextID, "v6-") {
+	if strings.HasPrefix(contextID, "v7-") {
 		return strings.Split(contextID, "-")[1:]
 	}
 
