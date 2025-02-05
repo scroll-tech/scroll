@@ -537,7 +537,7 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 	r.metrics.rollupL2RelayerCommitThroughput.Add(float64(totalGasUsed))
 	r.metrics.rollupL2RelayerProcessPendingBatchSuccessTotal.Add(float64(len(batchesToSubmit)))
 	r.metrics.rollupL2RelayerProcessBatchesPerTxCount.Set(float64(len(batchesToSubmit)))
-	
+
 	log.Info("Sent the commitBatches tx to layer1", "batches count", len(batchesToSubmit), "start index", firstBatch.Index, "start hash", firstBatch.Hash, "end index", lastBatch.Index, "end hash", lastBatch.Hash, "tx hash", txHash.String())
 }
 
@@ -1097,13 +1097,14 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 			firstParentBatch = b.ParentBatch
 		}
 
-		chunks := make([]*encoding.Chunk, len(b.Chunks))
-		for i, c := range b.Chunks {
+		var batchBlocks []*encoding.Block
+		for _, c := range b.Chunks {
 			blocks, err := r.l2BlockOrm.GetL2BlocksInRange(r.ctx, c.StartBlockNumber, c.EndBlockNumber)
 			if err != nil {
 				return nil, nil, 0, 0, fmt.Errorf("failed to get blocks in range for batch %d: %w", b.Batch.Index, err)
 			}
-			chunks[i] = &encoding.Chunk{Blocks: blocks}
+
+			batchBlocks = append(batchBlocks, blocks...)
 
 			if c.EndBlockNumber > maxBlockHeight {
 				maxBlockHeight = c.EndBlockNumber
@@ -1112,10 +1113,12 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 		}
 
 		encodingBatch := &encoding.Batch{
-			Index:                      b.Batch.Index,
-			TotalL1MessagePoppedBefore: b.Chunks[0].TotalL1MessagesPoppedBefore,
-			ParentBatchHash:            common.HexToHash(b.ParentBatch.Hash),
-			Chunks:                     chunks,
+			Index:                     b.Batch.Index,
+			ParentBatchHash:           common.HexToHash(b.ParentBatch.Hash),
+			InitialL1MessageIndex:     b.Chunks[0].TotalL1MessagesPoppedBefore,
+			InitialL1MessageQueueHash: common.HexToHash(b.Batch.InitialL1MessageQueueHash),
+			LastL1MessageQueueHash:    common.HexToHash(b.Batch.LastL1MessageQueueHash),
+			Blocks:                    batchBlocks,
 		}
 
 		codec, err := encoding.CodecFromVersion(version)

@@ -8,6 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/scroll-tech/da-codec/encoding"
+	"github.com/scroll-tech/go-ethereum/common"
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
@@ -299,9 +300,48 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	var chunk encoding.Chunk
+	// From CodecV7 / EuclidV2 onwards we need to provide the InitialL1MessageQueueHash and LastL1MessageQueueHash.
+	// InitialL1MessageQueueHash of the first chunk in the fork needs to be the empty hash.
+	if codecVersion >= encoding.CodecV7 {
+		parentChunk, err := p.chunkOrm.GetLatestChunk(context.Background())
+		if err != nil || parentChunk == nil {
+			return fmt.Errorf("failed to get parent chunk: %w", err)
+		}
+
+		chunk.InitialL1MessageQueueHash = common.HexToHash(parentChunk.LastL1MessageQueueHash)
+
+		// previous chunk is not CodecV7, this means this is the first chunk of the fork.
+		if encoding.CodecVersion(parentChunk.CodecVersion) < codecVersion {
+			// double check with the previous block
+			prevBlocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, blocks[0].Header.Number.Uint64()-1, 1)
+			if err != nil || len(prevBlocks) == 0 || prevBlocks[0].Header.Hash() != blocks[0].Header.ParentHash {
+				return fmt.Errorf("failed to get parent block: %w", err)
+			}
+			// We expect the previous block to be not EuclidV2. If it is something went wrong.
+			if p.chainCfg.IsEuclidV2(prevBlocks[0].Header.Time) {
+				return fmt.Errorf("unexpected EuclidV2 block: %v, current block: %d, chunk version: %d, parent chunk version: %d, parent chunk index: %d", prevBlocks[0].Header.Number, blocks[0].Header.Number, codecVersion, parentChunk.CodecVersion, parentChunk.Index)
+			}
+
+			chunk.InitialL1MessageQueueHash = common.Hash{}
+		}
+
+		chunk.LastL1MessageQueueHash = chunk.InitialL1MessageQueueHash
+	}
+
+	var previousLastL1MessageQueueHash common.Hash
 	chunk.Blocks = make([]*encoding.Block, 0, len(blocks))
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)
+
+		// Compute rolling LastL1MessageQueueHash for the chunk. Each block's L1 messages are applied to the previous
+		// hash starting from the InitialL1MessageQueueHash for the chunk.
+		if codecVersion >= encoding.CodecV7 {
+			previousLastL1MessageQueueHash = chunk.LastL1MessageQueueHash
+			chunk.LastL1MessageQueueHash, err = encoding.MessageQueueV2ApplyL1MessagesFromBlocks(chunk.LastL1MessageQueueHash, []*encoding.Block{block})
+			if err != nil {
+				return fmt.Errorf("failed to calculate last L1 message queue hash for block %d: %w", block.Header.Number.Uint64(), err)
+			}
+		}
 
 		metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 		if calcErr != nil {
@@ -339,6 +379,7 @@ func (p *ChunkProposer) proposeChunk() error {
 				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
+			chunk.LastL1MessageQueueHash = previousLastL1MessageQueueHash
 
 			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 			if calcErr != nil {

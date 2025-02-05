@@ -253,6 +253,7 @@ func (p *BatchProposer) proposeBatch() error {
 		return fmt.Errorf("unsupported codec version: %v, expected at least %v", codec.Version(), p.minCodecVersion)
 	}
 
+	// TODO: should we limit this here for performance reasons with a config parameter? CodecV7 in principle supports endless chunks and returns math.MaxInt here.
 	maxChunksThisBatch := codec.MaxNumChunksPerBatch()
 
 	// select at most maxChunkNumPerBatch chunks
@@ -291,9 +292,12 @@ func (p *BatchProposer) proposeBatch() error {
 	batch.Index = dbParentBatch.Index + 1
 	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
 	batch.TotalL1MessagePoppedBefore = firstUnbatchedChunk.TotalL1MessagesPoppedBefore
+	batch.InitialL1MessageQueueHash = common.HexToHash(firstUnbatchedChunk.InitialL1MessageQueueHash)
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
+		batch.LastL1MessageQueueHash = common.HexToHash(dbChunks[i].LastL1MessageQueueHash)
+
 		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version())
 		if calcErr != nil {
 			return fmt.Errorf("failed to calculate batch metrics: %w", calcErr)
@@ -322,8 +326,9 @@ func (p *BatchProposer) proposeBatch() error {
 				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
+			batch.LastL1MessageQueueHash = common.HexToHash(dbChunks[i-1].LastL1MessageQueueHash)
 
-			metrics, err := utils.CalculateBatchMetrics(&batch, codec.Version())
+			metrics, err = utils.CalculateBatchMetrics(&batch, codec.Version())
 			if err != nil {
 				return fmt.Errorf("failed to calculate batch metrics: %w", err)
 			}
