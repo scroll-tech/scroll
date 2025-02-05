@@ -808,9 +808,20 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 		}
 	}
 
-	calldata, err := r.constructFinalizeBundlePayloadCodecV4(dbBatch, aggProof)
-	if err != nil {
-		return fmt.Errorf("failed to construct finalizeBundle payload codecv3, index: %v, err: %w", dbBatch.Index, err)
+	var calldata []byte
+	switch encoding.CodecVersion(bundle.CodecVersion) {
+	case encoding.CodecV4, encoding.CodecV5, encoding.CodecV6:
+		calldata, err = r.constructFinalizeBundlePayloadCodecV4(dbBatch, aggProof)
+		if err != nil {
+			return fmt.Errorf("failed to construct finalizeBundle payload codecv4, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
+		}
+	case encoding.CodecV7:
+		calldata, err = r.constructFinalizeBundlePayloadCodecV7(dbBatch, aggProof)
+		if err != nil {
+			return fmt.Errorf("failed to construct finalizeBundle payload codecv7, bundle index: %v, last batch index: %v, err: %w", bundle.Index, dbBatch.Index, err)
+		}
+	default:
+		return fmt.Errorf("unsupported codec version in finalizeBundle, bundle index: %v, version: %d", bundle.Index, bundle.CodecVersion)
 	}
 
 	txHash, err := r.finalizeSender.SendTransaction("finalizeBundle-"+bundle.Hash, &r.cfg.RollupContractAddress, calldata, nil, 0)
@@ -1165,6 +1176,37 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch
 	calldata, packErr := r.l1RollupABI.Pack(
 		"finalizeBundle",
 		dbBatch.BatchHeader,
+		common.HexToHash(dbBatch.StateRoot),
+		common.HexToHash(dbBatch.WithdrawRoot),
+	)
+	if packErr != nil {
+		return nil, fmt.Errorf("failed to pack finalizeBundle: %w", packErr)
+	}
+	return calldata, nil
+}
+
+func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, aggProof *message.BundleProof) ([]byte, error) {
+	// TODO: update this once the contract interface is finalized
+	if aggProof != nil { // finalizeBundle with proof.
+		calldata, packErr := r.l1RollupABI.Pack(
+			"finalizeBundleWithProof",
+			dbBatch.BatchHeader,
+			dbBatch.LastL1MessageQueueHash,
+			common.HexToHash(dbBatch.StateRoot),
+			common.HexToHash(dbBatch.WithdrawRoot),
+			aggProof.Proof,
+		)
+		if packErr != nil {
+			return nil, fmt.Errorf("failed to pack finalizeBundleWithProof: %w", packErr)
+		}
+		return calldata, nil
+	}
+
+	// finalizeBundle without proof.
+	calldata, packErr := r.l1RollupABI.Pack(
+		"finalizeBundle",
+		dbBatch.BatchHeader,
+		dbBatch.LastL1MessageQueueHash,
 		common.HexToHash(dbBatch.StateRoot),
 		common.HexToHash(dbBatch.WithdrawRoot),
 	)
