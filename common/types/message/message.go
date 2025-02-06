@@ -1,10 +1,15 @@
 package message
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/scroll-tech/go-ethereum/common"
+)
+
+const (
+	euclidFork = "euclid"
 )
 
 // ProofType represents the type of task.
@@ -61,6 +66,7 @@ type ChunkInfo struct {
 	DataHash      common.Hash `json:"data_hash"`
 	IsPadding     bool        `json:"is_padding"`
 	TxBytes       []byte      `json:"tx_bytes"`
+	TxBytesHash   common.Hash `json:"tx_data_digest"`
 }
 
 // SubCircuitRowUsage tracing info added in v0.11.0rc8
@@ -77,6 +83,8 @@ type ChunkProof interface {
 // NewChunkProof creates a new ChunkProof instance.
 func NewChunkProof(hardForkName string) ChunkProof {
 	switch hardForkName {
+	case euclidFork:
+		return &OpenVMChunkProof{}
 	default:
 		return &Halo2ChunkProof{}
 	}
@@ -109,6 +117,8 @@ type BatchProof interface {
 // NewBatchProof creates a new BatchProof instance.
 func NewBatchProof(hardForkName string) BatchProof {
 	switch hardForkName {
+	case euclidFork:
+		return &OpenVMBatchProof{}
 	default:
 		return &Halo2BatchProof{}
 	}
@@ -164,6 +174,8 @@ type BundleProof interface {
 // NewBundleProof creates a new BundleProof instance.
 func NewBundleProof(hardForkName string) BundleProof {
 	switch hardForkName {
+	case euclidFork:
+		return &OpenVMBundleProof{}
 	default:
 		return &Halo2BundleProof{}
 	}
@@ -203,6 +215,152 @@ func (ap *Halo2BundleProof) SanityCheck() error {
 
 	if len(ap.Vk) == 0 {
 		return errors.New("vk not ready")
+	}
+
+	return nil
+}
+
+// Proof for flatten VM proof
+type OpenVMProof struct {
+	Proof        interface{} `json:"proofs"`
+	PublicValues []uint32    `json:"public_values"`
+}
+
+// Proof for flatten EVM proof
+type OpenVMEvmProof struct {
+	Proof     []byte     `json:"proof"`
+	Instances [][]string `json:"instances"`
+}
+
+// OpenVMChunkProof includes the proof info that are required for chunk verification and rollup.
+type OpenVMChunkProof struct {
+	MetaData struct {
+		ChunkInfo *ChunkInfo `json:"chunk_info"`
+	} `json:"metadata"`
+
+	VmProof    *OpenVMProof `json:"proof"`
+	Vk         []byte       `json:"vk,omitempty"`
+	GitVersion string       `json:"git_version,omitempty"`
+}
+
+func (p *OpenVMChunkProof) Proof() []byte {
+	proofJson, err := json.Marshal(p.VmProof)
+	if err != nil {
+		panic(fmt.Sprint("marshaling error", err))
+	}
+
+	return proofJson
+}
+
+// OpenVMBatchInfo is for calculating pi_hash for batch header
+type OpenVMBatchInfo struct {
+	ParentBatchHash common.Hash `json:"parent_batch_hash"`
+	ParentStateRoot common.Hash `json:"parent_state_root"`
+	StateRoot       common.Hash `json:"state_root"`
+	WithdrawRoot    common.Hash `json:"withdraw_root"`
+	BatchHash       common.Hash `json:"batch_hash"`
+	ChainID         uint64      `json:"chain_id"`
+}
+
+// BatchProof includes the proof info that are required for batch verification and rollup.
+type OpenVMBatchProof struct {
+	MetaData struct {
+		BatchInfo *OpenVMBatchInfo `json:"batch_info"`
+		BatchHash common.Hash      `json:"batch_hash"`
+	} `json:"metadata"`
+
+	VmProof    *OpenVMProof `json:"proof"`
+	Vk         []byte       `json:"vk,omitempty"`
+	GitVersion string       `json:"git_version,omitempty"`
+}
+
+func (p *OpenVMBatchProof) Proof() []byte {
+	proofJson, err := json.Marshal(p.VmProof)
+	if err != nil {
+		panic(fmt.Sprint("marshaling error", err))
+	}
+
+	return proofJson
+}
+
+// SanityCheck checks whether a BatchProof is in a legal format
+func (ap *OpenVMBatchProof) SanityCheck() error {
+	if ap == nil {
+		return errors.New("agg_proof is nil")
+	}
+	if ap.MetaData.BatchInfo == nil {
+		return errors.New("batch info not ready")
+	}
+
+	if ap.VmProof == nil {
+		return errors.New("proof not ready")
+	} else {
+		if len(ap.Vk) == 0 {
+			return errors.New("vk not ready")
+		}
+		pf := ap.VmProof
+		if pf.Proof == nil {
+			return errors.New("proof data not ready")
+		}
+		if len(pf.PublicValues) == 0 {
+			return errors.New("proof public value not ready")
+		}
+	}
+
+	return nil
+}
+
+// OpenVMBundleInfo is for calculating pi_hash for bundle header
+type OpenVMBundleInfo struct {
+	ChainID       uint64      `json:"chain_id"`
+	PrevStateRoot common.Hash `json:"prev_state_root"`
+	PostStateRoot common.Hash `json:"post_state_root"`
+	WithdrawRoot  common.Hash `json:"withdraw_root"`
+	NumBatches    uint32      `json:"num_batches"`
+	PrevBatchHash common.Hash `json:"prev_batch_hash"`
+	BatchHash     common.Hash `json:"batch_hash"`
+}
+
+// OpenVMBundleProof includes the proof info that are required for verification of a bundle of batch proofs.
+type OpenVMBundleProof struct {
+	MetaData struct {
+		BundleInfo    *OpenVMBundleInfo `json:"bundle_info"`
+		BunndlePIHash common.Hash       `json:"bundle_pi_hash"`
+	} `json:"metadata"`
+
+	EvmProof   *OpenVMEvmProof `json:"proof"`
+	Vk         []byte          `json:"vk,omitempty"`
+	GitVersion string          `json:"git_version,omitempty"`
+}
+
+func (p *OpenVMBundleProof) Proof() []byte {
+	return p.EvmProof.Proof
+}
+
+// SanityCheck checks whether a BundleProof is in a legal format
+func (ap *OpenVMBundleProof) SanityCheck() error {
+	if ap == nil {
+		return errors.New("agg_proof is nil")
+	}
+
+	if ap.MetaData.BundleInfo == nil {
+		return errors.New("bundle info not ready")
+	}
+
+	if ap.EvmProof == nil {
+		return errors.New("proof not ready")
+	} else {
+		if len(ap.Vk) == 0 {
+			return errors.New("vk not ready")
+		}
+		pf := ap.EvmProof
+		if len(pf.Proof)%32 != 0 {
+			return fmt.Errorf("proof buffer length must be a multiple of 32, got: %d", len(pf.Proof))
+		}
+
+		if len(pf.Instances) == 0 {
+			return errors.New("instance not ready")
+		}
 	}
 
 	return nil
