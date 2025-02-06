@@ -2,7 +2,6 @@ package orm
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -12,7 +11,6 @@ import (
 	"gorm.io/gorm"
 
 	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
 	"scroll-tech/common/utils"
 )
 
@@ -134,32 +132,6 @@ func (o *Chunk) GetChunksByBatchHash(ctx context.Context, batchHash string) ([]*
 		return nil, fmt.Errorf("Chunk.GetChunksByBatchHash error: %w, batch hash: %v", err, batchHash)
 	}
 	return chunks, nil
-}
-
-// GetProofsByBatchHash retrieves the proofs associated with a specific batch hash.
-// It returns a slice of decoded proofs (message.ChunkProof) obtained from the database.
-// The returned proofs are sorted in ascending order by their associated chunk index.
-func (o *Chunk) GetProofsByBatchHash(ctx context.Context, batchHash string) ([]*message.ChunkProof, error) {
-	db := o.db.WithContext(ctx)
-	db = db.Model(&Chunk{})
-	db = db.Where("batch_hash", batchHash)
-	db = db.Order("index ASC")
-
-	var chunks []*Chunk
-	if err := db.Find(&chunks).Error; err != nil {
-		return nil, fmt.Errorf("Chunk.GetProofsByBatchHash error: %w, batch hash: %v", err, batchHash)
-	}
-
-	var proofs []*message.ChunkProof
-	for _, chunk := range chunks {
-		var proof message.ChunkProof
-		if err := json.Unmarshal(chunk.Proof, &proof); err != nil {
-			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", err, batchHash, chunk.Hash)
-		}
-		proofs = append(proofs, &proof)
-	}
-
-	return proofs, nil
 }
 
 // getLatestChunk retrieves the latest chunk from the database.

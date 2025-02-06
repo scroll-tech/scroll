@@ -215,14 +215,14 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 		return nil, fmt.Errorf("no chunk found for batch task id:%s", task.TaskID)
 	}
 
-	var chunkProofs []*message.ChunkProof
+	var chunkProofs []message.ChunkProof
 	var chunkInfos []*message.ChunkInfo
 	for _, chunk := range chunks {
-		var proof message.ChunkProof
+		proof := message.NewChunkProof(hardForkName)
 		if encodeErr := json.Unmarshal(chunk.Proof, &proof); encodeErr != nil {
 			return nil, fmt.Errorf("Chunk.GetProofsByBatchHash unmarshal proof error: %w, batch hash: %v, chunk hash: %v", encodeErr, task.TaskID, chunk.Hash)
 		}
-		chunkProofs = append(chunkProofs, &proof)
+		chunkProofs = append(chunkProofs, proof)
 
 		chunkInfo := message.ChunkInfo{
 			ChainID:       bp.cfg.L2.ChainID,
@@ -232,8 +232,10 @@ func (bp *BatchProverTask) formatProverTask(ctx context.Context, task *orm.Prove
 			DataHash:      common.HexToHash(chunk.Hash),
 			IsPadding:     false,
 		}
-		if proof.ChunkInfo != nil {
-			chunkInfo.TxBytes = proof.ChunkInfo.TxBytes
+		if haloProot, ok := proof.(*message.Halo2ChunkProof); ok {
+			if haloProot.ChunkInfo != nil {
+				chunkInfo.TxBytes = haloProot.ChunkInfo.TxBytes
+			}
 		}
 		chunkInfos = append(chunkInfos, &chunkInfo)
 	}
@@ -264,7 +266,7 @@ func (bp *BatchProverTask) recoverActiveAttempts(ctx *gin.Context, batchTask *or
 	}
 }
 
-func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []*message.ChunkProof) (*message.BatchTaskDetail, error) {
+func (bp *BatchProverTask) getBatchTaskDetail(dbBatch *orm.Batch, chunkInfos []*message.ChunkInfo, chunkProofs []message.ChunkProof) (*message.BatchTaskDetail, error) {
 	taskDetail := &message.BatchTaskDetail{
 		ChunkInfos:  chunkInfos,
 		ChunkProofs: chunkProofs,

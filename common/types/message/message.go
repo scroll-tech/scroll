@@ -7,16 +7,6 @@ import (
 	"github.com/scroll-tech/go-ethereum/common"
 )
 
-// RespStatus represents status code from prover to scroll
-type RespStatus uint32
-
-const (
-	// StatusOk means generate proof success
-	StatusOk RespStatus = iota
-	// StatusProofError means generate proof failed
-	StatusProofError
-)
-
 // ProofType represents the type of task.
 type ProofType uint8
 
@@ -51,15 +41,15 @@ type ChunkTaskDetail struct {
 
 // BatchTaskDetail is a type containing BatchTask detail.
 type BatchTaskDetail struct {
-	ChunkInfos  []*ChunkInfo  `json:"chunk_infos"`
-	ChunkProofs []*ChunkProof `json:"chunk_proofs"`
-	BatchHeader interface{}   `json:"batch_header"`
-	BlobBytes   []byte        `json:"blob_bytes"`
+	ChunkInfos  []*ChunkInfo `json:"chunk_infos"`
+	ChunkProofs []ChunkProof `json:"chunk_proofs"`
+	BatchHeader interface{}  `json:"batch_header"`
+	BlobBytes   []byte       `json:"blob_bytes"`
 }
 
 // BundleTaskDetail consists of all the information required to describe the task to generate a proof for a bundle of batches.
 type BundleTaskDetail struct {
-	BatchProofs []*BatchProof `json:"batch_proofs"`
+	BatchProofs []BatchProof `json:"batch_proofs"`
 }
 
 // ChunkInfo is for calculating pi_hash for chunk
@@ -79,11 +69,24 @@ type SubCircuitRowUsage struct {
 	RowNumber uint64 `json:"row_number"`
 }
 
-// ChunkProof includes the proof info that are required for chunk verification and rollup.
-type ChunkProof struct {
+// ChunkProof
+type ChunkProof interface {
+	Proof() []byte
+}
+
+// NewChunkProof creates a new ChunkProof instance.
+func NewChunkProof(hardForkName string) ChunkProof {
+	switch hardForkName {
+	default:
+		return &Halo2ChunkProof{}
+	}
+}
+
+// Halo2ChunkProof includes the proof info that are required for chunk verification and rollup.
+type Halo2ChunkProof struct {
 	StorageTrace []byte `json:"storage_trace,omitempty"`
 	Protocol     []byte `json:"protocol"`
-	Proof        []byte `json:"proof"`
+	RawProof     []byte `json:"proof"`
 	Instances    []byte `json:"instances"`
 	Vk           []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
@@ -92,10 +95,29 @@ type ChunkProof struct {
 	RowUsages  []SubCircuitRowUsage `json:"row_usages,omitempty"`
 }
 
-// BatchProof includes the proof info that are required for batch verification and rollup.
-type BatchProof struct {
+// Proof returns the proof bytes of a ChunkProof
+func (ap *Halo2ChunkProof) Proof() []byte {
+	return ap.RawProof
+}
+
+// BatchProof
+type BatchProof interface {
+	SanityCheck() error
+	Proof() []byte
+}
+
+// NewBatchProof creates a new BatchProof instance.
+func NewBatchProof(hardForkName string) BatchProof {
+	switch hardForkName {
+	default:
+		return &Halo2BatchProof{}
+	}
+}
+
+// Halo2BatchProof includes the proof info that are required for batch verification and rollup.
+type Halo2BatchProof struct {
 	Protocol  []byte `json:"protocol"`
-	Proof     []byte `json:"proof"`
+	RawProof  []byte `json:"proof"`
 	Instances []byte `json:"instances"`
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
@@ -103,18 +125,23 @@ type BatchProof struct {
 	GitVersion string      `json:"git_version,omitempty"`
 }
 
+// Proof returns the proof bytes of a BatchProof
+func (ap *Halo2BatchProof) Proof() []byte {
+	return ap.RawProof
+}
+
 // SanityCheck checks whether a BatchProof is in a legal format
-func (ap *BatchProof) SanityCheck() error {
+func (ap *Halo2BatchProof) SanityCheck() error {
 	if ap == nil {
 		return errors.New("agg_proof is nil")
 	}
 
-	if len(ap.Proof) == 0 {
+	if len(ap.RawProof) == 0 {
 		return errors.New("proof not ready")
 	}
 
-	if len(ap.Proof)%32 != 0 {
-		return fmt.Errorf("proof buffer length must be a multiple of 32, got: %d", len(ap.Proof))
+	if len(ap.RawProof)%32 != 0 {
+		return fmt.Errorf("proof buffer length must be a multiple of 32, got: %d", len(ap.RawProof))
 	}
 
 	if len(ap.Instances) == 0 {
@@ -128,27 +155,46 @@ func (ap *BatchProof) SanityCheck() error {
 	return nil
 }
 
+// BundleProof
+type BundleProof interface {
+	SanityCheck() error
+	Proof() []byte
+}
+
+// NewBundleProof creates a new BundleProof instance.
+func NewBundleProof(hardForkName string) BundleProof {
+	switch hardForkName {
+	default:
+		return &Halo2BundleProof{}
+	}
+}
+
 // BundleProof includes the proof info that are required for verification of a bundle of batch proofs.
-type BundleProof struct {
-	Proof     []byte `json:"proof"`
+type Halo2BundleProof struct {
+	RawProof  []byte `json:"proof"`
 	Instances []byte `json:"instances"`
 	Vk        []byte `json:"vk"`
 	// cross-reference between cooridinator computation and prover compution
 	GitVersion string `json:"git_version,omitempty"`
 }
 
+// Proof returns the proof bytes of a BundleProof
+func (ap *Halo2BundleProof) Proof() []byte {
+	return ap.RawProof
+}
+
 // SanityCheck checks whether a BundleProof is in a legal format
-func (ap *BundleProof) SanityCheck() error {
+func (ap *Halo2BundleProof) SanityCheck() error {
 	if ap == nil {
 		return errors.New("agg_proof is nil")
 	}
 
-	if len(ap.Proof) == 0 {
+	if len(ap.RawProof) == 0 {
 		return errors.New("proof not ready")
 	}
 
-	if len(ap.Proof)%32 != 0 {
-		return fmt.Errorf("proof buffer length must be a multiple of 32, got: %d", len(ap.Proof))
+	if len(ap.RawProof)%32 != 0 {
+		return fmt.Errorf("proof buffer length must be a multiple of 32, got: %d", len(ap.RawProof))
 	}
 
 	if len(ap.Instances) == 0 {

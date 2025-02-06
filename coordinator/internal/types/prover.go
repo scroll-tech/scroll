@@ -6,6 +6,16 @@ import (
 	"scroll-tech/common/types/message"
 )
 
+// RespStatus represents status code from prover to scroll
+type RespStatus uint32
+
+const (
+	// StatusOk means generate proof success
+	StatusOk RespStatus = iota
+	// StatusProofError means generate proof failed
+	StatusProofError
+)
+
 // ProverType represents the type of prover.
 type ProverType uint8
 

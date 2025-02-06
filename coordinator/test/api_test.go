@@ -594,7 +594,7 @@ func testTimeoutProof(t *testing.T) {
 	assert.NoError(t, err)
 	err = chunkOrm.UpdateBatchHashInRange(context.Background(), 0, 100, batch.Hash)
 	assert.NoError(t, err)
-	encodeData, err := json.Marshal(message.ChunkProof{})
+	encodeData, err := json.Marshal(message.Halo2ChunkProof{})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, encodeData)
 	err = chunkOrm.UpdateProofAndProvingStatusByHash(context.Background(), dbChunk.Hash, encodeData, types.ProvingTaskUnassigned, 1)

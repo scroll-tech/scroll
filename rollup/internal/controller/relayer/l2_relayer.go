@@ -609,9 +609,17 @@ func (r *Layer2Relayer) finalizeBundle(bundle *orm.Bundle, withProof bool) error
 		return err
 	}
 
-	var aggProof *message.BundleProof
+	firstChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, dbBatch.StartChunkIndex)
+	if err != nil || firstChunk == nil {
+		log.Error("failed to get first chunk of batch", "chunk index", dbBatch.StartChunkIndex, "error", err)
+		return fmt.Errorf("failed to get first chunk of batch: %w", err)
+	}
+
+	hardForkName := encoding.GetHardforkName(r.chainCfg, firstChunk.StartBlockNumber, firstChunk.StartBlockTime)
+
+	var aggProof message.BundleProof
 	if withProof {
-		aggProof, err = r.bundleOrm.GetVerifiedProofByHash(r.ctx, bundle.Hash)
+		aggProof, err = r.bundleOrm.GetVerifiedProofByHash(r.ctx, bundle.Hash, hardForkName)
 		if err != nil {
 			return fmt.Errorf("failed to get verified proof by bundle index: %d, err: %w", bundle.Index, err)
 		}
@@ -883,14 +891,14 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV4(dbBatch *orm.Batch, d
 	return calldata, daBatch.Blob(), nil
 }
 
-func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch, aggProof *message.BundleProof) ([]byte, error) {
+func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch, aggProof message.BundleProof) ([]byte, error) {
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
 			"finalizeBundleWithProof",
 			dbBatch.BatchHeader,
 			common.HexToHash(dbBatch.StateRoot),
 			common.HexToHash(dbBatch.WithdrawRoot),
-			aggProof.Proof,
+			aggProof.Proof(),
 		)
 		if packErr != nil {
 			return nil, fmt.Errorf("failed to pack finalizeBundleWithProof: %w", packErr)
