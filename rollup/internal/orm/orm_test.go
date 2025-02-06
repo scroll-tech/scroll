@@ -291,7 +291,7 @@ func TestBatchOrm(t *testing.T) {
 		err = batchOrm.UpdateProvingStatus(context.Background(), batchHash2, types.ProvingTaskVerified)
 		assert.NoError(t, err)
 
-		dbProof, err := batchOrm.GetVerifiedProofByHash(context.Background(), batchHash1)
+		dbProof, err := batchOrm.GetVerifiedProofByHash(context.Background(), batchHash1, "darwinV2")
 		assert.Error(t, err)
 		assert.Nil(t, dbProof)
 
@@ -460,8 +460,8 @@ func TestBundleOrm(t *testing.T) {
 	})
 
 	t.Run("GetVerifiedProofByHash", func(t *testing.T) {
-		proof := &message.BundleProof{
-			Proof: []byte("test proof"),
+		proof := &message.Halo2BundleProof{
+			RawProof: []byte("test proof"),
 		}
 		proofBytes, err := json.Marshal(proof)
 		assert.NoError(t, err)
@@ -469,9 +469,9 @@ func TestBundleOrm(t *testing.T) {
 		err = db.Model(&Bundle{}).Where("hash = ?", bundle1.Hash).Update("proof", proofBytes).Error
 		assert.NoError(t, err)
 
-		retrievedProof, err := bundleOrm.GetVerifiedProofByHash(context.Background(), bundle1.Hash)
+		retrievedProof, err := bundleOrm.GetVerifiedProofByHash(context.Background(), bundle1.Hash, "darwinV2")
 		assert.NoError(t, err)
-		assert.Equal(t, proof.Proof, retrievedProof.Proof)
+		assert.Equal(t, proof.RawProof, retrievedProof.Proof())
 	})
 
 	t.Run("GetBundles", func(t *testing.T) {
@@ -483,8 +483,8 @@ func TestBundleOrm(t *testing.T) {
 	})
 
 	t.Run("UpdateProofAndProvingStatusByHash", func(t *testing.T) {
-		proof := &message.BundleProof{
-			Proof: []byte("new test proof"),
+		proof := &message.Halo2BundleProof{
+			RawProof: []byte("new test proof"),
 		}
 		err := bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle2.Hash, proof, types.ProvingTaskVerified, 600)
 		assert.NoError(t, err)
@@ -496,10 +496,10 @@ func TestBundleOrm(t *testing.T) {
 		assert.Equal(t, int32(600), bundle.ProofTimeSec)
 		assert.NotNil(t, bundle.ProvedAt)
 
-		var retrievedProof message.BundleProof
+		retrievedProof := message.Halo2BundleProof{}
 		err = json.Unmarshal(bundle.Proof, &retrievedProof)
 		assert.NoError(t, err)
-		assert.Equal(t, proof.Proof, retrievedProof.Proof)
+		assert.Equal(t, proof.RawProof, retrievedProof.Proof())
 	})
 
 	t.Run("UpdateRollupStatus", func(t *testing.T) {

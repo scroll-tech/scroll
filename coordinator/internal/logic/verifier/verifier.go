@@ -110,10 +110,10 @@ func NewVerifier(cfg *config.VerifierConfig) (*Verifier, error) {
 }
 
 // VerifyBatchProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyBatchProof(proof message.BatchProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, batch verifier disabled")
-		if string(proof.Proof) == InvalidTestProof {
+		if string(proof.Proof()) == InvalidTestProof {
 			return false, nil
 		}
 		return true, nil
@@ -137,10 +137,10 @@ func (v *Verifier) VerifyBatchProof(proof *message.BatchProof, forkName string) 
 }
 
 // VerifyChunkProof Verify a ZkProof by marshaling it and sending it to the Halo2 Verifier.
-func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyChunkProof(proof message.ChunkProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
-		if string(proof.Proof) == InvalidTestProof {
+		if string(proof.Proof()) == InvalidTestProof {
 			return false, nil
 		}
 		return true, nil
@@ -164,10 +164,10 @@ func (v *Verifier) VerifyChunkProof(proof *message.ChunkProof, forkName string) 
 }
 
 // VerifyBundleProof Verify a ZkProof for a bundle of batches, by marshaling it and verifying it via the EVM verifier.
-func (v *Verifier) VerifyBundleProof(proof *message.BundleProof, forkName string) (bool, error) {
+func (v *Verifier) VerifyBundleProof(proof message.BundleProof, forkName string) (bool, error) {
 	if v.cfg.MockMode {
 		log.Info("Mock mode, verifier disabled")
-		if string(proof.Proof) == InvalidTestProof {
+		if string(proof.Proof()) == InvalidTestProof {
 			return false, nil
 		}
 		return true, nil

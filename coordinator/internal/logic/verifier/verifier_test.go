@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"scroll-tech/common/types/message"
+	"scroll-tech/common/types"
 
 	"scroll-tech/coordinator/internal/config"
 )
@@ -66,25 +66,25 @@ func TestFFI(t *testing.T) {
 	t.Log("Verified batch proof")
 }
 
-func readBatchProof(filePat string, as *assert.Assertions) *message.BatchProof {
+func readBatchProof(filePat string, as *assert.Assertions) types.BatchProof {
 	f, err := os.Open(filePat)
 	as.NoError(err)
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
 
-	proof := &message.BatchProof{}
+	proof := &types.Halo2BatchProof{}
 	as.NoError(json.Unmarshal(byt, proof))
 
 	return proof
 }
 
-func readChunkProof(filePat string, as *assert.Assertions) *message.ChunkProof {
+func readChunkProof(filePat string, as *assert.Assertions) types.ChunkProof {
 	f, err := os.Open(filePat)
 	as.NoError(err)
 	byt, err := io.ReadAll(f)
 	as.NoError(err)
 
-	proof := &message.ChunkProof{}
+	proof := &types.Halo2ChunkProof{}
 	as.NoError(json.Unmarshal(byt, proof))
 
 	return proof
