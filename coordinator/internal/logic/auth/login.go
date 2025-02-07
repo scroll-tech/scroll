@@ -25,6 +25,8 @@ type LoginLogic struct {
 	batchVKs     map[string]struct{}
 	bundleVks    map[string]struct{}
 
+	openVmVks map[string]struct{}
+
 	proverVersionHardForkMap map[string][]string
 }
 
@@ -50,6 +52,7 @@ func NewLoginLogic(db *gorm.DB, cfg *config.Config, vf *verifier.Verifier) *Logi
 		chunkVks:                 vf.ChunkVKMap,
 		batchVKs:                 vf.BatchVKMap,
 		bundleVks:                vf.BundleVkMap,
+		openVmVks:                vf.OpenVMVkMap,
 		challengeOrm:             orm.NewChallenge(db),
 		proverVersionHardForkMap: proverVersionHardForkMap,
 	}
@@ -86,6 +89,10 @@ func (l *LoginLogic) Check(login *types.LoginParameter) error {
 					vks[vk] = struct{}{}
 				}
 				for vk := range l.bundleVks {
+					vks[vk] = struct{}{}
+				}
+			case types.ProverTypeOpenVM:
+				for vk := range l.openVmVks {
 					vks[vk] = struct{}{}
 				}
 			default:

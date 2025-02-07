@@ -26,7 +26,7 @@ func InitController(cfg *config.Config, chainCfg *params.ChainConfig, db *gorm.D
 		panic("proof receiver new verifier failure")
 	}
 
-	log.Info("verifier created", "chunkVerifier", vf.ChunkVKMap, "batchVerifier", vf.BatchVKMap, "bundleVerifier", vf.BundleVkMap)
+	log.Info("verifier created", "chunkVerifier", vf.ChunkVKMap, "batchVerifier", vf.BatchVKMap, "bundleVerifier", vf.BundleVkMap, "openVmVerifier", vf.OpenVMVkMap)
 
 	Auth = NewAuthController(db, cfg, vf)
 	GetTask = NewGetTaskController(cfg, chainCfg, db, reg)

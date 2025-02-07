@@ -13,4 +13,5 @@ type Verifier struct {
 	ChunkVKMap  map[string]struct{}
 	BatchVKMap  map[string]struct{}
 	BundleVkMap map[string]struct{}
+	OpenVMVkMap map[string]struct{}
 }

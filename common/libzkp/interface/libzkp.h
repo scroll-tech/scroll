@@ -8,3 +8,5 @@ char verify_batch_proof(char* proof, char* fork_name);
 char verify_bundle_proof(char* proof, char* fork_name);
 
 char verify_chunk_proof(char* proof, char* fork_name);
+
+void dump_vk(char* fork_name, char* file);
