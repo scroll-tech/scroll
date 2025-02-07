@@ -27,7 +27,7 @@ impl<'params> DarwinV2Verifier<'params> {
     }
 }
 
-impl<'params> ProofVerifier for DarwinV2Verifier<'params> {
+impl ProofVerifier for DarwinV2Verifier<'_> {
     fn verify(&self, task_type: super::TaskType, proof: Vec<u8>) -> Result<bool> {
         let result = panic_catch(|| match task_type {
             TaskType::Chunk => {
@@ -44,5 +44,9 @@ impl<'params> ProofVerifier for DarwinV2Verifier<'params> {
             }
         });
         result.map_err(|e| anyhow::anyhow!(e))
+    }
+
+    fn dump_vk(&self, _file: &std::path::Path) {
+        unreachable!("coordinator already has access to DarwinV2 vks")
     }
 }
