@@ -291,11 +291,15 @@ func (p *BatchProposer) proposeBatch() error {
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1
 	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
-	batch.TotalL1MessagePoppedBefore = firstUnbatchedChunk.TotalL1MessagesPoppedBefore
+	batch.InitialL1MessageIndex = firstUnbatchedChunk.TotalL1MessagesPoppedBefore
+	batch.TotalL1MessagePoppedBefore = firstUnbatchedChunk.TotalL1MessagesPoppedBefore // set for compatibility within relayer
 	batch.InitialL1MessageQueueHash = common.HexToHash(firstUnbatchedChunk.InitialL1MessageQueueHash)
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
+		if codec.Version() >= encoding.CodecV7 {
+			batch.Blocks = append(batch.Blocks, chunk.Blocks...)
+		}
 		batch.LastL1MessageQueueHash = common.HexToHash(dbChunks[i].LastL1MessageQueueHash)
 
 		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version())
@@ -370,7 +374,10 @@ func (p *BatchProposer) getDAChunks(dbChunks []*orm.Chunk) ([]*encoding.Chunk, e
 			return nil, err
 		}
 		chunks[i] = &encoding.Chunk{
-			Blocks: blocks,
+			Blocks:                    blocks,
+			InitialL1MessageIndex:     c.TotalL1MessagesPoppedBefore,
+			InitialL1MessageQueueHash: common.HexToHash(c.InitialL1MessageQueueHash),
+			LastL1MessageQueueHash:    common.HexToHash(c.LastL1MessageQueueHash),
 		}
 	}
 	return chunks, nil

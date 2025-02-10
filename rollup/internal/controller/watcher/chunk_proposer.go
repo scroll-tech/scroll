@@ -312,20 +312,11 @@ func (p *ChunkProposer) proposeChunk() error {
 
 		// previous chunk is not CodecV7, this means this is the first chunk of the fork.
 		if encoding.CodecVersion(parentChunk.CodecVersion) < codecVersion {
-			// double check with the previous block
-			prevBlocks, err := p.l2BlockOrm.GetL2BlocksGEHeight(p.ctx, blocks[0].Header.Number.Uint64()-1, 1)
-			if err != nil || len(prevBlocks) == 0 || prevBlocks[0].Header.Hash() != blocks[0].Header.ParentHash {
-				return fmt.Errorf("failed to get parent block: %w", err)
-			}
-			// We expect the previous block to be not EuclidV2. If it is something went wrong.
-			if p.chainCfg.IsEuclidV2(prevBlocks[0].Header.Time) {
-				return fmt.Errorf("unexpected EuclidV2 block: %v, current block: %d, chunk version: %d, parent chunk version: %d, parent chunk index: %d", prevBlocks[0].Header.Number, blocks[0].Header.Number, codecVersion, parentChunk.CodecVersion, parentChunk.Index)
-			}
-
 			chunk.InitialL1MessageQueueHash = common.Hash{}
 		}
 
 		chunk.LastL1MessageQueueHash = chunk.InitialL1MessageQueueHash
+		chunk.InitialL1MessageIndex = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
 	}
 
 	var previousLastL1MessageQueueHash common.Hash
