@@ -1152,7 +1152,7 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 	// TODO: this needs to be updated once the contract interface is finalized
 	calldata, err := r.l1RollupABI.Pack("commitBatches", version, firstParentBatch.BatchHeader)
 	if err != nil {
-		return nil, nil, 0, 0, fmt.Errorf("failed to pack commitBatchWithBlobProof: %w", err)
+		return nil, nil, 0, 0, fmt.Errorf("failed to pack commitBatches: %w", err)
 	}
 	return calldata, blobs, maxBlockHeight, totalGasUsed, nil
 }

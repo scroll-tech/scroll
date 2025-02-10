@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"math/big"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	gethTypes "github.com/scroll-tech/go-ethereum/core/types"
 	"github.com/scroll-tech/go-ethereum/params"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"scroll-tech/common/database"
 	"scroll-tech/common/types"
@@ -215,4 +217,217 @@ func testCommitBatchAndFinalizeBundleCodecV4(t *testing.T) {
 		l2Relayer.StopSenders()
 		database.CloseDB(db)
 	}
+}
+
+func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
+	db := setupDB(t)
+
+	prepareContracts(t)
+
+	chainConfig := &params.ChainConfig{
+		LondonBlock:    big.NewInt(0),
+		BernoulliBlock: big.NewInt(0),
+		CurieBlock:     big.NewInt(0),
+		DarwinTime:     new(uint64),
+		DarwinV2Time:   new(uint64),
+		EuclidTime:     new(uint64),
+		EuclidV2Time:   new(uint64),
+	}
+
+	// Create L2Relayer
+	l2Cfg := rollupApp.Config.L2Config
+	l2Relayer, err := relayer.NewLayer2Relayer(context.Background(), l2Client, db, l2Cfg.RelayerConfig, chainConfig, true, relayer.ServiceTypeL2RollupRelayer, nil)
+	require.NoError(t, err)
+
+	defer l2Relayer.StopSenders()
+	defer database.CloseDB(db)
+
+	// add some blocks to db
+	var blocks []*encoding.Block
+	genesis, err := l2Client.HeaderByNumber(context.Background(), big.NewInt(0))
+	require.NoError(t, err)
+
+	var l1MessageIndex uint64 = 0
+	parentHash := genesis.Hash()
+	for i := int64(0); i < 10; i++ {
+		header := gethTypes.Header{
+			Number:     big.NewInt(i + 1),
+			ParentHash: parentHash,
+			Difficulty: big.NewInt(i + 1),
+			BaseFee:    big.NewInt(i + 1),
+			Root:       common.HexToHash("0x1"),
+		}
+		fmt.Println("block number: ", i+1, header.Hash(), parentHash)
+		var transactions []*gethTypes.TransactionData
+		if i%2 == 0 {
+			txs := []*gethTypes.Transaction{
+				gethTypes.NewTx(&gethTypes.L1MessageTx{
+					QueueIndex: l1MessageIndex,
+					Gas:        0,
+					To:         &common.Address{1, 2, 3},
+					Value:      big.NewInt(10),
+					Data:       nil,
+					Sender:     common.Address{1, 2, 3},
+				}),
+			}
+			transactions = append(transactions, encoding.TxsToTxsData(txs)...)
+			l1MessageIndex++
+		}
+
+		blocks = append(blocks, &encoding.Block{
+			Header:         &header,
+			Transactions:   transactions,
+			WithdrawRoot:   common.HexToHash("0x2"),
+			RowConsumption: &gethTypes.RowConsumption{},
+		})
+		parentHash = header.Hash()
+	}
+
+	cp := watcher.NewChunkProposer(context.Background(), &config.ChunkProposerConfig{
+		MaxBlockNumPerChunk:             100,
+		MaxTxNumPerChunk:                10000,
+		MaxL1CommitGasPerChunk:          50000000000,
+		MaxL1CommitCalldataSizePerChunk: 1000000,
+		MaxRowConsumptionPerChunk:       1048319,
+		ChunkTimeoutSec:                 300,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+	}, encoding.CodecV7, chainConfig, db, nil)
+
+	bap := watcher.NewBatchProposer(context.Background(), &config.BatchProposerConfig{
+		MaxL1CommitGasPerBatch:          50000000000,
+		MaxL1CommitCalldataSizePerBatch: 1000000,
+		BatchTimeoutSec:                 300,
+		MaxUncompressedBatchBytesSize:   math.MaxUint64,
+	}, encoding.CodecV7, chainConfig, db, nil)
+
+	bup := watcher.NewBundleProposer(context.Background(), &config.BundleProposerConfig{
+		MaxBatchNumPerBundle: 1000000,
+		BundleTimeoutSec:     300,
+	}, encoding.CodecV7, chainConfig, db, nil)
+
+	l2BlockOrm := orm.NewL2Block(db)
+	batchOrm := orm.NewBatch(db)
+	bundleOrm := orm.NewBundle(db)
+
+	fmt.Println("insert first 5 blocks ------------------------")
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[:5])
+	require.NoError(t, err)
+	batch1ExpectedLastL1MessageQueueHash, err := encoding.MessageQueueV2ApplyL1MessagesFromBlocks(common.Hash{}, blocks[:5])
+	require.NoError(t, err)
+
+	cp.TryProposeChunk()
+	bap.TryProposeBatch()
+
+	fmt.Println("insert last 5 blocks ------------------------")
+	err = l2BlockOrm.InsertL2Blocks(context.Background(), blocks[5:])
+	require.NoError(t, err)
+	batch2ExpectedLastL1MessageQueueHash, err := encoding.MessageQueueV2ApplyL1MessagesFromBlocks(batch1ExpectedLastL1MessageQueueHash, blocks[5:])
+	require.NoError(t, err)
+
+	cp.TryProposeChunk()
+	bap.TryProposeBatch()
+
+	bup.TryProposeBundle() // The proposed bundle contains two batches when codec version is codecv3.
+
+	// make sure that batches are created as expected
+	require.Eventually(t, func() bool {
+		batches, getErr := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
+		if getErr != nil {
+			return false
+		}
+		if len(batches) != 3 {
+			return false
+		}
+
+		// batches[0] is the genesis batch, no need to check
+
+		// assert correctness of L1 message queue hashes
+		require.Equal(t, common.Hash{}, common.HexToHash(batches[1].InitialL1MessageQueueHash))
+		require.Equal(t, batch1ExpectedLastL1MessageQueueHash, common.HexToHash(batches[1].LastL1MessageQueueHash))
+		require.Equal(t, batch1ExpectedLastL1MessageQueueHash, common.HexToHash(batches[2].InitialL1MessageQueueHash))
+		require.Equal(t, batch2ExpectedLastL1MessageQueueHash, common.HexToHash(batches[2].LastL1MessageQueueHash))
+
+		return true
+	}, 30*time.Second, time.Second)
+
+	// simulate proof generation -> all batches and bundle are verified
+	{
+		batchProof := &message.BatchProof{
+			Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+			Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+			Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		}
+		batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
+		require.NoError(t, err)
+		batches = batches[1:]
+		for _, batch := range batches {
+			err = batchOrm.UpdateProofByHash(context.Background(), batch.Hash, batchProof, 100)
+			require.NoError(t, err)
+			err = batchOrm.UpdateProvingStatus(context.Background(), batch.Hash, types.ProvingTaskVerified)
+			require.NoError(t, err)
+		}
+
+		bundleProof := &message.BundleProof{
+			Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+			Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+			Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		}
+		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
+		require.NoError(t, err)
+		for _, bundle := range bundles {
+			err = bundleOrm.UpdateProofAndProvingStatusByHash(context.Background(), bundle.Hash, bundleProof, types.ProvingTaskVerified, 100)
+			require.NoError(t, err)
+		}
+	}
+
+	//return
+	// TODO: assert that batches have been submitted together in a single transaction after contract ABI is updated
+	//for _, batch := range batches {
+	//	fmt.Println("batch hash: ", batch.Hash, batch.Index, batch.RollupStatus)
+	//	//if types.RollupCommitted != types.RollupStatus(batch.RollupStatus) {
+	//	//	return false
+	//	//}
+	//}
+	//l2Relayer.ProcessPendingBatches()
+	//
+	//assert.Eventually(t, func() bool {
+	//	l2Relayer.ProcessPendingBundles()
+	//
+	//	batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
+	//	assert.NoError(t, err)
+	//	assert.Len(t, batches, 3)
+	//	batches = batches[1:]
+	//	for _, batch := range batches {
+	//		if types.RollupStatus(batch.RollupStatus) != types.RollupFinalized {
+	//			return false
+	//		}
+	//
+	//		assert.NotEmpty(t, batch.FinalizeTxHash)
+	//		receipt, getErr := l1Client.TransactionReceipt(context.Background(), common.HexToHash(batch.FinalizeTxHash))
+	//		assert.NoError(t, getErr)
+	//		assert.Equal(t, gethTypes.ReceiptStatusSuccessful, receipt.Status)
+	//	}
+	//
+	//	bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
+	//	assert.NoError(t, err)
+	//	assert.Len(t, bundles, 1)
+	//
+	//	bundle := bundles[0]
+	//	if types.RollupStatus(bundle.RollupStatus) != types.RollupFinalized {
+	//		return false
+	//	}
+	//	assert.NotEmpty(t, bundle.FinalizeTxHash)
+	//	receipt, err := l1Client.TransactionReceipt(context.Background(), common.HexToHash(bundle.FinalizeTxHash))
+	//	assert.NoError(t, err)
+	//	assert.Equal(t, gethTypes.ReceiptStatusSuccessful, receipt.Status)
+	//	batches, err = batchOrm.GetBatches(context.Background(), map[string]interface{}{"bundle_hash": bundle.Hash}, nil, 0)
+	//	assert.NoError(t, err)
+	//	assert.Len(t, batches, 2)
+	//	for _, batch := range batches {
+	//		assert.Equal(t, batch.RollupStatus, bundle.RollupStatus)
+	//		assert.Equal(t, bundle.FinalizeTxHash, batch.FinalizeTxHash)
+	//	}
+	//
+	//	return true
+	//}, 30*time.Second, time.Second)
 }
