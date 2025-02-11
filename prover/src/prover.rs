@@ -62,8 +62,9 @@ impl ProvingService for LocalProver {
     async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
         let mut vks = vec![];
         for hard_fork_name in self.config.circuits.keys() {
+            let handler = self.make_handler(hard_fork_name);
             for proof_type in &req.proof_types {
-                let vk = self.make_handler(hard_fork_name).get_vk(*proof_type).await;
+                let vk = handler.get_vk(*proof_type).await;
 
                 if let Some(vk) = vk {
                     vks.push(String::from_utf8(vk).unwrap());
