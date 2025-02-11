@@ -61,17 +61,13 @@ impl ProvingService for LocalProver {
     }
     async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
         let mut vks = vec![];
-        for proof_type in req.proof_types {
-            let vk = self
-                .active_handler
-                .as_ref()
-                .unwrap()
-                .1
-                .get_vk(proof_type)
-                .await;
+        for hard_fork_name in self.config.circuits.keys() {
+            for proof_type in &req.proof_types {
+                let vk = self.make_handler(hard_fork_name).get_vk(*proof_type).await;
 
-            if let Some(vk) = vk {
-                vks.push(String::from_utf8(vk).unwrap());
+                if let Some(vk) = vk {
+                    vks.push(String::from_utf8(vk).unwrap());
+                }
             }
         }
 
@@ -176,15 +172,20 @@ impl LocalProver {
                 return;
             }
         }
+        self.active_handler = Some((
+            hard_fork_name.to_string(),
+            self.make_handler(hard_fork_name),
+        ));
+    }
 
+    fn make_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
         // if we got assigned a task for an unknown hard fork, there is something wrong in the
         // coordinator
         let config = self.config.circuits.get(hard_fork_name).unwrap();
 
-        let handler = Arc::new(match hard_fork_name {
+        Arc::new(match hard_fork_name {
             "euclid" => Arc::new(Mutex::new(EuclidHandler::new(&config.workspace_path))),
             _ => unreachable!(),
-        }) as Arc<dyn CircuitsHandler>;
-        self.active_handler = Some((hard_fork_name.to_string(), handler));
+        }) as Arc<dyn CircuitsHandler>
     }
 }
