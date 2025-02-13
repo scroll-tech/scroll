@@ -62,6 +62,7 @@
         "base_url": "http://localhost:8750"
       },
       "enable_test_env_bypass_features": true,
+      "test_env_bypass_only_until_fork_boundary": false,
       "finalize_batch_without_proof_timeout_sec": 7200,
       "finalize_bundle_without_proof_timeout_sec": 7200,
       "gas_oracle_sender_signer_config": {

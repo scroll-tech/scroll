@@ -527,6 +527,33 @@ func (r *Layer2Relayer) ProcessPendingBundles() {
 				return
 			}
 
+			lastFinalizedChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, lastBatch.EndChunkIndex)
+			if err != nil {
+				log.Error("failed to get last finalized chunk", "chunk index", lastBatch.EndChunkIndex)
+				return
+			}
+
+			firstUnfinalizedBatch, err := r.batchOrm.GetBatchByIndex(r.ctx, bundle.StartBatchIndex)
+			if err != nil {
+				log.Error("failed to get first unfinalized batch", "batch index", bundle.StartBatchIndex)
+				return
+			}
+
+			firstUnfinalizedChunk, err := r.chunkOrm.GetChunkByIndex(r.ctx, firstUnfinalizedBatch.StartChunkIndex)
+			if err != nil {
+				log.Error("failed to get firsr unfinalized chunk", "chunk index", firstUnfinalizedBatch.StartChunkIndex)
+				return
+			}
+
+			if r.cfg.TestEnvBypassOnlyUntilForkBoundary {
+				lastFork := encoding.GetHardforkName(r.chainCfg, lastFinalizedChunk.StartBlockNumber, lastFinalizedChunk.StartBlockTime)
+				nextFork := encoding.GetHardforkName(r.chainCfg, firstUnfinalizedChunk.StartBlockNumber, firstUnfinalizedChunk.StartBlockTime)
+				if lastFork != nextFork {
+					log.Info("not fake finalizing past the fork boundary", "last fork", lastFork, "next fork", nextFork)
+					return
+				}
+			}
+
 			if err := r.finalizeBundle(bundle, false); err != nil {
 				log.Error("failed to finalize timeout bundle without proof", "bundle index", bundle.Index, "start batch index", bundle.StartBatchIndex, "end batch index", bundle.EndBatchIndex, "err", err)
 				return
