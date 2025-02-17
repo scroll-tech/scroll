@@ -74,7 +74,7 @@ func (*Chunk) TableName() string {
 func (o *Chunk) GetUnassignedChunk(ctx context.Context, maxActiveAttempts, maxTotalAttempts uint8, height uint64) (*Chunk, error) {
 	var chunk Chunk
 	db := o.db.WithContext(ctx)
-	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND end_block_number <= %d AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;",
+	sql := fmt.Sprintf("SELECT * FROM chunk WHERE proving_status = %d AND total_attempts < %d AND active_attempts < %d AND end_block_number <= %d AND codec_version != 5 AND chunk.deleted_at IS NULL ORDER BY chunk.index LIMIT 1;",
 		int(types.ProvingTaskUnassigned), maxTotalAttempts, maxActiveAttempts, height)
 	err := db.Raw(sql).Scan(&chunk).Error
 	if err != nil {
@@ -95,6 +95,7 @@ func (o *Chunk) GetUnassignedChunkCount(ctx context.Context, maxActiveAttempts, 
 	db = db.Where("total_attempts < ?", maxTotalAttempts)
 	db = db.Where("active_attempts < ?", maxActiveAttempts)
 	db = db.Where("end_block_number <= ?", height)
+	db = db.Where("codec_version != 5")
 	db = db.Where("chunk.deleted_at IS NULL")
 	if err := db.Count(&count).Error; err != nil {
 		return 0, fmt.Errorf("Chunk.GetUnassignedChunkCount error: %w", err)
