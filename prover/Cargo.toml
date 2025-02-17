@@ -41,7 +41,7 @@ prover_darwin_v2 = { git = "https://github.com/scroll-tech/zkevm-circuits.git", 
     "parallel_syn",
     "scroll",
 ] }
-scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "ca6f4c4" }
+scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "8b6cf38" }
 base64 = "0.13.1"
 reqwest = { version = "0.12.4", features = ["gzip"] }
 reqwest-middleware = "0.3"

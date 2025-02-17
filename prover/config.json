@@ -1,4 +1,5 @@
 {
+  "sdk_config": {
     "prover_name_prefix": "prover-1",
     "keys_dir": "keys",
     "coordinator": {
@@ -11,21 +12,20 @@
       "endpoint": "http://localhost:9999"
     },
     "prover": {
-      "circuit_types": [1,2,3],
-      "circuit_version": "v0.13.1",
-      "local": {
-        "low_version_circuit": {
-          "hard_fork_name": "bernoulli",
-          "params_path": "params",
-          "assets_path": "assets"
-        },
-        "high_version_circuit": {
-          "hard_fork_name": "curie",
-          "params_path": "params",
-          "assets_path": "assets"
-        }
-      }
+      "circuit_type": 1,
+      "supported_proof_types": [1, 2, 3],
+      "circuit_version": "v0.13.1"
     },
     "db_path": "unique-db-path-for-prover-1"
+  },
+  "low_version_circuit": {
+    "hard_fork_name": "bernoulli",
+    "params_path": "params",
+    "assets_path": "assets"
+  },
+  "high_version_circuit": {
+    "hard_fork_name": "curie",
+    "params_path": "params",
+    "assets_path": "assets"
   }
-  
+}
