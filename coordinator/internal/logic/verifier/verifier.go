@@ -58,9 +58,9 @@ func newRustVerifierConfig(cfg *config.VerifierConfig) *rustVerifierConfig {
 }
 
 type rustVkDump struct {
-	Chunk  []byte `json:"chunk_vk"`
-	Batch  []byte `json:"batch_vk"`
-	Bundle []byte `json:"bundle_vk"`
+	Chunk  string `json:"chunk_vk"`
+	Batch  string `json:"batch_vk"`
+	Bundle string `json:"bundle_vk"`
 }
 
 // NewVerifier Sets up a rust ffi to call verify.
@@ -257,8 +257,8 @@ func (v *Verifier) loadOpenVMVks(forkName string) error {
 	if err := json.Unmarshal(byt, &dump); err != nil {
 		return err
 	}
-	v.OpenVMVkMap[string(dump.Chunk)] = struct{}{}
-	v.OpenVMVkMap[string(dump.Batch)] = struct{}{}
-	v.OpenVMVkMap[string(dump.Bundle)] = struct{}{}
+	v.OpenVMVkMap[dump.Chunk] = struct{}{}
+	v.OpenVMVkMap[dump.Batch] = struct{}{}
+	v.OpenVMVkMap[dump.Bundle] = struct{}{}
 	return nil
 }

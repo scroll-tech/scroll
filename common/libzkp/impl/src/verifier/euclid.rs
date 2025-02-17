@@ -64,9 +64,9 @@ impl ProofVerifier for EuclidVerifier {
         let f = File::create(file).expect("Failed to open file to dump VK");
 
         let dump = VKDump {
-            chunk_vk: self.chunk_verifier.get_app_vk(),
-            batch_vk: self.batch_verifier.get_app_vk(),
-            bundle_vk: self.bundle_verifier.get_app_vk(),
+            chunk_vk: base64::encode(self.chunk_verifier.get_app_vk()),
+            batch_vk: base64::encode(self.batch_verifier.get_app_vk()),
+            bundle_vk: base64::encode(self.bundle_verifier.get_app_vk()),
         };
         serde_json::to_writer(f, &dump).expect("Failed to dump VK");
     }

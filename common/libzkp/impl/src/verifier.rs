@@ -20,9 +20,9 @@ pub enum TaskType {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VKDump {
-    pub chunk_vk: Vec<u8>,
-    pub batch_vk: Vec<u8>,
-    pub bundle_vk: Vec<u8>,
+    pub chunk_vk: String,
+    pub batch_vk: String,
+    pub bundle_vk: String,
 }
 
 pub trait ProofVerifier {
