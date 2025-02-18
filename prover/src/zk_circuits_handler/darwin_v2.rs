@@ -1,8 +1,9 @@
 use super::{common::*, CircuitsHandler};
+use crate::types::ProverType;
 use anyhow::{bail, Context, Ok, Result};
 use async_trait::async_trait;
 use once_cell::sync::Lazy;
-use scroll_proving_sdk::prover::{proving_service::ProveRequest, ProofType};
+use scroll_proving_sdk::prover::{proving_service::ProveRequest, CircuitType};
 use serde::Deserialize;
 use tokio::sync::RwLock;
 
@@ -44,55 +45,50 @@ pub struct DarwinV2Handler {
 
 impl DarwinV2Handler {
     pub fn new_multi(
-        proof_types: Vec<ProofType>,
+        prover_types: Vec<ProverType>,
         params_dir: &str,
         assets_dir: &str,
     ) -> Result<Self> {
         let class_name = std::intrinsics::type_name::<Self>();
-        let proof_types_set = proof_types
+        let prover_types_set = prover_types
             .into_iter()
-            .collect::<std::collections::HashSet<ProofType>>();
+            .collect::<std::collections::HashSet<ProverType>>();
         let mut handler = Self {
             batch_prover: None,
             chunk_prover: None,
         };
-        let degrees: Vec<u32> = get_degrees(&proof_types_set, |prover_type| match prover_type {
-            ProofType::Chunk => ZKEVM_DEGREES.clone(),
-            ProofType::Batch => AGG_DEGREES.clone(),
-            ProofType::Bundle => AGG_DEGREES.clone(),
-            _ => unreachable!(),
+        let degrees: Vec<u32> = get_degrees(&prover_types_set, |prover_type| match prover_type {
+            ProverType::Chunk => ZKEVM_DEGREES.clone(),
+            ProverType::Batch => AGG_DEGREES.clone(),
         });
         let params_map = get_params_map_instance(|| {
             log::info!(
                 "calling get_params_map from {}, prover_types: {:?}, degrees: {:?}",
                 class_name,
-                proof_types_set,
+                prover_types_set,
                 degrees
             );
             CommonProver::load_params_map(params_dir, &degrees)
         });
-        for proof_type in proof_types_set {
-            match proof_type {
-                ProofType::Chunk => {
+        for prover_type in prover_types_set {
+            match prover_type {
+                ProverType::Chunk => {
                     handler.chunk_prover = Some(RwLock::new(ChunkProver::from_params_and_assets(
                         params_map, assets_dir,
                     )));
                 }
-                ProofType::Batch | ProofType::Bundle => {
-                    if handler.batch_prover.is_none() {
-                        handler.batch_prover = Some(RwLock::new(
-                            BatchProver::from_params_and_assets(params_map, assets_dir),
-                        ))
-                    }
+                ProverType::Batch => {
+                    handler.batch_prover = Some(RwLock::new(BatchProver::from_params_and_assets(
+                        params_map, assets_dir,
+                    )))
                 }
-                _ => unreachable!(),
             }
         }
         Ok(handler)
     }
 
-    pub fn new(proof_types: Vec<ProofType>, params_dir: &str, assets_dir: &str) -> Result<Self> {
-        Self::new_multi(proof_types, params_dir, assets_dir)
+    pub fn new(prover_types: Vec<ProverType>, params_dir: &str, assets_dir: &str) -> Result<Self> {
+        Self::new_multi(prover_types, params_dir, assets_dir)
     }
 
     async fn gen_chunk_proof_raw(&self, chunk_trace: Vec<BlockTrace>) -> Result<ChunkProof> {
@@ -180,17 +176,17 @@ impl DarwinV2Handler {
 
 #[async_trait]
 impl CircuitsHandler for DarwinV2Handler {
-    async fn get_vk(&self, task_type: ProofType) -> Option<Vec<u8>> {
+    async fn get_vk(&self, task_type: CircuitType) -> Option<Vec<u8>> {
         match task_type {
-            ProofType::Chunk => self.chunk_prover.as_ref().unwrap().read().await.get_vk(),
-            ProofType::Batch => self
+            CircuitType::Chunk => self.chunk_prover.as_ref().unwrap().read().await.get_vk(),
+            CircuitType::Batch => self
                 .batch_prover
                 .as_ref()
                 .unwrap()
                 .read()
                 .await
                 .get_batch_vk(),
-            ProofType::Bundle => self
+            CircuitType::Bundle => self
                 .batch_prover
                 .as_ref()
                 .unwrap()
@@ -202,10 +198,10 @@ impl CircuitsHandler for DarwinV2Handler {
     }
 
     async fn get_proof_data(&self, prove_request: ProveRequest) -> Result<String> {
-        match prove_request.proof_type {
-            ProofType::Chunk => self.gen_chunk_proof(prove_request).await,
-            ProofType::Batch => self.gen_batch_proof(prove_request).await,
-            ProofType::Bundle => self.gen_bundle_proof(prove_request).await,
+        match prove_request.circuit_type {
+            CircuitType::Chunk => self.gen_chunk_proof(prove_request).await,
+            CircuitType::Batch => self.gen_batch_proof(prove_request).await,
+            CircuitType::Bundle => self.gen_bundle_proof(prove_request).await,
             _ => unreachable!(),
         }
     }
@@ -258,15 +254,15 @@ mod tests {
     #[tokio::test]
     async fn test_circuits() -> Result<()> {
         let bi_handler = DarwinV2Handler::new_multi(
-            vec![ProofType::Chunk, ProofType::Batch],
+            vec![ProverType::Chunk, ProverType::Batch],
             &PARAMS_PATH,
             &ASSETS_PATH,
         )?;
 
         let chunk_handler = bi_handler;
-        let chunk_vk = chunk_handler.get_vk(ProofType::Chunk).await.unwrap();
+        let chunk_vk = chunk_handler.get_vk(CircuitType::Chunk).await.unwrap();
 
-        check_vk(ProofType::Chunk, chunk_vk, "chunk vk must be available");
+        check_vk(CircuitType::Chunk, chunk_vk, "chunk vk must be available");
         let chunk_dir_paths = get_chunk_dir_paths()?;
         log::info!("chunk_dir_paths, {:?}", chunk_dir_paths);
         let mut chunk_traces = vec![];
@@ -288,8 +284,8 @@ mod tests {
         }
 
         let batch_handler = chunk_handler;
-        let batch_vk = batch_handler.get_vk(ProofType::Batch).await.unwrap();
-        check_vk(ProofType::Batch, batch_vk, "batch vk must be available");
+        let batch_vk = batch_handler.get_vk(CircuitType::Batch).await.unwrap();
+        check_vk(CircuitType::Batch, batch_vk, "batch vk must be available");
         let batch_task_detail = make_batch_task_detail(chunk_traces, chunk_proofs, None);
         log::info!("start to prove batch");
         let batch_proof = batch_handler.gen_batch_proof_raw(batch_task_detail).await?;
@@ -365,19 +361,19 @@ mod tests {
         }
     }
 
-    fn check_vk(proof_type: ProofType, vk: Vec<u8>, info: &str) {
+    fn check_vk(proof_type: CircuitType, vk: Vec<u8>, info: &str) {
         log::info!("check_vk, {:?}", proof_type);
         let vk_from_file = read_vk(proof_type).unwrap();
         assert_eq!(vk_from_file, encode_vk(vk), "{info}")
     }
 
-    fn read_vk(proof_type: ProofType) -> Result<String> {
+    fn read_vk(proof_type: CircuitType) -> Result<String> {
         log::info!("read_vk, {:?}", proof_type);
         let vk_file = match proof_type {
-            ProofType::Chunk => CHUNK_VK_PATH.clone(),
-            ProofType::Batch => BATCH_VK_PATH.clone(),
-            ProofType::Bundle => todo!(),
-            ProofType::Undefined => unreachable!(),
+            CircuitType::Chunk => CHUNK_VK_PATH.clone(),
+            CircuitType::Batch => BATCH_VK_PATH.clone(),
+            CircuitType::Bundle => todo!(),
+            CircuitType::Undefined => unreachable!(),
         };
 
         let data = std::fs::read(vk_file)?;
