@@ -3,10 +3,10 @@ use crate::{
     utils::get_prover_type,
     zk_circuits_handler::{CircuitsHandler, CircuitsHandlerProvider},
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use scroll_proving_sdk::{
-    config::LocalProverConfig,
+    config::Config as SdkConfig,
     prover::{
         proving_service::{
             GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
@@ -15,11 +15,41 @@ use scroll_proving_sdk::{
         ProvingService,
     },
 };
+use serde::{Deserialize, Serialize};
 use std::{
+    fs::File,
     sync::{Arc, Mutex},
     time::{SystemTime, UNIX_EPOCH},
 };
 use tokio::{runtime::Handle, sync::RwLock, task::JoinHandle};
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct LocalProverConfig {
+    pub sdk_config: SdkConfig,
+    pub high_version_circuit: CircuitConfig,
+    pub low_version_circuit: CircuitConfig,
+}
+
+impl LocalProverConfig {
+    pub fn from_reader<R>(reader: R) -> Result<Self>
+    where
+        R: std::io::Read,
+    {
+        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
+    }
+
+    pub fn from_file(file_name: String) -> Result<Self> {
+        let file = File::open(file_name)?;
+        Self::from_reader(&file)
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct CircuitConfig {
+    pub hard_fork_name: String,
+    pub params_path: String,
+    pub assets_path: String,
+}
 
 pub struct LocalProver {
     config: LocalProverConfig,

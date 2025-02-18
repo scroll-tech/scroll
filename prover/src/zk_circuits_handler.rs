@@ -2,15 +2,15 @@ mod common;
 mod darwin;
 mod darwin_v2;
 
-use crate::{config::AssetsDirEnvConfig, types::ProverType, utils::get_circuit_types};
+use crate::{
+    config::AssetsDirEnvConfig, prover::LocalProverConfig, types::ProverType,
+    utils::get_circuit_types,
+};
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use darwin::DarwinHandler;
 use darwin_v2::DarwinV2Handler;
-use scroll_proving_sdk::{
-    config::LocalProverConfig,
-    prover::{proving_service::ProveRequest, CircuitType},
-};
+use scroll_proving_sdk::prover::{proving_service::ProveRequest, CircuitType};
 use std::{collections::HashMap, sync::Arc};
 
 type HardForkName = String;

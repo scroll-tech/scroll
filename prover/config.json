@@ -12,19 +12,18 @@
       "endpoint": "http://localhost:9999"
     },
     "prover": {
-      "circuit_type": 1,
-      "supported_proof_types": [1, 2, 3],
+      "circuit_types": [1,2,3],
       "circuit_version": "v0.13.1"
     },
     "db_path": "unique-db-path-for-prover-1"
   },
   "low_version_circuit": {
-    "hard_fork_name": "bernoulli",
+    "hard_fork_name": "Darvin",
     "params_path": "params",
     "assets_path": "assets"
   },
   "high_version_circuit": {
-    "hard_fork_name": "curie",
+    "hard_fork_name": "DarvinV2",
     "params_path": "params",
     "assets_path": "assets"
   }
