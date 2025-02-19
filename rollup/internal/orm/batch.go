@@ -23,22 +23,22 @@ type Batch struct {
 	db *gorm.DB `gorm:"column:-"`
 
 	// batch
-	Index                     uint64 `json:"index" gorm:"column:index"`
-	Hash                      string `json:"hash" gorm:"column:hash"`
-	DataHash                  string `json:"data_hash" gorm:"column:data_hash"`
-	StartChunkIndex           uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
-	StartChunkHash            string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
-	EndChunkIndex             uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
-	EndChunkHash              string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
-	StateRoot                 string `json:"state_root" gorm:"column:state_root"`
-	WithdrawRoot              string `json:"withdraw_root" gorm:"column:withdraw_root"`
-	ParentBatchHash           string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
-	BatchHeader               []byte `json:"batch_header" gorm:"column:batch_header"`
-	CodecVersion              int16  `json:"codec_version" gorm:"column:codec_version"`
-	InitialL1MessageQueueHash string `json:"initial_l1_message_queue_hash" gorm:"column:initial_l1_message_queue_hash"`
-	LastL1MessageQueueHash    string `json:"last_l1_message_queue_hash" gorm:"column:last_l1_message_queue_hash"`
-	EnableCompress            bool   `json:"enable_compress" gorm:"column:enable_compress"` // use for debug
-	BlobBytes                 []byte `json:"blob_bytes" gorm:"column:blob_bytes"`
+	Index                  uint64 `json:"index" gorm:"column:index"`
+	Hash                   string `json:"hash" gorm:"column:hash"`
+	DataHash               string `json:"data_hash" gorm:"column:data_hash"`
+	StartChunkIndex        uint64 `json:"start_chunk_index" gorm:"column:start_chunk_index"`
+	StartChunkHash         string `json:"start_chunk_hash" gorm:"column:start_chunk_hash"`
+	EndChunkIndex          uint64 `json:"end_chunk_index" gorm:"column:end_chunk_index"`
+	EndChunkHash           string `json:"end_chunk_hash" gorm:"column:end_chunk_hash"`
+	StateRoot              string `json:"state_root" gorm:"column:state_root"`
+	WithdrawRoot           string `json:"withdraw_root" gorm:"column:withdraw_root"`
+	ParentBatchHash        string `json:"parent_batch_hash" gorm:"column:parent_batch_hash"`
+	BatchHeader            []byte `json:"batch_header" gorm:"column:batch_header"`
+	CodecVersion           int16  `json:"codec_version" gorm:"column:codec_version"`
+	PrevL1MessageQueueHash string `json:"prev_l1_message_queue_hash" gorm:"column:prev_l1_message_queue_hash"`
+	PostL1MessageQueueHash string `json:"post_l1_message_queue_hash" gorm:"column:post_l1_message_queue_hash"`
+	EnableCompress         bool   `json:"enable_compress" gorm:"column:enable_compress"` // use for debug
+	BlobBytes              []byte `json:"blob_bytes" gorm:"column:blob_bytes"`
 
 	// proof
 	ChunkProofsStatus int16      `json:"chunk_proofs_status" gorm:"column:chunk_proofs_status;default:1"`
@@ -300,8 +300,8 @@ func (o *Batch) InsertBatch(ctx context.Context, batch *encoding.Batch, codecVer
 		ParentBatchHash:           batch.ParentBatchHash.Hex(),
 		BatchHeader:               batchMeta.BatchBytes,
 		CodecVersion:              int16(codecVersion),
-		InitialL1MessageQueueHash: batch.InitialL1MessageQueueHash.Hex(),
-		LastL1MessageQueueHash:    batch.LastL1MessageQueueHash.Hex(),
+		PrevL1MessageQueueHash:    batch.PrevL1MessageQueueHash.Hex(),
+		PostL1MessageQueueHash:    batch.PostL1MessageQueueHash.Hex(),
 		EnableCompress:            enableCompress,
 		BlobBytes:                 batchMeta.BlobBytes,
 		ChunkProofsStatus:         int16(types.ChunkProofsStatusPending),

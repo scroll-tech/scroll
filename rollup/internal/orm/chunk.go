@@ -30,8 +30,8 @@ type Chunk struct {
 	StartBlockTime               uint64 `json:"start_block_time" gorm:"column:start_block_time"`
 	TotalL1MessagesPoppedBefore  uint64 `json:"total_l1_messages_popped_before" gorm:"column:total_l1_messages_popped_before"`
 	TotalL1MessagesPoppedInChunk uint64 `json:"total_l1_messages_popped_in_chunk" gorm:"column:total_l1_messages_popped_in_chunk"`
-	InitialL1MessageQueueHash    string `json:"initial_l1_message_queue_hash" gorm:"column:initial_l1_message_queue_hash"`
-	LastL1MessageQueueHash       string `json:"last_l1_message_queue_hash" gorm:"column:last_l1_message_queue_hash"`
+	PrevL1MessageQueueHash       string `json:"prev_l1_message_queue_hash" gorm:"column:prev_l1_message_queue_hash"`
+	PostL1MessageQueueHash       string `json:"post_l1_message_queue_hash" gorm:"column:post_l1_message_queue_hash"`
 	ParentChunkHash              string `json:"parent_chunk_hash" gorm:"column:parent_chunk_hash"`
 	StateRoot                    string `json:"state_root" gorm:"column:state_root"`
 	ParentChunkStateRoot         string `json:"parent_chunk_state_root" gorm:"column:parent_chunk_state_root"`
@@ -232,8 +232,8 @@ func (o *Chunk) InsertChunk(ctx context.Context, chunk *encoding.Chunk, codecVer
 		StartBlockTime:               chunk.Blocks[0].Header.Time,
 		TotalL1MessagesPoppedBefore:  totalL1MessagePoppedBefore,
 		TotalL1MessagesPoppedInChunk: chunk.NumL1Messages(totalL1MessagePoppedBefore),
-		InitialL1MessageQueueHash:    chunk.InitialL1MessageQueueHash.Hex(),
-		LastL1MessageQueueHash:       chunk.LastL1MessageQueueHash.Hex(),
+		PrevL1MessageQueueHash:       chunk.PrevL1MessageQueueHash.Hex(),
+		PostL1MessageQueueHash:       chunk.PostL1MessageQueueHash.Hex(),
 		ParentChunkHash:              parentChunkHash,
 		StateRoot:                    chunk.Blocks[numBlocks-1].Header.Root.Hex(),
 		ParentChunkStateRoot:         parentChunkStateRoot,

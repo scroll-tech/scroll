@@ -291,16 +291,15 @@ func (p *BatchProposer) proposeBatch() error {
 	var batch encoding.Batch
 	batch.Index = dbParentBatch.Index + 1
 	batch.ParentBatchHash = common.HexToHash(dbParentBatch.Hash)
-	batch.InitialL1MessageIndex = firstUnbatchedChunk.TotalL1MessagesPoppedBefore
 	batch.TotalL1MessagePoppedBefore = firstUnbatchedChunk.TotalL1MessagesPoppedBefore // set for compatibility within relayer
-	batch.InitialL1MessageQueueHash = common.HexToHash(firstUnbatchedChunk.InitialL1MessageQueueHash)
+	batch.PrevL1MessageQueueHash = common.HexToHash(firstUnbatchedChunk.PrevL1MessageQueueHash)
 
 	for i, chunk := range daChunks {
 		batch.Chunks = append(batch.Chunks, chunk)
 		if codec.Version() >= encoding.CodecV7 {
 			batch.Blocks = append(batch.Blocks, chunk.Blocks...)
 		}
-		batch.LastL1MessageQueueHash = common.HexToHash(dbChunks[i].LastL1MessageQueueHash)
+		batch.PostL1MessageQueueHash = common.HexToHash(dbChunks[i].PostL1MessageQueueHash)
 
 		metrics, calcErr := utils.CalculateBatchMetrics(&batch, codec.Version())
 		if calcErr != nil {
@@ -330,7 +329,7 @@ func (p *BatchProposer) proposeBatch() error {
 				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
 			batch.Chunks = batch.Chunks[:len(batch.Chunks)-1]
-			batch.LastL1MessageQueueHash = common.HexToHash(dbChunks[i-1].LastL1MessageQueueHash)
+			batch.PostL1MessageQueueHash = common.HexToHash(dbChunks[i-1].PostL1MessageQueueHash)
 
 			metrics, err = utils.CalculateBatchMetrics(&batch, codec.Version())
 			if err != nil {
@@ -374,10 +373,9 @@ func (p *BatchProposer) getDAChunks(dbChunks []*orm.Chunk) ([]*encoding.Chunk, e
 			return nil, err
 		}
 		chunks[i] = &encoding.Chunk{
-			Blocks:                    blocks,
-			InitialL1MessageIndex:     c.TotalL1MessagesPoppedBefore,
-			InitialL1MessageQueueHash: common.HexToHash(c.InitialL1MessageQueueHash),
-			LastL1MessageQueueHash:    common.HexToHash(c.LastL1MessageQueueHash),
+			Blocks:                 blocks,
+			PrevL1MessageQueueHash: common.HexToHash(c.PrevL1MessageQueueHash),
+			PostL1MessageQueueHash: common.HexToHash(c.PostL1MessageQueueHash),
 		}
 	}
 	return chunks, nil

@@ -300,35 +300,34 @@ func (p *ChunkProposer) proposeChunk() error {
 	}
 
 	var chunk encoding.Chunk
-	// From CodecV7 / EuclidV2 onwards we need to provide the InitialL1MessageQueueHash and LastL1MessageQueueHash.
-	// InitialL1MessageQueueHash of the first chunk in the fork needs to be the empty hash.
+	// From CodecV7 / EuclidV2 onwards we need to provide the PrevL1MessageQueueHash and PostL1MessageQueueHash.
+	// PrevL1MessageQueueHash of the first chunk in the fork needs to be the empty hash.
 	if codecVersion >= encoding.CodecV7 {
 		parentChunk, err := p.chunkOrm.GetLatestChunk(context.Background())
 		if err != nil || parentChunk == nil {
 			return fmt.Errorf("failed to get parent chunk: %w", err)
 		}
 
-		chunk.InitialL1MessageQueueHash = common.HexToHash(parentChunk.LastL1MessageQueueHash)
+		chunk.PrevL1MessageQueueHash = common.HexToHash(parentChunk.PostL1MessageQueueHash)
 
 		// previous chunk is not CodecV7, this means this is the first chunk of the fork.
 		if encoding.CodecVersion(parentChunk.CodecVersion) < codecVersion {
-			chunk.InitialL1MessageQueueHash = common.Hash{}
+			chunk.PrevL1MessageQueueHash = common.Hash{}
 		}
 
-		chunk.LastL1MessageQueueHash = chunk.InitialL1MessageQueueHash
-		chunk.InitialL1MessageIndex = parentChunk.TotalL1MessagesPoppedBefore + parentChunk.TotalL1MessagesPoppedInChunk
+		chunk.PostL1MessageQueueHash = chunk.PrevL1MessageQueueHash
 	}
 
-	var previousLastL1MessageQueueHash common.Hash
+	var previousPostL1MessageQueueHash common.Hash
 	chunk.Blocks = make([]*encoding.Block, 0, len(blocks))
 	for i, block := range blocks {
 		chunk.Blocks = append(chunk.Blocks, block)
 
-		// Compute rolling LastL1MessageQueueHash for the chunk. Each block's L1 messages are applied to the previous
-		// hash starting from the InitialL1MessageQueueHash for the chunk.
+		// Compute rolling PostL1MessageQueueHash for the chunk. Each block's L1 messages are applied to the previous
+		// hash starting from the PrevL1MessageQueueHash for the chunk.
 		if codecVersion >= encoding.CodecV7 {
-			previousLastL1MessageQueueHash = chunk.LastL1MessageQueueHash
-			chunk.LastL1MessageQueueHash, err = encoding.MessageQueueV2ApplyL1MessagesFromBlocks(chunk.LastL1MessageQueueHash, []*encoding.Block{block})
+			previousPostL1MessageQueueHash = chunk.PostL1MessageQueueHash
+			chunk.PostL1MessageQueueHash, err = encoding.MessageQueueV2ApplyL1MessagesFromBlocks(previousPostL1MessageQueueHash, []*encoding.Block{block})
 			if err != nil {
 				return fmt.Errorf("failed to calculate last L1 message queue hash for block %d: %w", block.Header.Number.Uint64(), err)
 			}
@@ -370,7 +369,7 @@ func (p *ChunkProposer) proposeChunk() error {
 				"maxUncompressedBatchBytesSize", p.maxUncompressedBatchBytesSize)
 
 			chunk.Blocks = chunk.Blocks[:len(chunk.Blocks)-1]
-			chunk.LastL1MessageQueueHash = previousLastL1MessageQueueHash
+			chunk.PostL1MessageQueueHash = previousPostL1MessageQueueHash
 
 			metrics, calcErr := utils.CalculateChunkMetrics(&chunk, codecVersion)
 			if calcErr != nil {

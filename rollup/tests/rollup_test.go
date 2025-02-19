@@ -342,10 +342,10 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 		// batches[0] is the genesis batch, no need to check
 
 		// assert correctness of L1 message queue hashes
-		require.Equal(t, common.Hash{}, common.HexToHash(batches[1].InitialL1MessageQueueHash))
-		require.Equal(t, batch1ExpectedLastL1MessageQueueHash, common.HexToHash(batches[1].LastL1MessageQueueHash))
-		require.Equal(t, batch1ExpectedLastL1MessageQueueHash, common.HexToHash(batches[2].InitialL1MessageQueueHash))
-		require.Equal(t, batch2ExpectedLastL1MessageQueueHash, common.HexToHash(batches[2].LastL1MessageQueueHash))
+		require.Equal(t, common.Hash{}, common.HexToHash(batches[1].PrevL1MessageQueueHash))
+		require.Equal(t, batch1ExpectedLastL1MessageQueueHash, common.HexToHash(batches[1].PostL1MessageQueueHash))
+		require.Equal(t, batch1ExpectedLastL1MessageQueueHash, common.HexToHash(batches[2].PrevL1MessageQueueHash))
+		require.Equal(t, batch2ExpectedLastL1MessageQueueHash, common.HexToHash(batches[2].PostL1MessageQueueHash))
 
 		return true
 	}, 30*time.Second, time.Second)

@@ -1124,12 +1124,11 @@ func (r *Layer2Relayer) constructCommitBatchPayloadCodecV7(batchesToSubmit []*db
 		}
 
 		encodingBatch := &encoding.Batch{
-			Index:                     b.Batch.Index,
-			ParentBatchHash:           common.HexToHash(b.ParentBatch.Hash),
-			InitialL1MessageIndex:     b.Chunks[0].TotalL1MessagesPoppedBefore,
-			InitialL1MessageQueueHash: common.HexToHash(b.Batch.InitialL1MessageQueueHash),
-			LastL1MessageQueueHash:    common.HexToHash(b.Batch.LastL1MessageQueueHash),
-			Blocks:                    batchBlocks,
+			Index:                  b.Batch.Index,
+			ParentBatchHash:        common.HexToHash(b.ParentBatch.Hash),
+			PrevL1MessageQueueHash: common.HexToHash(b.Batch.PrevL1MessageQueueHash),
+			PostL1MessageQueueHash: common.HexToHash(b.Batch.PostL1MessageQueueHash),
+			Blocks:                 batchBlocks,
 		}
 
 		codec, err := encoding.CodecFromVersion(version)
@@ -1191,7 +1190,7 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 		calldata, packErr := r.l1RollupABI.Pack(
 			"finalizeBundleWithProof",
 			dbBatch.BatchHeader,
-			dbBatch.LastL1MessageQueueHash,
+			dbBatch.PostL1MessageQueueHash,
 			common.HexToHash(dbBatch.StateRoot),
 			common.HexToHash(dbBatch.WithdrawRoot),
 			aggProof.Proof,
@@ -1206,7 +1205,7 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 	calldata, packErr := r.l1RollupABI.Pack(
 		"finalizeBundle",
 		dbBatch.BatchHeader,
-		dbBatch.LastL1MessageQueueHash,
+		dbBatch.PostL1MessageQueueHash,
 		common.HexToHash(dbBatch.StateRoot),
 		common.HexToHash(dbBatch.WithdrawRoot),
 	)
