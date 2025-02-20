@@ -1219,7 +1219,7 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV4(dbBatch *orm.Batch
 	return calldata, nil
 }
 
-func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, aggProof *message.BundleProof) ([]byte, error) {
+func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch, aggProof message.BundleProof) ([]byte, error) {
 	// TODO: update this once the contract interface is finalized
 	if aggProof != nil { // finalizeBundle with proof.
 		calldata, packErr := r.l1RollupABI.Pack(
@@ -1228,7 +1228,7 @@ func (r *Layer2Relayer) constructFinalizeBundlePayloadCodecV7(dbBatch *orm.Batch
 			dbBatch.PostL1MessageQueueHash,
 			common.HexToHash(dbBatch.StateRoot),
 			common.HexToHash(dbBatch.WithdrawRoot),
-			aggProof.Proof,
+			aggProof.Proof(),
 		)
 		if packErr != nil {
 			return nil, fmt.Errorf("failed to pack finalizeBundleWithProof: %w", packErr)

@@ -346,11 +346,7 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 
 	// simulate proof generation -> all batches and bundle are verified
 	{
-		batchProof := &message.BatchProof{
-			Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		}
+		batchProof := &message.OpenVMBatchProof{}
 		batches, err := batchOrm.GetBatches(context.Background(), map[string]interface{}{}, nil, 0)
 		require.NoError(t, err)
 		batches = batches[1:]
@@ -361,11 +357,7 @@ func testCommitBatchAndFinalizeBundleCodecV7(t *testing.T) {
 			require.NoError(t, err)
 		}
 
-		bundleProof := &message.BundleProof{
-			Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-			Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
-		}
+		bundleProof := &message.OpenVMBundleProof{}
 		bundles, err := bundleOrm.GetBundles(context.Background(), map[string]interface{}{}, nil, 0)
 		require.NoError(t, err)
 		for _, bundle := range bundles {

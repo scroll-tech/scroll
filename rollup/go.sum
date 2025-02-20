@@ -251,8 +251,13 @@ github.com/sagikazarmark/slog-shim v0.1.0 h1:diDBnUNK9N/354PgrxMywXnAwEr1QZcOr6g
 github.com/sagikazarmark/slog-shim v0.1.0/go.mod h1:SrcSrq8aKtyuqEI1uvTDTK1arOWRIczQRv+GVI1AkeQ=
 github.com/scroll-tech/da-codec v0.1.3-0.20250206084714-d61e2cbe7cd5 h1:vsSXTjYDggo6TgHxS8KYl4IYHi+EawpzeqQ64X2W/cw=
 github.com/scroll-tech/da-codec v0.1.3-0.20250206084714-d61e2cbe7cd5/go.mod h1:RCDoKwQgZMr/GbD1rKiLA90+0faOzOD6JJm0Bq/7vQs=
+github.com/scroll-tech/da-codec v0.1.3-0.20250220070949-01bd9b5cfff4 h1:0YWE0uUitjdt8xyQsWTErfhQIgALJhRlwRZ6bU0xLhA=
+github.com/scroll-tech/da-codec v0.1.3-0.20250220070949-01bd9b5cfff4/go.mod h1:UZhhjzqYsyEhcvY0Y+SP+oMdeOUqFn/UXpbAYuPGzg0=
+github.com/scroll-tech/da-codec v0.1.3-0.20250220081745-fca406cec624 h1:tKaCH0STAsKODYODc5AjpRaiQaCSq4tycKtBoYBvMFs=
+github.com/scroll-tech/da-codec v0.1.3-0.20250220081745-fca406cec624/go.mod h1:UZhhjzqYsyEhcvY0Y+SP+oMdeOUqFn/UXpbAYuPGzg0=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20250205135740-4bdf6d096c38 h1:IKkevP42IQx8DQvtVq9WOmZDQrto59CGdEheXPf20HA=
 github.com/scroll-tech/go-ethereum v1.10.14-0.20250205135740-4bdf6d096c38/go.mod h1:Ik3OBLl7cJxPC+CFyCBYNXBPek4wpdzkWehn/y5qLM8=
+github.com/scroll-tech/go-ethereum v1.10.14-0.20250206083728-ea43834c198f/go.mod h1:Ik3OBLl7cJxPC+CFyCBYNXBPek4wpdzkWehn/y5qLM8=
 github.com/scroll-tech/zktrie v0.8.4 h1:UagmnZ4Z3ITCk+aUq9NQZJNAwnWl4gSxsLb2Nl7IgRE=
 github.com/scroll-tech/zktrie v0.8.4/go.mod h1:XvNo7vAk8yxNyTjBDj5WIiFzYW4bx/gJ78+NK6Zn6Uk=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
