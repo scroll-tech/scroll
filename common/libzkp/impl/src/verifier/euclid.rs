@@ -1,11 +1,10 @@
 use super::{ProofVerifier, TaskType, VKDump};
 
 use anyhow::Result;
-use halo2_proofs::{halo2curves::bn256::Bn256, poly::kzg::commitment::ParamsKZG};
 
 use crate::utils::panic_catch;
 use prover_v7::{BatchProof, BatchProver, BundleProof, BundleProver, ChunkProof, ChunkProver};
-use std::{collections::BTreeMap, env, fs::File, path::Path};
+use std::{env, fs::File, path::Path};
 
 pub struct EuclidVerifier {
     chunk_verifier: ChunkProver,
@@ -14,9 +13,7 @@ pub struct EuclidVerifier {
 }
 
 impl EuclidVerifier {
-    // TODO: if only euclid verifier is used, it would just need params in the final evm
-    // layer so `bundle_verifier` can manage the params by itself
-    pub fn new(_params_map: &BTreeMap<u32, ParamsKZG<Bn256>>, assets_dir: &str) -> Self {
+    pub fn new(assets_dir: &str) -> Self {
         env::set_var("SCROLL_PROVER_ASSETS_DIR", assets_dir);
         let zkvm_release_path = Path::new(assets_dir).join("scroll-zkvm").join("current");
         let chunk_exe = zkvm_release_path.join("chunk/app.vmexe");

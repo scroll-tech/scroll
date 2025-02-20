@@ -7,14 +7,36 @@ edition = "2021"
 
 
 [patch.crates-io]
-# patched add rkyv support & MSRV 1.77
+alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "v0.8.21" }
+revm = { git = "https://github.com/scroll-tech//revm", branch = "scroll-evm-executor/v55" }
+revm-interpreter = { git = "https://github.com/scroll-tech//revm", branch = "scroll-evm-executor/v55" }
+revm-precompile = { git = "https://github.com/scroll-tech//revm", branch = "scroll-evm-executor/v55" }
+revm-primitives = { git = "https://github.com/scroll-tech//revm", branch = "scroll-evm-executor/v55" }
 ruint = { git = "https://github.com/scroll-tech/uint.git", branch = "v1.12.3" }
-alloy-primitives = { git = "https://github.com/scroll-tech/alloy-core", branch = "v0.8.18" }
-revm = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
-revm-interpreter = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
-revm-precompile = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
-revm-primitives = { git = "https://github.com/scroll-tech/revm", branch = "scroll-evm-executor/v50" }
-tiny-keccak = { git = "https://github.com/scroll-tech/tiny-keccak", branch = "scroll-patch-v2.0.2" }
+tiny-keccak = { git = "https://github.com/scroll-tech/tiny-keccak", branch = "scroll-patch-v2.0.2-openvm-v1.0.0-rc.1" }
+
+[patch."https://github.com/scroll-tech/revm.git"]
+revm = { git = "https://github.com/scroll-tech//revm", branch = "scroll-evm-executor/v55" }
+revm-interpreter = { git = "https://github.com/scroll-tech//revm", branch = "scroll-evm-executor/v55" }
+revm-precompile = { git = "https://github.com/scroll-tech//revm", branch = "scroll-evm-executor/v55" }
+revm-primitives = { git = "https://github.com/scroll-tech//revm", branch = "scroll-evm-executor/v55" }
+
+[patch."https://github.com/scroll-tech/reth.git"]
+reth-chainspec = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-evm = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-evm-ethereum = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-execution-types = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-primitives = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-primitives-traits = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-storage-errors = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-trie = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-trie-sparse = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+
+reth-scroll-chainspec = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-scroll-evm = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+reth-scroll-primitives = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
+
+scroll-alloy-consensus = { git = "https://github.com/scroll-tech//reth", branch = "fix/scroll-zkvm" }
 
 [dependencies]
 anyhow = "1.0"
@@ -26,11 +48,11 @@ futures = "0.3.30"
 
 ethers-core = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
 ethers-providers = { git = "https://github.com/scroll-tech/ethers-rs.git", branch = "v2.0.7" }
-scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "3331117", features = [
+scroll-proving-sdk = { git = "https://github.com/scroll-tech/scroll-proving-sdk.git", rev = "eed375d", features = [
     "openvm",
 ] }
-scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.1.0-rc.2" }
-sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "master", features = [
+scroll-zkvm-prover = { git = "https://github.com/scroll-tech/zkvm-prover", tag = "v0.1.0-rc.4" }
+sbv-primitives = { git = "https://github.com/scroll-tech/stateless-block-verifier", branch = "chore/revm-v55-upgrade", features = [
     "scroll",
 ] }
 base64 = "0.13.1"
