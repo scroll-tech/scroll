@@ -123,6 +123,12 @@ func testL2RelayerProcessPendingBundles(t *testing.T) {
 			Chunks:                     []*encoding.Chunk{chunk1, chunk2},
 		}
 
+		chunkOrm := orm.NewChunk(db)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk1, codecVersion, rutils.ChunkMetrics{})
+		assert.NoError(t, err)
+		_, err = chunkOrm.InsertChunk(context.Background(), chunk2, codecVersion, rutils.ChunkMetrics{})
+		assert.NoError(t, err)
+
 		batchOrm := orm.NewBatch(db)
 		dbBatch, err := batchOrm.InsertBatch(context.Background(), batch, codecVersion, rutils.BatchMetrics{})
 		assert.NoError(t, err)
@@ -145,8 +151,8 @@ func testL2RelayerProcessPendingBundles(t *testing.T) {
 		// no valid proof, rollup status remains the same
 		assert.Equal(t, types.RollupPending, types.RollupStatus(bundles[0].RollupStatus))
 
-		proof := &message.BundleProof{
-			Proof:     []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
+		proof := &message.Halo2BundleProof{
+			RawProof:  []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
 			Instances: []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
 			Vk:        []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31},
 		}

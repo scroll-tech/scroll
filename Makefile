@@ -1,6 +1,6 @@
 .PHONY: fmt dev_docker build_test_docker run_test_docker clean update
 
-L2GETH_TAG=ea3ec93d8c1e379bfd7957d4866f204d8d71237c
+L2GETH_TAG=scroll-v5.8.4
 
 help: ## Display this help message
 	@grep -h \

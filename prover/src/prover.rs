@@ -1,83 +1,170 @@
-use anyhow::{bail, Context, Error, Ok, Result};
-
-use crate::{
-    config::Config,
-    coordinator_client::{listener::Listener, types::*, CoordinatorClient},
-    geth_client::GethClient,
-    key_signer::KeySigner,
-    types::{ProofFailureType, ProofStatus, TaskType},
-    zk_circuits_handler::{euclid::EuclidHandler, CircuitsHandler},
+use crate::zk_circuits_handler::{euclid::EuclidHandler, CircuitsHandler};
+use anyhow::{anyhow, Result};
+use async_trait::async_trait;
+use scroll_proving_sdk::{
+    config::Config as SdkConfig,
+    prover::{
+        proving_service::{
+            GetVkRequest, GetVkResponse, ProveRequest, ProveResponse, QueryTaskRequest,
+            QueryTaskResponse, TaskStatus,
+        },
+        ProvingService,
+    },
 };
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashMap,
+    fs::File,
+    sync::Arc,
+    time::{SystemTime, UNIX_EPOCH},
+};
+use tokio::{runtime::Handle, sync::Mutex, task::JoinHandle};
 
-use super::types::{ProofDetail, Task};
-
-pub struct Prover {
-    config: Config,
-    pub public_key: String,
-    coordinator_client: CoordinatorClient,
-    geth_client: GethClient,
-
-    active_handler: Option<(String, Box<dyn CircuitsHandler>)>,
+#[derive(Clone, Serialize, Deserialize)]
+pub struct LocalProverConfig {
+    pub sdk_config: SdkConfig,
+    pub circuits: HashMap<String, CircuitConfig>,
 }
 
-impl Prover {
-    pub fn new(config: Config, coordinator_listener: Box<dyn Listener>) -> Result<Self> {
-        let keystore_path = &config.keystore_path;
-        let keystore_password = &config.keystore_password;
-
-        let geth_client = GethClient::new(
-            &config.prover_name,
-            &config.l2geth.as_ref().unwrap().endpoint,
-        )
-        .context("failed to create l2 geth_client")?;
-
-        let key_signer = KeySigner::new(keystore_path, keystore_password)?;
-        let public_key = key_signer.get_public_key();
-
-        let coordinator_client = CoordinatorClient::new(
-            config.clone(),
-            key_signer,
-            coordinator_listener,
-            vec![], /* todo: vks */
-        )
-        .context("failed to create coordinator_client")?;
-
-        let prover = Prover {
-            config,
-            public_key,
-            coordinator_client,
-            geth_client,
-            active_handler: None,
-        };
-
-        Ok(prover)
+impl LocalProverConfig {
+    pub fn from_reader<R>(reader: R) -> Result<Self>
+    where
+        R: std::io::Read,
+    {
+        serde_json::from_reader(reader).map_err(|e| anyhow!(e))
     }
 
-    pub fn fetch_task(&mut self) -> Result<Task> {
-        log::info!("[prover] start to fetch_task");
-        let mut req = GetTaskRequest {
-            task_types: vec![TaskType::Chunk, TaskType::Batch, TaskType::Bundle],
-            prover_height: None,
-        };
+    pub fn from_file(file_name: String) -> Result<Self> {
+        let file = File::open(file_name)?;
+        Self::from_reader(&file)
+    }
+}
 
-        let latest_block_number = self.geth_client.block_number()?.as_number();
-        if let Some(v) = latest_block_number {
-            if v.as_u64() == 0 {
-                bail!("omit to prove task of the genesis block")
-            }
-            req.prover_height = Some(v.as_u64());
-        } else {
-            log::error!("[prover] failed to fetch latest confirmed block number, got None");
-            bail!("failed to fetch latest confirmed block number, got None")
-        }
-        let resp = self.coordinator_client.get_task(&req)?;
+#[derive(Clone, Serialize, Deserialize)]
+pub struct CircuitConfig {
+    pub hard_fork_name: String,
+    pub workspace_path: String,
+}
 
-        match resp.data {
-            Some(d) => Ok(Task::from(d)),
-            None => {
-                bail!("data of get_task empty, while error_code is success. there may be something wrong in response data or inner logic.")
+pub struct LocalProver {
+    config: LocalProverConfig,
+    next_task_id: u64,
+    current_task: Option<JoinHandle<Result<String>>>,
+
+    active_handler: Option<(String, Arc<dyn CircuitsHandler>)>,
+}
+
+#[async_trait]
+impl ProvingService for LocalProver {
+    fn is_local(&self) -> bool {
+        true
+    }
+    async fn get_vks(&self, req: GetVkRequest) -> GetVkResponse {
+        let mut vks = vec![];
+        for hard_fork_name in self.config.circuits.keys() {
+            let handler = self.new_handler(hard_fork_name);
+            for proof_type in &req.proof_types {
+                let vk = handler.get_vk(*proof_type).await;
+
+                if let Some(vk) = vk {
+                    vks.push(base64::encode(vk));
+                }
             }
         }
+
+        GetVkResponse { vks, error: None }
+    }
+    async fn prove(&mut self, req: ProveRequest) -> ProveResponse {
+        self.set_active_handler(&req.hard_fork_name);
+        match self
+            .do_prove(req, self.active_handler.as_ref().unwrap().1.clone())
+            .await
+        {
+            Ok(resp) => resp,
+            Err(e) => ProveResponse {
+                status: TaskStatus::Failed,
+                error: Some(format!("failed to request proof: {}", e)),
+                ..Default::default()
+            },
+        }
+    }
+
+    async fn query_task(&mut self, req: QueryTaskRequest) -> QueryTaskResponse {
+        if let Some(handle) = &mut self.current_task {
+            if handle.is_finished() {
+                return match handle.await {
+                    Ok(Ok(proof)) => QueryTaskResponse {
+                        task_id: req.task_id,
+                        status: TaskStatus::Success,
+                        proof: Some(proof),
+                        ..Default::default()
+                    },
+                    Ok(Err(e)) => QueryTaskResponse {
+                        task_id: req.task_id,
+                        status: TaskStatus::Failed,
+                        error: Some(format!("proving task failed: {}", e)),
+                        ..Default::default()
+                    },
+                    Err(e) => QueryTaskResponse {
+                        task_id: req.task_id,
+                        status: TaskStatus::Failed,
+                        error: Some(format!("proving task panicked: {}", e)),
+                        ..Default::default()
+                    },
+                };
+            } else {
+                return QueryTaskResponse {
+                    task_id: req.task_id,
+                    status: TaskStatus::Proving,
+                    ..Default::default()
+                };
+            }
+        }
+        // If no handle is found
+        QueryTaskResponse {
+            task_id: req.task_id,
+            status: TaskStatus::Failed,
+            error: Some("no proving task is running".to_string()),
+            ..Default::default()
+        }
+    }
+}
+
+impl LocalProver {
+    pub fn new(config: LocalProverConfig) -> Self {
+        Self {
+            config,
+            next_task_id: 0,
+            current_task: None,
+            active_handler: None,
+        }
+    }
+
+    async fn do_prove(
+        &mut self,
+        req: ProveRequest,
+        handler: Arc<dyn CircuitsHandler>,
+    ) -> Result<ProveResponse> {
+        self.next_task_id += 1;
+        let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+        let created_at = duration.as_secs() as f64 + duration.subsec_nanos() as f64 * 1e-9;
+
+        let req_clone = req.clone();
+        let handle = Handle::current();
+        let task_handle =
+            tokio::task::spawn_blocking(move || handle.block_on(handler.get_proof_data(req_clone)));
+        self.current_task = Some(task_handle);
+
+        Ok(ProveResponse {
+            task_id: self.next_task_id.to_string(),
+            proof_type: req.proof_type,
+            circuit_version: req.circuit_version,
+            hard_fork_name: req.hard_fork_name,
+            status: TaskStatus::Proving,
+            created_at,
+            input: Some(req.input),
+            ..Default::default()
+        })
     }
 
     fn set_active_handler(&mut self, hard_fork_name: &str) {
@@ -86,71 +173,17 @@ impl Prover {
                 return;
             }
         }
+        self.active_handler = Some((hard_fork_name.to_string(), self.new_handler(hard_fork_name)));
+    }
 
+    fn new_handler(&self, hard_fork_name: &str) -> Arc<dyn CircuitsHandler> {
         // if we got assigned a task for an unknown hard fork, there is something wrong in the
         // coordinator
         let config = self.config.circuits.get(hard_fork_name).unwrap();
 
-        let handler = Box::new(match hard_fork_name {
-            "euclid" => EuclidHandler::new(&config.workspace_path),
+        Arc::new(match hard_fork_name {
+            "euclid" => Arc::new(Mutex::new(EuclidHandler::new(&config.workspace_path))),
             _ => unreachable!(),
-        }) as Box<dyn CircuitsHandler>;
-        self.active_handler = Some((hard_fork_name.to_string(), handler));
-    }
-
-    pub fn prove_task(&mut self, task: &Task) -> Result<ProofDetail> {
-        log::info!("[prover] start to prove_task, task id: {}", task.id);
-        let mut proof_detail = ProofDetail {
-            id: task.id.clone(),
-            proof_type: task.task_type,
-            ..Default::default()
-        };
-
-        self.set_active_handler(&task.hard_fork_name);
-        proof_detail.proof_data = self
-            .active_handler
-            .as_ref()
-            .unwrap()
-            .1
-            .get_proof_data(task, &self.geth_client)?;
-        Ok(proof_detail)
-    }
-
-    pub fn submit_proof(&mut self, proof_detail: ProofDetail, task: &Task) -> Result<()> {
-        log::info!(
-            "[prover] start to submit_proof, task id: {}",
-            proof_detail.id
-        );
-
-        let request = SubmitProofRequest {
-            uuid: task.uuid.clone(),
-            task_id: proof_detail.id,
-            task_type: proof_detail.proof_type,
-            status: ProofStatus::Ok,
-            proof: proof_detail.proof_data,
-            ..Default::default()
-        };
-
-        self.coordinator_client.submit_proof(&request).map(|_r| ())
-    }
-
-    pub fn submit_error(
-        &mut self,
-        task: &Task,
-        failure_type: ProofFailureType,
-        error: Error,
-    ) -> Result<()> {
-        log::info!("[prover] start to submit_error, task id: {}", task.id);
-        let request = SubmitProofRequest {
-            uuid: task.uuid.clone(),
-            task_id: task.id.clone(),
-            task_type: task.task_type,
-            status: ProofStatus::Error,
-            failure_type: Some(failure_type),
-            failure_msg: Some(format!("{:#}", error)),
-            ..Default::default()
-        };
-
-        self.coordinator_client.submit_proof(&request).map(|_r| ())
+        }) as Arc<dyn CircuitsHandler>
     }
 }

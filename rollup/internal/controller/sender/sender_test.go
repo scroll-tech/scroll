@@ -295,6 +295,8 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 		assert.NotNil(t, tx)
 		err = s.client.SendTransaction(s.ctx, tx)
 		assert.NoError(t, err)
+
+		txHashes := []common.Hash{tx.Hash()}
 		// Increase at least 1 wei in gas price, gas tip cap and gas fee cap.
 		// Bumping the fees enough times to let the transaction be included in a block.
 		for i := 0; i < 30; i++ {
@@ -302,16 +304,27 @@ func testResubmitZeroGasPriceTransaction(t *testing.T) {
 			assert.NoError(t, err)
 			err = s.client.SendTransaction(s.ctx, tx)
 			assert.NoError(t, err)
+			txHashes = append(txHashes, tx.Hash())
 		}
 
 		assert.Eventually(t, func() bool {
-			_, isPending, err := s.client.TransactionByHash(context.Background(), tx.Hash())
-			return err == nil && !isPending
+			for _, txHash := range txHashes {
+				_, isPending, err := s.client.TransactionByHash(context.Background(), txHash)
+				if err == nil && !isPending {
+					return true
+				}
+			}
+			return false
 		}, 30*time.Second, time.Second)
 
 		assert.Eventually(t, func() bool {
-			receipt, err := s.client.TransactionReceipt(context.Background(), tx.Hash())
-			return err == nil && receipt != nil
+			for _, txHash := range txHashes {
+				receipt, err := s.client.TransactionReceipt(context.Background(), txHash)
+				if err == nil && receipt != nil {
+					return true
+				}
+			}
+			return false
 		}, 30*time.Second, time.Second)
 
 		s.Stop()

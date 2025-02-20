@@ -1,6 +1,8 @@
 mod utils;
 mod verifier;
 
+use std::path::Path;
+
 use crate::utils::{c_char_to_str, c_char_to_vec};
 use libc::c_char;
 use prover_v5::utils::init_env_and_log;
@@ -60,4 +62,19 @@ pub unsafe extern "C" fn verify_bundle_proof(
     fork_name: *const c_char,
 ) -> c_char {
     verify_proof(proof, fork_name, TaskType::Bundle)
+}
+
+/// # Safety
+#[no_mangle]
+pub unsafe extern "C" fn dump_vk(fork_name: *const c_char, file: *const c_char) {
+    _dump_vk(fork_name, file);
+}
+
+fn _dump_vk(fork_name: *const c_char, file: *const c_char) {
+    let fork_name_str = c_char_to_str(fork_name);
+    let verifier = verifier::get_verifier(fork_name_str);
+
+    if let Ok(verifier) = verifier {
+        verifier.as_ref().dump_vk(Path::new(c_char_to_str(file)));
+    }
 }
