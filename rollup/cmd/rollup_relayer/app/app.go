@@ -80,6 +80,15 @@ func action(ctx *cli.Context) error {
 	}
 
 	initGenesis := ctx.Bool(utils.ImportGenesisFlag.Name)
+
+	// sanity check config
+	if cfg.L2Config.RelayerConfig.SenderConfig.BatchSubmission.MinBatches < 1 {
+		log.Crit("cfg.L2Config.RelayerConfig.SenderConfig.BatchSubmission.MinBatches must be at least 1")
+	}
+	if cfg.L2Config.RelayerConfig.SenderConfig.BatchSubmission.MaxBatches < 1 {
+		log.Crit("cfg.L2Config.RelayerConfig.SenderConfig.BatchSubmission.MaxBatches must be at least 1")
+	}
+
 	l2relayer, err := relayer.NewLayer2Relayer(ctx.Context, l2client, db, cfg.L2Config.RelayerConfig, genesis.Config, initGenesis, relayer.ServiceTypeL2RollupRelayer, registry)
 	if err != nil {
 		log.Crit("failed to create l2 relayer", "config file", cfgFile, "error", err)

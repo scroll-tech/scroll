@@ -303,7 +303,7 @@ func (p *ChunkProposer) proposeChunk() error {
 	// From CodecV7 / EuclidV2 onwards we need to provide the PrevL1MessageQueueHash and PostL1MessageQueueHash.
 	// PrevL1MessageQueueHash of the first chunk in the fork needs to be the empty hash.
 	if codecVersion >= encoding.CodecV7 {
-		parentChunk, err := p.chunkOrm.GetLatestChunk(context.Background())
+		parentChunk, err := p.chunkOrm.GetLatestChunk(p.ctx)
 		if err != nil || parentChunk == nil {
 			return fmt.Errorf("failed to get parent chunk: %w", err)
 		}

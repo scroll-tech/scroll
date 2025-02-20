@@ -10,10 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"scroll-tech/common/types"
-	"scroll-tech/common/types/message"
-	"scroll-tech/common/utils"
-
 	"github.com/go-resty/resty/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/scroll-tech/da-codec/encoding"
@@ -26,6 +22,10 @@ import (
 	"github.com/scroll-tech/go-ethereum/log"
 	"github.com/scroll-tech/go-ethereum/params"
 	"gorm.io/gorm"
+
+	"scroll-tech/common/types"
+	"scroll-tech/common/types/message"
+	"scroll-tech/common/utils"
 
 	bridgeAbi "scroll-tech/rollup/abi"
 	"scroll-tech/rollup/internal/config"
@@ -378,7 +378,7 @@ func (r *Layer2Relayer) ProcessGasPriceOracle() {
 // ProcessPendingBatches processes the pending batches by sending commitBatch transactions to layer 1.
 func (r *Layer2Relayer) ProcessPendingBatches() {
 	// get pending batches from database in ascending order by their index.
-	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, max(5, r.cfg.SenderConfig.BatchSubmission.MaxBatches))
+	dbBatches, err := r.batchOrm.GetFailedAndPendingBatches(r.ctx, r.cfg.SenderConfig.BatchSubmission.MaxBatches)
 	if err != nil {
 		log.Error("Failed to fetch pending L2 batches", "err", err)
 		return
@@ -393,63 +393,61 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 			return
 		}
 
-		batchesToSubmitLen := len(batchesToSubmit)
 		var dbChunks []*orm.Chunk
 		var dbParentBatch *orm.Batch
 
 		// Verify batches compatibility
-		{
-			dbChunks, err = r.chunkOrm.GetChunksInRange(r.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex)
-			if err != nil {
-				log.Error("failed to get chunks in range", "err", err)
+		dbChunks, err = r.chunkOrm.GetChunksInRange(r.ctx, dbBatch.StartChunkIndex, dbBatch.EndChunkIndex)
+		if err != nil {
+			log.Error("failed to get chunks in range", "err", err)
+			return
+		}
+
+		// check codec version
+		for _, dbChunk := range dbChunks {
+			if dbBatch.CodecVersion != dbChunk.CodecVersion {
+				log.Error("batch codec version is different from chunk codec version", "batch index", dbBatch.Index, "chunk index", dbChunk.Index, "batch codec version", dbBatch.CodecVersion, "chunk codec version", dbChunk.CodecVersion)
 				return
-			}
-
-			// check codec version
-			for _, dbChunk := range dbChunks {
-				if dbBatch.CodecVersion != dbChunk.CodecVersion {
-					log.Error("batch codec version is different from chunk codec version", "batch index", dbBatch.Index, "chunk index", dbChunk.Index, "batch codec version", dbBatch.CodecVersion, "chunk codec version", dbChunk.CodecVersion)
-					return
-				}
-			}
-
-			if dbBatch.Index == 0 {
-				log.Error("invalid args: batch index is 0, should only happen in committing genesis batch")
-				return
-			}
-
-			// get parent batch
-			if i == 0 {
-				dbParentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, dbBatch.Index-1)
-				if err != nil {
-					log.Error("failed to get parent batch header", "err", err)
-					return
-				}
-			} else {
-				dbParentBatch = dbBatches[i-1]
-			}
-
-			// make sure batch index is continuous
-			if dbParentBatch.Index != dbBatch.Index-1 {
-				log.Error("parent batch index is not equal to current batch index - 1", "index", dbBatch.Index, "parent index", dbParentBatch.Index)
-				return
-			}
-
-			if dbParentBatch.CodecVersion > dbBatch.CodecVersion {
-				log.Error("parent batch codec version is greater than current batch codec version", "index", dbBatch.Index, "hash", dbBatch.Hash, "parent codec version", dbParentBatch.CodecVersion, "current codec version", dbBatch.CodecVersion)
-				return
-			}
-
-			// make sure we commit batches of the same codec version together.
-			// If we encounter a batch with a different codec version, we stop here and will commit the batches we have so far.
-			// The next call of ProcessPendingBatches will then start with the batch with the different codec version.
-			if batchesToSubmitLen > 0 && batchesToSubmit[batchesToSubmitLen-1].Batch.CodecVersion != dbBatch.CodecVersion {
-				break
 			}
 		}
 
+		if dbBatch.Index == 0 {
+			log.Error("invalid args: batch index is 0, should only happen in committing genesis batch")
+			return
+		}
+
+		// get parent batch
+		if i == 0 {
+			dbParentBatch, err = r.batchOrm.GetBatchByIndex(r.ctx, dbBatch.Index-1)
+			if err != nil {
+				log.Error("failed to get parent batch header", "err", err)
+				return
+			}
+		} else {
+			dbParentBatch = dbBatches[i-1]
+		}
+
+		// make sure batch index is continuous
+		if dbParentBatch.Index != dbBatch.Index-1 {
+			log.Error("parent batch index is not equal to current batch index - 1", "index", dbBatch.Index, "parent index", dbParentBatch.Index)
+			return
+		}
+
+		if dbParentBatch.CodecVersion > dbBatch.CodecVersion {
+			log.Error("parent batch codec version is greater than current batch codec version", "index", dbBatch.Index, "hash", dbBatch.Hash, "parent codec version", dbParentBatch.CodecVersion, "current codec version", dbBatch.CodecVersion)
+			return
+		}
+
+		// make sure we commit batches of the same codec version together.
+		// If we encounter a batch with a different codec version, we stop here and will commit the batches we have so far.
+		// The next call of ProcessPendingBatches will then start with the batch with the different codec version.
+		batchesToSubmitLen := len(batchesToSubmit)
+		if batchesToSubmitLen > 0 && batchesToSubmit[batchesToSubmitLen-1].Batch.CodecVersion != dbBatch.CodecVersion {
+			break
+		}
+
 		// if one of the batches is too old, we force submit all batches that we have so far in the next step
-		if !forceSubmit && time.Since(dbBatch.CreatedAt) > time.Duration(r.cfg.SenderConfig.BatchSubmission.TimeoutSec)*time.Second {
+		if r.cfg.SenderConfig.BatchSubmission.TimeoutSec > 0 && !forceSubmit && time.Since(dbBatch.CreatedAt) > time.Duration(r.cfg.SenderConfig.BatchSubmission.TimeoutSec)*time.Second {
 			forceSubmit = true
 		}
 
@@ -466,8 +464,9 @@ func (r *Layer2Relayer) ProcessPendingBatches() {
 		}
 	}
 
+	// we only submit batches if we have a timeout or if we have enough batches to submit
 	if !forceSubmit && len(batchesToSubmit) < r.cfg.SenderConfig.BatchSubmission.MinBatches {
-		log.Debug("Not enough batches to submit", "count", len(batchesToSubmit), "minBatches", r.cfg.SenderConfig.BatchSubmission.MinBatches, "maxBatches", r.cfg.SenderConfig.BatchSubmission.MaxBatches)
+		log.Info("Not enough batches to submit", "count", len(batchesToSubmit), "minBatches", r.cfg.SenderConfig.BatchSubmission.MinBatches, "maxBatches", r.cfg.SenderConfig.BatchSubmission.MaxBatches)
 		return
 	}
 
