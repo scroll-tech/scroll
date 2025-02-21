@@ -38,7 +38,7 @@ impl EuclidVerifier {
 
 impl ProofVerifier for EuclidVerifier {
     fn verify(&self, task_type: super::TaskType, proof: Vec<u8>) -> Result<bool> {
-        let result = panic_catch(|| match task_type {
+        panic_catch(|| match task_type {
             TaskType::Chunk => {
                 let proof = serde_json::from_slice::<ChunkProof>(proof.as_slice()).unwrap();
                 self.chunk_verifier.verify_proof(&proof).is_ok()
@@ -51,10 +51,8 @@ impl ProofVerifier for EuclidVerifier {
                 let proof = serde_json::from_slice::<BundleProof>(proof.as_slice()).unwrap();
                 self.bundle_verifier.verify_proof_evm(&proof).is_ok()
             }
-        });
-        let _ = result.is_ok();
-        Ok(true)
-        //result.map_err(|e| anyhow::anyhow!(e))
+        })
+        .map_err(|err_str| anyhow::anyhow!(err_str))
     }
 
     fn dump_vk(&self, file: &Path) {
