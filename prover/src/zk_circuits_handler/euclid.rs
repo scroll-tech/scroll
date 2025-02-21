@@ -84,7 +84,7 @@ impl CircuitsHandler for Arc<Mutex<EuclidHandler>> {
                     .try_lock()
                     .unwrap()
                     .bundle_prover
-                    .gen_proof(&batch_proofs)?;
+                    .gen_proof_evm(&batch_proofs)?;
 
                 Ok(serde_json::to_string(&proof)?)
             }
